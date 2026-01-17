@@ -6,6 +6,8 @@ import { db } from '@/lib/firebase';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
+import logoDwimitra from '@/assets/a6129221f456afd6fd88d74c324473e495bdd7a8.png';
+import logoNeutraDC from '@/assets/005ac597864c02a96c9add5c6e054d23b8cfafbe.png';
 
 interface DocumentData {
   id: string;
@@ -171,18 +173,43 @@ export function AdminDashboard() {
           return startRow + 3;
         };
 
-        // Create placeholder logos (gray rectangles)
-        const placeholderBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN8//8/AwAI/AL+O63IsAAAAABJRU5ErkJggg==';
-        
-        const logoDwimitraId = workbook.addImage({
-          base64: placeholderBase64,
-          extension: 'png',
-        });
+        // Load actual logos
+        let logoDwimitraId: number;
+        let logoNeutraDCId: number;
 
-        const logoNeutraDCId = workbook.addImage({
-          base64: placeholderBase64,
-          extension: 'png',
-        });
+        try {
+          const logoDwimitraResponse = await fetch(logoDwimitra);
+          const logoDwimitraBlob = await logoDwimitraResponse.blob();
+          const logoDwimitraArrayBuffer = await logoDwimitraBlob.arrayBuffer();
+          const logoDwimitraBase64 = btoa(
+            new Uint8Array(logoDwimitraArrayBuffer).reduce(
+              (data, byte) => data + String.fromCharCode(byte), ''
+            )
+          );
+
+          const logoNeutraDCResponse = await fetch(logoNeutraDC);
+          const logoNeutraDCBlob = await logoNeutraDCResponse.blob();
+          const logoNeutraDCArrayBuffer = await logoNeutraDCBlob.arrayBuffer();
+          const logoNeutraDCBase64 = btoa(
+            new Uint8Array(logoNeutraDCArrayBuffer).reduce(
+              (data, byte) => data + String.fromCharCode(byte), ''
+            )
+          );
+
+          logoDwimitraId = workbook.addImage({
+            base64: logoDwimitraBase64,
+            extension: 'png',
+          });
+
+          logoNeutraDCId = workbook.addImage({
+            base64: logoNeutraDCBase64,
+            extension: 'png',
+          });
+        } catch (error) {
+          console.error('Failed to load logos:', error);
+          toast.error('Failed to load logos', { id: 'regen' });
+          return;
+        }
 
         let currentRow = addExcelHeader(1, logoDwimitraId, logoNeutraDCId);
         const photosPerPage = 9;
@@ -277,10 +304,33 @@ export function AdminDashboard() {
 
         let currentY = marginTop;
 
-        // Use placeholder logos
-        const placeholderBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mN8//8/AwAI/AL+O63IsAAAAABJRU5ErkJggg==';
-        const logoDwimitraBase64 = placeholderBase64;
-        const logoNeutraDCBase64 = placeholderBase64;
+        // Load actual logos
+        let logoDwimitraBase64 = '';
+        let logoNeutraDCBase64 = '';
+
+        try {
+          const logoDwimitraResponse = await fetch(logoDwimitra);
+          const logoDwimitraBlob = await logoDwimitraResponse.blob();
+          const logoDwimitraArrayBuffer = await logoDwimitraBlob.arrayBuffer();
+          logoDwimitraBase64 = btoa(
+            new Uint8Array(logoDwimitraArrayBuffer).reduce(
+              (data, byte) => data + String.fromCharCode(byte), ''
+            )
+          );
+
+          const logoNeutraDCResponse = await fetch(logoNeutraDC);
+          const logoNeutraDCBlob = await logoNeutraDCResponse.blob();
+          const logoNeutraDCArrayBuffer = await logoNeutraDCBlob.arrayBuffer();
+          logoNeutraDCBase64 = btoa(
+            new Uint8Array(logoNeutraDCArrayBuffer).reduce(
+              (data, byte) => data + String.fromCharCode(byte), ''
+            )
+          );
+        } catch (error) {
+          console.error('Failed to load logos:', error);
+          toast.error('Failed to load logos', { id: 'regen' });
+          return;
+        }
 
         const addPageHeader = () => {
           let headerY = marginTop;
