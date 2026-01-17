@@ -229,14 +229,14 @@ export function DocumentList() {
         // Add floating logos
         // ✅ Logo Dwimitra - LARGER size, positioned with proper spacing
         worksheet.addImage(dwimitraImageId, {
-          tl: { col: 0.15, row: 0.25 }, // ✅ Shifted right untuk spacing (was 0.05)
-          ext: { width: 110, height: 45 } // ✅ LARGER size
+          tl: { col: 0.1, row: 0.15 }, // ✅ Better positioning
+          ext: { width: 130, height: 50 } // ✅ LARGER size for better visibility
         });
 
         // ✅ Logo NeutraDC - LARGER size, positioned with proper spacing
         worksheet.addImage(neutraDCImageId, {
-          tl: { col: 4.55, row: 0.25 }, // ✅ Shifted more right untuk spacing (was 4.4)
-          ext: { width: 110, height: 45 } // ✅ LARGER size
+          tl: { col: 4.4, row: 0.15 }, // ✅ Better positioning
+          ext: { width: 130, height: 50 } // ✅ LARGER size for better visibility
         });
 
       } catch (error) {
@@ -389,8 +389,8 @@ export function DocumentList() {
         );
 
         // Add logos
-        const logoWidth = 35;
-        const logoHeight = 14;
+        const logoWidth = 45;
+        const logoHeight = 20;
         
         // Logo Dwimitra - Left
         doc.addImage(
@@ -412,7 +412,7 @@ export function DocumentList() {
           logoHeight
         );
 
-        currentY += logoHeight + 5;
+        currentY += logoHeight + 8;
 
         // Title
         doc.setFontSize(14);
@@ -421,7 +421,13 @@ export function DocumentList() {
         const titleWidth = doc.getTextWidth(titleText);
         doc.text(titleText, (pageWidth - titleWidth) / 2, currentY);
         
-        currentY += 8;
+        currentY += 10;
+        
+        // Add separator line under header
+        doc.setLineWidth(0.5);
+        doc.setDrawColor(0, 0, 0);
+        doc.line(marginLeft, currentY, pageWidth - marginRight, currentY);
+        currentY += 5;
 
         // Specific Detail / Equipment Name
         if (docData.specificDetail) {
@@ -430,9 +436,9 @@ export function DocumentList() {
           const equipmentText = docData.specificDetail;
           const equipmentWidth = doc.getTextWidth(equipmentText);
           doc.text(equipmentText, (pageWidth - equipmentWidth) / 2, currentY);
-          currentY += 10;
+          currentY += 12;
         } else {
-          currentY += 5;
+          currentY += 8;
         }
 
         // Add photos in 3-column grid
