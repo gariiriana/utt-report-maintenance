@@ -425,7 +425,7 @@ export function DocumentList() {
       doc.text(titleText, (pageWidth - titleWidth) / 2, currentY);
 
        // ⬇️ TURUNKAN Y SETELAH TITLE (PENTING)
-        currentY += 16;
+        currentY += 10;
 
 
       // ================= SPECIFIC DETAIL =================
@@ -440,7 +440,7 @@ export function DocumentList() {
           doc.text(equipmentText, (pageWidth - equipmentWidth) / 2, currentY);
 
           // Jarak setelah equipment
-            currentY += 12;
+            currentY += 10;
           } else {
            // Kalau ga ada equipment, tetap kasih jarak
              currentY += 8;
