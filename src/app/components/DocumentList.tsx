@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, User, FileDown, FileType } from 'lucide-react';
 import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore'; // ✅ Removed "orderBy" - not needed anymore
@@ -309,7 +309,7 @@ export function DocumentList() {
 
             worksheet.addImage(imageId, {
               tl: { col: colIndex, row: currentRow - 1 },
-              br: { col: colIndex + 1, row: currentRow }
+              ext: { width: 120, height: 150 }
             });
 
             captionCell.value = card.description || `Photo ${i + j + 1}`;
