@@ -414,24 +414,38 @@ export function DocumentList() {
 
         currentY += logoHeight + 8;
 
-        // Title
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        const titleText = `Dokumentasi PM ${docData.maintenanceName} (${formattedDate})`;
-        const titleWidth = doc.getTextWidth(titleText);
-        doc.text(titleText, (pageWidth - titleWidth) / 2, currentY);
+      // ================= TITLE =================
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
 
-        // Specific Detail / Equipment Name
-        if (docData.specificDetail) {
+      const titleText = `Dokumentasi PM ${docData.maintenanceName} (${formattedDate})`;
+      const titleWidth = doc.getTextWidth(titleText);
+
+      // Tulis TITLE
+      doc.text(titleText, (pageWidth - titleWidth) / 2, currentY);
+
+       // ⬇️ TURUNKAN Y SETELAH TITLE (PENTING)
+        currentY += 16;
+
+
+      // ================= SPECIFIC DETAIL =================
+      if (docData.specificDetail) {
           doc.setFontSize(12);
           doc.setFont('helvetica', 'bold');
+
           const equipmentText = docData.specificDetail;
-          const equipmentWidth = doc.getTextWidth(equipmentText);
+            const equipmentWidth = doc.getTextWidth(equipmentText);
+
+          // Tulis EQUIPMENT DI Y BARU
           doc.text(equipmentText, (pageWidth - equipmentWidth) / 2, currentY);
-          currentY += 12;
-        } else {
-          currentY += 8;
-        }
+
+          // Jarak setelah equipment
+            currentY += 12;
+          } else {
+           // Kalau ga ada equipment, tetap kasih jarak
+             currentY += 8;
+            }
+
 
         // Add photos in 3-column grid
         const photoWidth = (usableWidth - 8) / 3; // 3 columns with 4mm spacing between
