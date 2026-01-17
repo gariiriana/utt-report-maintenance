@@ -420,14 +420,6 @@ export function DocumentList() {
         const titleText = `Dokumentasi PM ${docData.maintenanceName} (${formattedDate})`;
         const titleWidth = doc.getTextWidth(titleText);
         doc.text(titleText, (pageWidth - titleWidth) / 2, currentY);
-        
-        currentY += 10;
-        
-        // Add separator line under header
-        doc.setLineWidth(0.5);
-        doc.setDrawColor(0, 0, 0);
-        doc.line(marginLeft, currentY, pageWidth - marginRight, currentY);
-        currentY += 5;
 
         // Specific Detail / Equipment Name
         if (docData.specificDetail) {
