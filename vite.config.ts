@@ -5,27 +5,41 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [
-    // The React and Tailwind plugins are both required for Make, even if
-    // Tailwind is not being actively used – do not remove them
     react(),
     tailwindcss(),
   ],
   resolve: {
     alias: {
-      // Alias @ to the src directory
       '@': path.resolve(__dirname, './src'),
     },
   },
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
-          'ui-components': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs'],
-          'pdf-excel': ['jspdf', 'exceljs'],
+        manualChunks(id) {
+          // Firebase chunk
+          if (id.includes('firebase')) {
+            return 'firebase';
+          }
+          // UI components chunk
+          if (id.includes('@radix-ui')) {
+            return 'ui-components';
+          }
+          // Keep jsPDF in separate chunk
+          if (id.includes('jspdf')) {
+            return 'jspdf';
+          }
+          // Keep ExcelJS in separate chunk
+          if (id.includes('exceljs')) {
+            return 'exceljs';
+          }
+          // html2canvas
+          if (id.includes('html2canvas')) {
+            return 'html2canvas';
+          }
         },
       },
     },
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 500, // Lower limit untuk lebih aggressive splitting
   },
 })
