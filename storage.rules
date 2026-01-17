@@ -1,0 +1,26 @@
+# FIREBASE STORAGE SECURITY RULES
+# 
+# ⚠️ STORAGE TIDAK DIGUNAKAN LAGI! ⚠️
+# 
+# Aplikasi sekarang HANYA menggunakan Firestore untuk menyimpan:
+# - Metadata report
+# - Foto dalam bentuk base64 string
+# 
+# Storage dinonaktifkan untuk menghemat biaya (tidak perlu upgrade ke Blaze Plan)
+# 
+# Jika Anda ingin menonaktifkan Storage sepenuhnya di Firebase Console:
+# 1. Buka Firebase Console > Storage
+# 2. Hapus semua file yang ada (jika ada)
+# 3. Storage akan tetap ada tapi tidak terpakai
+# 
+# Rules di bawah ini memblokir semua akses ke Storage:
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Block semua akses - Storage tidak digunakan
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

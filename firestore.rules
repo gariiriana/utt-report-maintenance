@@ -1,0 +1,164 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================================
+    // HELPER FUNCTIONS
+    // ============================================================
+    
+    // ✅ IMPROVED: Function to check if user is admin (BloomFilter safe)
+    // Returns false if user document doesn't exist instead of throwing error
+    function isAdmin() {
+      return request.auth != null 
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // ✅ NEW: Safe admin check that won't cause BloomFilter error
+    function isAdminSafe() {
+      return request.auth != null 
+             && request.auth.uid != null
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // ============================================================
+    // USERS COLLECTION - Data user (auto-created saat login pertama kali)
+    // ============================================================
+    match /users/{userId} {
+      // ✅ Allow create saat login pertama kali (auto-create user document)
+      allow create: if request.auth != null 
+                    && request.auth.uid == userId
+                    && request.resource.data.email == request.auth.token.email
+                    && request.resource.data.uid == userId
+                    && request.resource.data.keys().hasAll(['email', 'uid', 'role', 'createdAt'])
+                    && (request.resource.data.role == 'admin' || request.resource.data.role == 'engineer');
+      
+      // ✅ User bisa read data mereka sendiri (even if doesn't exist - for snapshot listener)
+      // ✅ Admin bisa read semua (check with exists first to avoid BloomFilter error)
+      allow read: if request.auth != null 
+                  && (request.auth.uid == userId || isAdminSafe());
+      
+      // ✅ User hanya bisa update data mereka sendiri (TIDAK termasuk role)
+      // ✅ Admin bisa update role user lain
+      allow update: if request.auth != null 
+                    && (
+                      // User sendiri update data selain role
+                      (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))
+                      // Admin bisa update semua termasuk role
+                      || isAdminSafe()
+                    );
+      
+      // ✅ Admin bisa delete user lain
+      allow delete: if request.auth != null && isAdminSafe();
+    }
+    
+    // ============================================================
+    // EXCEL_DOCUMENTS COLLECTION - Dokumen Excel yang di-export
+    // ============================================================
+    match /excel_documents/{docId} {
+      // ✅ User yang login bisa create document
+      allow create: if request.auth != null 
+                    && request.resource.data.createdBy == request.auth.token.email
+                    && request.resource.data.keys().hasAll([
+                      'fileName', 
+                      'maintenanceName', 
+                      'maintenanceTime',
+                      'createdAt',
+                      'createdBy',
+                      'fileSize',
+                      'totalPhotos',
+                      'photosWithImage',
+                      'photosData'
+                    ])
+                    && request.resource.data.photosData is list;
+      
+      // ✅ FIX: Use isAdminSafe() to prevent BloomFilter error
+      // User hanya bisa read dokumen milik mereka sendiri, ATAU admin bisa read semua
+      allow read: if request.auth != null 
+                  && (resource.data.createdBy == request.auth.token.email 
+                      || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+                          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+      
+      // ❌ Documents are immutable - tidak bisa di-update setelah dibuat
+      allow update: if false;
+      
+      // ✅ FIX: Use isAdminSafe() to prevent BloomFilter error
+      allow delete: if request.auth != null 
+                    && (resource.data.createdBy == request.auth.token.email 
+                        || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+                            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+    }
+    
+    // ============================================================
+    // PDF_DOCUMENTS COLLECTION - Dokumen PDF yang di-export
+    // ============================================================
+    match /pdf_documents/{docId} {
+      // ✅ User yang login bisa create document
+      allow create: if request.auth != null 
+                    && request.resource.data.createdBy == request.auth.token.email
+                    && request.resource.data.keys().hasAll([
+                      'fileName', 
+                      'maintenanceName', 
+                      'maintenanceTime',
+                      'createdAt',
+                      'createdBy',
+                      'fileSize',
+                      'totalPhotos',
+                      'photosWithImage',
+                      'photosData'
+                    ])
+                    && request.resource.data.photosData is list;
+      
+      // ✅ FIX: Inline admin check to prevent BloomFilter error
+      allow read: if request.auth != null 
+                  && (resource.data.createdBy == request.auth.token.email 
+                      || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+                          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+      
+      // ❌ Documents are immutable - tidak bisa di-update setelah dibuat
+      allow update: if false;
+      
+      // ✅ FIX: Inline admin check to prevent BloomFilter error
+      allow delete: if request.auth != null 
+                    && (resource.data.createdBy == request.auth.token.email 
+                        || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+                            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+    }
+    
+    // ============================================================
+    // REPORTS COLLECTION (Optional - jika masih dipakai)
+    // ============================================================
+    match /reports/{reportId} {
+      // ✅ User yang login bisa create report
+      allow create: if request.auth != null 
+                    && request.resource.data.createdBy == request.auth.token.email
+                    && request.resource.data.keys().hasAll([
+                      'maintenanceName', 
+                      'maintenanceTime', 
+                      'cards', 
+                      'createdBy', 
+                      'createdAt'
+                    ]);
+      
+      // ✅ User hanya bisa read report mereka sendiri
+      allow read: if request.auth != null 
+                  && resource.data.createdBy == request.auth.token.email;
+      
+      // ✅ User hanya bisa update report mereka sendiri
+      allow update: if request.auth != null 
+                    && resource.data.createdBy == request.auth.token.email;
+      
+      // ✅ User hanya bisa delete report mereka sendiri
+      allow delete: if request.auth != null 
+                    && resource.data.createdBy == request.auth.token.email;
+    }
+    
+    // ============================================================
+    // DEFAULT - Block semua akses ke collection lain
+    // ============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
