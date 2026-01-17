@@ -6,7 +6,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import logoDwimitra from '@/assets/a6129221f456afd6fd88d74c324473e495bdd7a8.png';
 import logoNeutraDC from '@/assets/005ac597864c02a96c9add5c6e054d23b8cfafbe.png';
 import { DeleteConfirmModal } from './DeleteConfirmModal'; // ✅ NEW: Import custom modal
