@@ -42,13 +42,13 @@ export function ReportForm() {
         img.onload = () => {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
-          
+
           // Resize to max 800px width while maintaining aspect ratio
           const MAX_WIDTH = 800;
           const MAX_HEIGHT = 800;
           let width = img.width;
           let height = img.height;
-          
+
           if (width > height) {
             if (width > MAX_WIDTH) {
               height = (height * MAX_WIDTH) / width;
@@ -60,11 +60,11 @@ export function ReportForm() {
               height = MAX_HEIGHT;
             }
           }
-          
+
           canvas.width = width;
           canvas.height = height;
           ctx?.drawImage(img, 0, 0, width, height);
-          
+
           // Compress with quality 0.7 (70%)
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
           resolve(compressedBase64);
@@ -91,24 +91,94 @@ export function ReportForm() {
         toast.loading('Processing image...', { id: `compress-${id}` });
         const base64 = await compressImage(file);
         const compressedSizeKB = Math.round((base64.length * 0.75) / 1024);
-        
-        setCards(cards.map(card => 
+
+        setCards(cards.map(card =>
           card.id === id ? { ...card, photo: file, photoBase64: base64 } : card
         ));
-        
+
         toast.success(`Foto dimuat (${compressedSizeKB}KB)`, { id: `compress-${id}` });
       } catch (error) {
         toast.error('Gagal memuat foto', { id: `compress-${id}` });
       }
     } else {
-      setCards(cards.map(card => 
+      setCards(cards.map(card =>
         card.id === id ? { ...card, photo: null, photoBase64: undefined } : card
       ));
     }
   };
 
+  const handleBulkPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newCards = [...cards];
+    let fileIndex = 0;
+
+    // Toast for progress
+    const toastId = toast.loading(`Processing ${files.length} photos...`);
+
+    try {
+      // Loop through all existing cards first to fill empty slots
+      for (let i = 0; i < newCards.length; i++) {
+        if (fileIndex >= files.length) break;
+
+        // If card is empty, fill it
+        if (!newCards[i].photo) {
+          const file = files[fileIndex];
+
+          if (file.size > 5 * 1024 * 1024) {
+            toast.error(`File ${file.name} too large (skip)`, { id: toastId });
+            fileIndex++;
+            i--; // Retry this slot
+            continue;
+          }
+
+          const base64 = await compressImage(file);
+          newCards[i] = {
+            ...newCards[i],
+            photo: file,
+            photoBase64: base64
+          };
+          fileIndex++;
+        }
+      }
+
+      // If there are still files left, create new cards
+      while (fileIndex < files.length) {
+        const file = files[fileIndex];
+        // Validate size
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error(`File ${file.name} too large (skip)`, { id: toastId });
+          fileIndex++;
+          continue;
+        }
+
+        const base64 = await compressImage(file);
+        const newId = (Math.max(...newCards.map(c => parseInt(c.id))) + 1).toString();
+
+        newCards.push({
+          id: newId,
+          photo: file,
+          photoBase64: base64,
+          description: ''
+        });
+
+        fileIndex++;
+      }
+
+      setCards(newCards);
+      toast.success(`Successfully added ${fileIndex} photos`, { id: toastId });
+
+      // Reset input
+      e.target.value = '';
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to process some photos', { id: toastId });
+    }
+  };
+
   const handleDescriptionChange = (id: string, description: string) => {
-    setCards(cards.map(card => 
+    setCards(cards.map(card =>
       card.id === id ? { ...card, description } : card
     ));
   };
@@ -262,13 +332,13 @@ export function ReportForm() {
           currentRow++;
           worksheet.getRow(currentRow).height = 20;
           currentRow++;
-          
+
           // Add header for new "page"
           currentRow = addExcelHeader(currentRow, logoDwimitraId, logoNeutraDCId);
         }
 
         const rowCards = filledCards.slice(i, i + 3);
-        
+
         // Photo row
         worksheet.getRow(currentRow).height = 160;
         // Caption row
@@ -336,12 +406,12 @@ export function ReportForm() {
 
       // Generate and download
       const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { 
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
-      
+
       const fileName = `Report_${maintenanceName.replace(/\s+/g, '_')}_${formattedDate.replace(/\//g, '-')}.xlsx`;
-      
+
       // Download file locally
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -352,7 +422,7 @@ export function ReportForm() {
 
       // Save metadata and photo data to Firestore (NO STORAGE!)
       toast.loading('Saving to database...', { id: 'export' });
-      
+
       // Prepare photos array with base64 data
       const photosData = filledCards.map((card, index) => ({
         index: index + 1,
@@ -407,7 +477,7 @@ export function ReportForm() {
       const doc = new jsPDF('p', 'mm', 'a4');
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      
+
       // Margins
       const marginTop = 15;
       const marginLeft = 10;
@@ -419,7 +489,7 @@ export function ReportForm() {
       // Load logos
       let logoDwimitraBase64 = '';
       let logoNeutraDCBase64 = '';
-      
+
       try {
         const logoDwimitraResponse = await fetch(logoDwimitra);
         const logoDwimitraBlob = await logoDwimitraResponse.blob();
@@ -447,11 +517,11 @@ export function ReportForm() {
       // ✅ Helper function to add page header (logos + title + info)
       const addPageHeader = () => {
         let headerY = marginTop;
-        
+
         // Add logos
         const logoWidth = 35;
         const logoHeight = 14;
-        
+
         // Logo Dwimitra - Left
         doc.addImage(
           `data:image/png;base64,${logoDwimitraBase64}`,
@@ -480,7 +550,7 @@ export function ReportForm() {
         const titleText = `Dokumentasi PM ${maintenanceName} (${formattedDate})`;
         const titleWidth = doc.getTextWidth(titleText);
         doc.text(titleText, (pageWidth - titleWidth) / 2, headerY);
-        
+
         headerY += 8;
 
         // Specific Detail / Equipment Name
@@ -545,7 +615,7 @@ export function ReportForm() {
 
           // Add caption box
           doc.rect(xPos, currentY + photoHeight, photoWidth, captionHeight);
-          
+
           // Add caption text
           if (card.description) {
             doc.setFontSize(8);
@@ -554,7 +624,7 @@ export function ReportForm() {
             const textY = currentY + photoHeight + 6;
             doc.text(lines, xPos + photoWidth / 2, textY, { align: 'center', maxWidth: photoWidth - 4 });
           }
-          
+
           photoCount++;
         }
 
@@ -564,7 +634,7 @@ export function ReportForm() {
       // Generate PDF and download
       const pdfBlob = doc.output('blob');
       const fileName = `Report_${maintenanceName.replace(/\s+/g, '_')}_${formattedDate.replace(/\//g, '-')}.pdf`;
-      
+
       // Download file locally
       const url = URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
@@ -575,7 +645,7 @@ export function ReportForm() {
 
       // Save metadata and photo data to Firestore
       toast.loading('Saving to database...', { id: 'export-pdf' });
-      
+
       // Prepare photos array with base64 data
       const photosData = filledCards.map((card, index) => ({
         index: index + 1,
@@ -723,16 +793,37 @@ export function ReportForm() {
             </div>
             <h2 className="text-base sm:text-lg font-semibold text-white">Photo Documentation</h2>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={addCard}
-            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition shadow-lg shadow-blue-500/20 text-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Add Card</span>
-            <span className="sm:hidden">Add</span>
-          </motion.button>
+          <div className="flex gap-3">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => document.getElementById('bulk-upload-input')?.click()}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition shadow-lg shadow-indigo-500/20 text-sm"
+            >
+              <HardDrive className="w-4 h-4" />
+              <span className="hidden sm:inline">Bulk Upload</span>
+              <span className="sm:hidden">Bulk</span>
+            </motion.button>
+            <input
+              id="bulk-upload-input"
+              type="file"
+              multiple
+              accept="image/*"
+              className="hidden"
+              onChange={handleBulkPhotoUpload}
+            />
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={addCard}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition shadow-lg shadow-blue-500/20 text-sm"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Add Card</span>
+              <span className="sm:hidden">Add</span>
+            </motion.button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
@@ -847,6 +938,6 @@ export function ReportForm() {
           </motion.button>
         </div>
       </div>
-    </div>
+    </div >
   );
 }
