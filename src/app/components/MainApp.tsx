@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files } from 'lucide-react';
+import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { ReportForm } from './ReportForm';
 import { DocumentList } from './DocumentList';
 import { AdminDashboard } from './AdminDashboard';
 import { FileManagement } from './FileManagement';
+import { CorrectiveMaintenance } from './CorrectiveMaintenance';
 import { Footer } from './Footer';
 import { LogoutConfirmModal } from './LogoutConfirmModal'; // ✅ NEW: Import logout modal
 import { DataCenterBackground } from './DataCenterBackground'; // ✅ NEW: Import data center animations
 import logoUTT from '@/assets/232afb9a46e8d280b1d1b9dca62e90c6882e64e6.png';
 
-type Tab = 'report' | 'documents' | 'admin' | 'files';
+type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective';
 
 export function MainApp() {
   const { user, userRole, logout } = useAuth();
@@ -50,7 +51,7 @@ export function MainApp() {
               </div>
             </div>
 
-            {/* Desktop User Info & Logout */}
+            Desktop User Info & Logout
             <div className="hidden md:flex items-center gap-3">
               <div className="text-right">
                 <p className="text-xs text-slate-500">Logged as</p>
@@ -142,6 +143,21 @@ export function MainApp() {
               <span className="sm:hidden">Files</span>
             </motion.button>
 
+            {/* ✅ Corrective Maintenance - SEMUA user bisa lihat, Create khusus Standby */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setActiveTab('corrective')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'corrective'
+                ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-500/25'
+                : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
+                }`}
+            >
+              <PenTool className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Corrective Maint.</span>
+              <span className="sm:hidden">CM</span>
+            </motion.button>
+
             {/* ✅ Create Report - SEMUA user bisa akses */}
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -183,6 +199,8 @@ export function MainApp() {
           <FileManagement />
         ) : activeTab === 'report' ? (
           <ReportForm />
+        ) : activeTab === 'corrective' ? (
+          <CorrectiveMaintenance />
         ) : (
           <DocumentList />
         )}

@@ -14,42 +14,44 @@ service cloud.firestore {
              && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
-    // ✅ NEW: Safe admin check that won't cause BloomFilter error
+    // ✅ NEW: Safe admin check
     function isAdminSafe() {
       return request.auth != null 
              && request.auth.uid != null
              && exists(/databases/$(database)/documents/users/$(request.auth.uid))
              && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
+
+    // ✅ NEW: Standby Engineer check
+    function isStandbyEngineer() {
+      return request.auth != null 
+             && request.auth.uid != null
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'standby_engineer';
+    }
+
+
     
     // ============================================================
-    // USERS COLLECTION - Data user (auto-created saat login pertama kali)
+    // USERS COLLECTION
     // ============================================================
     match /users/{userId} {
-      // ✅ Allow create saat login pertama kali (auto-create user document)
       allow create: if request.auth != null 
                     && request.auth.uid == userId
                     && request.resource.data.email == request.auth.token.email
                     && request.resource.data.uid == userId
                     && request.resource.data.keys().hasAll(['email', 'uid', 'role', 'createdAt'])
-                    && (request.resource.data.role == 'admin' || request.resource.data.role == 'engineer');
+                    && (request.resource.data.role == 'admin' || request.resource.data.role == 'engineer' || request.resource.data.role == 'standby_engineer');
       
-      // ✅ User bisa read data mereka sendiri (even if doesn't exist - for snapshot listener)
-      // ✅ Admin bisa read semua (check with exists first to avoid BloomFilter error)
       allow read: if request.auth != null 
-                  && (request.auth.uid == userId || isAdminSafe());
+                  && (request.auth.uid == userId || isAdminSafe() || isStandbyEngineer());
       
-      // ✅ User hanya bisa update data mereka sendiri (TIDAK termasuk role)
-      // ✅ Admin bisa update role user lain
       allow update: if request.auth != null 
                     && (
-                      // User sendiri update data selain role
                       (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))
-                      // Admin bisa update semua termasuk role
                       || isAdminSafe()
                     );
       
-      // ✅ Admin bisa delete user lain
       allow delete: if request.auth != null && isAdminSafe();
     }
     
@@ -169,6 +171,21 @@ service cloud.firestore {
         // ✅ Admin bisa delete chunks
         allow delete: if request.auth != null && isAdminSafe();
       }
+    }
+
+    // ============================================================
+    // CORRECTIVE MAINTENANCE REPORTS
+    // ============================================================
+    match /corrective_reports/{reportId} {
+      // ✅ Create: Only Standby Engineer
+      allow create: if request.auth != null && isStandbyEngineer();
+      
+      // ✅ Read: All authenticated users (Admin, Engineer, Standby)
+      allow read: if request.auth != null;
+      
+      // ✅ Delete: Admin or Owner (Standby Engineer)
+      allow delete: if request.auth != null 
+                    && (isAdminSafe() || (isStandbyEngineer() && resource.data.reportedBy == request.auth.uid));
     }
     
     // ============================================================
