@@ -1,26 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, FolderOpen, LogOut, Menu, X, Shield } from 'lucide-react';
+import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { ReportForm } from './ReportForm';
 import { DocumentList } from './DocumentList';
 import { AdminDashboard } from './AdminDashboard';
+import { FileManagement } from './FileManagement';
 import { Footer } from './Footer';
 import { LogoutConfirmModal } from './LogoutConfirmModal'; // ✅ NEW: Import logout modal
 import { DataCenterBackground } from './DataCenterBackground'; // ✅ NEW: Import data center animations
 import logoUTT from '@/assets/232afb9a46e8d280b1d1b9dca62e90c6882e64e6.png';
 
-type Tab = 'report' | 'documents' | 'admin';
+type Tab = 'report' | 'documents' | 'admin' | 'files';
 
 export function MainApp() {
   const { user, userRole, logout } = useAuth();
-  
+
   // ✅ Check if user is admin based on role from Firestore
   const isAdmin = userRole === 'admin';
-  
+
   const [activeTab, setActiveTab] = useState<Tab>(isAdmin ? 'admin' : 'report');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
+
   // ✅ NEW: State untuk logout confirmation modal
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
@@ -36,10 +37,10 @@ export function MainApp() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
-              <img 
-                src={logoUTT} 
-                alt="PT United Transworld Trading" 
-                className="w-14 h-14 sm:w-20 sm:h-20 flex-shrink-0 object-contain" 
+              <img
+                src={logoUTT}
+                alt="PT United Transworld Trading"
+                className="w-14 h-14 sm:w-20 sm:h-20 flex-shrink-0 object-contain"
               />
               <div className="min-w-0">
                 <h1 className="text-sm sm:text-lg font-semibold text-white truncate">
@@ -48,7 +49,7 @@ export function MainApp() {
                 <p className="text-xs text-slate-400 hidden sm:block">Data Center Maintenance System</p>
               </div>
             </div>
-            
+
             {/* Desktop User Info & Logout */}
             <div className="hidden md:flex items-center gap-3">
               <div className="text-right">
@@ -108,35 +109,48 @@ export function MainApp() {
       {/* Navigation Tabs - Di Bawah Navbar Atas */}
       <div className="bg-slate-900/40 backdrop-blur-xl border-b border-slate-700/30 sticky top-[65px] sm:top-[73px] z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
-          <div className="flex gap-2">
+          <div className="flex gap-2 overflow-x-auto">
             {/* ✅ Admin Dashboard - HANYA untuk admin */}
             {isAdmin && (
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setActiveTab('admin')}
-                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base ${
-                  activeTab === 'admin'
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
-                    : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
-                }`}
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'admin'
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
+                  : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
+                  }`}
               >
                 <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="hidden sm:inline">Admin Dashboard</span>
                 <span className="sm:hidden">Admin</span>
               </motion.button>
             )}
-            
+
+            {/* ✅ File Management - SEMUA user bisa lihat, admin bisa upload */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setActiveTab('files')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'files'
+                ? 'bg-gradient-to-r from-orange-600 to-orange-700 text-white shadow-lg shadow-orange-500/25'
+                : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
+                }`}
+            >
+              <Files className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">File Management</span>
+              <span className="sm:hidden">Files</span>
+            </motion.button>
+
             {/* ✅ Create Report - SEMUA user bisa akses */}
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setActiveTab('report')}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base ${
-                activeTab === 'report'
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/25'
-                  : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
-              }`}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'report'
+                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/25'
+                : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
+                }`}
             >
               <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="hidden sm:inline">Create Report</span>
@@ -148,11 +162,10 @@ export function MainApp() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setActiveTab('documents')}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base ${
-                activeTab === 'documents'
-                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-500/25'
-                  : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
-              }`}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'documents'
+                ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-500/25'
+                : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
+                }`}
             >
               <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="hidden sm:inline">Document Archive</span>
@@ -166,6 +179,8 @@ export function MainApp() {
       <div className="relative z-10">
         {activeTab === 'admin' ? (
           <AdminDashboard />
+        ) : activeTab === 'files' ? (
+          <FileManagement />
         ) : activeTab === 'report' ? (
           <ReportForm />
         ) : (
