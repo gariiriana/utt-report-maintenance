@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
+import {
   User,
   signInWithEmailAndPassword,
   signOut,
@@ -17,7 +17,7 @@ interface UserData {
 
 interface AuthContextType {
   user: User | null;
-  userRole: 'admin' | 'engineer' | null;
+  userRole: 'admin' | 'engineer' | 'standby_engineer' | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -27,7 +27,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<'admin' | 'engineer' | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'engineer' | 'standby_engineer' | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,19 +35,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
-      
+
       // Cleanup previous listener if exists
       if (unsubscribeDoc) {
         unsubscribeDoc();
         unsubscribeDoc = null;
       }
-      
+
       if (user) {
         // ✅ FIX: Create user document FIRST if it doesn't exist (to prevent BloomFilter error)
         try {
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
-          
+
           // If user document doesn't exist, create it NOW
           if (!userDoc.exists()) {
             const isAdminEmail = user.email === 'Adminreportlampiranutt@gmail.com';
@@ -64,11 +64,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.warn('Error creating user document:', error);
           // Continue anyway, listener will handle it
         }
-        
+
         // ✅ NOW setup snapshot listener (user document should exist)
         const userDocRef = doc(db, 'users', user.uid);
         unsubscribeDoc = onSnapshot(
-          userDocRef, 
+          userDocRef,
           (docSnap) => {
             if (docSnap.exists()) {
               const userData = docSnap.data() as UserData;
@@ -103,17 +103,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     // ✅ Login user
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    
+
     // ✅ Auto-create user document in Firestore if not exists
     if (userCredential.user) {
       const userDocRef = doc(db, 'users', userCredential.user.uid);
       const userDoc = await getDoc(userDocRef);
-      
+
       // Jika user document belum ada, buat baru dengan role default
       if (!userDoc.exists()) {
         // ✅ Check if email is admin
         const isAdminEmail = userCredential.user.email === 'Adminreportlampiranutt@gmail.com';
-        
+
         await setDoc(userDocRef, {
           email: userCredential.user.email,
           uid: userCredential.user.uid,
