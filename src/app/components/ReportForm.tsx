@@ -388,7 +388,7 @@ export function ReportForm() {
             worksheet.addImage(imageId, {
               tl: { col: colIndex, row: currentRow - 1 },
               br: { col: colIndex + 1, row: currentRow }
-            });
+            } as any);
 
             captionCell.value = card.description || `Photo ${i + j + 1}`;
           } else if (card) {
