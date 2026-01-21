@@ -127,6 +127,51 @@ service cloud.firestore {
     }
     
     // ============================================================
+    // FILES COLLECTION - File management (Sharded in Firestore)
+    // ============================================================
+    match /files/{fileId} {
+      // ✅ Admin bisa upload/create file metadata
+      allow create: if request.auth != null 
+                    && isAdminSafe()
+                    && request.resource.data.keys().hasAll([
+                      'fileName',
+                      'fileSize',
+                      'fileType',
+                      'category',
+                      'uploadedBy',
+                      'uploadedByEmail',
+                      'uploadedAt'
+                    ])
+                    && request.resource.data.uploadedBy == request.auth.uid
+                    && request.resource.data.uploadedByEmail == request.auth.token.email;
+      
+      // ✅ Semua authenticated user bisa read files (admin & engineer)
+      allow read: if request.auth != null;
+      
+      // ✅ Admin bisa update status (untuk upload completion)
+      allow update: if request.auth != null 
+                    && isAdminSafe()
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+      
+      // ✅ Admin bisa delete file
+      allow delete: if request.auth != null && isAdminSafe();
+
+      // ============================================================
+      // CHUNKS SUB-COLLECTION - Potongan data file
+      // ============================================================
+      match /chunks/{chunkId} {
+        // ✅ Admin bisa create chunks
+        allow create: if request.auth != null && isAdminSafe();
+        
+        // ✅ Semua user bisa read chunks (untuk download)
+        allow read: if request.auth != null;
+        
+        // ✅ Admin bisa delete chunks
+        allow delete: if request.auth != null && isAdminSafe();
+      }
+    }
+    
+    // ============================================================
     // REPORTS COLLECTION (Optional - jika masih dipakai)
     // ============================================================
     match /reports/{reportId} {
