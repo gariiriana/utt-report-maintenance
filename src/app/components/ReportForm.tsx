@@ -7,8 +7,11 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import logoDwimitra from '@/assets/a6129221f456afd6fd88d74c324473e495bdd7a8.png';
 import logoNeutraDC from '@/assets/005ac597864c02a96c9add5c6e054d23b8cfafbe.png';
+import logoBRI from '@/assets/bri_logo.png';
+import logoBRILeft from '@/assets/bri_left_logo.png';
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
+import { compressImage, compressBase64Image } from '@/lib/imageCompression';
 
 interface PhotoCard {
   id: string;
@@ -18,7 +21,7 @@ interface PhotoCard {
 }
 
 export function ReportForm() {
-  const { user, logout } = useAuth();
+  const { user, companyType, logout } = useAuth();
   const [maintenanceName, setMaintenanceName] = useState('');
   const [maintenanceTime, setMaintenanceTime] = useState('');
   const [specificDetail, setSpecificDetail] = useState(''); // ✅ NEW: Untuk nama unit/ruangan
@@ -31,49 +34,10 @@ export function ReportForm() {
     { id: '6', photo: null, description: '' },
   ]);
 
-  // Compress and resize image for preview
-  const compressImage = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (e) => {
-        const img = new Image();
-        img.src = e.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
+  // NOTE: The image compression is handled by the imported `compressImage` utility from '@/lib/imageCompression'.
+  // The previous local implementation has been removed to avoid duplication and lint warnings.
+  // All calls to `compressImage` now refer to the shared utility.
 
-          // Resize to max 800px width while maintaining aspect ratio
-          const MAX_WIDTH = 800;
-          const MAX_HEIGHT = 800;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height = (height * MAX_WIDTH) / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width = (width * MAX_HEIGHT) / height;
-              height = MAX_HEIGHT;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          ctx?.drawImage(img, 0, 0, width, height);
-
-          // Compress with quality 0.7 (70%)
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-          resolve(compressedBase64);
-        };
-        img.onerror = reject;
-      };
-      reader.onerror = reject;
-    });
-  };
 
   const handlePhotoChange = async (id: string, file: File | null) => {
     if (file) {
@@ -288,32 +252,36 @@ export function ReportForm() {
       let logoNeutraDCId: number;
 
       try {
-        const logoDwimitraResponse = await fetch(logoDwimitra);
-        const logoDwimitraBlob = await logoDwimitraResponse.blob();
-        const logoDwimitraArrayBuffer = await logoDwimitraBlob.arrayBuffer();
-        const logoDwimitraBase64 = btoa(
-          new Uint8Array(logoDwimitraArrayBuffer).reduce(
+        // Select left logo based on company type
+        const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
+        const logoLeftResponse = await fetch(leftLogo);
+        const logoLeftBlob = await logoLeftResponse.blob();
+        const logoLeftArrayBuffer = await logoLeftBlob.arrayBuffer();
+        const logoLeftBase64 = btoa(
+          new Uint8Array(logoLeftArrayBuffer).reduce(
             (data, byte) => data + String.fromCharCode(byte), ''
           )
         );
 
-        const logoNeutraDCResponse = await fetch(logoNeutraDC);
-        const logoNeutraDCBlob = await logoNeutraDCResponse.blob();
-        const logoNeutraDCArrayBuffer = await logoNeutraDCBlob.arrayBuffer();
-        const logoNeutraDCBase64 = btoa(
-          new Uint8Array(logoNeutraDCArrayBuffer).reduce(
+        // Select right logo based on company type
+        const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
+        const logoRightResponse = await fetch(rightLogo);
+        const logoRightBlob = await logoRightResponse.blob();
+        const logoRightArrayBuffer = await logoRightBlob.arrayBuffer();
+        const logoRightBase64 = btoa(
+          new Uint8Array(logoRightArrayBuffer).reduce(
             (data, byte) => data + String.fromCharCode(byte), ''
           )
         );
 
         // ✅ Add logos to workbook and get image IDs
         logoDwimitraId = workbook.addImage({
-          base64: logoDwimitraBase64,
+          base64: logoLeftBase64,
           extension: 'png',
         });
 
         logoNeutraDCId = workbook.addImage({
-          base64: logoNeutraDCBase64,
+          base64: logoRightBase64,
           extension: 'png',
         });
 
@@ -420,31 +388,67 @@ export function ReportForm() {
       link.click();
       URL.revokeObjectURL(url);
 
-      // Save metadata and photo data to Firestore (NO STORAGE!)
-      toast.loading('Saving to database...', { id: 'export' });
+      // Show download success immediately
+      toast.success('Excel downloaded successfully!', { id: 'export' });
 
-      // Prepare photos array with base64 data
-      const photosData = filledCards.map((card, index) => ({
-        index: index + 1,
-        description: card.description || '',
-        photoBase64: card.photoBase64 || '',
-        hasPhoto: !!card.photoBase64
-      }));
+      // Save metadata and photo data to Firestore using SUBCOLLECTION pattern (non-blocking)
+      try {
+        toast.loading('Saving to database... ', { id: 'save-db-excel' });
 
-      await addDoc(collection(db, 'excel_documents'), {
-        fileName: fileName,
-        maintenanceName: maintenanceName,
-        maintenanceTime: maintenanceTime,
-        specificDetail: specificDetail, // ✅ Simpan specific detail
-        createdAt: serverTimestamp(),
-        createdBy: user?.email || 'Unknown',
-        fileSize: blob.size,
-        totalPhotos: filledCards.length,
-        photosWithImage: filledCards.filter(c => c.photoBase64).length,
-        photosData: photosData, // Store all photo data in Firestore
-      });
+        // 1. Save main document with metadata only (no photos array)
+        const docData: any = {
+          fileName: fileName,
+          maintenanceName: maintenanceName,
+          maintenanceTime: maintenanceTime,
+          createdAt: serverTimestamp(),
+          createdBy: user?.email || 'Unknown',
+          fileSize: blob.size,
+          totalPhotos: filledCards.length,
+          photosWithImage: filledCards.filter(c => c.photoBase64).length,
+          // NO photosData array here! Photos will be in subcollection
+        };
 
-      toast.success('Report exported and saved to database!', { id: 'export' });
+        // Add specificDetail only if it exists
+        if (specificDetail) {
+          docData.specificDetail = specificDetail;
+        }
+
+        // Add main document and get reference
+        const docRef = await addDoc(collection(db, 'excel_documents'), docData);
+
+        // 2. Save each photo to subcollection: excel_documents/{docId}/photos
+        const photoSavePromises = filledCards.map(async (card, index) => {
+          if (card.photoBase64) {
+            try {
+              // Compress photo for database storage
+              const compressedPhoto = await compressBase64Image(card.photoBase64, {
+                maxWidth: 800,
+                maxHeight: 800,
+                quality: 0.7
+              });
+
+              // Save to subcollection
+              await addDoc(collection(db, `excel_documents/${docRef.id}/photos`), {
+                index: index + 1,
+                photoBase64: compressedPhoto,
+                description: card.description || '',
+                hasPhoto: true
+              });
+            } catch (err) {
+              console.error(`Failed to save photo ${index + 1}:`, err);
+              // Continue with other photos even if one fails
+            }
+          }
+        });
+
+        // Wait for all photos to be saved
+        await Promise.all(photoSavePromises);
+
+        toast.success('Saved to database!', { id: 'save-db-excel' });
+      } catch (dbError) {
+        console.error('Database save error:', dbError);
+        toast.error('Excel downloaded but failed to save to database', { id: 'save-db-excel' });
+      }
     } catch (error) {
       console.error('Export error:', error);
       toast.error('Failed to export', { id: 'export' });
@@ -487,24 +491,28 @@ export function ReportForm() {
       let currentY = marginTop;
 
       // Load logos
-      let logoDwimitraBase64 = '';
-      let logoNeutraDCBase64 = '';
+      let logoLeftBase64 = '';
+      let logoRightBase64 = '';
 
       try {
-        const logoDwimitraResponse = await fetch(logoDwimitra);
-        const logoDwimitraBlob = await logoDwimitraResponse.blob();
-        const logoDwimitraArrayBuffer = await logoDwimitraBlob.arrayBuffer();
-        logoDwimitraBase64 = btoa(
-          new Uint8Array(logoDwimitraArrayBuffer).reduce(
+        // Select left logo based on company type
+        const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
+        const logoLeftResponse = await fetch(leftLogo);
+        const logoLeftBlob = await logoLeftResponse.blob();
+        const logoLeftArrayBuffer = await logoLeftBlob.arrayBuffer();
+        logoLeftBase64 = btoa(
+          new Uint8Array(logoLeftArrayBuffer).reduce(
             (data, byte) => data + String.fromCharCode(byte), ''
           )
         );
 
-        const logoNeutraDCResponse = await fetch(logoNeutraDC);
-        const logoNeutraDCBlob = await logoNeutraDCResponse.blob();
-        const logoNeutraDCArrayBuffer = await logoNeutraDCBlob.arrayBuffer();
-        logoNeutraDCBase64 = btoa(
-          new Uint8Array(logoNeutraDCArrayBuffer).reduce(
+        // Select right logo based on company type
+        const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
+        const logoRightResponse = await fetch(rightLogo);
+        const logoRightBlob = await logoRightResponse.blob();
+        const logoRightArrayBuffer = await logoRightBlob.arrayBuffer();
+        logoRightBase64 = btoa(
+          new Uint8Array(logoRightArrayBuffer).reduce(
             (data, byte) => data + String.fromCharCode(byte), ''
           )
         );
@@ -522,9 +530,9 @@ export function ReportForm() {
         const logoWidth = 35;
         const logoHeight = 14;
 
-        // Logo Dwimitra - Left
+        // Logo Left (Dwimitra or BRI Specific based on companyType)
         doc.addImage(
-          `data:image/png;base64,${logoDwimitraBase64}`,
+          `data:image/png;base64,${logoLeftBase64}`,
           'PNG',
           marginLeft,
           headerY,
@@ -532,9 +540,9 @@ export function ReportForm() {
           logoHeight
         );
 
-        // Logo NeutraDC - Right
+        // Logo Right (NeutraDC or BRI based on companyType)
         doc.addImage(
-          `data:image/png;base64,${logoNeutraDCBase64}`,
+          `data:image/png;base64,${logoRightBase64}`,
           'PNG',
           pageWidth - marginRight - logoWidth,
           headerY,
@@ -600,8 +608,15 @@ export function ReportForm() {
           // Add photo if exists
           if (card.photoBase64) {
             try {
+              // Compress photo before adding to PDF to reduce file size
+              const compressedPhoto = await compressBase64Image(card.photoBase64, {
+                maxWidth: 1200,
+                maxHeight: 1200,
+                quality: 0.8
+              });
+
               doc.addImage(
-                card.photoBase64,
+                compressedPhoto,
                 'JPEG',
                 xPos + 0.5,
                 currentY + 0.5,
@@ -643,31 +658,66 @@ export function ReportForm() {
       link.click();
       URL.revokeObjectURL(url);
 
-      // Save metadata and photo data to Firestore
-      toast.loading('Saving to database...', { id: 'export-pdf' });
+      // Show download success immediately
+      toast.success('PDF downloaded successfully!', { id: 'export-pdf' });
 
-      // Prepare photos array with base64 data
-      const photosData = filledCards.map((card, index) => ({
-        index: index + 1,
-        description: card.description || '',
-        photoBase64: card.photoBase64 || '',
-        hasPhoto: !!card.photoBase64
-      }));
+      // Save metadata and photo data to Firestore using SUBCOLLECTION pattern (non-blocking)
+      try {
+        toast.loading('Saving to database...', { id: 'save-db' });
 
-      await addDoc(collection(db, 'pdf_documents'), {
-        fileName: fileName,
-        maintenanceName: maintenanceName,
-        maintenanceTime: maintenanceTime,
-        specificDetail: specificDetail,
-        createdAt: serverTimestamp(),
-        createdBy: user?.email || 'Unknown',
-        fileSize: pdfBlob.size,
-        totalPhotos: filledCards.length,
-        photosWithImage: filledCards.filter(c => c.photoBase64).length,
-        photosData: photosData,
-      });
+        // 1. Save main document with metadata only (no photos array)
+        const docData: any = {
+          fileName: fileName,
+          maintenanceName: maintenanceName,
+          maintenanceTime: maintenanceTime,
+          createdAt: serverTimestamp(),
+          createdBy: user?.email || 'Unknown',
+          fileSize: pdfBlob.size,
+          totalPhotos: filledCards.length,
+          photosWithImage: filledCards.filter(c => c.photoBase64).length,
+          // NO photosData array here! Photos will be in subcollection
+        };
 
-      toast.success('PDF exported and saved to database!', { id: 'export-pdf' });
+        // Add specificDetail only if it exists
+        if (specificDetail) {
+          docData.specificDetail = specificDetail;
+        }
+
+        // Add main document and get reference
+        const docRef = await addDoc(collection(db, 'pdf_documents'), docData);
+
+        // 2. Save each photo to subcollection: pdf_documents/{docId}/photos
+        const photoSavePromises = filledCards.map(async (card, index) => {
+          if (card.photoBase64) {
+            try {
+              // Compress photo for database storage
+              const compressedPhoto = await compressBase64Image(card.photoBase64, {
+                maxWidth: 800,
+                maxHeight: 800,
+                quality: 0.7
+              });
+
+              // Save to subcollection
+              await addDoc(collection(db, `pdf_documents/${docRef.id}/photos`), {
+                index: index + 1,
+                photoBase64: compressedPhoto,
+                description: card.description || '',
+                hasPhoto: true
+              });
+            } catch (err) {
+              console.error(`Failed to save photo ${index + 1}:`, err);
+            }
+          }
+        });
+
+        // Wait for all photos to be saved
+        await Promise.all(photoSavePromises);
+
+        toast.success('Saved to database!', { id: 'save-db' });
+      } catch (dbError) {
+        console.error('Database save error:', dbError);
+        toast.error('PDF downloaded but failed to save to database', { id: 'save-db' });
+      }
     } catch (error) {
       console.error('Export PDF error:', error);
       toast.error('Failed to export PDF', { id: 'export-pdf' });

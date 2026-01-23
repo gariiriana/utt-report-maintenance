@@ -3,11 +3,14 @@ import { motion } from 'motion/react';
 import { Shield, FileText, FileSpreadsheet, Download, Search, Filter, Calendar, User, Database, Activity, TrendingUp } from 'lucide-react';
 import { collection, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
 import logoDwimitra from '@/assets/a6129221f456afd6fd88d74c324473e495bdd7a8.png';
 import logoNeutraDC from '@/assets/005ac597864c02a96c9add5c6e054d23b8cfafbe.png';
+import logoBRI from '@/assets/bri_logo.png';
+import logoBRILeft from '@/assets/bri_left_logo.png';
 
 interface DocumentData {
   id: string;
@@ -30,6 +33,7 @@ interface DocumentData {
 }
 
 export function AdminDashboard() {
+  const { companyType } = useAuth();
   const [documents, setDocuments] = useState<DocumentData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -96,7 +100,7 @@ export function AdminDashboard() {
       setLoading(false);
     } catch (error: any) {
       console.error('Error loading documents:', error);
-      
+
       // ✅ FIX: Handle BloomFilter error specifically
       if (error?.message?.includes('BloomFilter')) {
         console.warn('BloomFilter error detected. This usually happens when user document is not yet created.');
@@ -104,7 +108,7 @@ export function AdminDashboard() {
       } else {
         toast.error('Failed to load documents');
       }
-      
+
       setLoading(false);
     }
   };
@@ -112,6 +116,24 @@ export function AdminDashboard() {
   const handleRegenerate = async (doc: DocumentData) => {
     try {
       toast.loading(`Regenerating ${doc.type.toUpperCase()}...`, { id: 'regen' });
+
+      // ✅ Fetch photos from subcollection if photosData is empty (Backward Compatibility)
+      let photosData = doc.photosData || [];
+      if (photosData.length === 0) {
+        try {
+          const colName = doc.type === 'excel' ? 'excel_documents' : 'pdf_documents';
+          const photosSnap = await getDocs(
+            collection(db, `${colName}/${doc.id}/photos`)
+          );
+          if (!photosSnap.empty) {
+            photosData = photosSnap.docs
+              .map(d => d.data() as any)
+              .sort((a, b) => a.index - b.index);
+          }
+        } catch (err) {
+          console.error(`Failed to fetch photos for regeneration:`, err);
+        }
+      }
 
       const formattedDate = new Date(doc.maintenanceTime).toLocaleDateString('id-ID', {
         day: '2-digit',
@@ -174,35 +196,39 @@ export function AdminDashboard() {
         };
 
         // Load actual logos
-        let logoDwimitraId: number;
+        let logoLeftId: number;
         let logoNeutraDCId: number;
 
         try {
-          const logoDwimitraResponse = await fetch(logoDwimitra);
-          const logoDwimitraBlob = await logoDwimitraResponse.blob();
-          const logoDwimitraArrayBuffer = await logoDwimitraBlob.arrayBuffer();
-          const logoDwimitraBase64 = btoa(
-            new Uint8Array(logoDwimitraArrayBuffer).reduce(
+          // Select left logo based on company type
+          const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
+          const logoLeftResponse = await fetch(leftLogo);
+          const logoLeftBlob = await logoLeftResponse.blob();
+          const logoLeftArrayBuffer = await logoLeftBlob.arrayBuffer();
+          const logoLeftBase64 = btoa(
+            new Uint8Array(logoLeftArrayBuffer).reduce(
               (data, byte) => data + String.fromCharCode(byte), ''
             )
           );
 
-          const logoNeutraDCResponse = await fetch(logoNeutraDC);
-          const logoNeutraDCBlob = await logoNeutraDCResponse.blob();
-          const logoNeutraDCArrayBuffer = await logoNeutraDCBlob.arrayBuffer();
-          const logoNeutraDCBase64 = btoa(
-            new Uint8Array(logoNeutraDCArrayBuffer).reduce(
+          // Select right logo based on company type
+          const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
+          const logoRightResponse = await fetch(rightLogo);
+          const logoRightBlob = await logoRightResponse.blob();
+          const logoRightArrayBuffer = await logoRightBlob.arrayBuffer();
+          const logoRightBase64 = btoa(
+            new Uint8Array(logoRightArrayBuffer).reduce(
               (data, byte) => data + String.fromCharCode(byte), ''
             )
           );
 
-          logoDwimitraId = workbook.addImage({
-            base64: logoDwimitraBase64,
+          logoLeftId = workbook.addImage({
+            base64: logoLeftBase64,
             extension: 'png',
           });
 
           logoNeutraDCId = workbook.addImage({
-            base64: logoNeutraDCBase64,
+            base64: logoRightBase64,
             extension: 'png',
           });
         } catch (error) {
@@ -211,19 +237,19 @@ export function AdminDashboard() {
           return;
         }
 
-        let currentRow = addExcelHeader(1, logoDwimitraId, logoNeutraDCId);
+        let currentRow = addExcelHeader(1, logoLeftId, logoNeutraDCId);
         const photosPerPage = 9;
         let photoIndex = 0;
 
-        for (let i = 0; i < doc.photosData.length; i += 3) {
+        for (let i = 0; i < photosData.length; i += 3) {
           if (photoIndex > 0 && photoIndex % photosPerPage === 0) {
             currentRow++;
             worksheet.getRow(currentRow).height = 20;
             currentRow++;
-            currentRow = addExcelHeader(currentRow, logoDwimitraId, logoNeutraDCId);
+            currentRow = addExcelHeader(currentRow, logoLeftId, logoNeutraDCId);
           }
 
-          const rowCards = doc.photosData.slice(i, i + 3);
+          const rowCards = photosData.slice(i, i + 3);
           worksheet.getRow(currentRow).height = 160;
           worksheet.getRow(currentRow + 1).height = 35;
 
@@ -305,24 +331,28 @@ export function AdminDashboard() {
         let currentY = marginTop;
 
         // Load actual logos
-        let logoDwimitraBase64 = '';
-        let logoNeutraDCBase64 = '';
+        let logoLeftBase64 = '';
+        let logoRightBase64 = '';
 
         try {
-          const logoDwimitraResponse = await fetch(logoDwimitra);
-          const logoDwimitraBlob = await logoDwimitraResponse.blob();
-          const logoDwimitraArrayBuffer = await logoDwimitraBlob.arrayBuffer();
-          logoDwimitraBase64 = btoa(
-            new Uint8Array(logoDwimitraArrayBuffer).reduce(
+          // Select left logo based on company type
+          const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
+          const logoLeftResponse = await fetch(leftLogo);
+          const logoLeftBlob = await logoLeftResponse.blob();
+          const logoLeftArrayBuffer = await logoLeftBlob.arrayBuffer();
+          logoLeftBase64 = btoa(
+            new Uint8Array(logoLeftArrayBuffer).reduce(
               (data, byte) => data + String.fromCharCode(byte), ''
             )
           );
 
-          const logoNeutraDCResponse = await fetch(logoNeutraDC);
-          const logoNeutraDCBlob = await logoNeutraDCResponse.blob();
-          const logoNeutraDCArrayBuffer = await logoNeutraDCBlob.arrayBuffer();
-          logoNeutraDCBase64 = btoa(
-            new Uint8Array(logoNeutraDCArrayBuffer).reduce(
+          // Select right logo based on company type
+          const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
+          const logoRightResponse = await fetch(rightLogo);
+          const logoRightBlob = await logoRightResponse.blob();
+          const logoRightArrayBuffer = await logoRightBlob.arrayBuffer();
+          logoRightBase64 = btoa(
+            new Uint8Array(logoRightArrayBuffer).reduce(
               (data, byte) => data + String.fromCharCode(byte), ''
             )
           );
@@ -338,7 +368,7 @@ export function AdminDashboard() {
           const logoHeight = 14;
 
           pdfDoc.addImage(
-            `data:image/png;base64,${logoDwimitraBase64}`,
+            `data:image/png;base64,${logoLeftBase64}`,
             'PNG',
             marginLeft,
             headerY,
@@ -346,8 +376,9 @@ export function AdminDashboard() {
             logoHeight
           );
 
+          // Logo Right (NeutraDC or BRI based on companyType)
           pdfDoc.addImage(
-            `data:image/png;base64,${logoNeutraDCBase64}`,
+            `data:image/png;base64,${logoRightBase64}`,
             'PNG',
             pageWidth - marginRight - logoWidth,
             headerY,
@@ -388,13 +419,13 @@ export function AdminDashboard() {
         const photosPerPage = 9;
         let photoCount = 0;
 
-        for (let i = 0; i < doc.photosData.length; i += 3) {
+        for (let i = 0; i < photosData.length; i += 3) {
           if (photoCount > 0 && photoCount % photosPerPage === 0) {
             pdfDoc.addPage();
             currentY = addPageHeader();
           }
 
-          const rowCards = doc.photosData.slice(i, i + 3);
+          const rowCards = photosData.slice(i, i + 3);
 
           for (let j = 0; j < rowCards.length; j++) {
             const card = rowCards[j];
@@ -452,13 +483,13 @@ export function AdminDashboard() {
   };
 
   const filteredDocuments = documents.filter(doc => {
-    const matchesSearch = 
+    const matchesSearch =
       doc.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       doc.maintenanceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       doc.createdBy.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesFilter = filterType === 'all' || doc.type === filterType;
-    
+
     // ✅ Date filter logic
     let matchesDate = true;
     if (dateFilter !== 'all') {
@@ -486,7 +517,7 @@ export function AdminDashboard() {
         matchesDate = docDate >= start && docDate <= end;
       }
     }
-    
+
     return matchesSearch && matchesFilter && matchesDate;
   });
 
@@ -682,7 +713,7 @@ export function AdminDashboard() {
                       {doc.type}
                     </span>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-2 text-xs mb-3">
                     <div>
                       <p className="text-slate-500">Created By</p>

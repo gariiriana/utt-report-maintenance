@@ -12,12 +12,14 @@ interface UserData {
   email: string;
   uid: string;
   role: 'admin' | 'engineer';
+  companyType?: 'neutra' | 'bri';
   createdAt: any;
 }
 
 interface AuthContextType {
   user: User | null;
   userRole: 'admin' | 'engineer' | 'standby_engineer' | null;
+  companyType: 'neutra' | 'bri' | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -28,6 +30,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userRole, setUserRole] = useState<'admin' | 'engineer' | 'standby_engineer' | null>(null);
+  const [companyType, setCompanyType] = useState<'neutra' | 'bri' | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -55,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               email: user.email,
               uid: user.uid,
               role: isAdminEmail ? 'admin' : 'engineer',
+              companyType: 'neutra',
               createdAt: serverTimestamp(),
             });
             // Set role immediately
@@ -73,8 +77,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (docSnap.exists()) {
               const userData = docSnap.data() as UserData;
               setUserRole(userData.role || 'engineer'); // Default to engineer
+              setCompanyType(userData.companyType || 'neutra'); // Default to neutra
             } else {
               setUserRole('engineer'); // Default role if document doesn't exist yet
+              setCompanyType('neutra'); // Default company type
             }
             setLoading(false);
           },
@@ -83,11 +89,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.warn('Error listening to user document:', error.message);
             // Set default role and mark as loaded
             setUserRole('engineer');
+            setCompanyType('neutra');
             setLoading(false);
           }
         );
       } else {
         setUserRole(null);
+        setCompanyType(null);
         setLoading(false);
       }
     });
@@ -118,6 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: userCredential.user.email,
           uid: userCredential.user.uid,
           role: isAdminEmail ? 'admin' : 'engineer', // ✅ Set role based on email
+          companyType: 'neutra', // ✅ Default company type
           createdAt: serverTimestamp(),
         });
       }
@@ -127,11 +136,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     await signOut(auth);
     setUserRole(null);
+    setCompanyType(null);
   };
 
   const value = {
     user,
     userRole,
+    companyType,
     loading,
     login,
     logout
