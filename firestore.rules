@@ -40,15 +40,16 @@ service cloud.firestore {
                     && request.auth.uid == userId
                     && request.resource.data.email == request.auth.token.email
                     && request.resource.data.uid == userId
-                    && request.resource.data.keys().hasAll(['email', 'uid', 'role', 'createdAt'])
-                    && (request.resource.data.role == 'admin' || request.resource.data.role == 'engineer' || request.resource.data.role == 'standby_engineer');
+                    && request.resource.data.keys().hasAll(['email', 'uid', 'role', 'companyType', 'createdAt'])
+                    && (request.resource.data.role == 'admin' || request.resource.data.role == 'engineer' || request.resource.data.role == 'standby_engineer')
+                    && (request.resource.data.companyType == 'neutra' || request.resource.data.companyType == 'bri');
       
       allow read: if request.auth != null 
                   && (request.auth.uid == userId || isAdminSafe() || isStandbyEngineer());
       
       allow update: if request.auth != null 
                     && (
-                      (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))
+                      (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'companyType']))
                       || isAdminSafe()
                     );
       
@@ -70,10 +71,9 @@ service cloud.firestore {
                       'createdBy',
                       'fileSize',
                       'totalPhotos',
-                      'photosWithImage',
-                      'photosData'
+                      'photosWithImage'
                     ])
-                    && request.resource.data.photosData is list;
+                    && (!request.resource.data.keys().hasAny(['specificDetail']) || request.resource.data.specificDetail is string);
       
       // ✅ FIX: Use isAdminSafe() to prevent BloomFilter error
       // User hanya bisa read dokumen milik mereka sendiri, ATAU admin bisa read semua
@@ -90,6 +90,13 @@ service cloud.firestore {
                     && (resource.data.createdBy == request.auth.token.email 
                         || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
                             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+
+      // ✅ Subcollection untuk foto (Unlimited photos support)
+      match /photos/{photoId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null;
+        allow update, delete: if false;
+      }
     }
     
     // ============================================================
@@ -107,10 +114,9 @@ service cloud.firestore {
                       'createdBy',
                       'fileSize',
                       'totalPhotos',
-                      'photosWithImage',
-                      'photosData'
+                      'photosWithImage'
                     ])
-                    && request.resource.data.photosData is list;
+                    && (!request.resource.data.keys().hasAny(['specificDetail']) || request.resource.data.specificDetail is string);
       
       // ✅ FIX: Inline admin check to prevent BloomFilter error
       allow read: if request.auth != null 
@@ -126,6 +132,13 @@ service cloud.firestore {
                     && (resource.data.createdBy == request.auth.token.email 
                         || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
                             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+
+      // ✅ Subcollection untuk foto (Unlimited photos support)
+      match /photos/{photoId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null;
+        allow update, delete: if false;
+      }
     }
     
     // ============================================================

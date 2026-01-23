@@ -9,6 +9,8 @@ import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import logoDwimitra from '@/assets/a6129221f456afd6fd88d74c324473e495bdd7a8.png';
 import logoNeutraDC from '@/assets/005ac597864c02a96c9add5c6e054d23b8cfafbe.png';
+import logoBRI from '@/assets/bri_logo.png';
+import logoBRILeft from '@/assets/bri_left_logo.png';
 import { DeleteConfirmModal } from './DeleteConfirmModal'; // ✅ NEW: Import custom modal
 
 interface PhotoData {
@@ -34,14 +36,14 @@ interface ExcelDocument {
 }
 
 export function DocumentList() {
-  const { user } = useAuth();
+  const { user, companyType } = useAuth();
   const [documents, setDocuments] = useState<ExcelDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterDate, setFilterDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
   const [filterType, setFilterType] = useState<'all' | 'excel' | 'pdf'>('all'); // ✅ NEW: Filter by document type
-  
+
   // ✅ NEW: State untuk delete confirmation modal
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<ExcelDocument | null>(null);
@@ -52,7 +54,7 @@ export function DocumentList() {
 
     try {
       setLoading(true);
-      
+
       // Fetch Excel documents
       const excelQuery = query(
         collection(db, 'excel_documents'),
@@ -116,7 +118,7 @@ export function DocumentList() {
       setDocuments(allDocs);
     } catch (error: any) {
       console.error('Error fetching documents:', error);
-      
+
       // ✅ Check if error is about missing index
       if (error?.code === 'failed-precondition' && error?.message?.includes('index')) {
         toast.error('Database index diperlukan. Klik link di console browser untuk create index.', {
@@ -184,31 +186,35 @@ export function DocumentList() {
 
       // Load logos
       try {
-        const logoDwimitraResponse = await fetch(logoDwimitra);
-        const logoDwimitraBlob = await logoDwimitraResponse.blob();
-        const logoDwimitraArrayBuffer = await logoDwimitraBlob.arrayBuffer();
-        const logoDwimitraBase64 = btoa(
-          new Uint8Array(logoDwimitraArrayBuffer).reduce(
+        // Select left logo based on company type
+        const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
+        const logoLeftResponse = await fetch(leftLogo);
+        const logoLeftBlob = await logoLeftResponse.blob();
+        const logoLeftArrayBuffer = await logoLeftBlob.arrayBuffer();
+        const logoLeftBase64 = btoa(
+          new Uint8Array(logoLeftArrayBuffer).reduce(
             (data, byte) => data + String.fromCharCode(byte), ''
           )
         );
 
-        const logoNeutraDCResponse = await fetch(logoNeutraDC);
-        const logoNeutraDCBlob = await logoNeutraDCResponse.blob();
-        const logoNeutraDCArrayBuffer = await logoNeutraDCBlob.arrayBuffer();
-        const logoNeutraDCBase64 = btoa(
-          new Uint8Array(logoNeutraDCArrayBuffer).reduce(
+        // Select right logo based on company type
+        const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
+        const logoRightResponse = await fetch(rightLogo);
+        const logoRightBlob = await logoRightResponse.blob();
+        const logoRightArrayBuffer = await logoRightBlob.arrayBuffer();
+        const logoRightBase64 = btoa(
+          new Uint8Array(logoRightArrayBuffer).reduce(
             (data, byte) => data + String.fromCharCode(byte), ''
           )
         );
 
         const dwimitraImageId = workbook.addImage({
-          base64: logoDwimitraBase64,
+          base64: logoLeftBase64,
           extension: 'png',
         });
 
         const neutraDCImageId = workbook.addImage({
-          base64: logoNeutraDCBase64,
+          base64: logoRightBase64,
           extension: 'png',
         });
 
@@ -262,11 +268,29 @@ export function DocumentList() {
 
       // Add photos in 3-column grid
       let currentRow = 4;
-      const photosData = docData.photosData || [];
+      let finalPhotosData = docData.photosData || [];
+
+      // ✅ Support subcollection pattern: fetch photos if photosData is empty
+      if (finalPhotosData.length === 0) {
+        try {
+          const photosSnap = await getDocs(
+            collection(db, `excel_documents/${docData.id}/photos`)
+          );
+          if (!photosSnap.empty) {
+            finalPhotosData = photosSnap.docs
+              .map(d => d.data() as PhotoData)
+              .sort((a, b) => a.index - b.index);
+          }
+        } catch (err) {
+          console.error('Failed to fetch subcollection photos (Excel):', err);
+        }
+      }
+
+      const photosData = finalPhotosData;
 
       for (let i = 0; i < photosData.length; i += 3) {
         const rowCards = photosData.slice(i, i + 3);
-        
+
         worksheet.getRow(currentRow).height = 160;
         worksheet.getRow(currentRow + 1).height = 35;
 
@@ -326,8 +350,8 @@ export function DocumentList() {
 
       // Generate and download
       const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { 
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
 
       const url = URL.createObjectURL(blob);
@@ -359,7 +383,7 @@ export function DocumentList() {
       const doc = new jsPDF('p', 'mm', 'a4');
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-      
+
       // Margins
       const marginTop = 15;
       const marginLeft = 10;
@@ -370,20 +394,24 @@ export function DocumentList() {
 
       // Load logos
       try {
-        const logoDwimitraResponse = await fetch(logoDwimitra);
-        const logoDwimitraBlob = await logoDwimitraResponse.blob();
-        const logoDwimitraArrayBuffer = await logoDwimitraBlob.arrayBuffer();
-        const logoDwimitraBase64 = btoa(
-          new Uint8Array(logoDwimitraArrayBuffer).reduce(
+        // Select left logo based on company type
+        const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
+        const logoLeftResponse = await fetch(leftLogo);
+        const logoLeftBlob = await logoLeftResponse.blob();
+        const logoLeftArrayBuffer = await logoLeftBlob.arrayBuffer();
+        const logoLeftBase64 = btoa(
+          new Uint8Array(logoLeftArrayBuffer).reduce(
             (data, byte) => data + String.fromCharCode(byte), ''
           )
         );
 
-        const logoNeutraDCResponse = await fetch(logoNeutraDC);
-        const logoNeutraDCBlob = await logoNeutraDCResponse.blob();
-        const logoNeutraDCArrayBuffer = await logoNeutraDCBlob.arrayBuffer();
-        const logoNeutraDCBase64 = btoa(
-          new Uint8Array(logoNeutraDCArrayBuffer).reduce(
+        // Select right logo based on company type
+        const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
+        const logoRightResponse = await fetch(rightLogo);
+        const logoRightBlob = await logoRightResponse.blob();
+        const logoRightArrayBuffer = await logoRightBlob.arrayBuffer();
+        const logoRightBase64 = btoa(
+          new Uint8Array(logoRightArrayBuffer).reduce(
             (data, byte) => data + String.fromCharCode(byte), ''
           )
         );
@@ -391,10 +419,10 @@ export function DocumentList() {
         // Add logos
         const logoWidth = 45;
         const logoHeight = 20;
-        
-        // Logo Dwimitra - Left
+
+        // Logo Left (Dwimitra or BRI Specific based on companyType)
         doc.addImage(
-          `data:image/png;base64,${logoDwimitraBase64}`,
+          `data:image/png;base64,${logoLeftBase64}`,
           'PNG',
           marginLeft,
           currentY,
@@ -402,9 +430,9 @@ export function DocumentList() {
           logoHeight
         );
 
-        // Logo NeutraDC - Right
+        // Logo Right (NeutraDC or BRI based on companyType)
         doc.addImage(
-          `data:image/png;base64,${logoNeutraDCBase64}`,
+          `data:image/png;base64,${logoRightBase64}`,
           'PNG',
           pageWidth - marginRight - logoWidth,
           currentY,
@@ -414,37 +442,37 @@ export function DocumentList() {
 
         currentY += logoHeight + 8;
 
-      // ================= TITLE =================
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
+        // ================= TITLE =================
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
 
-      const titleText = `Dokumentasi PM ${docData.maintenanceName} (${formattedDate})`;
-      const titleWidth = doc.getTextWidth(titleText);
+        const titleText = `Dokumentasi PM ${docData.maintenanceName} (${formattedDate})`;
+        const titleWidth = doc.getTextWidth(titleText);
 
-      // Tulis TITLE
-      doc.text(titleText, (pageWidth - titleWidth) / 2, currentY);
+        // Tulis TITLE
+        doc.text(titleText, (pageWidth - titleWidth) / 2, currentY);
 
-       // ⬇️ TURUNKAN Y SETELAH TITLE (PENTING)
+        // ⬇️ TURUNKAN Y SETELAH TITLE (PENTING)
         currentY += 10;
 
 
-      // ================= SPECIFIC DETAIL =================
-      if (docData.specificDetail) {
+        // ================= SPECIFIC DETAIL =================
+        if (docData.specificDetail) {
           doc.setFontSize(12);
           doc.setFont('helvetica', 'bold');
 
           const equipmentText = docData.specificDetail;
-            const equipmentWidth = doc.getTextWidth(equipmentText);
+          const equipmentWidth = doc.getTextWidth(equipmentText);
 
           // Tulis EQUIPMENT DI Y BARU
           doc.text(equipmentText, (pageWidth - equipmentWidth) / 2, currentY);
 
           // Jarak setelah equipment
-            currentY += 10;
-          } else {
-           // Kalau ga ada equipment, tetap kasih jarak
-             currentY += 8;
-            }
+          currentY += 10;
+        } else {
+          // Kalau ga ada equipment, tetap kasih jarak
+          currentY += 8;
+        }
 
 
         // Add photos in 3-column grid
@@ -453,7 +481,25 @@ export function DocumentList() {
         const captionHeight = 12; // Height for caption area
         const spacing = 4;
 
-        const photosData = docData.photosData || [];
+        let finalPhotosData = docData.photosData || [];
+
+        // ✅ Support subcollection pattern: fetch photos if photosData is empty
+        if (finalPhotosData.length === 0) {
+          try {
+            const photosSnap = await getDocs(
+              collection(db, `pdf_documents/${docData.id}/photos`)
+            );
+            if (!photosSnap.empty) {
+              finalPhotosData = photosSnap.docs
+                .map(d => d.data() as PhotoData)
+                .sort((a, b) => a.index - b.index);
+            }
+          } catch (err) {
+            console.error('Failed to fetch subcollection photos (PDF):', err);
+          }
+        }
+
+        const photosData = finalPhotosData;
 
         for (let i = 0; i < photosData.length; i += 3) {
           // Check if we need a new page
@@ -491,7 +537,7 @@ export function DocumentList() {
 
             // Add caption box
             doc.rect(xPos, currentY + photoHeight, photoWidth, captionHeight);
-            
+
             // Add caption text
             if (card.description) {
               doc.setFontSize(8);
@@ -655,8 +701,8 @@ export function DocumentList() {
             {documents.length === 0 ? 'Belum ada dokumen' : 'Tidak ada hasil'}
           </h3>
           <p className="text-sm sm:text-base text-slate-500">
-            {documents.length === 0 
-              ? 'Mulai ekspor report untuk membuat dokumen pertama Anda' 
+            {documents.length === 0
+              ? 'Mulai ekspor report untuk membuat dokumen pertama Anda'
               : 'Coba ubah filter pencarian Anda'}
           </p>
         </div>
@@ -689,11 +735,10 @@ export function DocumentList() {
                       <h3 className="text-base sm:text-lg font-semibold text-white truncate">
                         {document.maintenanceName}
                       </h3>
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                        document.documentType === 'pdf' 
-                          ? 'bg-red-500/10 text-red-400 border border-red-500/20' 
-                          : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${document.documentType === 'pdf'
+                        ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                        : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        }`}>
                         {document.documentType.toUpperCase()}
                       </span>
                     </div>
