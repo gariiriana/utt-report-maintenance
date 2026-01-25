@@ -14,7 +14,9 @@ import {
     X,
     Loader2,
     FileText,
+    Scissors,
 } from 'lucide-react';
+import { ImageEditor } from './ImageEditor';
 import { toast } from 'sonner';
 import { db } from '@/lib/firebase';
 import {
@@ -64,6 +66,8 @@ export function CorrectiveMaintenance() {
         photoBase64: '',
         photoDescription: '',
     });
+
+    const [editingPhoto, setEditingPhoto] = useState(false);
 
     // Load Reports
     useEffect(() => {
@@ -135,6 +139,12 @@ export function CorrectiveMaintenance() {
                 setFormData({ ...formData, photoBase64: compressedBase64 });
             };
         };
+    };
+
+    const handleApplyEdit = (editedBase64: string) => {
+        setFormData({ ...formData, photoBase64: editedBase64 });
+        setEditingPhoto(false);
+        toast.success('Photo updated');
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -243,7 +253,13 @@ export function CorrectiveMaintenance() {
                         {/* ... Same form content (omitted for brevity, assume content is preserved if logic is correct, wait replace_tool replaces exact match) ... */}
                         {/* Wait, I cannot use range replacement efficiently if I want to wrap the whole file or huge chunks. 
                              Let me use targeted replacement for the handleDelete and the end of file for the Modal. */}
-                        <h2 className="text-lg font-semibold text-white mb-4">New Corrective Report</h2>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-semibold text-white">New Corrective Report</h2>
+                            <div className="flex items-center gap-2 px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                                <Scissors className="w-3 h-3 text-blue-400" />
+                                <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">Crop/Edit Enabled</span>
+                            </div>
+                        </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Left Column: Text Inputs */}
@@ -324,13 +340,24 @@ export function CorrectiveMaintenance() {
                                                     alt="Evidence"
                                                     className="h-40 object-contain mx-auto rounded-lg"
                                                 />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setFormData({ ...formData, photoBase64: '' })}
-                                                    className="absolute -top-2 -right-2 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition"
-                                                >
-                                                    <X className="w-4 h-4" />
-                                                </button>
+                                                <div className="absolute inset-0 bg-slate-950/20 opacity-100 transition rounded-lg flex items-center justify-center gap-3">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditingPhoto(true)}
+                                                        className="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition shadow-xl"
+                                                        title="Edit / Crop Foto"
+                                                    >
+                                                        <Scissors className="w-5 h-5" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setFormData({ ...formData, photoBase64: '' })}
+                                                        className="p-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition shadow-xl"
+                                                        title="Hapus Foto"
+                                                    >
+                                                        <Trash2 className="w-5 h-5" />
+                                                    </button>
+                                                </div>
                                             </div>
                                         ) : (
                                             <>
@@ -505,6 +532,17 @@ export function CorrectiveMaintenance() {
                             </div>
                         </motion.div>
                     </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Image Editor Modal */}
+            <AnimatePresence>
+                {editingPhoto && (
+                    <ImageEditor
+                        image={formData.photoBase64}
+                        onSave={handleApplyEdit}
+                        onCancel={() => setEditingPhoto(false)}
+                    />
                 )}
             </AnimatePresence>
         </div>

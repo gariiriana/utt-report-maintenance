@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Upload, FileDown, Activity, Clock, User, Camera, FileText, Database, HardDrive, FileType } from 'lucide-react';
+import { Plus, Trash2, Upload, FileDown, Activity, Clock, Camera, FileText, Database, HardDrive, FileType, Scissors } from 'lucide-react';
+import { ImageEditor } from './ImageEditor';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -21,7 +22,7 @@ interface PhotoCard {
 }
 
 export function ReportForm() {
-  const { user, companyType, logout } = useAuth();
+  const { user, companyType } = useAuth();
   const [maintenanceName, setMaintenanceName] = useState('');
   const [maintenanceTime, setMaintenanceTime] = useState('');
   const [specificDetail, setSpecificDetail] = useState(''); // ✅ NEW: Untuk nama unit/ruangan
@@ -33,6 +34,8 @@ export function ReportForm() {
     { id: '5', photo: null, description: '' },
     { id: '6', photo: null, description: '' },
   ]);
+
+  const [editingCardId, setEditingCardId] = useState<string | null>(null);
 
   // NOTE: The image compression is handled by the imported `compressImage` utility from '@/lib/imageCompression'.
   // The previous local implementation has been removed to avoid duplication and lint warnings.
@@ -139,6 +142,14 @@ export function ReportForm() {
       console.error(error);
       toast.error('Failed to process some photos', { id: toastId });
     }
+  };
+
+  const handleApplyEdit = (id: string, editedBase64: string) => {
+    setCards(cards.map(card =>
+      card.id === id ? { ...card, photoBase64: editedBase64 } : card
+    ));
+    setEditingCardId(null);
+    toast.success('Photo updated');
   };
 
   const handleDescriptionChange = (id: string, description: string) => {
@@ -480,7 +491,6 @@ export function ReportForm() {
       // Create PDF (A4 portrait: 210mm x 297mm)
       const doc = new jsPDF('p', 'mm', 'a4');
       const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
 
       // Margins
       const marginTop = 15;
@@ -842,6 +852,10 @@ export function ReportForm() {
               <Camera className="w-5 h-5 text-indigo-400" />
             </div>
             <h2 className="text-base sm:text-lg font-semibold text-white">Photo Documentation</h2>
+            <div className="flex items-center gap-2 px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <Scissors className="w-3 h-3 text-blue-400" />
+              <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">Crop/Edit Enabled</span>
+            </div>
           </div>
           <div className="flex gap-3">
             <motion.button
@@ -896,7 +910,8 @@ export function ReportForm() {
                 {cards.length > 1 && (
                   <button
                     onClick={() => removeCard(card.id)}
-                    className="absolute -top-3 -right-3 p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition z-10 opacity-0 group-hover:opacity-100 shadow-lg"
+                    className="absolute -top-3 -right-3 p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition z-10 shadow-lg"
+                    title="Hapus Card"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -919,10 +934,18 @@ export function ReportForm() {
                           alt={`Preview ${index + 1}`}
                           className="w-full h-44 object-cover rounded-lg border border-slate-700/50"
                         />
-                        <div className="absolute inset-0 bg-slate-950/80 opacity-0 group-hover/image:opacity-100 transition rounded-lg flex items-center justify-center">
+                        <div className="absolute inset-0 bg-slate-950/20 opacity-100 transition rounded-lg flex items-center justify-center gap-3">
+                          <button
+                            onClick={() => setEditingCardId(card.id)}
+                            className="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition shadow-xl"
+                            title="Edit / Crop Foto"
+                          >
+                            <Scissors className="w-5 h-5" />
+                          </button>
                           <button
                             onClick={() => handlePhotoChange(card.id, null)}
-                            className="p-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition"
+                            className="p-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition shadow-xl"
+                            title="Hapus Foto"
                           >
                             <Trash2 className="w-5 h-5" />
                           </button>
@@ -988,6 +1011,17 @@ export function ReportForm() {
           </motion.button>
         </div>
       </div>
+
+      {/* Image Editor Modal */}
+      <AnimatePresence>
+        {editingCardId && (
+          <ImageEditor
+            image={cards.find(c => c.id === editingCardId)?.photoBase64 || ''}
+            onSave={(editedBase64) => handleApplyEdit(editingCardId, editedBase64)}
+            onCancel={() => setEditingCardId(null)}
+          />
+        )}
+      </AnimatePresence>
     </div >
   );
 }
