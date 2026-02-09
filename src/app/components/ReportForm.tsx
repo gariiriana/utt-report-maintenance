@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Trash2, Upload, FileDown, Activity, Clock, Camera, FileText, Database, HardDrive, FileType, Scissors } from 'lucide-react';
 import { ImageEditor } from './ImageEditor';
@@ -21,6 +21,30 @@ interface PhotoCard {
   description: string;
 }
 
+const DOCK_LEVELER_TEMPLATE = [
+  'Lubrikasi Hinge Dock Leveler',
+  'Cek Visual Kabel Motor Dock Leveler',
+  'Lubrikasi Hinge Dock Leveler',
+  'Check Visual Power Motor Dock Leveler',
+  'Cleaning Kabel Hidrolik',
+  'Setting Dock Leveler (Memasang Braket Besi)',
+  'Cek Visual Rubber Safety Road Blocker',
+  'Set up Hydrolic Dock Leveler',
+  'Cek Visual Oli Hidrolic Dock Leveler',
+  'Cek Tegangan Voltase 3 Phase (R-S)',
+  'Cek Tegangan Voltase 3 Phase (S-T)',
+  'Cek Tegangan Voltase 3 Phase (T-R)',
+  'Cek Tegangan Voltase 3 Phase (N-R)',
+  'Cek Tegangan Voltase 3 Phase (N-S)',
+  'Cek Tegangan Voltase 3 Phase (N-T)',
+  'Measurement Current S',
+  'Measurement Current T',
+  'Measurement Current N',
+  'Resitance winding - Grounding U-G',
+  'Resitance winding - Grounding V-G',
+  'Resitance winding - Grounding W-G',
+];
+
 export function ReportForm() {
   const { user, companyType } = useAuth();
   const [maintenanceName, setMaintenanceName] = useState('');
@@ -36,6 +60,21 @@ export function ReportForm() {
   ]);
 
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
+  const [hasAppliedTemplate, setHasAppliedTemplate] = useState(false); // ✅ NEW: Track template application
+
+  // ✅ Auto-apply template for dockleveler@gmail.com
+  useEffect(() => {
+    if (user?.email === 'dockleveler@gmail.com' && !hasAppliedTemplate) {
+      const templateCards = DOCK_LEVELER_TEMPLATE.map((desc, index) => ({
+        id: (index + 1).toString(),
+        photo: null,
+        description: desc
+      }));
+      setCards(templateCards);
+      setHasAppliedTemplate(true);
+      toast.info('Template deskripsi Dock Leveler otomatis dimuat');
+    }
+  }, [user?.email, hasAppliedTemplate]);
 
   // NOTE: The image compression is handled by the imported `compressImage` utility from '@/lib/imageCompression'.
   // The previous local implementation has been removed to avoid duplication and lint warnings.
@@ -761,7 +800,7 @@ export function ReportForm() {
             <p className="text-xs text-slate-500">Real-time maintenance metrics</p>
           </div>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           <div className="bg-slate-800/30 rounded-lg p-3 sm:p-4 border border-slate-700/30">
             <div className="flex items-center gap-2 mb-1">
               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
@@ -781,7 +820,7 @@ export function ReportForm() {
             <p className="text-xs text-slate-500 font-medium mb-1">Ready to Export</p>
             <p className="text-sm sm:text-base font-semibold text-purple-400">{isReadyToExport ? 'Yes' : 'No'}</p>
           </div>
-          <div className="bg-slate-800/30 rounded-lg p-3 sm:p-4 border border-slate-700/30 col-span-2 lg:col-span-1">
+          <div className="bg-slate-800/30 rounded-lg p-3 sm:p-4 border border-slate-700/30 col-span-2 sm:col-span-1 lg:col-span-1">
             <p className="text-xs text-slate-500 font-medium mb-1">Total Size</p>
             <p className="text-sm sm:text-base font-semibold text-white">{totalPhotoSizeMB} MB</p>
           </div>
@@ -846,27 +885,28 @@ export function ReportForm() {
 
       {/* Photo Documentation */}
       <div className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-4 sm:p-6 border border-slate-700/50">
-        <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
-              <Camera className="w-5 h-5 text-indigo-400" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 sm:mb-6">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
+                <Camera className="w-5 h-5 text-indigo-400" />
+              </div>
+              <h2 className="text-base sm:text-lg font-semibold text-white">Photo Documentation</h2>
             </div>
-            <h2 className="text-base sm:text-lg font-semibold text-white">Photo Documentation</h2>
-            <div className="flex items-center gap-2 px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-lg whitespace-nowrap">
               <Scissors className="w-3 h-3 text-blue-400" />
-              <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider">Crop/Edit Enabled</span>
+              <span className="text-[9px] sm:text-[10px] font-bold text-blue-400 uppercase tracking-wider">Crop/Edit</span>
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => document.getElementById('bulk-upload-input')?.click()}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition shadow-lg shadow-indigo-500/20 text-sm"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition shadow-lg shadow-indigo-500/20 text-xs sm:text-sm whitespace-nowrap"
             >
               <HardDrive className="w-4 h-4" />
-              <span className="hidden sm:inline">Bulk Upload</span>
-              <span className="sm:hidden">Bulk</span>
+              <span>Bulk Upload</span>
             </motion.button>
             <input
               id="bulk-upload-input"
@@ -881,11 +921,10 @@ export function ReportForm() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={addCard}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition shadow-lg shadow-blue-500/20 text-sm"
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition shadow-lg shadow-blue-500/20 text-xs sm:text-sm whitespace-nowrap"
             >
               <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Add Card</span>
-              <span className="sm:hidden">Add</span>
+              <span>Add Card</span>
             </motion.button>
           </div>
         </div>

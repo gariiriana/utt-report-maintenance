@@ -37,7 +37,8 @@ const FILE_CATEGORIES = [
     'Custom',
 ];
 
-const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4']; // ✅ NEW: Quarter categories
+const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
+const YEARS = ['2025', '2026', '2027', '2028', '2029', '2030']; // ✅ NEW: Year categories
 
 // Allowed file types (PDF, Excel, Word)
 const ALLOWED_FILE_TYPES = [
@@ -60,6 +61,7 @@ interface FileData {
     fileType: string;
     category: string;
     quarter?: string; // ✅ NEW: Field for Q1-Q4
+    year?: string; // ✅ NEW: Field for Year
     customCategory?: string;
     uploadedBy: string;
     uploadedByEmail: string;
@@ -82,11 +84,13 @@ export function FileManagement() {
     const [selectedCategory, setSelectedCategory] = useState('Laporan Harian');
     const [customCategory, setCustomCategory] = useState('');
     const [description, setDescription] = useState('');
-    const [selectedUploadQuarter, setSelectedUploadQuarter] = useState('Q1'); // ✅ NEW: State for upload quarter
+    const [selectedUploadQuarter, setSelectedUploadQuarter] = useState('Q1');
+    const [selectedUploadYear, setSelectedUploadYear] = useState(new Date().getFullYear().toString()); // ✅ NEW: State for upload year
 
     // Search & filter state
     const [searchQuery, setSearchQuery] = useState('');
     const [filterCategory, setFilterCategory] = useState('All');
+    const [filterYear, setFilterYear] = useState('All'); // ✅ NEW: State for global year filter
     const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
     const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null); // ✅ NEW: State for selected quarter
     const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]); // ✅ NEW: State for bulk selection
@@ -188,6 +192,7 @@ export function FileManagement() {
                 fileType: selectedFile.type,
                 category: finalCategory,
                 quarter: selectedUploadQuarter, // ✅ NEW: Store quarter
+                year: selectedUploadYear, // ✅ NEW: Store year
                 customCategory: selectedCategory === 'Custom' ? customCategory : null,
                 uploadedBy: user.uid,
                 uploadedByEmail: user.email,
@@ -259,6 +264,7 @@ export function FileManagement() {
 
         if (!fileToDelete) return;
 
+        setIsBulkDeleting(true);
         try {
             const batch = writeBatch(db);
 
@@ -283,6 +289,8 @@ export function FileManagement() {
         } catch (error) {
             console.error('Error deleting file:', error);
             toast.error('Failed to delete file');
+        } finally {
+            setIsBulkDeleting(false);
         }
     };
 
@@ -379,7 +387,9 @@ export function FileManagement() {
             .includes(searchQuery.toLowerCase());
         const matchesCategory =
             filterCategory === 'All' || file.category === filterCategory;
-        return matchesSearch && matchesCategory;
+        const matchesYear =
+            filterYear === 'All' || file.year === filterYear; // ✅ NEW: Match year
+        return matchesSearch && matchesCategory && matchesYear;
     });
 
     // Format file size
@@ -472,6 +482,24 @@ export function FileManagement() {
                                     {QUARTERS.map((q) => (
                                         <option key={q} value={q}>
                                             {q}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                    Year
+                                </label>
+                                <select
+                                    value={selectedUploadYear}
+                                    onChange={(e) => setSelectedUploadYear(e.target.value)}
+                                    disabled={uploading}
+                                    className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    {YEARS.map((y) => (
+                                        <option key={y} value={y}>
+                                            {y}
                                         </option>
                                     ))}
                                 </select>
@@ -572,7 +600,7 @@ export function FileManagement() {
                         </div>
                     </div>
 
-                    {/* Filter */}
+                    {/* Category Filter */}
                     <div className="sm:w-64">
                         <div className="relative">
                             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -585,6 +613,25 @@ export function FileManagement() {
                                 {FILE_CATEGORIES.filter((cat) => cat !== 'Custom').map((cat) => (
                                     <option key={cat} value={cat}>
                                         {cat}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Year Filter */}
+                    <div className="sm:w-48">
+                        <div className="relative">
+                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                            <select
+                                value={filterYear}
+                                onChange={(e) => setFilterYear(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none cursor-pointer"
+                            >
+                                <option value="All">All Years</option>
+                                {YEARS.map((y) => (
+                                    <option key={y} value={y}>
+                                        {y}
                                     </option>
                                 ))}
                             </select>
@@ -643,8 +690,8 @@ export function FileManagement() {
                 {!searchQuery && !selectedFolder ? (
                     /* Level 1: Categories */
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {[...new Set(files.map(f => f.category))].sort().map((category) => {
-                            const fileCount = files.filter(f => f.category === category).length;
+                        {[...new Set(filteredFiles.map(f => f.category))].sort().map((category) => {
+                            const fileCount = filteredFiles.filter(f => f.category === category).length;
                             return (
                                 <motion.div
                                     key={category}
@@ -667,10 +714,10 @@ export function FileManagement() {
                                 </motion.div>
                             );
                         })}
-                        {files.length === 0 && (
+                        {filteredFiles.length === 0 && (
                             <div className="col-span-full text-center py-12">
                                 <FolderOpen className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                                <p className="text-slate-400">No files found</p>
+                                <p className="text-slate-400">No files found for this filter</p>
                             </div>
                         )}
                     </div>
@@ -678,7 +725,7 @@ export function FileManagement() {
                     /* Level 2: Quarters (Q1-Q4) */
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         {QUARTERS.map((quarter) => {
-                            const fileCount = files.filter(f => f.category === selectedFolder && f.quarter === quarter).length;
+                            const fileCount = filteredFiles.filter(f => f.category === selectedFolder && f.quarter === quarter).length;
                             return (
                                 <motion.div
                                     key={quarter}

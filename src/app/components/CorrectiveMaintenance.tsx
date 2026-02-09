@@ -2,14 +2,11 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
     Plus,
-    Search,
-    Filter,
     Camera,
     MapPin,
     PenTool,
     AlertCircle,
     CheckCircle2,
-    Clock,
     Trash2,
     X,
     Loader2,
