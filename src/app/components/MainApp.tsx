@@ -51,7 +51,7 @@ export function MainApp() {
               </div>
             </div>
 
-            Desktop User Info & Logout
+            {/* Desktop User Info & Logout */}
             <div className="hidden md:flex items-center gap-3">
               <div className="text-right">
                 <p className="text-xs text-slate-500">Logged as</p>
@@ -158,35 +158,39 @@ export function MainApp() {
               <span className="sm:hidden">CM</span>
             </motion.button>
 
-            {/* ✅ Create Report - SEMUA user bisa akses */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setActiveTab('report')}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'report'
-                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/25'
-                : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
-                }`}
-            >
-              <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">Create Report</span>
-              <span className="sm:hidden">Create</span>
-            </motion.button>
+            {/* ✅ Create Report - HANYA untuk non-admin (Engineers) */}
+            {!isAdmin && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setActiveTab('report')}
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'report'
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/25'
+                  : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
+                  }`}
+              >
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="hidden sm:inline">Create Report</span>
+                <span className="sm:hidden">Create</span>
+              </motion.button>
+            )}
 
-            {/* ✅ Document Archive - SEMUA user bisa akses */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setActiveTab('documents')}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'documents'
-                ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-500/25'
-                : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
-                }`}
-            >
-              <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">Document Archive</span>
-              <span className="sm:hidden">Docs</span>
-            </motion.button>
+            {/* ✅ Document Archive - HANYA untuk non-admin (Engineers) */}
+            {!isAdmin && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setActiveTab('documents')}
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'documents'
+                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-500/25'
+                  : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
+                  }`}
+              >
+                <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="hidden sm:inline">Document Archive</span>
+                <span className="sm:hidden">Docs</span>
+              </motion.button>
+            )}
           </div>
         </div>
       </div>

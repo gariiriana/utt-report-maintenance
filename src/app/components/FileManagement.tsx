@@ -18,7 +18,6 @@ import {
     query,
     orderBy,
     onSnapshot,
-    deleteDoc,
     doc,
     serverTimestamp,
     getDocs,
@@ -33,10 +32,12 @@ const FILE_CATEGORIES = [
     'Checklist Alat',
     'Checklist APD',
     'PTW',
-    'JSE',
+    'JSEA',
     'MOP',
     'Custom',
 ];
+
+const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4']; // ✅ NEW: Quarter categories
 
 // Allowed file types (PDF, Excel, Word)
 const ALLOWED_FILE_TYPES = [
@@ -58,6 +59,7 @@ interface FileData {
     fileSize: number;
     fileType: string;
     category: string;
+    quarter?: string; // ✅ NEW: Field for Q1-Q4
     customCategory?: string;
     uploadedBy: string;
     uploadedByEmail: string;
@@ -80,14 +82,21 @@ export function FileManagement() {
     const [selectedCategory, setSelectedCategory] = useState('Laporan Harian');
     const [customCategory, setCustomCategory] = useState('');
     const [description, setDescription] = useState('');
+    const [selectedUploadQuarter, setSelectedUploadQuarter] = useState('Q1'); // ✅ NEW: State for upload quarter
 
     // Search & filter state
     const [searchQuery, setSearchQuery] = useState('');
     const [filterCategory, setFilterCategory] = useState('All');
+    const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+    const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null); // ✅ NEW: State for selected quarter
+    const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]); // ✅ NEW: State for bulk selection
 
-    // Delete modal
+    // Modal states
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [fileToDelete, setFileToDelete] = useState<FileData | null>(null);
+    const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false); // ✅ NEW: State for upload success modal
+    const [uploadedFileName, setUploadedFileName] = useState(''); // ✅ NEW: Track uploaded file name
 
     // Load files from Firestore
     useEffect(() => {
@@ -178,6 +187,7 @@ export function FileManagement() {
                 fileSize: selectedFile.size,
                 fileType: selectedFile.type,
                 category: finalCategory,
+                quarter: selectedUploadQuarter, // ✅ NEW: Store quarter
                 customCategory: selectedCategory === 'Custom' ? customCategory : null,
                 uploadedBy: user.uid,
                 uploadedByEmail: user.email,
@@ -217,7 +227,10 @@ export function FileManagement() {
             await finalBatch.commit();
 
             setUploadProgress(100);
-            toast.success('File uploaded successfully!');
+
+            // Show success feedback modal
+            setUploadedFileName(selectedFile?.name || 'File');
+            setShowSuccessModal(true);
 
             // Reset form
             setSelectedFile(null);
@@ -225,6 +238,8 @@ export function FileManagement() {
             setCustomCategory('');
             setDescription('');
             setUploading(false);
+
+            toast.success('File uploaded successfully!');
         } catch (error) {
             console.error('Error uploading file:', error);
             toast.error('Failed to upload file');
@@ -234,7 +249,15 @@ export function FileManagement() {
 
     // Handle delete (Delete metadata + all chunks)
     const handleDelete = async () => {
-        if (!fileToDelete || !isAdmin) return;
+        if (!isAdmin) return;
+
+        // Handle Bulk Delete (Selection)
+        if (selectedFileIds.length > 0 && !fileToDelete) {
+            await performBulkDelete(selectedFileIds, `Deleting ${selectedFileIds.length} files...`);
+            return;
+        }
+
+        if (!fileToDelete) return;
 
         try {
             const batch = writeBatch(db);
@@ -260,6 +283,44 @@ export function FileManagement() {
         } catch (error) {
             console.error('Error deleting file:', error);
             toast.error('Failed to delete file');
+        }
+    };
+
+    // Internal perform bulk delete (NEW: Refactored logic)
+    const performBulkDelete = async (ids: string[], loadingMessage: string) => {
+        if (ids.length === 0 || !isAdmin) return;
+
+        setIsBulkDeleting(true);
+        const toastId = toast.loading(loadingMessage);
+
+        try {
+            // Process in batches because showing feedback for each file
+            for (const fileId of ids) {
+                const batch = writeBatch(db);
+
+                // 1. Get chunks
+                const chunksSnapshot = await getDocs(collection(db, 'files', fileId, 'chunks'));
+
+                // 2. Delete chunks
+                chunksSnapshot.docs.forEach((chunkDoc) => {
+                    batch.delete(chunkDoc.ref);
+                });
+
+                // 3. Delete metadata
+                batch.delete(doc(db, 'files', fileId));
+
+                await batch.commit();
+            }
+
+            toast.success(`Action completed successfully!`, { id: toastId });
+            setSelectedFileIds([]);
+            setFileToDelete(null);
+            setDeleteModalOpen(false);
+        } catch (error) {
+            console.error('Error in bulk delete:', error);
+            toast.error('Failed to complete some operations', { id: toastId });
+        } finally {
+            setIsBulkDeleting(false);
         }
     };
 
@@ -378,23 +439,43 @@ export function FileManagement() {
                             )}
                         </div>
 
-                        {/* Category */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">
-                                Category
-                            </label>
-                            <select
-                                value={selectedCategory}
-                                onChange={(e) => setSelectedCategory(e.target.value)}
-                                disabled={uploading}
-                                className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                                {FILE_CATEGORIES.map((cat) => (
-                                    <option key={cat} value={cat}>
-                                        {cat}
-                                    </option>
-                                ))}
-                            </select>
+                        {/* Category & Quarter */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                    Category
+                                </label>
+                                <select
+                                    value={selectedCategory}
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                    disabled={uploading}
+                                    className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    {FILE_CATEGORIES.map((cat) => (
+                                        <option key={cat} value={cat}>
+                                            {cat}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                    Quarter
+                                </label>
+                                <select
+                                    value={selectedUploadQuarter}
+                                    onChange={(e) => setSelectedUploadQuarter(e.target.value)}
+                                    disabled={uploading}
+                                    className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    {QUARTERS.map((q) => (
+                                        <option key={q} value={q}>
+                                            {q}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         {/* Custom Category Input */}
@@ -519,99 +600,275 @@ export function FileManagement() {
                 transition={{ delay: 0.2 }}
                 className="bg-slate-800/40 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50"
             >
-                <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                    <FolderOpen className="w-5 h-5 text-emerald-400" />
-                    Files ({filteredFiles.length})
-                </h2>
+                <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                        {searchQuery ? (
+                            <>
+                                <Search className="w-5 h-5 text-blue-400" />
+                                Search Results ({filteredFiles.length})
+                            </>
+                        ) : selectedQuarter ? (
+                            <>
+                                <FolderOpen className="w-5 h-5 text-blue-400" />
+                                {selectedFolder} / {selectedQuarter} ({filteredFiles.filter(a => a.category === selectedFolder && a.quarter === selectedQuarter).length})
+                            </>
+                        ) : selectedFolder ? (
+                            <>
+                                <FolderOpen className="w-5 h-5 text-blue-400" />
+                                {selectedFolder}
+                            </>
+                        ) : (
+                            <>
+                                <FolderOpen className="w-5 h-5 text-emerald-400" />
+                                Categories ({[...new Set(files.map(f => f.category))].length})
+                            </>
+                        )}
+                    </h2>
 
-                {filteredFiles.length === 0 ? (
-                    <div className="text-center py-12">
-                        <FolderOpen className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                        <p className="text-slate-400">No files found</p>
+                    {(selectedFolder || selectedQuarter) && !searchQuery && (
+                        <button
+                            onClick={() => {
+                                if (selectedQuarter) setSelectedQuarter(null);
+                                else setSelectedFolder(null);
+                            }}
+                            className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
+                        >
+                            <X className="w-4 h-4" />
+                            Back to {selectedQuarter ? 'Quarters' : 'Folders'}
+                        </button>
+                    )}
+                </div>
+
+                {/* Navigation View */}
+                {!searchQuery && !selectedFolder ? (
+                    /* Level 1: Categories */
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {[...new Set(files.map(f => f.category))].sort().map((category) => {
+                            const fileCount = files.filter(f => f.category === category).length;
+                            return (
+                                <motion.div
+                                    key={category}
+                                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(51, 65, 85, 0.4)' }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => setSelectedFolder(category)}
+                                    className="bg-slate-700/30 rounded-xl p-5 border border-slate-600/50 cursor-pointer transition-all group"
+                                >
+                                    <div className="flex flex-col items-center text-center">
+                                        <div className="bg-blue-600/20 p-4 rounded-2xl mb-3 group-hover:bg-blue-600/30 transition-colors">
+                                            <FolderOpen className="w-10 h-10 text-blue-400" />
+                                        </div>
+                                        <h3 className="text-white font-medium truncate w-full px-2">
+                                            {category}
+                                        </h3>
+                                        <p className="text-xs text-slate-500 mt-1">
+                                            {fileCount} {fileCount === 1 ? 'file' : 'files'}
+                                        </p>
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
+                        {files.length === 0 && (
+                            <div className="col-span-full text-center py-12">
+                                <FolderOpen className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                                <p className="text-slate-400">No files found</p>
+                            </div>
+                        )}
+                    </div>
+                ) : !searchQuery && selectedFolder && !selectedQuarter ? (
+                    /* Level 2: Quarters (Q1-Q4) */
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {QUARTERS.map((quarter) => {
+                            const fileCount = files.filter(f => f.category === selectedFolder && f.quarter === quarter).length;
+                            return (
+                                <motion.div
+                                    key={quarter}
+                                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(51, 65, 85, 0.4)' }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => setSelectedQuarter(quarter)}
+                                    className="bg-slate-700/30 rounded-xl p-5 border border-slate-600/50 cursor-pointer transition-all group"
+                                >
+                                    <div className="flex flex-col items-center text-center">
+                                        <div className="bg-emerald-600/20 p-4 rounded-2xl mb-3 group-hover:bg-emerald-600/30 transition-colors">
+                                            <FolderOpen className="w-10 h-10 text-emerald-400" />
+                                        </div>
+                                        <h3 className="text-white font-medium">
+                                            {quarter}
+                                        </h3>
+                                        <p className="text-xs text-slate-500 mt-1">
+                                            {fileCount} {fileCount === 1 ? 'file' : 'files'}
+                                        </p>
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
                     </div>
                 ) : (
+                    /* Level 3: Files List */
                     <div className="space-y-3">
-                        {filteredFiles.map((file) => (
-                            <motion.div
-                                key={file.id}
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                className="bg-slate-700/30 rounded-lg p-4 border border-slate-600/50 hover:border-slate-500/50 transition"
-                            >
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                                        <div className="text-3xl flex-shrink-0">
-                                            {getFileIcon(file.fileType)}
+                        {(searchQuery
+                            ? filteredFiles
+                            : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter)
+                        ).length === 0 ? (
+                            <div className="text-center py-12">
+                                <Search className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                                <p className="text-slate-400">No matching files found</p>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Bulk Actions Bar - Only for Admin */}
+                                {isAdmin && (
+                                    <div className="flex items-center justify-between bg-slate-800/60 p-3 rounded-lg border border-slate-700/50 mb-4">
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="checkbox"
+                                                checked={
+                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter)).length > 0 &&
+                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter)).every(f => selectedFileIds.includes(f.id))
+                                                }
+                                                onChange={(e) => {
+                                                    const currentFiles = searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter);
+                                                    if (e.target.checked) {
+                                                        const allIds = currentFiles.map(f => f.id);
+                                                        setSelectedFileIds(prev => [...new Set([...prev, ...allIds])]);
+                                                    } else {
+                                                        const currentIds = currentFiles.map(f => f.id);
+                                                        setSelectedFileIds(prev => prev.filter(id => !currentIds.includes(id)));
+                                                    }
+                                                }}
+                                                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-800"
+                                            />
+                                            <span className="text-sm font-medium text-slate-300">
+                                                Select All Files
+                                            </span>
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="text-white font-medium truncate">
-                                                {file.fileName}
-                                            </h3>
-                                            <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-400">
-                                                <span className="px-2 py-1 bg-blue-600/20 text-blue-400 rounded">
-                                                    {file.category}
-                                                </span>
-                                                <span>{formatFileSize(file.fileSize)}</span>
-                                                <span>•</span>
-                                                <span>{file.uploadedByEmail}</span>
-                                                <span>•</span>
-                                                <span>
-                                                    {file.uploadedAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
-                                                </span>
-                                            </div>
-                                            {file.description && (
-                                                <p className="text-sm text-slate-400 mt-1">
-                                                    {file.description}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
 
-                                    {/* Actions */}
-                                    <div className="flex items-center gap-2 flex-shrink-0">
-                                        {/* Download */}
-                                        <motion.button
-                                            whileHover={{ scale: 1.05 }}
-                                            whileTap={{ scale: 0.95 }}
-                                            onClick={() => handleDownload(file)}
-                                            className="p-2 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 transition"
-                                            title="Download"
-                                        >
-                                            <Download className="w-4 h-4" />
-                                        </motion.button>
-
-                                        {/* Delete - Admin Only */}
-                                        {isAdmin && (
+                                        {selectedFileIds.length > 0 && (
                                             <motion.button
-                                                whileHover={{ scale: 1.05 }}
-                                                whileTap={{ scale: 0.95 }}
+                                                initial={{ opacity: 0, scale: 0.9 }}
+                                                animate={{ opacity: 1, scale: 1 }}
                                                 onClick={() => {
-                                                    setFileToDelete(file);
+                                                    setFileToDelete(null); // Clear single delete state
                                                     setDeleteModalOpen(true);
                                                 }}
-                                                className="p-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition"
-                                                title="Delete"
+                                                className="flex items-center gap-2 px-3 py-1.5 bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg border border-red-500/20 transition text-sm font-medium"
                                             >
                                                 <Trash2 className="w-4 h-4" />
+                                                Delete Selected ({selectedFileIds.length})
                                             </motion.button>
                                         )}
                                     </div>
-                                </div>
-                            </motion.div>
-                        ))}
+                                )}
+
+                                {(searchQuery
+                                    ? filteredFiles
+                                    : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter)
+                                ).map((file) => (
+                                    <motion.div
+                                        key={file.id}
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        className={`bg-slate-700/30 rounded-lg p-4 border transition flex items-center gap-4 ${selectedFileIds.includes(file.id) ? 'border-blue-500/50 bg-blue-500/5' : 'border-slate-600/50 hover:border-slate-500/50'
+                                            }`}
+                                    >
+                                        {isAdmin && (
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedFileIds.includes(file.id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setSelectedFileIds(prev => [...prev, file.id]);
+                                                    } else {
+                                                        setSelectedFileIds(prev => prev.filter(id => id !== file.id));
+                                                    }
+                                                }}
+                                                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-800"
+                                            />
+                                        )}
+
+                                        <div className="flex items-start justify-between gap-4 flex-1">
+                                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                                                <div className="text-3xl flex-shrink-0">
+                                                    {getFileIcon(file.fileType)}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <h3 className="text-white font-medium truncate">
+                                                        {file.fileName}
+                                                    </h3>
+                                                    <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-400">
+                                                        <span className="px-2 py-1 bg-blue-600/20 text-blue-400 rounded">
+                                                            {file.category}
+                                                        </span>
+                                                        {file.quarter && (
+                                                            <span className="px-2 py-1 bg-emerald-600/20 text-emerald-400 rounded">
+                                                                {file.quarter}
+                                                            </span>
+                                                        )}
+                                                        <span>{formatFileSize(file.fileSize)}</span>
+                                                        <span>•</span>
+                                                        <span className="truncate max-w-[120px]">{file.uploadedByEmail}</span>
+                                                        <span>•</span>
+                                                        <span>
+                                                            {file.uploadedAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
+                                                        </span>
+                                                    </div>
+                                                    {file.description && (
+                                                        <p className="text-sm text-slate-400 mt-1">
+                                                            {file.description}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Actions */}
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                {/* Download */}
+                                                <motion.button
+                                                    whileHover={{ scale: 1.05 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                    onClick={() => handleDownload(file)}
+                                                    className="p-2 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 transition"
+                                                    title="Download"
+                                                >
+                                                    <Download className="w-4 h-4" />
+                                                </motion.button>
+
+                                                {/* Delete - Admin Only (Individual) */}
+                                                {isAdmin && (
+                                                    <motion.button
+                                                        whileHover={{ scale: 1.05 }}
+                                                        whileTap={{ scale: 0.95 }}
+                                                        onClick={() => {
+                                                            setFileToDelete(file);
+                                                            setSelectedFileIds([]); // Clear bulk selection if deleting single
+                                                            setDeleteModalOpen(true);
+                                                        }}
+                                                        className="p-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </motion.button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </>
+                        )}
                     </div>
                 )}
             </motion.div>
 
             {/* Delete Confirmation Modal */}
             <AnimatePresence>
-                {deleteModalOpen && fileToDelete && (
+                {deleteModalOpen && (fileToDelete || selectedFileIds.length > 0) && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-                        onClick={() => setDeleteModalOpen(false)}
+                        onClick={() => {
+                            if (!isBulkDeleting) setDeleteModalOpen(false);
+                        }}
                     >
                         <motion.div
                             initial={{ scale: 0.9, opacity: 0 }}
@@ -621,33 +878,99 @@ export function FileManagement() {
                             onClick={(e) => e.stopPropagation()}
                         >
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-xl font-semibold text-white">Delete File</h3>
+                                <h3 className="text-xl font-semibold text-white">
+                                    {selectedFileIds.length > 0 ? 'Delete Multiple Files' : 'Delete File'}
+                                </h3>
                                 <button
                                     onClick={() => setDeleteModalOpen(false)}
-                                    className="p-1 hover:bg-slate-700 rounded-lg transition"
+                                    disabled={isBulkDeleting}
+                                    className="p-1 hover:bg-slate-700 rounded-lg transition disabled:opacity-50"
                                 >
                                     <X className="w-5 h-5 text-slate-400" />
                                 </button>
                             </div>
 
                             <p className="text-slate-300 mb-6">
-                                Are you sure you want to delete{' '}
-                                <span className="font-medium text-white">{fileToDelete.fileName}</span>?
-                                This action cannot be undone.
+                                {selectedFileIds.length > 0 ? (
+                                    <>Are you sure you want to delete <span className="font-medium text-white">{selectedFileIds.length} selected files</span>?</>
+                                ) : (
+                                    <>Are you sure you want to delete <span className="font-medium text-white">{fileToDelete?.fileName}</span>?</>
+                                )}
+                                {' '}This action cannot be undone and will remove all file data.
                             </p>
 
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => setDeleteModalOpen(false)}
-                                    className="flex-1 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition"
+                                    disabled={isBulkDeleting}
+                                    className="flex-1 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition disabled:opacity-50"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleDelete}
-                                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                                    disabled={isBulkDeleting}
+                                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
                                 >
-                                    Delete
+                                    {isBulkDeleting ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Deleting...
+                                        </>
+                                    ) : (
+                                        'Delete'
+                                    )}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Upload Success Modal */}
+            <AnimatePresence>
+                {showSuccessModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4"
+                        onClick={() => setShowSuccessModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            className="bg-slate-800 rounded-2xl p-8 max-w-sm w-full border border-slate-700 text-center shadow-2xl relative overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Decorative Background */}
+                            <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl" />
+                            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl" />
+
+                            <div className="relative z-10">
+                                <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-emerald-500/30">
+                                    <motion.div
+                                        initial={{ scale: 0 }}
+                                        animate={{ scale: 1 }}
+                                        transition={{ type: "spring", stiffness: 200, damping: 10, delay: 0.2 }}
+                                    >
+                                        <svg className="w-10 h-10 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </motion.div>
+                                </div>
+
+                                <h3 className="text-2xl font-bold text-white mb-2">Upload Berhasil!</h3>
+                                <p className="text-slate-400 mb-6 px-4">
+                                    File <span className="text-emerald-400 font-medium break-all">{uploadedFileName}</span> telah berhasil disimpan ke sistem.
+                                </p>
+
+                                <button
+                                    onClick={() => setShowSuccessModal(false)}
+                                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-emerald-500/20 active:scale-[0.98]"
+                                >
+                                    Selesai
                                 </button>
                             </div>
                         </motion.div>
@@ -656,4 +979,6 @@ export function FileManagement() {
             </AnimatePresence>
         </div>
     );
-}
+};
+
+export default FileManagement;
