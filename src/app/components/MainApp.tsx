@@ -156,23 +156,6 @@ export function MainApp() {
               </motion.button>
             )}
 
-            {/* ✅ Service Report - Admin, TDE, CBRE */}
-            {(isAdmin || isTDEorCBRE) && (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setActiveTab('service')}
-                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'service'
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
-                  : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
-                  }`}
-              >
-                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">Service Report</span>
-                <span className="sm:hidden">Service</span>
-              </motion.button>
-            )}
-
             {/* ✅ File Management - Admin, Engineers */}
             {(isAdmin || (!isTDEorCBRE)) && (
               <motion.button

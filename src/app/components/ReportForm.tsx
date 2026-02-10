@@ -45,6 +45,24 @@ const DOCK_LEVELER_TEMPLATE = [
   'Resitance winding - Grounding W-G',
 ];
 
+const FCU_TEMPLATE = [
+  'R-S',
+  'R-T',
+  'S-T',
+  'R-N',
+  'S-N',
+  'T-N',
+  'Current R',
+  'Current S',
+  'Current T',
+  'Checking Vibration',
+  'Checking Air Flow & Temperature',
+  'Checking Humidity',
+  'Checking Noises',
+  'Pressure Supply',
+  'Pressure Return',
+];
+
 export function ReportForm() {
   const { user, companyType } = useAuth();
   const [maintenanceName, setMaintenanceName] = useState('');
@@ -61,18 +79,31 @@ export function ReportForm() {
 
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [hasAppliedTemplate, setHasAppliedTemplate] = useState(false); // ✅ NEW: Track template application
+  const [showAddCardModal, setShowAddCardModal] = useState(false); // ✅ NEW: Modal state
+  const [cardCountInput, setCardCountInput] = useState('1'); // ✅ NEW: Input for card count
 
-  // ✅ Auto-apply template for dockleveler@gmail.com
+  // ✅ Auto-apply template for specific accounts
   useEffect(() => {
-    if (user?.email === 'dockleveler@gmail.com' && !hasAppliedTemplate) {
-      const templateCards = DOCK_LEVELER_TEMPLATE.map((desc, index) => ({
-        id: (index + 1).toString(),
-        photo: null,
-        description: desc
-      }));
-      setCards(templateCards);
-      setHasAppliedTemplate(true);
-      toast.info('Template deskripsi Dock Leveler otomatis dimuat');
+    if (!hasAppliedTemplate) {
+      if (user?.email === 'dockleveler@gmail.com') {
+        const templateCards = DOCK_LEVELER_TEMPLATE.map((desc, index) => ({
+          id: (index + 1).toString(),
+          photo: null,
+          description: desc
+        }));
+        setCards(templateCards);
+        setHasAppliedTemplate(true);
+        toast.info('Template deskripsi Dock Leveler otomatis dimuat');
+      } else if (user?.email === 'fcu@gmail.com') {
+        const templateCards = FCU_TEMPLATE.map((desc, index) => ({
+          id: (index + 1).toString(),
+          photo: null,
+          description: desc
+        }));
+        setCards(templateCards);
+        setHasAppliedTemplate(true);
+        toast.info('Template deskripsi FCU otomatis dimuat');
+      }
     }
   }, [user?.email, hasAppliedTemplate]);
 
@@ -197,9 +228,19 @@ export function ReportForm() {
     ));
   };
 
-  const addCard = () => {
-    const newId = (Math.max(...cards.map(c => parseInt(c.id))) + 1).toString();
-    setCards([...cards, { id: newId, photo: null, description: '' }]);
+  const addCard = (count: number = 1) => {
+    const newCards = [];
+    let currentMaxId = Math.max(...cards.map(c => parseInt(c.id)));
+
+    for (let i = 0; i < count; i++) {
+      const newId = (currentMaxId + 1 + i).toString();
+      newCards.push({ id: newId, photo: null, description: '' });
+    }
+
+    setCards([...cards, ...newCards]);
+    toast.success(`Berhasil menambahkan ${count} card baru!`);
+    setShowAddCardModal(false);
+    setCardCountInput('1');
   };
 
   const removeCard = (id: string) => {
@@ -920,7 +961,7 @@ export function ReportForm() {
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={addCard}
+              onClick={() => setShowAddCardModal(true)}
               className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition shadow-lg shadow-blue-500/20 text-xs sm:text-sm whitespace-nowrap"
             >
               <Plus className="w-4 h-4" />
@@ -1029,16 +1070,7 @@ export function ReportForm() {
         </div>
 
         {/* Export Buttons */}
-        <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleExport}
-            className="flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-lg font-semibold text-base sm:text-lg shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all"
-          >
-            <FileDown className="w-5 h-5 sm:w-6 sm:h-6" />
-            <span>Export to Excel</span>
-          </motion.button>
+        <div className="flex justify-center mt-8">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -1050,6 +1082,66 @@ export function ReportForm() {
           </motion.button>
         </div>
       </div>
+
+      {/* Add Card Modal */}
+      <AnimatePresence>
+        {showAddCardModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+            onClick={() => setShowAddCardModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-slate-800 rounded-2xl p-6 max-w-sm w-full border border-slate-700 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mb-4">
+                <Plus className="w-6 h-6 text-blue-400" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Tambah Card Baru</h3>
+              <p className="text-slate-400 text-sm mb-6">Masukkan jumlah card yang ingin ditambahkan</p>
+
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={cardCountInput}
+                onChange={(e) => setCardCountInput(e.target.value)}
+                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white text-center text-lg font-semibold focus:ring-2 focus:ring-blue-500/50 outline-none mb-6"
+                placeholder="Jumlah card"
+                autoFocus
+              />
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowAddCardModal(false)}
+                  className="flex-1 py-2.5 bg-slate-700 text-white rounded-xl hover:bg-slate-600 transition"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={() => {
+                    const count = parseInt(cardCountInput);
+                    if (count > 0 && count <= 50) {
+                      addCard(count);
+                    } else {
+                      toast.error('Jumlah harus antara 1-50');
+                    }
+                  }}
+                  className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition font-semibold"
+                >
+                  OK
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Image Editor Modal */}
       <AnimatePresence>

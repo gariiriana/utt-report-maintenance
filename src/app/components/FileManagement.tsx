@@ -29,11 +29,15 @@ import { useAuth } from './AuthContext';
 const FILE_CATEGORIES = [
     'Laporan Harian',
     'Laporan Bulanan',
+    'Monthly',
+    'CM',
+    'SR',
     'Checklist Alat',
     'Checklist APD',
     'PTW',
     'JSEA',
     'MOP',
+    'SLA/SLG',
     'Custom',
 ];
 
@@ -583,33 +587,33 @@ export function FileManagement() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
-                className="bg-slate-800/40 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 mb-6"
+                className="bg-slate-800/40 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-slate-700/50 mb-6"
             >
-                <div className="flex flex-col sm:flex-row gap-4">
-                    {/* Search */}
-                    <div className="flex-1">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
+                    {/* Search - Takes more space on tablet+ */}
+                    <div className="md:col-span-6 lg:col-span-7">
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
                             <input
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder="Search files..."
-                                className="w-full pl-10 pr-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm sm:text-base placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
                             />
                         </div>
                     </div>
 
                     {/* Category Filter */}
-                    <div className="sm:w-64">
+                    <div className="md:col-span-3 lg:col-span-3">
                         <div className="relative">
-                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                             <select
                                 value={filterCategory}
                                 onChange={(e) => setFilterCategory(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none cursor-pointer"
+                                className="w-full pl-9 pr-4 py-2 sm:py-2.5 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none cursor-pointer outline-none transition"
                             >
-                                <option value="All">All Categories</option>
+                                <option value="All">Semua Kategori</option>
                                 {FILE_CATEGORIES.filter((cat) => cat !== 'Custom').map((cat) => (
                                     <option key={cat} value={cat}>
                                         {cat}
@@ -620,15 +624,15 @@ export function FileManagement() {
                     </div>
 
                     {/* Year Filter */}
-                    <div className="sm:w-48">
+                    <div className="md:col-span-3 lg:col-span-2">
                         <div className="relative">
-                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                             <select
                                 value={filterYear}
                                 onChange={(e) => setFilterYear(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none cursor-pointer"
+                                className="w-full pl-9 pr-4 py-2 sm:py-2.5 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none cursor-pointer outline-none transition"
                             >
-                                <option value="All">All Years</option>
+                                <option value="All">Semua Tahun</option>
                                 {YEARS.map((y) => (
                                     <option key={y} value={y}>
                                         {y}
@@ -647,27 +651,27 @@ export function FileManagement() {
                 transition={{ delay: 0.2 }}
                 className="bg-slate-800/40 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50"
             >
-                <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+                    <h2 className="text-lg sm:text-xl font-semibold text-white flex items-center gap-2 min-w-0">
                         {searchQuery ? (
                             <>
-                                <Search className="w-5 h-5 text-blue-400" />
-                                Search Results ({filteredFiles.length})
+                                <Search className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                                <span className="truncate">Search Results ({filteredFiles.length})</span>
                             </>
                         ) : selectedQuarter ? (
                             <>
-                                <FolderOpen className="w-5 h-5 text-blue-400" />
-                                {selectedFolder} / {selectedQuarter} ({filteredFiles.filter(a => a.category === selectedFolder && a.quarter === selectedQuarter).length})
+                                <FolderOpen className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                                <span className="truncate">{selectedFolder} / {selectedQuarter} ({filteredFiles.filter(a => a.category === selectedFolder && a.quarter === selectedQuarter).length})</span>
                             </>
                         ) : selectedFolder ? (
                             <>
-                                <FolderOpen className="w-5 h-5 text-blue-400" />
-                                {selectedFolder}
+                                <FolderOpen className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                                <span className="truncate">{selectedFolder}</span>
                             </>
                         ) : (
                             <>
-                                <FolderOpen className="w-5 h-5 text-emerald-400" />
-                                Categories ({[...new Set(files.map(f => f.category))].length})
+                                <FolderOpen className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                                <span>Categories ({[...new Set(files.map(f => f.category))].length})</span>
                             </>
                         )}
                     </h2>
@@ -678,7 +682,7 @@ export function FileManagement() {
                                 if (selectedQuarter) setSelectedQuarter(null);
                                 else setSelectedFolder(null);
                             }}
-                            className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
+                            className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1.5 transition-colors whitespace-nowrap self-end sm:self-auto"
                         >
                             <X className="w-4 h-4" />
                             Back to {selectedQuarter ? 'Quarters' : 'Folders'}
@@ -814,66 +818,78 @@ export function FileManagement() {
                                         key={file.id}
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
-                                        className={`bg-slate-700/30 rounded-lg p-4 border transition flex items-center gap-4 ${selectedFileIds.includes(file.id) ? 'border-blue-500/50 bg-blue-500/5' : 'border-slate-600/50 hover:border-slate-500/50'
+                                        className={`bg-slate-700/30 rounded-xl p-3 sm:p-4 border transition flex items-start sm:items-center gap-3 sm:gap-4 ${selectedFileIds.includes(file.id) ? 'border-blue-500/50 bg-blue-500/5' : 'border-slate-600/50 hover:border-slate-500/50'
                                             }`}
                                     >
                                         {isAdmin && (
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedFileIds.includes(file.id)}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) {
-                                                        setSelectedFileIds(prev => [...prev, file.id]);
-                                                    } else {
-                                                        setSelectedFileIds(prev => prev.filter(id => id !== file.id));
-                                                    }
-                                                }}
-                                                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-800"
-                                            />
+                                            <div className="mt-1 sm:mt-0">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedFileIds.includes(file.id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedFileIds(prev => [...prev, file.id]);
+                                                        } else {
+                                                            setSelectedFileIds(prev => prev.filter(id => id !== file.id));
+                                                        }
+                                                    }}
+                                                    className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-800"
+                                                />
+                                            </div>
                                         )}
 
-                                        <div className="flex items-start justify-between gap-4 flex-1">
+                                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 flex-1 min-w-0">
                                             <div className="flex items-start gap-3 flex-1 min-w-0">
-                                                <div className="text-3xl flex-shrink-0">
+                                                <div className="text-2xl sm:text-3xl flex-shrink-0 mt-0.5 sm:mt-0">
                                                     {getFileIcon(file.fileType)}
                                                 </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <h3 className="text-white font-medium truncate">
+                                                <div className="flex-1 min-w-0 overflow-hidden">
+                                                    <h3 className="text-white font-medium text-sm sm:text-base truncate break-words">
                                                         {file.fileName}
                                                     </h3>
-                                                    <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-400">
-                                                        <span className="px-2 py-1 bg-blue-600/20 text-blue-400 rounded">
-                                                            {file.category}
-                                                        </span>
-                                                        {file.quarter && (
-                                                            <span className="px-2 py-1 bg-emerald-600/20 text-emerald-400 rounded">
-                                                                {file.quarter}
+                                                    <div className="mt-2 space-y-2">
+                                                        {/* Badges Row */}
+                                                        <div className="flex flex-wrap items-center gap-1.5">
+                                                            <span className="px-2 py-0.5 bg-blue-600/20 text-blue-400 rounded border border-blue-500/20 text-[11px] sm:text-xs font-medium">
+                                                                {file.category}
                                                             </span>
-                                                        )}
-                                                        <span>{formatFileSize(file.fileSize)}</span>
-                                                        <span>•</span>
-                                                        <span className="truncate max-w-[120px]">{file.uploadedByEmail}</span>
-                                                        <span>•</span>
-                                                        <span>
-                                                            {file.uploadedAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
-                                                        </span>
+                                                            {file.quarter && (
+                                                                <span className="px-2 py-0.5 bg-emerald-600/20 text-emerald-400 rounded border border-emerald-500/20 text-[11px] sm:text-xs font-medium">
+                                                                    {file.quarter}
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Info Row - Desktop: Show all | Mobile: Hide email */}
+                                                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] sm:text-xs text-slate-400">
+                                                            <span className="font-medium text-slate-300">{formatFileSize(file.fileSize)}</span>
+                                                            <span className="text-slate-600">•</span>
+                                                            <span>
+                                                                {file.uploadedAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
+                                                            </span>
+                                                            {/* Email only visible on desktop */}
+                                                            <span className="hidden sm:inline text-slate-600">•</span>
+                                                            <span className="hidden sm:inline truncate max-w-[150px] italic opacity-70">
+                                                                {file.uploadedByEmail}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                     {file.description && (
-                                                        <p className="text-sm text-slate-400 mt-1">
-                                                            {file.description}
+                                                        <p className="text-xs text-slate-500 mt-2.5 italic line-clamp-1 border-l-2 border-slate-700 pl-2.5 opacity-80">
+                                                            "{file.description}"
                                                         </p>
                                                     )}
                                                 </div>
                                             </div>
 
                                             {/* Actions */}
-                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                            <div className="flex items-center gap-2 self-end sm:self-auto ml-auto sm:ml-0">
                                                 {/* Download */}
                                                 <motion.button
                                                     whileHover={{ scale: 1.05 }}
                                                     whileTap={{ scale: 0.95 }}
                                                     onClick={() => handleDownload(file)}
-                                                    className="p-2 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 transition"
+                                                    className="p-2 sm:p-2.5 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 transition border border-blue-500/10"
                                                     title="Download"
                                                 >
                                                     <Download className="w-4 h-4" />
@@ -889,7 +905,7 @@ export function FileManagement() {
                                                             setSelectedFileIds([]); // Clear bulk selection if deleting single
                                                             setDeleteModalOpen(true);
                                                         }}
-                                                        className="p-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition"
+                                                        className="p-2 sm:p-2.5 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition border border-red-500/10"
                                                         title="Delete"
                                                     >
                                                         <Trash2 className="w-4 h-4" />

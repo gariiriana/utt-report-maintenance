@@ -26,6 +26,7 @@ import {
     writeBatch,
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
+import { safeStorage } from '@/lib/safeStorage';
 
 // Maintenance Categories for Service Reports
 const MAINTENANCE_TYPES = [
@@ -72,6 +73,10 @@ const MAINTENANCE_TYPES = [
 const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
 const YEARS = ['2025', '2026', '2027', '2028', '2029', '2030'];
 
+// NEW: Categories for TDE/CBRE Navigation
+const CATEGORIES = ['SR', 'Monthly', 'CM', 'SLA/SLG'] as const;
+type Category = typeof CATEGORIES[number];
+
 // Allowed file types (PDF, Excel, Word)
 const ALLOWED_FILE_TYPES = [
     'application/pdf',
@@ -92,6 +97,7 @@ interface ServiceReportData {
     maintenanceType: string;
     quarter: string;
     year: string;
+    category: string; // NEW: SR, Monthly, CM, SLA/SLG
     uploadedBy: string;
     uploadedByEmail: string;
     uploadedAt: any;
@@ -126,7 +132,7 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
     const [navPath, setNavPath] = useState<{ type: string | null; quarter: string | null }>({ type: null, quarter: null });
 
     const [categoryLastSeen, setCategoryLastSeen] = useState<Record<string, number>>(() => {
-        const saved = localStorage.getItem('service_report_last_seen_categories');
+        const saved = safeStorage.getItem('service_report_last_seen_categories');
         return saved ? JSON.parse(saved) : {};
     });
 
@@ -134,7 +140,7 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
         const now = Date.now();
         setCategoryLastSeen(prev => {
             const updated = { ...prev, [categoryName]: now };
-            localStorage.setItem('service_report_last_seen_categories', JSON.stringify(updated));
+            safeStorage.setItem('service_report_last_seen_categories', JSON.stringify(updated));
             return updated;
         });
     }, []);
@@ -156,7 +162,8 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
 
     const [searchQuery, setSearchQuery] = useState('');
     const [filterQuarter, setFilterQuarter] = useState('All');
-    const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
+    const [filterYear, setFilterYear] = useState('All');
+    const [activeCategory, setActiveCategory] = useState<Category>('SR'); // NEW: For navbar tabs
 
     // Modal state
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -221,6 +228,7 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
                 maintenanceType: selectedMaintenance,
                 quarter: selectedQuarter,
                 year: selectedYear,
+                category: 'SR', // NEW: Default category untuk Service Report
                 uploadedBy: user.uid,
                 uploadedByEmail: user.email,
                 uploadedAt: serverTimestamp(),
@@ -312,7 +320,8 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
         const matchesYearFilter = filterYear === 'All' || report.year === filterYear;
         const matchesNavType = !navPath.type || report.maintenanceType === navPath.type;
         const matchesNavQuarter = !navPath.quarter || report.quarter === navPath.quarter;
-        return matchesSearch && matchesQuarterFilter && matchesYearFilter && matchesNavType && matchesNavQuarter;
+        const matchesCategory = report.category === activeCategory; // NEW: Filter by activeCategory
+        return matchesSearch && matchesQuarterFilter && matchesYearFilter && matchesCategory && matchesNavType && matchesNavQuarter;
     });
 
 
@@ -507,16 +516,34 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
 
             {/* Navigation & Browser */}
             <div className="space-y-6">
+                {/* NEW: Category Tabs for TDE/CBRE */}
+                {isTDEorCBRE && !navPath.type && (
+                    <div className="flex gap-3 border-b border-slate-700/50 pb-1 overflow-x-auto">
+                        {CATEGORIES.map((cat) => (
+                            <button
+                                key={cat}
+                                onClick={() => setActiveCategory(cat)}
+                                className={`px-6 py-3 rounded-t-xl transition-all font-medium whitespace-nowrap ${activeCategory === cat
+                                    ? 'bg-blue-600 text-white shadow-lg'
+                                    : 'bg-slate-800/50 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                                    }`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
                 {/* Breadcrumbs */}
                 <div className="flex items-center gap-3 text-sm overflow-x-auto pb-2 scrollbar-none">
-                    <button
-                        onClick={() => setNavPath({ type: null, quarter: null })}
-                        className={`px-4 py-2 rounded-xl transition-all ${!navPath.type ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-800/50 text-slate-400 hover:text-slate-200'}`}
-                    >
-                        Semua Kategori
-                    </button>
                     {navPath.type && (
                         <>
+                            <button
+                                onClick={() => setNavPath({ type: null, quarter: null })}
+                                className="px-4 py-2 rounded-xl transition-all bg-slate-800/50 text-slate-400 hover:text-slate-200"
+                            >
+                                Back to {activeCategory}
+                            </button>
                             <ChevronRight className="w-4 h-4 text-slate-600 flex-shrink-0" />
                             <button
                                 onClick={() => setNavPath(prev => ({ ...prev, quarter: null }))}
@@ -552,8 +579,36 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
 
                 {/* Sub-Folders / Files View */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {!navPath.type ? (
-                        // Type Folders View
+                    {/* Conditional: Monthly & SLA/SLG skip maintenance folder, langsung ke quarter */}
+                    {(activeCategory === 'Monthly' || activeCategory === 'SLA/SLG') && !navPath.quarter ? (
+                        // Quarter Folders View (Langsung untuk Monthly & SLA/SLG)
+                        quarterSummary.map(item => (
+                            <motion.button
+                                key={item.name}
+                                layoutId={`quarter-${item.name}`}
+                                onClick={() => {
+                                    setNavPath({ type: activeCategory, quarter: item.name });
+                                    markCategoryAsSeen(`${activeCategory}_${item.name}`);
+                                }}
+                                className="group relative bg-slate-800/30 hover:bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6 text-left transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-emerald-500/10"
+                            >
+                                {item.hasNew && (
+                                    <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-lg shadow-red-500/40 animate-pulse border-2 border-slate-900 z-10">
+                                        NEW
+                                    </div>
+                                )}
+                                <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-emerald-500/20 transition-colors">
+                                    <FolderOpen className="w-7 h-7 text-emerald-400" />
+                                </div>
+                                <h3 className="text-white font-bold text-lg mb-2">Kuartal {item.name}</h3>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-slate-500">{item.count} File</span>
+                                    <ChevronRight className="w-5 h-5 text-slate-700 group-hover:text-emerald-500 transition-colors" />
+                                </div>
+                            </motion.button>
+                        ))
+                    ) : !navPath.type ? (
+                        // Type Folders View (Untuk SR & CM)
                         maintenanceSummary.map(item => (
                             <motion.button
                                 key={item.name}

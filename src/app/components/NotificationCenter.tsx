@@ -12,6 +12,7 @@ import {
 import { db } from '@/lib/firebase';
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { safeStorage } from '@/lib/safeStorage';
 
 interface NotificationItem {
     id: string;
@@ -34,7 +35,7 @@ export function NotificationCenter({ onNotificationClick }: NotificationCenterPr
 
     // Initial load for last seen timestamp
     const [lastSeen, setLastSeen] = useState<number>(() => {
-        const saved = localStorage.getItem('service_report_last_seen');
+        const saved = safeStorage.getItem('service_report_last_seen');
         return saved ? parseInt(saved) : Date.now();
     });
 
@@ -83,7 +84,7 @@ export function NotificationCenter({ onNotificationClick }: NotificationCenterPr
             // Mark all as seen when opening
             const now = Date.now();
             setLastSeen(now);
-            localStorage.setItem('service_report_last_seen', now.toString());
+            safeStorage.setItem('service_report_last_seen', now.toString());
             setUnreadCount(0);
         }
         setIsOpen(!isOpen);

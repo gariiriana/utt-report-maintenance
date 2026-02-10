@@ -37,6 +37,9 @@ interface CorrectiveReport {
     location: string;
     photoBase64: string;
     photoDescription: string;
+    quarter: string; // NEW
+    year: string; // NEW
+    category: string; // NEW: for filtering
     reportedBy: string;
     reportedByEmail: string;
     reportedAt: any;
@@ -62,6 +65,8 @@ export function CorrectiveMaintenance() {
         location: '',
         photoBase64: '',
         photoDescription: '',
+        quarter: 'Q1', // NEW
+        year: new Date().getFullYear().toString(), // NEW
     });
 
     const [editingPhoto, setEditingPhoto] = useState(false);
@@ -160,6 +165,7 @@ export function CorrectiveMaintenance() {
         try {
             await addDoc(collection(db, 'corrective_reports'), {
                 ...formData,
+                category: 'CM', // NEW: untuk filtering di Service Report
                 reportedBy: user.uid,
                 reportedByEmail: user.email,
                 reportedAt: serverTimestamp(),
@@ -175,6 +181,8 @@ export function CorrectiveMaintenance() {
                 location: '',
                 photoBase64: '',
                 photoDescription: '',
+                quarter: 'Q1',
+                year: new Date().getFullYear().toString(),
             });
         } catch (error) {
             console.error('Error creating report:', error);
@@ -323,6 +331,40 @@ export function CorrectiveMaintenance() {
                                             placeholder="e.g. Fan Belt, Fuse"
                                             className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-orange-500 outline-none"
                                         />
+                                    </div>
+                                </div>
+
+                                {/* NEW: Quarter & Year */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm text-slate-400 mb-1">Quarter *</label>
+                                        <select
+                                            required
+                                            value={formData.quarter}
+                                            onChange={(e) => setFormData({ ...formData, quarter: e.target.value })}
+                                            className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-orange-500 outline-none"
+                                        >
+                                            <option value="Q1">Q1</option>
+                                            <option value="Q2">Q2</option>
+                                            <option value="Q3">Q3</option>
+                                            <option value="Q4">Q4</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm text-slate-400 mb-1">Year *</label>
+                                        <select
+                                            required
+                                            value={formData.year}
+                                            onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+                                            className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-orange-500 outline-none"
+                                        >
+                                            <option value="2025">2025</option>
+                                            <option value="2026">2026</option>
+                                            <option value="2027">2027</option>
+                                            <option value="2028">2028</option>
+                                            <option value="2029">2029</option>
+                                            <option value="2030">2030</option>
+                                        </select>
                                     </div>
                                 </div>
 
