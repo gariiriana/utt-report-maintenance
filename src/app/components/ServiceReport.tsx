@@ -66,7 +66,7 @@ const MAINTENANCE_TYPES = [
     'Pressurization & Degassing',
     'Pumps',
     'Water Softener',
-    'Biosduct',
+    'Busduct',
     'Physical Cooling Automation'
 ];
 
@@ -325,8 +325,9 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
     });
 
 
+
     const maintenanceSummary = MAINTENANCE_TYPES.map(type => {
-        const categoryReports = reports.filter(r => r.maintenanceType === type);
+        const categoryReports = reports.filter(r => r.maintenanceType === type && r.category === activeCategory);
         const count = categoryReports.filter(r =>
             (filterYear === 'All' || r.year === filterYear) &&
             (filterQuarter === 'All' || r.quarter === filterQuarter)
@@ -349,7 +350,7 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
     });
 
     const quarterSummary = QUARTERS.map(q => {
-        const categoryQuarterReports = reports.filter(r => r.maintenanceType === navPath.type && r.quarter === q);
+        const categoryQuarterReports = reports.filter(r => r.maintenanceType === navPath.type && r.quarter === q && r.category === activeCategory);
         const count = categoryQuarterReports.filter(r => filterYear === 'All' || r.year === filterYear).length;
         const lastSeenTime = categoryLastSeen[`${navPath.type}_${q}`] || categoryLastSeen[navPath.type || ''] || 0;
         // Note: Fallback to category last seen for quarters if not specifically set

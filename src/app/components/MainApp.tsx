@@ -88,14 +88,17 @@ export function MainApp() {
               </motion.button>
             </div>
 
-            {/* Mobile Menu Button */}
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 bg-slate-800/50 text-slate-300 rounded-lg border border-slate-700/50"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </motion.button>
+            {/* Mobile Notification + Menu Button */}
+            <div className="md:hidden flex items-center gap-2">
+              {isTDEorCBRE && <NotificationCenter onNotificationClick={handleNotificationClick} />}
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-2 bg-slate-800/50 text-slate-300 rounded-lg border border-slate-700/50"
+              >
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </motion.button>
+            </div>
           </div>
 
           {/* Mobile Dropdown Menu */}
@@ -108,7 +111,7 @@ export function MainApp() {
                 className="md:hidden overflow-hidden"
               >
                 <div className="pt-4 pb-2 space-y-4 border-t border-slate-700/50 mt-3">
-                  <div className="flex items-center justify-between px-3">
+                  <div className="flex items-center px-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
                         <Shield className="w-5 h-5" />
@@ -118,7 +121,6 @@ export function MainApp() {
                         <p className="text-sm font-medium text-slate-300 truncate max-w-[150px]">{user?.email}</p>
                       </div>
                     </div>
-                    {isTDEorCBRE && <NotificationCenter onNotificationClick={handleNotificationClick} />}
                   </div>
                   <motion.button
                     whileTap={{ scale: 0.98 }}
@@ -156,39 +158,52 @@ export function MainApp() {
               </motion.button>
             )}
 
-            {/* ✅ File Management - Admin, Engineers */}
-            {(isAdmin || (!isTDEorCBRE)) && (
+            {/* ✅ Service Report - Admin, TDE, CBRE */}
+            {(isAdmin || isTDEorCBRE) && (
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => setActiveTab('files')}
-                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'files'
-                  ? 'bg-gradient-to-r from-orange-600 to-orange-700 text-white shadow-lg shadow-orange-500/25'
+                onClick={() => setActiveTab('service')}
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'service'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25'
                   : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
                   }`}
               >
-                <Files className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">File Management</span>
-                <span className="sm:hidden">Files</span>
+                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="hidden sm:inline">Service Report</span>
+                <span className="sm:hidden">Service</span>
               </motion.button>
             )}
 
-            {/* ✅ Corrective Maintenance - Admin, Engineers */}
-            {(isAdmin || (!isTDEorCBRE)) && (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setActiveTab('corrective')}
-                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'corrective'
-                  ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-500/25'
-                  : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
-                  }`}
-              >
-                <PenTool className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">Corrective Maint.</span>
-                <span className="sm:hidden">CM</span>
-              </motion.button>
-            )}
+            {/* ✅ File Management - Everyone */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setActiveTab('files')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'files'
+                ? 'bg-gradient-to-r from-orange-600 to-orange-700 text-white shadow-lg shadow-orange-500/25'
+                : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
+                }`}
+            >
+              <Files className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">File Management</span>
+              <span className="sm:hidden">Files</span>
+            </motion.button>
+
+            {/* ✅ Corrective Maintenance - Everyone */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setActiveTab('corrective')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'corrective'
+                ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-500/25'
+                : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
+                }`}
+            >
+              <PenTool className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Corrective Maint.</span>
+              <span className="sm:hidden">CM</span>
+            </motion.button>
 
             {/* ✅ Create Report - HANYA untuk non-admin (Engineers) */}
             {(!isAdmin && !isTDEorCBRE) && (
