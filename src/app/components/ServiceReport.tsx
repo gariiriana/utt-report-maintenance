@@ -62,6 +62,8 @@ const MAINTENANCE_TYPES = [
     'Chiller',
     'Cooling Tower',
     'ATS',
+    'Cooling pump',
+    'Exhaust Fan',
     'Transformer',
     'Generator & Fuel system',
     'MV and RMU panel',
@@ -166,7 +168,8 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
         if (initialNav) {
             setNavPath({
                 type: initialNav.type,
-                quarter: initialNav.quarter
+                quarter: initialNav.quarter,
+                maintenanceType: null
             });
             setFilterYear(initialNav.year);
             // Mark as seen so the red badge disappears immediately
@@ -685,7 +688,7 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
                 {/* Breadcrumbs */}
                 <div className="flex items-center gap-3 text-sm overflow-x-auto pb-2 scrollbar-none">
                     <button
-                        onClick={() => setNavPath({ type: null, quarter: null })}
+                        onClick={() => setNavPath({ type: null, quarter: null, maintenanceType: null })}
                         className={`px-4 py-2 rounded-xl transition-all ${!navPath.type ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-800/50 text-slate-400 hover:text-slate-200'}`}
                     >
                         Semua Kategori
@@ -752,7 +755,7 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
                                                 key={item.name}
                                                 layoutId={`folder-${item.name}`}
                                                 onClick={() => {
-                                                    setNavPath({ type: item.name, quarter: null });
+                                                    setNavPath({ type: item.name, quarter: null, maintenanceType: null });
                                                     markCategoryAsSeen(item.name);
                                                 }}
                                                 className="group relative bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-6 text-left transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-emerald-500/10"
@@ -785,7 +788,7 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
                                             key={item.name}
                                             layoutId={`folder-${item.name}`}
                                             onClick={() => {
-                                                setNavPath({ type: item.name, quarter: null });
+                                                setNavPath({ type: item.name, quarter: null, maintenanceType: null });
                                                 markCategoryAsSeen(item.name);
                                             }}
                                             className="group relative bg-slate-800/30 hover:bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6 text-left transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-blue-500/10"

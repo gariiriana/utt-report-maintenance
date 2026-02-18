@@ -21,8 +21,7 @@ import {
     doc,
     serverTimestamp,
     getDocs,
-    writeBatch,
-    where
+    writeBatch
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 
@@ -61,6 +60,8 @@ const MAINTENANCE_TYPES = [
     'Chiller',
     'Cooling Tower',
     'ATS',
+    'Cooling pump',
+    'Exhaust Fan',
     'Transformer',
     'Generator & Fuel system',
     'MV and RMU panel',
@@ -1067,7 +1068,7 @@ export function FileManagement() {
 
             {/* Delete Confirmation Modal */}
             <AnimatePresence>
-                {deleteModalOpen && (fileToDelete || selectedFileIds.length > 0) && (
+                {deleteModalOpen && (fileToDelete || selectedFileIds.length > 0 || isDeletingAllJSEA) && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
