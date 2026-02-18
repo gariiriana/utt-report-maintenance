@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Upload, FileDown, Activity, Clock, Camera, FileText, Database, HardDrive, FileType, Scissors } from 'lucide-react';
+import { Plus, Trash2, Upload, Activity, Clock, Camera, FileText, Database, HardDrive, FileType, Scissors } from 'lucide-react';
 import { ImageEditor } from './ImageEditor';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
@@ -10,7 +10,7 @@ import logoDwimitra from '@/assets/a6129221f456afd6fd88d74c324473e495bdd7a8.png'
 import logoNeutraDC from '@/assets/005ac597864c02a96c9add5c6e054d23b8cfafbe.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
-import ExcelJS from 'exceljs';
+
 import { jsPDF } from 'jspdf';
 import { compressImage, compressBase64Image } from '@/lib/imageCompression';
 
@@ -20,48 +20,6 @@ interface PhotoCard {
   photoBase64?: string;
   description: string;
 }
-
-const DOCK_LEVELER_TEMPLATE = [
-  'Lubrikasi Hinge Dock Leveler',
-  'Cek Visual Kabel Motor Dock Leveler',
-  'Lubrikasi Hinge Dock Leveler',
-  'Check Visual Power Motor Dock Leveler',
-  'Cleaning Kabel Hidrolik',
-  'Setting Dock Leveler (Memasang Braket Besi)',
-  'Cek Visual Rubber Safety Road Blocker',
-  'Set up Hydrolic Dock Leveler',
-  'Cek Visual Oli Hidrolic Dock Leveler',
-  'Cek Tegangan Voltase 3 Phase (R-S)',
-  'Cek Tegangan Voltase 3 Phase (S-T)',
-  'Cek Tegangan Voltase 3 Phase (T-R)',
-  'Cek Tegangan Voltase 3 Phase (N-R)',
-  'Cek Tegangan Voltase 3 Phase (N-S)',
-  'Cek Tegangan Voltase 3 Phase (N-T)',
-  'Measurement Current S',
-  'Measurement Current T',
-  'Measurement Current N',
-  'Resitance winding - Grounding U-G',
-  'Resitance winding - Grounding V-G',
-  'Resitance winding - Grounding W-G',
-];
-
-const FCU_TEMPLATE = [
-  'R-S',
-  'R-T',
-  'S-T',
-  'R-N',
-  'S-N',
-  'T-N',
-  'Current R',
-  'Current S',
-  'Current T',
-  'Checking Vibration',
-  'Checking Air Flow & Temperature',
-  'Checking Humidity',
-  'Checking Noises',
-  'Pressure Supply',
-  'Pressure Return',
-];
 
 export function ReportForm() {
   const { user, companyType } = useAuth();
@@ -78,39 +36,67 @@ export function ReportForm() {
   ]);
 
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
-  const [hasAppliedTemplate, setHasAppliedTemplate] = useState(false); // ✅ NEW: Track template application
-  const [showAddCardModal, setShowAddCardModal] = useState(false); // ✅ NEW: Modal state
-  const [cardCountInput, setCardCountInput] = useState('1'); // ✅ NEW: Input for card count
-
-  // ✅ Auto-apply template for specific accounts
-  useEffect(() => {
-    if (!hasAppliedTemplate) {
-      if (user?.email === 'dockleveler@gmail.com') {
-        const templateCards = DOCK_LEVELER_TEMPLATE.map((desc, index) => ({
-          id: (index + 1).toString(),
-          photo: null,
-          description: desc
-        }));
-        setCards(templateCards);
-        setHasAppliedTemplate(true);
-        toast.info('Template deskripsi Dock Leveler otomatis dimuat');
-      } else if (user?.email === 'fcu@gmail.com') {
-        const templateCards = FCU_TEMPLATE.map((desc, index) => ({
-          id: (index + 1).toString(),
-          photo: null,
-          description: desc
-        }));
-        setCards(templateCards);
-        setHasAppliedTemplate(true);
-        toast.info('Template deskripsi FCU otomatis dimuat');
-      }
-    }
-  }, [user?.email, hasAppliedTemplate]);
+  const [addCardModalOpen, setAddCardModalOpen] = useState(false);
+  const [numberOfCardsToAdd, setNumberOfCardsToAdd] = useState('1');
 
   // NOTE: The image compression is handled by the imported `compressImage` utility from '@/lib/imageCompression'.
   // The previous local implementation has been removed to avoid duplication and lint warnings.
   // All calls to `compressImage` now refer to the shared utility.
 
+  // Auto-fill template descriptions based on USER EMAIL
+  React.useEffect(() => {
+    if (!user?.email) return;
+
+    const lowerEmail = user.email.toLowerCase();
+
+    // FCU Template - 15 items from screenshot
+    if (lowerEmail.includes('fcu')) {
+      const fcuTemplate = [
+        'R-S',
+        'R-T',
+        'S-T',
+        'R-N',
+        'S-N',
+        'T-N',
+        'Current R',
+        'Current S',
+        'Current T',
+        'Checking Vibration',
+        'Checking Air Flow & Temperature',
+        'Checking Humidity',
+        'Checking Alarm',
+        'Pressure Supply',
+        'Pressure Return'
+      ];
+
+      // Create 15 cards for FCU
+      const newCards = fcuTemplate.map((desc, idx) => ({
+        id: `${idx + 1}`,
+        photo: null,
+        description: desc
+      }));
+      setCards(newCards);
+    }
+    // Dock Leveler Template
+    else if (lowerEmail.includes('dock') || lowerEmail.includes('leveler')) {
+      const dockTemplate = [
+        'Pengecekan Hidrolik',
+        'Pengecekan Platform/Deck',
+        'Pengecekan Lip Plate',
+        'Pelumasan Moving Parts',
+        'Pengecekan Safety Features',
+        'Test Operasional'
+      ];
+
+      // Create 6 cards for Dock Leveler
+      const newCards = dockTemplate.map((desc, idx) => ({
+        id: `${idx + 1}`,
+        photo: null,
+        description: desc
+      }));
+      setCards(newCards);
+    }
+  }, [user?.email]);
 
   const handlePhotoChange = async (id: string, file: File | null) => {
     if (file) {
@@ -228,19 +214,28 @@ export function ReportForm() {
     ));
   };
 
-  const addCard = (count: number = 1) => {
-    const newCards = [];
-    let currentMaxId = Math.max(...cards.map(c => parseInt(c.id)));
+  const addCard = () => {
+    setAddCardModalOpen(true);
+  };
 
-    for (let i = 0; i < count; i++) {
-      const newId = (currentMaxId + 1 + i).toString();
-      newCards.push({ id: newId, photo: null, description: '' });
+  const confirmAddCards = () => {
+    const count = parseInt(numberOfCardsToAdd);
+    if (isNaN(count) || count < 1 || count > 50) {
+      toast.error('Jumlah card harus antara 1-50');
+      return;
     }
 
+    const startId = Math.max(...cards.map(c => parseInt(c.id))) + 1;
+    const newCards = Array.from({ length: count }, (_, idx) => ({
+      id: (startId + idx).toString(),
+      photo: null,
+      description: ''
+    }));
+
     setCards([...cards, ...newCards]);
-    toast.success(`Berhasil menambahkan ${count} card baru!`);
-    setShowAddCardModal(false);
-    setCardCountInput('1');
+    toast.success(`${count} card berhasil ditambahkan`);
+    setAddCardModalOpen(false);
+    setNumberOfCardsToAdd('1');
   };
 
   const removeCard = (id: string) => {
@@ -251,300 +246,7 @@ export function ReportForm() {
     }
   };
 
-  const handleExport = async () => {
-    if (!maintenanceName || !maintenanceTime) {
-      toast.error('Mohon isi nama maintenance dan waktu');
-      return;
-    }
 
-    const filledCards = cards.filter(card => card.photoBase64 || card.description);
-    if (filledCards.length === 0) {
-      toast.error('Mohon isi minimal 1 card (foto atau deskripsi)');
-      return;
-    }
-
-    try {
-      toast.loading('Generating Excel...', { id: 'export' });
-
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('Maintenance Report');
-
-      // Set column widths - 3 photo columns + 2 spacing columns = 5 total
-      // Layout: [Photo A] [Space] [Photo B] [Space] [Photo C]
-      worksheet.columns = [
-        { width: 26 },  // Column A - Photo 1
-        { width: 2 },   // Column B - Spacing
-        { width: 26 },  // Column C - Photo 2
-        { width: 2 },   // Column D - Spacing
-        { width: 26 },  // Column E - Photo 3
-      ];
-
-      // Format date
-      const formattedDate = new Date(maintenanceTime).toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-
-      // ✅ Helper function to add header (untuk page baru di Excel)
-      const addExcelHeader = (startRow: number, logoDwimitraId: number, logoNeutraDCId: number) => {
-        // Add FLOATING logos
-        worksheet.addImage(logoDwimitraId, {
-          tl: { col: 0.15, row: startRow - 1 + 0.25 },
-          ext: { width: 110, height: 45 }
-        });
-
-        worksheet.addImage(logoNeutraDCId, {
-          tl: { col: 4.55, row: startRow - 1 + 0.25 },
-          ext: { width: 110, height: 45 }
-        });
-
-        // Row: Title with floating logos
-        worksheet.getRow(startRow).height = 50;
-        worksheet.mergeCells(`A${startRow}:E${startRow}`);
-        const titleCell = worksheet.getCell(`A${startRow}`);
-        titleCell.value = `Dokumentasi PM ${maintenanceName} (${formattedDate})`;
-        titleCell.font = { size: 11, bold: true };
-        titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-        titleCell.border = {
-          top: { style: 'thin', color: { argb: 'FF000000' } },
-          left: { style: 'thin', color: { argb: 'FF000000' } },
-          bottom: { style: 'thin', color: { argb: 'FF000000' } },
-          right: { style: 'thin', color: { argb: 'FF000000' } }
-        };
-
-        // Row: Specific Detail
-        worksheet.mergeCells(`A${startRow + 1}:E${startRow + 1}`);
-        const equipmentCell = worksheet.getCell(`A${startRow + 1}`);
-        equipmentCell.value = specificDetail || maintenanceName;
-        equipmentCell.font = { size: 10, bold: true };
-        equipmentCell.alignment = { horizontal: 'center', vertical: 'middle' };
-        equipmentCell.border = {
-          top: { style: 'thin', color: { argb: 'FF000000' } },
-          left: { style: 'thin', color: { argb: 'FF000000' } },
-          bottom: { style: 'thin', color: { argb: 'FF000000' } },
-          right: { style: 'thin', color: { argb: 'FF000000' } }
-        };
-        worksheet.getRow(startRow + 1).height = 30;
-
-        // Empty spacing row
-        worksheet.getRow(startRow + 2).height = 8;
-
-        return startRow + 3; // Return next row to continue
-      };
-
-      // Add photos in 3-column grid with spacing
-      let currentRow = 4;
-      const photosPerPage = 9; // 3x3 grid
-      let photoIndex = 0;
-
-      // ✅ Store logo IDs for reuse
-      let logoDwimitraId: number;
-      let logoNeutraDCId: number;
-
-      try {
-        // Select left logo based on company type
-        const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
-        const logoLeftResponse = await fetch(leftLogo);
-        const logoLeftBlob = await logoLeftResponse.blob();
-        const logoLeftArrayBuffer = await logoLeftBlob.arrayBuffer();
-        const logoLeftBase64 = btoa(
-          new Uint8Array(logoLeftArrayBuffer).reduce(
-            (data, byte) => data + String.fromCharCode(byte), ''
-          )
-        );
-
-        // Select right logo based on company type
-        const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
-        const logoRightResponse = await fetch(rightLogo);
-        const logoRightBlob = await logoRightResponse.blob();
-        const logoRightArrayBuffer = await logoRightBlob.arrayBuffer();
-        const logoRightBase64 = btoa(
-          new Uint8Array(logoRightArrayBuffer).reduce(
-            (data, byte) => data + String.fromCharCode(byte), ''
-          )
-        );
-
-        // ✅ Add logos to workbook and get image IDs
-        logoDwimitraId = workbook.addImage({
-          base64: logoLeftBase64,
-          extension: 'png',
-        });
-
-        logoNeutraDCId = workbook.addImage({
-          base64: logoRightBase64,
-          extension: 'png',
-        });
-
-        // ✅ Add header for FIRST page (row 1)
-        currentRow = addExcelHeader(1, logoDwimitraId, logoNeutraDCId);
-      } catch (error) {
-        console.error('Failed to load logos:', error);
-        toast.error('Failed to load logos', { id: 'export' });
-        return;
-      }
-
-      for (let i = 0; i < filledCards.length; i += 3) {
-        // ✅ Check if we need to add header for new "page" (every 9 photos)
-        if (photoIndex > 0 && photoIndex % photosPerPage === 0) {
-          // Add spacing before new header
-          currentRow++;
-          worksheet.getRow(currentRow).height = 20;
-          currentRow++;
-
-          // Add header for new "page"
-          currentRow = addExcelHeader(currentRow, logoDwimitraId, logoNeutraDCId);
-        }
-
-        const rowCards = filledCards.slice(i, i + 3);
-
-        // Photo row
-        worksheet.getRow(currentRow).height = 160;
-        // Caption row
-        worksheet.getRow(currentRow + 1).height = 35;
-
-        // Column positions for photos: 0 (A), 2 (C), 4 (E)
-        const photoColumns = [0, 2, 4];
-
-        for (let j = 0; j < 3; j++) {
-          const card = rowCards[j];
-          const colIndex = photoColumns[j];
-
-          // Photo cell - THICK BLACK BORDER
-          const photoCell = worksheet.getCell(currentRow, colIndex + 1);
-          photoCell.border = {
-            top: { style: 'thick', color: { argb: 'FF000000' } },
-            left: { style: 'thick', color: { argb: 'FF000000' } },
-            bottom: { style: 'thick', color: { argb: 'FF000000' } },
-            right: { style: 'thick', color: { argb: 'FF000000' } }
-          };
-          photoCell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FFFFFFFF' }
-          };
-
-          // Caption cell - THICK BLACK BORDER
-          const captionCell = worksheet.getCell(currentRow + 1, colIndex + 1);
-          captionCell.border = {
-            top: { style: 'thick', color: { argb: 'FF000000' } },
-            left: { style: 'thick', color: { argb: 'FF000000' } },
-            bottom: { style: 'thick', color: { argb: 'FF000000' } },
-            right: { style: 'thick', color: { argb: 'FF000000' } }
-          };
-          captionCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-          captionCell.font = { size: 9 };
-
-          if (card && card.photoBase64) {
-            const base64Data = card.photoBase64.split(',')[1];
-
-            const imageId = workbook.addImage({
-              base64: base64Data,
-              extension: 'jpeg',
-            });
-
-            // Position image perfectly in cell
-            worksheet.addImage(imageId, {
-              tl: { col: colIndex, row: currentRow - 1 },
-              br: { col: colIndex + 1, row: currentRow }
-            } as any);
-
-            captionCell.value = card.description || `Photo ${i + j + 1}`;
-          } else if (card) {
-            photoCell.value = '';
-            captionCell.value = card.description || '';
-          }
-        }
-
-        // Add spacing row between photo sets
-        currentRow += 2;
-        worksheet.getRow(currentRow).height = 8;
-        currentRow++;
-        photoIndex += 3;
-      }
-
-      // Generate and download
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      });
-
-      const fileName = `Report_${maintenanceName.replace(/\s+/g, '_')}_${formattedDate.replace(/\//g, '-')}.xlsx`;
-
-      // Download file locally
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      link.click();
-      URL.revokeObjectURL(url);
-
-      // Show download success immediately
-      toast.success('Excel downloaded successfully!', { id: 'export' });
-
-      // Save metadata and photo data to Firestore using SUBCOLLECTION pattern (non-blocking)
-      try {
-        toast.loading('Saving to database... ', { id: 'save-db-excel' });
-
-        // 1. Save main document with metadata only (no photos array)
-        const docData: any = {
-          fileName: fileName,
-          maintenanceName: maintenanceName,
-          maintenanceTime: maintenanceTime,
-          createdAt: serverTimestamp(),
-          createdBy: user?.email || 'Unknown',
-          fileSize: blob.size,
-          totalPhotos: filledCards.length,
-          photosWithImage: filledCards.filter(c => c.photoBase64).length,
-          // NO photosData array here! Photos will be in subcollection
-        };
-
-        // Add specificDetail only if it exists
-        if (specificDetail) {
-          docData.specificDetail = specificDetail;
-        }
-
-        // Add main document and get reference
-        const docRef = await addDoc(collection(db, 'excel_documents'), docData);
-
-        // 2. Save each photo to subcollection: excel_documents/{docId}/photos
-        const photoSavePromises = filledCards.map(async (card, index) => {
-          if (card.photoBase64) {
-            try {
-              // Compress photo for database storage
-              const compressedPhoto = await compressBase64Image(card.photoBase64, {
-                maxWidth: 800,
-                maxHeight: 800,
-                quality: 0.7
-              });
-
-              // Save to subcollection
-              await addDoc(collection(db, `excel_documents/${docRef.id}/photos`), {
-                index: index + 1,
-                photoBase64: compressedPhoto,
-                description: card.description || '',
-                hasPhoto: true
-              });
-            } catch (err) {
-              console.error(`Failed to save photo ${index + 1}:`, err);
-              // Continue with other photos even if one fails
-            }
-          }
-        });
-
-        // Wait for all photos to be saved
-        await Promise.all(photoSavePromises);
-
-        toast.success('Saved to database!', { id: 'save-db-excel' });
-      } catch (dbError) {
-        console.error('Database save error:', dbError);
-        toast.error('Excel downloaded but failed to save to database', { id: 'save-db-excel' });
-      }
-    } catch (error) {
-      console.error('Export error:', error);
-      toast.error('Failed to export', { id: 'export' });
-    }
-  };
 
   const handleExportPDF = async () => {
     if (!maintenanceName || !maintenanceTime) {
@@ -841,7 +543,7 @@ export function ReportForm() {
             <p className="text-xs text-slate-500">Real-time maintenance metrics</p>
           </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           <div className="bg-slate-800/30 rounded-lg p-3 sm:p-4 border border-slate-700/30">
             <div className="flex items-center gap-2 mb-1">
               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
@@ -861,7 +563,7 @@ export function ReportForm() {
             <p className="text-xs text-slate-500 font-medium mb-1">Ready to Export</p>
             <p className="text-sm sm:text-base font-semibold text-purple-400">{isReadyToExport ? 'Yes' : 'No'}</p>
           </div>
-          <div className="bg-slate-800/30 rounded-lg p-3 sm:p-4 border border-slate-700/30 col-span-2 sm:col-span-1 lg:col-span-1">
+          <div className="bg-slate-800/30 rounded-lg p-3 sm:p-4 border border-slate-700/30 col-span-2 lg:col-span-1">
             <p className="text-xs text-slate-500 font-medium mb-1">Total Size</p>
             <p className="text-sm sm:text-base font-semibold text-white">{totalPhotoSizeMB} MB</p>
           </div>
@@ -874,7 +576,7 @@ export function ReportForm() {
           <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
             <Database className="w-5 h-5 text-blue-400" />
           </div>
-          <h2 className="text-base sm:text-lg font-semibold text-white">Maintenance Information</h2>
+          <h2 className="text-lg sm:text-xl font-semibold text-white">Maintenance Information</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
           <div>
@@ -926,51 +628,52 @@ export function ReportForm() {
 
       {/* Photo Documentation */}
       <div className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-4 sm:p-6 border border-slate-700/50">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 sm:mb-6">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
-                <Camera className="w-5 h-5 text-indigo-400" />
-              </div>
-              <h2 className="text-base sm:text-lg font-semibold text-white">Photo Documentation</h2>
+        {/* Header - Always horizontal */}
+        <div className="flex items-center justify-between mb-4 sm:mb-5">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="p-2 sm:p-3 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
+              <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-400" />
             </div>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-lg whitespace-nowrap">
-              <Scissors className="w-3 h-3 text-blue-400" />
-              <span className="text-[9px] sm:text-[10px] font-bold text-blue-400 uppercase tracking-wider">Crop/Edit</span>
-            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-white">Photo Documentation</h2>
           </div>
-          <div className="flex gap-2 sm:gap-3">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => document.getElementById('bulk-upload-input')?.click()}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition shadow-lg shadow-indigo-500/20 text-xs sm:text-sm whitespace-nowrap"
-            >
-              <HardDrive className="w-4 h-4" />
-              <span>Bulk Upload</span>
-            </motion.button>
-            <input
-              id="bulk-upload-input"
-              type="file"
-              multiple
-              accept="image/*"
-              className="hidden"
-              onChange={handleBulkPhotoUpload}
-            />
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setShowAddCardModal(true)}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition shadow-lg shadow-blue-500/20 text-xs sm:text-sm whitespace-nowrap"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Card</span>
-            </motion.button>
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+            <Scissors className="w-3 h-3 text-blue-400" />
+            <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">Crop/Edit</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+        {/* Buttons - Full width on mobile, side-by-side on desktop */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-5">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => document.getElementById('bulk-upload-input')?.click()}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-lg font-medium text-sm shadow-lg shadow-indigo-500/20 transition-all"
+          >
+            <HardDrive className="w-4 h-4" />
+            <span>Bulk Upload</span>
+          </motion.button>
+          <input
+            id="bulk-upload-input"
+            type="file"
+            multiple
+            accept="image/*"
+            className="hidden"
+            onChange={handleBulkPhotoUpload}
+          />
+
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={addCard}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-medium text-sm shadow-lg shadow-blue-500/20 transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Card</span>
+          </motion.button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
           <AnimatePresence mode="popLayout">
             {cards.map((card, index) => (
               <motion.div
@@ -1070,7 +773,8 @@ export function ReportForm() {
         </div>
 
         {/* Export Buttons */}
-        <div className="flex justify-center mt-8">
+        <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
+
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -1085,55 +789,50 @@ export function ReportForm() {
 
       {/* Add Card Modal */}
       <AnimatePresence>
-        {showAddCardModal && (
+        {addCardModalOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
-            onClick={() => setShowAddCardModal(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setAddCardModalOpen(false)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-slate-800 rounded-2xl p-6 max-w-sm w-full border border-slate-700 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
+              className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl"
             >
-              <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mb-4">
-                <Plus className="w-6 h-6 text-blue-400" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-2">Tambah Card Baru</h3>
-              <p className="text-slate-400 text-sm mb-6">Masukkan jumlah card yang ingin ditambahkan</p>
+              <h3 className="text-xl font-bold text-white mb-4 text-center">Berapa Card yang Akan Ditambah?</h3>
 
               <input
                 type="number"
                 min="1"
                 max="50"
-                value={cardCountInput}
-                onChange={(e) => setCardCountInput(e.target.value)}
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-white text-center text-lg font-semibold focus:ring-2 focus:ring-blue-500/50 outline-none mb-6"
-                placeholder="Jumlah card"
+                value={numberOfCardsToAdd}
+                onChange={(e) => setNumberOfCardsToAdd(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    confirmAddCards();
+                  }
+                }}
+                className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white text-center text-2xl font-bold focus:ring-2 focus:ring-blue-500 outline-none mb-2"
+                placeholder="1-50"
                 autoFocus
               />
+              <p className="text-xs text-slate-500 text-center mb-6">Maksimal 50 card</p>
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => setShowAddCardModal(false)}
-                  className="flex-1 py-2.5 bg-slate-700 text-white rounded-xl hover:bg-slate-600 transition"
+                  onClick={() => setAddCardModalOpen(false)}
+                  className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium transition"
                 >
                   Batal
                 </button>
                 <button
-                  onClick={() => {
-                    const count = parseInt(cardCountInput);
-                    if (count > 0 && count <= 50) {
-                      addCard(count);
-                    } else {
-                      toast.error('Jumlah harus antara 1-50');
-                    }
-                  }}
-                  className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-500 transition font-semibold"
+                  onClick={confirmAddCards}
+                  className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition"
                 >
                   OK
                 </button>

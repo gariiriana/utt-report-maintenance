@@ -26,7 +26,20 @@ import {
     writeBatch,
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
-import { safeStorage } from '@/lib/safeStorage';
+
+// File Categories - Updated with all required categories
+const FILE_CATEGORIES = [
+    'Laporan Harian',
+    'Laporan Bulanan',
+    'Checklist Alat',
+    'Checklist APD',
+    'PTW',
+    'JSEA',
+    'MOP',
+    'SLA/SLG',
+    'Custom',
+    'Monthly'
+];
 
 // Maintenance Categories for Service Reports
 const MAINTENANCE_TYPES = [
@@ -48,6 +61,7 @@ const MAINTENANCE_TYPES = [
     'CRAC Data Hall & Supporting Room',
     'Chiller',
     'Cooling Tower',
+    'ATS',
     'Transformer',
     'Generator & Fuel system',
     'MV and RMU panel',
@@ -66,16 +80,12 @@ const MAINTENANCE_TYPES = [
     'Pressurization & Degassing',
     'Pumps',
     'Water Softener',
-    'Busduct',
+    'Biosduct',
     'Physical Cooling Automation'
 ];
 
 const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
 const YEARS = ['2025', '2026', '2027', '2028', '2029', '2030'];
-
-// NEW: Categories for TDE/CBRE Navigation
-const CATEGORIES = ['SR', 'Monthly', 'CM', 'SLA/SLG'] as const;
-type Category = typeof CATEGORIES[number];
 
 // Allowed file types (PDF, Excel, Word)
 const ALLOWED_FILE_TYPES = [
@@ -94,10 +104,10 @@ interface ServiceReportData {
     fileName: string;
     fileSize: number;
     fileType: string;
-    maintenanceType: string;
+    category?: string; // NEW: 'Monthly' | 'Laporan Bulanan' | 'SLA/SLG'
+    maintenanceType?: string; // Optional now
     quarter: string;
     year: string;
-    category: string; // NEW: SR, Monthly, CM, SLA/SLG
     uploadedBy: string;
     uploadedByEmail: string;
     uploadedAt: any;
@@ -123,16 +133,22 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
 
     // Form state
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [uploadMode, setUploadMode] = useState<'maintenance' | 'category'>('maintenance'); // NEW
+    const [selectedCategory, setSelectedCategory] = useState(FILE_CATEGORIES[0]); // NEW
     const [selectedMaintenance, setSelectedMaintenance] = useState(MAINTENANCE_TYPES[0]);
     const [selectedQuarter, setSelectedQuarter] = useState('Q1');
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
     const [description, setDescription] = useState('');
 
     // Navigation & Filter state
-    const [navPath, setNavPath] = useState<{ type: string | null; quarter: string | null }>({ type: null, quarter: null });
+    const [navPath, setNavPath] = useState<{
+        type: string | null;
+        quarter: string | null;
+        maintenanceType: string | null;
+    }>({ type: null, quarter: null, maintenanceType: null });
 
     const [categoryLastSeen, setCategoryLastSeen] = useState<Record<string, number>>(() => {
-        const saved = safeStorage.getItem('service_report_last_seen_categories');
+        const saved = localStorage.getItem('service_report_last_seen_categories');
         return saved ? JSON.parse(saved) : {};
     });
 
@@ -140,7 +156,7 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
         const now = Date.now();
         setCategoryLastSeen(prev => {
             const updated = { ...prev, [categoryName]: now };
-            safeStorage.setItem('service_report_last_seen_categories', JSON.stringify(updated));
+            localStorage.setItem('service_report_last_seen_categories', JSON.stringify(updated));
             return updated;
         });
     }, []);
@@ -162,8 +178,7 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
 
     const [searchQuery, setSearchQuery] = useState('');
     const [filterQuarter, setFilterQuarter] = useState('All');
-    const [filterYear, setFilterYear] = useState('All');
-    const [activeCategory, setActiveCategory] = useState<Category>('SR'); // NEW: For navbar tabs
+    const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
 
     // Modal state
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -179,7 +194,29 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
                 id: doc.id,
                 ...doc.data()
             })) as ServiceReportData[];
-            setReports(reportsData.filter(r => r.status === 'completed'));
+
+            // Filter based on status and role-based visibility
+            const filteredReports = reportsData.filter(r => {
+                if (r.status !== 'completed') return false;
+
+                // Admin sees everything
+                if (isAdmin) return true;
+
+                // TDE/CBRE visibility rules
+                if (isTDEorCBRE) {
+                    // Can see:
+                    // 1. Reports with maintenanceType (Standard Service Reports)
+                    // 2. Specific categories: 'Laporan Bulanan' or 'SLA/SLG'
+                    const isVisibleCategory = r.category === 'Laporan Bulanan' || r.category === 'SLA/SLG';
+                    return !!r.maintenanceType || isVisibleCategory;
+                }
+
+                // Default: standby_engineer or others might see only their own? 
+                // Usually others see all approved reports unless restricted.
+                return true;
+            });
+
+            setReports(filteredReports);
         });
         return () => unsubscribe();
     }, []);
@@ -221,21 +258,35 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
             }
 
             // 1. Create document in service_reports
-            const reportDocRef = await addDoc(collection(db, 'service_reports'), {
+            const reportData: any = {
                 fileName,
                 fileSize: selectedFile.size,
                 fileType: selectedFile.type,
-                maintenanceType: selectedMaintenance,
                 quarter: selectedQuarter,
                 year: selectedYear,
-                category: 'SR', // NEW: Default category untuk Service Report
                 uploadedBy: user.uid,
                 uploadedByEmail: user.email,
                 uploadedAt: serverTimestamp(),
                 description: description || null,
                 totalChunks: totalChunks,
                 status: 'uploading'
-            });
+            };
+
+            // Add either category or maintenanceType based on upload mode
+            if (uploadMode === 'category') {
+                reportData.category = selectedCategory;
+                // For MOP, JSEA, and PTW, we also save the maintenanceType
+                if (['MOP', 'JSEA', 'PTW'].includes(selectedCategory)) {
+                    reportData.maintenanceType = selectedMaintenance;
+                } else {
+                    reportData.maintenanceType = null;
+                }
+            } else {
+                reportData.category = null;
+                reportData.maintenanceType = selectedMaintenance;
+            }
+
+            const reportDocRef = await addDoc(collection(db, 'service_reports'), reportData);
 
             // 2. Upload chunks to sub-collection
             const batchSize = 10;
@@ -318,16 +369,19 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
         const matchesSearch = report.fileName.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesQuarterFilter = filterQuarter === 'All' || report.quarter === filterQuarter;
         const matchesYearFilter = filterYear === 'All' || report.year === filterYear;
-        const matchesNavType = !navPath.type || report.maintenanceType === navPath.type;
+        // Match either maintenanceType OR category based on current navPath.type
+        const matchesTypeOrCategory = !navPath.type ||
+            report.maintenanceType === navPath.type ||
+            report.category === navPath.type;
         const matchesNavQuarter = !navPath.quarter || report.quarter === navPath.quarter;
-        const matchesCategory = report.category === activeCategory; // NEW: Filter by activeCategory
-        return matchesSearch && matchesQuarterFilter && matchesYearFilter && matchesCategory && matchesNavType && matchesNavQuarter;
+        const matchesNavMaintenanceType = !navPath.maintenanceType || report.maintenanceType === navPath.maintenanceType;
+
+        return matchesSearch && matchesQuarterFilter && matchesYearFilter && matchesTypeOrCategory && matchesNavQuarter && matchesNavMaintenanceType;
     });
 
 
-
     const maintenanceSummary = MAINTENANCE_TYPES.map(type => {
-        const categoryReports = reports.filter(r => r.maintenanceType === type && r.category === activeCategory);
+        const categoryReports = reports.filter(r => r.maintenanceType === type);
         const count = categoryReports.filter(r =>
             (filterYear === 'All' || r.year === filterYear) &&
             (filterQuarter === 'All' || r.quarter === filterQuarter)
@@ -342,15 +396,43 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
         };
     }).filter(item => {
         const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-        // Jika sedang filter aktif (selain All), sembunyikan yang kosong.
-        // Jika tidak ada filter, izinkan TDE/CBRE lihat semua folder (walau 0).
         const isFiltering = filterYear !== 'All' || filterQuarter !== 'All' || searchQuery !== '';
-        const hasContent = item.count > 0 || ((isAdmin || isTDEorCBRE) && !isFiltering);
+        // Admins and standby engineers see all folders (even empty ones)
+        // TDE/CBRE see maintenance folders if they matches their visibility (already handled in reports fetching)
+        const hasContent = item.count > 0 || ((isAdmin || userRole === 'standby_engineer') && !isFiltering);
+        return matchesSearch && hasContent;
+    });
+
+    // ✅ NEW: Category Summary (Laporan Bulanan, SLA/SLG, etc.)
+    const categorySummary = FILE_CATEGORIES.map(cat => {
+        const catReports = reports.filter(r => r.category === cat);
+        const count = catReports.filter(r =>
+            (filterYear === 'All' || r.year === filterYear) &&
+            (filterQuarter === 'All' || r.quarter === filterQuarter)
+        ).length;
+        const lastSeenTime = categoryLastSeen[cat] || 0;
+        const hasNew = (isTDEorCBRE || isAdmin) && catReports.some(r => (r.uploadedAt?.toMillis() || 0) > lastSeenTime);
+
+        return {
+            name: cat,
+            count,
+            hasNew
+        };
+    }).filter(item => {
+        // TDE/CBRE Role Restrictions: Hide 'Monthly' from them
+        if (isTDEorCBRE && item.name === 'Monthly') return false;
+
+        const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const isFiltering = filterYear !== 'All' || filterQuarter !== 'All' || searchQuery !== '';
+        const hasContent = item.count > 0 || (isAdmin && !isFiltering);
         return matchesSearch && hasContent;
     });
 
     const quarterSummary = QUARTERS.map(q => {
-        const categoryQuarterReports = reports.filter(r => r.maintenanceType === navPath.type && r.quarter === q && r.category === activeCategory);
+        const categoryQuarterReports = reports.filter(r =>
+            (r.maintenanceType === navPath.type || r.category === navPath.type) &&
+            r.quarter === q
+        );
         const count = categoryQuarterReports.filter(r => filterYear === 'All' || r.year === filterYear).length;
         const lastSeenTime = categoryLastSeen[`${navPath.type}_${q}`] || categoryLastSeen[navPath.type || ''] || 0;
         // Note: Fallback to category last seen for quarters if not specifically set
@@ -368,6 +450,30 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
         const isYearFiltered = filterYear !== 'All' || searchQuery !== '';
         const hasContent = (item.count > 0 || ((isAdmin || isTDEorCBRE) && !isYearFiltered)) && !isQuarterFiltered;
         return matchesSearch && hasContent;
+    });
+
+    // ✅ NEW: Maintenance Type Summary inside Quarter Folder
+    const isSpecialCategory = ['MOP', 'JSEA', 'PTW'].includes(navPath.type || '');
+    const maintenanceTypeSummary = MAINTENANCE_TYPES.map(type => {
+        const typeReports = reports.filter(r =>
+            r.category === navPath.type &&
+            r.quarter === navPath.quarter &&
+            r.maintenanceType === type
+        );
+        const count = typeReports.filter(r => filterYear === 'All' || r.year === filterYear).length;
+        const lastSeenKey = `${navPath.type}_${navPath.quarter}_${type}`;
+        const lastSeenTime = categoryLastSeen[lastSeenKey] || 0;
+        const hasNew = (isTDEorCBRE || isAdmin) && typeReports.some(r => (r.uploadedAt?.toMillis() || 0) > lastSeenTime);
+
+        return {
+            name: type,
+            count,
+            hasNew
+        };
+    }).filter(item => {
+        const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+        // Only show types that have files
+        return matchesSearch && item.count > 0;
     });
 
     return (
@@ -446,19 +552,78 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
 
                         {/* Metadata Form */}
                         <div className="lg:w-96 space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Maintenance</label>
-                                    <select
-                                        value={selectedMaintenance}
-                                        onChange={(e) => setSelectedMaintenance(e.target.value)}
-                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-300 focus:ring-2 focus:ring-blue-500/50 outline-none"
+                            {/* Upload Mode Toggle */}
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Upload Mode</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setUploadMode('maintenance')}
+                                        className={`px-3 py-2 rounded-lg font-medium text-sm transition-all ${uploadMode === 'maintenance' ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
                                     >
-                                        {MAINTENANCE_TYPES.map(type => (
-                                            <option key={type} value={type}>{type}</option>
-                                        ))}
-                                    </select>
+                                        Maintenance Type
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setUploadMode('category')}
+                                        className={`px-3 py-2 rounded-lg font-medium text-sm transition-all ${uploadMode === 'category' ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                                    >
+                                        File Category
+                                    </button>
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                {/* Conditional: Maintenance Type OR Category */}
+                                {uploadMode === 'maintenance' ? (
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Maintenance</label>
+                                        <select
+                                            value={selectedMaintenance}
+                                            onChange={(e) => setSelectedMaintenance(e.target.value)}
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-300 focus:ring-2 focus:ring-blue-500/50 outline-none"
+                                        >
+                                            {MAINTENANCE_TYPES.map(type => (
+                                                <option key={type} value={type}>{type}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Category</label>
+                                            <select
+                                                value={selectedCategory}
+                                                onChange={(e) => setSelectedCategory(e.target.value)}
+                                                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-300 focus:ring-2 focus:ring-emerald-500/50 outline-none"
+                                            >
+                                                {FILE_CATEGORIES.map(cat => (
+                                                    <option key={cat} value={cat}>{cat}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Conditional Maintenance Selection for specific categories */}
+                                        {['MOP', 'JSEA', 'PTW'].includes(selectedCategory) && (
+                                            <motion.div
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                className="space-y-2"
+                                            >
+                                                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Maintenance</label>
+                                                <select
+                                                    value={selectedMaintenance}
+                                                    onChange={(e) => setSelectedMaintenance(e.target.value)}
+                                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-300 focus:ring-2 focus:ring-blue-500/50 outline-none"
+                                                >
+                                                    {MAINTENANCE_TYPES.map(type => (
+                                                        <option key={type} value={type}>{type}</option>
+                                                    ))}
+                                                </select>
+                                            </motion.div>
+                                        )}
+                                    </div>
+                                )}
                                 <div className="space-y-2">
                                     <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Quarter</label>
                                     <select
@@ -517,34 +682,16 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
 
             {/* Navigation & Browser */}
             <div className="space-y-6">
-                {/* NEW: Category Tabs for TDE/CBRE */}
-                {isTDEorCBRE && !navPath.type && (
-                    <div className="flex gap-3 border-b border-slate-700/50 pb-1 overflow-x-auto">
-                        {CATEGORIES.map((cat) => (
-                            <button
-                                key={cat}
-                                onClick={() => setActiveCategory(cat)}
-                                className={`px-6 py-3 rounded-t-xl transition-all font-medium whitespace-nowrap ${activeCategory === cat
-                                    ? 'bg-blue-600 text-white shadow-lg'
-                                    : 'bg-slate-800/50 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                                    }`}
-                            >
-                                {cat}
-                            </button>
-                        ))}
-                    </div>
-                )}
-
                 {/* Breadcrumbs */}
                 <div className="flex items-center gap-3 text-sm overflow-x-auto pb-2 scrollbar-none">
+                    <button
+                        onClick={() => setNavPath({ type: null, quarter: null })}
+                        className={`px-4 py-2 rounded-xl transition-all ${!navPath.type ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-800/50 text-slate-400 hover:text-slate-200'}`}
+                    >
+                        Semua Kategori
+                    </button>
                     {navPath.type && (
                         <>
-                            <button
-                                onClick={() => setNavPath({ type: null, quarter: null })}
-                                className="px-4 py-2 rounded-xl transition-all bg-slate-800/50 text-slate-400 hover:text-slate-200"
-                            >
-                                Back to {activeCategory}
-                            </button>
                             <ChevronRight className="w-4 h-4 text-slate-600 flex-shrink-0" />
                             <button
                                 onClick={() => setNavPath(prev => ({ ...prev, quarter: null }))}
@@ -557,18 +704,30 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
                     {navPath.quarter && (
                         <>
                             <ChevronRight className="w-4 h-4 text-slate-600 flex-shrink-0" />
-                            <span className="px-4 py-2 bg-blue-600 text-white rounded-xl shadow-lg whitespace-nowrap">
+                            <button
+                                onClick={() => setNavPath(prev => ({ ...prev, maintenanceType: null }))}
+                                className={`px-4 py-2 rounded-xl transition-all ${navPath.quarter && !navPath.maintenanceType ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-800/50 text-slate-400 hover:text-slate-200'} whitespace-nowrap`}
+                            >
                                 {navPath.quarter}
+                            </button>
+                        </>
+                    )}
+                    {navPath.maintenanceType && (
+                        <>
+                            <ChevronRight className="w-4 h-4 text-slate-600 flex-shrink-0" />
+                            <span className="px-4 py-2 bg-blue-600 text-white rounded-xl shadow-lg whitespace-nowrap">
+                                {navPath.maintenanceType}
                             </span>
                         </>
                     )}
 
                     {/* Back Button */}
-                    {(navPath.type || navPath.quarter) && (
+                    {(navPath.type || navPath.quarter || navPath.maintenanceType) && (
                         <button
                             onClick={() => {
-                                if (navPath.quarter) setNavPath(prev => ({ ...prev, quarter: null }));
-                                else setNavPath({ type: null, quarter: null });
+                                if (navPath.maintenanceType) setNavPath(prev => ({ ...prev, maintenanceType: null }));
+                                else if (navPath.quarter) setNavPath(prev => ({ ...prev, quarter: null }));
+                                else setNavPath({ type: null, quarter: null, maintenanceType: null });
                             }}
                             className="ml-auto flex items-center gap-2 text-slate-400 hover:text-white transition-colors group"
                         >
@@ -580,61 +739,75 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
 
                 {/* Sub-Folders / Files View */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {/* Conditional: Monthly & SLA/SLG skip maintenance folder, langsung ke quarter */}
-                    {(activeCategory === 'Monthly' || activeCategory === 'SLA/SLG') && !navPath.quarter ? (
-                        // Quarter Folders View (Langsung untuk Monthly & SLA/SLG)
-                        quarterSummary.map(item => (
-                            <motion.button
-                                key={item.name}
-                                layoutId={`quarter-${item.name}`}
-                                onClick={() => {
-                                    setNavPath({ type: activeCategory, quarter: item.name });
-                                    markCategoryAsSeen(`${activeCategory}_${item.name}`);
-                                }}
-                                className="group relative bg-slate-800/30 hover:bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6 text-left transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-emerald-500/10"
-                            >
-                                {item.hasNew && (
-                                    <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-lg shadow-red-500/40 animate-pulse border-2 border-slate-900 z-10">
-                                        NEW
+                    {!navPath.type ? (
+                        // Folders View
+                        <>
+                            {/* File Categories Section */}
+                            {categorySummary.length > 0 && (
+                                <div className="col-span-full mb-2">
+                                    <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4 px-2">Kategori Laporan</h2>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                        {categorySummary.map(item => (
+                                            <motion.button
+                                                key={item.name}
+                                                layoutId={`folder-${item.name}`}
+                                                onClick={() => {
+                                                    setNavPath({ type: item.name, quarter: null });
+                                                    markCategoryAsSeen(item.name);
+                                                }}
+                                                className="group relative bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-6 text-left transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-emerald-500/10"
+                                            >
+                                                {item.hasNew && (
+                                                    <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-lg shadow-red-500/40 animate-pulse border-2 border-slate-900 z-10">
+                                                        NEW
+                                                    </div>
+                                                )}
+                                                <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-emerald-500/20 transition-colors">
+                                                    <FolderOpen className="w-7 h-7 text-emerald-400" />
+                                                </div>
+                                                <h3 className="text-white font-bold text-lg leading-tight mb-2">{item.name}</h3>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-sm text-emerald-500/70 font-medium">{item.count} Laporan</span>
+                                                    <ChevronRight className="w-5 h-5 text-slate-700 group-hover:text-emerald-500 transition-colors" />
+                                                </div>
+                                            </motion.button>
+                                        ))}
                                     </div>
-                                )}
-                                <div className="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-emerald-500/20 transition-colors">
-                                    <FolderOpen className="w-7 h-7 text-emerald-400" />
                                 </div>
-                                <h3 className="text-white font-bold text-lg mb-2">Kuartal {item.name}</h3>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-slate-500">{item.count} File</span>
-                                    <ChevronRight className="w-5 h-5 text-slate-700 group-hover:text-emerald-500 transition-colors" />
+                            )}
+
+                            {/* Maintenance Types Section */}
+                            <div className="col-span-full mt-4 mb-2">
+                                <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4 px-2">Maintenance Reports</h2>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                    {maintenanceSummary.map(item => (
+                                        <motion.button
+                                            key={item.name}
+                                            layoutId={`folder-${item.name}`}
+                                            onClick={() => {
+                                                setNavPath({ type: item.name, quarter: null });
+                                                markCategoryAsSeen(item.name);
+                                            }}
+                                            className="group relative bg-slate-800/30 hover:bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6 text-left transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-blue-500/10"
+                                        >
+                                            {item.hasNew && (
+                                                <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-lg shadow-red-500/40 animate-pulse border-2 border-slate-900 z-10">
+                                                    NEW
+                                                </div>
+                                            )}
+                                            <div className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-blue-500/20 transition-colors">
+                                                <FolderOpen className="w-7 h-7 text-blue-400" />
+                                            </div>
+                                            <h3 className="text-white font-bold text-lg leading-tight mb-2">{item.name}</h3>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm text-slate-500">{item.count} Laporan</span>
+                                                <ChevronRight className="w-5 h-5 text-slate-700 group-hover:text-blue-500 transition-colors" />
+                                            </div>
+                                        </motion.button>
+                                    ))}
                                 </div>
-                            </motion.button>
-                        ))
-                    ) : !navPath.type ? (
-                        // Type Folders View (Untuk SR & CM)
-                        maintenanceSummary.map(item => (
-                            <motion.button
-                                key={item.name}
-                                layoutId={`folder-${item.name}`}
-                                onClick={() => {
-                                    setNavPath({ type: item.name, quarter: null });
-                                    markCategoryAsSeen(item.name);
-                                }}
-                                className="group relative bg-slate-800/30 hover:bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6 text-left transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-blue-500/10"
-                            >
-                                {item.hasNew && (
-                                    <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-lg shadow-red-500/40 animate-pulse border-2 border-slate-900 z-10">
-                                        NEW
-                                    </div>
-                                )}
-                                <div className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-blue-500/20 transition-colors">
-                                    <FolderOpen className="w-7 h-7 text-blue-400" />
-                                </div>
-                                <h3 className="text-white font-bold text-lg leading-tight mb-2">{item.name}</h3>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-slate-500">{item.count} Laporan</span>
-                                    <ChevronRight className="w-5 h-5 text-slate-700 group-hover:text-blue-500 transition-colors" />
-                                </div>
-                            </motion.button>
-                        ))
+                            </div>
+                        </>
                     ) : !navPath.quarter ? (
                         // Quarter Folders View
                         quarterSummary.map(item => (
@@ -659,6 +832,33 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
                                 <div className="flex items-center justify-between">
                                     <span className="text-sm text-slate-500">{item.count} File</span>
                                     <ChevronRight className="w-5 h-5 text-slate-700 group-hover:text-emerald-500 transition-colors" />
+                                </div>
+                            </motion.button>
+                        ))
+                    ) : (isSpecialCategory && !navPath.maintenanceType) ? (
+                        // Maintenance Type Folders View (Inside Quarter for MOP/JSEA/PTW)
+                        maintenanceTypeSummary.map(item => (
+                            <motion.button
+                                key={item.name}
+                                layoutId={`mtype-${item.name}`}
+                                onClick={() => {
+                                    setNavPath(prev => ({ ...prev, maintenanceType: item.name }));
+                                    markCategoryAsSeen(`${navPath.type}_${navPath.quarter}_${item.name}`);
+                                }}
+                                className="group relative bg-slate-800/30 hover:bg-slate-800/60 border border-slate-700/50 rounded-2xl p-6 text-left transition-all hover:scale-[1.02] hover:shadow-2xl hover:shadow-blue-500/10"
+                            >
+                                {item.hasNew && (
+                                    <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-lg shadow-red-500/40 animate-pulse border-2 border-slate-900 z-10">
+                                        NEW
+                                    </div>
+                                )}
+                                <div className="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-blue-500/20 transition-colors">
+                                    <FolderOpen className="w-7 h-7 text-blue-400" />
+                                </div>
+                                <h3 className="text-white font-bold text-lg mb-2">{item.name}</h3>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-slate-500">{item.count} Laporan</span>
+                                    <ChevronRight className="w-5 h-5 text-slate-700 group-hover:text-blue-500 transition-colors" />
                                 </div>
                             </motion.button>
                         ))

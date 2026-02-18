@@ -144,11 +144,13 @@ export function ImageEditor({ image, onSave, onCancel }: ImageEditorProps) {
                         crop={crop}
                         zoom={zoom}
                         rotation={rotation}
-                        aspect={4 / 3}
                         onCropChange={setCrop}
                         onCropComplete={onCropComplete}
                         onZoomChange={setZoom}
                         onRotationChange={setRotation}
+                        objectFit="contain"
+                        restrictPosition={false}
+                        showGrid={false}
                     />
                 </div>
 

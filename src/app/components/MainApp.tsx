@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, CheckCircle } from 'lucide-react';
 import { useAuth } from './AuthContext';
@@ -8,7 +8,6 @@ import { AdminDashboard } from './AdminDashboard';
 import { FileManagement } from './FileManagement';
 import { CorrectiveMaintenance } from './CorrectiveMaintenance';
 import { ServiceReport } from './ServiceReport';
-import { NotificationCenter } from './NotificationCenter';
 import { Footer } from './Footer';
 import { LogoutConfirmModal } from './LogoutConfirmModal'; // ✅ NEW: Import logout modal
 import { DataCenterBackground } from './DataCenterBackground'; // ✅ NEW: Import data center animations
@@ -23,32 +22,23 @@ export function MainApp() {
   const isAdmin = userRole === 'admin';
   const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
 
-  const [activeTab, setActiveTab] = useState<Tab>(isAdmin ? 'admin' : isTDEorCBRE ? 'service' : 'report');
+  // ✅ Set default tab based on role
+  const getDefaultTab = (): Tab => {
+    if (isAdmin) return 'admin';
+    if (isTDEorCBRE) return 'service'; // TDE/CBRE → Service Report
+    return 'report'; // Others → Create Report
+  };
+
+  const [activeTab, setActiveTab] = useState<Tab>(getDefaultTab());
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // ✅ NEW: State untuk logout confirmation modal
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
-  // ✅ NEW: State untuk navigasi otomatis dari notifikasi
-  const [notificationNav, setNotificationNav] = useState<{ type: string; quarter: string; year: string } | null>(null);
-
-  const handleNotificationClick = (type: string, quarter: string, year: string) => {
-    setNotificationNav({ type, quarter, year });
-    setActiveTab('service');
-    setMobileMenuOpen(false);
-  };
-
-  // ✅ NEW: Force correct initial tab when role is loaded
-  useEffect(() => {
-    if (isAdmin && activeTab === 'report') {
-      setActiveTab('admin');
-    } else if (isTDEorCBRE && (activeTab === 'report' || activeTab === 'admin')) {
-      setActiveTab('service');
-    }
-  }, [isAdmin, isTDEorCBRE, userRole]);
+  // ✅ REMOVED: useEffect yang force admin ke tab 'admin' - admin harus bisa switch tab!
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden">
       {/* ✅ NEW: Data Center Background dengan animasi lengkap */}
       <DataCenterBackground />
 
@@ -70,9 +60,8 @@ export function MainApp() {
               </div>
             </div>
 
-            {/* Desktop User Info & Logout */}
-            <div className="hidden md:flex items-center gap-4">
-              {isTDEorCBRE && <NotificationCenter onNotificationClick={handleNotificationClick} />}
+            Desktop User Info & Logout
+            <div className="hidden md:flex items-center gap-3">
               <div className="text-right">
                 <p className="text-xs text-slate-500">Logged as</p>
                 <p className="text-sm font-medium text-slate-300 truncate max-w-[200px]">{user?.email}</p>
@@ -88,17 +77,14 @@ export function MainApp() {
               </motion.button>
             </div>
 
-            {/* Mobile Notification + Menu Button */}
-            <div className="md:hidden flex items-center gap-2">
-              {isTDEorCBRE && <NotificationCenter onNotificationClick={handleNotificationClick} />}
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 bg-slate-800/50 text-slate-300 rounded-lg border border-slate-700/50"
-              >
-                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </motion.button>
-            </div>
+            {/* Mobile Menu Button */}
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 bg-slate-800/50 text-slate-300 rounded-lg border border-slate-700/50"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </motion.button>
           </div>
 
           {/* Mobile Dropdown Menu */}
@@ -110,17 +96,10 @@ export function MainApp() {
                 exit={{ opacity: 0, height: 0 }}
                 className="md:hidden overflow-hidden"
               >
-                <div className="pt-4 pb-2 space-y-4 border-t border-slate-700/50 mt-3">
-                  <div className="flex items-center px-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400">
-                        <Shield className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] text-slate-500">Logged as</p>
-                        <p className="text-sm font-medium text-slate-300 truncate max-w-[150px]">{user?.email}</p>
-                      </div>
-                    </div>
+                <div className="pt-4 pb-2 space-y-3 border-t border-slate-700/50 mt-3">
+                  <div className="px-3 py-2 bg-slate-800/30 rounded-lg">
+                    <p className="text-xs text-slate-500">Logged as</p>
+                    <p className="text-sm font-medium text-slate-300 truncate">{user?.email}</p>
                   </div>
                   <motion.button
                     whileTap={{ scale: 0.98 }}
@@ -175,7 +154,7 @@ export function MainApp() {
               </motion.button>
             )}
 
-            {/* ✅ File Management - Everyone */}
+            {/* ✅ File Management - SEMUA user bisa lihat, admin bisa upload */}
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -190,7 +169,7 @@ export function MainApp() {
               <span className="sm:hidden">Files</span>
             </motion.button>
 
-            {/* ✅ Corrective Maintenance - Everyone */}
+            {/* ✅ Corrective Maintenance - SEMUA user bisa lihat, Create khusus Standby */}
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -205,25 +184,23 @@ export function MainApp() {
               <span className="sm:hidden">CM</span>
             </motion.button>
 
-            {/* ✅ Create Report - HANYA untuk non-admin (Engineers) */}
-            {(!isAdmin && !isTDEorCBRE) && (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setActiveTab('report')}
-                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'report'
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/25'
-                  : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
-                  }`}
-              >
-                <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">Create Report</span>
-                <span className="sm:hidden">Create</span>
-              </motion.button>
-            )}
+            {/* ✅ Create Report - SEMUA user bisa akses */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setActiveTab('report')}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'report'
+                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/25'
+                : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
+                }`}
+            >
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Create Report</span>
+              <span className="sm:hidden">Create</span>
+            </motion.button>
 
-            {/* ✅ Document Archive - HANYA untuk non-admin (Engineers) */}
-            {(!isAdmin && !isTDEorCBRE) && (
+            {/* ✅ Document Archive - SEMUA user KECUALI admin bisa akses */}
+            {!isAdmin && (
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -242,21 +219,18 @@ export function MainApp() {
         </div>
       </div>
 
-      {/* Content area that grows to push footer down */}
-      <div className="relative z-10 flex-1">
+      {/* Content */}
+      <div className="relative z-10">
         {activeTab === 'admin' ? (
           <AdminDashboard />
+        ) : activeTab === 'service' ? (
+          <ServiceReport />
         ) : activeTab === 'files' ? (
           <FileManagement />
         ) : activeTab === 'report' ? (
           <ReportForm />
         ) : activeTab === 'corrective' ? (
-          <CorrectiveMaintenance />
-        ) : activeTab === 'service' ? (
-          <ServiceReport
-            initialNav={notificationNav}
-            onNavConsumed={() => setNotificationNav(null)}
-          />
+          <CorrectiveMaintenance readOnly={isTDEorCBRE} />
         ) : (
           <DocumentList />
         )}

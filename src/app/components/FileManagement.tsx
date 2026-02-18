@@ -22,6 +22,7 @@ import {
     serverTimestamp,
     getDocs,
     writeBatch,
+    where
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 
@@ -29,9 +30,6 @@ import { useAuth } from './AuthContext';
 const FILE_CATEGORIES = [
     'Laporan Harian',
     'Laporan Bulanan',
-    'Monthly',
-    'CM',
-    'SR',
     'Checklist Alat',
     'Checklist APD',
     'PTW',
@@ -39,6 +37,50 @@ const FILE_CATEGORIES = [
     'MOP',
     'SLA/SLG',
     'Custom',
+    'Monthly'
+];
+
+// Maintenance Categories for Service Reports
+const MAINTENANCE_TYPES = [
+    'Water Leak',
+    'Cooling Tower Water Treatment',
+    'FCU',
+    'Lift Units',
+    'Dock Leveler',
+    'Door',
+    'Fuel Leak',
+    'PJU',
+    'Hydrant System',
+    'Gate',
+    'STP & Plumbing',
+    'Exhaust Fan',
+    'Capacitor Bank',
+    'AHU',
+    'UPS',
+    'CRAC Data Hall & Supporting Room',
+    'Chiller',
+    'Cooling Tower',
+    'ATS',
+    'Transformer',
+    'Generator & Fuel system',
+    'MV and RMU panel',
+    'LV Panel',
+    'PDU Panel',
+    'FSS',
+    'Pre-Action System',
+    'Lighting Point',
+    'Grounding System',
+    'Lightning Protection System',
+    'VRV',
+    'AC Splits',
+    'Panel LDB & RDB (Distribution)',
+    'Road Blocker',
+    'X-Ray',
+    'Pressurization & Degassing',
+    'Pumps',
+    'Water Softener',
+    'Biosduct',
+    'Physical Cooling Automation'
 ];
 
 const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
@@ -72,6 +114,7 @@ interface FileData {
     uploadedAt: any;
     description?: string;
     totalChunks: number;
+    maintenanceType?: string; // ✅ NEW: Field for maintenance type
 }
 
 export function FileManagement() {
@@ -86,6 +129,7 @@ export function FileManagement() {
     // Upload form state
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [selectedCategory, setSelectedCategory] = useState('Laporan Harian');
+    const [selectedMaintenance, setSelectedMaintenance] = useState('Standard'); // ✅ NEW: State for maintenance type
     const [customCategory, setCustomCategory] = useState('');
     const [description, setDescription] = useState('');
     const [selectedUploadQuarter, setSelectedUploadQuarter] = useState('Q1');
@@ -97,7 +141,9 @@ export function FileManagement() {
     const [filterYear, setFilterYear] = useState('All'); // ✅ NEW: State for global year filter
     const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
     const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null); // ✅ NEW: State for selected quarter
+    const [selectedMType, setSelectedMType] = useState<string | null>(null); // ✅ NEW: State for selected maintenance type
     const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]); // ✅ NEW: State for bulk selection
+    const [isDeletingAllJSEA, setIsDeletingAllJSEA] = useState(false); // ✅ NEW: State for bulk JSEA deletion
 
     // Modal states
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -105,6 +151,8 @@ export function FileManagement() {
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false); // ✅ NEW: State for upload success modal
     const [uploadedFileName, setUploadedFileName] = useState(''); // ✅ NEW: Track uploaded file name
+
+    // Modal states
 
     // Load files from Firestore
     useEffect(() => {
@@ -142,9 +190,11 @@ export function FileManagement() {
 
     // Handle file selection
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
 
+        // Standard single file upload logic
+        const file = files[0];
         // Validate file type
         if (!ALLOWED_FILE_TYPES.includes(file.type)) {
             toast.error('Only PDF, Excel, and Word files are allowed');
@@ -195,6 +245,7 @@ export function FileManagement() {
                 fileSize: selectedFile.size,
                 fileType: selectedFile.type,
                 category: finalCategory,
+                maintenanceType: ['MOP', 'JSEA', 'PTW'].includes(finalCategory) ? selectedMaintenance : null, // ✅ NEW: Store maintenance type conditionally
                 quarter: selectedUploadQuarter, // ✅ NEW: Store quarter
                 year: selectedUploadYear, // ✅ NEW: Store year
                 customCategory: selectedCategory === 'Custom' ? customCategory : null,
@@ -336,6 +387,17 @@ export function FileManagement() {
         }
     };
 
+    // ✅ NEW: Handle Delete All JSEA Data
+    const handleDeleteAllJSEA = async () => {
+        if (!isAdmin) return;
+        const jseaFiles = files.filter(f => f.category === 'JSEA');
+        if (jseaFiles.length === 0) return;
+
+        const ids = jseaFiles.map(f => f.id);
+        await performBulkDelete(ids, `Deleting ${ids.length} JSEA files...`);
+        setIsDeletingAllJSEA(false);
+    };
+
     // Handle download (Reconstruct chunks)
     const handleDownload = async (file: FileData) => {
         try {
@@ -393,7 +455,8 @@ export function FileManagement() {
             filterCategory === 'All' || file.category === filterCategory;
         const matchesYear =
             filterYear === 'All' || file.year === filterYear; // ✅ NEW: Match year
-        return matchesSearch && matchesCategory && matchesYear;
+        const matchesMType = !selectedMType || file.maintenanceType === selectedMType;
+        return matchesSearch && matchesCategory && matchesYear && matchesMType;
     });
 
     // Format file size
@@ -491,6 +554,25 @@ export function FileManagement() {
                                 </select>
                             </div>
 
+                            {/* Conditional Maintenance Selection for specific categories */}
+                            {['MOP', 'JSEA', 'PTW'].includes(selectedCategory) && (
+                                <div className="md:col-span-1">
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                                        Maintenance Type
+                                    </label>
+                                    <select
+                                        value={selectedMaintenance}
+                                        onChange={(e) => setSelectedMaintenance(e.target.value)}
+                                        disabled={uploading}
+                                        className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                        {MAINTENANCE_TYPES.map(type => (
+                                            <option key={type} value={type}>{type}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-2">
                                     Year
@@ -559,25 +641,28 @@ export function FileManagement() {
                         )}
 
                         {/* Upload Button */}
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={handleUpload}
-                            disabled={!selectedFile || uploading}
-                            className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
-                            {uploading ? (
-                                <>
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    Processing...
-                                </>
-                            ) : (
-                                <>
-                                    <Upload className="w-5 h-5" />
-                                    Upload File4
-                                </>
-                            )}
-                        </motion.button>
+                        <div className="flex flex-col sm:flex-row gap-4">
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={handleUpload}
+                                disabled={!selectedFile || uploading}
+                                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {uploading ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        Processing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Upload className="w-5 h-5" />
+                                        Upload File
+                                    </>
+                                )}
+                            </motion.button>
+                        </div>
+
                     </div>
                 </motion.div>
             )}
@@ -658,10 +743,15 @@ export function FileManagement() {
                                 <Search className="w-5 h-5 text-blue-400 flex-shrink-0" />
                                 <span className="truncate">Search Results ({filteredFiles.length})</span>
                             </>
+                        ) : selectedMType ? (
+                            <>
+                                <FolderOpen className="w-5 h-5 text-blue-400 flex-shrink-0" />
+                                <span className="truncate">{selectedFolder} / {selectedQuarter} / {selectedMType} ({filteredFiles.filter(a => a.category === selectedFolder && a.quarter === selectedQuarter && a.maintenanceType === selectedMType).length})</span>
+                            </>
                         ) : selectedQuarter ? (
                             <>
                                 <FolderOpen className="w-5 h-5 text-blue-400 flex-shrink-0" />
-                                <span className="truncate">{selectedFolder} / {selectedQuarter} ({filteredFiles.filter(a => a.category === selectedFolder && a.quarter === selectedQuarter).length})</span>
+                                <span className="truncate">{selectedFolder} / {selectedQuarter}</span>
                             </>
                         ) : selectedFolder ? (
                             <>
@@ -676,17 +766,32 @@ export function FileManagement() {
                         )}
                     </h2>
 
-                    {(selectedFolder || selectedQuarter) && !searchQuery && (
-                        <button
-                            onClick={() => {
-                                if (selectedQuarter) setSelectedQuarter(null);
-                                else setSelectedFolder(null);
-                            }}
-                            className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1.5 transition-colors whitespace-nowrap self-end sm:self-auto"
-                        >
-                            <X className="w-4 h-4" />
-                            Back to {selectedQuarter ? 'Quarters' : 'Folders'}
-                        </button>
+                    {(selectedFolder || selectedQuarter || selectedMType) && !searchQuery && (
+                        <div className="flex items-center gap-3 self-end sm:self-auto">
+                            {isAdmin && selectedFolder === 'JSEA' && !selectedQuarter && (
+                                <button
+                                    onClick={() => {
+                                        setIsDeletingAllJSEA(true);
+                                        setDeleteModalOpen(true);
+                                    }}
+                                    className="text-xs px-3 py-1.5 bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg border border-red-500/20 transition flex items-center gap-1.5"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    Delete All JSEA Data
+                                </button>
+                            )}
+                            <button
+                                onClick={() => {
+                                    if (selectedMType) setSelectedMType(null);
+                                    else if (selectedQuarter) setSelectedQuarter(null);
+                                    else setSelectedFolder(null);
+                                }}
+                                className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1.5 transition-colors whitespace-nowrap"
+                            >
+                                <X className="w-4 h-4" />
+                                Back to {selectedMType ? 'Maintenance Types' : selectedQuarter ? 'Quarters' : 'Folders'}
+                            </button>
+                        </div>
                     )}
                 </div>
 
@@ -753,12 +858,47 @@ export function FileManagement() {
                             );
                         })}
                     </div>
+                ) : !searchQuery && selectedFolder && selectedQuarter && !selectedMType && ['MOP', 'JSEA', 'PTW'].includes(selectedFolder) ? (
+                    /* Level 3: Maintenance Types (Only for MOP, JSEA, PTW) */
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {MAINTENANCE_TYPES.map((type) => {
+                            const typeFiles = filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && f.maintenanceType === type);
+                            const fileCount = typeFiles.length;
+                            if (fileCount === 0) return null; // Only show folders with files
+
+                            return (
+                                <motion.div
+                                    key={type}
+                                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(51, 65, 85, 0.4)' }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => setSelectedMType(type)}
+                                    className="bg-slate-700/30 rounded-xl p-5 border border-slate-600/50 cursor-pointer transition-all group"
+                                >
+                                    <div className="flex flex-col items-center text-center">
+                                        <div className="bg-blue-600/20 p-4 rounded-2xl mb-3 group-hover:bg-blue-600/30 transition-colors">
+                                            <FolderOpen className="w-10 h-10 text-blue-400" />
+                                        </div>
+                                        <h3 className="text-white font-medium text-xs truncate w-full">
+                                            {type}
+                                        </h3>
+                                        <p className="text-[10px] text-slate-500 mt-1">
+                                            {fileCount} {fileCount === 1 ? 'file' : 'files'}
+                                        </p>
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
+                    </div>
                 ) : (
                     /* Level 3: Files List */
                     <div className="space-y-3">
                         {(searchQuery
                             ? filteredFiles
-                            : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter)
+                            : filteredFiles.filter(f =>
+                                f.category === selectedFolder &&
+                                f.quarter === selectedQuarter &&
+                                (['MOP', 'JSEA', 'PTW'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true)
+                            )
                         ).length === 0 ? (
                             <div className="text-center py-12">
                                 <Search className="w-16 h-16 text-slate-600 mx-auto mb-4" />
@@ -773,11 +913,11 @@ export function FileManagement() {
                                             <input
                                                 type="checkbox"
                                                 checked={
-                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter)).length > 0 &&
-                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter)).every(f => selectedFileIds.includes(f.id))
+                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).length > 0 &&
+                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).every(f => selectedFileIds.includes(f.id))
                                                 }
                                                 onChange={(e) => {
-                                                    const currentFiles = searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter);
+                                                    const currentFiles = searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true));
                                                     if (e.target.checked) {
                                                         const allIds = currentFiles.map(f => f.id);
                                                         setSelectedFileIds(prev => [...new Set([...prev, ...allIds])]);
@@ -812,7 +952,11 @@ export function FileManagement() {
 
                                 {(searchQuery
                                     ? filteredFiles
-                                    : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter)
+                                    : filteredFiles.filter(f =>
+                                        f.category === selectedFolder &&
+                                        f.quarter === selectedQuarter &&
+                                        (['MOP', 'JSEA', 'PTW'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true)
+                                    )
                                 ).map((file) => (
                                     <motion.div
                                         key={file.id}
@@ -942,10 +1086,13 @@ export function FileManagement() {
                         >
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-xl font-semibold text-white">
-                                    {selectedFileIds.length > 0 ? 'Delete Multiple Files' : 'Delete File'}
+                                    {isDeletingAllJSEA ? 'Hapus Semua Data JSEA' : selectedFileIds.length > 0 ? 'Delete Multiple Files' : 'Delete File'}
                                 </h3>
                                 <button
-                                    onClick={() => setDeleteModalOpen(false)}
+                                    onClick={() => {
+                                        setDeleteModalOpen(false);
+                                        setIsDeletingAllJSEA(false);
+                                    }}
                                     disabled={isBulkDeleting}
                                     className="p-1 hover:bg-slate-700 rounded-lg transition disabled:opacity-50"
                                 >
@@ -954,24 +1101,29 @@ export function FileManagement() {
                             </div>
 
                             <p className="text-slate-300 mb-6">
-                                {selectedFileIds.length > 0 ? (
+                                {isDeletingAllJSEA ? (
+                                    <>Apakah Anda yakin ingin menghapus <span className="font-medium text-white">SELURUH data JSEA</span>? Tindakan ini tidak dapat dibatalkan.</>
+                                ) : selectedFileIds.length > 0 ? (
                                     <>Are you sure you want to delete <span className="font-medium text-white">{selectedFileIds.length} selected files</span>?</>
                                 ) : (
                                     <>Are you sure you want to delete <span className="font-medium text-white">{fileToDelete?.fileName}</span>?</>
                                 )}
-                                {' '}This action cannot be undone and will remove all file data.
+                                {!isDeletingAllJSEA && ' This action cannot be undone and will remove all file data.'}
                             </p>
 
                             <div className="flex gap-3">
                                 <button
-                                    onClick={() => setDeleteModalOpen(false)}
+                                    onClick={() => {
+                                        setDeleteModalOpen(false);
+                                        setIsDeletingAllJSEA(false);
+                                    }}
                                     disabled={isBulkDeleting}
                                     className="flex-1 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition disabled:opacity-50"
                                 >
                                     Cancel
                                 </button>
                                 <button
-                                    onClick={handleDelete}
+                                    onClick={isDeletingAllJSEA ? handleDeleteAllJSEA : handleDelete}
                                     disabled={isBulkDeleting}
                                     className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
                                 >

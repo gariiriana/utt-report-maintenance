@@ -45,11 +45,15 @@ interface CorrectiveReport {
     reportedAt: any;
 }
 
-export function CorrectiveMaintenance() {
+interface CorrectiveMaintenanceProps {
+    readOnly?: boolean; // For TDE/CBRE view-only access
+}
+
+export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanceProps) {
     const { user, userRole } = useAuth();
     // Role 'standby_engineer' only can create
-    const canCreate = userRole === 'standby_engineer';
-    const isAdmin = userRole === 'admin';
+    const canCreate = !readOnly && userRole === 'standby_engineer';
+    const canDelete = !readOnly && (userRole === 'admin' || userRole === 'standby_engineer');
 
     const [reports, setReports] = useState<CorrectiveReport[]>([]);
     const [loading, setLoading] = useState(true);
@@ -491,8 +495,8 @@ export function CorrectiveMaintenance() {
                                             </p>
                                         </div>
 
-                                        {/* Admin Delete Action */}
-                                        {(isAdmin || report.reportedBy === user?.uid) && (
+                                        {/* Delete Action - Only if not readOnly */}
+                                        {canDelete && (report.reportedBy === user?.uid || userRole === 'admin') && (
                                             <button
                                                 onClick={() => handleDeleteClick(report.id)}
                                                 className="p-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition"

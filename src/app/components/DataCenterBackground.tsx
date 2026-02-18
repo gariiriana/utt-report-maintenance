@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 
 export function DataCenterBackground() {
@@ -20,7 +20,7 @@ export function DataCenterBackground() {
 
       {/* Network Nodes */}
       <NetworkTopology />
-      
+
       {/* Data Flow Particles */}
       <DataFlowParticles />
     </>

@@ -145,9 +145,9 @@ service cloud.firestore {
     // FILES COLLECTION - File management (Sharded in Firestore)
     // ============================================================
     match /files/{fileId} {
-      // ✅ Admin bisa upload/create file metadata
+      // ✅ Admin & Engineer bisa upload/create file metadata
       allow create: if request.auth != null 
-                    && isAdminSafe()
+                    && (isAdminSafe() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'engineer')
                     && request.resource.data.keys().hasAll([
                       'fileName',
                       'fileSize',
@@ -175,8 +175,9 @@ service cloud.firestore {
       // CHUNKS SUB-COLLECTION - Potongan data file
       // ============================================================
       match /chunks/{chunkId} {
-        // ✅ Admin bisa create chunks
-        allow create: if request.auth != null && isAdminSafe();
+        // ✅ Admin & Engineer bisa create chunks
+        allow create: if request.auth != null 
+                      && (isAdminSafe() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'engineer');
         
         // ✅ Semua user bisa read chunks (untuk download)
         allow read: if request.auth != null;
@@ -228,31 +229,14 @@ service cloud.firestore {
     }
     
     // ============================================================
-    // REPORTS COLLECTION (Optional - jika masih dipakai)
+    // SERVICE REPORT TEMPLATES
     // ============================================================
-    match /reports/{reportId} {
-      // ✅ User yang login bisa create report
-      allow create: if request.auth != null 
-                    && request.resource.data.createdBy == request.auth.token.email
-                    && request.resource.data.keys().hasAll([
-                      'maintenanceName', 
-                      'maintenanceTime', 
-                      'cards', 
-                      'createdBy', 
-                      'createdAt'
-                    ]);
+    match /service_report_templates/{templateId} {
+      // ✅ Admin can do everything
+      allow write: if request.auth != null && isAdminSafe();
       
-      // ✅ User hanya bisa read report mereka sendiri
-      allow read: if request.auth != null 
-                  && resource.data.createdBy == request.auth.token.email;
-      
-      // ✅ User hanya bisa update report mereka sendiri
-      allow update: if request.auth != null 
-                    && resource.data.createdBy == request.auth.token.email;
-      
-      // ✅ User hanya bisa delete report mereka sendiri
-      allow delete: if request.auth != null 
-                    && resource.data.createdBy == request.auth.token.email;
+      // ✅ All authenticated users can read templates
+      allow read: if request.auth != null;
     }
     
     // ============================================================

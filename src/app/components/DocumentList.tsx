@@ -36,7 +36,8 @@ interface ExcelDocument {
 }
 
 export function DocumentList() {
-  const { user, companyType } = useAuth();
+  const { user, userRole, companyType } = useAuth();
+  const isAdmin = userRole === 'admin';
   const [documents, setDocuments] = useState<ExcelDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterDate, setFilterDate] = useState('');
@@ -56,10 +57,12 @@ export function DocumentList() {
       setLoading(true);
 
       // Fetch Excel documents
-      const excelQuery = query(
-        collection(db, 'excel_documents'),
-        where('createdBy', '==', user.email)
-      );
+      const excelQuery = isAdmin
+        ? query(collection(db, 'excel_documents'))
+        : query(
+          collection(db, 'excel_documents'),
+          where('createdBy', '==', user.email)
+        );
       const excelSnapshot = await getDocs(excelQuery);
       const excelDocs: ExcelDocument[] = [];
       excelSnapshot.forEach((doc) => {
@@ -81,10 +84,12 @@ export function DocumentList() {
       });
 
       // Fetch PDF documents
-      const pdfQuery = query(
-        collection(db, 'pdf_documents'),
-        where('createdBy', '==', user.email)
-      );
+      const pdfQuery = isAdmin
+        ? query(collection(db, 'pdf_documents'))
+        : query(
+          collection(db, 'pdf_documents'),
+          where('createdBy', '==', user.email)
+        );
       const pdfSnapshot = await getDocs(pdfQuery);
       const pdfDocs: ExcelDocument[] = [];
       pdfSnapshot.forEach((doc) => {
