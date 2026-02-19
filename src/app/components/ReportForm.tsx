@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Upload, Activity, Clock, Camera, FileText, Database, HardDrive, FileType, Scissors } from 'lucide-react';
+import { Plus, Trash2, Upload, Activity, Clock, Camera, FileText, Database, HardDrive, FileType, Scissors, Pencil } from 'lucide-react';
+import { ExcelDocument } from './DocumentList';
 import { ImageEditor } from './ImageEditor';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
@@ -21,7 +22,12 @@ interface PhotoCard {
   description: string;
 }
 
-export function ReportForm() {
+interface ReportFormProps {
+  editingData?: ExcelDocument | null;
+  onClearEdit?: () => void;
+}
+
+export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const { user, companyType } = useAuth();
   const [maintenanceName, setMaintenanceName] = useState('');
   const [maintenanceTime, setMaintenanceTime] = useState('');
@@ -33,6 +39,9 @@ export function ReportForm() {
     { id: '4', photo: null, description: '' },
     { id: '5', photo: null, description: '' },
     { id: '6', photo: null, description: '' },
+    { id: '7', photo: null, description: '' },
+    { id: '8', photo: null, description: '' },
+    { id: '9', photo: null, description: '' },
   ]);
 
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
@@ -44,8 +53,8 @@ export function ReportForm() {
   // All calls to `compressImage` now refer to the shared utility.
 
   // Auto-fill template descriptions based on USER EMAIL
-  React.useEffect(() => {
-    if (!user?.email) return;
+  useEffect(() => {
+    if (!user?.email || editingData) return;
 
     const lowerEmail = user.email.toLowerCase();
 
@@ -64,7 +73,7 @@ export function ReportForm() {
         'Checking Vibration',
         'Checking Air Flow & Temperature',
         'Checking Humidity',
-        'Checking Alarm',
+        'Checking Noise',
         'Pressure Supply',
         'Pressure Return'
       ];
@@ -96,7 +105,58 @@ export function ReportForm() {
       }));
       setCards(newCards);
     }
+    // PDU Template - 20 items from screenshot
+    else if (lowerEmail === 'pdu@gmail.com') {
+      const pduTemplate = [
+        'Name Plate',
+        'Measurement Temp Monitoring ISO-TRANS',
+        'Cleaning Panels menggunakan vacuum cleaner',
+        'Measurement Panel',
+        'Pengecekan Digital Power Meter (KW)',
+        'Pengecekan Digital Power Meter (Volt)',
+        'Pengecekan Digital Power Meter (Volt)',
+        'Pengecekan Digital Power Meter (Ampere)',
+        'Measurement Noise',
+        'Measurement Voltage R-S',
+        'Measurement Voltage S-T',
+        'Measurement Voltage T-R',
+        'Measurement Voltage R-N',
+        'Measurement Voltage S-N',
+        'Measurement Voltage T-N',
+        'Measurement Grounding',
+        'Measurement Ampere (R)',
+        'Measurement Ampere (S)',
+        'Measurement Ampere (T)',
+        'Measurement Ampere (N)'
+      ];
+
+      const newCards = pduTemplate.map((desc, idx) => ({
+        id: `${idx + 1}`,
+        photo: null,
+        description: desc
+      }));
+      setCards(newCards);
+    }
   }, [user?.email]);
+
+  // ✅ NEW: Load data for editing
+  useEffect(() => {
+    if (editingData) {
+      setMaintenanceName(editingData.maintenanceName);
+      setMaintenanceTime(editingData.maintenanceTime);
+      setSpecificDetail(editingData.specificDetail || '');
+
+      if (editingData.photosData && editingData.photosData.length > 0) {
+        const mappedCards = editingData.photosData.map((p: any) => ({
+          id: `${p.index}`,
+          photo: null, // Base64 images don't have a File object
+          photoBase64: p.photoBase64 || null,
+          description: p.description || ''
+        }));
+        setCards(mappedCards);
+      }
+    }
+  }, [editingData]);
 
   const handlePhotoChange = async (id: string, file: File | null) => {
     if (file) {
@@ -316,11 +376,12 @@ export function ReportForm() {
 
       // ✅ Helper function to add page header (logos + title + info)
       const addPageHeader = () => {
+        const isPDU = user?.email === 'pdu@gmail.com';
         let headerY = marginTop;
 
         // Add logos
-        const logoWidth = 35;
-        const logoHeight = 14;
+        const logoWidth = isPDU ? 25 : 35;
+        const logoHeight = isPDU ? 10 : 14;
 
         // Logo Left (Dwimitra or BRI Specific based on companyType)
         doc.addImage(
@@ -342,27 +403,27 @@ export function ReportForm() {
           logoHeight
         );
 
-        headerY += logoHeight + 5;
+        headerY += logoHeight + (isPDU ? 3 : 5);
 
         // Title
-        doc.setFontSize(14);
+        doc.setFontSize(isPDU ? 10 : 14);
         doc.setFont('helvetica', 'bold');
         const titleText = `Dokumentasi PM ${maintenanceName} (${formattedDate})`;
         const titleWidth = doc.getTextWidth(titleText);
         doc.text(titleText, (pageWidth - titleWidth) / 2, headerY);
 
-        headerY += 8;
+        headerY += (isPDU ? 6 : 8);
 
         // Specific Detail / Equipment Name
         if (specificDetail) {
-          doc.setFontSize(12);
+          doc.setFontSize(isPDU ? 9 : 12);
           doc.setFont('helvetica', 'bold');
           const equipmentText = specificDetail;
           const equipmentWidth = doc.getTextWidth(equipmentText);
           doc.text(equipmentText, (pageWidth - equipmentWidth) / 2, headerY);
-          headerY += 10;
+          headerY += (isPDU ? 8 : 10);
         } else {
-          headerY += 5;
+          headerY += (isPDU ? 3 : 5);
         }
 
         return headerY; // Return Y position after header
@@ -371,22 +432,26 @@ export function ReportForm() {
       // ✅ Add header for first page
       currentY = addPageHeader();
 
-      // Add photos in 3-column grid
-      const photoWidth = (usableWidth - 8) / 3; // 3 columns with 4mm spacing between
-      const photoHeight = 55; // Fixed height for photos
-      const captionHeight = 12; // Height for caption area
-      const spacing = 4;
-      const photosPerPage = 9; // 3x3 grid
+      // Add photos in grid
+      const isPDU = user?.email === 'pdu@gmail.com';
+      const columns = isPDU ? 4 : 3;
+      const photosPerPage = isPDU ? 20 : 9;
+      const spacing = isPDU ? 3 : 4;
+
+      const photoWidth = (usableWidth - (columns - 1) * spacing) / columns;
+      const photoHeight = isPDU ? 38 : 55;
+      const captionHeight = isPDU ? 10 : 12;
+
       let photoCount = 0;
 
-      for (let i = 0; i < filledCards.length; i += 3) {
-        // ✅ Check if we need a new page (after every 9 photos)
+      for (let i = 0; i < filledCards.length; i += columns) {
+        // ✅ Check if we need a new page
         if (photoCount > 0 && photoCount % photosPerPage === 0) {
           doc.addPage();
           currentY = addPageHeader(); // ✅ Add header to new page!
         }
 
-        const rowCards = filledCards.slice(i, i + 3);
+        const rowCards = filledCards.slice(i, i + columns);
 
         for (let j = 0; j < rowCards.length; j++) {
           const card = rowCards[j];
@@ -394,7 +459,7 @@ export function ReportForm() {
 
           // Draw photo border/box
           doc.setDrawColor(0);
-          doc.setLineWidth(0.5);
+          doc.setLineWidth(0.3); // Thinner line for PDU
           doc.rect(xPos, currentY, photoWidth, photoHeight);
 
           // Add photo if exists
@@ -425,17 +490,17 @@ export function ReportForm() {
 
           // Add caption text
           if (card.description) {
-            doc.setFontSize(8);
+            doc.setFontSize(isPDU ? 7 : 8);
             doc.setFont('helvetica', 'normal');
             const lines = doc.splitTextToSize(card.description, photoWidth - 4);
-            const textY = currentY + photoHeight + 6;
+            const textY = currentY + photoHeight + 5;
             doc.text(lines, xPos + photoWidth / 2, textY, { align: 'center', maxWidth: photoWidth - 4 });
           }
 
           photoCount++;
         }
 
-        currentY += photoHeight + captionHeight + 8; // Add spacing after each row
+        currentY += photoHeight + captionHeight + (isPDU ? 3 : 5);
       }
 
       // Generate PDF and download
@@ -532,6 +597,33 @@ export function ReportForm() {
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 relative z-10">
+      {/* Mode Edit Indicator */}
+      {editingData && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 sm:mb-6 flex items-center justify-between p-3 sm:p-4 bg-blue-600/10 border border-blue-500/30 rounded-xl"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500/20 rounded-lg">
+              <Pencil className="w-5 h-5 text-blue-400" />
+            </div>
+            <div>
+              <h4 className="text-sm font-semibold text-blue-300">Mode Edit Aktif</h4>
+              <p className="text-xs text-blue-400/80">Sedang mengedit: {editingData.fileName}</p>
+            </div>
+          </div>
+          {onClearEdit && (
+            <button
+              onClick={onClearEdit}
+              className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg text-xs font-medium transition"
+            >
+              Batalkan
+            </button>
+          )}
+        </motion.div>
+      )}
+
       {/* System Stats */}
       <div className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 border border-slate-700/50">
         <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-5">

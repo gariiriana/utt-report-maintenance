@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, User, FileDown, FileType } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, User, FileDown, FileType, Pencil } from 'lucide-react';
 import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore'; // ✅ Removed "orderBy" - not needed anymore
 import { db } from '@/lib/firebase';
 import { useAuth } from './AuthContext';
@@ -20,7 +20,7 @@ interface PhotoData {
   hasPhoto: boolean;
 }
 
-interface ExcelDocument {
+export interface ExcelDocument {
   id: string;
   fileName: string;
   maintenanceName: string;
@@ -35,7 +35,11 @@ interface ExcelDocument {
   documentType: 'excel' | 'pdf'; // ✅ NEW: Type of document
 }
 
-export function DocumentList() {
+interface DocumentListProps {
+  onEdit?: (doc: ExcelDocument) => void;
+}
+
+export function DocumentList({ onEdit }: DocumentListProps) {
   const { user, userRole, companyType } = useAuth();
   const isAdmin = userRole === 'admin';
   const [documents, setDocuments] = useState<ExcelDocument[]>([]);
@@ -421,70 +425,71 @@ export function DocumentList() {
           )
         );
 
-        // Add logos
-        const logoWidth = 45;
-        const logoHeight = 20;
+        // ✅ Helper function to add page header (logos + title + info)
+        const addPageHeader = () => {
+          const isPDU = user?.email === 'pdu@gmail.com' || docData.createdBy === 'pdu@gmail.com';
+          let headerY = marginTop;
+          const logoWidth = isPDU ? 25 : 35;
+          const logoHeight = isPDU ? 10 : 14;
 
-        // Logo Left (Dwimitra or BRI Specific based on companyType)
-        doc.addImage(
-          `data:image/png;base64,${logoLeftBase64}`,
-          'PNG',
-          marginLeft,
-          currentY,
-          logoWidth,
-          logoHeight
-        );
+          // Logo Left (Dwimitra or BRI Specific based on companyType)
+          doc.addImage(
+            `data:image/png;base64,${logoLeftBase64}`,
+            'PNG',
+            marginLeft,
+            headerY,
+            logoWidth,
+            logoHeight
+          );
 
-        // Logo Right (NeutraDC or BRI based on companyType)
-        doc.addImage(
-          `data:image/png;base64,${logoRightBase64}`,
-          'PNG',
-          pageWidth - marginRight - logoWidth,
-          currentY,
-          logoWidth,
-          logoHeight
-        );
+          // Logo Right (NeutraDC or BRI based on companyType)
+          doc.addImage(
+            `data:image/png;base64,${logoRightBase64}`,
+            'PNG',
+            pageWidth - marginRight - logoWidth,
+            headerY,
+            logoWidth,
+            logoHeight
+          );
 
-        currentY += logoHeight + 8;
+          headerY += logoHeight + (isPDU ? 3 : 5);
 
-        // ================= TITLE =================
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-
-        const titleText = `Dokumentasi PM ${docData.maintenanceName} (${formattedDate})`;
-        const titleWidth = doc.getTextWidth(titleText);
-
-        // Tulis TITLE
-        doc.text(titleText, (pageWidth - titleWidth) / 2, currentY);
-
-        // ⬇️ TURUNKAN Y SETELAH TITLE (PENTING)
-        currentY += 10;
-
-
-        // ================= SPECIFIC DETAIL =================
-        if (docData.specificDetail) {
-          doc.setFontSize(12);
+          // Title
+          doc.setFontSize(isPDU ? 10 : 14);
           doc.setFont('helvetica', 'bold');
+          const titleText = `Dokumentasi PM ${docData.maintenanceName} (${formattedDate})`;
+          const titleWidth = doc.getTextWidth(titleText);
+          doc.text(titleText, (pageWidth - titleWidth) / 2, headerY);
 
-          const equipmentText = docData.specificDetail;
-          const equipmentWidth = doc.getTextWidth(equipmentText);
+          headerY += (isPDU ? 6 : 8);
 
-          // Tulis EQUIPMENT DI Y BARU
-          doc.text(equipmentText, (pageWidth - equipmentWidth) / 2, currentY);
+          // Specific Detail / Equipment Name
+          if (docData.specificDetail) {
+            doc.setFontSize(isPDU ? 9 : 12);
+            doc.setFont('helvetica', 'bold');
+            const equipmentText = docData.specificDetail;
+            const equipmentWidth = doc.getTextWidth(equipmentText);
+            doc.text(equipmentText, (pageWidth - equipmentWidth) / 2, headerY);
+            headerY += (isPDU ? 8 : 10);
+          } else {
+            headerY += (isPDU ? 3 : 5);
+          }
 
-          // Jarak setelah equipment
-          currentY += 10;
-        } else {
-          // Kalau ga ada equipment, tetap kasih jarak
-          currentY += 8;
-        }
+          return headerY; // Return Y position after header
+        };
 
+        // ✅ Add header for first page
+        currentY = addPageHeader();
 
-        // Add photos in 3-column grid
-        const photoWidth = (usableWidth - 8) / 3; // 3 columns with 4mm spacing between
-        const photoHeight = 55; // Fixed height for photos
-        const captionHeight = 12; // Height for caption area
-        const spacing = 4;
+        // Add photos in grid
+        const isPDU = user?.email === 'pdu@gmail.com' || docData.createdBy === 'pdu@gmail.com';
+        const columns = isPDU ? 4 : 3;
+        const photosPerPage = isPDU ? 20 : 9;
+        const spacing = isPDU ? 3 : 4;
+
+        const photoWidth = (usableWidth - (columns - 1) * spacing) / columns;
+        const photoHeight = isPDU ? 38 : 55;
+        const captionHeight = isPDU ? 10 : 12;
 
         let finalPhotosData = docData.photosData || [];
 
@@ -505,15 +510,16 @@ export function DocumentList() {
         }
 
         const photosData = finalPhotosData;
+        let photoCount = 0;
 
-        for (let i = 0; i < photosData.length; i += 3) {
-          // Check if we need a new page
-          if (currentY + photoHeight + captionHeight + 10 > pageHeight - 15) {
+        for (let i = 0; i < photosData.length; i += columns) {
+          // ✅ Check if we need a new page
+          if (photoCount > 0 && photoCount % photosPerPage === 0) {
             doc.addPage();
-            currentY = marginTop;
+            currentY = addPageHeader(); // ✅ Repeat header on new pages!
           }
 
-          const rowCards = photosData.slice(i, i + 3);
+          const rowCards = photosData.slice(i, i + columns);
 
           for (let j = 0; j < rowCards.length; j++) {
             const card = rowCards[j];
@@ -521,7 +527,7 @@ export function DocumentList() {
 
             // Draw photo border/box
             doc.setDrawColor(0);
-            doc.setLineWidth(0.5);
+            doc.setLineWidth(0.3); // Thinner line for PDU
             doc.rect(xPos, currentY, photoWidth, photoHeight);
 
             // Add photo if exists
@@ -545,15 +551,17 @@ export function DocumentList() {
 
             // Add caption text
             if (card.description) {
-              doc.setFontSize(8);
+              doc.setFontSize(isPDU ? 7 : 8);
               doc.setFont('helvetica', 'normal');
               const lines = doc.splitTextToSize(card.description, photoWidth - 4);
-              const textY = currentY + photoHeight + 6;
+              const textY = currentY + photoHeight + 5;
               doc.text(lines, xPos + photoWidth / 2, textY, { align: 'center', maxWidth: photoWidth - 4 });
             }
+
+            photoCount++;
           }
 
-          currentY += photoHeight + captionHeight + 8; // Add spacing after each row
+          currentY += photoHeight + captionHeight + (isPDU ? 3 : 5);
         }
 
       } catch (error) {
@@ -598,6 +606,34 @@ export function DocumentList() {
 
     return true;
   });
+
+  const handleEditClick = async (doc: ExcelDocument) => {
+    if (!onEdit) return;
+
+    try {
+      toast.loading('Preparing data for editing...', { id: 'edit-prep' });
+
+      // Fetch photos from subcollection for backward compatibility or completeness
+      let photosData = doc.photosData || [];
+      if (photosData.length === 0) {
+        const colName = doc.documentType === 'excel' ? 'excel_documents' : 'pdf_documents';
+        const photosSnap = await getDocs(
+          collection(db, `${colName}/${doc.id}/photos`)
+        );
+        if (!photosSnap.empty) {
+          photosData = photosSnap.docs
+            .map(d => d.data() as any)
+            .sort((a, b) => a.index - b.index);
+        }
+      }
+
+      onEdit({ ...doc, photosData });
+      toast.dismiss('edit-prep');
+    } catch (err) {
+      console.error('Failed to prepare data for edit:', err);
+      toast.error('Failed to prepare data for editing', { id: 'edit-prep' });
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 relative z-10">
@@ -774,6 +810,17 @@ export function DocumentList() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 w-full sm:w-auto">
+                    {onEdit && (
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => handleEditClick(document)}
+                        className="flex-1 sm:flex-initial p-2.5 sm:p-3 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-lg transition border border-blue-500/20"
+                        title="Edit Report"
+                      >
+                        <Pencil className="w-4 h-4 sm:w-5 sm:h-5 mx-auto" />
+                      </motion.button>
+                    )}
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}

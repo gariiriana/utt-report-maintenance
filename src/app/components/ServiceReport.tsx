@@ -63,7 +63,6 @@ const MAINTENANCE_TYPES = [
     'Cooling Tower',
     'ATS',
     'Cooling pump',
-    'Exhaust Fan',
     'Transformer',
     'Generator & Fuel system',
     'MV and RMU panel',
@@ -427,7 +426,7 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
 
         const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
         const isFiltering = filterYear !== 'All' || filterQuarter !== 'All' || searchQuery !== '';
-        const hasContent = item.count > 0 || (isAdmin && !isFiltering);
+        const hasContent = item.count > 0 || ((isAdmin || isTDEorCBRE) && !isFiltering);
         return matchesSearch && hasContent;
     });
 
@@ -475,8 +474,10 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
         };
     }).filter(item => {
         const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-        // Only show types that have files
-        return matchesSearch && item.count > 0;
+        // Only show types that have files, or show all for Admin/TDE/CBRE
+        const isFilteringMType = searchQuery !== '';
+        const hasContent = item.count > 0 || ((isAdmin || isTDEorCBRE) && !isFilteringMType);
+        return matchesSearch && hasContent;
     });
 
     return (

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Shield, FileText, FileSpreadsheet, Download, Search, Filter, Calendar, User, Database, Activity, TrendingUp } from 'lucide-react';
+import { Shield, FileText, FileSpreadsheet, Download, Search, Filter, Calendar, User, Database, Activity, TrendingUp, Pencil } from 'lucide-react';
 import { collection, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
+import { ExcelDocument } from './DocumentList';
 import { db } from '@/lib/firebase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
@@ -32,7 +33,11 @@ interface DocumentData {
   type: 'excel' | 'pdf';
 }
 
-export function AdminDashboard() {
+interface AdminDashboardProps {
+  onEdit?: (doc: ExcelDocument) => void;
+}
+
+export function AdminDashboard({ onEdit }: AdminDashboardProps) {
   const { companyType } = useAuth();
   const [documents, setDocuments] = useState<DocumentData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,6 +56,43 @@ export function AdminDashboard() {
   useEffect(() => {
     loadAllDocuments();
   }, []);
+
+  const handleEditClick = async (doc: DocumentData) => {
+    if (!onEdit) return;
+
+    try {
+      toast.loading('Preparing data for editing...', { id: 'edit-prep' });
+
+      // Fetch photos from subcollection for backward compatibility or completeness
+      let photosData = doc.photosData || [];
+      if (photosData.length === 0) {
+        const colName = doc.type === 'excel' ? 'excel_documents' : 'pdf_documents';
+        const photosSnap = await getDocs(
+          collection(db, `${colName}/${doc.id}/photos`)
+        );
+        if (!photosSnap.empty) {
+          photosData = photosSnap.docs
+            .map(d => d.data() as any)
+            .sort((a, b) => a.index - b.index);
+        }
+      }
+
+      // Convert DocumentData to ExcelDocument structure
+      const excelDoc: ExcelDocument = {
+        ...doc,
+        createdAt: doc.createdAt.toDate(),
+        photosData: photosData,
+        documentType: doc.type,
+        fileSize: 0 // Not strictly needed for edit
+      };
+
+      onEdit(excelDoc);
+      toast.dismiss('edit-prep');
+    } catch (err) {
+      console.error('Failed to prepare data for edit:', err);
+      toast.error('Failed to prepare data for editing', { id: 'edit-prep' });
+    }
+  };
 
   const loadAllDocuments = async () => {
     try {
@@ -363,9 +405,10 @@ export function AdminDashboard() {
         }
 
         const addPageHeader = () => {
+          const isPDU = doc.createdBy === 'pdu@gmail.com';
           let headerY = marginTop;
-          const logoWidth = 35;
-          const logoHeight = 14;
+          const logoWidth = isPDU ? 25 : 35;
+          const logoHeight = isPDU ? 10 : 14;
 
           pdfDoc.addImage(
             `data:image/png;base64,${logoLeftBase64}`,
@@ -386,25 +429,25 @@ export function AdminDashboard() {
             logoHeight
           );
 
-          headerY += logoHeight + 5;
+          headerY += logoHeight + (isPDU ? 3 : 5);
 
-          pdfDoc.setFontSize(14);
+          pdfDoc.setFontSize(isPDU ? 10 : 14);
           pdfDoc.setFont('helvetica', 'bold');
           const titleText = `Dokumentasi PM ${doc.maintenanceName} (${formattedDate})`;
           const titleWidth = pdfDoc.getTextWidth(titleText);
           pdfDoc.text(titleText, (pageWidth - titleWidth) / 2, headerY);
 
-          headerY += 8;
+          headerY += (isPDU ? 6 : 8);
 
           if (doc.specificDetail) {
-            pdfDoc.setFontSize(12);
+            pdfDoc.setFontSize(isPDU ? 9 : 12);
             pdfDoc.setFont('helvetica', 'bold');
             const equipmentText = doc.specificDetail;
             const equipmentWidth = pdfDoc.getTextWidth(equipmentText);
             pdfDoc.text(equipmentText, (pageWidth - equipmentWidth) / 2, headerY);
-            headerY += 10;
+            headerY += (isPDU ? 8 : 10);
           } else {
-            headerY += 5;
+            headerY += (isPDU ? 3 : 5);
           }
 
           return headerY;
@@ -412,27 +455,30 @@ export function AdminDashboard() {
 
         currentY = addPageHeader();
 
-        const photoWidth = (usableWidth - 8) / 3;
-        const photoHeight = 55;
-        const captionHeight = 12;
-        const spacing = 4;
-        const photosPerPage = 9;
+        const isPDU = doc.createdBy === 'pdu@gmail.com';
+        const columns = isPDU ? 4 : 3;
+        const photosPerPage = isPDU ? 20 : 9;
+        const spacing = isPDU ? 3 : 4;
+
+        const photoWidth = (usableWidth - (columns - 1) * spacing) / columns;
+        const photoHeight = isPDU ? 38 : 55;
+        const captionHeight = isPDU ? 10 : 12;
         let photoCount = 0;
 
-        for (let i = 0; i < photosData.length; i += 3) {
+        for (let i = 0; i < photosData.length; i += columns) {
           if (photoCount > 0 && photoCount % photosPerPage === 0) {
             pdfDoc.addPage();
             currentY = addPageHeader();
           }
 
-          const rowCards = photosData.slice(i, i + 3);
+          const rowCards = photosData.slice(i, i + columns);
 
           for (let j = 0; j < rowCards.length; j++) {
             const card = rowCards[j];
             const xPos = marginLeft + j * (photoWidth + spacing);
 
             pdfDoc.setDrawColor(0);
-            pdfDoc.setLineWidth(0.5);
+            pdfDoc.setLineWidth(isPDU ? 0.3 : 0.5);
             pdfDoc.rect(xPos, currentY, photoWidth, photoHeight);
 
             if (card.photoBase64) {
@@ -453,17 +499,17 @@ export function AdminDashboard() {
             pdfDoc.rect(xPos, currentY + photoHeight, photoWidth, captionHeight);
 
             if (card.description) {
-              pdfDoc.setFontSize(8);
+              pdfDoc.setFontSize(isPDU ? 7 : 8);
               pdfDoc.setFont('helvetica', 'normal');
               const lines = pdfDoc.splitTextToSize(card.description, photoWidth - 4);
-              const textY = currentY + photoHeight + 6;
+              const textY = currentY + photoHeight + 5;
               pdfDoc.text(lines, xPos + photoWidth / 2, textY, { align: 'center', maxWidth: photoWidth - 4 });
             }
 
             photoCount++;
           }
 
-          currentY += photoHeight + captionHeight + 8;
+          currentY += photoHeight + captionHeight + (isPDU ? 3 : 5);
         }
 
         const pdfBlob = pdfDoc.output('blob');
@@ -733,15 +779,28 @@ export function AdminDashboard() {
                     </div>
                   </div>
 
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleRegenerate(doc)}
-                    className="w-full flex items-center justify-center gap-2 p-2.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition border border-blue-500/30 text-sm font-medium"
-                  >
-                    <Download className="w-4 h-4" />
-                    Download {doc.type.toUpperCase()}
-                  </motion.button>
+                  <div className="flex gap-2">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleRegenerate(doc)}
+                      className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition border border-blue-500/30 text-sm font-medium"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download {doc.type.toUpperCase()}
+                    </motion.button>
+                    {onEdit && (
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => handleEditClick(doc)}
+                        className="p-2.5 bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-blue-400 rounded-lg border border-slate-700/50 transition"
+                        title="Edit Report"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </motion.button>
+                    )}
+                  </div>
                 </motion.div>
               ))}
             </div>

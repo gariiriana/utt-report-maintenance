@@ -5,6 +5,7 @@ import { useAuth } from './AuthContext';
 import { ReportForm } from './ReportForm';
 import { DocumentList } from './DocumentList';
 import { AdminDashboard } from './AdminDashboard';
+import { ExcelDocument } from './DocumentList'; // ✅ Export this type from DocumentList
 import { FileManagement } from './FileManagement';
 import { CorrectiveMaintenance } from './CorrectiveMaintenance';
 import { ServiceReport } from './ServiceReport';
@@ -35,6 +36,18 @@ export function MainApp() {
   // ✅ NEW: State untuk logout confirmation modal
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
+  // ✅ NEW: State untuk report editing
+  const [editingData, setEditingData] = useState<ExcelDocument | null>(null);
+
+  const handleEditReport = (doc: ExcelDocument) => {
+    setEditingData(doc);
+    setActiveTab('report');
+  };
+
+  const clearEditingData = () => {
+    setEditingData(null);
+  };
+
   // ✅ REMOVED: useEffect yang force admin ke tab 'admin' - admin harus bisa switch tab!
 
   return (
@@ -60,7 +73,6 @@ export function MainApp() {
               </div>
             </div>
 
-            Desktop User Info & Logout
             <div className="hidden md:flex items-center gap-3">
               <div className="text-right">
                 <p className="text-xs text-slate-500">Logged as</p>
@@ -222,17 +234,17 @@ export function MainApp() {
       {/* Content */}
       <div className="relative z-10">
         {activeTab === 'admin' ? (
-          <AdminDashboard />
+          <AdminDashboard onEdit={handleEditReport} />
         ) : activeTab === 'service' ? (
           <ServiceReport />
         ) : activeTab === 'files' ? (
           <FileManagement />
         ) : activeTab === 'report' ? (
-          <ReportForm />
+          <ReportForm editingData={editingData} onClearEdit={clearEditingData} />
         ) : activeTab === 'corrective' ? (
           <CorrectiveMaintenance readOnly={isTDEorCBRE} />
         ) : (
-          <DocumentList />
+          <DocumentList onEdit={handleEditReport} />
         )}
       </div>
 

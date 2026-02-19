@@ -61,7 +61,6 @@ const MAINTENANCE_TYPES = [
     'Cooling Tower',
     'ATS',
     'Cooling pump',
-    'Exhaust Fan',
     'Transformer',
     'Generator & Fuel system',
     'MV and RMU panel',
@@ -121,6 +120,7 @@ interface FileData {
 export function FileManagement() {
     const { user, userRole } = useAuth();
     const isAdmin = userRole === 'admin';
+    const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
 
     const [files, setFiles] = useState<FileData[]>([]);
     const [loading, setLoading] = useState(true);
@@ -144,7 +144,6 @@ export function FileManagement() {
     const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null); // ✅ NEW: State for selected quarter
     const [selectedMType, setSelectedMType] = useState<string | null>(null); // ✅ NEW: State for selected maintenance type
     const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]); // ✅ NEW: State for bulk selection
-    const [isDeletingAllJSEA, setIsDeletingAllJSEA] = useState(false); // ✅ NEW: State for bulk JSEA deletion
 
     // Modal states
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -388,16 +387,6 @@ export function FileManagement() {
         }
     };
 
-    // ✅ NEW: Handle Delete All JSEA Data
-    const handleDeleteAllJSEA = async () => {
-        if (!isAdmin) return;
-        const jseaFiles = files.filter(f => f.category === 'JSEA');
-        if (jseaFiles.length === 0) return;
-
-        const ids = jseaFiles.map(f => f.id);
-        await performBulkDelete(ids, `Deleting ${ids.length} JSEA files...`);
-        setIsDeletingAllJSEA(false);
-    };
 
     // Handle download (Reconstruct chunks)
     const handleDownload = async (file: FileData) => {
@@ -769,18 +758,6 @@ export function FileManagement() {
 
                     {(selectedFolder || selectedQuarter || selectedMType) && !searchQuery && (
                         <div className="flex items-center gap-3 self-end sm:self-auto">
-                            {isAdmin && selectedFolder === 'JSEA' && !selectedQuarter && (
-                                <button
-                                    onClick={() => {
-                                        setIsDeletingAllJSEA(true);
-                                        setDeleteModalOpen(true);
-                                    }}
-                                    className="text-xs px-3 py-1.5 bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg border border-red-500/20 transition flex items-center gap-1.5"
-                                >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    Delete All JSEA Data
-                                </button>
-                            )}
                             <button
                                 onClick={() => {
                                     if (selectedMType) setSelectedMType(null);
@@ -798,32 +775,34 @@ export function FileManagement() {
 
                 {/* Navigation View */}
                 {!searchQuery && !selectedFolder ? (
-                    /* Level 1: Categories */
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {[...new Set(filteredFiles.map(f => f.category))].sort().map((category) => {
-                            const fileCount = filteredFiles.filter(f => f.category === category).length;
-                            return (
-                                <motion.div
-                                    key={category}
-                                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(51, 65, 85, 0.4)' }}
-                                    whileTap={{ scale: 0.98 }}
-                                    onClick={() => setSelectedFolder(category)}
-                                    className="bg-slate-700/30 rounded-xl p-5 border border-slate-600/50 cursor-pointer transition-all group"
-                                >
-                                    <div className="flex flex-col items-center text-center">
-                                        <div className="bg-blue-600/20 p-4 rounded-2xl mb-3 group-hover:bg-blue-600/30 transition-colors">
-                                            <FolderOpen className="w-10 h-10 text-blue-400" />
+                        {[...new Set(filteredFiles.map(f => f.category))]
+                            .filter(category => category && !MAINTENANCE_TYPES.includes(category))
+                            .sort()
+                            .map((category) => {
+                                const fileCount = filteredFiles.filter(f => f.category === category).length;
+                                return (
+                                    <motion.div
+                                        key={category}
+                                        whileHover={{ scale: 1.02, backgroundColor: 'rgba(51, 65, 85, 0.4)' }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setSelectedFolder(category)}
+                                        className="bg-slate-700/30 rounded-xl p-5 border border-slate-600/50 cursor-pointer transition-all group"
+                                    >
+                                        <div className="flex flex-col items-center text-center">
+                                            <div className="bg-blue-600/20 p-4 rounded-2xl mb-3 group-hover:bg-blue-600/30 transition-colors">
+                                                <FolderOpen className="w-10 h-10 text-blue-400" />
+                                            </div>
+                                            <h3 className="text-white font-medium truncate w-full px-2">
+                                                {category}
+                                            </h3>
+                                            <p className="text-xs text-slate-500 mt-1">
+                                                {fileCount} {fileCount === 1 ? 'file' : 'files'}
+                                            </p>
                                         </div>
-                                        <h3 className="text-white font-medium truncate w-full px-2">
-                                            {category}
-                                        </h3>
-                                        <p className="text-xs text-slate-500 mt-1">
-                                            {fileCount} {fileCount === 1 ? 'file' : 'files'}
-                                        </p>
-                                    </div>
-                                </motion.div>
-                            );
-                        })}
+                                    </motion.div>
+                                );
+                            })}
                         {filteredFiles.length === 0 && (
                             <div className="col-span-full text-center py-12">
                                 <FolderOpen className="w-16 h-16 text-slate-600 mx-auto mb-4" />
@@ -865,7 +844,7 @@ export function FileManagement() {
                         {MAINTENANCE_TYPES.map((type) => {
                             const typeFiles = filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && f.maintenanceType === type);
                             const fileCount = typeFiles.length;
-                            if (fileCount === 0) return null; // Only show folders with files
+                            if (fileCount === 0 && !isAdmin && !isTDEorCBRE) return null; // Only show folders with files for others
 
                             return (
                                 <motion.div
@@ -1068,7 +1047,7 @@ export function FileManagement() {
 
             {/* Delete Confirmation Modal */}
             <AnimatePresence>
-                {deleteModalOpen && (fileToDelete || selectedFileIds.length > 0 || isDeletingAllJSEA) && (
+                {deleteModalOpen && (fileToDelete || selectedFileIds.length > 0) && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -1087,12 +1066,11 @@ export function FileManagement() {
                         >
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-xl font-semibold text-white">
-                                    {isDeletingAllJSEA ? 'Hapus Semua Data JSEA' : selectedFileIds.length > 0 ? 'Delete Multiple Files' : 'Delete File'}
+                                    {selectedFileIds.length > 0 ? 'Delete Multiple Files' : 'Delete File'}
                                 </h3>
                                 <button
                                     onClick={() => {
                                         setDeleteModalOpen(false);
-                                        setIsDeletingAllJSEA(false);
                                     }}
                                     disabled={isBulkDeleting}
                                     className="p-1 hover:bg-slate-700 rounded-lg transition disabled:opacity-50"
@@ -1102,21 +1080,18 @@ export function FileManagement() {
                             </div>
 
                             <p className="text-slate-300 mb-6">
-                                {isDeletingAllJSEA ? (
-                                    <>Apakah Anda yakin ingin menghapus <span className="font-medium text-white">SELURUH data JSEA</span>? Tindakan ini tidak dapat dibatalkan.</>
-                                ) : selectedFileIds.length > 0 ? (
+                                {selectedFileIds.length > 0 ? (
                                     <>Are you sure you want to delete <span className="font-medium text-white">{selectedFileIds.length} selected files</span>?</>
                                 ) : (
                                     <>Are you sure you want to delete <span className="font-medium text-white">{fileToDelete?.fileName}</span>?</>
                                 )}
-                                {!isDeletingAllJSEA && ' This action cannot be undone and will remove all file data.'}
+                                {' This action cannot be undone and will remove all file data.'}
                             </p>
 
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => {
                                         setDeleteModalOpen(false);
-                                        setIsDeletingAllJSEA(false);
                                     }}
                                     disabled={isBulkDeleting}
                                     className="flex-1 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition disabled:opacity-50"
@@ -1124,7 +1099,7 @@ export function FileManagement() {
                                     Cancel
                                 </button>
                                 <button
-                                    onClick={isDeletingAllJSEA ? handleDeleteAllJSEA : handleDelete}
+                                    onClick={handleDelete}
                                     disabled={isBulkDeleting}
                                     className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
                                 >
