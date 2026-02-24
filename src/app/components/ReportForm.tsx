@@ -197,10 +197,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
     const formattedDate = new Date(maintenanceTime).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-    // Load logos
-    const loadLogo = async (path: string) => {
+    // Load logos - Vite imports images as objects { src, height, width } so we extract .src
+    const loadLogo = async (pathOrObj: string | { src: string }) => {
       try {
-        const res = await fetch(path);
+        const url = typeof pathOrObj === 'string' ? pathOrObj : pathOrObj.src;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const blob = await res.blob();
         return new Promise<string>((resolve) => {
           const reader = new FileReader();
