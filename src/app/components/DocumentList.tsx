@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, User, FileDown, FileType, Pencil } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, User, FileDown, FileType, Pencil, Box } from 'lucide-react';
 import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore'; // ✅ Removed "orderBy" - not needed anymore
 import { db } from '@/lib/firebase';
 import { useAuth } from './AuthContext';
@@ -391,7 +391,6 @@ export function DocumentList({ onEdit }: DocumentListProps) {
       // Create PDF (A4 portrait: 210mm x 297mm)
       const doc = new jsPDF('p', 'mm', 'a4');
       const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
 
       // Margins
       const marginTop = 15;
@@ -802,6 +801,12 @@ export function DocumentList({ onEdit }: DocumentListProps) {
                         <FileDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         <span>{(document.fileSize / 1024).toFixed(0)} KB</span>
                       </div>
+                      {document.specificDetail && (
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <Box className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 text-blue-400" />
+                          <span className="truncate text-blue-300 font-medium">{document.specificDetail}</span>
+                        </div>
+                      )}
                     </div>
                     <p className="text-xs text-slate-500 mt-1 hidden sm:block">
                       Dibuat: {document.createdAt.toLocaleString('id-ID')}

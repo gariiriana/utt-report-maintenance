@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Upload, Activity, Clock, Camera, FileText, Database, HardDrive, FileType, Scissors, Pencil } from 'lucide-react';
+import { Plus, Trash2, Upload, Camera, FileType, Scissors, Eye, RefreshCw, ChevronDown } from 'lucide-react';
 import { ExcelDocument } from './DocumentList';
 import { ImageEditor } from './ImageEditor';
 import { useAuth } from './AuthContext';
@@ -13,9 +13,10 @@ import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
 
 import { jsPDF } from 'jspdf';
-import { compressImage, compressBase64Image } from '@/lib/imageCompression';
+import { compressImage } from '@/lib/imageCompression';
+import { PreviewReport } from './PreviewReport';
 
-interface PhotoCard {
+export interface PhotoCard {
   id: string;
   photo: File | null;
   photoBase64?: string;
@@ -28,10 +29,11 @@ interface ReportFormProps {
 }
 
 export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
-  const { user, companyType } = useAuth();
+  const { user, companyType: authCompanyType } = useAuth();
+  const [companyType, setCompanyType] = useState<'neutra' | 'bri'>('neutra');
   const [maintenanceName, setMaintenanceName] = useState('');
   const [maintenanceTime, setMaintenanceTime] = useState('');
-  const [specificDetail, setSpecificDetail] = useState(''); // ✅ NEW: Untuk nama unit/ruangan
+  const [specificDetail, setSpecificDetail] = useState('');
   const [cards, setCards] = useState<PhotoCard[]>([
     { id: '1', photo: null, description: '' },
     { id: '2', photo: null, description: '' },
@@ -47,903 +49,449 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [addCardModalOpen, setAddCardModalOpen] = useState(false);
   const [numberOfCardsToAdd, setNumberOfCardsToAdd] = useState('1');
+  const [showPreview, setShowPreview] = useState(false);
 
-  // NOTE: The image compression is handled by the imported `compressImage` utility from '@/lib/imageCompression'.
-  // The previous local implementation has been removed to avoid duplication and lint warnings.
-  // All calls to `compressImage` now refer to the shared utility.
+  // Sync with authCompanyType once on load
+  useEffect(() => {
+    if (authCompanyType) {
+      setCompanyType(authCompanyType);
+    }
+  }, [authCompanyType]);
 
-  // Auto-fill template descriptions based on USER EMAIL
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [showPreview]);
+
   useEffect(() => {
     if (!user?.email || editingData) return;
-
     const lowerEmail = user.email.toLowerCase();
 
-    // FCU Template - 15 items from screenshot
-    if (lowerEmail.includes('fcu')) {
+    if (lowerEmail === 'fcu@gmail.com') {
       const fcuTemplate = [
-        'R-S',
-        'R-T',
-        'S-T',
-        'R-N',
-        'S-N',
-        'T-N',
-        'Current R',
-        'Current S',
-        'Current T',
-        'Checking Vibration',
-        'Checking Air Flow & Temperature',
-        'Checking Humidity',
-        'Checking Noise',
-        'Pressure Supply',
-        'Pressure Return'
+        'R-S', 'R-T', 'S-T', 'R-N', 'S-N', 'T-N',
+        'Current R', 'Current S', 'Current T',
+        'Checking Vibration', 'Checking Air Flow', 'Checking Humidity',
+        'Checking Noise', 'Pressure Supply', 'Pressure Return',
+        'Checking Temperature', 'Cleaning Filter', 'Cleaning evaporator'
       ];
-
-      // Create 15 cards for FCU
-      const newCards = fcuTemplate.map((desc, idx) => ({
-        id: `${idx + 1}`,
-        photo: null,
-        description: desc
-      }));
-      setCards(newCards);
-    }
-    // Dock Leveler Template
-    else if (lowerEmail.includes('dock') || lowerEmail.includes('leveler')) {
+      setCards(fcuTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
+    } else if (lowerEmail.includes('dock') || lowerEmail.includes('leveler')) {
       const dockTemplate = [
-        'Pengecekan Hidrolik',
-        'Pengecekan Platform/Deck',
-        'Pengecekan Lip Plate',
-        'Pelumasan Moving Parts',
-        'Pengecekan Safety Features',
-        'Test Operasional'
+        'Pengecekan Hidrolik', 'Pengecekan Platform/Deck', 'Pengecekan Lip Plate',
+        'Pelumasan Moving Parts', 'Pengecekan Safety Features', 'Test Operasional'
       ];
-
-      // Create 6 cards for Dock Leveler
-      const newCards = dockTemplate.map((desc, idx) => ({
-        id: `${idx + 1}`,
-        photo: null,
-        description: desc
-      }));
-      setCards(newCards);
-    }
-    // PDU Template - 20 items from screenshot
-    else if (lowerEmail === 'pdu@gmail.com') {
+      setCards(dockTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
+    } else if (lowerEmail === 'pdu@gmail.com') {
       const pduTemplate = [
-        'Name Plate',
-        'Measurement Temp Monitoring ISO-TRANS',
-        'Cleaning Panels menggunakan vacuum cleaner',
-        'Measurement Panel',
-        'Pengecekan Digital Power Meter (KW)',
-        'Pengecekan Digital Power Meter (Volt)',
-        'Pengecekan Digital Power Meter (Volt)',
-        'Pengecekan Digital Power Meter (Ampere)',
-        'Measurement Noise',
-        'Measurement Voltage R-S',
-        'Measurement Voltage S-T',
-        'Measurement Voltage T-R',
-        'Measurement Voltage R-N',
-        'Measurement Voltage S-N',
-        'Measurement Voltage T-N',
-        'Measurement Grounding',
-        'Measurement Ampere (R)',
-        'Measurement Ampere (S)',
-        'Measurement Ampere (T)',
-        'Measurement Ampere (N)'
+        'Name Plate', 'Measurement Temp Monitoring ISO-TRANS', 'Cleaning Panels menggunakan vacuum cleaner',
+        'Measurement Panel', 'Pengecekan Digital Power Meter (KW)', 'Pengecekan Digital Power Meter (Volt)',
+        'Pengecekan Digital Power Meter (Volt)', 'Pengecekan Digital Power Meter (Ampere)', 'Measurement Noise',
+        'Measurement Voltage R-S', 'Measurement Voltage S-T', 'Measurement Voltage T-R', 'Measurement Voltage R-N',
+        'Measurement Voltage S-N', 'Measurement Voltage T-N', 'Measurement Grounding', 'Measurement Ampere (R)',
+        'Measurement Ampere (S)', 'Measurement Ampere (T)', 'Measurement Ampere (N)'
       ];
-
-      const newCards = pduTemplate.map((desc, idx) => ({
-        id: `${idx + 1}`,
-        photo: null,
-        description: desc
-      }));
-      setCards(newCards);
+      setCards(pduTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
+    } else if (lowerEmail === 'acsplit@gmail.com') {
+      const acSplitTemplate = [
+        'Condition unit', 'Cleaning evaporator', 'Vacum draine AC', 'Cleaning Filter',
+        'Measurement Voltage', 'Measurement ampere', 'Cleaning fan outdoor', 'Cleaning Filter',
+        'Measurement pressure freon'
+      ];
+      setCards(acSplitTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     }
-  }, [user?.email]);
+  }, [user?.email, editingData]);
 
-  // ✅ NEW: Load data for editing
   useEffect(() => {
     if (editingData) {
       setMaintenanceName(editingData.maintenanceName);
       setMaintenanceTime(editingData.maintenanceTime);
       setSpecificDetail(editingData.specificDetail || '');
-
-      if (editingData.photosData && editingData.photosData.length > 0) {
-        const mappedCards = editingData.photosData.map((p: any) => ({
+      if (editingData.photosData?.length > 0) {
+        setCards(editingData.photosData.map((p: any) => ({
           id: `${p.index}`,
-          photo: null, // Base64 images don't have a File object
+          photo: null,
           photoBase64: p.photoBase64 || null,
           description: p.description || ''
-        }));
-        setCards(mappedCards);
+        })));
       }
     }
   }, [editingData]);
 
   const handlePhotoChange = async (id: string, file: File | null) => {
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Ukuran foto maksimal 5MB');
-        return;
-      }
-
-      if (!file.type.startsWith('image/')) {
-        toast.error('File harus berupa gambar');
-        return;
-      }
-
+      if (file.size > 5 * 1024 * 1024) return toast.error('Ukuran foto maksimal 5MB');
       try {
-        toast.loading('Processing image...', { id: `compress-${id}` });
+        toast.loading('Processing...', { id: `compress-${id}` });
         const base64 = await compressImage(file);
-        const compressedSizeKB = Math.round((base64.length * 0.75) / 1024);
-
-        setCards(cards.map(card =>
-          card.id === id ? { ...card, photo: file, photoBase64: base64 } : card
-        ));
-
-        toast.success(`Foto dimuat (${compressedSizeKB}KB)`, { id: `compress-${id}` });
-      } catch (error) {
+        setCards(prev => prev.map(c => c.id === id ? { ...c, photo: file, photoBase64: base64 } : c));
+        toast.success('Foto dimuat', { id: `compress-${id}` });
+      } catch {
         toast.error('Gagal memuat foto', { id: `compress-${id}` });
       }
     } else {
-      setCards(cards.map(card =>
-        card.id === id ? { ...card, photo: null, photoBase64: undefined } : card
-      ));
+      setCards(prev => prev.map(c => c.id === id ? { ...c, photo: null, photoBase64: undefined } : c));
     }
   };
 
   const handleBulkPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const newCards = [...cards];
-    let fileIndex = 0;
-
-    // Toast for progress
+    if (!files?.length) return;
     const toastId = toast.loading(`Processing ${files.length} photos...`);
-
     try {
-      // Loop through all existing cards first to fill empty slots
-      for (let i = 0; i < newCards.length; i++) {
-        if (fileIndex >= files.length) break;
-
-        // If card is empty, fill it
-        if (!newCards[i].photo) {
-          const file = files[fileIndex];
-
-          if (file.size > 5 * 1024 * 1024) {
-            toast.error(`File ${file.name} too large (skip)`, { id: toastId });
+      const currentCards = [...cards];
+      let fileIndex = 0;
+      for (let i = 0; i < currentCards.length && fileIndex < files.length; i++) {
+        if (!currentCards[i].photo) {
+          if (files[fileIndex].size <= 5 * 1024 * 1024) {
+            currentCards[i] = { ...currentCards[i], photo: files[fileIndex], photoBase64: await compressImage(files[fileIndex]) };
             fileIndex++;
-            i--; // Retry this slot
-            continue;
+          } else {
+            toast.error(`File ${files[fileIndex].name} too large`, { id: toastId });
+            fileIndex++; i--;
           }
-
-          const base64 = await compressImage(file);
-          newCards[i] = {
-            ...newCards[i],
-            photo: file,
-            photoBase64: base64
-          };
-          fileIndex++;
         }
       }
-
-      // If there are still files left, create new cards
       while (fileIndex < files.length) {
-        const file = files[fileIndex];
-        // Validate size
-        if (file.size > 5 * 1024 * 1024) {
-          toast.error(`File ${file.name} too large (skip)`, { id: toastId });
-          fileIndex++;
-          continue;
+        if (files[fileIndex].size <= 5 * 1024 * 1024) {
+          const nextId = (Math.max(...currentCards.map(c => parseInt(c.id))) + 1).toString();
+          currentCards.push({ id: nextId, photo: files[fileIndex], photoBase64: await compressImage(files[fileIndex]), description: '' });
         }
-
-        const base64 = await compressImage(file);
-        const newId = (Math.max(...newCards.map(c => parseInt(c.id))) + 1).toString();
-
-        newCards.push({
-          id: newId,
-          photo: file,
-          photoBase64: base64,
-          description: ''
-        });
-
         fileIndex++;
       }
-
-      setCards(newCards);
-      toast.success(`Successfully added ${fileIndex} photos`, { id: toastId });
-
-      // Reset input
-      e.target.value = '';
-    } catch (error) {
-      console.error(error);
-      toast.error('Failed to process some photos', { id: toastId });
+      setCards(currentCards);
+      toast.success('Upload complete', { id: toastId });
+    } catch {
+      toast.error('Gagal process foto', { id: toastId });
     }
+    e.target.value = '';
   };
 
   const handleApplyEdit = (id: string, editedBase64: string) => {
-    setCards(cards.map(card =>
-      card.id === id ? { ...card, photoBase64: editedBase64 } : card
-    ));
+    setCards(prev => prev.map(c => c.id === id ? { ...c, photoBase64: editedBase64 } : c));
     setEditingCardId(null);
     toast.success('Photo updated');
   };
 
   const handleDescriptionChange = (id: string, description: string) => {
-    setCards(cards.map(card =>
-      card.id === id ? { ...card, description } : card
-    ));
-  };
-
-  const addCard = () => {
-    setAddCardModalOpen(true);
+    setCards(prev => prev.map(c => c.id === id ? { ...c, description } : c));
   };
 
   const confirmAddCards = () => {
     const count = parseInt(numberOfCardsToAdd);
-    if (isNaN(count) || count < 1 || count > 50) {
-      toast.error('Jumlah card harus antara 1-50');
-      return;
-    }
-
+    if (isNaN(count) || count < 1 || count > 50) return toast.error('1-50 cards');
     const startId = Math.max(...cards.map(c => parseInt(c.id))) + 1;
-    const newCards = Array.from({ length: count }, (_, idx) => ({
-      id: (startId + idx).toString(),
-      photo: null,
-      description: ''
-    }));
-
-    setCards([...cards, ...newCards]);
-    toast.success(`${count} card berhasil ditambahkan`);
+    const added = Array.from({ length: count }, (_, i) => ({ id: (startId + i).toString(), photo: null, description: '' }));
+    setCards(prev => [...prev, ...added]);
     setAddCardModalOpen(false);
-    setNumberOfCardsToAdd('1');
   };
 
   const removeCard = (id: string) => {
-    if (cards.length > 1) {
-      setCards(cards.filter(card => card.id !== id));
-    } else {
-      toast.error('Minimal harus ada 1 card');
-    }
+    if (cards.length > 1) setCards(prev => prev.filter(c => c.id !== id));
+    else toast.error('Minimal 1 card');
   };
 
+  const generatePDFDocument = async () => {
+    if (!maintenanceName || !maintenanceTime) return toast.error('Isi nama & waktu'), null;
+    const filled = cards.filter(c => c.photoBase64 || c.description);
+    if (!filled.length) return toast.error('Minimal 1 card filled'), null;
 
+    const formattedDate = new Date(maintenanceTime).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    // Load logos
+    const loadLogo = async (path: string) => {
+      try {
+        const res = await fetch(path);
+        const blob = await res.blob();
+        return new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.error("Logo load error", e);
+        return "";
+      }
+    };
+
+    const logoLeftB64 = await loadLogo(companyType === 'bri' ? logoBRILeft : logoDwimitra);
+    const logoRightB64 = await loadLogo(companyType === 'bri' ? logoBRI : logoNeutraDC);
+
+    // Sequential Optimization - safer for mobile memory
+    const { compressBase64Image } = await import('@/lib/imageCompression');
+    const optimizedCards: PhotoCard[] = [];
+
+    for (let i = 0; i < filled.length; i++) {
+      const c = filled[i];
+      if (c.photoBase64) {
+        toast.loading(`Optimizing photo ${i + 1}/${filled.length}...`, { id: 'export' });
+        try {
+          // Ensuring aggressive shrinking
+          const compressed = await compressBase64Image(c.photoBase64, { maxWidth: 800, quality: 0.5 });
+          optimizedCards.push({ ...c, photoBase64: compressed });
+        } catch (err) {
+          console.error(`Fail at photo ${i}`, err);
+          optimizedCards.push(c);
+        }
+      } else {
+        optimizedCards.push(c);
+      }
+    }
+
+    const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 10;
+    const usableWidth = pageWidth - 2 * margin;
+
+    const isPDU = user?.email === 'pdu@gmail.com';
+    const cols = isPDU ? 4 : 3;
+    const perPage = isPDU ? 20 : 9;
+    const photoH = isPDU ? 38 : 55;
+    const capH = isPDU ? 10 : 12;
+
+    const drawHeader = (doc: any) => {
+      doc.addImage(`data:image/png;base64,${logoLeftB64}`, 'PNG', margin, 15, isPDU ? 25 : 35, isPDU ? 10 : 14);
+      doc.addImage(`data:image/png;base64,${logoRightB64}`, 'PNG', pageWidth - margin - (isPDU ? 25 : 35), 15, isPDU ? 25 : 35, isPDU ? 10 : 14);
+      doc.setFontSize(isPDU ? 10 : 14).setFont('helvetica', 'bold');
+      doc.text(`Dokumentasi PM ${maintenanceName} (${formattedDate})`, pageWidth / 2, 25, { align: 'center' });
+      if (specificDetail) doc.text(specificDetail, pageWidth / 2, 33, { align: 'center' });
+      return specificDetail ? 40 : 30;
+    };
+
+    let curY = drawHeader(doc);
+    let count = 0;
+
+    for (let i = 0; i < optimizedCards.length; i += cols) {
+      if (count > 0 && count % perPage === 0) { doc.addPage(); curY = drawHeader(doc); }
+      const row = optimizedCards.slice(i, i + cols);
+      for (let j = 0; j < row.length; j++) {
+        const x = margin + j * (usableWidth / cols);
+        doc.rect(x, curY, usableWidth / cols - 2, photoH);
+        const b64 = row[j].photoBase64;
+        if (b64) doc.addImage(b64, 'JPEG', x + 1, curY + 1, usableWidth / cols - 4, photoH - 2);
+        doc.rect(x, curY + photoH, usableWidth / cols - 2, capH);
+        doc.setFontSize(isPDU ? 7 : 8).setFont('helvetica', 'normal');
+        doc.text(doc.splitTextToSize(row[j].description || '', usableWidth / cols - 6), x + (usableWidth / cols) / 2 - 1, curY + photoH + 5, { align: 'center' });
+        count++;
+      }
+      curY += photoH + capH + 5;
+    }
+    const safeName = maintenanceName.replace(/[/\\?%*:|"<>]/g, '-');
+    const safeDate = formattedDate.replace(/\//g, '-');
+    return { doc, fileName: `Report_${safeName}_${safeDate}.pdf`, filled: optimizedCards };
+  };
+
+  const handlePreviewPDF = () => {
+    if (!maintenanceName || !maintenanceTime) return toast.error('Isi nama & waktu');
+    if (!cards.some(c => c.photoBase64 || c.description)) return toast.error('Minimal 1 card filled');
+    setShowPreview(true);
+  };
 
   const handleExportPDF = async () => {
-    if (!maintenanceName || !maintenanceTime) {
-      toast.error('Mohon isi nama maintenance dan waktu');
-      return;
-    }
-
-    const filledCards = cards.filter(card => card.photoBase64 || card.description);
-    if (filledCards.length === 0) {
-      toast.error('Mohon isi minimal 1 card (foto atau deskripsi)');
-      return;
-    }
-
     try {
-      toast.loading('Generating PDF...', { id: 'export-pdf' });
+      toast.loading('Exporting...', { id: 'export' });
+      const result = await generatePDFDocument();
+      if (!result) return toast.dismiss('export');
+      const { doc, fileName, filled } = result;
+      doc.save(fileName);
+      toast.success('Download started', { id: 'export' });
 
-      // Format date
-      const formattedDate = new Date(maintenanceTime).toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
+      const photosWithImage = filled.filter(c => c.photoBase64).length;
+      const docRef = await addDoc(collection(db, 'pdf_documents'), {
+        fileName, maintenanceName, maintenanceTime, specificDetail,
+        createdBy: user?.email, createdAt: serverTimestamp(),
+        totalPhotos: filled.length,
+        photosWithImage,
+        fileSize: doc.output('arraybuffer').byteLength,
       });
 
-      // Create PDF (A4 portrait: 210mm x 297mm)
-      const doc = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = doc.internal.pageSize.getWidth();
-
-      // Margins
-      const marginTop = 15;
-      const marginLeft = 10;
-      const marginRight = 10;
-      const usableWidth = pageWidth - marginLeft - marginRight;
-
-      let currentY = marginTop;
-
-      // Load logos
-      let logoLeftBase64 = '';
-      let logoRightBase64 = '';
-
-      try {
-        // Select left logo based on company type
-        const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
-        const logoLeftResponse = await fetch(leftLogo);
-        const logoLeftBlob = await logoLeftResponse.blob();
-        const logoLeftArrayBuffer = await logoLeftBlob.arrayBuffer();
-        logoLeftBase64 = btoa(
-          new Uint8Array(logoLeftArrayBuffer).reduce(
-            (data, byte) => data + String.fromCharCode(byte), ''
-          )
-        );
-
-        // Select right logo based on company type
-        const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
-        const logoRightResponse = await fetch(rightLogo);
-        const logoRightBlob = await logoRightResponse.blob();
-        const logoRightArrayBuffer = await logoRightBlob.arrayBuffer();
-        logoRightBase64 = btoa(
-          new Uint8Array(logoRightArrayBuffer).reduce(
-            (data, byte) => data + String.fromCharCode(byte), ''
-          )
-        );
-      } catch (error) {
-        console.error('Failed to load logos:', error);
-        toast.error('Failed to load logos', { id: 'export-pdf' });
-        return;
-      }
-
-      // ✅ Helper function to add page header (logos + title + info)
-      const addPageHeader = () => {
-        const isPDU = user?.email === 'pdu@gmail.com';
-        let headerY = marginTop;
-
-        // Add logos
-        const logoWidth = isPDU ? 25 : 35;
-        const logoHeight = isPDU ? 10 : 14;
-
-        // Logo Left (Dwimitra or BRI Specific based on companyType)
-        doc.addImage(
-          `data:image/png;base64,${logoLeftBase64}`,
-          'PNG',
-          marginLeft,
-          headerY,
-          logoWidth,
-          logoHeight
-        );
-
-        // Logo Right (NeutraDC or BRI based on companyType)
-        doc.addImage(
-          `data:image/png;base64,${logoRightBase64}`,
-          'PNG',
-          pageWidth - marginRight - logoWidth,
-          headerY,
-          logoWidth,
-          logoHeight
-        );
-
-        headerY += logoHeight + (isPDU ? 3 : 5);
-
-        // Title
-        doc.setFontSize(isPDU ? 10 : 14);
-        doc.setFont('helvetica', 'bold');
-        const titleText = `Dokumentasi PM ${maintenanceName} (${formattedDate})`;
-        const titleWidth = doc.getTextWidth(titleText);
-        doc.text(titleText, (pageWidth - titleWidth) / 2, headerY);
-
-        headerY += (isPDU ? 6 : 8);
-
-        // Specific Detail / Equipment Name
-        if (specificDetail) {
-          doc.setFontSize(isPDU ? 9 : 12);
-          doc.setFont('helvetica', 'bold');
-          const equipmentText = specificDetail;
-          const equipmentWidth = doc.getTextWidth(equipmentText);
-          doc.text(equipmentText, (pageWidth - equipmentWidth) / 2, headerY);
-          headerY += (isPDU ? 8 : 10);
-        } else {
-          headerY += (isPDU ? 3 : 5);
-        }
-
-        return headerY; // Return Y position after header
-      };
-
-      // ✅ Add header for first page
-      currentY = addPageHeader();
-
-      // Add photos in grid
-      const isPDU = user?.email === 'pdu@gmail.com';
-      const columns = isPDU ? 4 : 3;
-      const photosPerPage = isPDU ? 20 : 9;
-      const spacing = isPDU ? 3 : 4;
-
-      const photoWidth = (usableWidth - (columns - 1) * spacing) / columns;
-      const photoHeight = isPDU ? 38 : 55;
-      const captionHeight = isPDU ? 10 : 12;
-
-      let photoCount = 0;
-
-      for (let i = 0; i < filledCards.length; i += columns) {
-        // ✅ Check if we need a new page
-        if (photoCount > 0 && photoCount % photosPerPage === 0) {
-          doc.addPage();
-          currentY = addPageHeader(); // ✅ Add header to new page!
-        }
-
-        const rowCards = filledCards.slice(i, i + columns);
-
-        for (let j = 0; j < rowCards.length; j++) {
-          const card = rowCards[j];
-          const xPos = marginLeft + j * (photoWidth + spacing);
-
-          // Draw photo border/box
-          doc.setDrawColor(0);
-          doc.setLineWidth(0.3); // Thinner line for PDU
-          doc.rect(xPos, currentY, photoWidth, photoHeight);
-
-          // Add photo if exists
-          if (card.photoBase64) {
-            try {
-              // Compress photo before adding to PDF to reduce file size
-              const compressedPhoto = await compressBase64Image(card.photoBase64, {
-                maxWidth: 1200,
-                maxHeight: 1200,
-                quality: 0.8
-              });
-
-              doc.addImage(
-                compressedPhoto,
-                'JPEG',
-                xPos + 0.5,
-                currentY + 0.5,
-                photoWidth - 1,
-                photoHeight - 1
-              );
-            } catch (imgError) {
-              console.error('Failed to add image:', imgError);
-            }
+      // Sequential save with detailed feedback and size guard
+      for (let i = 0; i < filled.length; i++) {
+        const card = filled[i];
+        if (card.photoBase64) {
+          // Check for Firestore 1MB limit (1,048,576 bytes)
+          // Base64 is roughly 33% larger than binary, so ~1.37MB base64 string
+          const sizeInBytes = (card.photoBase64.length * 3) / 4;
+          if (sizeInBytes > 1000000) {
+            console.warn(`Photo ${i + 1} too large for Firestore (${Math.round(sizeInBytes / 1024)}KB).`);
+            toast.error(`Foto ${i + 1} terlalu besar (>1MB). Mengabaikan simpan ke DB untuk foto ini.`, { id: 'export' });
+            continue;
           }
 
-          // Add caption box
-          doc.rect(xPos, currentY + photoHeight, photoWidth, captionHeight);
-
-          // Add caption text
-          if (card.description) {
-            doc.setFontSize(isPDU ? 7 : 8);
-            doc.setFont('helvetica', 'normal');
-            const lines = doc.splitTextToSize(card.description, photoWidth - 4);
-            const textY = currentY + photoHeight + 5;
-            doc.text(lines, xPos + photoWidth / 2, textY, { align: 'center', maxWidth: photoWidth - 4 });
+          toast.loading(`Menyimpan foto ${i + 1} dari ${filled.length}...`, { id: 'export' });
+          try {
+            await addDoc(collection(db, `pdf_documents/${docRef.id}/photos`), {
+              index: i + 1,
+              photoBase64: card.photoBase64,
+              description: card.description || '',
+              hasPhoto: true
+            });
+          } catch (fireError) {
+            console.error(`Error saving photo ${i + 1}:`, fireError);
+            toast.error(`Gagal menyimpan foto ${i + 1}. Melanjutkan...`, { id: 'export' });
           }
-
-          photoCount++;
         }
-
-        currentY += photoHeight + captionHeight + (isPDU ? 3 : 5);
       }
 
-      // Generate PDF and download
-      const pdfBlob = doc.output('blob');
-      const fileName = `Report_${maintenanceName.replace(/\s+/g, '_')}_${formattedDate.replace(/\//g, '-')}.pdf`;
-
-      // Download file locally
-      const url = URL.createObjectURL(pdfBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      link.click();
-      URL.revokeObjectURL(url);
-
-      // Show download success immediately
-      toast.success('PDF downloaded successfully!', { id: 'export-pdf' });
-
-      // Save metadata and photo data to Firestore using SUBCOLLECTION pattern (non-blocking)
-      try {
-        toast.loading('Saving to database...', { id: 'save-db' });
-
-        // 1. Save main document with metadata only (no photos array)
-        const docData: any = {
-          fileName: fileName,
-          maintenanceName: maintenanceName,
-          maintenanceTime: maintenanceTime,
-          createdAt: serverTimestamp(),
-          createdBy: user?.email || 'Unknown',
-          fileSize: pdfBlob.size,
-          totalPhotos: filledCards.length,
-          photosWithImage: filledCards.filter(c => c.photoBase64).length,
-          // NO photosData array here! Photos will be in subcollection
-        };
-
-        // Add specificDetail only if it exists
-        if (specificDetail) {
-          docData.specificDetail = specificDetail;
-        }
-
-        // Add main document and get reference
-        const docRef = await addDoc(collection(db, 'pdf_documents'), docData);
-
-        // 2. Save each photo to subcollection: pdf_documents/{docId}/photos
-        const photoSavePromises = filledCards.map(async (card, index) => {
-          if (card.photoBase64) {
-            try {
-              // Compress photo for database storage
-              const compressedPhoto = await compressBase64Image(card.photoBase64, {
-                maxWidth: 800,
-                maxHeight: 800,
-                quality: 0.7
-              });
-
-              // Save to subcollection
-              await addDoc(collection(db, `pdf_documents/${docRef.id}/photos`), {
-                index: index + 1,
-                photoBase64: compressedPhoto,
-                description: card.description || '',
-                hasPhoto: true
-              });
-            } catch (err) {
-              console.error(`Failed to save photo ${index + 1}:`, err);
-            }
-          }
-        });
-
-        // Wait for all photos to be saved
-        await Promise.all(photoSavePromises);
-
-        toast.success('Saved to database!', { id: 'save-db' });
-      } catch (dbError) {
-        console.error('Database save error:', dbError);
-        toast.error('PDF downloaded but failed to save to database', { id: 'save-db' });
-      }
-    } catch (error) {
-      console.error('Export PDF error:', error);
-      toast.error('Failed to export PDF', { id: 'export-pdf' });
+      toast.success('Laporan berhasil disimpan ke database', { id: 'export' });
+    } catch (e) {
+      console.error('Export error details:', e);
+      toast.error('Gagal export atau simpan. Silakan download PDF secara lokal.', { id: 'export' });
     }
   };
 
-  const totalPhotoSize = cards.reduce((total, card) => {
-    if (card.photo) {
-      return total + card.photo.size;
-    }
-    return total;
-  }, 0);
-
-  const totalPhotoSizeMB = (totalPhotoSize / (1024 * 1024)).toFixed(2);
-
-  const uploadedPhotos = cards.filter(c => c.photo).length;
-  const filledCardsCount = cards.filter(card => card.photoBase64 || card.description).length;
-  const completionPercentage = Math.round((uploadedPhotos / cards.length) * 100);
-  const isReadyToExport = filledCardsCount > 0 && maintenanceName && maintenanceTime; // ✅ FIX: Based on actual export requirements
+  const uploadedCount = cards.filter(c => c.photoBase64).length;
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 relative z-10">
-      {/* Mode Edit Indicator */}
-      {editingData && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-4 sm:mb-6 flex items-center justify-between p-3 sm:p-4 bg-blue-600/10 border border-blue-500/30 rounded-xl"
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/20 rounded-lg">
-              <Pencil className="w-5 h-5 text-blue-400" />
-            </div>
-            <div>
-              <h4 className="text-sm font-semibold text-blue-300">Mode Edit Aktif</h4>
-              <p className="text-xs text-blue-400/80">Sedang mengedit: {editingData.fileName}</p>
-            </div>
-          </div>
-          {onClearEdit && (
-            <button
-              onClick={onClearEdit}
-              className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg text-xs font-medium transition"
-            >
-              Batalkan
-            </button>
-          )}
-        </motion.div>
-      )}
-
-      {/* System Stats */}
-      <div className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 border border-slate-700/50">
-        <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-5">
-          <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
-            <Activity className="w-5 h-5 text-emerald-400" />
-          </div>
-          <div>
-            <h2 className="text-base sm:text-lg font-semibold text-white">System Stats</h2>
-            <p className="text-xs text-slate-500">Real-time maintenance metrics</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
-          <div className="bg-slate-800/30 rounded-lg p-3 sm:p-4 border border-slate-700/30">
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-              <p className="text-xs text-slate-500 font-medium">Status</p>
-            </div>
-            <p className="text-sm sm:text-base font-semibold text-emerald-400">Active</p>
-          </div>
-          <div className="bg-slate-800/30 rounded-lg p-3 sm:p-4 border border-slate-700/30">
-            <p className="text-xs text-slate-500 font-medium mb-1">Total Photos</p>
-            <p className="text-sm sm:text-base font-semibold text-white">{uploadedPhotos} / {cards.length}</p>
-          </div>
-          <div className="bg-slate-800/30 rounded-lg p-3 sm:p-4 border border-slate-700/30">
-            <p className="text-xs text-slate-500 font-medium mb-1">Completion</p>
-            <p className="text-sm sm:text-base font-semibold text-blue-400">{completionPercentage}%</p>
-          </div>
-          <div className="bg-slate-800/30 rounded-lg p-3 sm:p-4 border border-slate-700/30">
-            <p className="text-xs text-slate-500 font-medium mb-1">Ready to Export</p>
-            <p className="text-sm sm:text-base font-semibold text-purple-400">{isReadyToExport ? 'Yes' : 'No'}</p>
-          </div>
-          <div className="bg-slate-800/30 rounded-lg p-3 sm:p-4 border border-slate-700/30 col-span-2 lg:col-span-1">
-            <p className="text-xs text-slate-500 font-medium mb-1">Total Size</p>
-            <p className="text-sm sm:text-base font-semibold text-white">{totalPhotoSizeMB} MB</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Maintenance Info */}
-      <div className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 border border-slate-700/50">
-        <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-5">
-          <div className="p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
-            <Database className="w-5 h-5 text-blue-400" />
-          </div>
-          <h2 className="text-lg sm:text-xl font-semibold text-white">Maintenance Information</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Maintenance Name
-            </label>
-            <div className="relative group">
-              <FileText className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-500 group-focus-within:text-blue-400 transition" />
-              <input
-                type="text"
-                value={maintenanceName}
-                onChange={(e) => setMaintenanceName(e.target.value)}
-                className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white placeholder-slate-500 text-sm sm:text-base"
-                placeholder="e.g. Server Maintenance Q1 2026"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Maintenance Time
-            </label>
-            <div className="relative">
-              <Clock className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400 pointer-events-none" />
-              <input
-                type="date"
-                value={maintenanceTime}
-                onChange={(e) => setMaintenanceTime(e.target.value)}
-                className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white text-sm sm:text-base"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
-              Specific Detail (Unit/Ruangan)
-            </label>
-            <div className="relative group">
-              <FileText className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-500 group-focus-within:text-blue-400 transition" />
-              <input
-                type="text"
-                value={specificDetail}
-                onChange={(e) => setSpecificDetail(e.target.value)}
-                className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white placeholder-slate-500 text-sm sm:text-base"
-                placeholder="e.g. Unit 101, Ruangan A"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Photo Documentation */}
-      <div className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-4 sm:p-6 border border-slate-700/50">
-        {/* Header - Always horizontal */}
-        <div className="flex items-center justify-between mb-4 sm:mb-5">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="p-2 sm:p-3 bg-indigo-500/10 rounded-lg border border-indigo-500/20">
-              <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-400" />
-            </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-white">Photo Documentation</h2>
-          </div>
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-            <Scissors className="w-3 h-3 text-blue-400" />
-            <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">Crop/Edit</span>
-          </div>
-        </div>
-
-        {/* Buttons - Full width on mobile, side-by-side on desktop */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-5">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => document.getElementById('bulk-upload-input')?.click()}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white rounded-lg font-medium text-sm shadow-lg shadow-indigo-500/20 transition-all"
-          >
-            <HardDrive className="w-4 h-4" />
-            <span>Bulk Upload</span>
-          </motion.button>
-          <input
-            id="bulk-upload-input"
-            type="file"
-            multiple
-            accept="image/*"
-            className="hidden"
-            onChange={handleBulkPhotoUpload}
-          />
-
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={addCard}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg font-medium text-sm shadow-lg shadow-blue-500/20 transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Card</span>
-          </motion.button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
-          <AnimatePresence mode="popLayout">
-            {cards.map((card, index) => (
-              <motion.div
-                key={card.id}
-                layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.2 }}
-                className="bg-slate-800/40 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50 hover:border-blue-500/30 transition relative group"
-              >
-                {/* Card Number */}
-                <div className="absolute -top-2 -left-2 w-7 h-7 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-lg z-10 border border-blue-400/30">
-                  {index + 1}
+    <div className="max-w-7xl mx-auto px-4 py-8 relative z-10">
+      <AnimatePresence mode="wait">
+        {!showPreview ? (
+          <motion.div key="form" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
+            {/* Stats */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div className="flex gap-4">
+                <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-700/50 min-w-[120px]">
+                  <p className="text-xs text-slate-500 uppercase font-bold">Photos</p>
+                  <p className="text-xl font-bold text-white">{uploadedCount} / {cards.length}</p>
                 </div>
+                <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-700/50 min-w-[120px]">
+                  <p className="text-xs text-slate-500 uppercase font-bold">Template</p>
+                  <p className="text-xl font-bold text-blue-400 uppercase">{companyType}</p>
+                </div>
+              </div>
+              {editingData && (
+                <button onClick={onClearEdit} className="px-4 py-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30 text-sm font-bold flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4" /> Refresh
+                </button>
+              )}
+            </div>
 
-                {cards.length > 1 && (
-                  <button
-                    onClick={() => removeCard(card.id)}
-                    className="absolute -top-3 -right-3 p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg transition z-10 shadow-lg"
-                    title="Hapus Card"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
+            {/* Form */}
+            <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 mb-6 font-geist">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">Maintenance Name</label>
+                  <input type="text" value={maintenanceName} onChange={e => setMaintenanceName(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. FCU Maintenance" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">Unit/Room (Optional)</label>
+                  <input type="text" value={specificDetail} onChange={e => setSpecificDetail(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Unit 102" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">Maintenance Time</label>
+                  <input type="date" value={maintenanceTime} onChange={e => setMaintenanceTime(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">Site / Project</label>
+                  <div className="relative group/select">
+                    <select
+                      value={companyType}
+                      onChange={e => setCompanyType(e.target.value as 'neutra' | 'bri')}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer pr-10 transition-all hover:border-slate-500"
+                    >
+                      <option value="neutra">NeutraDC</option>
+                      <option value="bri">Bank BRI</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-500 group-focus-within/select:text-blue-500 transition-colors">
+                      <ChevronDown className="w-5 h-5" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Photo {index + 1}
-                    {card.photo && (
-                      <span className="text-xs text-slate-500 ml-2">
-                        ({(card.photo.size / 1024).toFixed(0)}KB)
-                      </span>
-                    )}
-                  </label>
-                  <div className="relative">
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <button onClick={() => document.getElementById('bulk')?.click()} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20">
+                <Upload className="w-5 h-5" /> Bulk Upload Photos
+              </button>
+              <input id="bulk" type="file" multiple accept="image/*" className="hidden" onChange={handleBulkPhotoUpload} />
+              <button onClick={() => setAddCardModalOpen(true)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20">
+                <Plus className="w-5 h-5" /> Add Manual Card
+              </button>
+            </div>
+
+            {/* Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {cards.map((card, idx) => (
+                <div key={card.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 relative group transition-all hover:border-blue-500/30">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-xs font-bold text-slate-500 tracking-wider uppercase">Doc #{idx + 1}</span>
+                    <button onClick={() => removeCard(card.id)} className="text-slate-500 hover:text-red-400 transition" title="Hapus Card"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                  <div className="aspect-video bg-slate-900 rounded-lg mb-4 overflow-hidden relative border border-slate-700/50">
                     {card.photoBase64 ? (
-                      <div className="relative group/image">
-                        <img
-                          src={card.photoBase64}
-                          alt={`Preview ${index + 1}`}
-                          className="w-full h-44 object-cover rounded-lg border border-slate-700/50"
-                        />
-                        <div className="absolute inset-0 bg-slate-950/20 opacity-100 transition rounded-lg flex items-center justify-center gap-3">
-                          <button
-                            onClick={() => setEditingCardId(card.id)}
-                            className="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition shadow-xl"
-                            title="Edit / Crop Foto"
-                          >
-                            <Scissors className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handlePhotoChange(card.id, null)}
-                            className="p-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition shadow-xl"
-                            title="Hapus Foto"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
+                      <>
+                        <img src={card.photoBase64} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => setEditingCardId(card.id)} className="p-2.5 bg-white/20 backdrop-blur-md rounded-lg hover:bg-white/30 transition shadow-xl" title="Edit/Crop"><Scissors className="w-4 h-4 text-white" /></button>
+                          <button onClick={() => handlePhotoChange(card.id, null)} className="p-2.5 bg-red-600/20 backdrop-blur-md rounded-lg hover:bg-red-600/30 transition shadow-xl" title="Hapus Foto"><Trash2 className="w-4 h-4 text-red-400" /></button>
                         </div>
-                      </div>
+                      </>
                     ) : (
-                      <label className="flex flex-col items-center justify-center w-full h-44 border border-dashed border-slate-700/50 rounded-lg cursor-pointer hover:border-blue-500/50 transition bg-slate-900/30 group/upload">
-                        <div className="text-center">
-                          <Upload className="w-8 h-8 text-slate-600 mb-2 mx-auto group-hover/upload:text-blue-400 transition" />
-                          <span className="text-sm text-slate-500 group-hover/upload:text-slate-400 transition">Upload Photo</span>
-                          <span className="text-xs text-slate-600 block mt-1">PNG, JPG max 5MB</span>
-                        </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handlePhotoChange(card.id, file);
-                          }}
-                          className="hidden"
-                        />
+                      <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-slate-800/80 transition group/upload">
+                        <Camera className="w-8 h-8 text-slate-700 group-hover/upload:text-blue-500 transition-colors" />
+                        <span className="text-[10px] text-slate-600 font-bold uppercase mt-2 group-hover/upload:text-slate-400">Upload Photo</span>
+                        <input type="file" className="hidden" accept="image/*" onChange={e => handlePhotoChange(card.id, e.target.files?.[0] || null)} />
                       </label>
                     )}
                   </div>
+                  <textarea value={card.description} onChange={e => handleDescriptionChange(card.id, e.target.value)} className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg p-3 text-sm text-white outline-none focus:ring-1 focus:ring-blue-500 transition placeholder:text-slate-700" rows={2} placeholder="Enter documentation description..." />
                 </div>
+              ))}
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    value={card.description}
-                    onChange={(e) => handleDescriptionChange(card.id, e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition resize-none text-white placeholder-slate-600"
-                    rows={3}
-                    placeholder="Enter description..."
-                  />
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-
-        {/* Export Buttons */}
-        <div className="flex flex-col sm:flex-row justify-center gap-4 mt-8">
-
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleExportPDF}
-            className="flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-semibold text-base sm:text-lg shadow-lg shadow-red-500/25 hover:shadow-red-500/40 transition-all"
-          >
-            <FileType className="w-5 h-5 sm:w-6 sm:h-6" />
-            <span>Export to PDF</span>
-          </motion.button>
-        </div>
-      </div>
+            {/* Footer Actions */}
+            <div className="flex flex-col sm:flex-row gap-4 mt-12 justify-center">
+              <button onClick={handlePreviewPDF} className="px-10 py-4 bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center gap-3 border border-slate-700 hover:bg-slate-700 transition shadow-xl border-b-4 border-slate-950 active:border-b-0 active:translate-y-1">
+                <Eye className="w-6 h-6" /> PREVIEW REPORT
+              </button>
+              <button onClick={handleExportPDF} className="px-10 py-4 bg-red-600 text-white rounded-xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-red-600/20 hover:bg-red-700 transition border-b-4 border-red-800 active:border-b-0 active:translate-y-1">
+                <FileType className="w-6 h-6" /> EXPORT TO PDF
+              </button>
+            </div>
+          </motion.div>
+        ) : (
+          <PreviewReport
+            key="preview"
+            maintenanceName={maintenanceName}
+            maintenanceTime={maintenanceTime}
+            specificDetail={specificDetail}
+            cards={cards}
+            companyType={companyType}
+            userEmail={user?.email || ''}
+            onBack={() => setShowPreview(false)}
+            onExport={handleExportPDF}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Add Card Modal */}
       <AnimatePresence>
         {addCardModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setAddCardModalOpen(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl"
-            >
-              <h3 className="text-xl font-bold text-white mb-4 text-center">Berapa Card yang Akan Ditambah?</h3>
-
-              <input
-                type="number"
-                min="1"
-                max="50"
-                value={numberOfCardsToAdd}
-                onChange={(e) => setNumberOfCardsToAdd(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    confirmAddCards();
-                  }
-                }}
-                className="w-full px-4 py-3 bg-slate-800 border border-slate-600 rounded-xl text-white text-center text-2xl font-bold focus:ring-2 focus:ring-blue-500 outline-none mb-2"
-                placeholder="1-50"
-                autoFocus
-              />
-              <p className="text-xs text-slate-500 text-center mb-6">Maksimal 50 card</p>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setAddCardModalOpen(false)}
-                  className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium transition"
-                >
-                  Batal
-                </button>
-                <button
-                  onClick={confirmAddCards}
-                  className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition"
-                >
-                  OK
-                </button>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" onClick={() => setAddCardModalOpen(false)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} onClick={e => e.stopPropagation()} className="bg-slate-900 p-8 rounded-3xl border border-slate-700 w-full max-w-sm shadow-2xl">
+              <h3 className="text-xl font-bold text-white mb-2 text-center">Add Multiple Cards</h3>
+              <p className="text-xs text-slate-500 text-center mb-6">How many documentation slots to add?</p>
+              <input type="number" value={numberOfCardsToAdd} onChange={e => setNumberOfCardsToAdd(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-2xl p-4 text-white text-center text-4xl font-bold mb-6 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner" min="1" max="50" autoFocus />
+              <div className="flex gap-4">
+                <button onClick={() => setAddCardModalOpen(false)} className="flex-1 bg-slate-800 text-slate-400 p-3 rounded-xl font-bold hover:bg-slate-700 transition">Cancel</button>
+                <button onClick={confirmAddCards} className="flex-1 bg-blue-600 text-white p-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-600/20">Add Slots</button>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
-      {/* Image Editor Modal */}
+      {/* Editor Modal */}
       <AnimatePresence>
         {editingCardId && (
           <ImageEditor
             image={cards.find(c => c.id === editingCardId)?.photoBase64 || ''}
-            onSave={(editedBase64) => handleApplyEdit(editingCardId, editedBase64)}
+            onSave={base64 => handleApplyEdit(editingCardId, base64)}
             onCancel={() => setEditingCardId(null)}
           />
         )}
       </AnimatePresence>
-    </div >
+    </div>
   );
 }

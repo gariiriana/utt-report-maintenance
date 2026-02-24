@@ -20,9 +20,9 @@ export async function compressImage(
     options: CompressionOptions = {}
 ): Promise<string> {
     const {
-        maxWidth = 1200,  // Max width in pixels
-        maxHeight = 1200, // Max height in pixels
-        quality = 0.8,    // JPEG quality (0.0 - 1.0)
+        maxWidth = 800,   // Reduced from 1200 for smaller footprint
+        maxHeight = 800,  // Reduced from 1200 for smaller footprint
+        quality = 0.6,    // Reduced from 0.8 for aggressive compression
     } = options;
 
     return new Promise((resolve, reject) => {
@@ -97,9 +97,9 @@ export async function compressBase64Image(
     options: CompressionOptions = {}
 ): Promise<string> {
     const {
-        maxWidth = 1200,
-        maxHeight = 1200,
-        quality = 0.8,
+        maxWidth = 800,
+        maxHeight = 800,
+        quality = 0.6,
     } = options;
 
     return new Promise((resolve, reject) => {

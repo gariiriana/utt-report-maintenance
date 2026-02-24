@@ -77,7 +77,7 @@ export function ImageEditor({ image, onSave, onCancel }: ImageEditorProps) {
         ctx.putImageData(data, 0, 0);
 
         // As Base64 string
-        return canvas.toDataURL('image/jpeg', 0.8);
+        return canvas.toDataURL('image/jpeg', 0.6);
     };
 
     function rotateSize(width: number, height: number, rotation: number) {
