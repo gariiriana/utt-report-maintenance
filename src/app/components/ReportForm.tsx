@@ -7,7 +7,7 @@ import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import logoDwimitra from '@/assets/a6129221f456afd6fd88d74c324473e495bdd7a8.png';
+import logoDwimitra from '@/assets/logo_dwimitra.png';
 import logoNeutraDC from '@/assets/005ac597864c02a96c9add5c6e054d23b8cfafbe.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
@@ -249,12 +249,55 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const capH = isPDU ? 10 : 12;
 
     const drawHeader = (doc: any) => {
-      doc.addImage(`data:image/png;base64,${logoLeftB64}`, 'PNG', margin, 15, isPDU ? 25 : 35, isPDU ? 10 : 14);
-      doc.addImage(`data:image/png;base64,${logoRightB64}`, 'PNG', pageWidth - margin - (isPDU ? 25 : 35), 15, isPDU ? 25 : 35, isPDU ? 10 : 14);
-      doc.setFontSize(isPDU ? 10 : 14).setFont('helvetica', 'bold');
-      doc.text(`Dokumentasi PM ${maintenanceName} (${formattedDate})`, pageWidth / 2, 25, { align: 'center' });
-      if (specificDetail) doc.text(specificDetail, pageWidth / 2, 33, { align: 'center' });
-      return specificDetail ? 40 : 30;
+      const isDwimitra = companyType !== 'bri';
+      const logoH = isPDU ? 10 : 25;
+
+      // Left Logo (Dwimitra / BRI Left)
+      const leftW = isPDU ? 25 : (isDwimitra ? 25 : 35);
+      const leftH = isPDU ? 10 : (isDwimitra ? logoH : 14);
+      const leftY = 8;
+
+      if (logoLeftB64) {
+        doc.addImage(`data:image/png;base64,${logoLeftB64}`, 'PNG', margin, leftY, leftW, leftH);
+      }
+
+      // Right Logo (NeutraDC / BRI)
+      const rightW = isPDU ? 25 : 35;
+      const rightH = isPDU ? 10 : 14;
+      const rightY = 15;
+      if (logoRightB64) {
+        doc.addImage(`data:image/png;base64,${logoRightB64}`, 'PNG', pageWidth - margin - rightW, rightY, rightW, rightH);
+      }
+
+      // Calculate Header Text Area (Center part between logos)
+      const textAreaPadding = 3;
+      const textAreaWidth = pageWidth - (2 * margin) - leftW - rightW - (2 * textAreaPadding);
+      const textCenterX = margin + leftW + textAreaPadding + (textAreaWidth / 2);
+
+      // --- Title: UPPERCASE, BOLD ---
+      doc.setFontSize(isPDU ? 9 : 13).setFont('helvetica', 'bold');
+      const titleText = `DOKUMENTASI PM ${maintenanceName.toUpperCase()}`;
+      const splitTitle = doc.splitTextToSize(titleText, textAreaWidth);
+      doc.text(splitTitle, textCenterX, 16, { align: 'center' });
+
+      const titleLineH = isPDU ? 5 : 6;
+      let nextY = 16 + splitTitle.length * titleLineH;
+
+      // --- Date: smaller, normal weight ---
+      const longDate = new Date(maintenanceTime).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+      doc.setFontSize(isPDU ? 8 : 11).setFont('helvetica', 'normal');
+      doc.text(`(${longDate})`, textCenterX, nextY + 2, { align: 'center' });
+      nextY += isPDU ? 6 : 8;
+
+      // --- Specific Detail: uppercase, bold, bigger ---
+      if (specificDetail) {
+        doc.setFontSize(isPDU ? 7 : 10).setFont('helvetica', 'bold');
+        const splitDetail = doc.splitTextToSize(specificDetail.toUpperCase(), textAreaWidth);
+        doc.text(splitDetail, textCenterX, nextY + 2, { align: 'center' });
+        nextY += splitDetail.length * (isPDU ? 4 : 5) + 2;
+      }
+
+      return Math.max(nextY + 6, 42);
     };
 
     let curY = drawHeader(doc);

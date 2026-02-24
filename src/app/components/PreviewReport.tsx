@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, FileDown, Info, FileType, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
-import logoDwimitra from '@/assets/a6129221f456afd6fd88d74c324473e495bdd7a8.png';
+import logoDwimitra from '@/assets/logo_dwimitra.png';
 import logoNeutraDC from '@/assets/005ac597864c02a96c9add5c6e054d23b8cfafbe.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
@@ -119,23 +119,23 @@ export function PreviewReport({
                 <div className="bg-white shadow-[0_30px_60px_rgba(0,0,0,0.6)] p-8 sm:p-14 text-slate-900 min-h-[1162px] font-sans border border-slate-200 rounded-sm mx-auto" style={{ width: '900px' }}>
                     {/* PDF Header */}
                     <div className="flex items-center justify-between pb-6 mb-8 mt-2">
-                        <div className="w-[140px]">
-                            <img src={leftLogo} alt="Logo Left" className={isPDU ? "h-10 w-auto" : "h-14 w-auto object-contain"} />
+                        <div className="w-[110px] flex-shrink-0">
+                            <img src={leftLogo} alt="Logo Left" className={isPDU ? "h-10 w-auto" : "h-20 w-auto object-contain"} />
                         </div>
-                        <div className="text-center flex-1 mx-4">
-                            <h2 className={`font-bold uppercase tracking-tighter text-slate-900 ${isPDU ? "text-sm" : "text-xl"}`}>
+                        <div className="text-center flex-1 mx-4 max-w-[500px] overflow-hidden">
+                            <h2 className={`font-bold uppercase tracking-tighter text-slate-900 break-words ${isPDU ? "text-sm" : "text-xl"}`}>
                                 Dokumentasi PM {maintenanceName}
                             </h2>
                             <p className={`text-slate-700 font-semibold ${isPDU ? "text-xs" : "text-lg"}`}>
                                 ({formattedDate})
                             </p>
                             {specificDetail && (
-                                <p className={`mt-2 font-black text-slate-900 uppercase tracking-widest ${isPDU ? "text-[10px]" : "text-sm"}`}>
+                                <p className={`mt-2 font-black text-slate-900 uppercase tracking-widest break-words ${isPDU ? "text-[10px]" : "text-sm"}`}>
                                     {specificDetail}
                                 </p>
                             )}
                         </div>
-                        <div className="w-[140px] flex justify-end">
+                        <div className="w-[110px] flex-shrink-0 flex justify-end">
                             <img src={rightLogo} alt="Logo Right" className={isPDU ? "h-10 w-auto" : "h-14 w-auto object-contain"} />
                         </div>
                     </div>
