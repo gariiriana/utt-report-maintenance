@@ -91,6 +91,30 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         'Measurement Ampere (S)', 'Measurement Ampere (T)', 'Measurement Ampere (N)'
       ];
       setCards(pduTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
+    } else if (lowerEmail === 'lps@gmail.com') {
+      const lpsTemplate = [
+        'Nameplate tiang', 'Cleaning Lightning Counter', 'Cleaning Obstruction lamp',
+        'Tigtening air terminal', 'Measurement obstruction lamp', 'Earthing resistance measurement',
+        'Lightning counter recording', 'Test continuitas wiring cable lightning'
+      ];
+      setCards(lpsTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
+    } else if (lowerEmail === 'pju@gmail.com') {
+      const pjuTemplate = [
+        'Cleaning Panel PJU dan Batrai', 'Tightening', 'Cleaning Solar Cell',
+        'Check Tegangan Batrai 1', 'Check Tegangan Batrai 2', 'Check Tegangan 2 Batrai',
+        'Check Tegangan Solar Cell', 'Tightening Sambungan Kabel', 'Check Visual Lampu LED',
+        'Cleaning LED Lampu Box LED'
+      ];
+      setCards(pjuTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
+    } else if (lowerEmail === 'vrv@gmail.com') {
+      const vrvTemplate = [
+        'Checking Voltase', 'Checking Ampere', 'Checking Vibration',
+        'Checking Temperature', 'Checking Humidity', 'Checking Air Flow',
+        'Checking Noise', 'Vacuum Drain pump', 'Vacuum Drain pipe',
+        'Test Drain', 'Cleaning Filter', 'Cleaning Evaporator',
+        'Cleaning Fan', 'Nameplate', 'Remote'
+      ];
+      setCards(vrvTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     } else if (lowerEmail === 'acsplit@gmail.com') {
       const acSplitTemplate = [
         'Condition unit', 'Cleaning evaporator', 'Vacum draine AC', 'Cleaning Filter',
