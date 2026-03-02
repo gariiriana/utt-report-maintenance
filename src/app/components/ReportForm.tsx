@@ -115,6 +115,11 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         'Cleaning Fan', 'Nameplate', 'Remote'
       ];
       setCards(vrvTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
+    } else if (lowerEmail === 'grounding@gmail.com') {
+      const groundingTemplate = [
+        'Measurement', 'Before', 'After', 'Tightening'
+      ];
+      setCards(groundingTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     } else if (lowerEmail === 'acsplit@gmail.com') {
       const acSplitTemplate = [
         'Condition unit', 'Cleaning evaporator', 'Vacum draine AC', 'Cleaning Filter',
