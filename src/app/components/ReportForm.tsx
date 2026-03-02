@@ -115,7 +115,20 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         'Cleaning Fan', 'Nameplate', 'Remote'
       ];
       setCards(vrvTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
+    } else if (lowerEmail === 'lv@gmail.com') {
+      setMaintenanceName('LV');
+      const lvTemplate = [
+        'Condition Panel', 'Check water pas', 'Cleaning panel',
+        'Check Thermal Imager', 'Measurement Grounding', 'Measurement Voltage R - S',
+        'Measurement Voltage S - T', 'Measurement Voltage T - R', 'Measurement Voltage R - N',
+        'Measurement Voltage S - N', 'Measurement Voltage T - N', 'Measurement Voltage N - G',
+        'Measurement Ampere R', 'Measurement Ampere S', 'Measurement Ampere T',
+        'Measurement Ampere N', 'Measurement Voltage DPM', 'Measurement Voltage DPM',
+        'Measurement Ampere DPM', 'Measurement Daya DPM'
+      ];
+      setCards(lvTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     } else if (lowerEmail === 'grounding@gmail.com') {
+      setMaintenanceName('Grounding');
       const groundingTemplate = [
         'Measurement', 'Before', 'After', 'Tightening'
       ];
@@ -274,18 +287,19 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const usableWidth = pageWidth - 2 * margin;
 
     const isPDU = user?.email === 'pdu@gmail.com';
-    const cols = isPDU ? 4 : 3;
-    const perPage = isPDU ? 20 : 9;
-    const photoH = isPDU ? 38 : 55;
-    const capH = isPDU ? 10 : 12;
+    const isLV = user?.email === 'lv@gmail.com';
+    const cols = (isPDU || isLV) ? 4 : 3;
+    const perPage = isPDU ? 20 : isLV ? 12 : 9;
+    const photoH = (isPDU || isLV) ? 38 : 55;
+    const capH = (isPDU || isLV) ? 10 : 12;
 
     const drawHeader = (doc: any) => {
       const isDwimitra = companyType !== 'bri';
-      const logoH = isPDU ? 10 : 25;
+      const logoH = (isPDU || isLV) ? 10 : 25;
 
       // Left Logo (Dwimitra / BRI Left)
-      const leftW = isPDU ? 25 : (isDwimitra ? 25 : 35);
-      const leftH = isPDU ? 10 : (isDwimitra ? logoH : 14);
+      const leftW = (isPDU || isLV) ? 25 : (isDwimitra ? 25 : 35);
+      const leftH = (isPDU || isLV) ? 10 : (isDwimitra ? logoH : 14);
       const leftY = 8;
 
       if (logoLeftB64) {
@@ -293,8 +307,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       }
 
       // Right Logo (NeutraDC / BRI)
-      const rightW = isPDU ? 25 : 35;
-      const rightH = isPDU ? 10 : 14;
+      const rightW = (isPDU || isLV) ? 25 : 35;
+      const rightH = (isPDU || isLV) ? 10 : 14;
       const rightY = 15;
       if (logoRightB64) {
         doc.addImage(`data:image/png;base64,${logoRightB64}`, 'PNG', pageWidth - margin - rightW, rightY, rightW, rightH);
@@ -306,26 +320,26 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       const textCenterX = margin + leftW + textAreaPadding + (textAreaWidth / 2);
 
       // --- Title: UPPERCASE, BOLD ---
-      doc.setFontSize(isPDU ? 9 : 13).setFont('helvetica', 'bold');
+      doc.setFontSize((isPDU || isLV) ? 9 : 13).setFont('helvetica', 'bold');
       const titleText = `DOKUMENTASI PM ${maintenanceName.toUpperCase()}`;
       const splitTitle = doc.splitTextToSize(titleText, textAreaWidth);
       doc.text(splitTitle, textCenterX, 16, { align: 'center' });
 
-      const titleLineH = isPDU ? 5 : 6;
+      const titleLineH = (isPDU || isLV) ? 5 : 6;
       let nextY = 16 + splitTitle.length * titleLineH;
 
       // --- Date: smaller, normal weight ---
       const longDate = new Date(maintenanceTime).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
-      doc.setFontSize(isPDU ? 8 : 11).setFont('helvetica', 'normal');
+      doc.setFontSize((isPDU || isLV) ? 8 : 11).setFont('helvetica', 'normal');
       doc.text(`(${longDate})`, textCenterX, nextY + 2, { align: 'center' });
-      nextY += isPDU ? 6 : 8;
+      nextY += (isPDU || isLV) ? 6 : 8;
 
       // --- Specific Detail: uppercase, bold, bigger ---
       if (specificDetail) {
-        doc.setFontSize(isPDU ? 7 : 10).setFont('helvetica', 'bold');
+        doc.setFontSize((isPDU || isLV) ? 7 : 10).setFont('helvetica', 'bold');
         const splitDetail = doc.splitTextToSize(specificDetail.toUpperCase(), textAreaWidth);
         doc.text(splitDetail, textCenterX, nextY + 2, { align: 'center' });
-        nextY += splitDetail.length * (isPDU ? 4 : 5) + 2;
+        nextY += splitDetail.length * ((isPDU || isLV) ? 4 : 5) + 2;
       }
 
       return Math.max(nextY + 6, 42);
@@ -334,20 +348,61 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     let curY = drawHeader(doc);
     let count = 0;
 
-    for (let i = 0; i < optimizedCards.length; i += cols) {
-      if (count > 0 && count % perPage === 0) { doc.addPage(); curY = drawHeader(doc); }
-      const row = optimizedCards.slice(i, i + cols);
-      for (let j = 0; j < row.length; j++) {
-        const x = margin + j * (usableWidth / cols);
-        doc.rect(x, curY, usableWidth / cols - 2, photoH);
-        const b64 = row[j].photoBase64;
-        if (b64) doc.addImage(b64, 'JPEG', x + 1, curY + 1, usableWidth / cols - 4, photoH - 2);
-        doc.rect(x, curY + photoH, usableWidth / cols - 2, capH);
-        doc.setFontSize(isPDU ? 7 : 8).setFont('helvetica', 'normal');
-        doc.text(doc.splitTextToSize(row[j].description || '', usableWidth / cols - 6), x + (usableWidth / cols) / 2 - 1, curY + photoH + 5, { align: 'center' });
-        count++;
+    if (isLV) {
+      // Page 1: adaptive photoH (fills the page top-to-bottom)
+      // Page 2+: normal fixed photoH (55mm, space at bottom is OK)
+      const pageHeightMM = doc.internal.pageSize.getHeight();
+      const capHLV = 10;
+      const gapLV = 5;
+      const normalPhotoH = 55;
+      let pageStart = 0;
+      let isFirstPage = true;
+
+      while (pageStart < optimizedCards.length) {
+        const pageCards = optimizedCards.slice(pageStart, pageStart + perPage);
+        const rows = Math.ceil(pageCards.length / cols);
+
+        if (!isFirstPage) { doc.addPage(); curY = drawHeader(doc); }
+
+        // Only first page is adaptive, subsequent pages use normal height
+        const usablePageHeight = pageHeightMM - curY - margin;
+        const photoHLV = isFirstPage
+          ? Math.floor(usablePageHeight / rows - capHLV - gapLV)
+          : normalPhotoH;
+
+        for (let i = 0; i < pageCards.length; i += cols) {
+          const row = pageCards.slice(i, i + cols);
+          for (let j = 0; j < row.length; j++) {
+            const x = margin + j * (usableWidth / cols);
+            doc.rect(x, curY, usableWidth / cols - 2, photoHLV);
+            const b64 = row[j].photoBase64;
+            if (b64) doc.addImage(b64, 'JPEG', x + 1, curY + 1, usableWidth / cols - 4, photoHLV - 2);
+            doc.rect(x, curY + photoHLV, usableWidth / cols - 2, capHLV);
+            doc.setFontSize(7).setFont('helvetica', 'normal');
+            doc.text(doc.splitTextToSize(row[j].description || '', usableWidth / cols - 6), x + (usableWidth / cols) / 2 - 1, curY + photoHLV + 5, { align: 'center' });
+          }
+          curY += photoHLV + capHLV + gapLV;
+        }
+
+        pageStart += perPage;
+        isFirstPage = false;
       }
-      curY += photoH + capH + 5;
+    } else {
+      for (let i = 0; i < optimizedCards.length; i += cols) {
+        if (count > 0 && count % perPage === 0) { doc.addPage(); curY = drawHeader(doc); }
+        const row = optimizedCards.slice(i, i + cols);
+        for (let j = 0; j < row.length; j++) {
+          const x = margin + j * (usableWidth / cols);
+          doc.rect(x, curY, usableWidth / cols - 2, photoH);
+          const b64 = row[j].photoBase64;
+          if (b64) doc.addImage(b64, 'JPEG', x + 1, curY + 1, usableWidth / cols - 4, photoH - 2);
+          doc.rect(x, curY + photoH, usableWidth / cols - 2, capH);
+          doc.setFontSize(isPDU ? 7 : 8).setFont('helvetica', 'normal');
+          doc.text(doc.splitTextToSize(row[j].description || '', usableWidth / cols - 6), x + (usableWidth / cols) / 2 - 1, curY + photoH + 5, { align: 'center' });
+          count++;
+        }
+        curY += photoH + capH + 5;
+      }
     }
     const safeName = maintenanceName.replace(/[/\\?%*:|"<>]/g, '-');
     const safeDate = formattedDate.replace(/\//g, '-');
@@ -444,7 +499,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Maintenance Name</label>
-                  <input type="text" value={maintenanceName} onChange={e => setMaintenanceName(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. FCU Maintenance" />
+                  <input type="text" value={maintenanceName} onChange={e => setMaintenanceName(e.target.value)} disabled={user?.email === 'lv@gmail.com' || user?.email === 'grounding@gmail.com'} className={`w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 ${(user?.email === 'lv@gmail.com' || user?.email === 'grounding@gmail.com') ? 'opacity-60 cursor-not-allowed' : ''}`} placeholder="e.g. FCU Maintenance" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Unit/Room (Optional)</label>

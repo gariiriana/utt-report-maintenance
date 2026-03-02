@@ -35,7 +35,9 @@ export function PreviewReport({
     onExport
 }: PreviewReportProps) {
     const isPDU = userEmail === 'pdu@gmail.com';
-    const columns = isPDU ? 4 : 3;
+    const isLV = userEmail === 'lv@gmail.com';
+    const columns = (isPDU || isLV) ? 4 : 3;
+    const perPage = isPDU ? 20 : isLV ? 12 : 9;
     const filledCards = cards.filter(card => card.photoBase64 || card.description);
     const [acknowledged, setAcknowledged] = useState(false);
 
@@ -178,7 +180,7 @@ export function PreviewReport({
                     </div>
 
                     {/* Page Break Indication */}
-                    {filledCards.length > (isPDU ? 20 : 9) && (
+                    {filledCards.length > perPage && (
                         <div className="mt-12 border-t-4 border-dotted border-slate-200 flex justify-center">
                             <span className="bg-slate-50 px-4 py-1.5 text-[11px] text-slate-400 font-black uppercase tracking-widest -mt-4 border-2 border-slate-100 rounded-full">
                                 NEXT PAGE
