@@ -309,54 +309,62 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
     const drawHeader = (doc: any) => {
       const isDwimitra = companyType !== 'bri';
-      const logoH = (isPDU || isLVlike) ? 10 : 25;
 
-      // Left Logo (Dwimitra / BRI Left)
-      const leftW = (isPDU || isLVlike) ? 25 : (isDwimitra ? 25 : 35);
-      const leftH = (isPDU || isLVlike) ? 10 : (isDwimitra ? logoH : 14);
-      const leftY = 8;
+      // ── Logo sizes ──────────────────────────────────────────────
+      // PDU / LVlike: compact header
+      // Normal: full-size logos, both vertically centered at same anchor
+      const isCompact = isPDU || isLVlike;
+
+      const leftW = isCompact ? 22 : (isDwimitra ? 28 : 36);
+      const leftH = isCompact ? 9 : (isDwimitra ? 18 : 14);
+      const rightW = isCompact ? 22 : (isDwimitra ? 36 : 35);
+      const rightH = isCompact ? 9 : (isDwimitra ? 14 : 14);
+
+      // ── Shared vertical anchor so both logos align at the same top ──
+      const headerTopY = 8;
 
       if (logoLeftB64) {
-        doc.addImage(`data:image/png;base64,${logoLeftB64}`, 'PNG', margin, leftY, leftW, leftH);
+        doc.addImage(`data:image/png;base64,${logoLeftB64}`, 'PNG', margin, headerTopY, leftW, leftH);
       }
-
-      // Right Logo (NeutraDC / BRI)
-      const rightW = (isPDU || isLVlike) ? 25 : 35;
-      const rightH = (isPDU || isLVlike) ? 10 : 14;
-      const rightY = 15;
       if (logoRightB64) {
+        // Vertically center right logo relative to left logo height
+        const rightY = headerTopY + (leftH - rightH) / 2;
         doc.addImage(`data:image/png;base64,${logoRightB64}`, 'PNG', pageWidth - margin - rightW, rightY, rightW, rightH);
       }
 
-      // Calculate Header Text Area (Center part between logos)
+      // ── Header text area (between the two logos) ─────────────────
       const textAreaPadding = 3;
       const textAreaWidth = pageWidth - (2 * margin) - leftW - rightW - (2 * textAreaPadding);
       const textCenterX = margin + leftW + textAreaPadding + (textAreaWidth / 2);
 
+      // Vertical center of the taller logo to anchor text
+      const tallLogoH = Math.max(leftH, rightH);
+      const textStartY = headerTopY + tallLogoH / 2 - (isCompact ? 4 : 8);
+
       // --- Title: UPPERCASE, BOLD ---
-      doc.setFontSize((isPDU || isLVlike) ? 9 : 13).setFont('helvetica', 'bold');
+      doc.setFontSize(isCompact ? 9 : 13).setFont('helvetica', 'bold');
       const titleText = `DOKUMENTASI PM ${maintenanceName.toUpperCase()}`;
       const splitTitle = doc.splitTextToSize(titleText, textAreaWidth);
-      doc.text(splitTitle, textCenterX, 16, { align: 'center' });
+      doc.text(splitTitle, textCenterX, textStartY, { align: 'center' });
 
-      const titleLineH = (isPDU || isLVlike) ? 5 : 6;
-      let nextY = 16 + splitTitle.length * titleLineH;
+      const titleLineH = isCompact ? 5 : 6;
+      let nextY = textStartY + splitTitle.length * titleLineH;
 
       // --- Date: smaller, normal weight ---
       const longDate = new Date(maintenanceTime).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
-      doc.setFontSize((isPDU || isLVlike) ? 8 : 11).setFont('helvetica', 'normal');
+      doc.setFontSize(isCompact ? 8 : 11).setFont('helvetica', 'normal');
       doc.text(`(${longDate})`, textCenterX, nextY + 2, { align: 'center' });
-      nextY += (isPDU || isLVlike) ? 6 : 8;
+      nextY += isCompact ? 6 : 8;
 
-      // --- Specific Detail: uppercase, bold, bigger ---
+      // --- Specific Detail: uppercase, bold ---
       if (specificDetail) {
-        doc.setFontSize((isPDU || isLVlike) ? 7 : 10).setFont('helvetica', 'bold');
+        doc.setFontSize(isCompact ? 7 : 10).setFont('helvetica', 'bold');
         const splitDetail = doc.splitTextToSize(specificDetail.toUpperCase(), textAreaWidth);
         doc.text(splitDetail, textCenterX, nextY + 2, { align: 'center' });
-        nextY += splitDetail.length * ((isPDU || isLVlike) ? 4 : 5) + 2;
+        nextY += splitDetail.length * (isCompact ? 4 : 5) + 2;
       }
 
-      return Math.max(nextY + 6, 42);
+      return Math.max(nextY + 6, isCompact ? 30 : 42);
     };
 
     let curY = drawHeader(doc);
