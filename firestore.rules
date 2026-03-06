@@ -30,6 +30,13 @@ service cloud.firestore {
              && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'standby_engineer';
     }
 
+    // ✅ NEW: HSE Officer check
+    function isHSE() {
+      return request.auth != null 
+             && request.auth.uid != null
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hse';
+    }
 
     
     // ============================================================
@@ -41,7 +48,7 @@ service cloud.firestore {
                     && request.resource.data.email == request.auth.token.email
                     && request.resource.data.uid == userId
                     && request.resource.data.keys().hasAll(['email', 'uid', 'role', 'companyType', 'createdAt'])
-                    && (request.resource.data.role == 'admin' || request.resource.data.role == 'engineer' || request.resource.data.role == 'standby_engineer' || request.resource.data.role == 'tde' || request.resource.data.role == 'cbre')
+                    && (request.resource.data.role == 'admin' || request.resource.data.role == 'engineer' || request.resource.data.role == 'standby_engineer' || request.resource.data.role == 'tde' || request.resource.data.role == 'cbre' || request.resource.data.role == 'hse')
                     && (request.resource.data.companyType == 'neutra' || request.resource.data.companyType == 'bri');
       
       allow read: if request.auth != null 
@@ -77,25 +84,21 @@ service cloud.firestore {
       
       // ✅ FIX: Use isAdminSafe() to prevent BloomFilter error
       // User hanya bisa read dokumen milik mereka sendiri, ATAU admin bisa read semua
-      allow read: if request.auth != null 
+      allow read, delete: if request.auth != null 
                   && (resource.data.createdBy == request.auth.token.email 
-                      || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
-                          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+                      || isAdminSafe());
       
-      // ❌ Documents are immutable - tidak bisa di-update setelah dibuat
-      allow update: if false;
-      
-      // ✅ FIX: Use isAdminSafe() to prevent BloomFilter error
-      allow delete: if request.auth != null 
-                    && (resource.data.createdBy == request.auth.token.email 
-                        || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
-                            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+      // ✅ Allow update if user is the creator or an admin
+      allow update: if request.auth != null 
+                    && (resource.data.createdBy == request.auth.token.email || isAdminSafe());
 
       // ✅ Subcollection untuk foto (Unlimited photos support)
       match /photos/{photoId} {
         allow read: if request.auth != null;
         allow create: if request.auth != null;
-        allow update, delete: if false;
+        // ✅ Allow update and delete if parent document owner or admin
+        allow update, delete: if request.auth != null 
+                              && (get(/databases/$(database)/documents/excel_documents/$(docId)).data.createdBy == request.auth.token.email || isAdminSafe());
       }
     }
     
@@ -119,25 +122,21 @@ service cloud.firestore {
                     && (!request.resource.data.keys().hasAny(['specificDetail']) || request.resource.data.specificDetail is string);
       
       // ✅ FIX: Inline admin check to prevent BloomFilter error
-      allow read: if request.auth != null 
+      allow read, delete: if request.auth != null 
                   && (resource.data.createdBy == request.auth.token.email 
-                      || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
-                          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+                      || isAdminSafe());
       
-      // ❌ Documents are immutable - tidak bisa di-update setelah dibuat
-      allow update: if false;
-      
-      // ✅ FIX: Inline admin check to prevent BloomFilter error
-      allow delete: if request.auth != null 
-                    && (resource.data.createdBy == request.auth.token.email 
-                        || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
-                            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+      // ✅ Allow update if user is the creator or an admin
+      allow update: if request.auth != null 
+                    && (resource.data.createdBy == request.auth.token.email || isAdminSafe());
 
       // ✅ Subcollection untuk foto (Unlimited photos support)
       match /photos/{photoId} {
         allow read: if request.auth != null;
         allow create: if request.auth != null;
-        allow update, delete: if false;
+        // ✅ Allow update and delete if parent document owner or admin
+        allow update, delete: if request.auth != null 
+                              && (get(/databases/$(database)/documents/pdf_documents/$(docId)).data.createdBy == request.auth.token.email || isAdminSafe());
       }
     }
     
@@ -239,6 +238,40 @@ service cloud.firestore {
       allow read: if request.auth != null;
     }
     
+    // ============================================================
+    // HSE COLLECTION - Laporan HSE oleh HSE Officer
+    // ============================================================
+    match /hse/{reportId} {
+      // ✅ HSE user bisa create laporan mereka sendiri
+      allow create: if request.auth != null 
+                    && (isHSE() || isAdminSafe())
+                    && request.resource.data.keys().hasAll(['aktivitas', 'lokasi', 'createdAt', 'authorEmail'])
+                    && request.resource.data.authorEmail == request.auth.token.email;
+      
+      // ✅ HSE user bisa read laporan mereka sendiri, admin bisa read semua
+      allow read: if request.auth != null 
+                  && (isAdminSafe() 
+                      || (isHSE() && resource.data.authorEmail == request.auth.token.email));
+      
+      // ✅ HSE user bisa update laporan mereka sendiri
+      allow update: if request.auth != null 
+                    && (isAdminSafe() 
+                        || (isHSE() && resource.data.authorEmail == request.auth.token.email));
+      
+      // ✅ Admin bisa delete, HSE user bisa delete milik mereka sendiri
+      allow delete: if request.auth != null 
+                    && (isAdminSafe() 
+                        || (isHSE() && resource.data.authorEmail == request.auth.token.email));
+
+      // ✅ Subcollection untuk foto (HSE)
+      match /photos/{photoId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null;
+        allow update, delete: if request.auth != null 
+                              && (get(/databases/$(database)/documents/hse/$(reportId)).data.authorEmail == request.auth.token.email || isAdminSafe());
+      }
+    }
+
     // ============================================================
     // DEFAULT - Block semua akses ke collection lain
     // ============================================================

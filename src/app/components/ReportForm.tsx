@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Upload, Camera, FileType, Scissors, Eye, RefreshCw, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, Upload, Camera, FileType, Scissors, Eye, RefreshCw, ChevronDown, Save } from 'lucide-react';
 import { ExcelDocument } from './DocumentList';
 import { ImageEditor } from './ImageEditor';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import logoDwimitra from '@/assets/logo_dwimitra.png';
 import logoNeutraDC from '@/assets/005ac597864c02a96c9add5c6e054d23b8cfafbe.png';
@@ -301,11 +301,15 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const isPDU = user?.email === 'pdu@gmail.com';
     const isLV = user?.email === 'lv@gmail.com';
     const isLDBRDB = user?.email === 'ldb/rdb@gmail.com';
+    const isVRV = user?.email === 'vrv@gmail.com';
+    const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV;
     const isLVlike = isLV || isLDBRDB;
-    const cols = (isPDU || isLVlike) ? 4 : 3;
-    const perPage = isPDU ? 20 : isLVlike ? 12 : 9;
-    const photoH = (isPDU || isLVlike) ? 38 : 55;
-    const capH = (isPDU || isLVlike) ? 10 : 12;
+
+    const cols = isVRV ? 3 : isSmallGrid ? 4 : 3;
+    const perPage = isPDU ? 20 : isLVlike ? 12 : isVRV ? 15 : 9;
+    const photoH = isVRV ? 40 : isSmallGrid ? 38 : 55;
+    const capH = isVRV ? 8 : isSmallGrid ? 10 : 12;
+    const rowGap = isVRV ? 3 : 5;
 
     const drawHeader = (doc: any) => {
       const isDwimitra = companyType !== 'bri';
@@ -313,7 +317,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       // ── Logo sizes ──────────────────────────────────────────────
       // PDU / LVlike: compact header
       // Normal: full-size logos, both vertically centered at same anchor
-      const isCompact = isPDU || isLVlike;
+      const isCompact = isPDU || isLVlike || isVRV;
 
       const leftW = isCompact ? 22 : (isDwimitra ? 28 : 36);
       const leftH = isCompact ? 9 : (isDwimitra ? 18 : 14);
@@ -324,12 +328,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       const headerTopY = 8;
 
       if (logoLeftB64) {
-        doc.addImage(`data:image/png;base64,${logoLeftB64}`, 'PNG', margin, headerTopY, leftW, leftH);
+        doc.addImage(`data:image/png;base64,${logoLeftB64}`, 'PNG', margin, headerTopY, leftW, leftH, 'logo_left', 'FAST');
       }
       if (logoRightB64) {
         // Vertically center right logo relative to left logo height
         const rightY = headerTopY + (leftH - rightH) / 2;
-        doc.addImage(`data:image/png;base64,${logoRightB64}`, 'PNG', pageWidth - margin - rightW, rightY, rightW, rightH);
+        doc.addImage(`data:image/png;base64,${logoRightB64}`, 'PNG', pageWidth - margin - rightW, rightY, rightW, rightH, 'logo_right', 'FAST');
       }
 
       // ── Header text area (between the two logos) ─────────────────
@@ -419,16 +423,86 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           const b64 = row[j].photoBase64;
           if (b64) doc.addImage(b64, 'JPEG', x + 1, curY + 1, usableWidth / cols - 4, photoH - 2);
           doc.rect(x, curY + photoH, usableWidth / cols - 2, capH);
-          doc.setFontSize(isPDU ? 7 : 8).setFont('helvetica', 'normal');
+          doc.setFontSize(isVRV || isPDU ? 7 : 8).setFont('helvetica', 'normal');
           doc.text(doc.splitTextToSize(row[j].description || '', usableWidth / cols - 6), x + (usableWidth / cols) / 2 - 1, curY + photoH + 5, { align: 'center' });
           count++;
         }
-        curY += photoH + capH + 5;
+        curY += photoH + capH + rowGap;
       }
     }
     const safeName = maintenanceName.replace(/[/\\?%*:|"<>]/g, '-');
     const safeDate = formattedDate.replace(/\//g, '-');
     return { doc, fileName: `Report_${safeName}_${safeDate}.pdf`, filled: optimizedCards };
+  };
+
+  const saveReportToFirestore = async (pdfData?: { doc: jsPDF, fileName: string, filled: PhotoCard[] }) => {
+    if (!maintenanceName || !maintenanceTime) return toast.error('Isi nama & waktu'), null;
+
+    // If we have pdfData, use its optimized cards, otherwise use current cards
+    const cardsToSave = pdfData ? pdfData.filled : cards.filter(c => c.photoBase64 || c.description);
+    if (!cardsToSave.length) return toast.error('Minimal 1 card filled'), null;
+
+    const toastId = toast.loading(editingData ? 'Updating report...' : 'Saving report...');
+    try {
+      const photosWithImage = cardsToSave.filter(c => c.photoBase64).length;
+      const fileName = pdfData?.fileName || `${maintenanceName}_${maintenanceTime}_${specificDetail || ''}.pdf`.replace(/\s+/g, '_');
+
+      const reportData = {
+        fileName,
+        maintenanceName,
+        maintenanceTime,
+        specificDetail,
+        updatedAt: serverTimestamp(),
+        totalPhotos: cardsToSave.length,
+        photosWithImage,
+        fileSize: pdfData?.doc ? pdfData.doc.output('arraybuffer').byteLength : 0,
+      };
+
+      let docId = '';
+      const collectionName = editingData?.documentType === 'excel' ? 'excel_documents' : 'pdf_documents';
+
+      if (editingData) {
+        docId = editingData.id;
+        await updateDoc(doc(db, collectionName, docId), reportData);
+
+        // Clear existing photos in subcollection to avoid duplicates
+        const photosRef = collection(db, `${collectionName}/${docId}/photos`);
+        const existingPhotos = await getDocs(photosRef);
+        for (const photoDoc of existingPhotos.docs) {
+          await deleteDoc(doc(db, `${collectionName}/${docId}/photos`, photoDoc.id));
+        }
+      } else {
+        const docRef = await addDoc(collection(db, 'pdf_documents'), {
+          ...reportData,
+          createdBy: user?.email,
+          createdAt: serverTimestamp(),
+        });
+        docId = docRef.id;
+      }
+
+      // Save photos
+      for (let i = 0; i < cardsToSave.length; i++) {
+        const card = cardsToSave[i];
+        if (card.photoBase64) {
+          const sizeInBytes = (card.photoBase64.length * 3) / 4;
+          if (sizeInBytes > 1024 * 1024) continue;
+
+          await addDoc(collection(db, `${editingData ? collectionName : 'pdf_documents'}/${docId}/photos`), {
+            index: i + 1,
+            photoBase64: card.photoBase64,
+            description: card.description || '',
+            hasPhoto: true
+          });
+        }
+      }
+
+      toast.success(editingData ? 'Laporan diperbarui' : 'Laporan disimpan', { id: toastId });
+      return docId;
+    } catch (error) {
+      console.error('Firestore save error:', error);
+      toast.error('Gagal simpan ke DB', { id: toastId });
+      return null;
+    }
   };
 
   const handlePreviewPDF = () => {
@@ -438,56 +512,16 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   };
 
   const handleExportPDF = async () => {
-    try {
-      toast.loading('Exporting...', { id: 'export' });
-      const result = await generatePDFDocument();
-      if (!result) return toast.dismiss('export');
-      const { doc, fileName, filled } = result;
+    const result = await generatePDFDocument();
+    if (result) {
+      const { doc, fileName } = result;
       doc.save(fileName);
-      toast.success('Download started', { id: 'export' });
-
-      const photosWithImage = filled.filter(c => c.photoBase64).length;
-      const docRef = await addDoc(collection(db, 'pdf_documents'), {
-        fileName, maintenanceName, maintenanceTime, specificDetail,
-        createdBy: user?.email, createdAt: serverTimestamp(),
-        totalPhotos: filled.length,
-        photosWithImage,
-        fileSize: doc.output('arraybuffer').byteLength,
-      });
-
-      // Sequential save with detailed feedback and size guard
-      for (let i = 0; i < filled.length; i++) {
-        const card = filled[i];
-        if (card.photoBase64) {
-          // Check for Firestore 1MB limit (1,048,576 bytes)
-          // Base64 is roughly 33% larger than binary, so ~1.37MB base64 string
-          const sizeInBytes = (card.photoBase64.length * 3) / 4;
-          if (sizeInBytes > 1000000) {
-            console.warn(`Photo ${i + 1} too large for Firestore (${Math.round(sizeInBytes / 1024)}KB).`);
-            toast.error(`Foto ${i + 1} terlalu besar (>1MB). Mengabaikan simpan ke DB untuk foto ini.`, { id: 'export' });
-            continue;
-          }
-
-          toast.loading(`Menyimpan foto ${i + 1} dari ${filled.length}...`, { id: 'export' });
-          try {
-            await addDoc(collection(db, `pdf_documents/${docRef.id}/photos`), {
-              index: i + 1,
-              photoBase64: card.photoBase64,
-              description: card.description || '',
-              hasPhoto: true
-            });
-          } catch (fireError) {
-            console.error(`Error saving photo ${i + 1}:`, fireError);
-            toast.error(`Gagal menyimpan foto ${i + 1}. Melanjutkan...`, { id: 'export' });
-          }
-        }
-      }
-
-      toast.success('Laporan berhasil disimpan ke database', { id: 'export' });
-    } catch (e) {
-      console.error('Export error details:', e);
-      toast.error('Gagal export atau simpan. Silakan download PDF secara lokal.', { id: 'export' });
+      await saveReportToFirestore(result);
     }
+  };
+
+  const handleManualSave = async () => {
+    await saveReportToFirestore();
   };
 
   const uploadedCount = cards.filter(c => c.photoBase64).length;
@@ -593,10 +627,13 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
             {/* Footer Actions */}
             <div className="flex flex-col sm:flex-row gap-4 mt-12 justify-center">
-              <button onClick={handlePreviewPDF} className="px-10 py-4 bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center gap-3 border border-slate-700 hover:bg-slate-700 transition shadow-xl border-b-4 border-slate-950 active:border-b-0 active:translate-y-1">
-                <Eye className="w-6 h-6" /> PREVIEW REPORT
+              <button onClick={handlePreviewPDF} className="px-8 py-4 bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center gap-3 border border-slate-700 hover:bg-slate-700 transition shadow-xl border-b-4 border-slate-950 active:border-b-0 active:translate-y-1">
+                <Eye className="w-6 h-6" /> PREVIEW
               </button>
-              <button onClick={handleExportPDF} className="px-10 py-4 bg-red-600 text-white rounded-xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-red-600/20 hover:bg-red-700 transition border-b-4 border-red-800 active:border-b-0 active:translate-y-1">
+              <button onClick={handleManualSave} className="px-8 py-4 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition border-b-4 border-blue-800 active:border-b-0 active:translate-y-1">
+                <Save className="w-6 h-6" /> {editingData ? 'UPDATE CHANGES' : 'SAVE TO ARCHIVE'}
+              </button>
+              <button onClick={handleExportPDF} className="px-8 py-4 bg-red-600 text-white rounded-xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-red-600/20 hover:bg-red-700 transition border-b-4 border-red-800 active:border-b-0 active:translate-y-1">
                 <FileType className="w-6 h-6" /> EXPORT TO PDF
               </button>
             </div>

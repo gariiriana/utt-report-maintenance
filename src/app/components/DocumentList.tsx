@@ -32,7 +32,7 @@ export interface ExcelDocument {
   totalPhotos: number;
   photosWithImage: number;
   photosData: PhotoData[];
-  documentType: 'excel' | 'pdf'; // ✅ NEW: Type of document
+  documentType: 'excel' | 'pdf' | 'hse'; // ✅ UPDATED: Added hse
 }
 
 interface DocumentListProps {
@@ -47,7 +47,7 @@ export function DocumentList({ onEdit }: DocumentListProps) {
   const [filterDate, setFilterDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
-  const [filterType, setFilterType] = useState<'all' | 'excel' | 'pdf'>('all'); // ✅ NEW: Filter by document type
+  const [filterType, setFilterType] = useState<'all' | 'excel' | 'pdf' | 'hse'>('all'); // ✅ UPDATED: Filter by document type
 
   // ✅ NEW: State untuk delete confirmation modal
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -114,8 +114,37 @@ export function DocumentList({ onEdit }: DocumentListProps) {
         });
       });
 
-      // Combine both arrays
-      const allDocs = [...excelDocs, ...pdfDocs];
+      // Fetch HSE documents (Only for Admin or HSE Officer)
+      const hseDocs: ExcelDocument[] = [];
+      if (isAdmin || userRole === 'hse') {
+        const hseQuery = isAdmin
+          ? query(collection(db, 'hse'))
+          : query(
+            collection(db, 'hse'),
+            where('authorEmail', '==', user.email)
+          );
+        const hseSnapshot = await getDocs(hseQuery);
+        hseSnapshot.forEach((doc) => {
+          const data = doc.data();
+          hseDocs.push({
+            id: doc.id,
+            fileName: `HSE_${data.aktivitas}_${data.date}.pdf`,
+            maintenanceName: data.aktivitas,
+            maintenanceTime: data.date,
+            specificDetail: data.lokasi,
+            createdAt: data.createdAt?.toDate() || new Date(),
+            createdBy: data.authorEmail,
+            fileSize: 0,
+            totalPhotos: data.photos?.length || 0,
+            photosWithImage: data.photos?.length || 0,
+            photosData: [],
+            documentType: 'hse',
+          });
+        });
+      }
+
+      // Combine all arrays
+      const allDocs = [...excelDocs, ...pdfDocs, ...hseDocs];
 
       // ✅ Sort on client-side based on sortBy state
       allDocs.sort((a, b) => {
@@ -140,7 +169,7 @@ export function DocumentList({ onEdit }: DocumentListProps) {
     } finally {
       setLoading(false);
     }
-  }, [user, sortBy]); // ✅ FIX: Add dependencies
+  }, [user, sortBy, userRole]); // ✅ UPDATED: Added userRole as dependency
 
   useEffect(() => {
     fetchDocuments();
@@ -160,7 +189,8 @@ export function DocumentList({ onEdit }: DocumentListProps) {
       toast.loading('Menghapus dokumen...', { id: 'delete' });
 
       // Delete from Firestore
-      await deleteDoc(doc(db, documentToDelete.documentType + '_documents', documentToDelete.id));
+      const collectionName = documentToDelete.documentType === 'hse' ? 'hse' : documentToDelete.documentType + '_documents';
+      await deleteDoc(doc(db, collectionName, documentToDelete.id));
 
       toast.success('Dokumen berhasil dihapus', { id: 'delete' });
       fetchDocuments();
