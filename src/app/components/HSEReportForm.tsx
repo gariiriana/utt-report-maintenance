@@ -205,7 +205,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             toast.success('Foto berhasil diambil!');
         }).catch(err => {
             console.error("Capture compression failed", err);
-            setPhotos(prev => [...prev, { id: Date.now().toString(), dataUrl: rawDataUrl }]);
+            setPhotos(prev => [...prev, { id: Date.now().toString(), dataUrl: rawDataUrl, description: '' }]);
             toast.success('Foto berhasil diambil!');
         });
     }, []);
