@@ -7,13 +7,13 @@ import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import logoDwimitra from '@/assets/logo_dwimitra.png';
+import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/005ac597864c02a96c9add5c6e054d23b8cfafbe.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
 
 import { jsPDF } from 'jspdf';
-import { compressImage } from '@/lib/imageCompression';
+import { compressImage, compressBase64Image } from '@/lib/imageCompression';
 import { PreviewReport } from './PreviewReport';
 
 export interface PhotoCard {
@@ -252,28 +252,34 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const formattedDate = new Date(maintenanceTime).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
     // Load logos - Vite imports images as objects { src, height, width } so we extract .src
-    const loadLogo = async (pathOrObj: string | { src: string }) => {
-      try {
+    // Load logos - Using canvas for resizing and compression
+    const loadLogo = (pathOrObj: string | { src: string }) => {
+      return new Promise<string>((resolve) => {
         const url = typeof pathOrObj === 'string' ? pathOrObj : pathOrObj.src;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const blob = await res.blob();
-        return new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-          reader.readAsDataURL(blob);
-        });
-      } catch (e) {
-        console.error("Logo load error", e);
-        return "";
-      }
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+          }
+          // Export as JPEG with 0.8 quality to keep header small
+          resolve(canvas.toDataURL('image/jpeg', 0.8));
+        };
+        img.onerror = () => resolve('');
+        img.src = url;
+      });
     };
 
     const logoLeftB64 = await loadLogo(companyType === 'bri' ? logoBRILeft : logoDwimitra);
     const logoRightB64 = await loadLogo(companyType === 'bri' ? logoBRI : logoNeutraDC);
 
-    // Sequential Optimization - safer for mobile memory
-    const { compressBase64Image } = await import('@/lib/imageCompression');
+    // Sequential Optimization
     const optimizedCards: PhotoCard[] = [];
 
     for (let i = 0; i < filled.length; i++) {
@@ -328,12 +334,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       const headerTopY = 8;
 
       if (logoLeftB64) {
-        doc.addImage(`data:image/png;base64,${logoLeftB64}`, 'PNG', margin, headerTopY, leftW, leftH, 'logo_left', 'FAST');
+        doc.addImage(logoLeftB64, 'JPEG', margin, headerTopY, leftW, leftH, 'logo_left', 'FAST');
       }
       if (logoRightB64) {
         // Vertically center right logo relative to left logo height
         const rightY = headerTopY + (leftH - rightH) / 2;
-        doc.addImage(`data:image/png;base64,${logoRightB64}`, 'PNG', pageWidth - margin - rightW, rightY, rightW, rightH, 'logo_right', 'FAST');
+        doc.addImage(logoRightB64, 'JPEG', pageWidth - margin - rightW, rightY, rightW, rightH, 'logo_right', 'FAST');
       }
 
       // ── Header text area (between the two logos) ─────────────────
@@ -402,7 +408,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             const x = margin + j * (usableWidth / cols);
             doc.rect(x, curY, usableWidth / cols - 2, photoHLV);
             const b64 = row[j].photoBase64;
-            if (b64) doc.addImage(b64, 'JPEG', x + 1, curY + 1, usableWidth / cols - 4, photoHLV - 2);
+            if (b64) doc.addImage(b64, 'JPEG', x + 1, curY + 1, usableWidth / cols - 4, photoHLV - 2, `p_${pageStart + i + j}`, 'FAST');
             doc.rect(x, curY + photoHLV, usableWidth / cols - 2, capHLV);
             doc.setFontSize(7).setFont('helvetica', 'normal');
             doc.text(doc.splitTextToSize(row[j].description || '', usableWidth / cols - 6), x + (usableWidth / cols) / 2 - 1, curY + photoHLV + 5, { align: 'center' });
@@ -421,7 +427,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           const x = margin + j * (usableWidth / cols);
           doc.rect(x, curY, usableWidth / cols - 2, photoH);
           const b64 = row[j].photoBase64;
-          if (b64) doc.addImage(b64, 'JPEG', x + 1, curY + 1, usableWidth / cols - 4, photoH - 2);
+          if (b64) doc.addImage(b64, 'JPEG', x + 1, curY + 1, usableWidth / cols - 4, photoH - 2, `p_${i + j}`, 'FAST');
           doc.rect(x, curY + photoH, usableWidth / cols - 2, capH);
           doc.setFontSize(isVRV || isPDU ? 7 : 8).setFont('helvetica', 'normal');
           doc.text(doc.splitTextToSize(row[j].description || '', usableWidth / cols - 6), x + (usableWidth / cols) / 2 - 1, curY + photoH + 5, { align: 'center' });
@@ -484,12 +490,21 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       for (let i = 0; i < cardsToSave.length; i++) {
         const card = cardsToSave[i];
         if (card.photoBase64) {
-          const sizeInBytes = (card.photoBase64.length * 3) / 4;
-          if (sizeInBytes > 1024 * 1024) continue;
+          let b64 = card.photoBase64;
+          const sizeInBytes = (b64.length * 3) / 4;
+
+          // If still too large (> 800KB), force compress again
+          if (sizeInBytes > 800 * 1024) {
+            try {
+              b64 = await compressBase64Image(b64, { maxWidth: 800, quality: 0.5 });
+            } catch (err) {
+              console.error("Critical compression failure", err);
+            }
+          }
 
           await addDoc(collection(db, `${editingData ? collectionName : 'pdf_documents'}/${docId}/photos`), {
             index: i + 1,
-            photoBase64: card.photoBase64,
+            photoBase64: b64,
             description: card.description || '',
             hasPhoto: true
           });

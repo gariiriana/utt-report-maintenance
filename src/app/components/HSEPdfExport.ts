@@ -11,6 +11,13 @@ export interface HSEChecklist {
     housekeeping: boolean;
     safeCondition: boolean;
     safeAction: boolean;
+    safetySign: boolean;
+    fullBodyHarness: boolean;
+}
+
+export interface HSEPhoto {
+    base64: string;
+    description: string;
 }
 
 export interface HSEFormData {
@@ -20,7 +27,7 @@ export interface HSEFormData {
     pic: string;
     anggota: string;
     checklist: HSEChecklist;
-    photos: string[]; // base64 dataURLs
+    photos: HSEPhoto[];
     date?: string;
 }
 
@@ -33,7 +40,11 @@ function loadImageAsBase64(url: string): Promise<string> {
             canvas.width = img.width;
             canvas.height = img.height;
             const ctx = canvas.getContext('2d');
-            ctx?.drawImage(img, 0, 0);
+            if (ctx) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+            }
             resolve(canvas.toDataURL('image/jpeg', 0.8));
         };
         img.onerror = () => resolve('');
@@ -58,7 +69,7 @@ export async function generateHSEPdf(data: HSEFormData) {
 
     // ── Load logos ───────────────────────────────────────────────────────
     // Dynamically import logo paths
-    const logoDmeModule = await import('@/assets/logo_dwimitra.png');
+    const logoDmeModule = await import('@/assets/logo_dwimitra_v2.png');
     const logoNeutradcModule = await import('@/assets/logo_neutradc.png');
 
     let logoDmeB64 = '';
@@ -75,43 +86,50 @@ export async function generateHSEPdf(data: HSEFormData) {
     doc.setFillColor(22, 163, 74); // green-600
     doc.rect(0, 0, pageW, 3, 'F');
 
-    // Logo DME (kiri)
-    const logoH = 18;
-    const logoW = 35;
+    // Logo DME (kiri) - Matching ReportForm.tsx (isDwimitra ? 28 : 18)
+    const leftW = 28;
+    const leftH = 18;
+    const headerTopY = 8;
+
     if (logoDmeB64) {
-        doc.addImage(logoDmeB64, 'JPEG', marginL, 5, logoW, logoH, 'logo_dme', 'FAST');
+        doc.addImage(logoDmeB64, 'JPEG', marginL, headerTopY, leftW, leftH, 'logo_left', 'FAST');
     } else {
         doc.setFontSize(10);
         doc.setTextColor(DARK);
         doc.setFont('helvetica', 'bold');
-        doc.text('DME', marginL, 14);
+        doc.text('DME', marginL, headerTopY + 6);
     }
 
-    // Logo neutraDC (kanan)
+    // Logo neutraDC (kanan) - Matching ReportForm.tsx (isDwimitra ? 36 : 14)
+    const rightW = 36;
+    const rightH = 14;
     if (logoNeutradcB64) {
-        doc.addImage(logoNeutradcB64, 'JPEG', pageW - marginR - logoW, 5, logoW, logoH, 'logo_neutra', 'FAST');
+        // Vertically center right logo relative to left logo height (matching logic)
+        const rightY = headerTopY + (leftH - rightH) / 2;
+        doc.addImage(logoNeutradcB64, 'JPEG', pageW - marginR - rightW, rightY, rightW, rightH, 'logo_right', 'FAST');
     } else {
         doc.setFontSize(10);
         doc.setTextColor(DARK);
         doc.setFont('helvetica', 'bold');
-        doc.text('neutraDC', pageW - marginR - 20, 14);
+        doc.text('neutraDC', pageW - marginR - 20, headerTopY + 6);
     }
 
     // Center Title
     doc.setFontSize(15);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(DARK);
-    doc.text('HSE INSPECTION REPORT', pageW / 2, 12, { align: 'center' });
+    const titleY = headerTopY + 4;
+    doc.text('HSE INSPECTION REPORT', pageW / 2, titleY, { align: 'center' });
 
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(GRAY);
-    doc.text('Health, Safety & Environment — Maintenance Checklist', pageW / 2, 17, { align: 'center' });
+    doc.text('Health, Safety & Environment — Maintenance Checklist', pageW / 2, titleY + 5, { align: 'center' });
 
     // Date
     const dateStr = data.date || new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
     doc.setFontSize(8);
-    doc.text(`Tanggal: ${dateStr}`, pageW / 2, 21.5, { align: 'center' });
+    doc.text(`Tanggal: ${dateStr}`, pageW / 2, titleY + 9.5, { align: 'center' });
 
     // Separator line
     doc.setDrawColor(22, 163, 74);
@@ -172,12 +190,21 @@ export async function generateHSEPdf(data: HSEFormData) {
         { label: 'Housekeeping Area Project', value: data.checklist.housekeeping },
         { label: 'Safe Condition', value: data.checklist.safeCondition },
         { label: 'Safe Action', value: data.checklist.safeAction },
-    ];
+        { label: 'Safety Sign', value: data.checklist.safetySign },
+        { label: 'Full Body Harness (Optional)', value: data.checklist.fullBodyHarness },
+    ].filter(item => {
+        // Filter out optional items if they are false (not selected)
+        if (item.label.includes('(Optional)')) {
+            return item.value === true;
+        }
+        return true;
+    });
 
-    const col1Items = checklistItems.slice(0, 5);
-    const col2Items = checklistItems.slice(5);
     const colW = (contentW - 6) / 2;
     const rowH = 8;
+    const itemsPerCol = Math.ceil(checklistItems.length / 2);
+    const col1Items = checklistItems.slice(0, itemsPerCol);
+    const col2Items = checklistItems.slice(itemsPerCol);
 
     const drawChecklistCol = (items: typeof checklistItems, startX: number, startY: number) => {
         items.forEach((item, i) => {
@@ -187,22 +214,29 @@ export async function generateHSEPdf(data: HSEFormData) {
             doc.setFillColor(bgColor);
             doc.rect(startX, y, colW, rowH, 'F');
 
-            // Check icon
+            // Check icon using vector lines for maximum precision
             const checked = item.value;
+            const centerX = startX + 5;
+            const centerY = y + rowH / 2;
+
             if (checked) {
+                // Green Circle
                 doc.setFillColor(22, 163, 74);
-                doc.circle(startX + 5, y + rowH / 2, 3, 'F');
-                doc.setFontSize(7);
-                doc.setFont('helvetica', 'bold');
-                doc.setTextColor('#ffffff');
-                doc.text('✓', startX + 3.5, y + rowH / 2 + 2.5);
+                doc.circle(centerX, centerY, 2.8, 'F');
+                // White Checkmark Draw
+                doc.setDrawColor(255, 255, 255);
+                doc.setLineWidth(0.45);
+                doc.line(centerX - 1.2, centerY, centerX - 0.3, centerY + 0.9);
+                doc.line(centerX - 0.3, centerY + 0.9, centerX + 1.2, centerY - 1);
             } else {
+                // Red Circle
                 doc.setFillColor(220, 38, 38);
-                doc.circle(startX + 5, y + rowH / 2, 3, 'F');
-                doc.setFontSize(7);
-                doc.setFont('helvetica', 'bold');
-                doc.setTextColor('#ffffff');
-                doc.text('✗', startX + 3.5, y + rowH / 2 + 2.5);
+                doc.circle(centerX, centerY, 2.8, 'F');
+                // White X Draw
+                doc.setDrawColor(255, 255, 255);
+                doc.setLineWidth(0.45);
+                doc.line(centerX - 1, centerY - 1, centerX + 1, centerY + 1);
+                doc.line(centerX + 1, centerY - 1, centerX - 1, centerY + 1);
             }
 
             doc.setFontSize(8.5);
@@ -249,13 +283,14 @@ export async function generateHSEPdf(data: HSEFormData) {
         const photoGap = 4;
         const photoW = (contentW - photoGap * (photosPerRow - 1)) / photosPerRow;
         const photoH = photoW * 0.75; // 4:3 aspect
+        const descriptionH = 8; // Extra height for description line
 
         for (let i = 0; i < data.photos.length; i++) {
             const col = i % photosPerRow;
             const x = marginL + col * (photoW + photoGap);
 
-            // New page if needed
-            if (curY + photoH > pageH - 20) {
+            // New page if needed - checking photo + description height
+            if (curY + photoH + descriptionH > pageH - 20) {
                 doc.addPage();
                 curY = 15;
 
@@ -268,33 +303,45 @@ export async function generateHSEPdf(data: HSEFormData) {
 
             try {
                 // Determine image type and compress
-                const rawImgData = data.photos[i];
+                const photo = data.photos[i];
+                const rawImgData = photo.base64;
                 const imgData = await compressBase64Image(rawImgData, { maxWidth: 800, quality: 0.5 });
                 const imgType = 'JPEG';
                 doc.addImage(imgData, imgType, x, y, photoW, photoH, `photo_${i}`, 'FAST');
+
+                // Photo Border
                 doc.setDrawColor(200, 200, 200);
                 doc.setLineWidth(0.2);
                 doc.rect(x, y, photoW, photoH);
+
+                // Photo description text
+                if (photo.description) {
+                    doc.setFontSize(7.5);
+                    doc.setFont('helvetica', 'italic');
+                    doc.setTextColor(DARK);
+                    const descLines = doc.splitTextToSize(photo.description, photoW);
+                    doc.text(descLines, x, y + photoH + 3.5);
+                }
             } catch (_) {
                 // Draw placeholder
                 doc.setFillColor(220, 220, 220);
                 doc.rect(x, y, photoW, photoH, 'F');
                 doc.setFontSize(7);
                 doc.setTextColor(150, 150, 150);
-                doc.text('Foto', x + photoW / 2, y + photoH / 2, { align: 'center' });
+                doc.text('Foto Error', x + photoW / 2, y + photoH / 2, { align: 'center' });
             }
 
-            // Photo number label
-            doc.setFillColor(0, 0, 0, 0.5);
+            // Photo number label badge
+            doc.setFillColor(0, 0, 0, 0.7);
+            doc.rect(x, y + photoH - 6, 12, 6, 'F');
             doc.setFontSize(7);
             doc.setTextColor('#ffffff');
-            doc.setFillColor(0, 0, 0);
-            doc.rect(x, y + photoH - 5, 14, 5, 'F');
-            doc.text(`Foto ${i + 1}`, x + 1, y + photoH - 1.5);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${i + 1}`, x + 6, y + photoH - 1.8, { align: 'center' });
 
             // Move to next row after filling a row
             if (col === photosPerRow - 1 || i === data.photos.length - 1) {
-                curY += photoH + photoGap;
+                curY += photoH + descriptionH + photoGap;
             }
         }
     }

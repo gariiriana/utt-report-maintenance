@@ -7,11 +7,14 @@ import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
-import logoDwimitra from '@/assets/a6129221f456afd6fd88d74c324473e495bdd7a8.png';
+import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/005ac597864c02a96c9add5c6e054d23b8cfafbe.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
-import { DeleteConfirmModal } from './DeleteConfirmModal'; // ✅ NEW: Import custom modal
+import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { compressBase64Image } from '@/lib/imageCompression';
+import { generateHSEPdf } from './HSEPdfExport';
+import { getDoc } from 'firebase/firestore';
 
 interface PhotoData {
   index: number;
@@ -432,56 +435,55 @@ export function DocumentList({ onEdit }: DocumentListProps) {
 
       // Load logos
       try {
-        // Select left logo based on company type
-        const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
-        const logoLeftResponse = await fetch(leftLogo);
-        const logoLeftBlob = await logoLeftResponse.blob();
-        const logoLeftArrayBuffer = await logoLeftBlob.arrayBuffer();
-        const logoLeftBase64 = btoa(
-          new Uint8Array(logoLeftArrayBuffer).reduce(
-            (data, byte) => data + String.fromCharCode(byte), ''
-          )
-        );
+        // ✅ NEW: Load logos with canvas to ensure compression and JPEG format (matching ReportForm)
+        const processLogo = (url: string) => {
+          return new Promise<string>((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.width; canvas.height = img.height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+              }
+              resolve(canvas.toDataURL('image/jpeg', 0.8));
+            };
+            img.onerror = () => resolve('');
+            img.src = url;
+          });
+        };
 
-        // Select right logo based on company type
-        const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
-        const logoRightResponse = await fetch(rightLogo);
-        const logoRightBlob = await logoRightResponse.blob();
-        const logoRightArrayBuffer = await logoRightBlob.arrayBuffer();
-        const logoRightBase64 = btoa(
-          new Uint8Array(logoRightArrayBuffer).reduce(
-            (data, byte) => data + String.fromCharCode(byte), ''
-          )
-        );
+        const processedLogoLeft = await processLogo(companyType === 'bri' ? logoBRILeft : logoDwimitra);
+        const processedLogoRight = await processLogo(companyType === 'bri' ? logoBRI : logoNeutraDC);
 
         // ✅ Helper function to add page header (logos + title + info)
         const addPageHeader = () => {
           const isPDU = user?.email === 'pdu@gmail.com' || docData.createdBy === 'pdu@gmail.com';
-          let headerY = marginTop;
-          const logoWidth = isPDU ? 25 : 35;
-          const logoHeight = isPDU ? 10 : 14;
+          const isDwimitra = companyType !== 'bri';
 
-          // Logo Left (Dwimitra or BRI Specific based on companyType)
-          doc.addImage(
-            `data:image/png;base64,${logoLeftBase64}`,
-            'PNG',
-            marginLeft,
-            headerY,
-            logoWidth,
-            logoHeight
-          );
+          let headerY = 8; // Matching ReportForm.tsx anchor
 
-          // Logo Right (NeutraDC or BRI based on companyType)
-          doc.addImage(
-            `data:image/png;base64,${logoRightBase64}`,
-            'PNG',
-            pageWidth - marginRight - logoWidth,
-            headerY,
-            logoWidth,
-            logoHeight
-          );
+          // Normal sizing matches ReportForm
+          const leftW = isPDU ? 22 : (isDwimitra ? 28 : 36);
+          const leftH = isPDU ? 9 : (isDwimitra ? 18 : 14);
+          const rightW = isPDU ? 22 : (isDwimitra ? 36 : 35);
+          const rightH = isPDU ? 9 : (isDwimitra ? 14 : 14);
 
-          headerY += logoHeight + (isPDU ? 3 : 5);
+          // Logo Left
+          if (processedLogoLeft) {
+            doc.addImage(processedLogoLeft, 'JPEG', marginLeft, headerY, leftW, leftH, 'logo_left', 'FAST');
+          }
+
+          // Logo Right (Vertically centered relative to left logo height)
+          if (processedLogoRight) {
+            const rightY = headerY + (leftH - rightH) / 2;
+            doc.addImage(processedLogoRight, 'JPEG', pageWidth - marginRight - rightW, rightY, rightW, rightH, 'logo_right', 'FAST');
+          }
+
+          headerY += Math.max(leftH, rightH) + (isPDU ? 4 : 5);
 
           // Title
           doc.setFontSize(isPDU ? 10 : 14);
@@ -522,7 +524,7 @@ export function DocumentList({ onEdit }: DocumentListProps) {
 
         let finalPhotosData = docData.photosData || [];
 
-        // ✅ Support subcollection pattern: fetch photos if photosData is empty
+        // ✅ Support subcollection pattern
         if (finalPhotosData.length === 0) {
           try {
             const photosSnap = await getDocs(
@@ -562,13 +564,27 @@ export function DocumentList({ onEdit }: DocumentListProps) {
             // Add photo if exists
             if (card.photoBase64) {
               try {
+                let b64 = card.photoBase64;
+                const sizeKB = (b64.length * 3) / 4 / 1024;
+
+                // Extra safety: compress on the fly if still huge
+                if (sizeKB > 800) {
+                  try {
+                    b64 = await compressBase64Image(b64, { maxWidth: 800, quality: 0.5 });
+                  } catch (e) {
+                    console.error("Archive export compression failed", e);
+                  }
+                }
+
                 doc.addImage(
-                  card.photoBase64,
+                  b64,
                   'JPEG',
                   xPos + 0.5,
                   currentY + 0.5,
                   photoWidth - 1,
-                  photoHeight - 1
+                  photoHeight - 1,
+                  `p_${photoCount}`,
+                  'FAST'
                 );
               } catch (imgError) {
                 console.error('Failed to add image:', imgError);
@@ -610,6 +626,48 @@ export function DocumentList({ onEdit }: DocumentListProps) {
     } catch (error) {
       console.error('Download PDF error:', error);
       toast.error('Failed to download PDF', { id: 'download-pdf' });
+    }
+  };
+
+  const handleDownloadHSE = async (docData: ExcelDocument) => {
+    try {
+      toast.loading('Loading HSE report data...', { id: 'download-hse' });
+      const hseDoc = await getDoc(doc(db, 'hse', docData.id));
+
+      if (!hseDoc.exists()) {
+        throw new Error('HSE document not found');
+      }
+
+      const hseData = hseDoc.data();
+
+      // Fetch photos from subcollection
+      const photosSnap = await getDocs(collection(db, `hse/${docData.id}/photos`));
+      const photos = photosSnap.docs
+        .map(d => {
+          const data = d.data();
+          return {
+            base64: data.dataUrl,
+            description: data.description || ''
+          };
+        });
+
+      // Map to HSEFormData structure
+      const formData = {
+        aktivitas: hseData.aktivitas,
+        lokasi: hseData.lokasi,
+        personil: hseData.personil,
+        pic: hseData.pic,
+        anggota: hseData.anggota,
+        checklist: hseData.checklist,
+        photos: photos,
+        date: hseData.date
+      };
+
+      await generateHSEPdf(formData);
+      toast.success('HSE PDF downloaded!', { id: 'download-hse' });
+    } catch (error) {
+      console.error('Download HSE error:', error);
+      toast.error('Failed to download HSE PDF', { id: 'download-hse' });
     }
   };
 
@@ -859,7 +917,11 @@ export function DocumentList({ onEdit }: DocumentListProps) {
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => document.documentType === 'pdf' ? handleDownloadPDF(document) : handleDownload(document)}
+                      onClick={() => {
+                        if (document.documentType === 'pdf') handleDownloadPDF(document);
+                        else if (document.documentType === 'hse') handleDownloadHSE(document);
+                        else handleDownload(document);
+                      }}
                       className="flex-1 sm:flex-initial p-2.5 sm:p-3 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-lg transition border border-blue-500/20"
                       title={`Download ${document.documentType === 'pdf' ? 'PDF' : 'Excel'}`}
                     >

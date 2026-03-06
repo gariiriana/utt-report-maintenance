@@ -24,6 +24,8 @@ const INITIAL_CHECKLIST: HSEChecklist = {
     housekeeping: false,
     safeCondition: false,
     safeAction: false,
+    safetySign: false,
+    fullBodyHarness: false,
 };
 
 const CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string }[] = [
@@ -36,11 +38,14 @@ const CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string }[] = [
     { key: 'housekeeping', label: 'Housekeeping Area Project' },
     { key: 'safeCondition', label: 'Safe Condition' },
     { key: 'safeAction', label: 'Safe Action' },
+    { key: 'safetySign', label: 'Safety Sign' },
+    { key: 'fullBodyHarness', label: 'Full Body Harness (Optional)' },
 ];
 
 interface PhotoItem {
     id: string;
     dataUrl: string;
+    description: string;
 }
 
 interface HSEReportFormProps {
@@ -95,6 +100,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                                 return {
                                     id: d.id,
                                     dataUrl: photoData.dataUrl,
+                                    description: photoData.description || '',
                                     index: photoData.index || 0
                                 };
                             })
@@ -138,14 +144,14 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             }
             try {
                 const dataUrl = await compressImage(file);
-                setPhotos(prev => [...prev, { id: Date.now().toString() + Math.random(), dataUrl }]);
+                setPhotos(prev => [...prev, { id: Date.now().toString() + Math.random(), dataUrl, description: '' }]);
             } catch (err) {
                 console.error("Compression failed", err);
                 // Fallback to reader if compression fails
                 const reader = new FileReader();
                 reader.onload = (ev) => {
                     const dataUrl = ev.target?.result as string;
-                    setPhotos(prev => [...prev, { id: Date.now().toString() + Math.random(), dataUrl }]);
+                    setPhotos(prev => [...prev, { id: Date.now().toString() + Math.random(), dataUrl, description: '' }]);
                 };
                 reader.readAsDataURL(file);
             }
@@ -195,7 +201,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
 
         // Compress captured photo
         compressBase64Image(rawDataUrl).then(dataUrl => {
-            setPhotos(prev => [...prev, { id: Date.now().toString(), dataUrl }]);
+            setPhotos(prev => [...prev, { id: Date.now().toString(), dataUrl, description: '' }]);
             toast.success('Foto berhasil diambil!');
         }).catch(err => {
             console.error("Capture compression failed", err);
@@ -236,7 +242,10 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         pic,
         anggota,
         checklist,
-        photos: photos.map(p => p.dataUrl),
+        photos: photos.map(p => ({
+            base64: p.dataUrl,
+            description: p.description
+        })),
         date: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }),
     });
 
@@ -278,9 +287,22 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
 
             // Save full photos to subcollection
             for (let i = 0; i < photos.length; i++) {
+                let dataUrl = photos[i].dataUrl;
+                const sizeInBytes = (dataUrl.length * 3) / 4;
+
+                // Compress if legacy/large photo detected (> 800KB)
+                if (sizeInBytes > 800 * 1024) {
+                    try {
+                        dataUrl = await compressBase64Image(dataUrl, { maxWidth: 800, quality: 0.5 });
+                    } catch (err) {
+                        console.error("HSE Compression failure", err);
+                    }
+                }
+
                 await addDoc(collection(db, `hse/${docId}/photos`), {
                     index: i + 1,
-                    dataUrl: photos[i].dataUrl,
+                    dataUrl: dataUrl,
+                    description: photos[i].description || '',
                     createdAt: serverTimestamp(),
                 });
             }
@@ -596,34 +618,49 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                                             initial={{ opacity: 0, scale: 0.85 }}
                                             animate={{ opacity: 1, scale: 1 }}
                                             exit={{ opacity: 0, scale: 0.85 }}
-                                            className="relative group rounded-xl overflow-hidden border border-slate-700/40 aspect-square"
+                                            className="flex flex-col gap-2"
                                         >
-                                            <img
-                                                src={photo.dataUrl}
-                                                alt={`Foto ${idx + 1}`}
-                                                className="w-full h-full object-cover"
+                                            <div className="relative group rounded-xl overflow-hidden border border-slate-700/40 aspect-[4/3] bg-slate-950">
+                                                <img
+                                                    src={photo.dataUrl}
+                                                    alt={`Foto ${idx + 1}`}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                                {/* Hover overlay */}
+                                                <div className="absolute inset-0 bg-slate-900/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                                                    <button
+                                                        onClick={() => setEditingPhoto(photo)}
+                                                        className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition w-28 justify-center"
+                                                    >
+                                                        <Edit2 className="w-3 h-3" />
+                                                        Edit Foto
+                                                    </button>
+                                                    <button
+                                                        onClick={() => removePhoto(photo.id)}
+                                                        className="flex items-center gap-1.5 px-3 py-2 bg-red-600/80 hover:bg-red-500 text-white rounded-lg text-xs font-semibold transition w-28 justify-center"
+                                                    >
+                                                        <X className="w-3 h-3" />
+                                                        Hapus
+                                                    </button>
+                                                </div>
+                                                {/* Photo number badge */}
+                                                <div className="absolute top-2 left-2 bg-slate-900/80 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-slate-700/50">
+                                                    {idx + 1}
+                                                </div>
+                                            </div>
+                                            {/* Description Input */}
+                                            <input
+                                                type="text"
+                                                value={photo.description}
+                                                onChange={(e) => {
+                                                    const newDesc = e.target.value;
+                                                    setPhotos(prev => prev.map(p =>
+                                                        p.id === photo.id ? { ...p, description: newDesc } : p
+                                                    ));
+                                                }}
+                                                placeholder="Tambah deskripsi..."
+                                                className="w-full px-3 py-2 bg-slate-900/40 border border-slate-700/50 rounded-lg text-white text-[11px] placeholder:text-slate-600 outline-none focus:border-blue-500/40 transition"
                                             />
-                                            {/* Hover overlay */}
-                                            <div className="absolute inset-0 bg-slate-900/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                                                <button
-                                                    onClick={() => setEditingPhoto(photo)}
-                                                    className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition w-28 justify-center"
-                                                >
-                                                    <Edit2 className="w-3 h-3" />
-                                                    Edit Foto
-                                                </button>
-                                                <button
-                                                    onClick={() => removePhoto(photo.id)}
-                                                    className="flex items-center gap-1.5 px-3 py-2 bg-red-600/80 hover:bg-red-500 text-white rounded-lg text-xs font-semibold transition w-28 justify-center"
-                                                >
-                                                    <X className="w-3 h-3" />
-                                                    Hapus
-                                                </button>
-                                            </div>
-                                            {/* Photo number badge */}
-                                            <div className="absolute top-2 left-2 bg-slate-900/80 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                                                {idx + 1}
-                                            </div>
                                         </motion.div>
                                     ))}
                                 </AnimatePresence>
