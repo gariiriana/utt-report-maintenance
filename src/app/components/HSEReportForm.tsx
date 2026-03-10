@@ -1,14 +1,15 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Camera, Upload, X, Edit2, FileDown, Plus,
+    Camera, Upload, Edit2, FileDown, Plus,
     CheckSquare, Square, User, MapPin, Users, Briefcase,
-    Save, Loader2, ChevronDown, ChevronUp, ClipboardList
+    Save, Loader2, ChevronDown, ChevronUp, ClipboardList, Trash2, Send
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { HSEPhotoEditor } from './HSEPhotoEditor';
-import { generateHSEPdf, type HSEFormData, type HSEChecklist } from './HSEPdfExport';
-import { db } from '@/lib/firebase';
+import { generateHSEPdf, generateHSEPdfBlob, type HSEFormData, type HSEChecklist } from './HSEPdfExport';
+import { db, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, getDoc, getDocs, deleteDoc, QueryDocumentSnapshot } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { ExcelDocument } from './DocumentList';
@@ -72,9 +73,9 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
     // Loading states
     const [isSaving, setIsSaving] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+    const [isSharingWA, setIsSharingWA] = useState(false);
 
     // Camera state
-    const [showCamera, setShowCamera] = useState(false);
 
     // Sync with editingData
     useEffect(() => {
@@ -123,8 +124,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         }
     }, [editingData]);
 
-    const videoRef = useRef<HTMLVideoElement>(null);
-    const streamRef = useRef<MediaStream | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Toggle checklist item
@@ -162,62 +161,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         toast.success(`${files.length} foto ditambahkan`);
     };
 
-    // Open camera
-    const openCamera = async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } }
-            });
-            streamRef.current = stream;
-            setShowCamera(true);
-            // Set video src after state update
-            setTimeout(() => {
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                    videoRef.current.play();
-                }
-            }, 100);
-        } catch (err: any) {
-            if (err.name === 'NotAllowedError') {
-                toast.error('Akses kamera ditolak. Ijinkan akses kamera di browser.');
-            } else {
-                toast.error('Kamera tidak tersedia');
-            }
-        }
-    };
-
-    // Capture photo from camera
-    const capturePhoto = useCallback(() => {
-        const video = videoRef.current;
-        if (!video) return;
-
-        const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-        ctx.drawImage(video, 0, 0);
-        const rawDataUrl = canvas.toDataURL('image/jpeg', 0.9);
-
-        // Compress captured photo
-        compressBase64Image(rawDataUrl).then(dataUrl => {
-            setPhotos(prev => [...prev, { id: Date.now().toString(), dataUrl, description: '' }]);
-            toast.success('Foto berhasil diambil!');
-        }).catch(err => {
-            console.error("Capture compression failed", err);
-            setPhotos(prev => [...prev, { id: Date.now().toString(), dataUrl: rawDataUrl, description: '' }]);
-            toast.success('Foto berhasil diambil!');
-        });
-    }, []);
-
-    // Close camera
-    const closeCamera = useCallback(() => {
-        if (streamRef.current) {
-            streamRef.current.getTracks().forEach(t => t.stop());
-            streamRef.current = null;
-        }
-        setShowCamera(false);
-    }, []);
 
     // Remove photo
     const removePhoto = (id: string) => {
@@ -331,6 +274,72 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             toast.error('Gagal generate PDF');
         } finally {
             setIsGeneratingPdf(false);
+        }
+    };
+
+    // Share to WA with Link
+    const handleShareWA = async () => {
+        if (!aktivitas.trim() || !lokasi.trim()) {
+            toast.error('Aktivitas dan Lokasi wajib diisi untuk Share WA');
+            return;
+        }
+
+        setIsSharingWA(true);
+        const toastId = toast.loading('Menyiapkan dokumen dan link...');
+
+        try {
+            // 1. Generate PDF Blob
+            const formData = buildFormData();
+            const pdfBlob = await generateHSEPdfBlob(formData);
+
+            // 2. Upload to Firebase Storage
+            const cleanAktivitas = aktivitas.replace(/[^a-zA-Z0-9]/g, '_');
+            const fileName = `HSE_Report_${cleanAktivitas}_${Date.now()}.pdf`;
+            const fileRef = ref(storage, `hse_reports/${fileName}`);
+
+            await uploadBytes(fileRef, pdfBlob);
+            const downloadUrl = await getDownloadURL(fileRef);
+
+            // 3. Construct WhatsApp Message
+            const dateStr = new Date().toLocaleDateString('id-ID', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+
+            const safeCount = Object.values(checklist).filter(Boolean).length;
+            const checklistScore = `${safeCount}/${CHECKLIST_LABELS.length}`;
+
+            const message = `*HSE INSPECTION REPORT*\nPT Dwimitra Ekatama Mandiri\n\nTanggal: ${dateStr}\nAktivitas: ${aktivitas}\nLokasi: ${lokasi}\nPIC: ${pic || '-'}\nPersonil: ${personil || '-'}\n\n*Status Checklist Keselamatan:* ${checklistScore} Terpenuhi\n\n*Link Laporan PDF:*\n${downloadUrl}\n\n_Mohon tinjau dokumen PDF laporan lengkap pada link di atas._\n\nSalam,\nTim HSE`;
+
+            const encodedMessage = encodeURIComponent(message);
+
+            // Direct user to the specific WA group provided
+            const groupLink = 'https://chat.whatsapp.com/BXh4ZRPxrXvFaZeLPQ6YHh'; // Updated Group Link
+
+            // WhatsApp doesn't support pre-filling messages when joining a group via invite link.
+            // The best approach is to copy the message to clipboard first, then open the group link.
+            navigator.clipboard.writeText(message)
+                .then(() => {
+                    toast.success('Pesan & link laporan telah disalin ke clipboard!', { id: toastId });
+                    setTimeout(() => {
+                        window.open(groupLink, '_blank');
+                        toast.info('WA Group dibuka, silakan Paste (Tempel) pesan ke chat.');
+                    }, 1000);
+                })
+                .catch(err => {
+                    console.error('Failed to copy text: ', err);
+                    toast.success('Laporan berhasil diunggah.', { id: toastId });
+                    // Fallback to generic share api if clipboard fails
+                    const waUrl = `https://api.whatsapp.com/send?text=${encodedMessage}`;
+                    window.open(waUrl, '_blank');
+                });
+        } catch (error) {
+            console.error("Error sharing to WA:", error);
+            toast.error('Terjadi kesalahan saat mengunggah dan membagikan laporan.', { id: toastId });
+        } finally {
+            setIsSharingWA(false);
         }
     };
 
@@ -561,52 +570,8 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                                 <Upload className="w-4 h-4" />
                                 Upload dari Device
                             </motion.button>
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.97 }}
-                                onClick={openCamera}
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-500/30 hover:border-green-500/50 rounded-xl transition font-medium text-sm"
-                            >
-                                <Camera className="w-4 h-4" />
-                                Ambil Foto (Kamera)
-                            </motion.button>
                         </div>
 
-                        {/* Camera View */}
-                        <AnimatePresence>
-                            {showCamera && (
-                                <motion.div
-                                    initial={{ opacity: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.95 }}
-                                    className="mb-5 bg-slate-950 rounded-2xl overflow-hidden border border-slate-700/50"
-                                >
-                                    <video
-                                        ref={videoRef}
-                                        autoPlay
-                                        playsInline
-                                        muted
-                                        className="w-full rounded-t-2xl"
-                                        style={{ maxHeight: '300px', objectFit: 'cover' }}
-                                    />
-                                    <div className="flex gap-3 p-4 bg-slate-900/80">
-                                        <button
-                                            onClick={capturePhoto}
-                                            className="flex-1 flex items-center justify-center gap-2 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition text-sm"
-                                        >
-                                            <Camera className="w-4 h-4" />
-                                            Ambil Foto
-                                        </button>
-                                        <button
-                                            onClick={closeCamera}
-                                            className="px-5 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition text-sm"
-                                        >
-                                            Tutup Kamera
-                                        </button>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
 
                         {/* Photo Grid */}
                         {photos.length > 0 ? (
@@ -626,21 +591,21 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                                                     alt={`Foto ${idx + 1}`}
                                                     className="w-full h-full object-cover"
                                                 />
-                                                {/* Hover overlay */}
-                                                <div className="absolute inset-0 bg-slate-900/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                                                {/* Floating Action Buttons */}
+                                                <div className="absolute top-2 right-2 flex gap-1.5 opacity-90 hover:opacity-100 transition-opacity">
                                                     <button
-                                                        onClick={() => setEditingPhoto(photo)}
-                                                        className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition w-28 justify-center"
+                                                        onClick={(e) => { e.stopPropagation(); setEditingPhoto(photo); }}
+                                                        className="p-1.5 bg-blue-600/90 hover:bg-blue-500 text-white rounded-md transition shadow-md"
+                                                        title="Edit Foto"
                                                     >
-                                                        <Edit2 className="w-3 h-3" />
-                                                        Edit Foto
+                                                        <Edit2 className="w-3.5 h-3.5" />
                                                     </button>
                                                     <button
-                                                        onClick={() => removePhoto(photo.id)}
-                                                        className="flex items-center gap-1.5 px-3 py-2 bg-red-600/80 hover:bg-red-500 text-white rounded-lg text-xs font-semibold transition w-28 justify-center"
+                                                        onClick={(e) => { e.stopPropagation(); removePhoto(photo.id); }}
+                                                        className="p-1.5 bg-red-600/90 hover:bg-red-500 text-white rounded-md transition shadow-md"
+                                                        title="Hapus Foto"
                                                     >
-                                                        <X className="w-3 h-3" />
-                                                        Hapus
+                                                        <Trash2 className="w-3.5 h-3.5" />
                                                     </button>
                                                 </div>
                                                 {/* Photo number badge */}
@@ -685,7 +650,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                                 <Camera className="w-10 h-10 opacity-40" />
                                 <p className="text-sm text-center">
                                     Belum ada foto.<br />
-                                    Upload dari device atau ambil dari kamera.
+                                    Silakan upload dari device.
                                 </p>
                             </motion.div>
                         )}
@@ -727,6 +692,28 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                             <><Loader2 className="w-4 h-4 animate-spin" /> Generating PDF...</>
                         ) : (
                             <><FileDown className="w-4 h-4" /> Save & Export PDF</>
+                        )}
+                    </motion.button>
+                </motion.div>
+
+                {/* Additional Action Bottom Row */}
+                <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4, delay: 0.2 }}
+                    className="flex"
+                >
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={handleShareWA}
+                        disabled={isSharingWA || isGeneratingPdf || isSaving}
+                        className="w-full flex items-center justify-center gap-2.5 py-4 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-xl font-bold transition shadow-lg shadow-[#25D366]/25 hover:shadow-[#25D366]/40 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {isSharingWA ? (
+                            <><Loader2 className="w-4 h-4 animate-spin" /> Menyiapkan Link...</>
+                        ) : (
+                            <><Send className="w-4 h-4" /> Share to WA (+ Link PDF)</>
                         )}
                     </motion.button>
                 </motion.div>

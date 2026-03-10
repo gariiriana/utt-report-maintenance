@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import {
     X, Check, Type, RotateCcw, Palette, AlignLeft,
     Minus, Plus

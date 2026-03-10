@@ -1,5 +1,4 @@
-import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { LogOut, X } from 'lucide-react';
 
 interface LogoutConfirmModalProps {

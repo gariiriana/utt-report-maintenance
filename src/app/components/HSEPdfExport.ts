@@ -52,7 +52,7 @@ function loadImageAsBase64(url: string): Promise<string> {
     });
 }
 
-export async function generateHSEPdf(data: HSEFormData) {
+function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64: string): jsPDF {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
     const pageW = doc.internal.pageSize.getWidth();
@@ -66,20 +66,6 @@ export async function generateHSEPdf(data: HSEFormData) {
     const DARK = '#0f172a';
     const GRAY = '#64748b';
     const LIGHT_GRAY = '#f1f5f9';
-
-    // ── Load logos ───────────────────────────────────────────────────────
-    // Dynamically import logo paths
-    const logoDmeModule = await import('@/assets/logo_dwimitra_v2.png');
-    const logoNeutradcModule = await import('@/assets/logo_neutradc.png');
-
-    let logoDmeB64 = '';
-    let logoNeutradcB64 = '';
-    try {
-        logoDmeB64 = await loadImageAsBase64(logoDmeModule.default);
-        logoNeutradcB64 = await loadImageAsBase64(logoNeutradcModule.default);
-    } catch (_) {
-        // logos not loaded, continue without them
-    }
 
     // ── HEADER ───────────────────────────────────────────────────────────
     // Green gradient top bar
@@ -302,10 +288,8 @@ export async function generateHSEPdf(data: HSEFormData) {
             const y = curY;
 
             try {
-                // Determine image type and compress
                 const photo = data.photos[i];
-                const rawImgData = photo.base64;
-                const imgData = await compressBase64Image(rawImgData, { maxWidth: 800, quality: 0.5 });
+                const imgData = photo.base64; // Already compressed in caller
                 const imgType = 'JPEG';
                 doc.addImage(imgData, imgType, x, y, photoW, photoH, `photo_${i}`, 'FAST');
 
@@ -357,11 +341,67 @@ export async function generateHSEPdf(data: HSEFormData) {
         doc.setFontSize(7.5);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(GRAY);
-        doc.text('PT United Transworld Trading — HSE Inspection Report', marginL, pageH - 5);
+        doc.text('PT Dwimitra Ekatama Mandiri — HSE Inspection Report', marginL, pageH - 5);
         doc.text(`Halaman ${pg} / ${totalPages}`, pageW - marginR, pageH - 5, { align: 'right' });
     }
 
-    // Save
+    return doc;
+}
+
+export async function generateHSEPdfBlob(data: HSEFormData): Promise<Blob> {
+    const logoDmeModule = await import('@/assets/logo_dwimitra_v2.png');
+    const logoNeutradcModule = await import('@/assets/logo_neutradc.png');
+
+    let logoDmeB64 = '';
+    let logoNeutradcB64 = '';
+    try {
+        logoDmeB64 = await loadImageAsBase64(logoDmeModule.default);
+        logoNeutradcB64 = await loadImageAsBase64(logoNeutradcModule.default);
+    } catch (_) { }
+
+    // Compress photos before generating doc
+    const processedData = { ...data, photos: [] as HSEPhoto[] };
+    if (data.photos && data.photos.length > 0) {
+        for (const photo of data.photos) {
+            try {
+                const imgData = await compressBase64Image(photo.base64, { maxWidth: 800, quality: 0.5 });
+                processedData.photos.push({ ...photo, base64: imgData });
+            } catch (e) {
+                processedData.photos.push(photo);
+            }
+        }
+    }
+
+    const doc = createHSEDpdDoc(processedData, logoDmeB64, logoNeutradcB64);
+    return doc.output('blob');
+}
+
+export async function generateHSEPdf(data: HSEFormData) {
+    const logoDmeModule = await import('@/assets/logo_dwimitra_v2.png');
+    const logoNeutradcModule = await import('@/assets/logo_neutradc.png');
+
+    let logoDmeB64 = '';
+    let logoNeutradcB64 = '';
+    try {
+        logoDmeB64 = await loadImageAsBase64(logoDmeModule.default);
+        logoNeutradcB64 = await loadImageAsBase64(logoNeutradcModule.default);
+    } catch (_) { }
+
+    // Compress photos before generating doc
+    const processedData = { ...data, photos: [] as HSEPhoto[] };
+    if (data.photos && data.photos.length > 0) {
+        for (const photo of data.photos) {
+            try {
+                const imgData = await compressBase64Image(photo.base64, { maxWidth: 800, quality: 0.5 });
+                processedData.photos.push({ ...photo, base64: imgData });
+            } catch (e) {
+                processedData.photos.push(photo);
+            }
+        }
+    }
+
+    const doc = createHSEDpdDoc(processedData, logoDmeB64, logoNeutradcB64);
     const fileName = `HSE_Report_${data.aktivitas || 'Inspection'}_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.pdf`;
     doc.save(fileName);
 }
+

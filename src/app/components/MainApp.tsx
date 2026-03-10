@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, CheckCircle } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { ReportForm } from './ReportForm';

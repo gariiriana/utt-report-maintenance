@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import { DataCenterBackground } from './DataCenterBackground';
@@ -18,7 +18,7 @@ export function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email || !password) {
       toast.error('Mohon isi semua field');
       return;
@@ -40,7 +40,7 @@ export function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 p-4 sm:p-6 relative overflow-hidden">
       <DataCenterBackground />
-      
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -50,7 +50,7 @@ export function Login() {
         <div className="bg-slate-900/40 backdrop-blur-2xl rounded-xl sm:rounded-2xl shadow-2xl border border-indigo-500/20 overflow-hidden">
           {/* Header with accent bar */}
           <div className="h-1 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-500" />
-          
+
           <div className="p-6 sm:p-8">
             <div className="text-center mb-6 sm:mb-8">
               <motion.div
@@ -59,18 +59,18 @@ export function Login() {
                 transition={{ delay: 0.2, duration: 0.5 }}
                 className="inline-flex items-center justify-center mb-2 sm:mb-3"
               >
-                <img 
-                  src={logoUTT} 
-                  alt="PT United Transworld Trading" 
-                  className="w-40 h-40 sm:w-56 sm:h-56 object-contain" 
+                <img
+                  src={logoUTT}
+                  alt="PT United Transworld Trading"
+                  className="w-40 h-40 sm:w-56 sm:h-56 object-contain"
                 />
               </motion.div>
-              
+
               <h1 className="text-lg sm:text-2xl font-semibold text-white sm:mb-2 tracking-tight">
                 PT United Transworld Trading
               </h1>
               <p className="text-xs sm:text-sm text-slate-400 font-light">Data Center Maintenance System</p>
-              
+
               {/* Status Indicator */}
               <div className="flex items-center justify-center gap-2 mt-3 sm:mt-4">
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 rounded-full border border-emerald-500/20">

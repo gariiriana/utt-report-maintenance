@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { LogOut, ShieldCheck, HardHat, FileText, FolderOpen } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { LogoutConfirmModal } from './LogoutConfirmModal';
@@ -95,8 +95,8 @@ export function HSEApp() {
                             <button
                                 onClick={() => setActiveTab('report')}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'report'
-                                        ? 'bg-green-600 text-white shadow-lg shadow-green-600/20'
-                                        : 'text-slate-500 hover:text-slate-300'
+                                    ? 'bg-green-600 text-white shadow-lg shadow-green-600/20'
+                                    : 'text-slate-500 hover:text-slate-300'
                                     }`}
                             >
                                 <FileText className="w-4 h-4" />
@@ -105,8 +105,8 @@ export function HSEApp() {
                             <button
                                 onClick={() => setActiveTab('archive')}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'archive'
-                                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
-                                        : 'text-slate-500 hover:text-slate-300'
+                                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
+                                    : 'text-slate-500 hover:text-slate-300'
                                     }`}
                             >
                                 <FolderOpen className="w-4 h-4" />
