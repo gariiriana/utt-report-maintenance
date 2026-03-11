@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { LogOut, ShieldCheck, HardHat, FileText, FolderOpen } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { LogoutConfirmModal } from './LogoutConfirmModal';

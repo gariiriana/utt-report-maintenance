@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import {
     Camera, Upload, Edit2, FileDown, Plus,
     CheckSquare, Square, User, MapPin, Users, Briefcase,

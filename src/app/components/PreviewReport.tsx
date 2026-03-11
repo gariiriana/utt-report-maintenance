@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, FileDown, Info, FileType, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';

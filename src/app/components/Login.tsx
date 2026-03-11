@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import { DataCenterBackground } from './DataCenterBackground';
