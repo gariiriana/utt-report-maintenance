@@ -35,7 +35,7 @@ export function PreviewReport({
     onExport
 }: PreviewReportProps) {
     const isPDU = userEmail === 'pdu@gmail.com';
-    const isLV = userEmail === 'lv@gmail.com';
+    const isLV = userEmail === 'lv@gmail.com' || userEmail === 'ats@gmail.com';
     const isLDBRDB = userEmail === 'ldb/rdb@gmail.com';
     const isVRV = userEmail === 'vrv@gmail.com';
     const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV;

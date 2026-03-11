@@ -115,8 +115,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         'Cleaning Fan', 'Nameplate', 'Remote'
       ];
       setCards(vrvTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
-    } else if (lowerEmail === 'lv@gmail.com') {
-      setMaintenanceName('LV');
+    } else if (lowerEmail === 'lv@gmail.com' || lowerEmail === 'ats@gmail.com') {
+      setMaintenanceName(lowerEmail === 'lv@gmail.com' ? 'LV' : 'ATS');
       const lvTemplate = [
         'Condition Panel', 'Check water pas', 'Cleaning panel',
         'Check Thermal Imager', 'Measurement Grounding', 'Measurement Voltage R - S',
@@ -305,7 +305,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const usableWidth = pageWidth - 2 * margin;
 
     const isPDU = user?.email === 'pdu@gmail.com';
-    const isLV = user?.email === 'lv@gmail.com';
+    const isLV = user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com';
     const isLDBRDB = user?.email === 'ldb/rdb@gmail.com';
     const isVRV = user?.email === 'vrv@gmail.com';
     const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV;
@@ -570,7 +570,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Maintenance Name</label>
-                  <input type="text" value={maintenanceName} onChange={e => setMaintenanceName(e.target.value)} disabled={user?.email === 'lv@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com'} className={`w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 ${(user?.email === 'lv@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com') ? 'opacity-60 cursor-not-allowed' : ''}`} placeholder="e.g. FCU Maintenance" />
+                  <input type="text" value={maintenanceName} onChange={e => setMaintenanceName(e.target.value)} disabled={user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com'} className={`w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 ${(user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com') ? 'opacity-60 cursor-not-allowed' : ''}`} placeholder="e.g. FCU Maintenance" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Unit/Room (Optional)</label>

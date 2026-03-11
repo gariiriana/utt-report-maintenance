@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from './components/AuthContext';
 import { Login } from './components/Login';
@@ -7,33 +6,22 @@ import { HSEApp } from './components/HSEApp';
 import { ServerLoadingIndicator } from './components/ServerLoadingIndicator';
 import { HSEReportViewer } from './components/HSEReportViewer';
 
-// ── Hash-based router (no react-router needed) ─────────────────────────────
-// Route: #/hse/{id}  →  public HSE report viewer (no auth needed)
-function useHashRoute() {
-  const [hash, setHash] = useState(window.location.hash);
-  useEffect(() => {
-    const onHashChange = () => setHash(window.location.hash);
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
-  }, []);
-  return hash;
+// Simple synchronous hash check — no hooks needed
+// Users navigate to the URL directly, so hash is already set on load
+function getHSEReportIdFromHash(): string | null {
+  try {
+    const match = window.location.hash.match(/^#\/hse\/([a-zA-Z0-9]+)$/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
 }
 
-function parseHSEViewerRoute(hash: string): string | null {
-  // Matches: #/hse/SOME_FIRESTORE_ID
-  const match = hash.match(/^#\/hse\/([a-zA-Z0-9]+)$/);
-  return match ? match[1] : null;
-}
+// Check once at module level — avoids hook complexity
+const PUBLIC_HSE_REPORT_ID = getHSEReportIdFromHash();
 
 function AppContent() {
   const { user, userRole, loading } = useAuth();
-  const hash = useHashRoute();
-  const hseReportId = parseHSEViewerRoute(hash);
-
-  // ✅ Public HSE viewer - accessible without login
-  if (hseReportId) {
-    return <HSEReportViewer reportId={hseReportId} />;
-  }
 
   if (loading) {
     return <ServerLoadingIndicator />;
@@ -50,6 +38,17 @@ function AppContent() {
 }
 
 export default function App() {
+  // ✅ Public HSE viewer route: #/hse/{id}
+  // Checked before AuthProvider — no login required
+  if (PUBLIC_HSE_REPORT_ID) {
+    return (
+      <>
+        <HSEReportViewer reportId={PUBLIC_HSE_REPORT_ID} />
+        <Toaster position="top-center" richColors />
+      </>
+    );
+  }
+
   return (
     <>
       <AuthProvider>
