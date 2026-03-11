@@ -1,15 +1,27 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // HSE Reports: authenticated users can upload, anyone with link can read (for WA sharing)
+    
+    // ============================================================
+    // HSE Reports — PDF yang di-share via WhatsApp
+    // PUBLIC READ dipertahankan supaya link WA bisa dibuka siapapun
+    // ============================================================
     match /hse_reports/{fileName} {
-      allow read: if true;                        // Public read - so WA link works for everyone
-      allow write: if request.auth != null        // Only authenticated users can upload
-                   && request.resource.size < 20 * 1024 * 1024  // Max 20MB
+      // ✅ Public read — link WA bisa dibuka tanpa login
+      allow read: if true;
+      
+      // ✅ Write hanya untuk authenticated user
+      // - Max 10MB (dikurangi dari 20MB untuk efisiensi)
+      // - Hanya file PDF
+      // - Nama file harus string valid (sudah dihandle oleh path matching)
+      allow write: if request.auth != null
+                   && request.resource.size <= 10 * 1024 * 1024
                    && request.resource.contentType == 'application/pdf';
     }
 
-    // Block semua path lain
+    // ============================================================
+    // DEFAULT — Blokir semua akses ke path lain
+    // ============================================================
     match /{allPaths=**} {
       allow read, write: if false;
     }

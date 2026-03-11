@@ -372,7 +372,7 @@ ${checklistEmoji} *CHECKLIST KESELAMATAN* (${safeCount}/${totalChecklist} Terpen
 ${checklistLines}
 
 ━━━━━━━━━━━━━━━━━━━━
-📄 *LINK LAPORAN HSE*
+📄 *LINK LAPORAN DOKUMENTASI HSE*
 ━━━━━━━━━━━━━━━━━━━━
 ${reportViewerUrl}
 
