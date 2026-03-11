@@ -1,20 +1,15 @@
-# FIREBASE STORAGE SECURITY RULES
-# 
-# ⚠️ STORAGE TIDAK DIGUNAKAN! ⚠️
-# 
-# Aplikasi menggunakan Firestore untuk menyimpan:
-# - Metadata report
-# - Foto dalam bentuk base64 string
-# - File management dalam bentuk base64 string
-# 
-# Storage dinonaktifkan untuk menghemat biaya (tidak perlu upgrade ke Blaze Plan)
-# 
-# Rules di bawah ini memblokir semua akses ke Storage:
-
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Block semua akses - Storage tidak digunakan
+    // HSE Reports: authenticated users can upload, anyone with link can read (for WA sharing)
+    match /hse_reports/{fileName} {
+      allow read: if true;                        // Public read - so WA link works for everyone
+      allow write: if request.auth != null        // Only authenticated users can upload
+                   && request.resource.size < 20 * 1024 * 1024  // Max 20MB
+                   && request.resource.contentType == 'application/pdf';
+    }
+
+    // Block semua path lain
     match /{allPaths=**} {
       allow read, write: if false;
     }

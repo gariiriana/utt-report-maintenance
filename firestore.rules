@@ -248,10 +248,9 @@ service cloud.firestore {
                     && request.resource.data.keys().hasAll(['aktivitas', 'lokasi', 'createdAt', 'authorEmail'])
                     && request.resource.data.authorEmail == request.auth.token.email;
       
-      // ✅ HSE user bisa read laporan mereka sendiri, admin bisa read semua
-      allow read: if request.auth != null 
-                  && (isAdminSafe() 
-                      || (isHSE() && resource.data.authorEmail == request.auth.token.email));
+      // ✅ PUBLIC READ: Anyone with the link can view the report (for WA sharing)
+      //    Authenticated users (admin, hse) can also read
+      allow read: if true;
       
       // ✅ HSE user bisa update laporan mereka sendiri
       allow update: if request.auth != null 
@@ -263,9 +262,9 @@ service cloud.firestore {
                     && (isAdminSafe() 
                         || (isHSE() && resource.data.authorEmail == request.auth.token.email));
 
-      // ✅ Subcollection untuk foto (HSE)
+      // ✅ Subcollection untuk foto (HSE) - PUBLIC READ for viewer
       match /photos/{photoId} {
-        allow read: if request.auth != null;
+        allow read: if true;  // Public read for viewer link
         allow create: if request.auth != null;
         allow update, delete: if request.auth != null 
                               && (get(/databases/$(database)/documents/hse/$(reportId)).data.authorEmail == request.auth.token.email || isAdminSafe());

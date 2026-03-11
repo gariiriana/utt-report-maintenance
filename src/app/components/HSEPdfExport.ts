@@ -67,62 +67,66 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     const GRAY = '#64748b';
     const LIGHT_GRAY = '#f1f5f9';
 
-    // ── HEADER ───────────────────────────────────────────────────────────
-    // Green gradient top bar
-    doc.setFillColor(22, 163, 74); // green-600
-    doc.rect(0, 0, pageW, 3, 'F');
+    // ── REUSABLE HEADER (drawn on every page) ────────────────────────────
+    const HEADER_H = 30; // total header height including separator
+    const drawPageHeader = () => {
+        // Green top bar
+        doc.setFillColor(22, 163, 74);
+        doc.rect(0, 0, pageW, 3, 'F');
 
-    // Logo DME (kiri) - Matching ReportForm.tsx (isDwimitra ? 28 : 18)
-    const leftW = 28;
-    const leftH = 18;
-    const headerTopY = 8;
+        // Logo DME (kiri)
+        const leftW = 28;
+        const leftH = 18;
+        const headerTopY = 8;
 
-    if (logoDmeB64) {
-        doc.addImage(logoDmeB64, 'JPEG', marginL, headerTopY, leftW, leftH, 'logo_left', 'FAST');
-    } else {
-        doc.setFontSize(10);
-        doc.setTextColor(DARK);
+        if (logoDmeB64) {
+            doc.addImage(logoDmeB64, 'JPEG', marginL, headerTopY, leftW, leftH, 'logo_left', 'FAST');
+        } else {
+            doc.setFontSize(10);
+            doc.setTextColor(DARK);
+            doc.setFont('helvetica', 'bold');
+            doc.text('DME', marginL, headerTopY + 6);
+        }
+
+        // Logo neutraDC (kanan)
+        const rightW = 36;
+        const rightH = 14;
+        if (logoNeutradcB64) {
+            const rightY = headerTopY + (leftH - rightH) / 2;
+            doc.addImage(logoNeutradcB64, 'JPEG', pageW - marginR - rightW, rightY, rightW, rightH, 'logo_right', 'FAST');
+        } else {
+            doc.setFontSize(10);
+            doc.setTextColor(DARK);
+            doc.setFont('helvetica', 'bold');
+            doc.text('neutraDC', pageW - marginR - 20, headerTopY + 6);
+        }
+
+        // Center Title
+        const titleY = headerTopY + 4;
+        doc.setFontSize(15);
         doc.setFont('helvetica', 'bold');
-        doc.text('DME', marginL, headerTopY + 6);
-    }
-
-    // Logo neutraDC (kanan) - Matching ReportForm.tsx (isDwimitra ? 36 : 14)
-    const rightW = 36;
-    const rightH = 14;
-    if (logoNeutradcB64) {
-        // Vertically center right logo relative to left logo height (matching logic)
-        const rightY = headerTopY + (leftH - rightH) / 2;
-        doc.addImage(logoNeutradcB64, 'JPEG', pageW - marginR - rightW, rightY, rightW, rightH, 'logo_right', 'FAST');
-    } else {
-        doc.setFontSize(10);
         doc.setTextColor(DARK);
-        doc.setFont('helvetica', 'bold');
-        doc.text('neutraDC', pageW - marginR - 20, headerTopY + 6);
-    }
+        doc.text('HSE INSPECTION REPORT', pageW / 2, titleY, { align: 'center' });
 
-    // Center Title
-    doc.setFontSize(15);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(DARK);
-    const titleY = headerTopY + 4;
-    doc.text('HSE INSPECTION REPORT', pageW / 2, titleY, { align: 'center' });
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(GRAY);
+        doc.text('Health, Safety & Environment — Maintenance Checklist', pageW / 2, titleY + 5, { align: 'center' });
 
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(GRAY);
-    doc.text('Health, Safety & Environment — Maintenance Checklist', pageW / 2, titleY + 5, { align: 'center' });
+        // Date
+        const dateStr = data.date || new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+        doc.setFontSize(8);
+        doc.text(`Tanggal: ${dateStr}`, pageW / 2, titleY + 9.5, { align: 'center' });
 
-    // Date
-    const dateStr = data.date || new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
-    doc.setFontSize(8);
-    doc.text(`Tanggal: ${dateStr}`, pageW / 2, titleY + 9.5, { align: 'center' });
+        // Separator line
+        doc.setDrawColor(22, 163, 74);
+        doc.setLineWidth(0.6);
+        doc.line(marginL, 26, pageW - marginR, 26);
+    };
 
-    // Separator line
-    doc.setDrawColor(22, 163, 74);
-    doc.setLineWidth(0.6);
-    doc.line(marginL, 26, pageW - marginR, 26);
-
-    let curY = 30;
+    // ── PAGE 1 HEADER ─────────────────────────────────────────────────────
+    drawPageHeader();
+    let curY = HEADER_H;
 
     // ── INFO SECTION ─────────────────────────────────────────────────────
     doc.setFillColor(LIGHT_GRAY);
@@ -278,11 +282,8 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
             // New page if needed - checking photo + description height
             if (curY + photoH + descriptionH > pageH - 20) {
                 doc.addPage();
-                curY = 15;
-
-                // Page header
-                doc.setFillColor(22, 163, 74);
-                doc.rect(0, 0, pageW, 2, 'F');
+                drawPageHeader();          // ← Full header on every new page
+                curY = HEADER_H;           // ← Start content below the header
             }
 
             const y = curY;

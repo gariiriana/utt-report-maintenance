@@ -7,9 +7,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { HSEPhotoEditor } from './HSEPhotoEditor';
-import { generateHSEPdf, generateHSEPdfBlob, type HSEFormData, type HSEChecklist } from './HSEPdfExport';
-import { db, storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { generateHSEPdf, type HSEFormData, type HSEChecklist } from './HSEPdfExport';
+import { db } from '@/lib/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, getDoc, getDocs, deleteDoc, QueryDocumentSnapshot } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { ExcelDocument } from './DocumentList';
@@ -277,7 +276,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         }
     };
 
-    // Share to WA with Link
+    // Share to WA with Public Report Link (Firestore-based, no Storage needed)
     const handleShareWA = async () => {
         if (!aktivitas.trim() || !lokasi.trim()) {
             toast.error('Aktivitas dan Lokasi wajib diisi untuk Share WA');
@@ -285,22 +284,52 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         }
 
         setIsSharingWA(true);
-        const toastId = toast.loading('Menyiapkan dokumen dan link...');
+        const toastId = toast.loading('⏳ Menyimpan laporan...');
 
         try {
-            // 1. Generate PDF Blob
-            const formData = buildFormData();
-            const pdfBlob = await generateHSEPdfBlob(formData);
+            // 1. Save report to Firestore (with photos) → get document ID
+            toast.loading('💾 Menyimpan ke database...', { id: toastId });
 
-            // 2. Upload to Firebase Storage
-            const cleanAktivitas = aktivitas.replace(/[^a-zA-Z0-9]/g, '_');
-            const fileName = `HSE_Report_${cleanAktivitas}_${Date.now()}.pdf`;
-            const fileRef = ref(storage, `hse_reports/${fileName}`);
+            const reportData = {
+                aktivitas,
+                lokasi,
+                personil,
+                pic,
+                anggota,
+                checklist,
+                date: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }),
+                authorEmail: user?.email || '',
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            };
 
-            await uploadBytes(fileRef, pdfBlob);
-            const downloadUrl = await getDownloadURL(fileRef);
+            const docRef = await addDoc(collection(db, 'hse'), reportData);
+            const reportId = docRef.id;
 
-            // 3. Construct WhatsApp Message
+            // Save all photos in PARALLEL (not sequential) for speed
+            await Promise.all(photos.map(async (photo, i) => {
+                let dataUrl = photo.dataUrl;
+                // Compress if large
+                const sizeInBytes = (dataUrl.length * 3) / 4;
+                if (sizeInBytes > 800 * 1024) {
+                    try {
+                        dataUrl = await compressBase64Image(dataUrl, { maxWidth: 800, quality: 0.5 });
+                    } catch (_) {}
+                }
+                return addDoc(collection(db, `hse/${reportId}/photos`), {
+                    index: i + 1,
+                    dataUrl,
+                    description: photo.description || '',
+                    createdAt: serverTimestamp(),
+                });
+            }));
+
+            // 2. Build the public viewer URL (same pattern as sultanah-travel invoice)
+            //    https://report-utt.web.app/#/hse/{reportId}
+            const appBaseUrl = 'https://report-utt.web.app';
+            const reportViewerUrl = `${appBaseUrl}/#/hse/${reportId}`;
+
+            // 3. Build professional WhatsApp message with the viewer link
             const dateStr = new Date().toLocaleDateString('id-ID', {
                 weekday: 'long',
                 day: 'numeric',
@@ -309,39 +338,69 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             });
 
             const safeCount = Object.values(checklist).filter(Boolean).length;
-            const checklistScore = `${safeCount}/${CHECKLIST_LABELS.length}`;
+            const totalChecklist = CHECKLIST_LABELS.length;
+            const checklistEmoji = safeCount === totalChecklist ? '✅' : safeCount >= totalChecklist * 0.8 ? '⚠️' : '❌';
 
-            const message = `*HSE INSPECTION REPORT*\nPT Dwimitra Ekatama Mandiri\n\nTanggal: ${dateStr}\nAktivitas: ${aktivitas}\nLokasi: ${lokasi}\nPIC: ${pic || '-'}\nPersonil: ${personil || '-'}\n\n*Status Checklist Keselamatan:* ${checklistScore} Terpenuhi\n\n*Link Laporan PDF:*\n${downloadUrl}\n\n_Mohon tinjau dokumen PDF laporan lengkap pada link di atas._\n\nSalam,\nTim HSE`;
+            const checklistLines = CHECKLIST_LABELS.map(({ key, label }) =>
+                `${checklist[key] ? '✅' : '❌'} ${label}`
+            ).join('\n');
 
+            const anggotaList = anggota
+                ? anggota.split(',').map(a => `• ${a.trim()}`).join('\n')
+                : '• -';
+
+            const message =
+`🛡️ *HSE INSPECTION REPORT*
+📅 ${dateStr}
+
+*PT Dwimitra Ekatama Mandiri*
+
+━━━━━━━━━━━━━━━━━━━━
+📋 *INFORMASI PEKERJAAN*
+━━━━━━━━━━━━━━━━━━━━
+🔧 *Aktivitas :* ${aktivitas}
+📍 *Lokasi    :* ${lokasi}
+👤 *PIC       :* ${pic || '-'}
+👥 *Personil  :* ${personil || '-'}
+
+🧑‍🤝‍🧑 *Anggota Tim:*
+${anggotaList}
+
+━━━━━━━━━━━━━━━━━━━━
+${checklistEmoji} *CHECKLIST KESELAMATAN* (${safeCount}/${totalChecklist} Terpenuhi)
+━━━━━━━━━━━━━━━━━━━━
+${checklistLines}
+
+━━━━━━━━━━━━━━━━━━━━
+📄 *LINK LAPORAN HSE*
+━━━━━━━━━━━━━━━━━━━━
+${reportViewerUrl}
+
+_Klik link di atas untuk melihat laporan lengkap & download PDF._
+
+Safety first "Yes" Accident "No" 🤙✊
+
+_Salam,_
+_Tim HSE — PT Dwimitra Ekatama Mandiri_`;
+
+            // 4. Open WhatsApp with pre-filled message + viewer link
             const encodedMessage = encodeURIComponent(message);
+            const waUrl = `https://api.whatsapp.com/send?text=${encodedMessage}`;
 
-            // Direct user to the specific WA group provided
-            const groupLink = 'https://chat.whatsapp.com/BXh4ZRPxrXvFaZeLPQ6YHh'; // Updated Group Link
+            toast.success('✅ Laporan tersimpan! Membuka WhatsApp...', { id: toastId });
 
-            // WhatsApp doesn't support pre-filling messages when joining a group via invite link.
-            // The best approach is to copy the message to clipboard first, then open the group link.
-            navigator.clipboard.writeText(message)
-                .then(() => {
-                    toast.success('Pesan & link laporan telah disalin ke clipboard!', { id: toastId });
-                    setTimeout(() => {
-                        window.open(groupLink, '_blank');
-                        toast.info('WA Group dibuka, silakan Paste (Tempel) pesan ke chat.');
-                    }, 1000);
-                })
-                .catch(err => {
-                    console.error('Failed to copy text: ', err);
-                    toast.success('Laporan berhasil diunggah.', { id: toastId });
-                    // Fallback to generic share api if clipboard fails
-                    const waUrl = `https://api.whatsapp.com/send?text=${encodedMessage}`;
-                    window.open(waUrl, '_blank');
-                });
-        } catch (error) {
-            console.error("Error sharing to WA:", error);
-            toast.error('Terjadi kesalahan saat mengunggah dan membagikan laporan.', { id: toastId });
+            setTimeout(() => {
+                window.open(waUrl, '_blank');
+            }, 600);
+
+        } catch (error: any) {
+            console.error('Error sharing to WA:', error);
+            toast.error('❌ Gagal menyimpan laporan. Cek koneksi dan coba lagi.', { id: toastId });
         } finally {
             setIsSharingWA(false);
         }
     };
+
 
     return (
         <>
