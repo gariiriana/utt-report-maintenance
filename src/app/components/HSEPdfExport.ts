@@ -69,7 +69,11 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
 
     // ── REUSABLE HEADER (drawn on every page) ────────────────────────────
     const HEADER_H = 30; // total header height including separator
+    let headerDrawCount = 0; // unique alias counter to avoid jsPDF addImage caching issue
     const drawPageHeader = () => {
+        headerDrawCount++;
+        const pg = headerDrawCount;
+
         // Green top bar
         doc.setFillColor(22, 163, 74);
         doc.rect(0, 0, pageW, 3, 'F');
@@ -80,7 +84,8 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         const headerTopY = 8;
 
         if (logoDmeB64) {
-            doc.addImage(logoDmeB64, 'JPEG', marginL, headerTopY, leftW, leftH, 'logo_left', 'FAST');
+            // Use unique alias per page so jsPDF doesn't skip redraw
+            doc.addImage(logoDmeB64, 'JPEG', marginL, headerTopY, leftW, leftH, `logo_left_${pg}`, 'FAST');
         } else {
             doc.setFontSize(10);
             doc.setTextColor(DARK);
@@ -93,7 +98,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         const rightH = 14;
         if (logoNeutradcB64) {
             const rightY = headerTopY + (leftH - rightH) / 2;
-            doc.addImage(logoNeutradcB64, 'JPEG', pageW - marginR - rightW, rightY, rightW, rightH, 'logo_right', 'FAST');
+            doc.addImage(logoNeutradcB64, 'JPEG', pageW - marginR - rightW, rightY, rightW, rightH, `logo_right_${pg}`, 'FAST');
         } else {
             doc.setFontSize(10);
             doc.setTextColor(DARK);
