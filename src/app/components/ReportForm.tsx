@@ -117,7 +117,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       setCards(vrvTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     } else if (lowerEmail === 'lv@gmail.com' || lowerEmail === 'ats@gmail.com') {
       setMaintenanceName(lowerEmail === 'lv@gmail.com' ? 'LV' : 'ATS');
-      const lvTemplate = [
+      let lvTemplate = [
         'Condition Panel', 'Check water pas', 'Cleaning panel',
         'Check Thermal Imager', 'Measurement Grounding', 'Measurement Voltage R - S',
         'Measurement Voltage S - T', 'Measurement Voltage T - R', 'Measurement Voltage R - N',
@@ -126,6 +126,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         'Measurement Ampere N', 'Measurement Voltage DPM', 'Measurement Voltage DPM',
         'Measurement Ampere DPM', 'Measurement Daya DPM'
       ];
+      if (lowerEmail === 'ats@gmail.com') {
+        lvTemplate = lvTemplate.filter(t => t !== 'Check water pas');
+      }
       setCards(lvTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     } else if (lowerEmail === 'grounding@gmail.com') {
       setMaintenanceName('Grounding');
@@ -304,18 +307,19 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const margin = 10;
     const usableWidth = pageWidth - 2 * margin;
 
+    const isATS = user?.email === 'ats@gmail.com';
     const isPDU = user?.email === 'pdu@gmail.com';
-    const isLV = user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com';
+    const isLV = user?.email === 'lv@gmail.com';
     const isLDBRDB = user?.email === 'ldb/rdb@gmail.com';
     const isVRV = user?.email === 'vrv@gmail.com';
-    const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV;
+    const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV || isATS;
     const isLVlike = isLV || isLDBRDB;
 
-    const cols = isVRV ? 3 : isSmallGrid ? 4 : 3;
-    const perPage = isPDU ? 20 : isLVlike ? 12 : isVRV ? 15 : 9;
-    const photoH = isVRV ? 40 : isSmallGrid ? 38 : 55;
-    const capH = isVRV ? 8 : isSmallGrid ? 10 : 12;
-    const rowGap = isVRV ? 3 : 5;
+    const cols = (isVRV || isATS) ? 3 : isSmallGrid ? 4 : 3;
+    const perPage = isATS ? 12 : isPDU ? 20 : isLVlike ? 12 : isVRV ? 15 : 9;
+    const photoH = isATS ? 45 : isVRV ? 40 : isSmallGrid ? 38 : 55;
+    const capH = isATS ? 10 : isVRV ? 8 : isSmallGrid ? 10 : 12;
+    const rowGap = (isVRV || isATS) ? 3 : 5;
 
     const drawHeader = (doc: any) => {
       const isDwimitra = companyType !== 'bri';

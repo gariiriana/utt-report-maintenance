@@ -314,7 +314,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                 if (sizeInBytes > 800 * 1024) {
                     try {
                         dataUrl = await compressBase64Image(dataUrl, { maxWidth: 800, quality: 0.5 });
-                    } catch (_) {}
+                    } catch (_) { }
                 }
                 return addDoc(collection(db, `hse/${reportId}/photos`), {
                     index: i + 1,
@@ -350,7 +350,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                 : '• -';
 
             const message =
-`🛡️ *HSE INSPECTION REPORT*
+                `🛡️ *HSE INSPECTION REPORT*
 📅 ${dateStr}
 
 *PT Dwimitra Ekatama Mandiri*
