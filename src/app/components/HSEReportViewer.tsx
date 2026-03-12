@@ -54,11 +54,16 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
 
     useEffect(() => {
         const fetchReport = async () => {
-            const cleanId = reportId.trim();
+            // Robust cleaning: trim and remove trailing punctuation that might be appended by WhatsApp
+            let cleanId = reportId.trim().replace(/[.,!?;:]+$/, '');
+            console.log('[HSE DEBUG] Fetching report with cleaned ID:', cleanId);
+            
             try {
                 const docSnap = await getDocFromServer(doc(db, 'hse', cleanId));
                 if (!docSnap.exists()) {
-                    setError('Laporan tidak ditemukan.');
+                    console.warn('[HSE ERROR] Document not found in Firestore:', cleanId);
+                    setError('Laporan tidak ditemukan. Pastikan ID laporan benar.');
+                    setLoading(false);
                     return;
                 }
                 const data = docSnap.data() as ReportData;

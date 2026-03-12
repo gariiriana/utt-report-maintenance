@@ -333,7 +333,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             }));
 
             // 2. Build Viewer URL
-            const appBaseUrl = 'https://report-utt.web.app';
+            const appBaseUrl = window.location.origin;
             const reportViewerUrl = `${appBaseUrl}/hse/${reportId}`;
 
             // 3. Build WhatsApp message

@@ -22,8 +22,31 @@ const firebaseConfig = {
 // ============================================================
 const app = initializeApp(firebaseConfig);
 
-// Initialize Analytics if supported (works in browser environmental only)
-export const analytics = typeof window !== 'undefined' ? isSupported().then(yes => yes ? getAnalytics(app) : null) : null;
+// Initialize Analytics
+let analyticsPromise: Promise<any> | null = null;
+if (typeof window !== 'undefined') {
+  analyticsPromise = isSupported().then(supported => {
+    if (supported) {
+      return getAnalytics(app);
+    }
+    return null;
+  });
+}
+
+/**
+ * Helper to log events safely
+ */
+export const logFirebaseEvent = async (eventName: string, params?: Record<string, any>) => {
+  if (analyticsPromise) {
+    const analytics = await analyticsPromise;
+    if (analytics) {
+      const { logEvent } = await import('firebase/analytics');
+      logEvent(analytics, eventName, params);
+    }
+  }
+};
+
+export { analyticsPromise as analytics };
 
 // ============================================================
 // Firebase App Check — Proteksi dari bot, scraper, dan DDoS

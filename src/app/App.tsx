@@ -5,6 +5,9 @@ import { MainApp } from './components/MainApp';
 import { HSEApp } from './components/HSEApp';
 import { ServerLoadingIndicator } from './components/ServerLoadingIndicator';
 import { HSEReportViewer } from './components/HSEReportViewer';
+import { useEffect } from 'react';
+import { logFirebaseEvent } from '@/lib/firebase';
+
 
 // Detect Public HSE Report ID from Hash OR Path
 function getHSEReportIdFromUri(): string | null {
@@ -20,11 +23,15 @@ function getHSEReportIdFromUri(): string | null {
 
     // 2. Try Hash (e.g., #/hse/ID)
     if (!id) {
-      const hashParts = window.location.hash.replace('#', '').split('/').filter(Boolean);
+      const hashParts = window.location.hash.replace('#', '').split('/').filter(Boolean); 
       const hseHashIdx = hashParts.indexOf('hse');
       if (hseHashIdx !== -1 && hashParts[hseHashIdx + 1]) {
         id = hashParts[hseHashIdx + 1];
       }
+    }
+
+    if (id) {
+      id = id.trim().replace(/[.,!?;:]+$/, '');
     }
 
     console.log('[HSE DEBUG] Detected ID:', id, { path: window.location.pathname, hash: window.location.hash });
@@ -56,7 +63,16 @@ function AppContent() {
 }
 
 export default function App() {
+  // ✅ Log session start for Firebase Analytics
+  useEffect(() => {
+    logFirebaseEvent('session_start', {
+      timestamp: new Date().toISOString(),
+      platform: 'web'
+    });
+  }, []);
+
   // ✅ Public HSE viewer route: #/hse/{id}
+
   // Checked before AuthProvider — no login required
   if (PUBLIC_HSE_REPORT_ID) {
     return (
