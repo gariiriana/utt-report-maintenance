@@ -5,6 +5,10 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "build:prod": "vite build --mode production",
+    "build:dev": "vite build --mode development",
+    "export:prod": "vite build --mode production --outDir export/production",
+    "export:dev": "vite build --mode development --outDir export/development",
     "dev": "vite"
   },
   "dependencies": {

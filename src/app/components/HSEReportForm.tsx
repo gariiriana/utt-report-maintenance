@@ -198,6 +198,31 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         date: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }),
     });
 
+    // Save via Golang API (Vercel)
+    const saveReportViaAPI = async (formData: HSEFormData, extraData: any) => {
+        const apiUrl = import.meta.env.VITE_API_URL;
+        if (!apiUrl) throw new Error('API URL not configured');
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                ...formData,
+                ...extraData,
+            }),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API Error: ${errorText}`);
+        }
+
+        const result = await response.json();
+        return result.reportId;
+    };
+
     // Save to Firestore
     const handleSave = async () => {
         if (!aktivitas.trim()) {
@@ -216,7 +241,15 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             };
 
             let docId = '';
-            if (editingData && editingData.documentType === 'hse') {
+            const isUsingAPI = !!import.meta.env.VITE_API_URL;
+
+            if (isUsingAPI && !(editingData && editingData.documentType === 'hse')) {
+                // Use Golang API for new reports
+                docId = await saveReportViaAPI(formData, {
+                    authorEmail: user?.email || '',
+                    createdAt: new Date().toISOString(), // Go backend will handle serverTimestamp if we change it, but for now simple ISO
+                });
+            } else if (editingData && editingData.documentType === 'hse') {
                 docId = editingData.id;
                 await updateDoc(doc(db, 'hse', docId), reportData);
 
@@ -314,23 +347,35 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                 updatedAt: serverTimestamp(),
             };
 
-            const docRef = await addDoc(collection(db, 'hse'), reportData);
-            const reportId = docRef.id;
+            let reportId = '';
+            const isUsingAPI = !!import.meta.env.VITE_API_URL;
 
-            // Save all photos...
-            await Promise.all(photos.map(async (photo, i) => {
-                let dataUrl = photo.dataUrl;
-                const sizeInBytes = (dataUrl.length * 3) / 4;
-                if (sizeInBytes > 800 * 1024) {
-                    try { dataUrl = await compressBase64Image(dataUrl, { maxWidth: 800, quality: 0.5 }); } catch (_) { }
-                }
-                return addDoc(collection(db, `hse/${reportId}/photos`), {
-                    index: i + 1,
-                    dataUrl,
-                    description: photo.description || '',
-                    createdAt: serverTimestamp(),
+            if (isUsingAPI) {
+                const formData = buildFormData();
+                reportId = await saveReportViaAPI(formData, {
+                    reportType: mode,
+                    authorEmail: user?.email || '',
+                    createdAt: new Date().toISOString(),
                 });
-            }));
+            } else {
+                const docRef = await addDoc(collection(db, 'hse'), reportData);
+                reportId = docRef.id;
+
+                // Save all photos...
+                await Promise.all(photos.map(async (photo, i) => {
+                    let dataUrl = photo.dataUrl;
+                    const sizeInBytes = (dataUrl.length * 3) / 4;
+                    if (sizeInBytes > 800 * 1024) {
+                        try { dataUrl = await compressBase64Image(dataUrl, { maxWidth: 800, quality: 0.5 }); } catch (_) { }
+                    }
+                    return addDoc(collection(db, `hse/${reportId}/photos`), {
+                        index: i + 1,
+                        dataUrl,
+                        description: photo.description || '',
+                        createdAt: serverTimestamp(),
+                    });
+                }));
+            }
 
             // 2. Build Viewer URL
             const appBaseUrl = window.location.origin;

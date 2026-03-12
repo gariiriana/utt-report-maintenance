@@ -49,9 +49,13 @@
     ]
   },
   "firestore": {
-    "rules": "firestore.rules"
+    "rules": "firebase/firestore.rules",
+    "indexes": "firebase/firestore.indexes.json"
   },
   "database": {
-    "rules": "database.rules.json"
+    "rules": "firebase/database.rules.json"
+  },
+  "storage": {
+    "rules": "firebase/storage.rules"
   }
 }

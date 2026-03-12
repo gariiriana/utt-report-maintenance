@@ -13,6 +13,7 @@ build/
 .env
 .env.local
 .env.*.local
+firebase-service-account.json
 
 # IDE
 .vscode/
@@ -27,3 +28,5 @@ Thumbs.db
 
 # Build output
 *.tsbuildinfo
+.vercel
+.env*.local
