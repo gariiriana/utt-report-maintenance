@@ -12,6 +12,7 @@ import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
+import { usePresence } from '../hooks/usePresence';
 
 interface DocumentData {
   id: string;
@@ -39,6 +40,7 @@ interface AdminDashboardProps {
 
 export function AdminDashboard({ onEdit }: AdminDashboardProps) {
   const { companyType } = useAuth();
+  const onlineUsers = usePresence();
   const [documents, setDocuments] = useState<DocumentData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -577,7 +579,33 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-white">Admin Dashboard</h1>
-            <p className="text-xs sm:text-sm text-purple-300">Manage all documents and monitor system activity</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs sm:text-sm text-purple-300">Manage all documents and monitor system activity</p>
+              {onlineUsers.length > 0 && (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-[10px] sm:text-xs font-medium text-emerald-400">
+                    {onlineUsers.length} Admin{onlineUsers.length > 1 ? 's' : ''} Online
+                  </span>
+                  {/* Tooltip or small avatars could go here */}
+                  <div className="hidden sm:flex -space-x-2 ml-1">
+                    {onlineUsers.slice(0, 3).map((u) => (
+                      <div key={u.uid} className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[8px] text-white font-bold uppercase" title={u.email}>
+                        {u.email?.[0] || 'A'}
+                      </div>
+                    ))}
+                    {onlineUsers.length > 3 && (
+                      <div className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[8px] text-white font-bold">
+                        +{onlineUsers.length - 3}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
