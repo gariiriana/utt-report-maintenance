@@ -207,10 +207,13 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-API-Secret': import.meta.env.VITE_API_SECRET || '',
             },
             body: JSON.stringify({
+                collection: 'hse',
+                sub_data: extraData.photos, // Send photos as sub_data
                 ...formData,
-                ...extraData,
+                processedBy: 'golang_api',
             }),
         });
 

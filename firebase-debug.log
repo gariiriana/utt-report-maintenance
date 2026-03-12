@@ -1,0 +1,384 @@
+[debug] [2026-03-12T18:35:52.242Z] ----------------------------------------------------------------------
+[debug] [2026-03-12T18:35:52.248Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Gari Iriana\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting
+[debug] [2026-03-12T18:35:52.249Z] CLI Version:   15.4.0
+[debug] [2026-03-12T18:35:52.249Z] Platform:      win32
+[debug] [2026-03-12T18:35:52.250Z] Node Version:  v22.21.1
+[debug] [2026-03-12T18:35:52.250Z] Time:          Fri Mar 13 2026 01:35:52 GMT+0700 (Indochina Time)
+[debug] [2026-03-12T18:35:52.251Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-03-12T18:35:54.897Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-03-12T18:35:54.898Z] > authorizing via signed-in user (geriiriana6@gmail.com)
+[debug] [2026-03-12T18:35:54.899Z] [iam] checking project report-utt for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-03-12T18:35:54.901Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:35:54.901Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:35:54.903Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/report-utt:testIamPermissions [none]
+[debug] [2026-03-12T18:35:54.903Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/report-utt:testIamPermissions x-goog-quota-user=projects/report-utt
+[debug] [2026-03-12T18:35:54.903Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/report-utt:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-03-12T18:35:55.498Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/report-utt:testIamPermissions 200
+[debug] [2026-03-12T18:35:55.499Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/report-utt:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-03-12T18:35:55.500Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:35:55.500Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:35:55.501Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/report-utt [none]
+[debug] [2026-03-12T18:35:55.955Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/report-utt 200
+[debug] [2026-03-12T18:35:55.955Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/report-utt {"projectId":"report-utt","projectNumber":"596883644201","displayName":"Report UTT","name":"projects/report-utt","resources":{"hostingSite":"report-utt","realtimeDatabaseInstance":"report-utt-default-rtdb"},"state":"ACTIVE","etag":"1_ff824c5f-9c30-4dfb-93dd-f7b16999ccd8"}
+[info] 
+[info] === Deploying to 'report-utt'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-03-12T18:35:55.963Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:35:55.963Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:35:55.963Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions [none]
+[debug] [2026-03-12T18:35:55.963Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-03-12T18:35:57.666Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions 200
+[debug] [2026-03-12T18:35:57.666Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions {"name":"projects/596883644201/sites/report-utt/versions/d75afe920a705590","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[report-utt]: beginning deploy... 
+[info] i  hosting[report-utt]: found 16 files in dist 
+[debug] [2026-03-12T18:35:57.692Z] [hosting] uploading with 200 concurrency
+[debug] [2026-03-12T18:35:57.698Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:35:57.698Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:35:57.700Z] [hosting] hash cache [ZGlzdA] stored for 16 files
+[debug] [2026-03-12T18:35:57.701Z] [hosting][hash queue][FINAL] {"max":2,"min":0,"avg":0,"active":0,"complete":16,"success":16,"errored":0,"retried":0,"total":16,"elapsed":7}
+[debug] [2026-03-12T18:35:57.702Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/596883644201/sites/report-utt/versions/d75afe920a705590:populateFiles [none]
+[debug] [2026-03-12T18:35:57.702Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/596883644201/sites/report-utt/versions/d75afe920a705590:populateFiles {"files":{"/logo-neutradc.png":"ff1d5daaa841c9cd7c2ddb102f8e1bb815f98960eb44f6747c3173ab3fc9d15f","/logo-dwimitra.png":"d71b4319f1e21653e4f78935664efc148b48b334199e0dcce7084f1f3e12b39f","/index.html":"686d34ad971c39fe7554e328458910d24bd839f3b8d672ad76d43af7edbc3908","/assets/purify.es-C_uT9hQ1.js":"9dbf175a5d4418eb66a031119d1424a8b8018745978fe8d761f22009d58944a4","/assets/logo_utt-CttUjqU-.png":"fd34e51d683aac8f2a96177fe9414e7c6d687e92fb72da64bd79a64a3ab54a93","/assets/logo_neutradc-B8fi14sS.png":"ff1d5daaa841c9cd7c2ddb102f8e1bb815f98960eb44f6747c3173ab3fc9d15f","/assets/logo_dwimitra_v2-BrqGRPKv.png":"8e1e347238fdb5b4033e06dd379e938262ff29e4a8652ec4bdca72906a3ddd13","/assets/jspdf-Ch6E2Dok.js":"0416bfdff865bfa7aeb69d6ea528cc61d2ed627418ad529ec54893250f6715ed","/assets/index.es-BJHpHq6b.js":"72cad3d2e959a8e4e96fd8147801d10a297ae8b0a8535a75cdbd2d2087bca3a1","/assets/index-wbx6QuQz.js":"083b0316abdd2873d01b29a9f0190df16034b8646f11cec371309b90968baf9f","/assets/index-Crb9-w76.css":"199db0ad25f083b645af4390dba6a19513e0a2f739d4b6d8a2cc92e3662dc662","/assets/html2canvas-QH1iLAAe.js":"f11fa059b23162cd079f9be9c5b6c29237e7393fcab5d04c6f2b2ac5bd7a38b3","/assets/firebase-CXKHWbDM.js":"da2b393b9da68c40de395faa53e5ad3b88ec8d12cf780e8f0d1e64b8c86f4762","/assets/exceljs-CYTHuRCp.js":"8bc1ad80b8698bd5fd1b7079af0f291f79e97e29ac468250e96bbecec78fb005","/assets/bri_logo-BCMLm3b0.png":"85d65dbad0373dac66588d91ed798322ba4c961ef5f62b0b81eabcc815aabf3b","/assets/bri_left_logo-g78dPXum.png":"f714e80ae78495e752e864c999bb36deb4ed25991bf1f7032b83334ff1a0e538"}}
+[debug] [2026-03-12T18:35:58.298Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/596883644201/sites/report-utt/versions/d75afe920a705590:populateFiles 200
+[debug] [2026-03-12T18:35:58.298Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/596883644201/sites/report-utt/versions/d75afe920a705590:populateFiles {"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/report-utt/versions/d75afe920a705590/files"}
+[debug] [2026-03-12T18:35:58.299Z] [hosting][populate queue][FINAL] {"max":601,"min":601,"avg":601,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":601}
+[debug] [2026-03-12T18:35:58.299Z] [hosting] uploads queued: 0
+[debug] [2026-03-12T18:35:58.299Z] [hosting][upload queue][FINAL] {"max":0,"min":9999999999,"avg":0,"active":0,"complete":0,"success":0,"errored":0,"retried":0,"total":0,"elapsed":1773340558299}
+[info] i  hosting: upload complete 
+[info] +  hosting[report-utt]: file upload complete 
+[debug] [2026-03-12T18:35:58.300Z] [hosting] deploy completed after 629ms
+[debug] [2026-03-12T18:35:58.300Z] [
+  {
+    "config": {
+      "public": "dist",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "Strict-Transport-Security",
+              "value": "max-age=31536000; includeSubDomains; preload"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "SAMEORIGIN"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "strict-origin-when-cross-origin"
+            },
+            {
+              "key": "Permissions-Policy",
+              "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"
+            },
+            {
+              "key": "X-XSS-Protection",
+              "value": "1; mode=block"
+            },
+            {
+              "key": "Content-Security-Policy",
+              "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://*.firebase.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.firebasestorage.app https://firebasestorage.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.google.com https://www.recaptcha.net https://www.google-analytics.com https://region1.google-analytics.com; frame-src 'self' blob: https://www.google.com https://recaptcha.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
+            }
+          ]
+        }
+      ],
+      "site": "report-utt"
+    },
+    "version": "projects/596883644201/sites/report-utt/versions/d75afe920a705590"
+  }
+]
+[info] i  hosting[report-utt]: finalizing version... 
+[debug] [2026-03-12T18:35:58.303Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:35:58.304Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:35:58.304Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions/d75afe920a705590 updateMask=status%2Cconfig
+[debug] [2026-03-12T18:35:58.304Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions/d75afe920a705590 {"status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}],"headers":[{"glob":"**","headers":{"Strict-Transport-Security":"max-age=31536000; includeSubDomains; preload","X-Frame-Options":"SAMEORIGIN","X-Content-Type-Options":"nosniff","Referrer-Policy":"strict-origin-when-cross-origin","Permissions-Policy":"camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()","X-XSS-Protection":"1; mode=block","Content-Security-Policy":"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://*.firebase.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.firebasestorage.app https://firebasestorage.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.google.com https://www.recaptcha.net https://www.google-analytics.com https://region1.google-analytics.com; frame-src 'self' blob: https://www.google.com https://recaptcha.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"}}]}}
+[debug] [2026-03-12T18:35:59.218Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions/d75afe920a705590 200
+[debug] [2026-03-12T18:35:59.218Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions/d75afe920a705590 {"name":"projects/596883644201/sites/report-utt/versions/d75afe920a705590","status":"FINALIZED","config":{"headers":[{"headers":{"Permissions-Policy":"camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()","X-XSS-Protection":"1; mode=block","Content-Security-Policy":"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://*.firebase.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.firebasestorage.app https://firebasestorage.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.google.com https://www.recaptcha.net https://www.google-analytics.com https://region1.google-analytics.com; frame-src 'self' blob: https://www.google.com https://recaptcha.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;","Strict-Transport-Security":"max-age=31536000; includeSubDomains; preload","X-Frame-Options":"SAMEORIGIN","X-Content-Type-Options":"nosniff","Referrer-Policy":"strict-origin-when-cross-origin"},"glob":"**"}],"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-03-12T18:35:56.878469Z","createUser":{"email":"geriiriana6@gmail.com"},"finalizeTime":"2026-03-12T18:35:59.019547Z","finalizeUser":{"email":"geriiriana6@gmail.com"}}
+[debug] [2026-03-12T18:35:59.219Z] [hosting] finalized version for report-utt:[object Object]
+[info] +  hosting[report-utt]: version finalized 
+[info] i  hosting[report-utt]: releasing new version... 
+[debug] [2026-03-12T18:35:59.219Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:35:59.219Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:35:59.219Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/channels/live/releases versionName=projects%2F596883644201%2Fsites%2Freport-utt%2Fversions%2Fd75afe920a705590
+[debug] [2026-03-12T18:35:59.220Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/channels/live/releases {}
+[debug] [2026-03-12T18:36:00.032Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/channels/live/releases 200
+[debug] [2026-03-12T18:36:00.032Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/channels/live/releases {"name":"projects/596883644201/sites/report-utt/channels/live/releases/1773340559168000","version":{"name":"projects/596883644201/sites/report-utt/versions/d75afe920a705590","status":"FINALIZED","config":{"headers":[{"headers":{"X-XSS-Protection":"1; mode=block","Content-Security-Policy":"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://*.firebase.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.firebasestorage.app https://firebasestorage.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.google.com https://www.recaptcha.net https://www.google-analytics.com https://region1.google-analytics.com; frame-src 'self' blob: https://www.google.com https://recaptcha.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;","Strict-Transport-Security":"max-age=31536000; includeSubDomains; preload","X-Frame-Options":"SAMEORIGIN","X-Content-Type-Options":"nosniff","Referrer-Policy":"strict-origin-when-cross-origin","Permissions-Policy":"camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"},"glob":"**"}],"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-03-12T18:35:56.878469Z","createUser":{"email":"geriiriana6@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocL--BklHbgeEoEs0GmaH_xnNSb458JbrnkrsXcA7grPN6xu9Q=mo"},"finalizeTime":"2026-03-12T18:35:59.019547Z","finalizeUser":{"email":"geriiriana6@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocL--BklHbgeEoEs0GmaH_xnNSb458JbrnkrsXcA7grPN6xu9Q=mo"}},"type":"DEPLOY","releaseTime":"2026-03-12T18:35:59.168Z","releaseUser":{"email":"geriiriana6@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocL--BklHbgeEoEs0GmaH_xnNSb458JbrnkrsXcA7grPN6xu9Q=mo"}}
+[debug] [2026-03-12T18:36:00.032Z] [hosting] release: {"name":"projects/596883644201/sites/report-utt/channels/live/releases/1773340559168000","version":{"name":"projects/596883644201/sites/report-utt/versions/d75afe920a705590","status":"FINALIZED","config":{"headers":[{"headers":{"X-XSS-Protection":"1; mode=block","Content-Security-Policy":"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://*.firebase.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.firebasestorage.app https://firebasestorage.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.google.com https://www.recaptcha.net https://www.google-analytics.com https://region1.google-analytics.com; frame-src 'self' blob: https://www.google.com https://recaptcha.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;","Strict-Transport-Security":"max-age=31536000; includeSubDomains; preload","X-Frame-Options":"SAMEORIGIN","X-Content-Type-Options":"nosniff","Referrer-Policy":"strict-origin-when-cross-origin","Permissions-Policy":"camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"},"glob":"**"}],"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-03-12T18:35:56.878469Z","createUser":{"email":"geriiriana6@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocL--BklHbgeEoEs0GmaH_xnNSb458JbrnkrsXcA7grPN6xu9Q=mo"},"finalizeTime":"2026-03-12T18:35:59.019547Z","finalizeUser":{"email":"geriiriana6@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocL--BklHbgeEoEs0GmaH_xnNSb458JbrnkrsXcA7grPN6xu9Q=mo"}},"type":"DEPLOY","releaseTime":"2026-03-12T18:35:59.168Z","releaseUser":{"email":"geriiriana6@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocL--BklHbgeEoEs0GmaH_xnNSb458JbrnkrsXcA7grPN6xu9Q=mo"}}
+[info] +  hosting[report-utt]: release complete 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/report-utt/overview
+[info] Hosting URL: https://report-utt.web.app
+[debug] [2026-03-12T18:40:19.983Z] ----------------------------------------------------------------------
+[debug] [2026-03-12T18:40:19.989Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Gari Iriana\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting
+[debug] [2026-03-12T18:40:19.990Z] CLI Version:   15.4.0
+[debug] [2026-03-12T18:40:19.990Z] Platform:      win32
+[debug] [2026-03-12T18:40:19.990Z] Node Version:  v22.21.1
+[debug] [2026-03-12T18:40:19.991Z] Time:          Fri Mar 13 2026 01:40:19 GMT+0700 (Indochina Time)
+[debug] [2026-03-12T18:40:19.991Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-03-12T18:40:23.170Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-03-12T18:40:23.172Z] > authorizing via signed-in user (geriiriana6@gmail.com)
+[debug] [2026-03-12T18:40:23.172Z] [iam] checking project report-utt for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-03-12T18:40:23.175Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:23.175Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:23.177Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/report-utt:testIamPermissions [none]
+[debug] [2026-03-12T18:40:23.177Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/report-utt:testIamPermissions x-goog-quota-user=projects/report-utt
+[debug] [2026-03-12T18:40:23.177Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/report-utt:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-03-12T18:40:23.638Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/report-utt:testIamPermissions 200
+[debug] [2026-03-12T18:40:23.638Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/report-utt:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-03-12T18:40:23.639Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:23.639Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:23.640Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/report-utt [none]
+[debug] [2026-03-12T18:40:24.079Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/report-utt 200
+[debug] [2026-03-12T18:40:24.079Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/report-utt {"projectId":"report-utt","projectNumber":"596883644201","displayName":"Report UTT","name":"projects/report-utt","resources":{"hostingSite":"report-utt","realtimeDatabaseInstance":"report-utt-default-rtdb"},"state":"ACTIVE","etag":"1_ff824c5f-9c30-4dfb-93dd-f7b16999ccd8"}
+[info] 
+[info] === Deploying to 'report-utt'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-03-12T18:40:24.087Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:24.088Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:24.088Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions [none]
+[debug] [2026-03-12T18:40:24.088Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-03-12T18:40:25.750Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions 200
+[debug] [2026-03-12T18:40:25.750Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions {"name":"projects/596883644201/sites/report-utt/versions/76830152790d320c","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[report-utt]: beginning deploy... 
+[info] i  hosting[report-utt]: found 16 files in dist 
+[debug] [2026-03-12T18:40:25.775Z] [hosting] uploading with 200 concurrency
+[debug] [2026-03-12T18:40:25.780Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:25.780Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:25.782Z] [hosting] hash cache [ZGlzdA] stored for 16 files
+[debug] [2026-03-12T18:40:25.782Z] [hosting][hash queue][FINAL] {"max":2,"min":0,"avg":0,"active":0,"complete":16,"success":16,"errored":0,"retried":0,"total":16,"elapsed":6}
+[debug] [2026-03-12T18:40:25.783Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/596883644201/sites/report-utt/versions/76830152790d320c:populateFiles [none]
+[debug] [2026-03-12T18:40:25.783Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/596883644201/sites/report-utt/versions/76830152790d320c:populateFiles {"files":{"/logo-neutradc.png":"ff1d5daaa841c9cd7c2ddb102f8e1bb815f98960eb44f6747c3173ab3fc9d15f","/logo-dwimitra.png":"d71b4319f1e21653e4f78935664efc148b48b334199e0dcce7084f1f3e12b39f","/index.html":"686d34ad971c39fe7554e328458910d24bd839f3b8d672ad76d43af7edbc3908","/assets/purify.es-C_uT9hQ1.js":"9dbf175a5d4418eb66a031119d1424a8b8018745978fe8d761f22009d58944a4","/assets/logo_utt-CttUjqU-.png":"fd34e51d683aac8f2a96177fe9414e7c6d687e92fb72da64bd79a64a3ab54a93","/assets/logo_neutradc-B8fi14sS.png":"ff1d5daaa841c9cd7c2ddb102f8e1bb815f98960eb44f6747c3173ab3fc9d15f","/assets/logo_dwimitra_v2-BrqGRPKv.png":"8e1e347238fdb5b4033e06dd379e938262ff29e4a8652ec4bdca72906a3ddd13","/assets/jspdf-Ch6E2Dok.js":"0416bfdff865bfa7aeb69d6ea528cc61d2ed627418ad529ec54893250f6715ed","/assets/index.es-BJHpHq6b.js":"72cad3d2e959a8e4e96fd8147801d10a297ae8b0a8535a75cdbd2d2087bca3a1","/assets/index-wbx6QuQz.js":"083b0316abdd2873d01b29a9f0190df16034b8646f11cec371309b90968baf9f","/assets/index-Crb9-w76.css":"199db0ad25f083b645af4390dba6a19513e0a2f739d4b6d8a2cc92e3662dc662","/assets/html2canvas-QH1iLAAe.js":"f11fa059b23162cd079f9be9c5b6c29237e7393fcab5d04c6f2b2ac5bd7a38b3","/assets/firebase-CXKHWbDM.js":"da2b393b9da68c40de395faa53e5ad3b88ec8d12cf780e8f0d1e64b8c86f4762","/assets/exceljs-CYTHuRCp.js":"8bc1ad80b8698bd5fd1b7079af0f291f79e97e29ac468250e96bbecec78fb005","/assets/bri_logo-BCMLm3b0.png":"85d65dbad0373dac66588d91ed798322ba4c961ef5f62b0b81eabcc815aabf3b","/assets/bri_left_logo-g78dPXum.png":"f714e80ae78495e752e864c999bb36deb4ed25991bf1f7032b83334ff1a0e538"}}
+[debug] [2026-03-12T18:40:26.510Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/596883644201/sites/report-utt/versions/76830152790d320c:populateFiles 200
+[debug] [2026-03-12T18:40:26.510Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/596883644201/sites/report-utt/versions/76830152790d320c:populateFiles {"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/report-utt/versions/76830152790d320c/files"}
+[debug] [2026-03-12T18:40:26.511Z] [hosting][populate queue][FINAL] {"max":731,"min":731,"avg":731,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":732}
+[debug] [2026-03-12T18:40:26.511Z] [hosting] uploads queued: 0
+[debug] [2026-03-12T18:40:26.511Z] [hosting][upload queue][FINAL] {"max":0,"min":9999999999,"avg":0,"active":0,"complete":0,"success":0,"errored":0,"retried":0,"total":0,"elapsed":1773340826511}
+[info] i  hosting: upload complete 
+[info] +  hosting[report-utt]: file upload complete 
+[debug] [2026-03-12T18:40:26.512Z] [hosting] deploy completed after 758ms
+[debug] [2026-03-12T18:40:26.512Z] [
+  {
+    "config": {
+      "public": "dist",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "Strict-Transport-Security",
+              "value": "max-age=31536000; includeSubDomains; preload"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "SAMEORIGIN"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "strict-origin-when-cross-origin"
+            },
+            {
+              "key": "Permissions-Policy",
+              "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"
+            },
+            {
+              "key": "X-XSS-Protection",
+              "value": "1; mode=block"
+            },
+            {
+              "key": "Content-Security-Policy",
+              "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://*.firebase.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.firebasestorage.app https://firebasestorage.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.google.com https://www.recaptcha.net https://www.google-analytics.com https://region1.google-analytics.com; frame-src 'self' blob: https://www.google.com https://recaptcha.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
+            }
+          ]
+        }
+      ],
+      "site": "report-utt"
+    },
+    "version": "projects/596883644201/sites/report-utt/versions/76830152790d320c"
+  }
+]
+[info] i  hosting[report-utt]: finalizing version... 
+[debug] [2026-03-12T18:40:26.515Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:26.515Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:26.516Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions/76830152790d320c updateMask=status%2Cconfig
+[debug] [2026-03-12T18:40:26.516Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions/76830152790d320c {"status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}],"headers":[{"glob":"**","headers":{"Strict-Transport-Security":"max-age=31536000; includeSubDomains; preload","X-Frame-Options":"SAMEORIGIN","X-Content-Type-Options":"nosniff","Referrer-Policy":"strict-origin-when-cross-origin","Permissions-Policy":"camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()","X-XSS-Protection":"1; mode=block","Content-Security-Policy":"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://*.firebase.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.firebasestorage.app https://firebasestorage.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.google.com https://www.recaptcha.net https://www.google-analytics.com https://region1.google-analytics.com; frame-src 'self' blob: https://www.google.com https://recaptcha.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"}}]}}
+[debug] [2026-03-12T18:40:27.200Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions/76830152790d320c 200
+[debug] [2026-03-12T18:40:27.200Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions/76830152790d320c {"name":"projects/596883644201/sites/report-utt/versions/76830152790d320c","status":"FINALIZED","config":{"headers":[{"headers":{"X-Content-Type-Options":"nosniff","Referrer-Policy":"strict-origin-when-cross-origin","Permissions-Policy":"camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()","X-XSS-Protection":"1; mode=block","Content-Security-Policy":"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://*.firebase.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.firebasestorage.app https://firebasestorage.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.google.com https://www.recaptcha.net https://www.google-analytics.com https://region1.google-analytics.com; frame-src 'self' blob: https://www.google.com https://recaptcha.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;","Strict-Transport-Security":"max-age=31536000; includeSubDomains; preload","X-Frame-Options":"SAMEORIGIN"},"glob":"**"}],"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-03-12T18:40:25.075950Z","createUser":{"email":"geriiriana6@gmail.com"},"finalizeTime":"2026-03-12T18:40:27.013399Z","finalizeUser":{"email":"geriiriana6@gmail.com"}}
+[debug] [2026-03-12T18:40:27.201Z] [hosting] finalized version for report-utt:[object Object]
+[info] +  hosting[report-utt]: version finalized 
+[info] i  hosting[report-utt]: releasing new version... 
+[debug] [2026-03-12T18:40:27.201Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:27.201Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:27.202Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/channels/live/releases versionName=projects%2F596883644201%2Fsites%2Freport-utt%2Fversions%2F76830152790d320c
+[debug] [2026-03-12T18:40:27.202Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/channels/live/releases {}
+[debug] [2026-03-12T18:40:28.065Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/channels/live/releases 200
+[debug] [2026-03-12T18:40:28.065Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/channels/live/releases {"name":"projects/596883644201/sites/report-utt/channels/live/releases/1773340827207000","version":{"name":"projects/596883644201/sites/report-utt/versions/76830152790d320c","status":"FINALIZED","config":{"headers":[{"headers":{"Strict-Transport-Security":"max-age=31536000; includeSubDomains; preload","X-Frame-Options":"SAMEORIGIN","X-Content-Type-Options":"nosniff","Referrer-Policy":"strict-origin-when-cross-origin","Permissions-Policy":"camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()","X-XSS-Protection":"1; mode=block","Content-Security-Policy":"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://*.firebase.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.firebasestorage.app https://firebasestorage.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.google.com https://www.recaptcha.net https://www.google-analytics.com https://region1.google-analytics.com; frame-src 'self' blob: https://www.google.com https://recaptcha.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"},"glob":"**"}],"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-03-12T18:40:25.075950Z","createUser":{"email":"geriiriana6@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocL--BklHbgeEoEs0GmaH_xnNSb458JbrnkrsXcA7grPN6xu9Q=mo"},"finalizeTime":"2026-03-12T18:40:27.013399Z","finalizeUser":{"email":"geriiriana6@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocL--BklHbgeEoEs0GmaH_xnNSb458JbrnkrsXcA7grPN6xu9Q=mo"}},"type":"DEPLOY","releaseTime":"2026-03-12T18:40:27.207Z","releaseUser":{"email":"geriiriana6@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocL--BklHbgeEoEs0GmaH_xnNSb458JbrnkrsXcA7grPN6xu9Q=mo"}}
+[debug] [2026-03-12T18:40:28.065Z] [hosting] release: {"name":"projects/596883644201/sites/report-utt/channels/live/releases/1773340827207000","version":{"name":"projects/596883644201/sites/report-utt/versions/76830152790d320c","status":"FINALIZED","config":{"headers":[{"headers":{"Strict-Transport-Security":"max-age=31536000; includeSubDomains; preload","X-Frame-Options":"SAMEORIGIN","X-Content-Type-Options":"nosniff","Referrer-Policy":"strict-origin-when-cross-origin","Permissions-Policy":"camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()","X-XSS-Protection":"1; mode=block","Content-Security-Policy":"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://*.firebase.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.firebasestorage.app https://firebasestorage.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.google.com https://www.recaptcha.net https://www.google-analytics.com https://region1.google-analytics.com; frame-src 'self' blob: https://www.google.com https://recaptcha.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"},"glob":"**"}],"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-03-12T18:40:25.075950Z","createUser":{"email":"geriiriana6@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocL--BklHbgeEoEs0GmaH_xnNSb458JbrnkrsXcA7grPN6xu9Q=mo"},"finalizeTime":"2026-03-12T18:40:27.013399Z","finalizeUser":{"email":"geriiriana6@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocL--BklHbgeEoEs0GmaH_xnNSb458JbrnkrsXcA7grPN6xu9Q=mo"}},"type":"DEPLOY","releaseTime":"2026-03-12T18:40:27.207Z","releaseUser":{"email":"geriiriana6@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocL--BklHbgeEoEs0GmaH_xnNSb458JbrnkrsXcA7grPN6xu9Q=mo"}}
+[info] +  hosting[report-utt]: release complete 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/report-utt/overview
+[info] Hosting URL: https://report-utt.web.app
+[debug] [2026-03-12T18:40:53.609Z] ----------------------------------------------------------------------
+[debug] [2026-03-12T18:40:53.615Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Gari Iriana\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting
+[debug] [2026-03-12T18:40:53.616Z] CLI Version:   15.4.0
+[debug] [2026-03-12T18:40:53.616Z] Platform:      win32
+[debug] [2026-03-12T18:40:53.616Z] Node Version:  v22.21.1
+[debug] [2026-03-12T18:40:53.616Z] Time:          Fri Mar 13 2026 01:40:53 GMT+0700 (Indochina Time)
+[debug] [2026-03-12T18:40:53.617Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-03-12T18:40:56.196Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-03-12T18:40:56.197Z] > authorizing via signed-in user (geriiriana6@gmail.com)
+[debug] [2026-03-12T18:40:56.198Z] [iam] checking project report-utt for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-03-12T18:40:56.200Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:56.200Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:56.202Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/report-utt:testIamPermissions [none]
+[debug] [2026-03-12T18:40:56.202Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/report-utt:testIamPermissions x-goog-quota-user=projects/report-utt
+[debug] [2026-03-12T18:40:56.202Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/report-utt:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-03-12T18:40:56.661Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/report-utt:testIamPermissions 200
+[debug] [2026-03-12T18:40:56.662Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/report-utt:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-03-12T18:40:56.663Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:56.663Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:56.663Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/report-utt [none]
+[debug] [2026-03-12T18:40:57.143Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/report-utt 200
+[debug] [2026-03-12T18:40:57.143Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/report-utt {"projectId":"report-utt","projectNumber":"596883644201","displayName":"Report UTT","name":"projects/report-utt","resources":{"hostingSite":"report-utt","realtimeDatabaseInstance":"report-utt-default-rtdb"},"state":"ACTIVE","etag":"1_ff824c5f-9c30-4dfb-93dd-f7b16999ccd8"}
+[info] 
+[info] === Deploying to 'report-utt'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-03-12T18:40:57.151Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:57.151Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:57.152Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions [none]
+[debug] [2026-03-12T18:40:57.152Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-03-12T18:40:58.532Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions 200
+[debug] [2026-03-12T18:40:58.532Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions {"name":"projects/596883644201/sites/report-utt/versions/9d7301e04e01ef5e","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[report-utt]: beginning deploy... 
+[info] i  hosting[report-utt]: found 16 files in dist 
+[debug] [2026-03-12T18:40:58.557Z] [hosting] uploading with 200 concurrency
+[debug] [2026-03-12T18:40:58.562Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:58.562Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:58.564Z] [hosting] hash cache [ZGlzdA] stored for 16 files
+[debug] [2026-03-12T18:40:58.565Z] [hosting][hash queue][FINAL] {"max":3,"min":1,"avg":1,"active":0,"complete":16,"success":16,"errored":0,"retried":0,"total":16,"elapsed":6}
+[debug] [2026-03-12T18:40:58.565Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/596883644201/sites/report-utt/versions/9d7301e04e01ef5e:populateFiles [none]
+[debug] [2026-03-12T18:40:58.565Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/596883644201/sites/report-utt/versions/9d7301e04e01ef5e:populateFiles {"files":{"/logo-neutradc.png":"ff1d5daaa841c9cd7c2ddb102f8e1bb815f98960eb44f6747c3173ab3fc9d15f","/logo-dwimitra.png":"d71b4319f1e21653e4f78935664efc148b48b334199e0dcce7084f1f3e12b39f","/index.html":"686d34ad971c39fe7554e328458910d24bd839f3b8d672ad76d43af7edbc3908","/assets/purify.es-C_uT9hQ1.js":"9dbf175a5d4418eb66a031119d1424a8b8018745978fe8d761f22009d58944a4","/assets/logo_utt-CttUjqU-.png":"fd34e51d683aac8f2a96177fe9414e7c6d687e92fb72da64bd79a64a3ab54a93","/assets/logo_neutradc-B8fi14sS.png":"ff1d5daaa841c9cd7c2ddb102f8e1bb815f98960eb44f6747c3173ab3fc9d15f","/assets/logo_dwimitra_v2-BrqGRPKv.png":"8e1e347238fdb5b4033e06dd379e938262ff29e4a8652ec4bdca72906a3ddd13","/assets/jspdf-Ch6E2Dok.js":"0416bfdff865bfa7aeb69d6ea528cc61d2ed627418ad529ec54893250f6715ed","/assets/index.es-BJHpHq6b.js":"72cad3d2e959a8e4e96fd8147801d10a297ae8b0a8535a75cdbd2d2087bca3a1","/assets/index-wbx6QuQz.js":"083b0316abdd2873d01b29a9f0190df16034b8646f11cec371309b90968baf9f","/assets/index-Crb9-w76.css":"199db0ad25f083b645af4390dba6a19513e0a2f739d4b6d8a2cc92e3662dc662","/assets/html2canvas-QH1iLAAe.js":"f11fa059b23162cd079f9be9c5b6c29237e7393fcab5d04c6f2b2ac5bd7a38b3","/assets/firebase-CXKHWbDM.js":"da2b393b9da68c40de395faa53e5ad3b88ec8d12cf780e8f0d1e64b8c86f4762","/assets/exceljs-CYTHuRCp.js":"8bc1ad80b8698bd5fd1b7079af0f291f79e97e29ac468250e96bbecec78fb005","/assets/bri_logo-BCMLm3b0.png":"85d65dbad0373dac66588d91ed798322ba4c961ef5f62b0b81eabcc815aabf3b","/assets/bri_left_logo-g78dPXum.png":"f714e80ae78495e752e864c999bb36deb4ed25991bf1f7032b83334ff1a0e538"}}
+[debug] [2026-03-12T18:40:59.181Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/596883644201/sites/report-utt/versions/9d7301e04e01ef5e:populateFiles 200
+[debug] [2026-03-12T18:40:59.181Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/596883644201/sites/report-utt/versions/9d7301e04e01ef5e:populateFiles {"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/report-utt/versions/9d7301e04e01ef5e/files"}
+[debug] [2026-03-12T18:40:59.181Z] [hosting][populate queue][FINAL] {"max":619,"min":619,"avg":619,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":619}
+[debug] [2026-03-12T18:40:59.182Z] [hosting] uploads queued: 0
+[debug] [2026-03-12T18:40:59.182Z] [hosting][upload queue][FINAL] {"max":0,"min":9999999999,"avg":0,"active":0,"complete":0,"success":0,"errored":0,"retried":0,"total":0,"elapsed":1773340859182}
+[info] i  hosting: upload complete 
+[info] +  hosting[report-utt]: file upload complete 
+[debug] [2026-03-12T18:40:59.183Z] [hosting] deploy completed after 646ms
+[debug] [2026-03-12T18:40:59.183Z] [
+  {
+    "config": {
+      "public": "dist",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "Strict-Transport-Security",
+              "value": "max-age=31536000; includeSubDomains; preload"
+            },
+            {
+              "key": "X-Frame-Options",
+              "value": "SAMEORIGIN"
+            },
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "strict-origin-when-cross-origin"
+            },
+            {
+              "key": "Permissions-Policy",
+              "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"
+            },
+            {
+              "key": "X-XSS-Protection",
+              "value": "1; mode=block"
+            },
+            {
+              "key": "Content-Security-Policy",
+              "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://*.firebase.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.firebasestorage.app https://firebasestorage.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.google.com https://www.recaptcha.net https://www.google-analytics.com https://region1.google-analytics.com; frame-src 'self' blob: https://www.google.com https://recaptcha.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
+            }
+          ]
+        }
+      ],
+      "site": "report-utt"
+    },
+    "version": "projects/596883644201/sites/report-utt/versions/9d7301e04e01ef5e"
+  }
+]
+[info] i  hosting[report-utt]: finalizing version... 
+[debug] [2026-03-12T18:40:59.186Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:59.186Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:40:59.186Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions/9d7301e04e01ef5e updateMask=status%2Cconfig
+[debug] [2026-03-12T18:40:59.186Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions/9d7301e04e01ef5e {"status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}],"headers":[{"glob":"**","headers":{"Strict-Transport-Security":"max-age=31536000; includeSubDomains; preload","X-Frame-Options":"SAMEORIGIN","X-Content-Type-Options":"nosniff","Referrer-Policy":"strict-origin-when-cross-origin","Permissions-Policy":"camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()","X-XSS-Protection":"1; mode=block","Content-Security-Policy":"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://*.firebase.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.firebasestorage.app https://firebasestorage.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.google.com https://www.recaptcha.net https://www.google-analytics.com https://region1.google-analytics.com; frame-src 'self' blob: https://www.google.com https://recaptcha.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"}}]}}
+[debug] [2026-03-12T18:41:00.166Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions/9d7301e04e01ef5e 200
+[debug] [2026-03-12T18:41:00.167Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/versions/9d7301e04e01ef5e {"name":"projects/596883644201/sites/report-utt/versions/9d7301e04e01ef5e","status":"FINALIZED","config":{"headers":[{"headers":{"Content-Security-Policy":"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://*.firebase.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.firebasestorage.app https://firebasestorage.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.google.com https://www.recaptcha.net https://www.google-analytics.com https://region1.google-analytics.com; frame-src 'self' blob: https://www.google.com https://recaptcha.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;","Strict-Transport-Security":"max-age=31536000; includeSubDomains; preload","X-Frame-Options":"SAMEORIGIN","X-Content-Type-Options":"nosniff","Referrer-Policy":"strict-origin-when-cross-origin","Permissions-Policy":"camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()","X-XSS-Protection":"1; mode=block"},"glob":"**"}],"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-03-12T18:40:57.860033Z","createUser":{"email":"geriiriana6@gmail.com"},"finalizeTime":"2026-03-12T18:40:59.930357Z","finalizeUser":{"email":"geriiriana6@gmail.com"}}
+[debug] [2026-03-12T18:41:00.167Z] [hosting] finalized version for report-utt:[object Object]
+[info] +  hosting[report-utt]: version finalized 
+[info] i  hosting[report-utt]: releasing new version... 
+[debug] [2026-03-12T18:41:00.167Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:41:00.168Z] Checked if tokens are valid: true, expires at: 1773343603778
+[debug] [2026-03-12T18:41:00.168Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/channels/live/releases versionName=projects%2F596883644201%2Fsites%2Freport-utt%2Fversions%2F9d7301e04e01ef5e
+[debug] [2026-03-12T18:41:00.168Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/channels/live/releases {}
+[debug] [2026-03-12T18:41:01.010Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/channels/live/releases 200
+[debug] [2026-03-12T18:41:01.011Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/report-utt/channels/live/releases {"name":"projects/596883644201/sites/report-utt/channels/live/releases/1773340860141000","version":{"name":"projects/596883644201/sites/report-utt/versions/9d7301e04e01ef5e","status":"FINALIZED","config":{"headers":[{"headers":{"X-Frame-Options":"SAMEORIGIN","X-Content-Type-Options":"nosniff","Referrer-Policy":"strict-origin-when-cross-origin","Permissions-Policy":"camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()","X-XSS-Protection":"1; mode=block","Content-Security-Policy":"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://*.firebase.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.firebasestorage.app https://firebasestorage.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.google.com https://www.recaptcha.net https://www.google-analytics.com https://region1.google-analytics.com; frame-src 'self' blob: https://www.google.com https://recaptcha.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;","Strict-Transport-Security":"max-age=31536000; includeSubDomains; preload"},"glob":"**"}],"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-03-12T18:40:57.860033Z","createUser":{"email":"geriiriana6@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocL--BklHbgeEoEs0GmaH_xnNSb458JbrnkrsXcA7grPN6xu9Q=mo"},"finalizeTime":"2026-03-12T18:40:59.930357Z","finalizeUser":{"email":"geriiriana6@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocL--BklHbgeEoEs0GmaH_xnNSb458JbrnkrsXcA7grPN6xu9Q=mo"}},"type":"DEPLOY","releaseTime":"2026-03-12T18:41:00.141Z","releaseUser":{"email":"geriiriana6@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocL--BklHbgeEoEs0GmaH_xnNSb458JbrnkrsXcA7grPN6xu9Q=mo"}}
+[debug] [2026-03-12T18:41:01.011Z] [hosting] release: {"name":"projects/596883644201/sites/report-utt/channels/live/releases/1773340860141000","version":{"name":"projects/596883644201/sites/report-utt/versions/9d7301e04e01ef5e","status":"FINALIZED","config":{"headers":[{"headers":{"X-Frame-Options":"SAMEORIGIN","X-Content-Type-Options":"nosniff","Referrer-Policy":"strict-origin-when-cross-origin","Permissions-Policy":"camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()","X-XSS-Protection":"1; mode=block","Content-Security-Policy":"default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://*.firebase.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.firebasestorage.app https://firebasestorage.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.google.com https://www.recaptcha.net https://www.google-analytics.com https://region1.google-analytics.com; frame-src 'self' blob: https://www.google.com https://recaptcha.google.com https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;","Strict-Transport-Security":"max-age=31536000; includeSubDomains; preload"},"glob":"**"}],"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-03-12T18:40:57.860033Z","createUser":{"email":"geriiriana6@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocL--BklHbgeEoEs0GmaH_xnNSb458JbrnkrsXcA7grPN6xu9Q=mo"},"finalizeTime":"2026-03-12T18:40:59.930357Z","finalizeUser":{"email":"geriiriana6@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocL--BklHbgeEoEs0GmaH_xnNSb458JbrnkrsXcA7grPN6xu9Q=mo"}},"type":"DEPLOY","releaseTime":"2026-03-12T18:41:00.141Z","releaseUser":{"email":"geriiriana6@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocL--BklHbgeEoEs0GmaH_xnNSb458JbrnkrsXcA7grPN6xu9Q=mo"}}
+[info] +  hosting[report-utt]: release complete 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/report-utt/overview
+[info] Hosting URL: https://report-utt.web.app

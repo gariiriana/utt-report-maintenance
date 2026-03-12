@@ -153,6 +153,30 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
         toast.success('Photo updated');
     };
 
+    const saveReportViaAPI = async (apiUrl: string, reportData: any) => {
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Secret': import.meta.env.VITE_API_SECRET || '',
+                },
+                body: JSON.stringify({
+                    collection: 'corrective_reports',
+                    ...reportData,
+                    processedBy: 'golang_api',
+                }),
+            });
+
+            if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
+            const result = await response.json();
+            return result.reportId;
+        } catch (error) {
+            console.error('API Save Error:', error);
+            return null;
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
@@ -167,13 +191,37 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
 
         setSubmitting(true);
         try {
-            await addDoc(collection(db, 'corrective_reports'), {
+            const reportData = {
                 ...formData,
-                category: 'CM', // NEW: untuk filtering di Service Report
+                category: 'CM',
                 reportedBy: user.uid,
                 reportedByEmail: user.email,
                 reportedAt: serverTimestamp(),
-            });
+            };
+
+            const apiUrl = import.meta.env.VITE_API_URL;
+            if (apiUrl) {
+                const docIdFromAPI = await saveReportViaAPI(apiUrl, reportData);
+                if (docIdFromAPI) {
+                    toast.success('Corrective report created (via API)!');
+                    setShowForm(false);
+                    setFormData({
+                        issue: '',
+                        actionTaken: '',
+                        spareParts: '',
+                        status: 'Open',
+                        location: '',
+                        photoBase64: '',
+                        photoDescription: '',
+                        quarter: 'Q1',
+                        year: new Date().getFullYear().toString(),
+                    });
+                    return;
+                }
+            }
+
+            // Fallback to Firestore
+            await addDoc(collection(db, 'corrective_reports'), reportData);
 
             toast.success('Corrective report created!');
             setShowForm(false);

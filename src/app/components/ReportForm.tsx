@@ -447,10 +447,37 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     return { doc, fileName: `Report_${safeName}_${safeDate}.pdf`, filled: optimizedCards };
   };
 
+  const saveReportViaAPI = async (apiUrl: string, collectionName: string, reportData: any, photos: any[]) => {
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Secret': import.meta.env.VITE_API_SECRET || '',
+        },
+        body: JSON.stringify({
+          collection: collectionName,
+          sub_data: photos,
+          ...reportData,
+          processedBy: 'golang_api',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      return result.reportId;
+    } catch (error) {
+      console.error('API Save Error:', error);
+      return null;
+    }
+  };
+
   const saveReportToFirestore = async (pdfData?: { doc: jsPDF, fileName: string, filled: PhotoCard[] }) => {
     if (!maintenanceName || !maintenanceTime) return toast.error('Isi nama & waktu'), null;
 
-    // If we have pdfData, use its optimized cards, otherwise use current cards
     const cardsToSave = pdfData ? pdfData.filled : cards.filter(c => c.photoBase64 || c.description);
     if (!cardsToSave.length) return toast.error('Minimal 1 card filled'), null;
 
@@ -459,7 +486,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       const photosWithImage = cardsToSave.filter(c => c.photoBase64).length;
       const fileName = pdfData?.fileName || `${maintenanceName}_${maintenanceTime}_${specificDetail || ''}.pdf`.replace(/\s+/g, '_');
 
-      const reportData = {
+      const reportData: any = {
         fileName,
         maintenanceName,
         maintenanceTime,
@@ -470,44 +497,56 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         fileSize: pdfData?.doc ? pdfData.doc.output('arraybuffer').byteLength : 0,
       };
 
-      let docId = '';
-      const collectionName = editingData?.documentType === 'excel' ? 'excel_documents' : 'pdf_documents';
+      if (!editingData) {
+        reportData.createdBy = user?.email;
+        reportData.createdAt = serverTimestamp();
+      }
 
+      const collectionName = editingData?.documentType === 'excel' ? 'excel_documents' : 'pdf_documents';
+      const apiUrl = import.meta.env.VITE_API_URL;
+
+      // Use API for NEW saving (not editing yet as edit logic in Go is more complex)
+      if (apiUrl && !editingData) {
+        const photos = cardsToSave.map((card, i) => ({
+          index: i + 1,
+          photoBase64: card.photoBase64 || '',
+          description: card.description || '',
+          hasPhoto: !!card.photoBase64
+        }));
+
+        const docIdFromAPI = await saveReportViaAPI(apiUrl, collectionName, reportData, photos);
+        if (docIdFromAPI) {
+          toast.success('Laporan disimpan (via API)', { id: toastId });
+          return docIdFromAPI;
+        }
+        // If API fails, fallback to direct Firestore
+      }
+
+      let docId = '';
       if (editingData) {
         docId = editingData.id;
         await updateDoc(doc(db, collectionName, docId), reportData);
 
-        // Clear existing photos in subcollection to avoid duplicates
         const photosRef = collection(db, `${collectionName}/${docId}/photos`);
         const existingPhotos = await getDocs(photosRef);
         for (const photoDoc of existingPhotos.docs) {
           await deleteDoc(doc(db, `${collectionName}/${docId}/photos`, photoDoc.id));
         }
       } else {
-        const docRef = await addDoc(collection(db, 'pdf_documents'), {
-          ...reportData,
-          createdBy: user?.email,
-          createdAt: serverTimestamp(),
-        });
+        const docRef = await addDoc(collection(db, 'pdf_documents'), reportData);
         docId = docRef.id;
       }
 
-      // Save photos
       for (let i = 0; i < cardsToSave.length; i++) {
         const card = cardsToSave[i];
         if (card.photoBase64) {
           let b64 = card.photoBase64;
           const sizeInBytes = (b64.length * 3) / 4;
-
-          // If still too large (> 800KB), force compress again
           if (sizeInBytes > 800 * 1024) {
             try {
               b64 = await compressBase64Image(b64, { maxWidth: 800, quality: 0.5 });
-            } catch (err) {
-              console.error("Critical compression failure", err);
-            }
+            } catch (err) { console.error("Compression failure", err); }
           }
-
           await addDoc(collection(db, `${editingData ? collectionName : 'pdf_documents'}/${docId}/photos`), {
             index: i + 1,
             photoBase64: b64,
@@ -521,7 +560,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       return docId;
     } catch (error) {
       console.error('Firestore save error:', error);
-      toast.error('Gagal simpan ke DB', { id: toastId });
+      toast.error('Gagal simpan', { id: toastId });
       return null;
     }
   };
