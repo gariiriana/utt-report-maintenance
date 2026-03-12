@@ -123,7 +123,7 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if subData, ok := requestBody["sub_data"].([]interface{}); ok {
 		for i, item := range subData {
 			if itemMap, ok := item.(map[string]interface{}); ok {
-				_, err := docRef.Collection("photos").Add(ctx, itemMap)
+				_, _, err := docRef.Collection("photos").Add(ctx, itemMap)
 				if err != nil {
 					fmt.Printf("Warning: Failed to save sub-item %d: %v\n", i, err)
 				}
