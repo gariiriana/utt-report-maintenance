@@ -26,20 +26,24 @@ const INITIAL_CHECKLIST: HSEChecklist = {
     safeAction: false,
     safetySign: false,
     fullBodyHarness: false,
+    coverShoes: false,
+    kedokLas: false,
 };
 
 const CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string }[] = [
     { key: 'mop', label: 'MOP' },
     { key: 'jsa', label: 'JSA' },
     { key: 'ptw', label: 'PTW' },
-    { key: 'ppe', label: 'PPE' },
+    { key: 'ppe', label: 'PPE Mandatory' },
     { key: 'toolsBertagging', label: 'Tools Bertagging & sdh di-checklist' },
     { key: 'logMaintenance', label: 'Log Maintenance' },
-    { key: 'housekeeping', label: 'Housekeeping Area Project' },
-    { key: 'safeCondition', label: 'Safe Condition' },
-    { key: 'safeAction', label: 'Safe Action' },
+    { key: 'housekeeping', label: 'Housekeeping Area Kerja' },
     { key: 'safetySign', label: 'Safety Sign' },
     { key: 'fullBodyHarness', label: 'Full Body Harness (Optional)' },
+    { key: 'coverShoes', label: 'Cover Shoes (Optional)' },
+    { key: 'kedokLas', label: 'Kedok Las (Optional)' },
+    { key: 'safeCondition', label: 'Safe Condition' },
+    { key: 'safeAction', label: 'Safe Action' },
 ];
 
 interface PhotoItem {
@@ -62,6 +66,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
     const [personil, setPersonil] = useState('');
     const [pic, setPic] = useState('');
     const [anggota, setAnggota] = useState('');
+    const [inspectorK3, setInspectorK3] = useState('');
     const [checklist, setChecklist] = useState<HSEChecklist>({ ...INITIAL_CHECKLIST });
     const [photos, setPhotos] = useState<PhotoItem[]>([]);
     const [checklistOpen, setChecklistOpen] = useState(true);
@@ -90,6 +95,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                         setPersonil(data.personil || '');
                         setPic(data.pic || '');
                         setAnggota(data.anggota || '');
+                        setInspectorK3(data.inspectorK3 || '');
                         if (data.checklist) setChecklist(data.checklist);
 
                         // Fetch photos from subcollection
@@ -183,6 +189,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         personil,
         pic,
         anggota,
+        inspectorK3,
         checklist,
         photos: photos.map(p => ({
             base64: p.dataUrl,
@@ -259,15 +266,17 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
     };
 
     // Generate PDF
-    const handleGeneratePdf = async () => {
+    const handleGeneratePdf = async (mode: 'utt' | 'neutradc' = 'neutradc') => {
         if (!aktivitas.trim()) {
             toast.error('Aktivitas wajib diisi sebelum export PDF');
             return;
         }
         setIsGeneratingPdf(true);
         try {
-            await generateHSEPdf(buildFormData());
-            toast.success('PDF berhasil digenerate!');
+            const formData = buildFormData();
+            formData.reportType = mode;
+            await generateHSEPdf(formData);
+            toast.success(`PDF ${mode.toUpperCase()} berhasil digenerate!`);
         } catch (err) {
             console.error(err);
             toast.error('Gagal generate PDF');
@@ -277,7 +286,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
     };
 
     // Share to WA with Public Report Link (Firestore-based, no Storage needed)
-    const handleShareWA = async () => {
+    const handleShareWA = async (mode: 'utt' | 'neutradc' = 'neutradc') => {
         if (!aktivitas.trim() || !lokasi.trim()) {
             toast.error('Aktivitas dan Lokasi wajib diisi untuk Share WA');
             return;
@@ -296,7 +305,9 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                 personil,
                 pic,
                 anggota,
+                inspectorK3,
                 checklist,
+                reportType: mode,
                 date: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }),
                 authorEmail: user?.email || '',
                 createdAt: serverTimestamp(),
@@ -306,15 +317,12 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             const docRef = await addDoc(collection(db, 'hse'), reportData);
             const reportId = docRef.id;
 
-            // Save all photos in PARALLEL (not sequential) for speed
+            // Save all photos...
             await Promise.all(photos.map(async (photo, i) => {
                 let dataUrl = photo.dataUrl;
-                // Compress if large
                 const sizeInBytes = (dataUrl.length * 3) / 4;
                 if (sizeInBytes > 800 * 1024) {
-                    try {
-                        dataUrl = await compressBase64Image(dataUrl, { maxWidth: 800, quality: 0.5 });
-                    } catch (_) { }
+                    try { dataUrl = await compressBase64Image(dataUrl, { maxWidth: 800, quality: 0.5 }); } catch (_) { }
                 }
                 return addDoc(collection(db, `hse/${reportId}/photos`), {
                     index: i + 1,
@@ -324,26 +332,36 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                 });
             }));
 
-            // 2. Build the public viewer URL (same pattern as sultanah-travel invoice)
-            //    https://report-utt.web.app/#/hse/{reportId}
+            // 2. Build Viewer URL
             const appBaseUrl = 'https://report-utt.web.app';
             const reportViewerUrl = `${appBaseUrl}/#/hse/${reportId}`;
 
-            // 3. Build professional WhatsApp message with the viewer link
+            // 3. Build WhatsApp message
+            const isUTT = mode === 'utt';
+            const companyName = isUTT ? 'PT United Transworld Trading' : 'PT Dwimitra Ekatama Mandiri';
+
             const dateStr = new Date().toLocaleDateString('id-ID', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric'
+                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
             });
 
             const safeCount = Object.values(checklist).filter(Boolean).length;
             const totalChecklist = CHECKLIST_LABELS.length;
             const checklistEmoji = safeCount === totalChecklist ? '✅' : safeCount >= totalChecklist * 0.8 ? '⚠️' : '❌';
 
-            const checklistLines = CHECKLIST_LABELS.map(({ key, label }) =>
-                `${checklist[key] ? '✅' : '❌'} ${label}`
+            // Filter out unchecked optional items and separate conclusions
+            const regularItems = CHECKLIST_LABELS.filter(item => 
+                !['safeCondition', 'safeAction'].includes(item.key) && 
+                (!item.label.includes('(Optional)') || checklist[item.key])
+            );
+            
+            const checklistLines = regularItems.map(({ key, label }) =>
+                `${checklist[key] ? '✅' : '❌'} ${label.replace(' (Optional)', '')}`
             ).join('\n');
+
+            const conclusionLines = [
+                `${checklist.safeCondition ? '✅' : '❌'} Safe Condition`,
+                `${checklist.safeAction ? '✅' : '❌'} Safe Action`
+            ].join('\n');
 
             const anggotaList = anggota
                 ? anggota.split(',').map(a => `• ${a.trim()}`).join('\n')
@@ -353,11 +371,12 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                 `🛡️ *HSE INSPECTION REPORT*
 📅 ${dateStr}
 
-*PT Dwimitra Ekatama Mandiri*
+*${companyName}*
 
 ━━━━━━━━━━━━━━━━━━━━
 📋 *INFORMASI PEKERJAAN*
 ━━━━━━━━━━━━━━━━━━━━
+🛡️ *Inspector K3 :* ${inspectorK3 || '-'}
 🔧 *Aktivitas :* ${aktivitas}
 📍 *Lokasi    :* ${lokasi}
 👤 *PIC       :* ${pic || '-'}
@@ -367,35 +386,25 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
 ${anggotaList}
 
 ━━━━━━━━━━━━━━━━━━━━
-${checklistEmoji} *CHECKLIST KESELAMATAN* (${safeCount}/${totalChecklist} Terpenuhi)
+${checklistEmoji} *CHECKLIST KESELAMATAN*
 ━━━━━━━━━━━━━━━━━━━━
 ${checklistLines}
+
+${conclusionLines}
 
 ━━━━━━━━━━━━━━━━━━━━
 📄 *LINK LAPORAN DOKUMENTASI HSE*
 ━━━━━━━━━━━━━━━━━━━━
 ${reportViewerUrl}
 
-_Klik link di atas untuk melihat laporan lengkap & download PDF._
+_Klik link di atas untuk melihat laporan dokumentasi lengkap & download PDF untuk laporan yang lebih rapi dan detail._`;
 
-Safety first "Yes" Accident "No" 🤙✊
-
-_Salam,_
-_Tim HSE — PT Dwimitra Ekatama Mandiri_`;
-
-            // 4. Open WhatsApp with pre-filled message + viewer link
-            const encodedMessage = encodeURIComponent(message);
-            const waUrl = `https://api.whatsapp.com/send?text=${encodedMessage}`;
-
+            const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
             toast.success('✅ Laporan tersimpan! Membuka WhatsApp...', { id: toastId });
-
-            setTimeout(() => {
-                window.open(waUrl, '_blank');
-            }, 600);
-
+            setTimeout(() => { window.open(waUrl, '_blank'); }, 600);
         } catch (error: any) {
             console.error('Error sharing to WA:', error);
-            toast.error('❌ Gagal menyimpan laporan. Cek koneksi dan coba lagi.', { id: toastId });
+            toast.error('❌ Gagal menyimpan laporan.', { id: toastId });
         } finally {
             setIsSharingWA(false);
         }
@@ -427,6 +436,22 @@ _Tim HSE — PT Dwimitra Ekatama Mandiri_`;
                         <h3 className="text-sm font-semibold text-white">Informasi Pekerjaan</h3>
                     </div>
                     <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                        {/* Inspector K3 */}
+                        <div className="sm:col-span-2">
+                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                                <span className="flex items-center gap-1.5">
+                                    <CheckSquare className="w-3.5 h-3.5" /> Inspector K3
+                                </span>
+                            </label>
+                            <input
+                                type="text"
+                                value={inspectorK3}
+                                onChange={e => setInspectorK3(e.target.value)}
+                                placeholder="Masukkan nama Inspector K3"
+                                className="w-full px-4 py-3 bg-slate-900/40 border border-slate-700/50 rounded-xl text-white text-sm placeholder-slate-500 outline-none focus:border-green-500/40 focus:ring-2 focus:ring-green-500/10 transition"
+                            />
+                        </div>
 
                         {/* Aktivitas */}
                         <div className="sm:col-span-2">
@@ -471,7 +496,7 @@ _Tim HSE — PT Dwimitra Ekatama Mandiri_`;
                                 type="text"
                                 value={personil}
                                 onChange={e => setPersonil(e.target.value)}
-                                placeholder="Contoh: 4 org dme"
+                                placeholder="Contoh: 4 org"
                                 className="w-full px-4 py-3 bg-slate-900/40 border border-slate-700/50 rounded-xl text-white text-sm placeholder-slate-500 outline-none focus:border-green-500/40 focus:ring-2 focus:ring-green-500/10 transition"
                             />
                         </div>
@@ -508,7 +533,8 @@ _Tim HSE — PT Dwimitra Ekatama Mandiri_`;
                             />
                             <p className="text-xs text-slate-500 mt-1.5">Pisahkan nama dengan koma</p>
                         </div>
-                    </div>
+
+                        </div>
                 </motion.div>
 
                 {/* ── CHECKLIST SECTION ──────────────────────────────────────── */}
@@ -547,41 +573,65 @@ _Tim HSE — PT Dwimitra Ekatama Mandiri_`;
                                 transition={{ duration: 0.25 }}
                                 className="overflow-hidden"
                             >
-                                <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {CHECKLIST_LABELS.map(({ key, label }) => {
-                                        const checked = checklist[key];
-                                        return (
-                                            <motion.button
-                                                key={key}
-                                                whileTap={{ scale: 0.97 }}
-                                                onClick={() => toggleCheck(key)}
-                                                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all text-left ${checked
-                                                    ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                                                    : 'bg-slate-800/40 border-slate-700/40 text-slate-400 hover:border-slate-600/60 hover:text-slate-300'
-                                                    }`}
-                                            >
-                                                <div className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition ${checked ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-500'
-                                                    }`}>
-                                                    {checked ? (
-                                                        <CheckSquare className="w-3.5 h-3.5" />
-                                                    ) : (
-                                                        <Square className="w-3.5 h-3.5" />
-                                                    )}
-                                                </div>
-                                                <span className="text-sm font-medium">{label}</span>
-                                                {checked && (
-                                                    <span className="ml-auto text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">
-                                                        ✓
+                                <div className="p-5">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {CHECKLIST_LABELS.filter(item => !['safeCondition', 'safeAction'].includes(item.key)).map(({ key, label }) => {
+                                            const checked = checklist[key];
+                                            return (
+                                                <motion.button
+                                                    key={key}
+                                                    whileTap={{ scale: 0.97 }}
+                                                    onClick={() => toggleCheck(key)}
+                                                    className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all text-left ${checked
+                                                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                                                        : 'bg-slate-800/40 border-slate-700/40 text-slate-400 hover:border-slate-600/60 hover:text-slate-300'
+                                                        }`}
+                                                >
+                                                    <div className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition ${checked ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-500'
+                                                        }`}>
+                                                        {checked ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+                                                    </div>
+                                                    <span className="text-sm font-medium">{label}</span>
+                                                    <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${checked ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/10 text-red-400/60'}`}>
+                                                        {checked ? '✓' : '✗'}
                                                     </span>
-                                                )}
-                                                {!checked && (
-                                                    <span className="ml-auto text-xs bg-red-500/10 text-red-400/60 px-2 py-0.5 rounded-full">
-                                                        ✗
+                                                </motion.button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Separator for Conclusions */}
+                                    <div className="my-6 border-t border-slate-700/50 relative">
+                                        <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-900 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">
+                                            Kesimpulan Pekerjaan
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {CHECKLIST_LABELS.filter(item => ['safeCondition', 'safeAction'].includes(item.key)).map(({ key, label }) => {
+                                            const checked = checklist[key];
+                                            return (
+                                                <motion.button
+                                                    key={key}
+                                                    whileTap={{ scale: 0.97 }}
+                                                    onClick={() => toggleCheck(key)}
+                                                    className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all text-left ${checked
+                                                        ? 'bg-blue-500/15 border-blue-500/40 text-blue-300'
+                                                        : 'bg-slate-800/40 border-slate-700/40 text-slate-400 hover:border-slate-600/60 hover:text-slate-300'
+                                                        }`}
+                                                >
+                                                    <div className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition ${checked ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-500'
+                                                        }`}>
+                                                        {checked ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+                                                    </div>
+                                                    <span className="text-sm font-medium">{label}</span>
+                                                    <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${checked ? 'bg-blue-500/20 text-blue-400' : 'bg-red-500/10 text-red-400/60'}`}>
+                                                        {checked ? '✓' : '✗'}
                                                     </span>
-                                                )}
-                                            </motion.button>
-                                        );
-                                    })}
+                                                </motion.button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             </motion.div>
                         )}
@@ -717,69 +767,81 @@ _Tim HSE — PT Dwimitra Ekatama Mandiri_`;
                 </motion.div>
 
                 {/* ── ACTION BUTTONS ─────────────────────────────────────────── */}
-                <motion.div
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: 0.15 }}
-                    className="flex flex-col sm:flex-row gap-3"
-                >
+                <div className="space-y-4">
+                    {/* UTT Section */}
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className="h-[1px] flex-1 bg-slate-800"></div>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reports for UTT</span>
+                            <div className="h-[1px] flex-1 bg-slate-800"></div>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <motion.button
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleGeneratePdf('utt')}
+                                disabled={isGeneratingPdf || isSaving}
+                                className="flex-1 flex items-center justify-center gap-2.5 py-4 bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700/50 rounded-xl font-bold transition text-sm disabled:opacity-50"
+                            >
+                                <FileDown className="w-4 h-4" /> Export PDF (UTT)
+                            </motion.button>
+                            <motion.button
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleShareWA('utt')}
+                                disabled={isSharingWA || isSaving}
+                                className="flex-1 flex items-center justify-center gap-2.5 py-4 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition shadow-lg shadow-green-900/20 text-sm disabled:opacity-50"
+                            >
+                                <Send className="w-4 h-4" /> Share WA (UTT)
+                            </motion.button>
+                        </div>
+                    </div>
+
+                    {/* NeutraDC Section */}
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 mb-1">
+                            <div className="h-[1px] flex-1 bg-slate-800"></div>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reports for NeutraDC</span>
+                            <div className="h-[1px] flex-1 bg-slate-800"></div>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <motion.button
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleGeneratePdf('neutradc')}
+                                disabled={isGeneratingPdf || isSaving}
+                                className="flex-1 flex items-center justify-center gap-2.5 py-4 bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700/50 rounded-xl font-bold transition text-sm disabled:opacity-50"
+                            >
+                                <FileDown className="w-4 h-4" /> Export PDF (NeutraDC)
+                            </motion.button>
+                            <motion.button
+                                whileHover={{ scale: 1.01 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleShareWA('neutradc')}
+                                disabled={isSharingWA || isSaving}
+                                className="flex-1 flex items-center justify-center gap-2.5 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition shadow-lg shadow-blue-900/20 text-sm disabled:opacity-50"
+                            >
+                                <Send className="w-4 h-4" /> Share WA (NeutraDC)
+                            </motion.button>
+                        </div>
+                    </div>
+                    
+                    {/* General Save */}
                     <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.97 }}
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="flex-1 flex items-center justify-center gap-2.5 py-4 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/50 rounded-xl font-semibold transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center gap-2.5 py-3 bg-slate-900/40 hover:bg-slate-800 text-slate-400 border border-slate-800 rounded-xl font-medium transition text-xs disabled:opacity-50 mt-2"
                     >
-                        {isSaving ? (
-                            <><Loader2 className="w-4 h-4 animate-spin" /> Menyimpan...</>
-                        ) : (
-                            <><Save className="w-4 h-4" /> {editingData ? 'Update Laporan' : 'Simpan Laporan'}</>
-                        )}
+                        {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                        {editingData ? 'Update Laporan ke Database' : 'Simpan Draft ke Database'}
                     </motion.button>
-
-                    <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={async () => {
-                            await handleSave();
-                            handleGeneratePdf();
-                        }}
-                        disabled={isGeneratingPdf || isSaving}
-                        className="flex-1 sm:flex-[2] flex items-center justify-center gap-2.5 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-xl font-bold transition shadow-lg shadow-green-500/25 hover:shadow-green-500/40 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isGeneratingPdf ? (
-                            <><Loader2 className="w-4 h-4 animate-spin" /> Generating PDF...</>
-                        ) : (
-                            <><FileDown className="w-4 h-4" /> Save & Export PDF</>
-                        )}
-                    </motion.button>
-                </motion.div>
-
-                {/* Additional Action Bottom Row */}
-                <motion.div
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: 0.2 }}
-                    className="flex"
-                >
-                    <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={handleShareWA}
-                        disabled={isSharingWA || isGeneratingPdf || isSaving}
-                        className="w-full flex items-center justify-center gap-2.5 py-4 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-xl font-bold transition shadow-lg shadow-[#25D366]/25 hover:shadow-[#25D366]/40 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isSharingWA ? (
-                            <><Loader2 className="w-4 h-4 animate-spin" /> Menyiapkan Link...</>
-                        ) : (
-                            <><Send className="w-4 h-4" /> Share to WA (+ Link PDF)</>
-                        )}
-                    </motion.button>
-                </motion.div>
+                </div>
 
                 {/* Catatan bawah */}
-                <p className="text-center text-xs text-slate-600 pb-4">
-                    Safety first "Yes" Accident "No" 🤙✊
+                <p className="text-center text-[10px] text-slate-600 pb-4 mt-4 uppercase tracking-[0.2em]">
+                    🛡️ Safety Implementation System 🛡️
                 </p>
             </div>
 

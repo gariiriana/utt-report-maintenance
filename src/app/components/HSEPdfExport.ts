@@ -1,5 +1,8 @@
 import { jsPDF } from 'jspdf';
 import { compressBase64Image } from '@/lib/imageCompression';
+import logoDme from '../../assets/logo_dwimitra_v2.png';
+import logoUtt from '../../assets/logo_utt.png';
+import logoNeutradc from '../../assets/logo_neutradc.png';
 
 export interface HSEChecklist {
     mop: boolean;
@@ -13,6 +16,8 @@ export interface HSEChecklist {
     safeAction: boolean;
     safetySign: boolean;
     fullBodyHarness: boolean;
+    coverShoes: boolean;
+    kedokLas: boolean;
 }
 
 export interface HSEPhoto {
@@ -26,9 +31,11 @@ export interface HSEFormData {
     personil: string;
     pic: string;
     anggota: string;
+    inspectorK3: string;
     checklist: HSEChecklist;
     photos: HSEPhoto[];
     date?: string;
+    reportType?: 'utt' | 'neutradc';
 }
 
 function loadImageAsBase64(url: string): Promise<string> {
@@ -84,7 +91,6 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         const headerTopY = 8;
 
         if (logoDmeB64) {
-            // Use unique alias per page so jsPDF doesn't skip redraw
             doc.addImage(logoDmeB64, 'JPEG', marginL, headerTopY, leftW, leftH, `logo_left_${pg}`, 'FAST');
         } else {
             doc.setFontSize(10);
@@ -93,17 +99,19 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
             doc.text('DME', marginL, headerTopY + 6);
         }
 
-        // Logo neutraDC (kanan)
-        const rightW = 36;
-        const rightH = 14;
+        // Secondary Logo (kanan) - Logic based on reportType
+        const rightW = 32;
+        const rightH = 12;
+        const isUTT = data.reportType === 'utt';
+        
         if (logoNeutradcB64) {
             const rightY = headerTopY + (leftH - rightH) / 2;
             doc.addImage(logoNeutradcB64, 'JPEG', pageW - marginR - rightW, rightY, rightW, rightH, `logo_right_${pg}`, 'FAST');
         } else {
-            doc.setFontSize(10);
+            doc.setFontSize(9);
             doc.setTextColor(DARK);
             doc.setFont('helvetica', 'bold');
-            doc.text('neutraDC', pageW - marginR - 20, headerTopY + 6);
+            doc.text(isUTT ? 'UTT' : 'neutraDC', pageW - marginR - 20, headerTopY + 6);
         }
 
         // Center Title
@@ -116,7 +124,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         doc.setFontSize(8.5);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(GRAY);
-        doc.text('Health, Safety & Environment — Maintenance Checklist', pageW / 2, titleY + 5, { align: 'center' });
+        doc.text('Health, Safety & Environment — Documentation', pageW / 2, titleY + 5, { align: 'center' });
 
         // Date
         const dateStr = data.date || new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -135,18 +143,20 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
 
     // ── INFO SECTION ─────────────────────────────────────────────────────
     doc.setFillColor(LIGHT_GRAY);
-    doc.roundedRect(marginL, curY, contentW, 44, 3, 3, 'F');
+    doc.roundedRect(marginL, curY, contentW, 60, 3, 3, 'F');
 
     const infoRows = [
+        { label: 'Inspector K3', value: data.inspectorK3 || '-' },
         { label: 'Aktivitas', value: data.aktivitas || '-' },
         { label: 'Lokasi', value: data.lokasi || '-' },
         { label: 'Personil', value: data.personil || '-' },
         { label: 'PIC', value: data.pic || '-' },
         { label: 'Anggota', value: data.anggota || '-' },
+        { label: 'Remark', value: data.reportType === 'utt' ? 'PT United Transworld Trading' : 'PT Dwimitra Ekatama Mandiri' },
     ];
 
     infoRows.forEach((row, i) => {
-        const rowY = curY + 5 + i * 7.5;
+        const rowY = curY + 6 + i * 7.5;
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(DARK);
@@ -154,14 +164,14 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
 
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(GRAY);
-        doc.text(':', marginL + 26, rowY);
+        doc.text(':', marginL + 28, rowY);
 
         doc.setTextColor(DARK);
         const lines = doc.splitTextToSize(row.value, contentW - 35);
-        doc.text(lines[0], marginL + 30, rowY);
+        doc.text(lines[0], marginL + 32, rowY);
     });
 
-    curY += 48;
+    curY += 56;
 
     // ── CHECKLIST SECTION ─────────────────────────────────────────────────
     // Section header
@@ -174,94 +184,98 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
 
     curY += 11;
 
-    // Checklist items - 2 column layout
-    const checklistItems = [
+    // Checklist items - Filter and Group
+    const regularItems = [
         { label: 'MOP', value: data.checklist.mop },
         { label: 'JSA', value: data.checklist.jsa },
         { label: 'PTW', value: data.checklist.ptw },
-        { label: 'PPE', value: data.checklist.ppe },
+        { label: 'PPE Mandatory', value: data.checklist.ppe },
         { label: 'Tools Bertagging & sdh di-checklist', value: data.checklist.toolsBertagging },
         { label: 'Log Maintenance', value: data.checklist.logMaintenance },
-        { label: 'Housekeeping Area Project', value: data.checklist.housekeeping },
-        { label: 'Safe Condition', value: data.checklist.safeCondition },
-        { label: 'Safe Action', value: data.checklist.safeAction },
+        { label: 'Housekeeping Area Kerja', value: data.checklist.housekeeping },
         { label: 'Safety Sign', value: data.checklist.safetySign },
         { label: 'Full Body Harness (Optional)', value: data.checklist.fullBodyHarness },
+        { label: 'Cover Shoes (Optional)', value: data.checklist.coverShoes },
+        { label: 'Kedok Las (Optional)', value: data.checklist.kedokLas },
     ].filter(item => {
-        // Filter out optional items if they are false (not selected)
         if (item.label.includes('(Optional)')) {
             return item.value === true;
         }
         return true;
     });
 
+    const conclusionItems = [
+        { label: 'Safe Condition', value: data.checklist.safeCondition },
+        { label: 'Safe Action', value: data.checklist.safeAction },
+    ];
+
     const colW = (contentW - 6) / 2;
     const rowH = 8;
-    const itemsPerCol = Math.ceil(checklistItems.length / 2);
-    const col1Items = checklistItems.slice(0, itemsPerCol);
-    const col2Items = checklistItems.slice(itemsPerCol);
+    const itemsPerCol = Math.ceil(regularItems.length / 2);
+    const col1Items = regularItems.slice(0, itemsPerCol);
+    const col2Items = regularItems.slice(itemsPerCol);
 
-    const drawChecklistCol = (items: typeof checklistItems, startX: number, startY: number) => {
-        items.forEach((item, i) => {
-            const y = startY + i * rowH;
-            const bgColor = i % 2 === 0 ? '#f8fafc' : '#ffffff';
+    const drawChecklistItem = (item: { label: string, value: boolean }, x: number, y: number, width: number, isConclusion = false) => {
+        const bgColor = isConclusion ? '#f0f9ff' : (Math.floor(y / rowH) % 2 === 0 ? '#f8fafc' : '#ffffff');
+        doc.setFillColor(bgColor);
+        doc.rect(x, y, width, rowH, 'F');
 
-            doc.setFillColor(bgColor);
-            doc.rect(startX, y, colW, rowH, 'F');
+        const centerX = x + 5;
+        const centerY = y + rowH / 2;
+        const checked = item.value;
 
-            // Check icon using vector lines for maximum precision
-            const checked = item.value;
-            const centerX = startX + 5;
-            const centerY = y + rowH / 2;
+        if (checked) {
+            doc.setFillColor(isConclusion ? '#3b82f6' : '#16a34a'); // Blue for conclusion, Green for regular
+            doc.circle(centerX, centerY, 2.7, 'F');
+            doc.setDrawColor(255, 255, 255);
+            doc.setLineWidth(0.4);
+            doc.line(centerX - 1.1, centerY, centerX - 0.2, centerY + 0.8);
+            doc.line(centerX - 0.2, centerY + 0.8, centerX + 1.1, centerY - 0.9);
+        } else {
+            doc.setFillColor(239, 68, 68);
+            doc.circle(centerX, centerY, 2.7, 'F');
+            doc.setDrawColor(255, 255, 255);
+            doc.setLineWidth(0.4);
+            doc.line(centerX - 0.9, centerY - 0.9, centerX + 0.9, centerY + 0.9);
+            doc.line(centerX + 0.9, centerY - 0.9, centerX - 0.9, centerY + 0.9);
+        }
 
-            if (checked) {
-                // Green Circle
-                doc.setFillColor(22, 163, 74);
-                doc.circle(centerX, centerY, 2.8, 'F');
-                // White Checkmark Draw
-                doc.setDrawColor(255, 255, 255);
-                doc.setLineWidth(0.45);
-                doc.line(centerX - 1.2, centerY, centerX - 0.3, centerY + 0.9);
-                doc.line(centerX - 0.3, centerY + 0.9, centerX + 1.2, centerY - 1);
-            } else {
-                // Red Circle
-                doc.setFillColor(220, 38, 38);
-                doc.circle(centerX, centerY, 2.8, 'F');
-                // White X Draw
-                doc.setDrawColor(255, 255, 255);
-                doc.setLineWidth(0.45);
-                doc.line(centerX - 1, centerY - 1, centerX + 1, centerY + 1);
-                doc.line(centerX + 1, centerY - 1, centerX - 1, centerY + 1);
-            }
-
-            doc.setFontSize(8.5);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(DARK);
-            doc.text(item.label, startX + 11, y + rowH / 2 + 1.5);
-        });
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', isConclusion ? 'bold' : 'normal');
+        doc.setTextColor(DARK);
+        doc.text(item.label.replace(' (Optional)', ''), x + 10, y + rowH / 2 + 1.5);
     };
 
-    drawChecklistCol(col1Items, marginL, curY);
-    drawChecklistCol(col2Items, marginL + colW + 6, curY);
+    // Draw Regular Items in 2 Columns
+    col1Items.forEach((item, i) => drawChecklistItem(item, marginL, curY + i * rowH, colW));
+    col2Items.forEach((item, i) => drawChecklistItem(item, marginL + colW + 6, curY + i * rowH, colW));
 
-    // Outline box
+    curY += itemsPerCol * rowH + 4;
+
+    // Draw Separator & Conclusion Header
     doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.3);
-    doc.rect(marginL, curY, colW, col1Items.length * rowH);
-    doc.rect(marginL + colW + 6, curY, colW, col2Items.length * rowH);
+    doc.setLineWidth(0.2);
+    doc.line(marginL, curY, marginL + contentW, curY);
 
-    curY += Math.max(col1Items.length, col2Items.length) * rowH + 8;
-
-    // ── NOTES LINE ───────────────────────────────────────────────────────
-    doc.setFontSize(8.5);
-    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
     doc.setTextColor(GRAY);
-    doc.text(
-        'Demikian untuk menjadi rujukan terima kasih. Safety first "Yes" Accident "No".',
-        marginL,
-        curY
-    );
-    curY += 8;
+    doc.text('KESIMPULAN / KONDISI AKHIR', marginL + contentW / 2, curY + 4, { align: 'center' });
+
+    curY += 6;
+
+    // Draw Conclusion Items in 2 Columns
+    conclusionItems.forEach((item, i) => {
+        const x = i === 0 ? marginL : marginL + colW + 6;
+        drawChecklistItem(item, x, curY, colW, true);
+    });
+
+    curY += rowH + 10;
+
+    // ── FOOTER REMARK ───────────────────────────────────────────────────
+    curY += 4;
+    // Removed old slogan as requested
+    curY += 2;
 
     // ── FOTO DOKUMENTASI ─────────────────────────────────────────────────
     if (data.photos && data.photos.length > 0) {
@@ -347,7 +361,8 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         doc.setFontSize(7.5);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(GRAY);
-        doc.text('PT Dwimitra Ekatama Mandiri — HSE Inspection Report', marginL, pageH - 5);
+        const footerCompany = data.reportType === 'utt' ? 'PT United Transworld Trading' : 'PT Dwimitra Ekatama Mandiri';
+        doc.text(`${footerCompany} — HSE Inspection Report`, marginL, pageH - 5);
         doc.text(`Halaman ${pg} / ${totalPages}`, pageW - marginR, pageH - 5, { align: 'right' });
     }
 
@@ -355,17 +370,17 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
 }
 
 export async function generateHSEPdfBlob(data: HSEFormData): Promise<Blob> {
-    const logoDmeModule = await import('@/assets/logo_dwimitra_v2.png');
-    const logoNeutradcModule = await import('@/assets/logo_neutradc.png');
+    const dmeImg = logoDme;
+    const secondaryImg = data.reportType === 'utt' ? logoUtt : logoNeutradc;
 
     let logoDmeB64 = '';
-    let logoNeutradcB64 = '';
+    let logoSecondaryB64 = '';
     try {
-        logoDmeB64 = await loadImageAsBase64(logoDmeModule.default);
-        logoNeutradcB64 = await loadImageAsBase64(logoNeutradcModule.default);
+        logoDmeB64 = await loadImageAsBase64(dmeImg);
+        logoSecondaryB64 = await loadImageAsBase64(secondaryImg);
     } catch (_) { }
 
-    // Compress photos before generating doc
+    // Compress photos...
     const processedData = { ...data, photos: [] as HSEPhoto[] };
     if (data.photos && data.photos.length > 0) {
         for (const photo of data.photos) {
@@ -378,22 +393,22 @@ export async function generateHSEPdfBlob(data: HSEFormData): Promise<Blob> {
         }
     }
 
-    const doc = createHSEDpdDoc(processedData, logoDmeB64, logoNeutradcB64);
+    const doc = createHSEDpdDoc(processedData, logoDmeB64, logoSecondaryB64);
     return doc.output('blob');
 }
 
 export async function generateHSEPdf(data: HSEFormData) {
-    const logoDmeModule = await import('@/assets/logo_dwimitra_v2.png');
-    const logoNeutradcModule = await import('@/assets/logo_neutradc.png');
+    const dmeImg = logoDme;
+    const secondaryImg = data.reportType === 'utt' ? logoUtt : logoNeutradc;
 
     let logoDmeB64 = '';
-    let logoNeutradcB64 = '';
+    let logoSecondaryB64 = '';
     try {
-        logoDmeB64 = await loadImageAsBase64(logoDmeModule.default);
-        logoNeutradcB64 = await loadImageAsBase64(logoNeutradcModule.default);
+        logoDmeB64 = await loadImageAsBase64(dmeImg);
+        logoSecondaryB64 = await loadImageAsBase64(secondaryImg);
     } catch (_) { }
 
-    // Compress photos before generating doc
+    // Compress photos...
     const processedData = { ...data, photos: [] as HSEPhoto[] };
     if (data.photos && data.photos.length > 0) {
         for (const photo of data.photos) {
@@ -406,8 +421,20 @@ export async function generateHSEPdf(data: HSEFormData) {
         }
     }
 
-    const doc = createHSEDpdDoc(processedData, logoDmeB64, logoNeutradcB64);
-    const fileName = `HSE_Report_${data.aktivitas || 'Inspection'}_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.pdf`;
-    doc.save(fileName);
+    const doc = createHSEDpdDoc(processedData, logoDmeB64, logoSecondaryB64);
+    const safeAktivitas = (data.aktivitas || 'Inspection').replace(/[/\\?%*:|"<>]/g, '-');
+    const dateStr = new Date().toLocaleDateString('id-ID').replace(/\//g, '-');
+    const fileName = `HSE_Report_${safeAktivitas}_${dateStr}.pdf`;
+
+    // Manual bulletproof download method
+    const pdfBlob = doc.output('blob');
+    const url = URL.createObjectURL(pdfBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
 }
 

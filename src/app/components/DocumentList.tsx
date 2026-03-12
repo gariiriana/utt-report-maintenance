@@ -619,7 +619,9 @@ export function DocumentList({ onEdit }: DocumentListProps) {
       const link = document.createElement('a');
       link.href = url;
       link.download = docData.fileName;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
       toast.success('PDF downloaded successfully!', { id: 'download-pdf' });
@@ -658,9 +660,11 @@ export function DocumentList({ onEdit }: DocumentListProps) {
         personil: hseData.personil,
         pic: hseData.pic,
         anggota: hseData.anggota,
+        inspectorK3: hseData.inspectorK3 || '',
         checklist: hseData.checklist,
         photos: photos,
-        date: hseData.date
+        date: hseData.date,
+        reportType: hseData.reportType
       };
 
       await generateHSEPdf(formData);

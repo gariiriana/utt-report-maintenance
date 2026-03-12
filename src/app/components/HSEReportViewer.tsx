@@ -7,20 +7,22 @@ import {
     CheckSquare, Square, FileDown, Loader2, AlertTriangle,
     HardHat, Calendar, Download
 } from 'lucide-react';
-import logoUTT from '@/assets/232afb9a46e8d280b1d1b9dca62e90c6882e64e6.png';
+import logoUTT from '../../assets/logo_utt.png';
 
 const CHECKLIST_LABELS = [
     { key: 'mop', label: 'MOP' },
     { key: 'jsa', label: 'JSA' },
     { key: 'ptw', label: 'PTW' },
-    { key: 'ppe', label: 'PPE' },
+    { key: 'ppe', label: 'PPE Mandatory' },
     { key: 'toolsBertagging', label: 'Tools Bertagging & sdh di-checklist' },
     { key: 'logMaintenance', label: 'Log Maintenance' },
-    { key: 'housekeeping', label: 'Housekeeping Area Project' },
-    { key: 'safeCondition', label: 'Safe Condition' },
-    { key: 'safeAction', label: 'Safe Action' },
+    { key: 'housekeeping', label: 'Housekeeping Area Kerja' },
     { key: 'safetySign', label: 'Safety Sign' },
     { key: 'fullBodyHarness', label: 'Full Body Harness (Optional)' },
+    { key: 'coverShoes', label: 'Cover Shoes (Optional)' },
+    { key: 'kedokLas', label: 'Kedok Las (Optional)' },
+    { key: 'safeCondition', label: 'Safe Condition' },
+    { key: 'safeAction', label: 'Safe Action' },
 ];
 
 interface HSEReportViewerProps {
@@ -33,9 +35,11 @@ interface ReportData {
     personil: string;
     pic: string;
     anggota: string;
+    inspectorK3?: string;
     checklist: Record<string, boolean>;
     createdAt?: any;
     date?: string;
+    reportType?: 'utt' | 'neutradc';
     photos?: { id: string; dataUrl: string; description: string; index: number }[];
 }
 
@@ -82,9 +86,11 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                 personil: report.personil,
                 pic: report.pic,
                 anggota: report.anggota,
+                inspectorK3: report.inspectorK3 || '',
                 checklist: report.checklist as any,
                 photos: (report.photos || []).map(p => ({ base64: p.dataUrl, description: p.description || '' })),
                 date: report.date,
+                reportType: report.reportType,
             };
             await generateHSEPdf(formData);
         } catch (err) {
@@ -191,6 +197,7 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                     </div>
                     <div className="p-5 space-y-4">
                         {[
+                            { icon: ShieldCheck, label: 'Inspector K3', value: report.inspectorK3 },
                             { icon: MapPin, label: 'Lokasi', value: report.lokasi },
                             { icon: User, label: 'PIC', value: report.pic },
                             { icon: Users, label: 'Personil', value: report.personil },
@@ -225,24 +232,55 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                             {safeCount}/{totalChecklist} Terpenuhi
                         </span>
                     </div>
-                    <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {CHECKLIST_LABELS.map(({ key, label }) => {
-                            const checked = !!(report.checklist?.[key]);
-                            return (
-                                <div key={key} className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${checked
-                                    ? 'bg-emerald-500/10 border-emerald-500/30'
-                                    : 'bg-slate-800/40 border-slate-700/40'
-                                    }`}>
-                                    <div className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${checked ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-500'}`}>
-                                        {checked ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+                    <div className="p-5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {CHECKLIST_LABELS.filter(item => !['safeCondition', 'safeAction'].includes(item.key))
+                                .filter(item => !item.label.includes('(Optional)') || !!(report.checklist?.[item.key]))
+                                .map(({ key, label }) => {
+                                    const checked = !!(report.checklist?.[key]);
+                                    return (
+                                        <div key={key} className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${checked
+                                            ? 'bg-emerald-500/10 border-emerald-500/30'
+                                            : 'bg-slate-800/40 border-slate-700/40'
+                                            }`}>
+                                            <div className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${checked ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-500'}`}>
+                                                {checked ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+                                            </div>
+                                            <span className={`text-sm font-medium ${checked ? 'text-emerald-300' : 'text-slate-400'}`}>{label.replace(' (Optional)', '')}</span>
+                                            <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-bold ${checked ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/10 text-red-400/60'}`}>
+                                                {checked ? '✓' : '✗'}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                        </div>
+
+                        {/* Conclusion Section */}
+                        <div className="my-6 border-t border-slate-700/50 relative">
+                            <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-900 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">
+                                Kesimpulan
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {CHECKLIST_LABELS.filter(item => ['safeCondition', 'safeAction'].includes(item.key)).map(({ key, label }) => {
+                                const checked = !!(report.checklist?.[key]);
+                                return (
+                                    <div key={key} className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${checked
+                                        ? 'bg-blue-500/10 border-blue-500/30'
+                                        : 'bg-slate-800/40 border-slate-700/40'
+                                        }`}>
+                                        <div className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${checked ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-500'}`}>
+                                            {checked ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+                                        </div>
+                                        <span className={`text-sm font-medium ${checked ? 'text-blue-300' : 'text-slate-400'}`}>{label.replace(' (Optional)', '')}</span>
+                                        <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-bold ${checked ? 'bg-blue-500/20 text-blue-400' : 'bg-red-500/10 text-red-400/60'}`}>
+                                            {checked ? '✓' : '✗'}
+                                        </span>
                                     </div>
-                                    <span className={`text-sm font-medium ${checked ? 'text-emerald-300' : 'text-slate-400'}`}>{label}</span>
-                                    <span className={`ml-auto text-xs px-2 py-0.5 rounded-full font-bold ${checked ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/10 text-red-400/60'}`}>
-                                        {checked ? '✓' : '✗'}
-                                    </span>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
 

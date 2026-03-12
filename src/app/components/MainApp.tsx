@@ -12,7 +12,7 @@ import { ServiceReport } from './ServiceReport';
 import { Footer } from './Footer';
 import { LogoutConfirmModal } from './LogoutConfirmModal'; // ✅ NEW: Import logout modal
 import { DataCenterBackground } from './DataCenterBackground'; // ✅ NEW: Import data center animations
-import logoUTT from '@/assets/232afb9a46e8d280b1d1b9dca62e90c6882e64e6.png';
+import logoUTT from '../../assets/logo_utt.png';
 
 type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'service';
 

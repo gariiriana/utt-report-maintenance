@@ -4,9 +4,9 @@ import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import { DataCenterBackground } from './DataCenterBackground';
 import { Lock, Mail, Eye, EyeOff, LogIn } from 'lucide-react';
-import { auth } from '@/lib/firebase';
 
-import logoUTT from '@/assets/232afb9a46e8d280b1d1b9dca62e90c6882e64e6.png';
+
+import logoUTT from '../../assets/logo_utt.png';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -29,7 +29,19 @@ export function Login() {
       await login(email, password);
       toast.success('Login berhasil!');
     } catch (error: any) {
-      toast.error(error.message || 'Login gagal');
+      console.error('Login error:', error);
+      
+      let errorMessage = 'Login gagal. Silakan coba lagi.';
+      
+      if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Koneksi gagal. Jika kamu pakai VPN atau Adblocker, coba matikan dulu ya bray!';
+      } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        errorMessage = 'Email atau password salah';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Terlalu banyak percobaan login. Coba lagi nanti.';
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
