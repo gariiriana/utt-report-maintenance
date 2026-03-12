@@ -6,19 +6,25 @@ import { HSEApp } from './components/HSEApp';
 import { ServerLoadingIndicator } from './components/ServerLoadingIndicator';
 import { HSEReportViewer } from './components/HSEReportViewer';
 
-// Simple synchronous hash check — no hooks needed
-// Users navigate to the URL directly, so hash is already set on load
-function getHSEReportIdFromHash(): string | null {
+// Detect Public HSE Report ID from Hash OR Path
+function getHSEReportIdFromUri(): string | null {
   try {
-    const match = window.location.hash.match(/^#\/hse\/([a-zA-Z0-9]+)$/);
-    return match ? match[1] : null;
+    // 1. Try Hash (original format: #/hse/ID)
+    const hashMatch = window.location.hash.match(/^#\/hse\/([a-zA-Z0-9_-]+)$/);
+    if (hashMatch) return hashMatch[1];
+
+    // 2. Try Path (alternative format: /f/hse/ID or /hse/ID)
+    const pathMatch = window.location.pathname.match(/\/(?:f\/)?hse\/([a-zA-Z0-9_-]+)$/);
+    if (pathMatch) return pathMatch[1];
+
+    return null;
   } catch {
     return null;
   }
 }
 
 // Check once at module level — avoids hook complexity
-const PUBLIC_HSE_REPORT_ID = getHSEReportIdFromHash();
+const PUBLIC_HSE_REPORT_ID = getHSEReportIdFromUri();
 
 function AppContent() {
   const { user, userRole, loading } = useAuth();

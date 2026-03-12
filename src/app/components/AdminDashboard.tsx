@@ -8,8 +8,8 @@ import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
-import logoDwimitra from '@/assets/a6129221f456afd6fd88d74c324473e495bdd7a8.png';
-import logoNeutraDC from '@/assets/005ac597864c02a96c9add5c6e054d23b8cfafbe.png';
+import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
+import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
 

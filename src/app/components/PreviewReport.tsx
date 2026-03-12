@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, FileDown, Info, FileType, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
-import logoNeutraDC from '@/assets/005ac597864c02a96c9add5c6e054d23b8cfafbe.png';
+import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
 

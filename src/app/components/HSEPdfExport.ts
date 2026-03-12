@@ -143,7 +143,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
 
     // ── INFO SECTION ─────────────────────────────────────────────────────
     doc.setFillColor(LIGHT_GRAY);
-    doc.roundedRect(marginL, curY, contentW, 60, 3, 3, 'F');
+    doc.roundedRect(marginL, curY, contentW, 53, 3, 3, 'F');
 
     const infoRows = [
         { label: 'Inspector K3', value: data.inspectorK3 || '-' },
@@ -152,7 +152,6 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         { label: 'Personil', value: data.personil || '-' },
         { label: 'PIC', value: data.pic || '-' },
         { label: 'Anggota', value: data.anggota || '-' },
-        { label: 'Remark', value: data.reportType === 'utt' ? 'PT United Transworld Trading' : 'PT Dwimitra Ekatama Mandiri' },
     ];
 
     infoRows.forEach((row, i) => {
@@ -171,7 +170,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         doc.text(lines[0], marginL + 32, rowY);
     });
 
-    curY += 56;
+    curY += 49;
 
     // ── CHECKLIST SECTION ─────────────────────────────────────────────────
     // Section header

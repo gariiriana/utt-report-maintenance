@@ -334,7 +334,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
 
             // 2. Build Viewer URL
             const appBaseUrl = 'https://report-utt.web.app';
-            const reportViewerUrl = `${appBaseUrl}/#/hse/${reportId}`;
+            const reportViewerUrl = `${appBaseUrl}/hse/${reportId}`;
 
             // 3. Build WhatsApp message
             const isUTT = mode === 'utt';
@@ -393,7 +393,7 @@ ${checklistLines}
 ${conclusionLines}
 
 ━━━━━━━━━━━━━━━━━━━━
-📄 *LINK LAPORAN DOKUMENTASI HSE*
+📄 *LINK LAPORAN DOKUMENTASI ${isUTT ? 'HSE' : 'NEUTRA DC'}*
 ━━━━━━━━━━━━━━━━━━━━
 ${reportViewerUrl}
 
