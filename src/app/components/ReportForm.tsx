@@ -301,6 +301,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         optimizedCards.push(c);
       }
     }
+    
+    toast.dismiss('export');
 
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
     const pageWidth = doc.internal.pageSize.getWidth();

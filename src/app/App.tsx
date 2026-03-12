@@ -9,15 +9,27 @@ import { HSEReportViewer } from './components/HSEReportViewer';
 // Detect Public HSE Report ID from Hash OR Path
 function getHSEReportIdFromUri(): string | null {
   try {
-    // 1. Try Hash (original format: #/hse/ID)
-    const hashMatch = window.location.hash.match(/^#\/hse\/([a-zA-Z0-9_-]+)$/);
-    if (hashMatch) return hashMatch[1];
+    let id: string | null = null;
+    
+    // 1. Try Path (e.g., /hse/ID or /f/hse/ID)
+    const pathParts = window.location.pathname.split('/').filter(Boolean);
+    const hseIdx = pathParts.indexOf('hse');
+    if (hseIdx !== -1 && pathParts[hseIdx + 1]) {
+      id = pathParts[hseIdx + 1];
+    }
 
-    // 2. Try Path (alternative format: /f/hse/ID or /hse/ID)
-    const pathMatch = window.location.pathname.match(/\/(?:f\/)?hse\/([a-zA-Z0-9_-]+)$/);
-    if (pathMatch) return pathMatch[1];
+    // 2. Try Hash (e.g., #/hse/ID)
+    if (!id) {
+      const hashParts = window.location.hash.replace('#', '').split('/').filter(Boolean);
+      const hseHashIdx = hashParts.indexOf('hse');
+      if (hseHashIdx !== -1 && hashParts[hseHashIdx + 1]) {
+        id = hashParts[hseHashIdx + 1];
+      }
+    }
 
-    return null;
+    console.log('[HSE DEBUG] Detected ID:', id, { path: window.location.pathname, hash: window.location.hash });
+
+    return id;
   } catch {
     return null;
   }

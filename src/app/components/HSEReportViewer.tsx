@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDocFromServer, collection, getDocsFromServer } from 'firebase/firestore';
 import { generateHSEPdf, type HSEFormData } from './HSEPdfExport';
 import {
     ShieldCheck, Loader2, AlertTriangle, XCircle,
@@ -54,8 +54,9 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
 
     useEffect(() => {
         const fetchReport = async () => {
+            const cleanId = reportId.trim();
             try {
-                const docSnap = await getDoc(doc(db, 'hse', reportId));
+                const docSnap = await getDocFromServer(doc(db, 'hse', cleanId));
                 if (!docSnap.exists()) {
                     setError('Laporan tidak ditemukan.');
                     return;
@@ -63,7 +64,7 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                 const data = docSnap.data() as ReportData;
 
                 // Fetch photos from subcollection
-                const photosSnap = await getDocs(collection(db, `hse/${reportId}/photos`));
+                const photosSnap = await getDocsFromServer(collection(db, `hse/${cleanId}/photos`));
                 const photos = photosSnap.docs
                     .map(d => ({ id: d.id, ...d.data() } as any))
                     .sort((a, b) => (a.index || 0) - (b.index || 0));
