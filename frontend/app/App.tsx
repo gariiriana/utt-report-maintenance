@@ -1,10 +1,10 @@
 import { Toaster } from 'sonner';
-import { AuthProvider, useAuth } from './components/AuthContext';
-import { Login } from './components/Login';
-import { MainApp } from './components/MainApp';
-import { HSEApp } from './components/HSEApp';
-import { ServerLoadingIndicator } from './components/ServerLoadingIndicator';
-import { HSEReportViewer } from './components/HSEReportViewer';
+import { AuthProvider, useAuth } from '@/app/components/AuthContext';
+import { Login } from '@/app/components/Login';
+import { MainApp } from '@/app/components/MainApp';
+import { HSEApp } from '@/app/components/HSEApp';
+import { ServerLoadingIndicator } from '@/app/components/ServerLoadingIndicator';
+import { HSEReportViewer } from '@/app/components/HSEReportViewer';
 import { useEffect } from 'react';
 import { logFirebaseEvent } from '@/lib/firebase';
 
