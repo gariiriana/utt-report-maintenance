@@ -166,7 +166,7 @@ service cloud.firestore {
     // ============================================================
     match /files/{fileId} {
       allow create: if request.auth != null 
-                    && (isAdminSafe() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'engineer')
+                     && (isAdminSafe() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'engineer' || isStandbyEngineer())
                     && request.resource.data.keys().hasAll([
                       'fileName',
                       'fileSize',
@@ -176,7 +176,7 @@ service cloud.firestore {
                       'uploadedByEmail',
                       'uploadedAt'
                     ])
-                    && hasAcceptableFieldCount(request.resource.data, 12)
+                    && hasAcceptableFieldCount(request.resource.data, 20)
                     && request.resource.data.uploadedBy == request.auth.uid
                     && request.resource.data.uploadedByEmail == request.auth.token.email
                     && isValidString(request.resource.data.fileName, 500)
@@ -193,8 +193,8 @@ service cloud.firestore {
       // ✅ CHUNKS SUB-COLLECTION
       match /chunks/{chunkId} {
         allow create: if request.auth != null 
-                      && (isAdminSafe() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'engineer')
-                      && hasAcceptableFieldCount(request.resource.data, 5);
+                      && (isAdminSafe() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'engineer' || isStandbyEngineer())
+                      && hasAcceptableFieldCount(request.resource.data, 10);
         
         allow read: if request.auth != null;
         

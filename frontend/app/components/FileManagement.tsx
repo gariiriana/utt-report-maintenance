@@ -35,6 +35,7 @@ const FILE_CATEGORIES = [
     'JSEA',
     'MOP',
     'SLA/SLG',
+    'Service Report',
     'Custom',
     'Monthly'
 ];
@@ -128,9 +129,9 @@ export function FileManagement() {
     const [uploadProgress, setUploadProgress] = useState(0);
 
     // Upload form state
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [selectedCategory, setSelectedCategory] = useState('Laporan Harian');
-    const [selectedMaintenance, setSelectedMaintenance] = useState('Standard'); // ✅ NEW: State for maintenance type
+    const [selectedMaintenance, setSelectedMaintenance] = useState(MAINTENANCE_TYPES[0]); // ✅ Updated default
     const [customCategory, setCustomCategory] = useState('');
     const [description, setDescription] = useState('');
     const [selectedUploadQuarter, setSelectedUploadQuarter] = useState('Q1');
@@ -149,8 +150,8 @@ export function FileManagement() {
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [fileToDelete, setFileToDelete] = useState<FileData | null>(null);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-    const [showSuccessModal, setShowSuccessModal] = useState(false); // ✅ NEW: State for upload success modal
-    const [uploadedFileName, setUploadedFileName] = useState(''); // ✅ NEW: Track uploaded file name
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [uploadedFilesCount, setUploadedFilesCount] = useState(0);
 
     // Modal states
 
@@ -190,29 +191,34 @@ export function FileManagement() {
 
     // Handle file selection
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(e.target.files || []);
-        if (files.length === 0) return;
+        if (e.target.files) {
+            const newFiles = Array.from(e.target.files);
+            const validFiles: File[] = [];
 
-        // Standard single file upload logic
-        const file = files[0];
-        // Validate file type
-        if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-            toast.error('Only PDF, Excel, and Word files are allowed');
-            return;
+            newFiles.forEach(file => {
+                if (file.size > MAX_FILE_SIZE) {
+                    toast.error(`File "${file.name}" too large (Max 30MB)`);
+                    return;
+                }
+                if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+                    toast.error(`File type "${file.name}" not supported`);
+                    return;
+                }
+                validFiles.push(file);
+            });
+
+            setSelectedFiles(prev => [...prev, ...validFiles]);
+            e.target.value = ''; // Allow re-selecting same file
         }
+    };
 
-        // Validate file size
-        if (file.size > MAX_FILE_SIZE) {
-            toast.error('File size must be less than 30MB');
-            return;
-        }
-
-        setSelectedFile(file);
+    const removeFile = (index: number) => {
+        setSelectedFiles(prev => prev.filter((_, i) => i !== index));
     };
 
     // Handle upload with Chunking
     const handleUpload = async () => {
-        if (!selectedFile || !user) return;
+        if (selectedFiles.length === 0 || !user) return;
 
         const finalCategory =
             selectedCategory === 'Custom' ? customCategory : selectedCategory;
@@ -226,83 +232,77 @@ export function FileManagement() {
         setUploadProgress(0);
 
         try {
-            // 1. Convert file to base64
-            const base64Data = await fileToBase64(selectedFile);
+            let completedCount = 0;
 
-            // Calculate chunks
-            const totalChunks = Math.ceil(base64Data.length / CHUNK_SIZE);
-            const chunks: string[] = [];
+            for (let f = 0; f < selectedFiles.length; f++) {
+                const file = selectedFiles[f];
+                const base64Data = await fileToBase64(file);
+                const totalChunks = Math.ceil(base64Data.length / CHUNK_SIZE);
+                const chunks: string[] = [];
 
-            for (let i = 0; i < totalChunks; i++) {
-                const start = i * CHUNK_SIZE;
-                const end = start + CHUNK_SIZE;
-                chunks.push(base64Data.slice(start, end));
-            }
+                for (let i = 0; i < totalChunks; i++) {
+                    const start = i * CHUNK_SIZE;
+                    const end = start + CHUNK_SIZE;
+                    chunks.push(base64Data.slice(start, end));
+                }
 
-            // 2. Create metadata document first
-            const fileDocRef = await addDoc(collection(db, 'files'), {
-                fileName: selectedFile.name,
-                fileSize: selectedFile.size,
-                fileType: selectedFile.type,
-                category: finalCategory,
-                maintenanceType: ['MOP', 'JSEA', 'PTW'].includes(finalCategory) ? selectedMaintenance : null, // ✅ NEW: Store maintenance type conditionally
-                quarter: selectedUploadQuarter, // ✅ NEW: Store quarter
-                year: selectedUploadYear, // ✅ NEW: Store year
-                customCategory: selectedCategory === 'Custom' ? customCategory : null,
-                uploadedBy: user.uid,
-                uploadedByEmail: user.email,
-                uploadedAt: serverTimestamp(),
-                description: description || null,
-                totalChunks: totalChunks,
-                status: 'uploading' // Flag to prevent access while uploading
-            });
-
-            // 3. Upload chunks to sub-collection
-            const batchSize = 500; // Firestore batch limit
-
-            for (let i = 0; i < totalChunks; i += batchSize) {
-                const batch = writeBatch(db);
-                const currentBatchChunks = chunks.slice(i, i + batchSize);
-
-                currentBatchChunks.forEach((chunkData, index) => {
-                    const chunkIndex = i + index;
-                    const chunkRef = doc(collection(db, 'files', fileDocRef.id, 'chunks'), chunkIndex.toString());
-                    batch.set(chunkRef, {
-                        index: chunkIndex,
-                        data: chunkData
-                    });
+                const fileDocRef = await addDoc(collection(db, 'files'), {
+                    fileName: file.name,
+                    fileSize: file.size,
+                    fileType: file.type,
+                    category: finalCategory,
+                    maintenanceType: (['MOP', 'JSEA', 'PTW', 'Service Report'].includes(finalCategory)) ? selectedMaintenance : null, 
+                    quarter: selectedUploadQuarter,
+                    year: selectedUploadYear,
+                    customCategory: selectedCategory === 'Custom' ? customCategory : null,
+                    uploadedBy: user.uid,
+                    uploadedByEmail: user.email,
+                    uploadedAt: serverTimestamp(),
+                    description: description || null,
+                    totalChunks: totalChunks,
+                    status: 'uploading'
                 });
 
-                await batch.commit();
+                const batchSize = 10; // Batching uploads
+                for (let i = 0; i < totalChunks; i += batchSize) {
+                    const batch = writeBatch(db);
+                    const currentBatchChunks = chunks.slice(i, i + batchSize);
 
-                // Update progress
-                const currentProgress = Math.min(((i + currentBatchChunks.length) / totalChunks) * 100, 99);
-                setUploadProgress(currentProgress);
+                    currentBatchChunks.forEach((chunkData, index) => {
+                        const chunkIndex = i + index;
+                        const chunkRef = doc(collection(db, 'files', fileDocRef.id, 'chunks'), chunkIndex.toString());
+                        batch.set(chunkRef, { index: chunkIndex, data: chunkData });
+                    });
+
+                    await batch.commit();
+                    
+                    const currentFileProgress = Math.min(((i + batchSize) / totalChunks), 1);
+                    const overallProgress = ((completedCount + currentFileProgress) / selectedFiles.length) * 100;
+                    setUploadProgress(Math.min(overallProgress, 99));
+                }
+
+                const finalBatch = writeBatch(db);
+                finalBatch.update(doc(db, 'files', fileDocRef.id), { status: 'completed' });
+                await finalBatch.commit();
+                
+                completedCount++;
+                setUploadProgress((completedCount / selectedFiles.length) * 100);
             }
 
-            // 4. Update status to completed
-            const fileRef = doc(db, 'files', fileDocRef.id);
-            const finalBatch = writeBatch(db);
-            finalBatch.update(fileRef, { status: 'completed' });
-            await finalBatch.commit();
-
-            setUploadProgress(100);
-
-            // Show success feedback modal
-            setUploadedFileName(selectedFile?.name || 'File');
+            setUploadedFilesCount(selectedFiles.length);
             setShowSuccessModal(true);
 
             // Reset form
-            setSelectedFile(null);
+            setSelectedFiles([]);
             setSelectedCategory('Laporan Harian');
             setCustomCategory('');
             setDescription('');
             setUploading(false);
 
-            toast.success('File uploaded successfully!');
+            toast.success(`${selectedFiles.length} file(s) uploaded successfully!`);
         } catch (error) {
             console.error('Error uploading file:', error);
-            toast.error('Failed to upload file');
+            toast.error('Failed to upload some files');
             setUploading(false);
         }
     };
@@ -488,23 +488,40 @@ export function FileManagement() {
 
                     <div className="space-y-4">
                         {/* File Input */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">
-                                Select File (PDF, Excel, Word - Max 30MB)
-                            </label>
+                        <div className="relative border-2 border-dashed border-slate-700/50 rounded-2xl p-6 hover:border-blue-500/50 transition-colors bg-slate-900/40 text-center">
                             <input
                                 type="file"
+                                multiple
                                 accept=".pdf,.xlsx,.xls,.docx,.doc"
                                 onChange={handleFileSelect}
                                 disabled={uploading}
-                                className="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer cursor-pointer"
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                             />
-                            {selectedFile && (
-                                <p className="mt-2 text-sm text-slate-400">
-                                    Selected: {selectedFile.name} ({formatFileSize(selectedFile.size)})
-                                </p>
-                            )}
+                            <Upload className="w-8 h-8 text-slate-500 mx-auto mb-2" />
+                            <p className="text-sm text-slate-300 font-medium">Click or drag files to upload</p>
+                            <p className="text-xs text-slate-500 mt-1">PDF, Excel, Word - Max 30MB per file</p>
                         </div>
+
+                        {/* File Queue */}
+                        {selectedFiles.length > 0 && (
+                            <div className="space-y-2 max-h-40 overflow-y-auto pr-2 scrollbar-thin">
+                                {selectedFiles.map((file, idx) => (
+                                    <div key={idx} className="flex items-center justify-between bg-slate-700/30 p-2 rounded-lg border border-slate-600/30">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className="text-lg">{getFileIcon(file.type)}</span>
+                                            <span className="text-xs text-slate-200 truncate">{file.name}</span>
+                                            <span className="text-[10px] text-slate-500">{formatFileSize(file.size)}</span>
+                                        </div>
+                                        <button 
+                                            onClick={() => removeFile(idx)}
+                                            className="p-1 hover:bg-red-500/20 text-slate-500 hover:text-red-400 rounded transition-colors"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
 
                         {/* Category & Quarter */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -545,7 +562,7 @@ export function FileManagement() {
                             </div>
 
                             {/* Conditional Maintenance Selection for specific categories */}
-                            {['MOP', 'JSEA', 'PTW'].includes(selectedCategory) && (
+                            {['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedCategory) && (
                                 <div className="md:col-span-1">
                                     <label className="block text-sm font-medium text-slate-300 mb-2">
                                         Maintenance Type
@@ -636,7 +653,7 @@ export function FileManagement() {
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={handleUpload}
-                                disabled={!selectedFile || uploading}
+                                disabled={selectedFiles.length === 0 || uploading}
                                 className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 {uploading ? (
@@ -810,35 +827,7 @@ export function FileManagement() {
                             </div>
                         )}
                     </div>
-                ) : !searchQuery && selectedFolder && !selectedQuarter ? (
-                    /* Level 2: Quarters (Q1-Q4) */
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        {QUARTERS.map((quarter) => {
-                            const fileCount = filteredFiles.filter(f => f.category === selectedFolder && f.quarter === quarter).length;
-                            return (
-                                <motion.div
-                                    key={quarter}
-                                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(51, 65, 85, 0.4)' }}
-                                    whileTap={{ scale: 0.98 }}
-                                    onClick={() => setSelectedQuarter(quarter)}
-                                    className="bg-slate-700/30 rounded-xl p-5 border border-slate-600/50 cursor-pointer transition-all group"
-                                >
-                                    <div className="flex flex-col items-center text-center">
-                                        <div className="bg-emerald-600/20 p-4 rounded-2xl mb-3 group-hover:bg-emerald-600/30 transition-colors">
-                                            <FolderOpen className="w-10 h-10 text-emerald-400" />
-                                        </div>
-                                        <h3 className="text-white font-medium">
-                                            {quarter}
-                                        </h3>
-                                        <p className="text-xs text-slate-500 mt-1">
-                                            {fileCount} {fileCount === 1 ? 'file' : 'files'}
-                                        </p>
-                                    </div>
-                                </motion.div>
-                            );
-                        })}
-                    </div>
-                ) : !searchQuery && selectedFolder && selectedQuarter && !selectedMType && ['MOP', 'JSEA', 'PTW'].includes(selectedFolder) ? (
+                ) : !searchQuery && selectedFolder && selectedQuarter && !selectedMType && ['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedFolder) ? (
                     /* Level 3: Maintenance Types (Only for MOP, JSEA, PTW) */
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         {MAINTENANCE_TYPES.map((type) => {
@@ -877,7 +866,7 @@ export function FileManagement() {
                             : filteredFiles.filter(f =>
                                 f.category === selectedFolder &&
                                 f.quarter === selectedQuarter &&
-                                (['MOP', 'JSEA', 'PTW'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true)
+                                (['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true)
                             )
                         ).length === 0 ? (
                             <div className="text-center py-12">
@@ -893,11 +882,11 @@ export function FileManagement() {
                                             <input
                                                 type="checkbox"
                                                 checked={
-                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).length > 0 &&
-                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).every(f => selectedFileIds.includes(f.id))
+                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).length > 0 &&
+                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).every(f => selectedFileIds.includes(f.id))
                                                 }
                                                 onChange={(e) => {
-                                                    const currentFiles = searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true));
+                                                    const currentFiles = searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true));
                                                     if (e.target.checked) {
                                                         const allIds = currentFiles.map(f => f.id);
                                                         setSelectedFileIds(prev => [...new Set([...prev, ...allIds])]);
@@ -935,7 +924,7 @@ export function FileManagement() {
                                     : filteredFiles.filter(f =>
                                         f.category === selectedFolder &&
                                         f.quarter === selectedQuarter &&
-                                        (['MOP', 'JSEA', 'PTW'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true)
+                                        (['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true)
                                     )
                                 ).map((file) => (
                                     <motion.div
@@ -1154,7 +1143,7 @@ export function FileManagement() {
 
                                 <h3 className="text-2xl font-bold text-white mb-2">Upload Berhasil!</h3>
                                 <p className="text-slate-400 mb-6 px-4">
-                                    File <span className="text-emerald-400 font-medium break-all">{uploadedFileName}</span> telah berhasil disimpan ke sistem.
+                                    <span className="text-emerald-400 font-medium">{uploadedFilesCount} file(s)</span> telah berhasil disimpan ke sistem.
                                 </p>
 
                                 <button

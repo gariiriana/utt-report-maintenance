@@ -8,13 +8,12 @@ import { AdminDashboard } from './AdminDashboard';
 import { ExcelDocument } from './DocumentList'; // ✅ Export this type from DocumentList
 import { FileManagement } from './FileManagement';
 import { CorrectiveMaintenance } from './CorrectiveMaintenance';
-import { ServiceReport } from './ServiceReport';
 import { Footer } from './Footer';
 import { LogoutConfirmModal } from './LogoutConfirmModal'; // ✅ NEW: Import logout modal
 import { DataCenterBackground } from './DataCenterBackground'; // ✅ NEW: Import data center animations
 import logoUTT from '../../assets/logo_utt.png';
 
-type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'service';
+type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective';
 
 export function MainApp() {
   const { user, userRole, logout } = useAuth();
@@ -26,8 +25,7 @@ export function MainApp() {
   // ✅ Set default tab based on role
   const getDefaultTab = (): Tab => {
     if (isAdmin) return 'admin';
-    if (isTDEorCBRE) return 'service'; // TDE/CBRE → Service Report
-    return 'report'; // Others → Create Report
+    return 'report'; // Default to Create Report
   };
 
   const [activeTab, setActiveTab] = useState<Tab>(getDefaultTab());
@@ -149,22 +147,7 @@ export function MainApp() {
               </motion.button>
             )}
 
-            {/* ✅ Service Report - Admin, TDE, CBRE */}
-            {(isAdmin || isTDEorCBRE) && (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setActiveTab('service')}
-                className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'service'
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25'
-                  : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
-                  }`}
-              >
-                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">Service Report</span>
-                <span className="sm:hidden">Service</span>
-              </motion.button>
-            )}
+
 
             {/* ✅ File Management - SEMUA user bisa lihat, admin bisa upload */}
             <motion.button
@@ -235,8 +218,6 @@ export function MainApp() {
       <div className="relative z-10">
         {activeTab === 'admin' ? (
           <AdminDashboard onEdit={handleEditReport} />
-        ) : activeTab === 'service' ? (
-          <ServiceReport />
         ) : activeTab === 'files' ? (
           <FileManagement />
         ) : activeTab === 'report' ? (
