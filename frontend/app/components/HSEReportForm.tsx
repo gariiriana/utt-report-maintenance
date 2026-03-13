@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
     Camera, Upload, Edit2, FileDown, Plus,
     CheckSquare, Square, User, MapPin, Users, Briefcase,
-    Save, Loader2, ChevronDown, ChevronUp, ClipboardList, Trash2, Send
+    Save, Loader2, ChevronDown, ChevronUp, ClipboardList, Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { HSEPhotoEditor } from './HSEPhotoEditor';
@@ -77,7 +77,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
     // Loading states
     const [isSaving, setIsSaving] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-    const [isSharingWA, setIsSharingWA] = useState(false);
 
     // Camera state
 
@@ -321,142 +320,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         }
     };
 
-    // Share to WA with Public Report Link (Firestore-based, no Storage needed)
-    const handleShareWA = async (mode: 'utt' | 'neutradc' = 'neutradc') => {
-        if (!aktivitas.trim() || !lokasi.trim()) {
-            toast.error('Aktivitas dan Lokasi wajib diisi untuk Share WA');
-            return;
-        }
 
-        setIsSharingWA(true);
-        const toastId = toast.loading('⏳ Menyimpan laporan...');
-
-        try {
-            // 1. Save report to Firestore (with photos) → get document ID
-            toast.loading('💾 Menyimpan ke database...', { id: toastId });
-
-            const reportData = {
-                aktivitas,
-                lokasi,
-                personil,
-                pic,
-                anggota,
-                inspectorK3,
-                checklist,
-                reportType: mode,
-                date: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }),
-                authorEmail: user?.email || '',
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-            };
-
-            let reportId = '';
-            const isUsingAPI = !!import.meta.env.VITE_API_URL;
-
-            if (isUsingAPI) {
-                const formData = buildFormData();
-                reportId = await saveReportViaAPI(formData, {
-                    reportType: mode,
-                    authorEmail: user?.email || '',
-                    createdAt: new Date().toISOString(),
-                });
-            } else {
-                const docRef = await addDoc(collection(db, 'hse'), reportData);
-                reportId = docRef.id;
-
-                // Save all photos...
-                await Promise.all(photos.map(async (photo, i) => {
-                    let dataUrl = photo.dataUrl;
-                    const sizeInBytes = (dataUrl.length * 3) / 4;
-                    if (sizeInBytes > 800 * 1024) {
-                        try { dataUrl = await compressBase64Image(dataUrl, { maxWidth: 800, quality: 0.5 }); } catch (_) { }
-                    }
-                    return addDoc(collection(db, `hse/${reportId}/photos`), {
-                        index: i + 1,
-                        dataUrl,
-                        description: photo.description || '',
-                        createdAt: serverTimestamp(),
-                    });
-                }));
-            }
-
-            // 2. Build Viewer URL
-            const appBaseUrl = window.location.origin;
-            const reportViewerUrl = `${appBaseUrl}/hse/${reportId}`;
-
-            // 3. Build WhatsApp message
-            const isUTT = mode === 'utt';
-            const companyName = isUTT ? 'PT United Transworld Trading' : 'PT Dwimitra Ekatama Mandiri';
-
-            const dateStr = new Date().toLocaleDateString('id-ID', {
-                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-            });
-
-            const safeCount = Object.values(checklist).filter(Boolean).length;
-            const totalChecklist = CHECKLIST_LABELS.length;
-            const checklistEmoji = safeCount === totalChecklist ? '✅' : safeCount >= totalChecklist * 0.8 ? '⚠️' : '❌';
-
-            // Filter out unchecked optional items and separate conclusions
-            const regularItems = CHECKLIST_LABELS.filter(item => 
-                !['safeCondition', 'safeAction'].includes(item.key) && 
-                (!item.label.includes('(Optional)') || checklist[item.key])
-            );
-            
-            const checklistLines = regularItems.map(({ key, label }) =>
-                `${checklist[key] ? '✅' : '❌'} ${label.replace(' (Optional)', '')}`
-            ).join('\n');
-
-            const conclusionLines = [
-                `${checklist.safeCondition ? '✅' : '❌'} Safe Condition`,
-                `${checklist.safeAction ? '✅' : '❌'} Safe Action`
-            ].join('\n');
-
-            const anggotaList = anggota
-                ? anggota.split(',').map(a => `• ${a.trim()}`).join('\n')
-                : '• -';
-
-            const message =
-                `🛡️ *HSE INSPECTION REPORT*
-📅 ${dateStr}
-
-*${companyName}*
-
-━━━━━━━━━━━━━━━━━━━━
-📋 *INFORMASI PEKERJAAN*
-━━━━━━━━━━━━━━━━━━━━
-🛡️ *Inspector K3 :* ${inspectorK3 || '-'}
-🔧 *Aktivitas :* ${aktivitas}
-📍 *Lokasi    :* ${lokasi}
-👤 *PIC       :* ${pic || '-'}
-👥 *Personil  :* ${personil || '-'}
-
-🧑‍🤝‍🧑 *Anggota Tim:*
-${anggotaList}
-
-━━━━━━━━━━━━━━━━━━━━
-${checklistEmoji} *CHECKLIST KESELAMATAN*
-━━━━━━━━━━━━━━━━━━━━
-${checklistLines}
-
-${conclusionLines}
-
-━━━━━━━━━━━━━━━━━━━━
-📄 *LINK LAPORAN DOKUMENTASI ${isUTT ? 'HSE' : 'NEUTRA DC'}*
-━━━━━━━━━━━━━━━━━━━━
-${reportViewerUrl}
-
-_Klik link di atas untuk melihat laporan dokumentasi lengkap & download PDF untuk laporan yang lebih rapi dan detail._`;
-
-            const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
-            toast.success('✅ Laporan tersimpan! Membuka WhatsApp...', { id: toastId });
-            setTimeout(() => { window.open(waUrl, '_blank'); }, 600);
-        } catch (error: any) {
-            console.error('Error sharing to WA:', error);
-            toast.error('❌ Gagal menyimpan laporan.', { id: toastId });
-        } finally {
-            setIsSharingWA(false);
-        }
-    };
 
 
     return (
@@ -829,18 +693,9 @@ _Klik link di atas untuk melihat laporan dokumentasi lengkap & download PDF untu
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => handleGeneratePdf('utt')}
                                 disabled={isGeneratingPdf || isSaving}
-                                className="flex-1 flex items-center justify-center gap-2.5 py-4 bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700/50 rounded-xl font-bold transition text-sm disabled:opacity-50"
+                                className="w-full flex items-center justify-center gap-2.5 py-4 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition shadow-lg shadow-green-900/20 text-sm disabled:opacity-50"
                             >
                                 <FileDown className="w-4 h-4" /> Export PDF (UTT)
-                            </motion.button>
-                            <motion.button
-                                whileHover={{ scale: 1.01 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => handleShareWA('utt')}
-                                disabled={isSharingWA || isSaving}
-                                className="flex-1 flex items-center justify-center gap-2.5 py-4 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition shadow-lg shadow-green-900/20 text-sm disabled:opacity-50"
-                            >
-                                <Send className="w-4 h-4" /> Share WA (UTT)
                             </motion.button>
                         </div>
                     </div>
@@ -858,18 +713,9 @@ _Klik link di atas untuk melihat laporan dokumentasi lengkap & download PDF untu
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => handleGeneratePdf('neutradc')}
                                 disabled={isGeneratingPdf || isSaving}
-                                className="flex-1 flex items-center justify-center gap-2.5 py-4 bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700/50 rounded-xl font-bold transition text-sm disabled:opacity-50"
+                                className="w-full flex items-center justify-center gap-2.5 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition shadow-lg shadow-blue-900/20 text-sm disabled:opacity-50"
                             >
                                 <FileDown className="w-4 h-4" /> Export PDF (NeutraDC)
-                            </motion.button>
-                            <motion.button
-                                whileHover={{ scale: 1.01 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => handleShareWA('neutradc')}
-                                disabled={isSharingWA || isSaving}
-                                className="flex-1 flex items-center justify-center gap-2.5 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition shadow-lg shadow-blue-900/20 text-sm disabled:opacity-50"
-                            >
-                                <Send className="w-4 h-4" /> Share WA (NeutraDC)
                             </motion.button>
                         </div>
                     </div>

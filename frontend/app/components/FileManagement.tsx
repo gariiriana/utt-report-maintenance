@@ -81,7 +81,8 @@ const MAINTENANCE_TYPES = [
     'Pumps',
     'Water Softener',
     'Biosduct',
-    'Physical Cooling Automation'
+    'Physical Cooling Automation',
+    'Load Bank'
 ];
 
 const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
@@ -96,8 +97,8 @@ const ALLOWED_FILE_TYPES = [
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ];
 
-// 30MB Limit (as requested)
-const MAX_FILE_SIZE = 30 * 1024 * 1024;
+// 40MB Limit (as requested)
+const MAX_FILE_SIZE = 40 * 1024 * 1024;
 // Chunk size (800KB - safely under 1MB Firestore limit)
 const CHUNK_SIZE = 800 * 1024;
 
@@ -499,7 +500,7 @@ export function FileManagement() {
                             />
                             <Upload className="w-8 h-8 text-slate-500 mx-auto mb-2" />
                             <p className="text-sm text-slate-300 font-medium">Click or drag files to upload</p>
-                            <p className="text-xs text-slate-500 mt-1">PDF, Excel, Word - Max 30MB per file</p>
+                            <p className="text-xs text-slate-500 mt-1">PDF, Excel, Word - Max 40MB per file</p>
                         </div>
 
                         {/* File Queue */}
@@ -826,6 +827,34 @@ export function FileManagement() {
                                 <p className="text-slate-400">No files found for this filter</p>
                             </div>
                         )}
+                    </div>
+                ) : !searchQuery && selectedFolder && !selectedQuarter ? (
+                    /* Level 2: Quarters (Q1-Q4) */
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {QUARTERS.map((quarter) => {
+                            const fileCount = filteredFiles.filter(f => f.category === selectedFolder && f.quarter === quarter).length;
+                            return (
+                                <motion.div
+                                    key={quarter}
+                                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(51, 65, 85, 0.4)' }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => setSelectedQuarter(quarter)}
+                                    className="bg-slate-700/30 rounded-xl p-5 border border-slate-600/50 cursor-pointer transition-all group"
+                                >
+                                    <div className="flex flex-col items-center text-center">
+                                        <div className="bg-emerald-600/20 p-4 rounded-2xl mb-3 group-hover:bg-emerald-600/30 transition-colors">
+                                            <FolderOpen className="w-10 h-10 text-emerald-400" />
+                                        </div>
+                                        <h3 className="text-white font-medium">
+                                            {quarter}
+                                        </h3>
+                                        <p className="text-xs text-slate-500 mt-1">
+                                            {fileCount} {fileCount === 1 ? 'file' : 'files'}
+                                        </p>
+                                    </div>
+                                </motion.div>
+                            );
+                        })}
                     </div>
                 ) : !searchQuery && selectedFolder && selectedQuarter && !selectedMType && ['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedFolder) ? (
                     /* Level 3: Maintenance Types (Only for MOP, JSEA, PTW) */
