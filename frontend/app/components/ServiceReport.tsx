@@ -8,6 +8,7 @@ import {
     X,
     Loader2,
     FolderOpen,
+    FileText,
     CheckCircle,
     ChevronRight,
     ArrowLeft
@@ -133,7 +134,7 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
     // Form state
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [uploadMode, setUploadMode] = useState<'maintenance' | 'category'>('maintenance'); // NEW
     const [selectedCategory, setSelectedCategory] = useState(FILE_CATEGORIES[0]); // NEW
     const [selectedMaintenance, setSelectedMaintenance] = useState(MAINTENANCE_TYPES[0]);
@@ -186,7 +187,7 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [reportToDelete, setReportToDelete] = useState<ServiceReportData | null>(null);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
-    const [uploadedFileName, setUploadedFileName] = useState('');
+    const [uploadedFilesCount, setUploadedFilesCount] = useState(0);
 
     // Load data from Firestore
     useEffect(() => {
@@ -224,105 +225,126 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
     }, []);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            if (file.size > MAX_FILE_SIZE) {
-                toast.error('File terlalu besar! Maksimal 100MB.');
-                return;
-            }
-            if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-                toast.error('Tipe file tidak didukung! Gunakan PDF, Excel, atau Word.');
-                return;
-            }
-            setSelectedFile(file);
+        if (e.target.files) {
+            const newFiles = Array.from(e.target.files);
+            const validFiles: File[] = [];
+
+            newFiles.forEach(file => {
+                if (file.size > MAX_FILE_SIZE) {
+                    toast.error(`File "${file.name}" terlalu besar! Maksimal 100MB.`);
+                    return;
+                }
+                if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+                    toast.error(`Tipe file "${file.name}" tidak didukung! Gunakan PDF, Excel, atau Word.`);
+                    return;
+                }
+                validFiles.push(file);
+            });
+
+            setSelectedFiles(prev => [...prev, ...validFiles]);
+            // Reset input so same file can be selected again if removed
+            e.target.value = '';
         }
     };
 
+    const removeFile = (index: number) => {
+        setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    };
+
     const handleUpload = async () => {
-        if (!selectedFile || !user) return;
+        if (selectedFiles.length === 0 || !user) return;
         setUploading(true);
         setUploadProgress(0);
 
         try {
-            const fileName = selectedFile.name;
-            const fileReader = new FileReader();
+            let completedCount = 0;
 
-            const fileDataPromise = new Promise<string>((resolve) => {
-                fileReader.onload = (e) => resolve(e.target?.result as string);
-                fileReader.readAsDataURL(selectedFile);
-            });
+            for (let f = 0; f < selectedFiles.length; f++) {
+                const file = selectedFiles[f];
+                const fileName = file.name;
+                const fileReader = new FileReader();
 
-            const base64Data = await fileDataPromise;
-            const totalChunks = Math.ceil(base64Data.length / CHUNK_SIZE);
-            const chunks: string[] = [];
-            for (let i = 0; i < base64Data.length; i += CHUNK_SIZE) {
-                chunks.push(base64Data.slice(i, i + CHUNK_SIZE));
-            }
-
-            // 1. Create document in service_reports
-            const reportData: any = {
-                fileName,
-                fileSize: selectedFile.size,
-                fileType: selectedFile.type,
-                quarter: selectedQuarter,
-                year: selectedYear,
-                uploadedBy: user.uid,
-                uploadedByEmail: user.email,
-                uploadedAt: serverTimestamp(),
-                description: description || null,
-                totalChunks: totalChunks,
-                status: 'uploading'
-            };
-
-            // Add either category or maintenanceType based on upload mode
-            if (uploadMode === 'category') {
-                reportData.category = selectedCategory;
-                // For MOP, JSEA, and PTW, we also save the maintenanceType
-                if (['MOP', 'JSEA', 'PTW'].includes(selectedCategory)) {
-                    reportData.maintenanceType = selectedMaintenance;
-                } else {
-                    reportData.maintenanceType = null;
-                }
-            } else {
-                reportData.category = null;
-                reportData.maintenanceType = selectedMaintenance;
-            }
-
-            const reportDocRef = await addDoc(collection(db, 'service_reports'), reportData);
-
-            // 2. Upload chunks to sub-collection
-            const batchSize = 10;
-            for (let i = 0; i < totalChunks; i += batchSize) {
-                const batch = writeBatch(db);
-                const currentBatchChunks = chunks.slice(i, i + batchSize);
-
-                currentBatchChunks.forEach((chunkData, index) => {
-                    const chunkIndex = i + index;
-                    const chunkRef = doc(collection(db, 'service_reports', reportDocRef.id, 'chunks'), chunkIndex.toString());
-                    batch.set(chunkRef, { index: chunkIndex, data: chunkData });
+                const fileDataPromise = new Promise<string>((resolve) => {
+                    fileReader.onload = (e) => resolve(e.target?.result as string);
+                    fileReader.readAsDataURL(file);
                 });
 
-                await batch.commit();
-                setUploadProgress(Math.min(((i + batchSize) / totalChunks) * 100, 99));
+                const base64Data = await fileDataPromise;
+                const totalChunks = Math.ceil(base64Data.length / CHUNK_SIZE);
+                const chunks: string[] = [];
+                for (let i = 0; i < base64Data.length; i += CHUNK_SIZE) {
+                    chunks.push(base64Data.slice(i, i + CHUNK_SIZE));
+                }
+
+                // 1. Create document in service_reports
+                const reportData: any = {
+                    fileName,
+                    fileSize: file.size,
+                    fileType: file.type,
+                    quarter: selectedQuarter,
+                    year: selectedYear,
+                    uploadedBy: user.uid,
+                    uploadedByEmail: user.email,
+                    uploadedAt: serverTimestamp(),
+                    description: description || null,
+                    totalChunks: totalChunks,
+                    status: 'uploading'
+                };
+
+                if (uploadMode === 'category') {
+                    reportData.category = selectedCategory;
+                    if (['MOP', 'JSEA', 'PTW'].includes(selectedCategory)) {
+                        reportData.maintenanceType = selectedMaintenance;
+                    } else {
+                        reportData.maintenanceType = null;
+                    }
+                } else {
+                    reportData.category = null;
+                    reportData.maintenanceType = selectedMaintenance;
+                }
+
+                const reportDocRef = await addDoc(collection(db, 'service_reports'), reportData);
+
+                // 2. Upload chunks
+                const batchSize = 10;
+                for (let i = 0; i < totalChunks; i += batchSize) {
+                    const batch = writeBatch(db);
+                    const currentBatchChunks = chunks.slice(i, i + batchSize);
+
+                    currentBatchChunks.forEach((chunkData, index) => {
+                        const chunkIndex = i + index;
+                        const chunkRef = doc(collection(db, 'service_reports', reportDocRef.id, 'chunks'), chunkIndex.toString());
+                        batch.set(chunkRef, { index: chunkIndex, data: chunkData });
+                    });
+
+                    await batch.commit();
+                    
+                    // Update progress: base progress for previous files + current file progress
+                    const currentFileProgress = Math.min(((i + batchSize) / totalChunks), 1);
+                    const overallProgress = ((completedCount + currentFileProgress) / selectedFiles.length) * 100;
+                    setUploadProgress(Math.min(overallProgress, 99));
+                }
+
+                // 3. Mark as completed
+                const finalBatch = writeBatch(db);
+                finalBatch.update(doc(db, 'service_reports', reportDocRef.id), { status: 'completed' });
+                await finalBatch.commit();
+                
+                completedCount++;
+                setUploadProgress((completedCount / selectedFiles.length) * 100);
             }
 
-            // 3. Mark as completed
-            const finalBatch = writeBatch(db);
-            finalBatch.update(doc(db, 'service_reports', reportDocRef.id), { status: 'completed' });
-            await finalBatch.commit();
-
-            setUploadProgress(100);
-            setUploadedFileName(fileName);
+            setUploadedFilesCount(selectedFiles.length);
             setShowSuccessModal(true);
 
             // Reset
-            setSelectedFile(null);
+            setSelectedFiles([]);
             setDescription('');
             setUploading(false);
-            toast.success('Service Report berhasil diunggah!');
+            toast.success(`${selectedFiles.length} Service Report berhasil diunggah!`);
         } catch (error) {
             console.error('Upload error:', error);
-            toast.error('Gagal mengunggah file.');
+            toast.error('Gagal mengunggah beberapa file.');
             setUploading(false);
         }
     };
@@ -535,23 +557,63 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
                         {/* File Dropzone */}
                         <div className="flex-1 space-y-4">
                             <label className="block text-sm font-medium text-slate-300">Unggah Laporan Baru (Approved)</label>
-                            <div className={`relative border-2 border-dashed rounded-2xl p-8 transition-all ${selectedFile ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-slate-700 hover:border-blue-500/50 bg-slate-900/40'}`}>
+                            <div className={`relative border-2 border-dashed rounded-2xl p-8 transition-all ${selectedFiles.length > 0 ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-slate-700 hover:border-blue-500/50 bg-slate-900/40'}`}>
                                 <input
                                     type="file"
+                                    multiple
                                     onChange={handleFileChange}
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                                     accept=".pdf,.xlsx,.xls,.doc,.docx"
                                 />
                                 <div className="text-center space-y-3">
-                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto transition-colors ${selectedFile ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
+                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto transition-colors ${selectedFiles.length > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
                                         <Upload className="w-7 h-7" />
                                     </div>
                                     <div>
-                                        <p className="text-slate-200 font-medium">{selectedFile ? selectedFile.name : 'Pilih File (Approved Report)'}</p>
-                                        <p className="text-xs text-slate-500 mt-1">PDF, Excel, Word - Maks 100MB</p>
+                                        <p className="text-slate-200 font-medium">
+                                            {selectedFiles.length > 0 ? `${selectedFiles.length} file dipilih` : 'Klik atau Drag file ke sini'}
+                                        </p>
+                                        <p className="text-xs text-slate-500 mt-1">PDF, Excel, Word - Maks 100MB per file</p>
                                     </div>
                                 </div>
                             </div>
+
+                            {/* File Queue */}
+                            <AnimatePresence>
+                                {selectedFiles.length > 0 && (
+                                    <motion.div
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        className="space-y-2 max-h-60 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-700"
+                                    >
+                                        {selectedFiles.map((file, idx) => (
+                                            <motion.div
+                                                key={`${file.name}-${idx}`}
+                                                initial={{ x: -20, opacity: 0 }}
+                                                animate={{ x: 0, opacity: 1 }}
+                                                className="flex items-center justify-between bg-slate-900/40 border border-slate-700/50 p-3 rounded-xl group"
+                                            >
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="w-8 h-8 bg-slate-800 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                        <FileText className="w-4 h-4 text-blue-400" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm text-slate-200 truncate font-medium">{file.name}</p>
+                                                        <p className="text-[10px] text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => removeFile(idx)}
+                                                    className="p-1.5 hover:bg-red-500/20 text-slate-500 hover:text-red-400 rounded-lg transition-colors"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </motion.div>
+                                        ))}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
 
                         {/* Metadata Form */}
@@ -664,7 +726,7 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
                             </div>
                             <button
                                 onClick={handleUpload}
-                                disabled={!selectedFile || uploading}
+                                disabled={selectedFiles.length === 0 || uploading}
                                 className="w-full py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-bold rounded-2xl transition-all shadow-lg shadow-blue-500/20 active:scale-[0.98] flex items-center justify-center gap-3"
                             >
                                 {uploading ? (
@@ -675,7 +737,7 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
                                 ) : (
                                     <>
                                         <Upload className="w-5 h-5" />
-                                        <span>Upload Approved Report</span>
+                                        <span>Upload {selectedFiles.length > 0 ? `${selectedFiles.length} Laporan` : 'Laporan'}</span>
                                     </>
                                 )}
                             </button>
@@ -947,9 +1009,9 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
                                     <CheckCircle className="w-10 h-10 text-emerald-400" />
                                 </motion.div>
                             </div>
-                            <h3 className="text-2xl font-bold text-white mb-2">Approved Report Berhasil!</h3>
+                            <h3 className="text-2xl font-bold text-white mb-2">Upload Berhasil!</h3>
                             <p className="text-slate-400 mb-6 px-4 text-sm">
-                                File <span className="text-emerald-400 font-medium break-all">{uploadedFileName}</span> telah disimpan sebagai laporan resmi.
+                                <span className="text-emerald-400 font-medium">{uploadedFilesCount} file</span> telah berhasil disimpan sebagai laporan resmi.
                             </p>
                             <button
                                 onClick={() => setShowSuccessModal(false)}
