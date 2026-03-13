@@ -97,7 +97,7 @@ const ALLOWED_FILE_TYPES = [
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ];
 
-const MAX_FILE_SIZE = 30 * 1024 * 1024;
+const MAX_FILE_SIZE = 100 * 1024 * 1024;
 const CHUNK_SIZE = 800 * 1024;
 
 interface ServiceReportData {
@@ -227,7 +227,7 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
             if (file.size > MAX_FILE_SIZE) {
-                toast.error('File terlalu besar! Maksimal 30MB.');
+                toast.error('File terlalu besar! Maksimal 100MB.');
                 return;
             }
             if (!ALLOWED_FILE_TYPES.includes(file.type)) {
@@ -548,7 +548,7 @@ export function ServiceReport({ initialNav, onNavConsumed }: ServiceReportProps)
                                     </div>
                                     <div>
                                         <p className="text-slate-200 font-medium">{selectedFile ? selectedFile.name : 'Pilih File (Approved Report)'}</p>
-                                        <p className="text-xs text-slate-500 mt-1">PDF, Excel, Word - Maks 30MB</p>
+                                        <p className="text-xs text-slate-500 mt-1">PDF, Excel, Word - Maks 100MB</p>
                                     </div>
                                 </div>
                             </div>
