@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sync"
 
 	firebase "firebase.google.com/go/v4"
 	"google.golang.org/api/option"
@@ -121,14 +122,20 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 
 	// Handle sub-data if present (e.g., photos array)
 	if subData, ok := requestBody["sub_data"].([]interface{}); ok {
+		var wg sync.WaitGroup
 		for i, item := range subData {
 			if itemMap, ok := item.(map[string]interface{}); ok {
-				_, _, err := docRef.Collection("photos").Add(ctx, itemMap)
-				if err != nil {
-					fmt.Printf("Warning: Failed to save sub-item %d: %v\n", i, err)
-				}
+				wg.Add(1)
+				go func(idx int, data map[string]interface{}) {
+					defer wg.Done()
+					_, _, err := docRef.Collection("photos").Add(ctx, data)
+					if err != nil {
+						fmt.Printf("Warning: Failed to save sub-item %d: %v\n", idx, err)
+					}
+				}(i, itemMap)
 			}
 		}
+		wg.Wait()
 	}
 
 	// Success Response
