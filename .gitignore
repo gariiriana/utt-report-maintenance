@@ -11,8 +11,8 @@ build/
 
 # Environment variables
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
 firebase-service-account.json
 
 # IDE
