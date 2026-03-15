@@ -3,6 +3,7 @@ module github.com/gariiriana/utt-report-maintenance/api
 go 1.21
 
 require (
+	cloud.google.com/go/firestore v1.13.0
 	firebase.google.com/go/v4 v4.13.0
 	google.golang.org/api v0.150.0
 )
@@ -11,7 +12,6 @@ require (
 	cloud.google.com/go v0.110.8 // indirect
 	cloud.google.com/go/compute v1.23.1 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
-	cloud.google.com/go/firestore v1.13.0 // indirect
 	cloud.google.com/go/iam v1.1.3 // indirect
 	cloud.google.com/go/longrunning v0.5.2 // indirect
 	cloud.google.com/go/storage v1.30.1 // indirect

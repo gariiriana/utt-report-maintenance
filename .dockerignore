@@ -1,0 +1,10 @@
+node_modules
+dist
+.git
+.vscode
+.firebase
+.vercel
+tmp
+*.log
+backend/bin
+backend/*.exe

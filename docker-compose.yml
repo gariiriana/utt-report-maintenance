@@ -1,0 +1,32 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.local
+    environment:
+      - PORT=8080
+    volumes:
+      - ./backend:/app:delegated
+      # Ignore node_modules if you decide to add them to backend later
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    env_file:
+      - .env.development
+    environment:
+      - VITE_API_URL=http://localhost:8080/api/
+    volumes:
+      - .:/app:delegated
+      - /app/node_modules
+    depends_on:
+      - backend
+    restart: unless-stopped

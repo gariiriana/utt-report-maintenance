@@ -1,0 +1,6 @@
+.git
+.vscode
+tmp
+bin
+*.exe
+firebase-service-account.json
