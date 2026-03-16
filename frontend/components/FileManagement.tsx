@@ -11,7 +11,7 @@ import {
     FolderOpen,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { db } from '@/lib/firebase';
+import { db } from '@/api/firebase';
 import {
     collection,
     addDoc,

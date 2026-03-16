@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Shield, FileText, FileSpreadsheet, Download, Search, Filter, Calendar, User, Database, Activity, TrendingUp, Pencil } from 'lucide-react';
 import { collection, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
 import { ExcelDocument } from './DocumentList';
-import { db } from '@/lib/firebase';
+import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';

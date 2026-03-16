@@ -9,10 +9,10 @@ import {
     onSnapshot,
     Timestamp
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db } from '@/api/firebase';
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { safeStorage } from '@/lib/safeStorage';
+import { safeStorage } from '@/api/safeStorage';
 
 interface NotificationItem {
     id: string;

@@ -1,8 +1,8 @@
 import { jsPDF } from 'jspdf';
-import { compressBase64Image } from '@/lib/imageCompression';
-import logoDme from '../../assets/logo_dwimitra_v2.png';
-import logoUtt from '../../assets/logo_utt.png';
-import logoNeutradc from '../../assets/logo_neutradc.png';
+import { compressBase64Image } from '@/api/imageCompression';
+import logoDme from '@/assets/logo_dwimitra_v2.png';
+import logoUtt from '@/assets/logo_utt.png';
+import logoNeutradc from '@/assets/logo_neutradc.png';
 
 export interface HSEChecklist {
     mop: boolean;

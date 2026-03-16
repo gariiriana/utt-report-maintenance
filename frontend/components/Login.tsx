@@ -6,7 +6,7 @@ import { DataCenterBackground } from './DataCenterBackground';
 import { Lock, Mail, Eye, EyeOff, LogIn } from 'lucide-react';
 
 
-import logoUTT from '../../assets/logo_utt.png';
+import logoUTT from '@/assets/logo_utt.png';
 
 export function Login() {
   const [email, setEmail] = useState('');

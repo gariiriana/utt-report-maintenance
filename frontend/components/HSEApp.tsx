@@ -6,7 +6,7 @@ import { LogoutConfirmModal } from './LogoutConfirmModal';
 import { DataCenterBackground } from './DataCenterBackground';
 import { HSEReportForm } from './HSEReportForm';
 import { DocumentList, ExcelDocument } from './DocumentList';
-import logoUTT from '../../assets/logo_utt.png';
+import logoUTT from '@/assets/logo_utt.png';
 
 export function HSEApp() {
     const { user, logout } = useAuth();

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { ImageEditor } from './ImageEditor';
 import { toast } from 'sonner';
-import { db } from '@/lib/firebase';
+import { db } from '@/api/firebase';
 import {
     collection,
     addDoc,

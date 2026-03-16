@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, User, FileDown, FileType, Pencil, Box } from 'lucide-react';
 import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore'; // ✅ Removed "orderBy" - not needed anymore
-import { db } from '@/lib/firebase';
+import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
@@ -12,7 +12,7 @@ import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
-import { compressBase64Image } from '@/lib/imageCompression';
+import { compressBase64Image } from '@/api/imageCompression';
 import { generateHSEPdf } from './HSEPdfExport';
 import { getDoc } from 'firebase/firestore';
 

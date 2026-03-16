@@ -1,5 +1,5 @@
 import { Mail, Phone, MapPin } from 'lucide-react';
-import logoUTT from '../../assets/logo_utt.png';
+import logoUTT from '@/assets/logo_utt.png';
 
 export function Footer() {
   return (

@@ -11,7 +11,7 @@ import { CorrectiveMaintenance } from './CorrectiveMaintenance';
 import { Footer } from './Footer';
 import { LogoutConfirmModal } from './LogoutConfirmModal'; // ✅ NEW: Import logout modal
 import { DataCenterBackground } from './DataCenterBackground'; // ✅ NEW: Import data center animations
-import logoUTT from '../../assets/logo_utt.png';
+import logoUTT from '@/assets/logo_utt.png';
 
 type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective';
 

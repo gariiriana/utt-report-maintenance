@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { db } from '@/lib/firebase';
+import { db } from '@/api/firebase';
 import { doc, getDocFromServer, collection, getDocsFromServer } from 'firebase/firestore';
 import { generateHSEPdf, type HSEFormData } from './HSEPdfExport';
 import {
     ShieldCheck, Loader2, AlertTriangle, XCircle,
     HardHat, Calendar, Download, User, Users, ExternalLink
 } from 'lucide-react';
-import logoUTT from '../../assets/logo_utt.png';
-import logoDME from '../../assets/logo_dwimitra_v2.png';
-import logoNeutraDC from '../../assets/logo_neutradc.png';
+import logoUTT from '@/assets/logo_utt.png';
+import logoDME from '@/assets/logo_dwimitra_v2.png';
+import logoNeutraDC from '@/assets/logo_neutradc.png';
 
 const CHECKLIST_LABELS = [
     { key: 'mop', label: 'MOP' },

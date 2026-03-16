@@ -8,11 +8,11 @@ import {
 import { toast } from 'sonner';
 import { HSEPhotoEditor } from './HSEPhotoEditor';
 import { generateHSEPdf, type HSEFormData, type HSEChecklist } from './HSEPdfExport';
-import { db } from '@/lib/firebase';
+import { db } from '@/api/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, getDoc, getDocs, deleteDoc, QueryDocumentSnapshot } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { ExcelDocument } from './DocumentList';
-import { compressImage, compressBase64Image } from '@/lib/imageCompression';
+import { compressImage, compressBase64Image } from '@/api/imageCompression';
 
 const INITIAL_CHECKLIST: HSEChecklist = {
     mop: false,

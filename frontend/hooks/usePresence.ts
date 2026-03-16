@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { rtdb, auth } from '@/lib/firebase';
+import { rtdb, auth } from '@/api/firebase';
 import { ref, onValue, set, onDisconnect, serverTimestamp } from 'firebase/database';
 
 export interface PresenceUser {

@@ -5,7 +5,7 @@ import {
   signOut,
   onAuthStateChanged
 } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
+import { auth, db } from '@/api/firebase';
 import { doc, setDoc, serverTimestamp, getDoc, onSnapshot } from 'firebase/firestore';
 
 interface UserData {

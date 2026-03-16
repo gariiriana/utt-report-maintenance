@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { DataCenterBackground } from './DataCenterBackground';
-import logoUTT from '../../assets/logo_utt.png';
+import logoUTT from '@/assets/logo_utt.png';
 
 export function ServerLoadingIndicator() {
   return (
