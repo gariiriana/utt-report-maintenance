@@ -4,12 +4,12 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/gariiriana/utt-report-maintenance/core/config"
-	"github.com/gariiriana/utt-report-maintenance/core/controllers"
-	"github.com/gariiriana/utt-report-maintenance/core/middlewares"
-	"github.com/gariiriana/utt-report-maintenance/core/repositories"
-	"github.com/gariiriana/utt-report-maintenance/core/services"
-	"github.com/gariiriana/utt-report-maintenance/pkg/helpers"
+	"github.com/gariiriana/utt-report-maintenance/backend/internal/config"
+	"github.com/gariiriana/utt-report-maintenance/backend/internal/controllers"
+	"github.com/gariiriana/utt-report-maintenance/backend/internal/middlewares"
+	"github.com/gariiriana/utt-report-maintenance/backend/internal/repositories"
+	"github.com/gariiriana/utt-report-maintenance/backend/internal/services"
+	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
 )
 
 func SetupRoutes() (*http.ServeMux, error) {

@@ -1,4 +1,4 @@
-module github.com/gariiriana/utt-report-maintenance
+module github.com/gariiriana/utt-report-maintenance/backend
 
 go 1.21
 
