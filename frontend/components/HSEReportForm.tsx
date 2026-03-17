@@ -254,20 +254,23 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         return result.reportId;
     };
 
-    const handleSave = async () => {
+    const handleSave = async (silent = false, reportType?: 'utt' | 'neutradc') => {
         if (!aktivitas.trim()) {
-            toast.error('Aktivitas wajib diisi');
-            return;
+            if (!silent) toast.error('Aktivitas wajib diisi');
+            return null;
         }
         setIsSaving(true);
-        const toastId = toast.loading(editingData ? 'Memperbarui laporan...' : 'Menyimpan laporan...');
+        const toastId = !silent ? toast.loading(editingData ? 'Memperbarui laporan...' : 'Menyimpan laporan...') : null;
         try {
             const formData = buildFormData();
+            if (reportType) formData.reportType = reportType;
+            
             const reportData = {
                 ...formData,
                 photos: photos.map(p => p.dataUrl.substring(0, 50) + '...'),
                 authorEmail: user?.email || '',
                 updatedAt: serverTimestamp(),
+                reportType: reportType || (editingData?.documentType === 'hse' ? (editingData as any).reportType : 'neutradc')
             };
 
             let docId = '';
@@ -315,16 +318,21 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                 });
             }
 
-            toast.success(editingData ? 'Laporan HSE diperbarui!' : 'Laporan HSE tersimpan!', { id: toastId });
+            if (!silent && toastId) {
+                toast.success(editingData ? 'Laporan HSE diperbarui!' : 'Laporan HSE tersimpan!', { id: toastId });
+            }
+            return docId;
         } catch (err) {
             console.error(err);
-            toast.error('Gagal menyimpan laporan', { id: toastId });
+            if (!silent && toastId) {
+                toast.error('Gagal menyimpan laporan', { id: toastId });
+            }
+            throw err;
         } finally {
             setIsSaving(false);
         }
     };
 
-    // Generate PDF
     const handleGeneratePdf = async (mode: 'utt' | 'neutradc' = 'neutradc') => {
         if (!aktivitas.trim()) {
             toast.error('Aktivitas wajib diisi sebelum export PDF');
@@ -332,13 +340,15 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         }
         setIsGeneratingPdf(true);
         try {
+            await handleSave(true, mode);
+            
             const formData = buildFormData();
             formData.reportType = mode;
             await generateHSEPdf(formData);
-            toast.success(`PDF ${mode.toUpperCase()} berhasil digenerate!`);
+            toast.success(`PDF ${mode.toUpperCase()} berhasil digenerate & di-archive!`);
         } catch (err) {
             console.error(err);
-            toast.error('Gagal generate PDF');
+            toast.error('Gagal generate PDF atau Archive');
         } finally {
             setIsGeneratingPdf(false);
         }
@@ -769,7 +779,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                     <motion.button
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.98 }}
-                        onClick={handleSave}
+                        onClick={() => handleSave()}
                         disabled={isSaving}
                         className="w-full flex items-center justify-center gap-2.5 py-3 bg-slate-900/40 hover:bg-slate-800 text-slate-400 border border-slate-800 rounded-xl font-medium transition text-xs disabled:opacity-50 mt-2"
                     >
