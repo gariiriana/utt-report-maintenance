@@ -4,13 +4,11 @@ import logoUTT from '@/assets/logo_utt.png';
 export function Footer() {
   return (
     <footer className="relative mt-20 bg-slate-950 border-t border-slate-900 overflow-hidden">
-      {/* Subtle Top Border Accent */}
       <div className="h-[2px] bg-slate-800" />
 
       <div className="max-w-7xl mx-auto px-6 py-12 lg:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
 
-          {/* Company Branding */}
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <img
@@ -24,11 +22,10 @@ export function Footer() {
               </div>
             </div>
             <p className="text-sm text-slate-500 max-w-xs leading-relaxed">
-              Providing reliable and high-quality solutions for your data center infrastructure needs.
+              reliable and high-quality solutions for your data center infrastructure needs.
             </p>
           </div>
 
-          {/* Location */}
           <div className="space-y-6">
             <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-[0.2em] mb-4">Location</h4>
             <div className="flex items-start gap-4 group">
@@ -44,7 +41,6 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Contact */}
           <div className="space-y-6">
             <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-[0.2em] mb-4">Contact</h4>
             <div className="space-y-4">
@@ -72,7 +68,6 @@ export function Footer() {
 
         </div>
 
-        {/* Footer Bottom */}
         <div className="mt-16 pt-8 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-6">
           <p className="text-xs text-slate-600 font-medium">
             © {new Date().getFullYear()} PT United Transworld Trading. All rights reserved.

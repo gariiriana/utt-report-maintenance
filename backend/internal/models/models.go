@@ -15,6 +15,5 @@ type ErrorResponse struct {
 type ReportPayload struct {
 	Collection string                   `json:"collection"`
 	SubData    []map[string]interface{} `json:"sub_data,omitempty"`
-	// Additional dynamic fields will be handled via map[string]interface{} in service
 }
 

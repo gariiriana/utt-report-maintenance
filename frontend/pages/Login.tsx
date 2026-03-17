@@ -60,7 +60,6 @@ export function Login() {
         className="w-full max-w-md relative z-10"
       >
         <div className="bg-slate-900/40 backdrop-blur-2xl rounded-xl sm:rounded-2xl shadow-2xl border border-indigo-500/20 overflow-hidden">
-          {/* Header with accent bar */}
           <div className="h-1 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-500" />
 
           <div className="p-6 sm:p-8">

@@ -25,7 +25,6 @@ import {
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 
-// File categories
 const FILE_CATEGORIES = [
     'Laporan Harian',
     'Laporan Bulanan',
@@ -40,7 +39,6 @@ const FILE_CATEGORIES = [
     'Monthly'
 ];
 
-// Maintenance Categories for Service Reports
 const MAINTENANCE_TYPES = [
     'Water Leak',
     'Cooling Tower Water Treatment',
@@ -86,9 +84,7 @@ const MAINTENANCE_TYPES = [
 ];
 
 const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
-const YEARS = ['2025', '2026', '2027', '2028', '2029', '2030']; // ✅ NEW: Year categories
-
-// Allowed file types (PDF, Excel, Word)
+const YEARS = ['2025', '2026', '2027', '2028', '2029', '2030']; 
 const ALLOWED_FILE_TYPES = [
     'application/pdf',
     'application/vnd.ms-excel',
@@ -97,9 +93,7 @@ const ALLOWED_FILE_TYPES = [
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ];
 
-// 40MB Limit (as requested)
 const MAX_FILE_SIZE = 40 * 1024 * 1024;
-// Chunk size (800KB - safely under 1MB Firestore limit)
 const CHUNK_SIZE = 800 * 1024;
 
 interface FileData {
@@ -108,15 +102,15 @@ interface FileData {
     fileSize: number;
     fileType: string;
     category: string;
-    quarter?: string; // ✅ NEW: Field for Q1-Q4
-    year?: string; // ✅ NEW: Field for Year
+    quarter?: string; 
+    year?: string; 
     customCategory?: string;
     uploadedBy: string;
     uploadedByEmail: string;
     uploadedAt: any;
     description?: string;
     totalChunks: number;
-    maintenanceType?: string; // ✅ NEW: Field for maintenance type
+    maintenanceType?: string; 
 }
 
 export function FileManagement() {
@@ -129,34 +123,29 @@ export function FileManagement() {
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
 
-    // Upload form state
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [selectedCategory, setSelectedCategory] = useState('Laporan Harian');
-    const [selectedMaintenance, setSelectedMaintenance] = useState(MAINTENANCE_TYPES[0]); // ✅ Updated default
+    const [selectedMaintenance, setSelectedMaintenance] = useState(MAINTENANCE_TYPES[0]); 
     const [customCategory, setCustomCategory] = useState('');
     const [description, setDescription] = useState('');
     const [selectedUploadQuarter, setSelectedUploadQuarter] = useState('Q1');
-    const [selectedUploadYear, setSelectedUploadYear] = useState(new Date().getFullYear().toString()); // ✅ NEW: State for upload year
+    const [selectedUploadYear, setSelectedUploadYear] = useState(new Date().getFullYear().toString()); 
 
-    // Search & filter state
     const [searchQuery, setSearchQuery] = useState('');
     const [filterCategory, setFilterCategory] = useState('All');
-    const [filterYear, setFilterYear] = useState('All'); // ✅ NEW: State for global year filter
+    const [filterYear, setFilterYear] = useState('All'); 
     const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
-    const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null); // ✅ NEW: State for selected quarter
-    const [selectedMType, setSelectedMType] = useState<string | null>(null); // ✅ NEW: State for selected maintenance type
-    const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]); // ✅ NEW: State for bulk selection
+    const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null); 
+    const [selectedMType, setSelectedMType] = useState<string | null>(null); 
+    const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]); 
 
-    // Modal states
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [fileToDelete, setFileToDelete] = useState<FileData | null>(null);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [uploadedFilesCount, setUploadedFilesCount] = useState(0);
 
-    // Modal states
 
-    // Load files from Firestore
     useEffect(() => {
         const q = query(collection(db, 'files'), orderBy('uploadedAt', 'desc'));
 
@@ -180,7 +169,6 @@ export function FileManagement() {
         return () => unsubscribe();
     }, []);
 
-    // Convert file to base64
     const fileToBase64 = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -190,7 +178,6 @@ export function FileManagement() {
         });
     };
 
-    // Handle file selection
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const newFiles = Array.from(e.target.files);
@@ -209,7 +196,7 @@ export function FileManagement() {
             });
 
             setSelectedFiles(prev => [...prev, ...validFiles]);
-            e.target.value = ''; // Allow re-selecting same file
+            e.target.value = ''; 
         }
     };
 
@@ -217,7 +204,6 @@ export function FileManagement() {
         setSelectedFiles(prev => prev.filter((_, i) => i !== index));
     };
 
-    // Handle upload with Chunking
     const handleUpload = async () => {
         if (selectedFiles.length === 0 || !user) return;
 
@@ -264,7 +250,7 @@ export function FileManagement() {
                     status: 'uploading'
                 });
 
-                const batchSize = 10; // Batching uploads
+                const batchSize = 10; 
                 for (let i = 0; i < totalChunks; i += batchSize) {
                     const batch = writeBatch(db);
                     const currentBatchChunks = chunks.slice(i, i + batchSize);
@@ -293,7 +279,6 @@ export function FileManagement() {
             setUploadedFilesCount(selectedFiles.length);
             setShowSuccessModal(true);
 
-            // Reset form
             setSelectedFiles([]);
             setSelectedCategory('Laporan Harian');
             setCustomCategory('');
@@ -308,11 +293,9 @@ export function FileManagement() {
         }
     };
 
-    // Handle delete (Delete metadata + all chunks)
     const handleDelete = async () => {
         if (!isAdmin) return;
 
-        // Handle Bulk Delete (Selection)
         if (selectedFileIds.length > 0 && !fileToDelete) {
             await performBulkDelete(selectedFileIds, `Deleting ${selectedFileIds.length} files...`);
             return;
@@ -324,19 +307,15 @@ export function FileManagement() {
         try {
             const batch = writeBatch(db);
 
-            // 1. Get all chunks
             const chunksSnapshot = await getDocs(collection(db, 'files', fileToDelete.id, 'chunks'));
 
-            // 2. Delete chunks
             chunksSnapshot.docs.forEach((chunkDoc) => {
                 batch.delete(chunkDoc.ref);
             });
 
-            // 3. Delete metadata
             const fileRef = doc(db, 'files', fileToDelete.id);
             batch.delete(fileRef);
 
-            // Commit batch
             await batch.commit();
 
             toast.success('File deleted successfully!');
@@ -350,7 +329,6 @@ export function FileManagement() {
         }
     };
 
-    // Internal perform bulk delete (NEW: Refactored logic)
     const performBulkDelete = async (ids: string[], loadingMessage: string) => {
         if (ids.length === 0 || !isAdmin) return;
 
@@ -358,19 +336,15 @@ export function FileManagement() {
         const toastId = toast.loading(loadingMessage);
 
         try {
-            // Process in batches because showing feedback for each file
             for (const fileId of ids) {
                 const batch = writeBatch(db);
 
-                // 1. Get chunks
                 const chunksSnapshot = await getDocs(collection(db, 'files', fileId, 'chunks'));
 
-                // 2. Delete chunks
                 chunksSnapshot.docs.forEach((chunkDoc) => {
                     batch.delete(chunkDoc.ref);
                 });
 
-                // 3. Delete metadata
                 batch.delete(doc(db, 'files', fileId));
 
                 await batch.commit();
@@ -389,29 +363,22 @@ export function FileManagement() {
     };
 
 
-    // Handle download (Reconstruct chunks)
     const handleDownload = async (file: FileData) => {
         try {
             const toastId = toast.loading('Preparing download...');
 
-            // 1. Fetch all chunks
             const chunksSnapshot = await getDocs(query(collection(db, 'files', file.id, 'chunks'), orderBy('index')));
 
             if (chunksSnapshot.empty) {
-                // Fallback for old files (if any were created without chunks)
-                // But in this new system, all should handle chunks. 
-                // We assume if no chunks, it might be the old format or error.
                 toast.error('File data not found', { id: toastId });
                 return;
             }
 
-            // 2. Reconstruct base64
             let fullBase64 = '';
             chunksSnapshot.docs.forEach((doc) => {
                 fullBase64 += doc.data().data;
             });
 
-            // 3. Convert to blob and download
             const byteString = atob(fullBase64.split(',')[1]);
             const mimeString = fullBase64.split(',')[0].split(':')[1].split(';')[0];
             const ab = new ArrayBuffer(byteString.length);
@@ -437,7 +404,6 @@ export function FileManagement() {
         }
     };
 
-    // Filter files
     const filteredFiles = files.filter((file) => {
         const matchesSearch = file.fileName
             .toLowerCase()
@@ -445,19 +411,17 @@ export function FileManagement() {
         const matchesCategory =
             filterCategory === 'All' || file.category === filterCategory;
         const matchesYear =
-            filterYear === 'All' || file.year === filterYear; // ✅ NEW: Match year
+            filterYear === 'All' || file.year === filterYear; 
         const matchesMType = !selectedMType || file.maintenanceType === selectedMType;
         return matchesSearch && matchesCategory && matchesYear && matchesMType;
     });
 
-    // Format file size
     const formatFileSize = (bytes: number) => {
         if (bytes < 1024) return bytes + ' B';
         if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
         return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
     };
 
-    // Get file icon
     const getFileIcon = (fileType: string) => {
         if (fileType.includes('pdf')) return '📄';
         if (fileType.includes('sheet') || fileType.includes('excel')) return '📊';
@@ -475,7 +439,6 @@ export function FileManagement() {
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {/* Upload Section - Admin Only */}
             {isAdmin && (
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -488,7 +451,6 @@ export function FileManagement() {
                     </h2>
 
                     <div className="space-y-4">
-                        {/* File Input */}
                         <div className="relative border-2 border-dashed border-slate-700/50 rounded-2xl p-6 hover:border-blue-500/50 transition-colors bg-slate-900/40 text-center">
                             <input
                                 type="file"
@@ -503,7 +465,6 @@ export function FileManagement() {
                             <p className="text-xs text-slate-500 mt-1">PDF, Excel, Word - Max 40MB per file</p>
                         </div>
 
-                        {/* File Queue */}
                         {selectedFiles.length > 0 && (
                             <div className="space-y-2 max-h-40 overflow-y-auto pr-2 scrollbar-thin">
                                 {selectedFiles.map((file, idx) => (
@@ -524,7 +485,6 @@ export function FileManagement() {
                             </div>
                         )}
 
-                        {/* Category & Quarter */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -562,7 +522,6 @@ export function FileManagement() {
                                 </select>
                             </div>
 
-                            {/* Conditional Maintenance Selection for specific categories */}
                             {['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedCategory) && (
                                 <div className="md:col-span-1">
                                     <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -600,7 +559,6 @@ export function FileManagement() {
                             </div>
                         </div>
 
-                        {/* Custom Category Input */}
                         {selectedCategory === 'Custom' && (
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -617,7 +575,6 @@ export function FileManagement() {
                             </div>
                         )}
 
-                        {/* Description */}
                         <div>
                             <label className="block text-sm font-medium text-slate-300 mb-2">
                                 Description (Optional)
@@ -632,7 +589,6 @@ export function FileManagement() {
                             />
                         </div>
 
-                        {/* Upload Progress */}
                         {uploading && (
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between text-sm text-slate-400">
@@ -648,7 +604,6 @@ export function FileManagement() {
                             </div>
                         )}
 
-                        {/* Upload Button */}
                         <div className="flex flex-col sm:flex-row gap-4">
                             <motion.button
                                 whileHover={{ scale: 1.02 }}
@@ -675,7 +630,6 @@ export function FileManagement() {
                 </motion.div>
             )}
 
-            {/* Search & Filter */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -683,7 +637,6 @@ export function FileManagement() {
                 className="bg-slate-800/40 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-slate-700/50 mb-6"
             >
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
-                    {/* Search - Takes more space on tablet+ */}
                     <div className="md:col-span-6 lg:col-span-7">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
@@ -697,7 +650,6 @@ export function FileManagement() {
                         </div>
                     </div>
 
-                    {/* Category Filter */}
                     <div className="md:col-span-3 lg:col-span-3">
                         <div className="relative">
                             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -716,7 +668,6 @@ export function FileManagement() {
                         </div>
                     </div>
 
-                    {/* Year Filter */}
                     <div className="md:col-span-3 lg:col-span-2">
                         <div className="relative">
                             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -737,7 +688,6 @@ export function FileManagement() {
                 </div>
             </motion.div>
 
-            {/* File List */}
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -791,7 +741,6 @@ export function FileManagement() {
                     )}
                 </div>
 
-                {/* Navigation View */}
                 {!searchQuery && !selectedFolder ? (
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {[...new Set(filteredFiles.map(f => f.category))]
@@ -829,7 +778,6 @@ export function FileManagement() {
                         )}
                     </div>
                 ) : !searchQuery && selectedFolder && !selectedQuarter ? (
-                    /* Level 2: Quarters (Q1-Q4) */
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         {QUARTERS.map((quarter) => {
                             const fileCount = filteredFiles.filter(f => f.category === selectedFolder && f.quarter === quarter).length;
@@ -857,12 +805,11 @@ export function FileManagement() {
                         })}
                     </div>
                 ) : !searchQuery && selectedFolder && selectedQuarter && !selectedMType && ['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedFolder) ? (
-                    /* Level 3: Maintenance Types (Only for MOP, JSEA, PTW) */
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         {MAINTENANCE_TYPES.map((type) => {
                             const typeFiles = filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && f.maintenanceType === type);
                             const fileCount = typeFiles.length;
-                            if (fileCount === 0 && !isAdmin && !isTDEorCBRE) return null; // Only show folders with files for others
+                            if (fileCount === 0 && !isAdmin && !isTDEorCBRE) return null;
 
                             return (
                                 <motion.div
@@ -888,7 +835,6 @@ export function FileManagement() {
                         })}
                     </div>
                 ) : (
-                    /* Level 3: Files List */
                     <div className="space-y-3">
                         {(searchQuery
                             ? filteredFiles
@@ -904,7 +850,6 @@ export function FileManagement() {
                             </div>
                         ) : (
                             <>
-                                {/* Bulk Actions Bar - Only for Admin */}
                                 {isAdmin && (
                                     <div className="flex items-center justify-between bg-slate-800/60 p-3 rounded-lg border border-slate-700/50 mb-4">
                                         <div className="flex items-center gap-3">
@@ -936,7 +881,7 @@ export function FileManagement() {
                                                 initial={{ opacity: 0, scale: 0.9 }}
                                                 animate={{ opacity: 1, scale: 1 }}
                                                 onClick={() => {
-                                                    setFileToDelete(null); // Clear single delete state
+                                                    setFileToDelete(null); 
                                                     setDeleteModalOpen(true);
                                                 }}
                                                 className="flex items-center gap-2 px-3 py-1.5 bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg border border-red-500/20 transition text-sm font-medium"
@@ -990,7 +935,6 @@ export function FileManagement() {
                                                         {file.fileName}
                                                     </h3>
                                                     <div className="mt-2 space-y-2">
-                                                        {/* Badges Row */}
                                                         <div className="flex flex-wrap items-center gap-1.5">
                                                             <span className="px-2 py-0.5 bg-blue-600/20 text-blue-400 rounded border border-blue-500/20 text-[11px] sm:text-xs font-medium">
                                                                 {file.category}
@@ -1002,14 +946,12 @@ export function FileManagement() {
                                                             )}
                                                         </div>
 
-                                                        {/* Info Row - Desktop: Show all | Mobile: Hide email */}
                                                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] sm:text-xs text-slate-400">
                                                             <span className="font-medium text-slate-300">{formatFileSize(file.fileSize)}</span>
                                                             <span className="text-slate-600">•</span>
                                                             <span>
                                                                 {file.uploadedAt?.toDate?.()?.toLocaleDateString() || 'N/A'}
                                                             </span>
-                                                            {/* Email only visible on desktop */}
                                                             <span className="hidden sm:inline text-slate-600">•</span>
                                                             <span className="hidden sm:inline truncate max-w-[150px] italic opacity-70">
                                                                 {file.uploadedByEmail}
@@ -1024,9 +966,7 @@ export function FileManagement() {
                                                 </div>
                                             </div>
 
-                                            {/* Actions */}
                                             <div className="flex items-center gap-2 self-end sm:self-auto ml-auto sm:ml-0">
-                                                {/* Download */}
                                                 <motion.button
                                                     whileHover={{ scale: 1.05 }}
                                                     whileTap={{ scale: 0.95 }}
@@ -1037,14 +977,13 @@ export function FileManagement() {
                                                     <Download className="w-4 h-4" />
                                                 </motion.button>
 
-                                                {/* Delete - Admin Only (Individual) */}
                                                 {isAdmin && (
                                                     <motion.button
                                                         whileHover={{ scale: 1.05 }}
                                                         whileTap={{ scale: 0.95 }}
                                                         onClick={() => {
                                                             setFileToDelete(file);
-                                                            setSelectedFileIds([]); // Clear bulk selection if deleting single
+                                                            setSelectedFileIds([]); 
                                                             setDeleteModalOpen(true);
                                                         }}
                                                         className="p-2 sm:p-2.5 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition border border-red-500/10"
@@ -1063,7 +1002,6 @@ export function FileManagement() {
                 )}
             </motion.div>
 
-            {/* Delete Confirmation Modal */}
             <AnimatePresence>
                 {deleteModalOpen && (fileToDelete || selectedFileIds.length > 0) && (
                     <motion.div
@@ -1136,7 +1074,6 @@ export function FileManagement() {
                 )}
             </AnimatePresence>
 
-            {/* Upload Success Modal */}
             <AnimatePresence>
                 {showSuccessModal && (
                     <motion.div
@@ -1153,7 +1090,6 @@ export function FileManagement() {
                             className="bg-slate-800 rounded-2xl p-8 max-w-sm w-full border border-slate-700 text-center shadow-2xl relative overflow-hidden"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            {/* Decorative Background */}
                             <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl" />
                             <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl" />
 

@@ -9,19 +9,16 @@ import { useEffect } from 'react';
 import { logFirebaseEvent } from '@/api/firebase';
 
 
-// Detect Public HSE Report ID from Hash OR Path
 function getHSEReportIdFromUri(): string | null {
   try {
     let id: string | null = null;
     
-    // 1. Try Path (e.g., /hse/ID or /f/hse/ID)
     const pathParts = window.location.pathname.split('/').filter(Boolean);
     const hseIdx = pathParts.indexOf('hse');
     if (hseIdx !== -1 && pathParts[hseIdx + 1]) {
       id = pathParts[hseIdx + 1];
     }
 
-    // 2. Try Hash (e.g., #/hse/ID)
     if (!id) {
       const hashParts = window.location.hash.replace('#', '').split('/').filter(Boolean); 
       const hseHashIdx = hashParts.indexOf('hse');
@@ -42,7 +39,6 @@ function getHSEReportIdFromUri(): string | null {
   }
 }
 
-// Check once at module level — avoids hook complexity
 const PUBLIC_HSE_REPORT_ID = getHSEReportIdFromUri();
 
 function AppContent() {
@@ -63,7 +59,6 @@ function AppContent() {
 }
 
 export default function App() {
-  // ✅ Log session start for Firebase Analytics
   useEffect(() => {
     logFirebaseEvent('session_start', {
       timestamp: new Date().toISOString(),
@@ -71,9 +66,7 @@ export default function App() {
     });
   }, []);
 
-  // ✅ Public HSE viewer route: #/hse/{id}
 
-  // Checked before AuthProvider — no login required
   if (PUBLIC_HSE_REPORT_ID) {
     return (
       <>

@@ -5,12 +5,12 @@ import { useAuth } from '@/components/AuthContext';
 import { ReportForm } from '@/components/ReportForm';
 import { DocumentList } from '@/components/DocumentList';
 import { AdminDashboard } from '@/pages/AdminDashboard';
-import { ExcelDocument } from '@/components/DocumentList'; // ✅ Export this type from DocumentList
+import { ExcelDocument } from '@/components/DocumentList'; 
 import { FileManagement } from '@/components/FileManagement';
 import { CorrectiveMaintenance } from '@/components/CorrectiveMaintenance';
 import { Footer } from '@/components/Footer';
-import { LogoutConfirmModal } from '@/components/LogoutConfirmModal'; // ✅ NEW: Import logout modal
-import { DataCenterBackground } from '@/components/DataCenterBackground'; // ✅ NEW: Import data center animations
+import { LogoutConfirmModal } from '@/components/LogoutConfirmModal'; 
+import { DataCenterBackground } from '@/components/DataCenterBackground'; 
 import logoUTT from '@/assets/logo_utt.png';
 
 type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective';
@@ -18,23 +18,19 @@ type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective';
 export function MainApp() {
   const { user, userRole, logout } = useAuth();
 
-  // ✅ Check if user is admin based on role from Firestore
   const isAdmin = userRole === 'admin';
   const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
 
-  // ✅ Set default tab based on role
   const getDefaultTab = (): Tab => {
     if (isAdmin) return 'admin';
-    return 'report'; // Default to Create Report
+    return 'report'; 
   };
 
   const [activeTab, setActiveTab] = useState<Tab>(getDefaultTab());
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // ✅ NEW: State untuk logout confirmation modal
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
-  // ✅ NEW: State untuk report editing
   const [editingData, setEditingData] = useState<ExcelDocument | null>(null);
 
   const handleEditReport = (doc: ExcelDocument) => {
@@ -46,14 +42,11 @@ export function MainApp() {
     setEditingData(null);
   };
 
-  // ✅ REMOVED: useEffect yang force admin ke tab 'admin' - admin harus bisa switch tab!
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden">
-      {/* ✅ NEW: Data Center Background dengan animasi lengkap */}
       <DataCenterBackground />
 
-      {/* Header - Navbar Atas */}
       <div className="bg-slate-900/60 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex items-center justify-between">
@@ -87,7 +80,6 @@ export function MainApp() {
               </motion.button>
             </div>
 
-            {/* Mobile Menu Button */}
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -97,7 +89,6 @@ export function MainApp() {
             </motion.button>
           </div>
 
-          {/* Mobile Dropdown Menu */}
           <AnimatePresence>
             {mobileMenuOpen && (
               <motion.div
@@ -113,7 +104,7 @@ export function MainApp() {
                   </div>
                   <motion.button
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => setLogoutModalOpen(true)} // ✅ NEW: Open logout modal
+                    onClick={() => setLogoutModalOpen(true)} 
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600/10 hover:bg-red-600/20 text-red-400 rounded-lg border border-red-500/20 transition"
                   >
                     <LogOut className="w-4 h-4" />
@@ -126,11 +117,9 @@ export function MainApp() {
         </div>
       </div>
 
-      {/* Navigation Tabs - Di Bawah Navbar Atas */}
       <div className="bg-slate-900/40 backdrop-blur-xl border-b border-slate-700/30 sticky top-[65px] sm:top-[73px] z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex gap-2 overflow-x-auto">
-            {/* ✅ Admin Dashboard - HANYA untuk admin */}
             {isAdmin && (
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -149,7 +138,6 @@ export function MainApp() {
 
 
 
-            {/* ✅ File Management - SEMUA user bisa lihat, admin bisa upload */}
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -164,7 +152,6 @@ export function MainApp() {
               <span className="sm:hidden">Files</span>
             </motion.button>
 
-            {/* ✅ Corrective Maintenance - SEMUA user bisa lihat, Create khusus Standby */}
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -179,7 +166,6 @@ export function MainApp() {
               <span className="sm:hidden">CM</span>
             </motion.button>
 
-            {/* ✅ Create Report - SEMUA user bisa akses */}
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -194,7 +180,6 @@ export function MainApp() {
               <span className="sm:hidden">Create</span>
             </motion.button>
 
-            {/* ✅ Document Archive - SEMUA user KECUALI admin bisa akses */}
             {!isAdmin && (
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -214,7 +199,6 @@ export function MainApp() {
         </div>
       </div>
 
-      {/* Content */}
       <div className="relative z-10">
         {activeTab === 'admin' ? (
           <AdminDashboard onEdit={handleEditReport} />
@@ -229,10 +213,8 @@ export function MainApp() {
         )}
       </div>
 
-      {/* Footer */}
       <Footer />
 
-      {/* Logout Confirmation Modal */}
       <LogoutConfirmModal
         isOpen={logoutModalOpen}
         onClose={() => setLogoutModalOpen(false)}

@@ -17,13 +17,11 @@ func NewReportService(repo *repositories.ReportRepository) *ReportService {
 }
 
 func (s *ReportService) ProcessReport(ctx context.Context, requestBody map[string]interface{}) (string, string, error) {
-	// Determine Collection
 	collectionName, ok := requestBody["collection"].(string)
 	if !ok || collectionName == "" {
 		collectionName = "hse"
 	}
 
-	// Security Whitelist
 	allowedCollections := map[string]bool{
 		"hse":             true,
 		"pdf_documents":   true,
@@ -35,7 +33,6 @@ func (s *ReportService) ProcessReport(ctx context.Context, requestBody map[strin
 		return "", "", fmt.Errorf("unauthorized collection: %s", collectionName)
 	}
 
-	// Process Data
 	reportData := make(map[string]interface{})
 	for k, v := range requestBody {
 		if k != "collection" && k != "sub_data" {
@@ -48,7 +45,6 @@ func (s *ReportService) ProcessReport(ctx context.Context, requestBody map[strin
 		return "", "", fmt.Errorf("error saving data: %w", err)
 	}
 
-	// Handle Sub-data (Photos) concurrently
 	if subData, ok := requestBody["sub_data"].([]interface{}); ok {
 		var wg sync.WaitGroup
 		for i, item := range subData {

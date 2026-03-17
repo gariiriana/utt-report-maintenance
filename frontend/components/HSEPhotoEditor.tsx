@@ -62,13 +62,11 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
     const [canvasSize, setCanvasSize] = useState({ w: 800, h: 600 });
     const [isReady, setIsReady] = useState(false);
 
-    // Load image
     useEffect(() => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
             imgRef.current = img;
-            // Compute display size (max 800px wide)
             const maxW = 800;
             const ratio = Math.min(1, maxW / img.width);
             setCanvasSize({ w: Math.round(img.width * ratio), h: Math.round(img.height * ratio) });
@@ -78,7 +76,6 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
         img.src = imageUrl;
     }, [imageUrl]);
 
-    // Redraw canvas whenever overlays or size changes
     const redraw = useCallback(() => {
         const canvas = canvasRef.current;
         const img = imgRef.current;
@@ -87,11 +84,9 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        // Draw base image
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        // Draw all text overlays
         for (const ov of overlays) {
             const paddingX = ov.fontSize * 0.4;
             const paddingY = ov.fontSize * 0.2;
@@ -101,7 +96,6 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
             const textW = metrics.width;
             const textH = ov.fontSize;
 
-            // Draw background
             if (ov.hasBg && ov.bgColor) {
                 ctx.fillStyle = ov.bgColor;
                 const radius = 6;
@@ -123,7 +117,6 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                 ctx.fill();
             }
 
-            // Draw text
             ctx.fillStyle = ov.color;
             ctx.fillText(ov.text, ov.x, ov.y);
         }
@@ -133,7 +126,6 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
         if (isReady) redraw();
     }, [isReady, redraw, canvasSize]);
 
-    // Canvas click → place text
     const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (!currentText.trim()) {
             toast.error('Isi dulu teks yang mau ditambahkan');
@@ -159,7 +151,6 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
         setOverlays(prev => [...prev, newOverlay]);
     };
 
-    // After overlays change → redraw
     useEffect(() => {
         redraw();
     }, [overlays, redraw]);

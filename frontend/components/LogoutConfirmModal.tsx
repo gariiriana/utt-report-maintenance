@@ -13,7 +13,6 @@ export function LogoutConfirmModal({ isOpen, onClose, onConfirm, userEmail }: Lo
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -22,7 +21,6 @@ export function LogoutConfirmModal({ isOpen, onClose, onConfirm, userEmail }: Lo
             onClick={onClose}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center px-4"
           >
-            {/* Modal */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -31,7 +29,6 @@ export function LogoutConfirmModal({ isOpen, onClose, onConfirm, userEmail }: Lo
               onClick={(e) => e.stopPropagation()}
               className="bg-slate-900/95 backdrop-blur-xl rounded-2xl p-6 sm:p-8 border border-orange-500/30 max-w-md w-full relative overflow-hidden shadow-2xl"
             >
-              {/* Close button */}
               <button
                 onClick={onClose}
                 className="absolute top-4 right-4 p-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white transition"
@@ -39,17 +36,14 @@ export function LogoutConfirmModal({ isOpen, onClose, onConfirm, userEmail }: Lo
                 <X className="w-5 h-5" />
               </button>
 
-              {/* Icon */}
               <div className="flex items-center justify-center mb-6">
                 <div className="relative">
-                  {/* Pulsing background */}
                   <motion.div
                     animate={{
                       scale: [1, 1.2, 1],
                       opacity: [0.5, 0.2, 0.5],
                     }}
                     transition={{
-                      duration: 2,
                       repeat: Infinity,
                       ease: "easeInOut"
                     }}
@@ -61,7 +55,6 @@ export function LogoutConfirmModal({ isOpen, onClose, onConfirm, userEmail }: Lo
                 </div>
               </div>
 
-              {/* Content */}
               <div className="text-center mb-8">
                 <h3 className="text-xl sm:text-2xl font-bold text-white mb-3">
                   Keluar dari Akun?
@@ -77,7 +70,6 @@ export function LogoutConfirmModal({ isOpen, onClose, onConfirm, userEmail }: Lo
                 </p>
               </div>
 
-              {/* Actions */}
               <div className="grid grid-cols-2 gap-3">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -100,7 +92,6 @@ export function LogoutConfirmModal({ isOpen, onClose, onConfirm, userEmail }: Lo
                 </motion.button>
               </div>
 
-              {/* Decorative grid lines */}
               <div className="absolute inset-0 pointer-events-none opacity-5">
                 <div className="absolute inset-0" style={{
                   backgroundImage: `

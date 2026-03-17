@@ -49,19 +49,15 @@ export function ImageEditor({ image, onSave, onCancel }: ImageEditorProps) {
             rotation
         );
 
-        // set canvas size to match the bounding box
         canvas.width = bBoxWidth;
         canvas.height = bBoxHeight;
 
-        // translate canvas context to a central point to allow rotating and flipping around the center
         ctx.translate(bBoxWidth / 2, bBoxHeight / 2);
         ctx.rotate(rotRad);
         ctx.translate(-image.width / 2, -image.height / 2);
 
-        // draw rotated image
         ctx.drawImage(image, 0, 0);
 
-        // croppedAreaPixels values are bounding box relative
         const data = ctx.getImageData(
             pixelCrop.x,
             pixelCrop.y,
@@ -69,14 +65,11 @@ export function ImageEditor({ image, onSave, onCancel }: ImageEditorProps) {
             pixelCrop.height
         );
 
-        // set canvas width to final desired crop size - this will clear existing context
         canvas.width = pixelCrop.width;
         canvas.height = pixelCrop.height;
 
-        // paste generated rotate image with correct offsets for x,y crop values.
         ctx.putImageData(data, 0, 0);
 
-        // As Base64 string
         return canvas.toDataURL('image/jpeg', 0.6);
     };
 
@@ -118,7 +111,6 @@ export function ImageEditor({ image, onSave, onCancel }: ImageEditorProps) {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="bg-slate-900 border border-slate-700/50 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
             >
-                {/* Header */}
                 <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-blue-500/10 rounded-lg">
@@ -137,7 +129,6 @@ export function ImageEditor({ image, onSave, onCancel }: ImageEditorProps) {
                     </button>
                 </div>
 
-                {/* Cropper Container */}
                 <div className="relative flex-1 min-h-[400px] bg-slate-950">
                     <Cropper
                         image={image}
@@ -154,10 +145,8 @@ export function ImageEditor({ image, onSave, onCancel }: ImageEditorProps) {
                     />
                 </div>
 
-                {/* Controls */}
                 <div className="p-6 bg-slate-900 border-t border-slate-800">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
-                        {/* Zoom Control */}
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
                                 <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
@@ -180,7 +169,6 @@ export function ImageEditor({ image, onSave, onCancel }: ImageEditorProps) {
                             />
                         </div>
 
-                        {/* Rotation Control */}
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
                                 <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
@@ -204,7 +192,6 @@ export function ImageEditor({ image, onSave, onCancel }: ImageEditorProps) {
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
                     <div className="flex items-center justify-end gap-3 pt-2">
                         <button
                             onClick={onCancel}

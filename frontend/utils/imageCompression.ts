@@ -6,7 +6,7 @@
 export interface CompressionOptions {
     maxWidth?: number;
     maxHeight?: number;
-    quality?: number; // 0.0 to 1.0
+    quality?: number; 
 }
 
 /**
@@ -22,7 +22,7 @@ export async function compressImage(
     const {
         maxWidth = 800,
         maxHeight = 800,
-        quality = 0.5,    // Aggressive compression for smaller PDF/DB footprint
+        quality = 0.5,    
     } = options;
 
     return new Promise((resolve, reject) => {
@@ -32,7 +32,6 @@ export async function compressImage(
             const img = new Image();
 
             img.onload = () => {
-                // Calculate new dimensions while maintaining aspect ratio
                 let width = img.width;
                 let height = img.height;
 
@@ -48,7 +47,6 @@ export async function compressImage(
                     }
                 }
 
-                // Create canvas and draw resized image
                 const canvas = document.createElement('canvas');
                 canvas.width = width;
                 canvas.height = height;
@@ -59,14 +57,11 @@ export async function compressImage(
                     return;
                 }
 
-                // Use better image quality
                 ctx.imageSmoothingEnabled = true;
                 ctx.imageSmoothingQuality = 'high';
 
-                // Draw image
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // Convert to base64 with compression
                 const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
                 resolve(compressedBase64);
             };
@@ -106,7 +101,6 @@ export async function compressBase64Image(
         const img = new Image();
 
         img.onload = () => {
-            // Calculate new dimensions
             let width = img.width;
             let height = img.height;
 

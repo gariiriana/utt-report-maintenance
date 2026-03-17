@@ -54,7 +54,6 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
 
     useEffect(() => {
         const fetchReport = async () => {
-            // Robust cleaning: trim and remove trailing punctuation that might be appended by WhatsApp
             let cleanId = reportId.trim().replace(/[.,!?;:]+$/, '');
             console.log('[HSE DEBUG] Fetching report with cleaned ID:', cleanId);
             
@@ -68,7 +67,6 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                 }
                 const data = docSnap.data() as ReportData;
 
-                // Fetch photos from subcollection
                 const photosSnap = await getDocsFromServer(collection(db, `hse/${cleanId}/photos`));
                 const photos = photosSnap.docs
                     .map(d => ({ id: d.id, ...d.data() } as any))
@@ -77,7 +75,6 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                 const fullReport = { ...data, photos };
                 setReport(fullReport);
 
-                // Auto-generate PDF for viewing
                 const { generateHSEPdfBlob } = await import('@/utils/HSEPdfExport');
                 const formData: HSEFormData = {
                     aktivitas: fullReport.aktivitas,
@@ -132,7 +129,6 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
         }
     };
 
-    // ── Loading state ───────────────────────────────────────
     if (loading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
@@ -144,7 +140,6 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
         );
     }
 
-    // ── Error state ─────────────────────────────────────────
     if (error || !report) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-6">
@@ -171,7 +166,6 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
 
     return (
         <div className="min-h-screen bg-slate-950 font-sans text-slate-200 flex flex-col">
-            {/* Header */}
             <div className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-50">
                 <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -202,10 +196,8 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
             </div>
 
             <div className="flex-1 flex flex-col lg:flex-row h-[calc(100vh-65px)] overflow-hidden">
-                {/* Left Side: Viewer (Iframe on Desktop, Digital Report on Mobile) */}
                 <div className="flex-1 bg-slate-800 relative group overflow-hidden border-r border-slate-700/50 flex flex-col">
                     <div className="flex-1 relative overflow-y-auto">
-                        {/* DESKTOP: PDF IFRAME */}
                         <div className="hidden lg:block w-full h-full">
                             {pdfUrl ? (
                                 <iframe
@@ -221,10 +213,8 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                             )}
                         </div>
 
-                        {/* MOBILE: HIGH FIDELITY HTML VIEW (The "Wow" factor) - Mirrors the PDF design exactly */}
                         <div className="lg:hidden w-full min-h-full bg-slate-900 p-4 pb-20">
                             <div className="max-w-2xl mx-auto bg-white text-slate-900 shadow-2xl rounded-sm overflow-hidden flex flex-col min-h-[1050px] p-6 sm:p-10 font-serif border border-slate-200 relative">
-                                {/* Report Header (Matching PDF exactly) */}
                                 <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#16a34a]" />
                                 <div className="flex justify-between items-center border-b-[0.6mm] border-[#16a34a] pb-4 mb-6 pt-2">
                                     <img src={logoDME} alt="DME Logo" className="w-[28mm] h-[12mm] object-contain" />
@@ -236,7 +226,6 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                                     <img src={secondaryLogo} alt="Secondary Logo" className="w-[32mm] h-[12mm] object-contain" />
                                 </div>
 
-                                {/* Report Info Box */}
                                 <div className="grid grid-cols-1 gap-2 mb-6 text-[12px] font-sans">
                                     {[
                                         { label: 'Inspector K3', value: report.inspectorK3 },
@@ -254,7 +243,6 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                                     ))}
                                 </div>
 
-                                {/* Checklist Section */}
                                 <div className="mb-6 font-sans">
                                     <h2 className="bg-green-600 text-white text-[11px] font-bold uppercase py-1.5 px-3 mb-3 tracking-widest flex justify-between">
                                         Checklist Keselamatan Kerja
@@ -277,7 +265,6 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                                     </div>
                                 </div>
 
-                                {/* Conclusion */}
                                 <div className="grid grid-cols-2 gap-4 mb-8 font-sans">
                                     {['safeCondition', 'safeAction'].map(key => {
                                         const label = key === 'safeCondition' ? 'Safe Condition' : 'Safe Action';
@@ -293,7 +280,6 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                                     })}
                                 </div>
 
-                                {/* First Page Photos (Max 2 as requested) */}
                                 {report.photos && report.photos.length > 0 && (
                                     <div className="grid grid-cols-2 gap-3 mb-6">
                                         {report.photos.slice(0, 2).map((photo, idx) => (
@@ -310,7 +296,6 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                                     </div>
                                 )}
 
-                                {/* PDF-like Page Footer */}
                                 <div className="mt-auto pt-6">
                                     <div className="flex justify-between items-end text-[7.5px] text-[#64748b] font-sans pb-1 px-1">
                                         <span className="font-medium">{companyName} — HSE Inspection Report</span>
@@ -320,7 +305,6 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                                 </div>
                             </div>
 
-                            {/* Remaining Photos Section (Lampiran) */}
                             {report.photos && report.photos.length > 2 && (
                                 <div className="max-w-2xl mx-auto mt-6 bg-white p-6 rounded-sm shadow-xl border border-slate-200 font-sans mb-20">
                                     <h3 className="bg-green-600 text-white text-[11px] font-bold uppercase py-1.5 px-3 mb-4 tracking-widest">
@@ -344,7 +328,6 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                         </div>
                     </div>
 
-                    {/* Desktop ONLY helper info */}
                     <div className="hidden lg:flex p-3 bg-slate-900/90 border-t border-slate-700/50 items-center justify-between gap-3 text-xs">
                         <p className="text-slate-400 italic">Pratinjau PDF di atas (Fitur Laptop/PC).</p>
                         {pdfUrl && (
@@ -360,10 +343,8 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                     </div>
                 </div>
 
-                {/* Right Side: Quick Info (Sidebar ONLY on larger screens) */}
                 <div className="hidden lg:block w-[400px] h-full overflow-y-auto bg-slate-900/50 backdrop-blur-sm p-6 custom-scrollbar">
                     <div className="space-y-6">
-                        {/* Hero Section */}
                         <div className="bg-gradient-to-br from-green-900/40 to-emerald-900/20 border border-green-500/20 rounded-2xl p-5 shadow-xl">
                             <div className="flex items-start gap-4">
                                 <div className="p-2.5 bg-green-500/10 rounded-xl border border-green-500/20">
@@ -379,7 +360,6 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                             </div>
                         </div>
 
-                        {/* Summary Stats */}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3">
                                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">Lokasi</p>
@@ -391,7 +371,6 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                             </div>
                         </div>
 
-                        {/* Personnel */}
                         <div className="space-y-3">
                             <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em] px-1">Personnel</h3>
                             <div className="bg-slate-800/30 border border-slate-700/30 rounded-xl p-4 space-y-3">
@@ -413,7 +392,6 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                             </div>
                         </div>
 
-                        {/* Note */}
                         <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-xl">
                             <div className="flex gap-3">
                                 <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />

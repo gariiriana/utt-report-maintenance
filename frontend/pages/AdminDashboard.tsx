@@ -65,7 +65,6 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
     try {
       toast.loading('Preparing data for editing...', { id: 'edit-prep' });
 
-      // Fetch photos from subcollection for backward compatibility or completeness
       let photosData = doc.photosData || [];
       if (photosData.length === 0) {
         const colName = doc.type === 'excel' ? 'excel_documents' : 'pdf_documents';
@@ -79,13 +78,12 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         }
       }
 
-      // Convert DocumentData to ExcelDocument structure
       const excelDoc: ExcelDocument = {
         ...doc,
         createdAt: doc.createdAt.toDate(),
         photosData: photosData,
         documentType: doc.type,
-        fileSize: 0 // Not strictly needed for edit
+        fileSize: 0 
       };
 
       onEdit(excelDoc);
@@ -100,7 +98,6 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
     try {
       setLoading(true);
 
-      // ✅ FIX: Add error handling for BloomFilter errors
       // Fetch Excel documents
       const excelQuery = query(
         collection(db, 'excel_documents'),
@@ -113,7 +110,6 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         type: 'excel' as const
       })) as DocumentData[];
 
-      // Fetch PDF documents
       const pdfQuery = query(
         collection(db, 'pdf_documents'),
         orderBy('createdAt', 'desc')
@@ -125,14 +121,12 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         type: 'pdf' as const
       })) as DocumentData[];
 
-      // Combine and sort by date
       const allDocs = [...excelDocs, ...pdfDocs].sort((a, b) => {
         return b.createdAt.toMillis() - a.createdAt.toMillis();
       });
 
       setDocuments(allDocs);
 
-      // Calculate stats
       const uniqueUsers = new Set(allDocs.map(doc => doc.createdBy));
       setStats({
         totalDocuments: allDocs.length,
@@ -145,7 +139,6 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
     } catch (error: any) {
       console.error('Error loading documents:', error);
 
-      // ✅ FIX: Handle BloomFilter error specifically
       if (error?.message?.includes('BloomFilter')) {
         console.warn('BloomFilter error detected. This usually happens when user document is not yet created.');
         toast.error('Please wait a moment and refresh the page.', { duration: 5000 });
@@ -161,7 +154,6 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
     try {
       toast.loading(`Regenerating ${doc.type.toUpperCase()}...`, { id: 'regen' });
 
-      // ✅ Fetch photos from subcollection if photosData is empty (Backward Compatibility)
       let photosData = doc.photosData || [];
       if (photosData.length === 0) {
         try {
@@ -186,7 +178,6 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
       });
 
       if (doc.type === 'excel') {
-        // Regenerate Excel
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Maintenance Report');
 
@@ -364,7 +355,6 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         URL.revokeObjectURL(url);
 
       } else {
-        // Regenerate PDF
         const pdfDoc = new jsPDF('p', 'mm', 'a4');
         const pageWidth = pdfDoc.internal.pageSize.getWidth();
         const marginTop = 15;
@@ -421,7 +411,6 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
             logoHeight
           );
 
-          // Logo Right (NeutraDC or BRI based on companyType)
           pdfDoc.addImage(
             `data:image/png;base64,${logoRightBase64}`,
             'PNG',
@@ -538,7 +527,6 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
 
     const matchesFilter = filterType === 'all' || doc.type === filterType;
 
-    // ✅ Date filter logic
     let matchesDate = true;
     if (dateFilter !== 'all') {
       const docDate = doc.createdAt.toDate();
@@ -571,7 +559,6 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 relative z-10">
-      {/* Admin Header */}
       <div className="bg-gradient-to-r from-purple-900/40 to-pink-900/40 backdrop-blur-xl rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 border border-purple-500/30">
         <div className="flex items-center gap-2 sm:gap-3 mb-2">
           <div className="p-1.5 sm:p-2 bg-purple-500/20 rounded-lg border border-purple-500/30">
@@ -590,7 +577,6 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
                   <span className="text-[10px] sm:text-xs font-medium text-emerald-400">
                     {onlineUsers.length} Admin{onlineUsers.length > 1 ? 's' : ''} Online
                   </span>
-                  {/* Tooltip or small avatars could go here */}
                   <div className="hidden sm:flex -space-x-2 ml-1">
                     {onlineUsers.slice(0, 3).map((u) => (
                       <div key={u.uid} className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[8px] text-white font-bold uppercase" title={u.email}>
@@ -610,7 +596,6 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         </div>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -671,10 +656,8 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         </motion.div>
       </div>
 
-      {/* Search and Filter */}
       <div className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 border border-slate-700/50">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
             <input
@@ -686,7 +669,6 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
             />
           </div>
 
-          {/* Type Filter */}
           <div className="relative">
             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
             <select
@@ -700,7 +682,6 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
             </select>
           </div>
 
-          {/* Date Filter */}
           <div className="relative">
             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
             <select
@@ -724,7 +705,6 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
           </div>
         </div>
 
-        {/* Custom Date Range - Show only when 'custom' is selected */}
         {dateFilter === 'custom' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-700/30">
             <div className="relative">
@@ -749,9 +729,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         )}
       </div>
 
-      {/* Documents Table */}
       <div className="bg-slate-900/40 backdrop-blur-xl rounded-xl border border-slate-700/50 overflow-hidden">
-        {/* Mobile Card View */}
         <div className="block md:hidden">
           {loading ? (
             <div className="flex items-center justify-center py-12">

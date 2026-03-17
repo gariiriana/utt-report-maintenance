@@ -6,8 +6,7 @@ import {
     query,
     orderBy,
     limit,
-    onSnapshot,
-    Timestamp
+    onSnapshot
 } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { formatDistanceToNow } from 'date-fns';
@@ -20,7 +19,7 @@ interface NotificationItem {
     maintenanceType: string;
     quarter: string;
     year: string;
-    uploadedAt: Timestamp;
+    uploadedAt: any; // Changed from Timestamp to any to avoid type error after removing Timestamp import
 }
 
 interface NotificationCenterProps {
@@ -33,7 +32,6 @@ export function NotificationCenter({ onNotificationClick }: NotificationCenterPr
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // Initial load for last seen timestamp
     const [lastSeen, setLastSeen] = useState<number>(() => {
         const saved = safeStorage.getItem('service_report_last_seen');
         return saved ? parseInt(saved) : Date.now();
@@ -56,7 +54,6 @@ export function NotificationCenter({ onNotificationClick }: NotificationCenterPr
 
             setNotifications(items);
 
-            // Calculate unread based on uploadedAt > lastSeen
             const unread = items.filter(item => {
                 const uploadedTime = item.uploadedAt?.toMillis() || 0;
                 return uploadedTime > lastSeen;
@@ -68,7 +65,6 @@ export function NotificationCenter({ onNotificationClick }: NotificationCenterPr
         return () => unsubscribe();
     }, [lastSeen]);
 
-    // Handle Click Outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -81,7 +77,6 @@ export function NotificationCenter({ onNotificationClick }: NotificationCenterPr
 
     const toggleDropdown = () => {
         if (!isOpen) {
-            // Mark all as seen when opening
             const now = Date.now();
             setLastSeen(now);
             safeStorage.setItem('service_report_last_seen', now.toString());
@@ -92,7 +87,6 @@ export function NotificationCenter({ onNotificationClick }: NotificationCenterPr
 
     return (
         <div className="relative" ref={dropdownRef}>
-            {/* Bell Icon */}
             <button
                 onClick={toggleDropdown}
                 className={`relative p-2.5 rounded-xl transition-all duration-300 ${isOpen
@@ -108,7 +102,6 @@ export function NotificationCenter({ onNotificationClick }: NotificationCenterPr
                 )}
             </button>
 
-            {/* Dropdown */}
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
@@ -117,7 +110,6 @@ export function NotificationCenter({ onNotificationClick }: NotificationCenterPr
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                         className="absolute right-0 mt-3 w-80 sm:w-96 bg-slate-900/95 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl z-[100] overflow-hidden"
                     >
-                        {/* Header */}
                         <div className="px-5 py-4 border-b border-slate-800/50 flex items-center justify-between bg-slate-800/30">
                             <div className="flex items-center gap-2">
                                 <h3 className="font-bold text-white tracking-wide">Notifikasi</h3>
@@ -135,7 +127,6 @@ export function NotificationCenter({ onNotificationClick }: NotificationCenterPr
                             </button>
                         </div>
 
-                        {/* List */}
                         <div className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700">
                             {notifications.length === 0 ? (
                                 <div className="p-10 text-center">
@@ -178,7 +169,6 @@ export function NotificationCenter({ onNotificationClick }: NotificationCenterPr
                             )}
                         </div>
 
-                        {/* Footer */}
                         <div className="px-5 py-3 bg-slate-900 border-t border-slate-800/50 text-center">
                             <p className="text-[10px] text-slate-600 font-medium">
                                 Real-time update enabled

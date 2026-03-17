@@ -4,7 +4,6 @@ import { motion } from 'motion/react';
 export function DataCenterBackground() {
   return (
     <>
-      {/* Technical Grid Pattern */}
       <div className="absolute inset-0 opacity-20">
         <div className="absolute inset-0" style={{
           backgroundImage: `
@@ -15,19 +14,15 @@ export function DataCenterBackground() {
         }} />
       </div>
 
-      {/* Subtle Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-950/30 to-transparent" />
 
-      {/* Network Nodes */}
       <NetworkTopology />
 
-      {/* Data Flow Particles */}
       <DataFlowParticles />
     </>
   );
 }
 
-// Network Topology with connecting lines
 function NetworkTopology() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -41,7 +36,6 @@ function NetworkTopology() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    // Network nodes
     const nodes: { x: number; y: number; vx: number; vy: number; pulse: number }[] = [];
     const nodeCount = 25;
 
@@ -62,20 +56,15 @@ function NetworkTopology() {
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Update and draw nodes
       nodes.forEach((node, i) => {
-        // Move nodes
         node.x += node.vx;
         node.y += node.vy;
 
-        // Bounce off edges
         if (node.x < 0 || node.x > canvas.width) node.vx *= -1;
         if (node.y < 0 || node.y > canvas.height) node.vy *= -1;
 
-        // Update pulse
         node.pulse += 0.02;
 
-        // Draw connections
         nodes.forEach((otherNode, j) => {
           if (i === j) return;
 
@@ -94,7 +83,6 @@ function NetworkTopology() {
           }
         });
 
-        // Draw node
         const pulseSize = 2 + Math.sin(node.pulse) * 0.5;
         const gradient = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, pulseSize * 2);
         gradient.addColorStop(0, 'rgba(59, 130, 246, 0.8)');
@@ -106,7 +94,6 @@ function NetworkTopology() {
         ctx.arc(node.x, node.y, pulseSize * 2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw core
         ctx.beginPath();
         ctx.fillStyle = 'rgba(96, 165, 250, 0.9)';
         ctx.arc(node.x, node.y, pulseSize, 0, Math.PI * 2);
@@ -139,7 +126,6 @@ function NetworkTopology() {
   );
 }
 
-// Data flow particles
 function DataFlowParticles() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">

@@ -51,7 +51,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [numberOfCardsToAdd, setNumberOfCardsToAdd] = useState('1');
   const [showPreview, setShowPreview] = useState(false);
 
-  // Sync with authCompanyType once on load
   useEffect(() => {
     if (authCompanyType) {
       setCompanyType(authCompanyType);
@@ -272,8 +271,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
     const formattedDate = new Date(maintenanceTime).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-    // Load logos - Vite imports images as objects { src, height, width } so we extract .src
-    // Load logos - Using canvas for resizing and compression
     const loadLogo = (pathOrObj: string | { src: string }) => {
       return new Promise<string>((resolve) => {
         const url = typeof pathOrObj === 'string' ? pathOrObj : pathOrObj.src;
@@ -300,7 +297,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const logoLeftB64 = await loadLogo(companyType === 'bri' ? logoBRILeft : logoDwimitra);
     const logoRightB64 = await loadLogo(companyType === 'bri' ? logoBRI : logoNeutraDC);
 
-    // Sequential Optimization
     const optimizedCards: PhotoCard[] = [];
 
     for (let i = 0; i < filled.length; i++) {
@@ -308,7 +304,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       if (c.photoBase64) {
         toast.loading(`Optimizing photo ${i + 1}/${filled.length}...`, { id: 'export' });
         try {
-          // Ensuring aggressive shrinking
           const compressed = await compressBase64Image(c.photoBase64, { maxWidth: 800, quality: 0.5 });
           optimizedCards.push({ ...c, photoBase64: compressed });
         } catch (err) {
@@ -344,9 +339,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const drawHeader = (doc: any) => {
       const isDwimitra = companyType !== 'bri';
 
-      // ── Logo sizes ──────────────────────────────────────────────
-      // PDU / LVlike: compact header
-      // Normal: full-size logos, both vertically centered at same anchor
       const isCompact = isPDU || isLVlike || isVRV;
 
       const leftW = isCompact ? 22 : (isDwimitra ? 28 : 36);
@@ -354,28 +346,23 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       const rightW = isCompact ? 22 : (isDwimitra ? 36 : 35);
       const rightH = isCompact ? 9 : (isDwimitra ? 14 : 14);
 
-      // ── Shared vertical anchor so both logos align at the same top ──
       const headerTopY = 8;
 
       if (logoLeftB64) {
         doc.addImage(logoLeftB64, 'JPEG', margin, headerTopY, leftW, leftH, 'logo_left', 'FAST');
       }
       if (logoRightB64) {
-        // Vertically center right logo relative to left logo height
         const rightY = headerTopY + (leftH - rightH) / 2;
         doc.addImage(logoRightB64, 'JPEG', pageWidth - margin - rightW, rightY, rightW, rightH, 'logo_right', 'FAST');
       }
 
-      // ── Header text area (between the two logos) ─────────────────
       const textAreaPadding = 3;
       const textAreaWidth = pageWidth - (2 * margin) - leftW - rightW - (2 * textAreaPadding);
       const textCenterX = margin + leftW + textAreaPadding + (textAreaWidth / 2);
 
-      // Vertical center of the taller logo to anchor text
       const tallLogoH = Math.max(leftH, rightH);
       const textStartY = headerTopY + tallLogoH / 2 - (isCompact ? 4 : 8);
 
-      // --- Title: UPPERCASE, BOLD ---
       doc.setFontSize(isCompact ? 9 : 13).setFont('helvetica', 'bold');
       const titleText = `DOKUMENTASI PM ${maintenanceName.toUpperCase()}`;
       const splitTitle = doc.splitTextToSize(titleText, textAreaWidth);
@@ -384,13 +371,11 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       const titleLineH = isCompact ? 5 : 6;
       let nextY = textStartY + splitTitle.length * titleLineH;
 
-      // --- Date: smaller, normal weight ---
       const longDate = new Date(maintenanceTime).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
       doc.setFontSize(isCompact ? 8 : 11).setFont('helvetica', 'normal');
       doc.text(`(${longDate})`, textCenterX, nextY + 2, { align: 'center' });
       nextY += isCompact ? 6 : 8;
 
-      // --- Specific Detail: uppercase, bold ---
       if (specificDetail) {
         doc.setFontSize(isCompact ? 7 : 10).setFont('helvetica', 'bold');
         const splitDetail = doc.splitTextToSize(specificDetail.toUpperCase(), textAreaWidth);
@@ -405,8 +390,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     let count = 0;
 
     if (isLVlike) {
-      // Page 1: adaptive photoH (fills the page top-to-bottom)
-      // Page 2+: normal fixed photoH (55mm, space at bottom is OK)
       const pageHeightMM = doc.internal.pageSize.getHeight();
       const capHLV = 10;
       const gapLV = 5;
@@ -420,7 +403,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
         if (!isFirstPage) { doc.addPage(); curY = drawHeader(doc); }
 
-        // Only first page is adaptive, subsequent pages use normal height
         const usablePageHeight = pageHeightMM - curY - margin;
         const photoHLV = isFirstPage
           ? Math.floor(usablePageHeight / rows - capHLV - gapLV)
@@ -523,7 +505,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       const collectionName = editingData?.documentType === 'excel' ? 'excel_documents' : 'pdf_documents';
       const apiUrl = import.meta.env.VITE_API_URL;
 
-      // Use API for NEW saving (not editing yet as edit logic in Go is more complex)
       if (apiUrl && !editingData) {
         const photos = cardsToSave.map((card, i) => ({
           index: i + 1,
@@ -537,7 +518,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           toast.success('Laporan disimpan (via API)', { id: toastId });
           return docIdFromAPI;
         }
-        // If API fails, fallback to direct Firestore
       }
 
       let docId = '';
@@ -609,7 +589,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       <AnimatePresence mode="wait">
         {!showPreview ? (
           <motion.div key="form" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
-            {/* Stats */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div className="flex gap-4">
                 <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-700/50 min-w-[120px]">
@@ -628,7 +607,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               )}
             </div>
 
-            {/* Form */}
             <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 mb-6 font-geist">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div>
@@ -662,7 +640,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
               <button onClick={() => document.getElementById('bulk')?.click()} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20">
                 <Upload className="w-5 h-5" /> Bulk Upload Photos
@@ -673,7 +650,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               </button>
             </div>
 
-            {/* Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {cards.map((card, idx) => (
                 <div key={card.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 relative group transition-all hover:border-blue-500/30">
@@ -703,7 +679,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               ))}
             </div>
 
-            {/* Footer Actions */}
             <div className="flex flex-col sm:flex-row gap-4 mt-12 justify-center">
               <button onClick={handlePreviewPDF} className="px-8 py-4 bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center gap-3 border border-slate-700 hover:bg-slate-700 transition shadow-xl border-b-4 border-slate-950 active:border-b-0 active:translate-y-1">
                 <Eye className="w-6 h-6" /> PREVIEW
@@ -731,7 +706,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         )}
       </AnimatePresence>
 
-      {/* Add Card Modal */}
       <AnimatePresence>
         {addCardModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" onClick={() => setAddCardModalOpen(false)}>
@@ -748,7 +722,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         )}
       </AnimatePresence>
 
-      {/* Editor Modal */}
       <AnimatePresence>
         {editingCardId && (
           <ImageEditor

@@ -37,21 +37,20 @@ interface CorrectiveReport {
     location: string;
     photoBase64: string;
     photoDescription: string;
-    quarter: string; // NEW
-    year: string; // NEW
-    category: string; // NEW: for filtering
+    quarter: string; 
+    year: string; 
+    category: string; 
     reportedBy: string;
     reportedByEmail: string;
     reportedAt: any;
 }
 
 interface CorrectiveMaintenanceProps {
-    readOnly?: boolean; // For TDE/CBRE view-only access
+    readOnly?: boolean; 
 }
 
 export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanceProps) {
     const { user, userRole } = useAuth();
-    // Role 'standby_engineer' only can create
     const canCreate = !readOnly && userRole === 'standby_engineer';
     const canDelete = !readOnly && (userRole === 'admin' || userRole === 'standby_engineer');
 
@@ -60,7 +59,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
     const [showForm, setShowForm] = useState(false);
     const [submitting, setSubmitting] = useState(false);
 
-    // Form State
     const [formData, setFormData] = useState({
         issue: '',
         actionTaken: '',
@@ -69,13 +67,12 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
         location: '',
         photoBase64: '',
         photoDescription: '',
-        quarter: 'Q1', // NEW
-        year: new Date().getFullYear().toString(), // NEW
+        quarter: 'Q1', 
+        year: new Date().getFullYear().toString(), 
     });
 
     const [editingPhoto, setEditingPhoto] = useState(false);
 
-    // Load Reports
     useEffect(() => {
         const q = query(collection(db, 'corrective_reports'), orderBy('reportedAt', 'desc'));
 
@@ -99,7 +96,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
         return () => unsubscribe();
     }, []);
 
-    // Handle Image Compression
     const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -118,7 +114,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
 
-                // Resize to max 800px
                 const MAX_WIDTH = 800;
                 const MAX_HEIGHT = 800;
                 let width = img.width;
@@ -140,7 +135,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                 canvas.height = height;
                 ctx?.drawImage(img, 0, 0, width, height);
 
-                // Compress quality 0.7
                 const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
                 setFormData({ ...formData, photoBase64: compressedBase64 });
             };
@@ -220,7 +214,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                 }
             }
 
-            // Fallback to Firestore
             await addDoc(collection(db, 'corrective_reports'), reportData);
 
             toast.success('Corrective report created!');
@@ -244,7 +237,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
         }
     };
 
-    // Delete Confirmation State
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
     const handleDeleteClick = (id: string) => {
@@ -263,7 +255,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
         }
     };
 
-    // Status Badge Helper
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'Resolved': return 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
@@ -274,7 +265,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
-            {/* Header */}
             <div className="flex justify-between items-center mb-8">
                 <div>
                     <h1 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -297,7 +287,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                 )}
             </div>
 
-            {/* CREATE FORM */}
             <AnimatePresence>
                 {showForm && canCreate && (
                     <motion.form
@@ -307,9 +296,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                         onSubmit={handleSubmit}
                         className="bg-slate-800/40 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 mb-8 overflow-hidden"
                     >
-                        {/* ... Same form content (omitted for brevity, assume content is preserved if logic is correct, wait replace_tool replaces exact match) ... */}
-                        {/* Wait, I cannot use range replacement efficiently if I want to wrap the whole file or huge chunks. 
-                             Let me use targeted replacement for the handleDelete and the end of file for the Modal. */}
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold text-white">New Corrective Report</h2>
                             <div className="flex items-center gap-2 px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded-lg">
@@ -319,7 +305,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Left Column: Text Inputs */}
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-sm text-slate-400 mb-1">Location / Unit</label>
@@ -359,7 +344,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                 </div>
                             </div>
 
-                            {/* Right Column: Status & Photo */}
                             <div className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -386,7 +370,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                     </div>
                                 </div>
 
-                                {/* NEW: Quarter & Year */}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm text-slate-400 mb-1">Quarter *</label>
@@ -420,7 +403,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                     </div>
                                 </div>
 
-                                {/* Photo Upload (Single) */}
                                 <div>
                                     <label className="block text-sm text-slate-400 mb-1">Evidence Photo (Max 1)</label>
                                     <div className="border-2 border-dashed border-slate-600 rounded-lg p-4 text-center hover:border-orange-500 transition cursor-pointer relative group">
@@ -492,7 +474,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                 )}
             </AnimatePresence>
 
-            {/* REPORT LIST */}
             {loading ? (
                 <div className="flex justify-center py-12">
                     <Loader2 className="w-10 h-10 animate-spin text-orange-500" />
@@ -513,7 +494,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                             className="bg-slate-800/40 backdrop-blur-sm rounded-xl border border-slate-700/50 overflow-hidden hover:border-slate-600 transition"
                         >
                             <div className="p-4 sm:p-6 flex flex-col md:flex-row gap-6">
-                                {/* Photo Section */}
                                 {report.photoBase64 && (
                                     <div className="w-full md:w-64 flex-shrink-0">
                                         <img
@@ -527,7 +507,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                     </div>
                                 )}
 
-                                {/* Content Section */}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
                                         <div>
@@ -543,7 +522,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                             </p>
                                         </div>
 
-                                        {/* Delete Action - Only if not readOnly */}
                                         {canDelete && (report.reportedBy === user?.uid || userRole === 'admin') && (
                                             <button
                                                 onClick={() => handleDeleteClick(report.id)}
@@ -583,7 +561,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                 </div>
             )}
 
-            {/* DELETE CONFIRMATION MODAL */}
             <AnimatePresence>
                 {deleteId && (
                     <motion.div
@@ -626,7 +603,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                 )}
             </AnimatePresence>
 
-            {/* Image Editor Modal */}
             <AnimatePresence>
                 {editingPhoto && (
                     <ImageEditor

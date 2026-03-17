@@ -61,10 +61,8 @@ export function PreviewReport({
             exit={{ opacity: 0 }}
             className="w-full max-w-6xl mx-auto pb-20"
         >
-            {/* Header Actions & Notice */}
             <div className="sticky top-0 z-50 bg-slate-950/95 backdrop-blur-xl border-b border-white/10 shadow-2xl overflow-hidden">
                 <div className="max-w-5xl mx-auto px-4 py-4 space-y-4">
-                    {/* Notice Remark - Very Prominent */}
                     <AnimatePresence>
                         {!acknowledged && (
                             <motion.div
@@ -91,7 +89,6 @@ export function PreviewReport({
                         )}
                     </AnimatePresence>
 
-                    {/* Action Buttons */}
                     <div className="flex flex-col sm:flex-row gap-3">
                         <button
                             onClick={onBack}
@@ -112,7 +109,6 @@ export function PreviewReport({
                 </div>
             </div>
 
-            {/* Hint Indication for Scroll (Visible on mobile) */}
             <div className="sm:hidden flex justify-center mt-6 animate-pulse">
                 <div className="flex items-center gap-2 px-4 py-1.5 bg-indigo-500/20 text-indigo-400 rounded-full border border-indigo-500/30 text-[10px] font-bold uppercase tracking-wider">
                     <span>Geser Kertas</span>
@@ -120,10 +116,8 @@ export function PreviewReport({
                 </div>
             </div>
 
-            {/* PDF Simulation Container */}
             <div className="w-full overflow-x-auto mt-6 pb-12 px-4 custom-scrollbar">
                 <div className="bg-white shadow-[0_30px_60px_rgba(0,0,0,0.6)] p-8 sm:p-14 text-slate-900 min-h-[1162px] font-sans border border-slate-200 rounded-sm mx-auto" style={{ width: '900px' }}>
-                    {/* PDF Header */}
                     <div className="flex items-center justify-between pb-6 mb-8 mt-2">
                         <div className="w-[110px] flex-shrink-0">
                             <img src={leftLogo} alt="Logo Left" className={isPDU ? "h-10 w-auto" : "h-20 w-auto object-contain"} />
@@ -146,13 +140,11 @@ export function PreviewReport({
                         </div>
                     </div>
 
-                    {/* Info Bar */}
                     <div className="flex justify-between items-center mb-8 text-[11px] text-slate-500 uppercase font-black tracking-widest border-b-2 border-slate-100 pb-3">
                         <span>UTT Maintenance System • {maintenanceName}</span>
                         <span>Engineer: {userEmail}</span>
                     </div>
 
-                    {/* Photos Grid */}
                     <div
                         className="grid gap-3"
                         style={{
@@ -183,7 +175,6 @@ export function PreviewReport({
                         ))}
                     </div>
 
-                    {/* Page Break Indication */}
                     {filledCards.length > perPage && (
                         <div className="mt-12 border-t-4 border-dotted border-slate-200 flex justify-center">
                             <span className="bg-slate-50 px-4 py-1.5 text-[11px] text-slate-400 font-black uppercase tracking-widest -mt-4 border-2 border-slate-100 rounded-full">
@@ -192,7 +183,6 @@ export function PreviewReport({
                         </div>
                     )}
 
-                    {/* Footer Simulation */}
                     <div className="mt-24 border-t-2 border-slate-100 pt-12 pb-6 text-center">
                         <p className="text-[9px] text-slate-400 uppercase tracking-[0.2em] font-black">
                             PT UNITED TRANSWORLD TRADING • OFFICIAL PM REPORT

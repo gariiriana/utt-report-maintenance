@@ -25,23 +25,47 @@ const INITIAL_CHECKLIST: HSEChecklist = {
     safeCondition: false,
     safeAction: false,
     safetySign: false,
-    fullBodyHarness: false,
-    coverShoes: false,
+    ppeKhusus: false,
+    bodyHarness: false,
+    sarungTanganKulit: false,
+    apron: false,
     kedokLas: false,
+    coverShoes: false,
+    respirator: false,
+    pitaBaricade: false,
+    safetyCone: false,
+    stikBariket: false,
 };
 
-const CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string }[] = [
+const CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string; subItems?: { key: keyof HSEChecklist; label: string }[] }[] = [
     { key: 'mop', label: 'MOP' },
     { key: 'jsa', label: 'JSA' },
     { key: 'ptw', label: 'PTW' },
     { key: 'ppe', label: 'PPE Mandatory' },
+    { 
+        key: 'ppeKhusus', 
+        label: 'PPE Khusus',
+        subItems: [
+            { key: 'bodyHarness', label: 'Body Harness' },
+            { key: 'sarungTanganKulit', label: 'Sarung Tangan Kulit' },
+            { key: 'apron', label: 'Apron' },
+            { key: 'kedokLas', label: 'Kedok Las' },
+            { key: 'coverShoes', label: 'Cover Shoes' },
+            { key: 'respirator', label: 'Respirator' },
+        ]
+    },
     { key: 'toolsBertagging', label: 'Tools Bertagging & sdh di-checklist' },
     { key: 'logMaintenance', label: 'Log Maintenance' },
     { key: 'housekeeping', label: 'Housekeeping Area Kerja' },
-    { key: 'safetySign', label: 'Safety Sign' },
-    { key: 'fullBodyHarness', label: 'Full Body Harness (Optional)' },
-    { key: 'coverShoes', label: 'Cover Shoes (Optional)' },
-    { key: 'kedokLas', label: 'Kedok Las (Optional)' },
+    { 
+        key: 'safetySign', 
+        label: 'Safety Sign',
+        subItems: [
+            { key: 'pitaBaricade', label: 'Pita Baricade' },
+            { key: 'safetyCone', label: 'Safety Cone' },
+            { key: 'stikBariket', label: 'Stik Bariket' },
+        ]
+    },
     { key: 'safeCondition', label: 'Safe Condition' },
     { key: 'safeAction', label: 'Safe Action' },
 ];
@@ -60,7 +84,6 @@ interface HSEReportFormProps {
 export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) {
     const { user } = useAuth();
 
-    // Form fields
     const [aktivitas, setAktivitas] = useState('');
     const [lokasi, setLokasi] = useState('');
     const [personil, setPersonil] = useState('');
@@ -71,16 +94,11 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
     const [photos, setPhotos] = useState<PhotoItem[]>([]);
     const [checklistOpen, setChecklistOpen] = useState(true);
 
-    // State for editing
     const [editingPhoto, setEditingPhoto] = useState<PhotoItem | null>(null);
 
-    // Loading states
     const [isSaving, setIsSaving] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
-    // Camera state
-
-    // Sync with editingData
     useEffect(() => {
         if (editingData && editingData.documentType === 'hse') {
             const fetchFullData = async () => {
@@ -97,7 +115,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                         setInspectorK3(data.inspectorK3 || '');
                         if (data.checklist) setChecklist(data.checklist);
 
-                        // Fetch photos from subcollection
                         const photosSnap = await getDocs(collection(db, `hse/${editingData.id}/photos`));
                         const fetchedPhotos: PhotoItem[] = photosSnap.docs
                             .map((d: QueryDocumentSnapshot) => {
@@ -130,12 +147,30 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Toggle checklist item
     const toggleCheck = (key: keyof HSEChecklist) => {
-        setChecklist(prev => ({ ...prev, [key]: !prev[key] }));
+        setChecklist(prev => {
+            const next = { ...prev, [key]: !prev[key] };
+
+            if (key === 'ppeKhusus' && !next.ppeKhusus) {
+                next.bodyHarness = next.sarungTanganKulit = next.apron = next.kedokLas = next.coverShoes = next.respirator = false;
+            }
+            if (key === 'safetySign' && !next.safetySign) {
+                next.pitaBaricade = next.safetyCone = next.stikBariket = false;
+            }
+
+            const ppeChildren = ['bodyHarness', 'sarungTanganKulit', 'apron', 'kedokLas', 'coverShoes', 'respirator'];
+            if (ppeChildren.includes(key as string) && next[key as keyof HSEChecklist]) {
+                next.ppeKhusus = true;
+            }
+            const safetyChildren = ['pitaBaricade', 'safetyCone', 'stikBariket'];
+            if (safetyChildren.includes(key as string) && next[key as keyof HSEChecklist]) {
+                next.safetySign = true;
+            }
+
+            return next;
+        });
     };
 
-    // Upload from device
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
@@ -150,7 +185,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                 setPhotos(prev => [...prev, { id: Date.now().toString() + Math.random(), dataUrl, description: '' }]);
             } catch (err) {
                 console.error("Compression failed", err);
-                // Fallback to reader if compression fails
                 const reader = new FileReader();
                 reader.onload = (ev) => {
                     const dataUrl = ev.target?.result as string;
@@ -160,18 +194,15 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             }
         });
 
-        // Reset input
         if (fileInputRef.current) fileInputRef.current.value = '';
         toast.success(`${files.length} foto ditambahkan`);
     };
 
 
-    // Remove photo
     const removePhoto = (id: string) => {
         setPhotos(prev => prev.filter(p => p.id !== id));
     };
 
-    // Save edited photo
     const handleSaveEdit = (editedDataUrl: string) => {
         if (!editingPhoto) return;
         setPhotos(prev => prev.map(p =>
@@ -181,7 +212,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         toast.success('Foto berhasil diedit!');
     };
 
-    // Build form data
     const buildFormData = (): HSEFormData => ({
         aktivitas,
         lokasi,
@@ -197,7 +227,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         date: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }),
     });
 
-    // Save via Golang API (Vercel)
     const saveReportViaAPI = async (formData: HSEFormData, extraData: any) => {
         const apiUrl = import.meta.env.VITE_API_URL;
         if (!apiUrl) throw new Error('API URL not configured');
@@ -210,7 +239,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             },
             body: JSON.stringify({
                 collection: 'hse',
-                sub_data: extraData.photos, // Send photos as sub_data
+                sub_data: extraData.photos,
                 ...formData,
                 processedBy: 'golang_api',
             }),
@@ -225,7 +254,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         return result.reportId;
     };
 
-    // Save to Firestore
     const handleSave = async () => {
         if (!aktivitas.trim()) {
             toast.error('Aktivitas wajib diisi');
@@ -237,7 +265,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             const formData = buildFormData();
             const reportData = {
                 ...formData,
-                photos: photos.map(p => p.dataUrl.substring(0, 50) + '...'), // store metadata only in main doc
+                photos: photos.map(p => p.dataUrl.substring(0, 50) + '...'),
                 authorEmail: user?.email || '',
                 updatedAt: serverTimestamp(),
             };
@@ -246,16 +274,14 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             const isUsingAPI = !!import.meta.env.VITE_API_URL;
 
             if (isUsingAPI && !(editingData && editingData.documentType === 'hse')) {
-                // Use Golang API for new reports
                 docId = await saveReportViaAPI(formData, {
                     authorEmail: user?.email || '',
-                    createdAt: new Date().toISOString(), // Go backend will handle serverTimestamp if we change it, but for now simple ISO
+                    createdAt: new Date().toISOString(),
                 });
             } else if (editingData && editingData.documentType === 'hse') {
                 docId = editingData.id;
                 await updateDoc(doc(db, 'hse', docId), reportData);
 
-                // Clear old photos
                 const photosRef = collection(db, `hse/${docId}/photos`);
                 const oldPhotos = await getDocs(photosRef);
                 for (const pDoc of oldPhotos.docs) {
@@ -269,12 +295,10 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                 docId = docRef.id;
             }
 
-            // Save full photos to subcollection
             for (let i = 0; i < photos.length; i++) {
                 let dataUrl = photos[i].dataUrl;
                 const sizeInBytes = (dataUrl.length * 3) / 4;
 
-                // Compress if legacy/large photo detected (> 800KB)
                 if (sizeInBytes > 800 * 1024) {
                     try {
                         dataUrl = await compressBase64Image(dataUrl, { maxWidth: 800, quality: 0.5 });
@@ -487,32 +511,60 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                             >
                                 <div className="p-5">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        {CHECKLIST_LABELS.filter(item => !['safeCondition', 'safeAction'].includes(item.key)).map(({ key, label }) => {
-                                            const checked = checklist[key];
+                                        {CHECKLIST_LABELS.filter(item => !['safeCondition', 'safeAction'].includes(item.key)).map((item) => {
+                                            const checked = checklist[item.key];
+                                            const hasSubItems = item.subItems && item.subItems.length > 0;
+
                                             return (
-                                                <motion.button
-                                                    key={key}
-                                                    whileTap={{ scale: 0.97 }}
-                                                    onClick={() => toggleCheck(key)}
-                                                    className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all text-left ${checked
-                                                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                                                        : 'bg-slate-800/40 border-slate-700/40 text-slate-400 hover:border-slate-600/60 hover:text-slate-300'
-                                                        }`}
-                                                >
-                                                    <div className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition ${checked ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-500'
-                                                        }`}>
-                                                        {checked ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
-                                                    </div>
-                                                    <span className="text-sm font-medium">{label}</span>
-                                                    <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${checked ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/10 text-red-400/60'}`}>
-                                                        {checked ? '✓' : '✗'}
-                                                    </span>
-                                                </motion.button>
+                                                <div key={item.key} className="flex flex-col gap-2">
+                                                    <motion.button
+                                                        whileTap={{ scale: 0.97 }}
+                                                        onClick={() => toggleCheck(item.key)}
+                                                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all text-left ${checked
+                                                            ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                                                            : 'bg-slate-800/40 border-slate-700/40 text-slate-400 hover:border-slate-600/60 hover:text-slate-300'
+                                                            }`}
+                                                    >
+                                                        <div className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition ${checked ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-500'
+                                                            }`}>
+                                                            {checked ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+                                                        </div>
+                                                        <span className="text-sm font-medium">{item.label}</span>
+                                                        <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${checked ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/10 text-red-400/60'}`}>
+                                                            {checked ? '✓' : '✗'}
+                                                        </span>
+                                                    </motion.button>
+
+                                                    <AnimatePresence>
+                                                        {checked && hasSubItems && (
+                                                            <motion.div
+                                                                initial={{ height: 0, opacity: 0 }}
+                                                                animate={{ height: 'auto', opacity: 1 }}
+                                                                exit={{ height: 0, opacity: 0 }}
+                                                                className="overflow-hidden ml-6 pl-4 border-l-2 border-slate-700/50 flex flex-col gap-2"
+                                                            >
+                                                                {item.subItems?.map(sub => (
+                                                                    <button
+                                                                        key={sub.key}
+                                                                        onClick={() => toggleCheck(sub.key)}
+                                                                        className={`flex items-center gap-3 py-1.5 transition ${checklist[sub.key] ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-400'
+                                                                            }`}
+                                                                    >
+                                                                        <div className={`w-4 h-4 rounded-md flex items-center justify-center ${checklist[sub.key] ? 'bg-emerald-500 text-white' : 'bg-slate-800 border border-slate-700'
+                                                                            }`}>
+                                                                            {checklist[sub.key] && <CheckSquare className="w-2.5 h-2.5" />}
+                                                                        </div>
+                                                                        <span className="text-xs">{sub.label}</span>
+                                                                    </button>
+                                                                ))}
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
                                             );
                                         })}
                                     </div>
 
-                                    {/* Separator for Conclusions */}
                                     <div className="my-6 border-t border-slate-700/50 relative">
                                         <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-900 px-3 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">
                                             Kesimpulan Pekerjaan
@@ -550,7 +602,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                     </AnimatePresence>
                 </motion.div>
 
-                {/* ── FOTO SECTION ───────────────────────────────────────────── */}
                 <motion.div
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -572,7 +623,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                     </div>
 
                     <div className="p-5">
-                        {/* Upload Buttons */}
                         <div className="flex gap-3 mb-5">
                             <input
                                 ref={fileInputRef}
@@ -594,7 +644,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                         </div>
 
 
-                        {/* Photo Grid */}
                         {photos.length > 0 ? (
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                 <AnimatePresence>
@@ -612,7 +661,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                                                     alt={`Foto ${idx + 1}`}
                                                     className="w-full h-full object-cover"
                                                 />
-                                                {/* Floating Action Buttons */}
                                                 <div className="absolute top-2 right-2 flex gap-1.5 opacity-90 hover:opacity-100 transition-opacity">
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); setEditingPhoto(photo); }}
@@ -629,12 +677,10 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                                                         <Trash2 className="w-3.5 h-3.5" />
                                                     </button>
                                                 </div>
-                                                {/* Photo number badge */}
                                                 <div className="absolute top-2 left-2 bg-slate-900/80 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-slate-700/50">
                                                     {idx + 1}
                                                 </div>
                                             </div>
-                                            {/* Description Input */}
                                             <input
                                                 type="text"
                                                 value={photo.description}
@@ -651,7 +697,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                                     ))}
                                 </AnimatePresence>
 
-                                {/* Add more button */}
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.97 }}

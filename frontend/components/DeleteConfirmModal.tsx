@@ -14,7 +14,6 @@ export function DeleteConfirmModal({ isOpen, onClose, onConfirm, documentName }:
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -23,7 +22,6 @@ export function DeleteConfirmModal({ isOpen, onClose, onConfirm, documentName }:
             onClick={onClose}
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center px-4"
           >
-            {/* Modal */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -32,7 +30,6 @@ export function DeleteConfirmModal({ isOpen, onClose, onConfirm, documentName }:
               onClick={(e) => e.stopPropagation()}
               className="bg-slate-900/95 backdrop-blur-xl rounded-2xl p-6 sm:p-8 border border-red-500/30 max-w-md w-full relative overflow-hidden shadow-2xl"
             >
-              {/* Close button */}
               <button
                 onClick={onClose}
                 className="absolute top-4 right-4 p-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white transition"
@@ -40,10 +37,8 @@ export function DeleteConfirmModal({ isOpen, onClose, onConfirm, documentName }:
                 <X className="w-5 h-5" />
               </button>
 
-              {/* Icon */}
               <div className="flex items-center justify-center mb-6">
                 <div className="relative">
-                  {/* Pulsing background */}
                   <motion.div
                     animate={{
                       scale: [1, 1.2, 1],
@@ -62,7 +57,6 @@ export function DeleteConfirmModal({ isOpen, onClose, onConfirm, documentName }:
                 </div>
               </div>
 
-              {/* Content */}
               <div className="text-center mb-8">
                 <h3 className="text-xl sm:text-2xl font-bold text-white mb-3">
                   Hapus Dokumen?
@@ -78,7 +72,6 @@ export function DeleteConfirmModal({ isOpen, onClose, onConfirm, documentName }:
                 </p>
               </div>
 
-              {/* Actions */}
               <div className="grid grid-cols-2 gap-3">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -101,7 +94,6 @@ export function DeleteConfirmModal({ isOpen, onClose, onConfirm, documentName }:
                 </motion.button>
               </div>
 
-              {/* Decorative grid lines */}
               <div className="absolute inset-0 pointer-events-none opacity-5">
                 <div className="absolute inset-0" style={{
                   backgroundImage: `

@@ -12,12 +12,21 @@ export interface HSEChecklist {
     toolsBertagging: boolean;
     logMaintenance: boolean;
     housekeeping: boolean;
+    statusCheck?: boolean;
     safeCondition: boolean;
     safeAction: boolean;
     safetySign: boolean;
-    fullBodyHarness: boolean;
-    coverShoes: boolean;
-    kedokLas: boolean;
+    ppeKhusus?: boolean;
+    bodyHarness?: boolean;
+    sarungTanganKulit?: boolean;
+    apron?: boolean;
+    kedokLas?: boolean;
+    coverShoes?: boolean;
+    respirator?: boolean;
+    pitaBaricade?: boolean;
+    safetyCone?: boolean;
+    stikBariket?: boolean;
+    fullBodyHarness?: boolean;
 }
 
 export interface HSEPhoto {
@@ -68,24 +77,20 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     const marginR = 14;
     const contentW = pageW - marginL - marginR;
 
-    // ── Colors ──────────────────────────────────────────────────────────
     const GREEN = '#16a34a';
     const DARK = '#0f172a';
     const GRAY = '#64748b';
     const LIGHT_GRAY = '#f1f5f9';
 
-    // ── REUSABLE HEADER (drawn on every page) ────────────────────────────
-    const HEADER_H = 30; // total header height including separator
-    let headerDrawCount = 0; // unique alias counter to avoid jsPDF addImage caching issue
+    const HEADER_H = 30;
+    let headerDrawCount = 0;
     const drawPageHeader = () => {
         headerDrawCount++;
         const pg = headerDrawCount;
 
-        // Green top bar
         doc.setFillColor(22, 163, 74);
         doc.rect(0, 0, pageW, 3, 'F');
 
-        // Logo DME (kiri)
         const leftW = 28;
         const leftH = 18;
         const headerTopY = 8;
@@ -99,7 +104,6 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
             doc.text('DME', marginL, headerTopY + 6);
         }
 
-        // Secondary Logo (kanan) - Logic based on reportType
         const rightW = 32;
         const rightH = 12;
         const isUTT = data.reportType === 'utt';
@@ -114,7 +118,6 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
             doc.text(isUTT ? 'UTT' : 'neutraDC', pageW - marginR - 20, headerTopY + 6);
         }
 
-        // Center Title
         const titleY = headerTopY + 4;
         doc.setFontSize(15);
         doc.setFont('helvetica', 'bold');
@@ -126,22 +129,18 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         doc.setTextColor(GRAY);
         doc.text('Health, Safety & Environment — Documentation', pageW / 2, titleY + 5, { align: 'center' });
 
-        // Date
         const dateStr = data.date || new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
         doc.setFontSize(8);
         doc.text(`Tanggal: ${dateStr}`, pageW / 2, titleY + 9.5, { align: 'center' });
 
-        // Separator line
         doc.setDrawColor(22, 163, 74);
         doc.setLineWidth(0.6);
         doc.line(marginL, 26, pageW - marginR, 26);
     };
 
-    // ── PAGE 1 HEADER ─────────────────────────────────────────────────────
     drawPageHeader();
     let curY = HEADER_H;
 
-    // ── INFO SECTION ─────────────────────────────────────────────────────
     doc.setFillColor(LIGHT_GRAY);
     doc.roundedRect(marginL, curY, contentW, 53, 3, 3, 'F');
 
@@ -172,8 +171,6 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
 
     curY += 49;
 
-    // ── CHECKLIST SECTION ─────────────────────────────────────────────────
-    // Section header
     doc.setFillColor(GREEN);
     doc.roundedRect(marginL, curY, contentW, 8, 2, 2, 'F');
     doc.setFontSize(9.5);
@@ -183,24 +180,50 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
 
     curY += 11;
 
-    // Checklist items - Filter and Group
-    const regularItems = [
-        { label: 'MOP', value: data.checklist.mop },
-        { label: 'JSA', value: data.checklist.jsa },
-        { label: 'PTW', value: data.checklist.ptw },
-        { label: 'PPE Mandatory', value: data.checklist.ppe },
-        { label: 'Tools Bertagging & sdh di-checklist', value: data.checklist.toolsBertagging },
-        { label: 'Log Maintenance', value: data.checklist.logMaintenance },
-        { label: 'Housekeeping Area Kerja', value: data.checklist.housekeeping },
-        { label: 'Safety Sign', value: data.checklist.safetySign },
-        { label: 'Full Body Harness (Optional)', value: data.checklist.fullBodyHarness },
-        { label: 'Cover Shoes (Optional)', value: data.checklist.coverShoes },
-        { label: 'Kedok Las (Optional)', value: data.checklist.kedokLas },
-    ].filter(item => {
-        if (item.label.includes('(Optional)')) {
-            return item.value === true;
+    const checklistDefinition = [
+        { key: 'mop', label: 'MOP' },
+        { key: 'jsa', label: 'JSA' },
+        { key: 'ptw', label: 'PTW' },
+        { key: 'ppe', label: 'PPE Mandatory' },
+        { 
+            key: 'ppeKhusus', 
+            label: 'PPE Khusus',
+            subItems: [
+                { key: 'bodyHarness', label: 'Body Harness' },
+                { key: 'sarungTanganKulit', label: 'Sarung Tangan Kulit' },
+                { key: 'apron', label: 'Apron' },
+                { key: 'kedokLas', label: 'Kedok Las' },
+                { key: 'coverShoes', label: 'Cover Shoes' },
+                { key: 'respirator', label: 'Respirator' },
+            ]
+        },
+        { key: 'toolsBertagging', label: 'Tools Bertagging & sdh di-checklist' },
+        { key: 'logMaintenance', label: 'Log Maintenance' },
+        { key: 'housekeeping', label: 'Housekeeping Area Kerja' },
+        { 
+            key: 'safetySign', 
+            label: 'Safety Sign',
+            subItems: [
+                { key: 'pitaBaricade', label: 'Pita Baricade' },
+                { key: 'safetyCone', label: 'Safety Cone' },
+                { key: 'stikBariket', label: 'Stik Bariket' },
+            ]
+        },
+    ];
+
+    const regularItems: { label: string; value: boolean; isSub?: boolean }[] = [];
+    checklistDefinition.forEach(item => {
+        const val = !!(data.checklist as any)[item.key];
+        regularItems.push({ label: item.label, value: val });
+        
+        if (val && item.subItems) {
+            item.subItems.forEach(sub => {
+                const subVal = !!(data.checklist as any)[sub.key];
+                if (subVal) {
+                    regularItems.push({ label: sub.label, value: true, isSub: true });
+                }
+            });
         }
-        return true;
     });
 
     const conclusionItems = [
@@ -209,28 +232,37 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     ];
 
     const colW = (contentW - 6) / 2;
-    const rowH = 8;
+    const rowH = 7.5;
     const itemsPerCol = Math.ceil(regularItems.length / 2);
     const col1Items = regularItems.slice(0, itemsPerCol);
     const col2Items = regularItems.slice(itemsPerCol);
 
-    const drawChecklistItem = (item: { label: string, value: boolean }, x: number, y: number, width: number, isConclusion = false) => {
+    const drawChecklistItem = (item: { label: string, value: boolean, isSub?: boolean }, x: number, y: number, width: number, isConclusion = false) => {
         const bgColor = isConclusion ? '#f0f9ff' : (Math.floor(y / rowH) % 2 === 0 ? '#f8fafc' : '#ffffff');
         doc.setFillColor(bgColor);
         doc.rect(x, y, width, rowH, 'F');
 
-        const centerX = x + 5;
+        const indent = item.isSub ? 6 : 0;
+        const centerX = x + 5 + indent;
         const centerY = y + rowH / 2;
         const checked = item.value;
 
         if (checked) {
-            doc.setFillColor(isConclusion ? '#3b82f6' : '#16a34a'); // Blue for conclusion, Green for regular
-            doc.circle(centerX, centerY, 2.7, 'F');
-            doc.setDrawColor(255, 255, 255);
-            doc.setLineWidth(0.4);
-            doc.line(centerX - 1.1, centerY, centerX - 0.2, centerY + 0.8);
-            doc.line(centerX - 0.2, centerY + 0.8, centerX + 1.1, centerY - 0.9);
-        } else {
+            if (item.isSub) {
+                doc.setDrawColor(22, 163, 74);
+                doc.setLineWidth(0.5);
+                doc.line(centerX - 1.2, centerY, centerX - 0.3, centerY + 0.9);
+                doc.line(centerX - 0.3, centerY + 0.9, centerX + 1.2, centerY - 1.0);
+            } else {
+                doc.setFillColor(isConclusion ? '#3b82f6' : '#16a34a');
+                doc.circle(centerX, centerY, 2.7, 'F');
+                doc.setDrawColor(255, 255, 255);
+                doc.setLineWidth(0.4);
+                doc.line(centerX - 1.1, centerY, centerX - 0.2, centerY + 0.8);
+                doc.line(centerX - 0.2, centerY + 0.8, centerX + 1.1, centerY - 0.9);
+            }
+        }
+ else {
             doc.setFillColor(239, 68, 68);
             doc.circle(centerX, centerY, 2.7, 'F');
             doc.setDrawColor(255, 255, 255);
@@ -239,19 +271,17 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
             doc.line(centerX + 0.9, centerY - 0.9, centerX - 0.9, centerY + 0.9);
         }
 
-        doc.setFontSize(8.5);
+        doc.setFontSize(item.isSub ? 7.5 : 8.5);
         doc.setFont('helvetica', isConclusion ? 'bold' : 'normal');
-        doc.setTextColor(DARK);
-        doc.text(item.label.replace(' (Optional)', ''), x + 10, y + rowH / 2 + 1.5);
+        doc.setTextColor(item.isSub ? GRAY : DARK);
+        doc.text(item.label, x + 10 + indent, y + rowH / 2 + 1.2);
     };
 
-    // Draw Regular Items in 2 Columns
     col1Items.forEach((item, i) => drawChecklistItem(item, marginL, curY + i * rowH, colW));
     col2Items.forEach((item, i) => drawChecklistItem(item, marginL + colW + 6, curY + i * rowH, colW));
 
     curY += itemsPerCol * rowH + 4;
 
-    // Draw Separator & Conclusion Header
     doc.setDrawColor(226, 232, 240);
     doc.setLineWidth(0.2);
     doc.line(marginL, curY, marginL + contentW, curY);
@@ -263,7 +293,6 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
 
     curY += 6;
 
-    // Draw Conclusion Items in 2 Columns
     conclusionItems.forEach((item, i) => {
         const x = i === 0 ? marginL : marginL + colW + 6;
         drawChecklistItem(item, x, curY, colW, true);
@@ -271,14 +300,10 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
 
     curY += rowH + 10;
 
-    // ── FOOTER REMARK ───────────────────────────────────────────────────
     curY += 4;
-    // Removed old slogan as requested
     curY += 2;
 
-    // ── FOTO DOKUMENTASI ─────────────────────────────────────────────────
     if (data.photos && data.photos.length > 0) {
-        // Section header
         doc.setFillColor(GREEN);
         doc.roundedRect(marginL, curY, contentW, 8, 2, 2, 'F');
         doc.setFontSize(9.5);
@@ -290,34 +315,31 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         const photosPerRow = 3;
         const photoGap = 4;
         const photoW = (contentW - photoGap * (photosPerRow - 1)) / photosPerRow;
-        const photoH = photoW * 0.75; // 4:3 aspect
-        const descriptionH = 8; // Extra height for description line
+        const photoH = photoW * 0.75;
+        const descriptionH = 8;
 
         for (let i = 0; i < data.photos.length; i++) {
             const col = i % photosPerRow;
             const x = marginL + col * (photoW + photoGap);
 
-            // New page if needed - checking photo + description height
             if (curY + photoH + descriptionH > pageH - 20) {
                 doc.addPage();
-                drawPageHeader();          // ← Full header on every new page
-                curY = HEADER_H;           // ← Start content below the header
+                drawPageHeader();
+                curY = HEADER_H;
             }
 
             const y = curY;
 
             try {
                 const photo = data.photos[i];
-                const imgData = photo.base64; // Already compressed in caller
+                const imgData = photo.base64;
                 const imgType = 'JPEG';
                 doc.addImage(imgData, imgType, x, y, photoW, photoH, `photo_${i}`, 'FAST');
 
-                // Photo Border
                 doc.setDrawColor(200, 200, 200);
                 doc.setLineWidth(0.2);
                 doc.rect(x, y, photoW, photoH);
 
-                // Photo description text
                 if (photo.description) {
                     doc.setFontSize(7.5);
                     doc.setFont('helvetica', 'italic');
@@ -326,7 +348,6 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
                     doc.text(descLines, x, y + photoH + 3.5);
                 }
             } catch (_) {
-                // Draw placeholder
                 doc.setFillColor(220, 220, 220);
                 doc.rect(x, y, photoW, photoH, 'F');
                 doc.setFontSize(7);
@@ -349,7 +370,6 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         }
     }
 
-    // ── FOOTER ────────────────────────────────────────────────────────────
     const totalPages = (doc.internal as any).getNumberOfPages();
     for (let pg = 1; pg <= totalPages; pg++) {
         doc.setPage(pg);
@@ -425,7 +445,6 @@ export async function generateHSEPdf(data: HSEFormData) {
     const dateStr = new Date().toLocaleDateString('id-ID').replace(/\//g, '-');
     const fileName = `HSE_Report_${safeAktivitas}_${dateStr}.pdf`;
 
-    // Manual bulletproof download method
     const pdfBlob = doc.output('blob');
     const url = URL.createObjectURL(pdfBlob);
     const link = document.createElement('a');

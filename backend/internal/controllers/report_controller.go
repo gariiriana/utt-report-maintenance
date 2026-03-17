@@ -23,12 +23,10 @@ func (c *ReportController) HandleReport(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// The context from the request should be passed down
 	ctx := r.Context()
 	
 	reportID, collectionName, err := c.Service.ProcessReport(ctx, requestBody)
 	if err != nil {
-		// Differentiate between user error (bad collection name) and server error based on exact match or error type
 		if err.Error()[:23] == "unauthorized collection" {
 			helpers.SendError(w, err.Error(), http.StatusForbidden)
 		} else {

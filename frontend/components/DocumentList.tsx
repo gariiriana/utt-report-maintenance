@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, User, FileDown, FileType, Pencil, Box } from 'lucide-react';
-import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore'; // ✅ Removed "orderBy" - not needed anymore
+import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore'; 
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
@@ -28,14 +28,14 @@ export interface ExcelDocument {
   fileName: string;
   maintenanceName: string;
   maintenanceTime: string;
-  specificDetail?: string; // ✅ NEW: Optional karena dokumen lama mungkin tidak punya
+  specificDetail?: string; 
   createdAt: Date;
   createdBy: string;
   fileSize: number;
   totalPhotos: number;
   photosWithImage: number;
   photosData: PhotoData[];
-  documentType: 'excel' | 'pdf' | 'hse'; // ✅ UPDATED: Added hse
+  documentType: 'excel' | 'pdf' | 'hse'; 
 }
 
 interface DocumentListProps {
@@ -50,13 +50,11 @@ export function DocumentList({ onEdit }: DocumentListProps) {
   const [filterDate, setFilterDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
-  const [filterType, setFilterType] = useState<'all' | 'excel' | 'pdf' | 'hse'>('all'); // ✅ UPDATED: Filter by document type
+  const [filterType, setFilterType] = useState<'all' | 'excel' | 'pdf' | 'hse'>('all'); 
 
-  // ✅ NEW: State untuk delete confirmation modal
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<ExcelDocument | null>(null);
 
-  // ✅ FIX: Wrap fetchDocuments with useCallback to avoid missing dependency warning
   const fetchDocuments = useCallback(async () => {
     if (!user) return;
 
@@ -149,7 +147,6 @@ export function DocumentList({ onEdit }: DocumentListProps) {
       // Combine all arrays
       const allDocs = [...excelDocs, ...pdfDocs, ...hseDocs];
 
-      // ✅ Sort on client-side based on sortBy state
       allDocs.sort((a, b) => {
         const timeA = a.createdAt.getTime();
         const timeB = b.createdAt.getTime();
@@ -160,31 +157,27 @@ export function DocumentList({ onEdit }: DocumentListProps) {
     } catch (error: any) {
       console.error('Error fetching documents:', error);
 
-      // ✅ Check if error is about missing index
       if (error?.code === 'failed-precondition' && error?.message?.includes('index')) {
         toast.error('Database index diperlukan. Klik link di console browser untuk create index.', {
           duration: 8000,
         });
-        console.error('🔍 CREATE INDEX: Buka link di atas untuk create Firestore composite index');
       } else {
         toast.error('Gagal memuat dokumen');
       }
     } finally {
       setLoading(false);
     }
-  }, [user, sortBy, userRole]); // ✅ UPDATED: Added userRole as dependency
+  }, [user, sortBy, userRole]); 
 
   useEffect(() => {
     fetchDocuments();
-  }, [fetchDocuments]); // ✅ FIX: Use fetchDocuments in dependency
+  }, [fetchDocuments]); 
 
-  // ✅ NEW: Open delete modal
   const openDeleteModal = (document: ExcelDocument) => {
     setDocumentToDelete(document);
     setDeleteModalOpen(true);
   };
 
-  // ✅ UPDATED: Confirm delete (called from modal)
   const confirmDelete = async () => {
     if (!documentToDelete) return;
 
@@ -312,7 +305,6 @@ export function DocumentList({ onEdit }: DocumentListProps) {
       let currentRow = 4;
       let finalPhotosData = docData.photosData || [];
 
-      // ✅ Support subcollection pattern: fetch photos if photosData is empty
       if (finalPhotosData.length === 0) {
         try {
           const photosSnap = await getDocs(
@@ -435,7 +427,6 @@ export function DocumentList({ onEdit }: DocumentListProps) {
 
       // Load logos
       try {
-        // ✅ NEW: Load logos with canvas to ensure compression and JPEG format (matching ReportForm)
         const processLogo = (url: string) => {
           return new Promise<string>((resolve) => {
             const img = new Image();
@@ -459,7 +450,6 @@ export function DocumentList({ onEdit }: DocumentListProps) {
         const processedLogoLeft = await processLogo(companyType === 'bri' ? logoBRILeft : logoDwimitra);
         const processedLogoRight = await processLogo(companyType === 'bri' ? logoBRI : logoNeutraDC);
 
-        // ✅ Helper function to add page header (logos + title + info)
         const addPageHeader = () => {
           const isPDU = user?.email === 'pdu@gmail.com' || docData.createdBy === 'pdu@gmail.com';
           const isDwimitra = companyType !== 'bri';
@@ -509,7 +499,6 @@ export function DocumentList({ onEdit }: DocumentListProps) {
           return headerY; // Return Y position after header
         };
 
-        // ✅ Add header for first page
         currentY = addPageHeader();
 
         // Add photos in grid
@@ -524,7 +513,6 @@ export function DocumentList({ onEdit }: DocumentListProps) {
 
         let finalPhotosData = docData.photosData || [];
 
-        // ✅ Support subcollection pattern
         if (finalPhotosData.length === 0) {
           try {
             const photosSnap = await getDocs(
@@ -544,10 +532,9 @@ export function DocumentList({ onEdit }: DocumentListProps) {
         let photoCount = 0;
 
         for (let i = 0; i < photosData.length; i += columns) {
-          // ✅ Check if we need a new page
           if (photoCount > 0 && photoCount % photosPerPage === 0) {
             doc.addPage();
-            currentY = addPageHeader(); // ✅ Repeat header on new pages!
+            currentY = addPageHeader(); 
           }
 
           const rowCards = photosData.slice(i, i + columns);
@@ -818,7 +805,6 @@ export function DocumentList({ onEdit }: DocumentListProps) {
         </div>
       </div>
 
-      {/* Document List */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
@@ -949,7 +935,6 @@ export function DocumentList({ onEdit }: DocumentListProps) {
         </div>
       )}
 
-      {/* ✅ Delete Confirmation Modal */}
       <DeleteConfirmModal
         isOpen={deleteModalOpen}
         onClose={() => setDeleteModalOpen(false)}

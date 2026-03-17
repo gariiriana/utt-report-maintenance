@@ -27,7 +27,6 @@ export function HSEApp() {
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden font-geist text-slate-200">
             <DataCenterBackground />
 
-            {/* Header */}
             <div className="bg-slate-900/60 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-50">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
                     <div className="flex items-center justify-between">
@@ -73,7 +72,6 @@ export function HSEApp() {
                 </div>
             </div>
 
-            {/* Page Title & Navigation */}
             <div className="bg-slate-900/40 backdrop-blur-md border-b border-slate-700/30">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-5">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -117,7 +115,6 @@ export function HSEApp() {
                 </div>
             </div>
 
-            {/* Content */}
             <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
                 {activeTab === 'report' ? (
                     <HSEReportForm editingData={editingData} onClearEdit={clearEditingData} />
@@ -126,7 +123,6 @@ export function HSEApp() {
                 )}
             </div>
 
-            {/* Logout Modal */}
             <LogoutConfirmModal
                 isOpen={logoutModalOpen}
                 onClose={() => setLogoutModalOpen(false)}

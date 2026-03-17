@@ -16,21 +16,17 @@ export function usePresence() {
         const user = auth.currentUser;
         if (!user) return;
 
-        // 1. Reference to this user's presence in RTDB
         const userPresenceRef = ref(rtdb, `presence/${user.uid}`);
         
-        // 2. Reference to special ".info/connected" node
         const connectedRef = ref(rtdb, '.info/connected');
 
         const unsubscribeConnected = onValue(connectedRef, (snap) => {
             if (snap.val() === true) {
                 // User is connected! 
-                // Set up the automatic cleanup for when they disconnect
                 onDisconnect(userPresenceRef).remove().catch(err => {
                     console.error("Could not establish onDisconnect:", err);
                 });
 
-                // Mark as online
                 set(userPresenceRef, {
                     uid: user.uid,
                     email: user.email,
@@ -40,7 +36,6 @@ export function usePresence() {
             }
         });
 
-        // 3. Listen to ALL online users
         const allPresenceRef = ref(rtdb, 'presence');
         const unsubscribeList = onValue(allPresenceRef, (snapshot) => {
             const data = snapshot.val();
@@ -55,8 +50,6 @@ export function usePresence() {
         return () => {
             unsubscribeConnected();
             unsubscribeList();
-            // Optional: manually remove presence on component unmount
-            // set(userPresenceRef, null);
         };
     }, []);
 

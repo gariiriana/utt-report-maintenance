@@ -39,19 +39,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
 
-      // Cleanup previous listener if exists
       if (unsubscribeDoc) {
         unsubscribeDoc();
         unsubscribeDoc = null;
       }
 
       if (user) {
-        // ✅ FIX: Create user document FIRST if it doesn't exist (to prevent BloomFilter error)
         try {
           const userDocRef = doc(db, 'users', user.uid);
           const userDoc = await getDoc(userDocRef);
 
-          // If user document doesn't exist, create it NOW
           if (!userDoc.exists()) {
             const isAdminEmail = user.email === 'Adminreportlampiranutt@gmail.com';
             await setDoc(userDocRef, {
@@ -61,33 +58,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               companyType: 'neutra',
               createdAt: serverTimestamp(),
             });
-            // Set role immediately
             setUserRole(isAdminEmail ? 'admin' : 'engineer');
           }
         } catch (error) {
           console.warn('Error creating user document:', error);
-          // Continue anyway, listener will handle it
         }
 
-        // ✅ NOW setup snapshot listener (user document should exist)
         const userDocRef = doc(db, 'users', user.uid);
         unsubscribeDoc = onSnapshot(
           userDocRef,
           (docSnap) => {
             if (docSnap.exists()) {
               const userData = docSnap.data() as UserData;
-              setUserRole(userData.role || 'engineer'); // Default to engineer
-              setCompanyType(userData.companyType || 'neutra'); // Default to neutra
+              setUserRole(userData.role || 'engineer');
+              setCompanyType(userData.companyType || 'neutra');
             } else {
-              setUserRole('engineer'); // Default role if document doesn't exist yet
-              setCompanyType('neutra'); // Default company type
+              setUserRole('engineer');
+              setCompanyType('neutra');
             }
             setLoading(false);
           },
           (error) => {
-            // ✅ Handle permission denied error gracefully
             console.warn('Error listening to user document:', error.message);
-            // Set default role and mark as loaded
             setUserRole('engineer');
             setCompanyType('neutra');
             setLoading(false);
@@ -109,24 +101,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    // ✅ Login user
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
-    // ✅ Auto-create user document in Firestore if not exists
     if (userCredential.user) {
       const userDocRef = doc(db, 'users', userCredential.user.uid);
       const userDoc = await getDoc(userDocRef);
 
-      // Jika user document belum ada, buat baru dengan role default
       if (!userDoc.exists()) {
-        // ✅ Check if email is admin
         const isAdminEmail = userCredential.user.email === 'Adminreportlampiranutt@gmail.com';
 
         await setDoc(userDocRef, {
           email: userCredential.user.email,
           uid: userCredential.user.uid,
-          role: isAdminEmail ? 'admin' : 'engineer', // ✅ Set role based on email
-          companyType: 'neutra', // ✅ Default company type
+          role: isAdminEmail ? 'admin' : 'engineer',
+          companyType: 'neutra',
           createdAt: serverTimestamp(),
         });
       }
