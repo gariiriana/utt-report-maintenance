@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/gariiriana/utt-report-maintenance/internal/routes"
+	"github.com/gariiriana/utt-report-maintenance/core/routes"
 )
 
 func main() {

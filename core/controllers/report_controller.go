@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gariiriana/utt-report-maintenance/internal/services"
+	"github.com/gariiriana/utt-report-maintenance/core/services"
 	"github.com/gariiriana/utt-report-maintenance/pkg/helpers"
 )
 

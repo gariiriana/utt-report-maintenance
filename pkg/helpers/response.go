@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gariiriana/utt-report-maintenance/internal/models"
+	"github.com/gariiriana/utt-report-maintenance/core/models"
 )
 
 func SendSuccess(w http.ResponseWriter, reportID, collection, message string) {
