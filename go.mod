@@ -1,4 +1,4 @@
-module github.com/gariiriana/utt-report-maintenance/api
+module github.com/gariiriana/utt-report-maintenance
 
 go 1.21
 

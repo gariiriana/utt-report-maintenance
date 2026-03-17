@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/gariiriana/utt-report-maintenance/api/internal/repositories"
+	"github.com/gariiriana/utt-report-maintenance/backend/internal/repositories"
 )
 
 type ReportService struct {
