@@ -1,16 +1,16 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, CheckCircle } from 'lucide-react';
-import { useAuth } from './AuthContext';
-import { ReportForm } from './ReportForm';
-import { DocumentList } from './DocumentList';
-import { AdminDashboard } from './AdminDashboard';
-import { ExcelDocument } from './DocumentList'; // ✅ Export this type from DocumentList
-import { FileManagement } from './FileManagement';
-import { CorrectiveMaintenance } from './CorrectiveMaintenance';
-import { Footer } from './Footer';
-import { LogoutConfirmModal } from './LogoutConfirmModal'; // ✅ NEW: Import logout modal
-import { DataCenterBackground } from './DataCenterBackground'; // ✅ NEW: Import data center animations
+import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool } from 'lucide-react';
+import { useAuth } from '@/components/AuthContext';
+import { ReportForm } from '@/components/ReportForm';
+import { DocumentList } from '@/components/DocumentList';
+import { AdminDashboard } from '@/pages/AdminDashboard';
+import { ExcelDocument } from '@/components/DocumentList'; // ✅ Export this type from DocumentList
+import { FileManagement } from '@/components/FileManagement';
+import { CorrectiveMaintenance } from '@/components/CorrectiveMaintenance';
+import { Footer } from '@/components/Footer';
+import { LogoutConfirmModal } from '@/components/LogoutConfirmModal'; // ✅ NEW: Import logout modal
+import { DataCenterBackground } from '@/components/DataCenterBackground'; // ✅ NEW: Import data center animations
 import logoUTT from '@/assets/logo_utt.png';
 
 type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective';

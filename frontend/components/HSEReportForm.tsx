@@ -6,13 +6,13 @@ import {
     Save, Loader2, ChevronDown, ChevronUp, ClipboardList, Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { HSEPhotoEditor } from './HSEPhotoEditor';
-import { generateHSEPdf, type HSEFormData, type HSEChecklist } from './HSEPdfExport';
+import { HSEPhotoEditor } from '@/components/HSEPhotoEditor';
+import { generateHSEPdf, type HSEFormData, type HSEChecklist } from '@/utils/HSEPdfExport';
 import { db } from '@/api/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, getDoc, getDocs, deleteDoc, QueryDocumentSnapshot } from 'firebase/firestore';
-import { useAuth } from './AuthContext';
-import { ExcelDocument } from './DocumentList';
-import { compressImage, compressBase64Image } from '@/api/imageCompression';
+import { useAuth } from '@/components/AuthContext';
+import { ExcelDocument } from '@/components/DocumentList';
+import { compressImage, compressBase64Image } from '@/utils/imageCompression';
 
 const INITIAL_CHECKLIST: HSEChecklist = {
     mop: false,

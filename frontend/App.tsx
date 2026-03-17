@@ -1,8 +1,8 @@
 import { Toaster } from 'sonner';
 import { AuthProvider, useAuth } from '@/components/AuthContext';
-import { Login } from '@/components/Login';
-import { MainApp } from '@/components/MainApp';
-import { HSEApp } from '@/components/HSEApp';
+import { Login } from '@/pages/Login';
+import { MainApp } from '@/pages/MainApp';
+import { HSEApp } from '@/pages/HSEApp';
 import { ServerLoadingIndicator } from '@/components/ServerLoadingIndicator';
 import { HSEReportViewer } from '@/components/HSEReportViewer';
 import { useEffect } from 'react';

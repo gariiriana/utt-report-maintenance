@@ -12,7 +12,7 @@ import {
 import { db } from '@/api/firebase';
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { safeStorage } from '@/api/safeStorage';
+import { safeStorage } from '@/utils/safeStorage';
 
 interface NotificationItem {
     id: string;

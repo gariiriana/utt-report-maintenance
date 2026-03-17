@@ -12,8 +12,8 @@ import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
-import { compressBase64Image } from '@/api/imageCompression';
-import { generateHSEPdf } from './HSEPdfExport';
+import { compressBase64Image } from '@/utils/imageCompression';
+import { generateHSEPdf } from '@/utils/HSEPdfExport';
 import { getDoc } from 'firebase/firestore';
 
 interface PhotoData {

@@ -1,21 +1,20 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Trash2, Upload, Camera, FileType, Scissors, Eye, RefreshCw, ChevronDown, Save } from 'lucide-react';
-import { ExcelDocument } from './DocumentList';
-import { ImageEditor } from './ImageEditor';
-import { useAuth } from './AuthContext';
-import { Toaster, toast } from 'sonner';
-import { collection, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, getDocs, getDoc, setDoc, query, where, orderBy, onSnapshot, limit } from 'firebase/firestore';
+import { ExcelDocument } from '@/components/DocumentList';
+import { ImageEditor } from '@/components/ImageEditor';
+import { useAuth } from '@/components/AuthContext';
+import { toast } from 'sonner';
+import { collection, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/api/firebase';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
 
 import { jsPDF } from 'jspdf';
-import { compressImage, compressBase64Image } from '@/api/imageCompression';
-import { PreviewReport } from './PreviewReport';
+import { compressImage, compressBase64Image } from '@/utils/imageCompression';
+import { PreviewReport } from '@/components/PreviewReport';
 
 export interface PhotoCard {
   id: string;

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { useAuth } from './AuthContext';
+import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
-import { DataCenterBackground } from './DataCenterBackground';
+import { DataCenterBackground } from '@/components/DataCenterBackground';
 import { Lock, Mail, Eye, EyeOff, LogIn } from 'lucide-react';
 
 

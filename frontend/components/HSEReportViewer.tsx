@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/api/firebase';
 import { doc, getDocFromServer, collection, getDocsFromServer } from 'firebase/firestore';
-import { generateHSEPdf, type HSEFormData } from './HSEPdfExport';
+import { generateHSEPdf, type HSEFormData } from '@/utils/HSEPdfExport';
 import {
     ShieldCheck, Loader2, AlertTriangle, XCircle,
     HardHat, Calendar, Download, User, Users, ExternalLink
@@ -78,7 +78,7 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                 setReport(fullReport);
 
                 // Auto-generate PDF for viewing
-                const { generateHSEPdfBlob } = await import('./HSEPdfExport');
+                const { generateHSEPdfBlob } = await import('@/utils/HSEPdfExport');
                 const formData: HSEFormData = {
                     aktivitas: fullReport.aktivitas,
                     lokasi: fullReport.lokasi,

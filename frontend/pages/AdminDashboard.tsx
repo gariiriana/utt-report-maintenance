@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Shield, FileText, FileSpreadsheet, Download, Search, Filter, Calendar, User, Database, Activity, TrendingUp, Pencil } from 'lucide-react';
 import { collection, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
-import { ExcelDocument } from './DocumentList';
+import { ExcelDocument } from '@/components/DocumentList';
 import { db } from '@/api/firebase';
-import { useAuth } from './AuthContext';
+import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
 import jsPDF from 'jspdf';
@@ -12,7 +12,7 @@ import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
-import { usePresence } from '../hooks/usePresence';
+import { usePresence } from '@/hooks/usePresence';
 
 interface DocumentData {
   id: string;

@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { LogOut, ShieldCheck, HardHat, FileText, FolderOpen } from 'lucide-react';
-import { useAuth } from './AuthContext';
-import { LogoutConfirmModal } from './LogoutConfirmModal';
-import { DataCenterBackground } from './DataCenterBackground';
-import { HSEReportForm } from './HSEReportForm';
-import { DocumentList, ExcelDocument } from './DocumentList';
+import { useAuth } from '@/components/AuthContext';
+import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
+import { DataCenterBackground } from '@/components/DataCenterBackground';
+import { HSEReportForm } from '@/components/HSEReportForm';
+import { DocumentList, ExcelDocument } from '@/components/DocumentList';
 import logoUTT from '@/assets/logo_utt.png';
 
 export function HSEApp() {
