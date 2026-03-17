@@ -3,7 +3,7 @@ package handler
 import (
 	"net/http"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/routes"
+	"github.com/gariiriana/utt-report-maintenance/internal/routes"
 )
 
 var mux *http.ServeMux

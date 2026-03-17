@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/services"
-	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
+	"github.com/gariiriana/utt-report-maintenance/internal/services"
+	"github.com/gariiriana/utt-report-maintenance/pkg/helpers"
 )
 
 type ReportController struct {
