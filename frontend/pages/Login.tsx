@@ -83,13 +83,6 @@ export function Login() {
               </h1>
               <p className="text-xs sm:text-sm text-slate-400 font-light">Data Center Maintenance System</p>
 
-              {/* Status Indicator */}
-              <div className="flex items-center justify-center gap-2 mt-3 sm:mt-4">
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 rounded-full border border-emerald-500/20">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs text-emerald-400 font-medium">System Online</span>
-                </div>
-              </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">

@@ -115,8 +115,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         'Cleaning Fan', 'Nameplate', 'Remote'
       ];
       setCards(vrvTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
-    } else if (lowerEmail === 'lv@gmail.com' || lowerEmail === 'ats@gmail.com') {
-      setMaintenanceName(lowerEmail === 'lv@gmail.com' ? 'LV' : 'ATS');
+    } else if (lowerEmail === 'lv@gmail.com' || lowerEmail === 'ats@gmail.com' || lowerEmail === 'trafo@gmail.com') {
+      const isTrafo = lowerEmail === 'trafo@gmail.com';
+      setMaintenanceName(isTrafo ? 'Trafo' : (lowerEmail === 'lv@gmail.com' ? 'LV' : 'ATS'));
+      
       let lvTemplate = [
         'Condition Panel', 'Check water pas', 'Cleaning panel',
         'Check Thermal Imager', 'Measurement Grounding', 'Measurement Voltage R - S',
@@ -126,9 +128,19 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         'Measurement Ampere N', 'Measurement Voltage DPM', 'Measurement Voltage DPM',
         'Measurement Ampere DPM', 'Measurement Daya DPM'
       ];
-      if (lowerEmail === 'ats@gmail.com') {
+
+      if (lowerEmail === 'ats@gmail.com' || isTrafo) {
         lvTemplate = lvTemplate.filter(t => t !== 'Check water pas');
       }
+
+      if (isTrafo) {
+        // Menambahkan Measurement Noise setelah Cleaning panel
+        const cleaningIdx = lvTemplate.indexOf('Cleaning panel');
+        if (cleaningIdx !== -1) {
+          lvTemplate.splice(cleaningIdx + 1, 0, 'Measurement Noise');
+        }
+      }
+
       setCards(lvTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     } else if (lowerEmail === 'grounding@gmail.com') {
       setMaintenanceName('Grounding');
@@ -155,6 +167,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         'Measurement pressure freon'
       ];
       setCards(acSplitTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
+    } else if (lowerEmail === 'busduct@gmail.com') {
+      setMaintenanceName('Busduct');
+      const busductTemplate = [
+        'Visual inspect busduct', 'Cleaning busduct', 'Thermal on joint conection'
+      ];
+      setCards(busductTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     }
   }, [user?.email, editingData]);
 
@@ -615,7 +633,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Maintenance Name</label>
-                  <input type="text" value={maintenanceName} onChange={e => setMaintenanceName(e.target.value)} disabled={user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com'} className={`w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 ${(user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com') ? 'opacity-60 cursor-not-allowed' : ''}`} placeholder="e.g. FCU Maintenance" />
+                  <input type="text" value={maintenanceName} onChange={e => setMaintenanceName(e.target.value)} disabled={user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com'} className={`w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 ${(user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com') ? 'opacity-60 cursor-not-allowed' : ''}`} placeholder="e.g. FCU Maintenance" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Unit/Room (Optional)</label>
