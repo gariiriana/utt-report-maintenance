@@ -1,5 +1,7 @@
 {
   "version": 2,
+  "buildCommand": "echo 'Skipping frontend build on Vercel'",
+  "installCommand": "echo 'Skipping frontend install on Vercel'",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.go" }
   ]
