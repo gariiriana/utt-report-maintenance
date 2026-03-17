@@ -120,7 +120,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       setMaintenanceName(isTrafo ? 'Trafo' : (lowerEmail === 'lv@gmail.com' ? 'LV' : 'ATS'));
       
       let lvTemplate = [
-        'Condition Panel', 'Check water pas', 'Cleaning panel',
+        'Condition Panel', 'Check water pas', isTrafo ? 'Cleaning trafo' : 'Cleaning panel',
         'Check Thermal Imager', 'Measurement Grounding', 'Measurement Voltage R - S',
         'Measurement Voltage S - T', 'Measurement Voltage T - R', 'Measurement Voltage R - N',
         'Measurement Voltage S - N', 'Measurement Voltage T - N', 'Measurement Voltage N - G',
@@ -134,8 +134,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       }
 
       if (isTrafo) {
-        // Menambahkan Measurement Noise setelah Cleaning panel
-        const cleaningIdx = lvTemplate.indexOf('Cleaning panel');
+        // Menambahkan Measurement Noise setelah Cleaning trafo
+        const cleaningIdx = lvTemplate.indexOf('Cleaning trafo');
         if (cleaningIdx !== -1) {
           lvTemplate.splice(cleaningIdx + 1, 0, 'Measurement Noise');
         }
