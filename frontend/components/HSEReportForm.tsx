@@ -286,9 +286,12 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             };
 
             let docId = '';
-            const isUsingAPI = !!import.meta.env.VITE_API_URL;
+            // For HSE reports, we skip the Vercel API and save directly to Firestore
+            // to avoid persistent 405 Method Not Allowed errors on Vercel.
+            // This is safer and uses the official Firebase SDK.
+            const shouldBypassAPI = true;
 
-            if (isUsingAPI && !(editingData && editingData.documentType === 'hse')) {
+            if (!shouldBypassAPI && !!import.meta.env.VITE_API_URL && !(editingData && editingData.documentType === 'hse')) {
                 docId = await saveReportViaAPI(formData, {
                     authorEmail: user?.email || '',
                     createdAt: new Date().toISOString(),
@@ -297,12 +300,14 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                 docId = editingData.id;
                 await updateDoc(doc(db, 'hse', docId), reportData);
 
+                // Update photos subcollection
                 const photosRef = collection(db, `hse/${docId}/photos`);
                 const oldPhotos = await getDocs(photosRef);
                 for (const pDoc of oldPhotos.docs) {
                     await deleteDoc(doc(db, `hse/${docId}/photos`, pDoc.id));
                 }
             } else {
+                // Direct Firestore save for new reports
                 const docRef = await addDoc(collection(db, 'hse'), {
                     ...reportData,
                     createdAt: serverTimestamp(),
