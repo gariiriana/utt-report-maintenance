@@ -350,21 +350,30 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         }
         setIsGeneratingPdf(true);
         try {
-            // Try to save silently, but don't block PDF generation if it fails
+            // Step 1: Try to save silently — does NOT block PDF if it fails
+            console.log('[HSE-PDF] Step 1: Trying to save report...');
             try {
                 await handleSave(true, mode);
+                console.log('[HSE-PDF] Step 1: Save OK');
             } catch (saveErr) {
-                console.warn('Save before PDF failed (non-blocking):', saveErr);
-                toast.warning('Data gagal disimpan ke server, tapi PDF tetap digenerate...');
+                console.warn('[HSE-PDF] Step 1: Save failed (non-blocking):', saveErr);
+                toast.warning('Data gagal disimpan, tapi PDF tetap digenerate...');
             }
 
+            // Step 2: Build form data
+            console.log('[HSE-PDF] Step 2: Building form data...');
             const formData = buildFormData();
             formData.reportType = mode;
+            console.log('[HSE-PDF] Step 2: Form data built, photos:', formData.photos.length);
+
+            // Step 3: Generate PDF
+            console.log('[HSE-PDF] Step 3: Generating PDF...');
             await generateHSEPdf(formData);
+            console.log('[HSE-PDF] Step 3: PDF generated OK!');
             toast.success(`PDF ${mode.toUpperCase()} berhasil digenerate!`);
         } catch (err) {
-            console.error(err);
-            toast.error('Gagal generate PDF');
+            console.error('[HSE-PDF] FATAL ERROR:', err);
+            toast.error(`Gagal generate PDF: ${(err as Error)?.message || 'Unknown error'}`);
         } finally {
             setIsGeneratingPdf(false);
         }
