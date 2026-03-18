@@ -350,15 +350,21 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         }
         setIsGeneratingPdf(true);
         try {
-            await handleSave(true, mode);
-            
+            // Try to save silently, but don't block PDF generation if it fails
+            try {
+                await handleSave(true, mode);
+            } catch (saveErr) {
+                console.warn('Save before PDF failed (non-blocking):', saveErr);
+                toast.warning('Data gagal disimpan ke server, tapi PDF tetap digenerate...');
+            }
+
             const formData = buildFormData();
             formData.reportType = mode;
             await generateHSEPdf(formData);
-            toast.success(`PDF ${mode.toUpperCase()} berhasil digenerate & di-archive!`);
+            toast.success(`PDF ${mode.toUpperCase()} berhasil digenerate!`);
         } catch (err) {
             console.error(err);
-            toast.error('Gagal generate PDF atau Archive');
+            toast.error('Gagal generate PDF');
         } finally {
             setIsGeneratingPdf(false);
         }
