@@ -18,8 +18,10 @@ func init() {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	// Debug header to confirm request reached our Go code
+	w.Header().Set("X-Backend-Handler", "go-clean-arch")
+
 	// Enable CORS for all requests at the entry point
-	// This prevents 301 redirects from stripping CORS headers
 	if isOptions := middlewares.EnableCORS(w, r); isOptions {
 		return
 	}

@@ -36,8 +36,8 @@ func SetupRoutes() (*http.ServeMux, error) {
 		reportController.HandleReport(w, r)
 	}
 
-	mux.HandleFunc("/api/", apiHandler)
-	mux.HandleFunc("/api", apiHandler)
+	// Use catch-all since Vercel already routes targeted requests here
+	mux.HandleFunc("/", apiHandler)
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
