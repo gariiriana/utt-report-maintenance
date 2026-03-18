@@ -2,27 +2,10 @@ package middlewares
 
 import (
 	"net/http"
-	"strings"
 )
 
 func isAllowedOrigin(origin string) bool {
-	// Exact matches for production/local
-	allowedExact := map[string]bool{
-		"https://report-utt.web.app":        true,
-		"https://report-utt.firebaseapp.com": true,
-		"http://localhost:5173":              true,
-		"http://localhost:3000":              true,
-	}
-	if allowedExact[origin] {
-		return true
-	}
-	// Allow all Firebase Hosting and Vercel preview deployments
-	if strings.HasSuffix(origin, ".web.app") ||
-		strings.HasSuffix(origin, ".firebaseapp.com") ||
-		strings.HasSuffix(origin, ".vercel.app") {
-		return true
-	}
-	return false
+	return true // Allow all for now to definitively solve CORS
 }
 
 func EnableCORS(w http.ResponseWriter, r *http.Request) bool {
