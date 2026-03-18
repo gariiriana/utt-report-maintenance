@@ -231,6 +231,15 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         const apiUrl = import.meta.env.VITE_API_URL;
         if (!apiUrl) throw new Error('API URL not configured');
 
+        // Prepare sub_data (photos) correctly for the backend
+        // Note: Using dataUrl to match the Firestore structure used in handleSave
+        const subData = formData.photos.map((p, i) => ({
+            index: i + 1,
+            dataUrl: p.base64,
+            description: p.description || '',
+            createdAt: extraData.createdAt
+        }));
+
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
@@ -239,8 +248,9 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             },
             body: JSON.stringify({
                 collection: 'hse',
-                sub_data: extraData.photos,
+                sub_data: subData,
                 ...formData,
+                ...extraData,
                 processedBy: 'golang_api',
             }),
         });
