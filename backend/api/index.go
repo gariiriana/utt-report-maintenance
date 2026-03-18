@@ -7,24 +7,24 @@ import (
 	"github.com/gariiriana/utt-report-maintenance/backend/internal/routes"
 )
 
-var mux *http.ServeMux
+var handler http.HandlerFunc
 
 func init() {
 	var err error
-	mux, err = routes.SetupRoutes()
+	handler, err = routes.SetupRouter()
 	if err != nil {
-		panic("Failed to initialize routes: " + err.Error())
+		panic("Failed to initialize router: " + err.Error())
 	}
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
 	// Debug header to confirm request reached our Go code
-	w.Header().Set("X-Backend-Handler", "go-clean-arch")
+	w.Header().Set("X-Backend-Handler", "go-direct-handler")
 
 	// Enable CORS for all requests at the entry point
 	if isOptions := middlewares.EnableCORS(w, r); isOptions {
 		return
 	}
 
-	mux.ServeHTTP(w, r)
+	handler(w, r)
 }

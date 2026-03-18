@@ -15,13 +15,13 @@ func main() {
 		port = "8080"
 	}
 
-	mux, err := routes.SetupRoutes()
+	handler, err := routes.SetupRouter()
 	if err != nil {
-		log.Fatalf("Failed to initialize routes: %v", err)
+		log.Fatalf("Failed to initialize router: %v", err)
 	}
 
-	fmt.Printf("Server starting on port %s...\n", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
-		log.Fatalf("Server failed: %v", err)
+	fmt.Printf("Server starting at :%s...\n", port)
+	if err := http.ListenAndServe(":"+port, handler); err != nil {
+		log.Fatal(err)
 	}
 }
