@@ -34,6 +34,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [maintenanceName, setMaintenanceName] = useState('');
   const [maintenanceTime, setMaintenanceTime] = useState('');
   const [specificDetail, setSpecificDetail] = useState('');
+  const [vrvUnitDetail, setVrvUnitDetail] = useState('');
   const [cards, setCards] = useState<PhotoCard[]>([
     { id: '1', photo: null, description: '' },
     { id: '2', photo: null, description: '' },
@@ -187,7 +188,15 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     if (editingData) {
       setMaintenanceName(editingData.maintenanceName);
       setMaintenanceTime(editingData.maintenanceTime);
-      setSpecificDetail(editingData.specificDetail || '');
+      
+      if (user?.email === 'vrv@gmail.com' && editingData.specificDetail?.includes(' - ')) {
+        const [type, ...rest] = editingData.specificDetail.split(' - ');
+        setSpecificDetail(type.toLowerCase());
+        setVrvUnitDetail(rest.join(' - '));
+      } else {
+        setSpecificDetail(editingData.specificDetail || '');
+        setVrvUnitDetail('');
+      }
       if (editingData.photosData?.length > 0) {
         setCards(editingData.photosData.map((p: any) => ({
           id: `${p.index}`,
@@ -344,6 +353,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const capH = isATS ? 10 : isVRV ? 8 : isSmallGrid ? 10 : 12;
     const rowGap = (isVRV || isATS) ? 3 : 5;
 
+    const finalSpecificDetail = (user?.email === 'vrv@gmail.com' && vrvUnitDetail) 
+      ? `${specificDetail.toUpperCase()} - ${vrvUnitDetail.toUpperCase()}`
+      : specificDetail;
+
     const drawHeader = (doc: any) => {
       const isDwimitra = companyType !== 'bri';
 
@@ -384,9 +397,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       doc.text(`(${longDate})`, textCenterX, nextY + 2, { align: 'center' });
       nextY += isCompact ? 6 : 8;
 
-      if (specificDetail) {
+      if (finalSpecificDetail) {
         doc.setFontSize(isCompact ? 7 : 10).setFont('helvetica', 'bold');
-        const splitDetail = doc.splitTextToSize(specificDetail.toUpperCase(), textAreaWidth);
+        const splitDetail = doc.splitTextToSize(finalSpecificDetail.toUpperCase(), textAreaWidth);
         doc.text(splitDetail, textCenterX, nextY + 2, { align: 'center' });
         nextY += splitDetail.length * (isCompact ? 4 : 5) + 2;
       }
@@ -452,7 +465,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }
     const safeName = maintenanceName.replace(/[/\\?%*:|"<>]/g, '-');
     const safeDate = formattedDate.replace(/\//g, '-');
-    return { doc, fileName: `Report_${safeName}_${safeDate}.pdf`, filled: optimizedCards };
+    const safeDetail = finalSpecificDetail ? `_${finalSpecificDetail.replace(/[/\\?%*:|"<>]/g, '-').replace(/\s+/g, '_')}` : '';
+    return { doc, fileName: `Report_${safeName}_${safeDate}${safeDetail}.pdf`, filled: optimizedCards };
   };
 
   const saveReportViaAPI = async (apiUrl: string, collectionName: string, reportData: any, photos: any[]) => {
@@ -486,19 +500,23 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const saveReportToFirestore = async (pdfData?: { doc: jsPDF, fileName: string, filled: PhotoCard[] }) => {
     if (!maintenanceName || !maintenanceTime) return toast.error('Isi nama & waktu'), null;
 
+    const finalSpecificDetail = (user?.email === 'vrv@gmail.com' && vrvUnitDetail) 
+      ? `${specificDetail.toUpperCase()} - ${vrvUnitDetail.toUpperCase()}`
+      : specificDetail;
+
     const cardsToSave = pdfData ? pdfData.filled : cards.filter(c => c.photoBase64 || c.description);
     if (!cardsToSave.length) return toast.error('Minimal 1 card filled'), null;
 
     const toastId = toast.loading(editingData ? 'Updating report...' : 'Saving report...');
     try {
       const photosWithImage = cardsToSave.filter(c => c.photoBase64).length;
-      const fileName = pdfData?.fileName || `${maintenanceName}_${maintenanceTime}_${specificDetail || ''}.pdf`.replace(/\s+/g, '_');
+      const fileName = pdfData?.fileName || `${maintenanceName}_${maintenanceTime}_${finalSpecificDetail || ''}.pdf`.replace(/\s+/g, '_');
 
       const reportData: any = {
         fileName,
         maintenanceName,
         maintenanceTime,
-        specificDetail,
+        specificDetail: finalSpecificDetail,
         updatedAt: serverTimestamp(),
         totalPhotos: cardsToSave.length,
         photosWithImage,
@@ -574,6 +592,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const handlePreviewPDF = () => {
     if (!maintenanceName || !maintenanceTime) return toast.error('Isi nama & waktu');
     if (!cards.some(c => c.photoBase64 || c.description)) return toast.error('Minimal 1 card filled');
+    
+    // Pass combined specific detail for preview
+    const finalSpecificDetail = (user?.email === 'vrv@gmail.com' && vrvUnitDetail) 
+      ? `${specificDetail.toUpperCase()} - ${vrvUnitDetail.toUpperCase()}`
+      : specificDetail;
+
     setShowPreview(true);
   };
 
@@ -631,18 +655,29 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Unit/Room (Optional)</label>
                   {user?.email === 'vrv@gmail.com' ? (
-                    <div className="relative group/select">
-                      <select
-                        value={specificDetail}
-                        onChange={e => setSpecificDetail(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer pr-10 transition-all hover:border-slate-500"
-                      >
-                        <option value="">Select Unit Type</option>
-                        <option value="outdoor">Outdoor</option>
-                        <option value="indoor">Indoor</option>
-                      </select>
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-500 group-focus-within/select:text-blue-500 transition-colors">
-                        <ChevronDown className="w-5 h-5" />
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <div className="relative group/select flex-1">
+                        <select
+                          value={specificDetail}
+                          onChange={e => setSpecificDetail(e.target.value)}
+                          className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer pr-10 transition-all hover:border-slate-500"
+                        >
+                          <option value="">Select Unit Type</option>
+                          <option value="outdoor">Outdoor</option>
+                          <option value="indoor">Indoor</option>
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-500 group-focus-within/select:text-blue-500 transition-colors">
+                          <ChevronDown className="w-5 h-5" />
+                        </div>
+                      </div>
+                      <div className="flex-[1.5]">
+                        <input 
+                          type="text" 
+                          value={vrvUnitDetail} 
+                          onChange={e => setVrvUnitDetail(e.target.value)} 
+                          className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500" 
+                          placeholder="e.g. Lantai 2 / Ruang Panel" 
+                        />
                       </div>
                     </div>
                   ) : (
@@ -728,7 +763,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             key="preview"
             maintenanceName={maintenanceName}
             maintenanceTime={maintenanceTime}
-            specificDetail={specificDetail}
+            specificDetail={(user?.email === 'vrv@gmail.com' && vrvUnitDetail) 
+              ? `${specificDetail.toUpperCase()} - ${vrvUnitDetail.toUpperCase()}`
+              : specificDetail}
             cards={cards}
             companyType={companyType}
             userEmail={user?.email || ''}
