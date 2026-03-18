@@ -50,7 +50,7 @@ export function Login() {
 
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 p-4 sm:p-6 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
       <DataCenterBackground />
 
       <motion.div
@@ -59,8 +59,8 @@ export function Login() {
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="bg-slate-900/40 backdrop-blur-2xl rounded-xl sm:rounded-2xl shadow-2xl border border-indigo-500/20 overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-500" />
+        <div className="bg-slate-900/5 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-2xl border border-white/5 overflow-hidden">
+          <div className="h-1 bg-gradient-to-r from-indigo-600/50 via-indigo-500/50 to-purple-500/50" />
 
           <div className="p-6 sm:p-8">
             <div className="text-center mb-6 sm:mb-8">
@@ -96,7 +96,7 @@ export function Login() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-11 sm:pl-12 pr-4 py-3 sm:py-3.5 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition text-white placeholder-slate-500 text-[15px] sm:text-base"
+                    className="w-full pl-11 sm:pl-12 pr-4 py-3 sm:py-3.5 bg-slate-800/20 border border-slate-700/30 rounded-lg focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 outline-none transition text-white placeholder-slate-500 text-[15px] sm:text-base"
                     placeholder="user@company.com"
                   />
                 </div>
@@ -113,7 +113,7 @@ export function Login() {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-11 sm:pl-12 pr-11 sm:pr-12 py-3 sm:py-3.5 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition text-white placeholder-slate-500 text-[15px] sm:text-base"
+                    className="w-full pl-11 sm:pl-12 pr-11 sm:pr-12 py-3 sm:py-3.5 bg-slate-800/20 border border-slate-700/30 rounded-lg focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 outline-none transition text-white placeholder-slate-500 text-[15px] sm:text-base"
                     placeholder="Enter your password"
                   />
                   <button
@@ -153,8 +153,6 @@ export function Login() {
           </div>
         </div>
       </motion.div>
-
-
     </div>
   );
-}
+}

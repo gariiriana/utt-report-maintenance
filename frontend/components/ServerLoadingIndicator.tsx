@@ -4,7 +4,7 @@ import logoUTT from '@/assets/logo_utt.png';
 
 export function ServerLoadingIndicator() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
       <DataCenterBackground />
 
       <div className="relative z-10 text-center">

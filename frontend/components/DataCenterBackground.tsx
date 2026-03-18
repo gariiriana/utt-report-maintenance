@@ -4,21 +4,34 @@ import { motion } from 'motion/react';
 export function DataCenterBackground() {
   return (
     <>
-      <div className="absolute inset-0 opacity-20">
+      {/* Base Video Layer */}
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-slate-950">
+        <div className="absolute inset-x-0 h-full w-[300%] -left-[100%] lg:w-full lg:left-0 lg:h-[120vh] lg:-top-[10vh] scale-100 lg:scale-[1.35]">
+          <iframe
+            src="https://www.youtube-nocookie.com/embed/wBZGPQ-FQRI?autoplay=1&mute=1&loop=1&playlist=wBZGPQ-FQRI&controls=0&rel=0&playsinline=1&enablejsapi=1&showinfo=0&modestbranding=1&iv_load_policy=3&disablekb=1"
+            className="w-full h-full object-cover pointer-events-none opacity-80"
+            allow="autoplay; encrypted-media"
+            title="Professional Data Center Background"
+          />
+        </div>
+        {/* Subtle Edge Softening (Not a full overlay) */}
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/20 via-transparent to-slate-950/40" />
+      </div>
+
+      <div className="absolute inset-0 z-10 opacity-20">
         <div className="absolute inset-0" style={{
           backgroundImage: `
             linear-gradient(rgba(59, 130, 246, 0.15) 1px, transparent 1px),
             linear-gradient(90deg, rgba(59, 130, 246, 0.15) 1px, transparent 1px)
           `,
-          backgroundSize: '60px 60px',
+          backgroundSize: '80px 80px',
         }} />
       </div>
 
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-950/30 to-transparent" />
-
-      <NetworkTopology />
-
-      <DataFlowParticles />
+      <div className="relative z-20">
+        <NetworkTopology />
+        <DataFlowParticles />
+      </div>
     </>
   );
 }

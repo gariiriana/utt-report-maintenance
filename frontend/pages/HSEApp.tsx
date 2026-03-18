@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { LogOut, ShieldCheck, HardHat, FileText, FolderOpen } from 'lucide-react';
 import { useAuth } from '@/components/AuthContext';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
+import { Footer } from '@/components/Footer';
 import { DataCenterBackground } from '@/components/DataCenterBackground';
 import { HSEReportForm } from '@/components/HSEReportForm';
 import { DocumentList } from '@/components/DocumentList';
@@ -14,7 +15,7 @@ export function HSEApp() {
     const [activeTab, setActiveTab] = useState<'report' | 'iso'>('report');
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden font-geist text-slate-200">
+        <div className="min-h-screen relative overflow-hidden font-geist text-slate-200">
             <DataCenterBackground />
 
             <div className="bg-slate-900/60 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-50">
@@ -112,6 +113,8 @@ export function HSEApp() {
                     <DocumentList filterOverride="hse_utt" />
                 )}
             </div>
+
+            <Footer />
 
             <LogoutConfirmModal
                 isOpen={logoutModalOpen}

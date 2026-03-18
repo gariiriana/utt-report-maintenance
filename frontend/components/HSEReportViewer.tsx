@@ -9,6 +9,7 @@ import {
 import logoUTT from '@/assets/logo_utt.png';
 import logoDME from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
+import { DataCenterBackground } from './DataCenterBackground';
 
 const CHECKLIST_LABELS = [
     { key: 'mop', label: 'MOP' },
@@ -131,7 +132,8 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+            <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+                <DataCenterBackground />
                 <div className="text-center space-y-4">
                     <div className="w-16 h-16 rounded-full border-4 border-green-500/30 border-t-green-500 animate-spin mx-auto" />
                     <p className="text-slate-400 text-sm font-medium">Memuat laporan HSE...</p>
@@ -142,7 +144,8 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
 
     if (error || !report) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-6">
+            <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+                <DataCenterBackground />
                 <div className="text-center space-y-4 max-w-sm">
                     <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto">
                         <AlertTriangle className="w-8 h-8 text-red-400" />
@@ -165,7 +168,8 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
     const secondaryLogo = isUTT ? logoUTT : logoNeutraDC;
 
     return (
-        <div className="min-h-screen bg-slate-950 font-sans text-slate-200 flex flex-col">
+        <div className="min-h-screen font-sans text-slate-200 flex flex-col relative overflow-hidden">
+            <DataCenterBackground />
             <div className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-50">
                 <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
