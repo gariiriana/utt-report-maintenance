@@ -18,7 +18,7 @@ export function DataCenterBackground() {
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950/20 via-transparent to-slate-950/40" />
       </div>
 
-      <div className="absolute inset-0 z-10 opacity-20">
+      <div className="absolute inset-0 z-10 opacity-20 pointer-events-none">
         <div className="absolute inset-0" style={{
           backgroundImage: `
             linear-gradient(rgba(59, 130, 246, 0.15) 1px, transparent 1px),
@@ -28,7 +28,7 @@ export function DataCenterBackground() {
         }} />
       </div>
 
-      <div className="relative z-20">
+      <div className="relative z-20 pointer-events-none">
         <NetworkTopology />
         <DataFlowParticles />
       </div>

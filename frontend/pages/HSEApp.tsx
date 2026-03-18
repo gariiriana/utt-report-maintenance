@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { LogOut, ShieldCheck, HardHat, FileText, FolderOpen } from 'lucide-react';
+import { LogOut, ShieldCheck, HardHat, FileText, Folder } from 'lucide-react';
 import { useAuth } from '@/components/AuthContext';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import { Footer } from '@/components/Footer';
@@ -80,7 +80,7 @@ export function HSEApp() {
                             </div>
                         </div>
 
-                        <div className="flex gap-2 bg-slate-950/40 p-1.5 rounded-2xl border border-slate-700/30">
+                        <div className="relative z-30 flex gap-2 bg-slate-950/40 p-1.5 rounded-2xl border border-slate-700/30">
                             <button
                                 onClick={() => setActiveTab('report')}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'report'
@@ -98,7 +98,7 @@ export function HSEApp() {
                                     : 'text-slate-500 hover:text-slate-300'
                                     }`}
                             >
-                                <FolderOpen className="w-4 h-4" />
+                                <Folder className="w-4 h-4" />
                                 Dokumen ISO
                             </button>
                         </div>
