@@ -26,11 +26,8 @@ func SetupRoutes() (*http.ServeMux, error) {
 	reportController := controllers.NewReportController(reportService)
 
 	apiHandler := func(w http.ResponseWriter, r *http.Request) {
-		if isOptions := middlewares.EnableCORS(w, r); isOptions {
-			return
-		}
-
 		clientSecret := r.Header.Get("X-API-Secret")
+
 		if !middlewares.VerifySecret(clientSecret) {
 			helpers.SendError(w, "Unauthorized: Invalid API Secret", http.StatusUnauthorized)
 			return
