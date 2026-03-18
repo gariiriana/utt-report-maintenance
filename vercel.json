@@ -4,6 +4,6 @@
   "installCommand": "echo 'Skipping frontend install on Vercel'",
   "outputDirectory": ".",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/backend/api/index.go" }
+    { "source": "/api(.*)", "destination": "/backend/api/index.go" }
   ]
 }

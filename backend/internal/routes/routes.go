@@ -25,7 +25,7 @@ func SetupRoutes() (*http.ServeMux, error) {
 	reportService := services.NewReportService(reportRepo)
 	reportController := controllers.NewReportController(reportService)
 
-	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
+	apiHandler := func(w http.ResponseWriter, r *http.Request) {
 		if isOptions := middlewares.EnableCORS(w, r); isOptions {
 			return
 		}
@@ -37,7 +37,10 @@ func SetupRoutes() (*http.ServeMux, error) {
 		}
 
 		reportController.HandleReport(w, r)
-	})
+	}
+
+	mux.HandleFunc("/api/", apiHandler)
+	mux.HandleFunc("/api", apiHandler)
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
