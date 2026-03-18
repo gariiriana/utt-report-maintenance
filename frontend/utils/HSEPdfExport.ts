@@ -26,6 +26,7 @@ export interface HSEChecklist {
     pitaBaricade?: boolean;
     safetyCone?: boolean;
     stikBariket?: boolean;
+    underMaintenance?: boolean;
     fullBodyHarness?: boolean;
 }
 
@@ -207,6 +208,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
                 { key: 'pitaBaricade', label: 'Pita Baricade' },
                 { key: 'safetyCone', label: 'Safety Cone' },
                 { key: 'stikBariket', label: 'Stik Bariket' },
+                { key: 'underMaintenance', label: 'Under Maintenance' },
             ]
         },
     ];

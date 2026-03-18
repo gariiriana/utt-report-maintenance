@@ -35,6 +35,7 @@ const INITIAL_CHECKLIST: HSEChecklist = {
     pitaBaricade: false,
     safetyCone: false,
     stikBariket: false,
+    underMaintenance: false,
 };
 
 const CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string; subItems?: { key: keyof HSEChecklist; label: string }[] }[] = [
@@ -57,13 +58,14 @@ const CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string; subItems?: { k
     { key: 'toolsBertagging', label: 'Tools Bertagging & sdh di-checklist' },
     { key: 'logMaintenance', label: 'Log Maintenance' },
     { key: 'housekeeping', label: 'Housekeeping Area Kerja' },
-    { 
-        key: 'safetySign', 
+    {
+        key: 'safetySign',
         label: 'Safety Sign',
         subItems: [
             { key: 'pitaBaricade', label: 'Pita Baricade' },
             { key: 'safetyCone', label: 'Safety Cone' },
             { key: 'stikBariket', label: 'Stik Bariket' },
+            { key: 'underMaintenance', label: 'Under Maintenance' },
         ]
     },
     { key: 'safeCondition', label: 'Safe Condition' },
@@ -155,14 +157,14 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                 next.bodyHarness = next.sarungTanganKulit = next.apron = next.kedokLas = next.coverShoes = next.respirator = false;
             }
             if (key === 'safetySign' && !next.safetySign) {
-                next.pitaBaricade = next.safetyCone = next.stikBariket = false;
+                next.pitaBaricade = next.safetyCone = next.stikBariket = next.underMaintenance = false;
             }
 
             const ppeChildren = ['bodyHarness', 'sarungTanganKulit', 'apron', 'kedokLas', 'coverShoes', 'respirator'];
             if (ppeChildren.includes(key as string) && next[key as keyof HSEChecklist]) {
                 next.ppeKhusus = true;
             }
-            const safetyChildren = ['pitaBaricade', 'safetyCone', 'stikBariket'];
+            const safetyChildren = ['pitaBaricade', 'safetyCone', 'stikBariket', 'underMaintenance'];
             if (safetyChildren.includes(key as string) && next[key as keyof HSEChecklist]) {
                 next.safetySign = true;
             }
