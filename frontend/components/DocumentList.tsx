@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, User, FileDown, FileType, Pencil, Box } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, User, FileDown, FileType, Pencil, Box, Folder, ChevronLeft } from 'lucide-react';
 import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore'; 
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
@@ -40,9 +40,10 @@ export interface ExcelDocument {
 
 interface DocumentListProps {
   onEdit?: (doc: ExcelDocument) => void;
+  filterOverride?: 'hse_utt';
 }
 
-export function DocumentList({ onEdit }: DocumentListProps) {
+export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   const { user, userRole, companyType } = useAuth();
   const isAdmin = userRole === 'admin';
   const [documents, setDocuments] = useState<ExcelDocument[]>([]);
@@ -54,6 +55,21 @@ export function DocumentList({ onEdit }: DocumentListProps) {
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<ExcelDocument | null>(null);
+
+  // Folder navigation state
+  const [currentLevel, setCurrentLevel] = useState<'root' | 'month' | 'week'>('root');
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null); 
+  const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
+
+  const getMonthYearString = (date: Date) => {
+    return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  };
+
+  const getWeekOfMonth = (date: Date) => {
+    const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+    const dayOfMonth = date.getDate();
+    return Math.ceil((dayOfMonth + firstDayOfMonth.getDay()) / 7);
+  };
 
   const fetchDocuments = useCallback(async () => {
     if (!user) return;
@@ -115,15 +131,26 @@ export function DocumentList({ onEdit }: DocumentListProps) {
         });
       });
 
-      // Fetch HSE documents (Only for Admin or HSE Officer)
+      // Fetch HSE documents (Only for Admin or HSE Officer OR if filterOverride is hse_utt)
       const hseDocs: ExcelDocument[] = [];
-      if (isAdmin || userRole === 'hse') {
-        const hseQuery = isAdmin
-          ? query(collection(db, 'hse'))
-          : query(
+      const showHSE = isAdmin || userRole === 'hse' || filterOverride === 'hse_utt';
+      
+      if (showHSE) {
+        let hseQuery;
+        if (filterOverride === 'hse_utt') {
+          hseQuery = query(
+            collection(db, 'hse'),
+            where('reportType', '==', 'utt')
+          );
+        } else if (isAdmin) {
+          hseQuery = query(collection(db, 'hse'));
+        } else {
+          hseQuery = query(
             collection(db, 'hse'),
             where('authorEmail', '==', user.email)
           );
+        }
+
         const hseSnapshot = await getDocs(hseQuery);
         hseSnapshot.forEach((doc) => {
           const data = doc.data();
@@ -144,8 +171,10 @@ export function DocumentList({ onEdit }: DocumentListProps) {
         });
       }
 
-      // Combine all arrays
-      const allDocs = [...excelDocs, ...pdfDocs, ...hseDocs];
+      // If filterOverride is set, we might want to ONLY show those
+      const allDocs = filterOverride === 'hse_utt' 
+        ? hseDocs 
+        : [...excelDocs, ...pdfDocs, ...hseDocs];
 
       allDocs.sort((a, b) => {
         const timeA = a.createdAt.getTime();
@@ -685,6 +714,221 @@ export function DocumentList({ onEdit }: DocumentListProps) {
     return true;
   });
 
+  // Grouping for HSE UTT Folder structure
+  const renderContent = () => {
+    if (filterOverride !== 'hse_utt') {
+      return filteredDocuments.map((document, index) => renderDocumentCard(document, index));
+    }
+
+    if (currentLevel === 'root') {
+      const monthGroups = new Set<string>();
+      filteredDocuments.forEach(doc => monthGroups.add(getMonthYearString(doc.createdAt)));
+      const monthMap: { [key: string]: number } = {
+        'Januari': 0, 'Februari': 1, 'Maret': 2, 'April': 3, 'Mei': 4, 'Juni': 5,
+        'Juli': 6, 'Agustus': 7, 'September': 8, 'Oktober': 9, 'November': 10, 'Desember': 11
+      };
+
+      const sortedMonths = Array.from(monthGroups).sort((a, b) => {
+        const [monthA, yearA] = a.split(' ');
+        const [monthB, yearB] = b.split(' ');
+        if (yearA !== yearB) return parseInt(yearB) - parseInt(yearA);
+        return monthMap[monthB] - monthMap[monthA]; 
+      });
+
+      return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {sortedMonths.map((month) => (
+            <motion.button
+              key={month}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                setSelectedMonth(month);
+                setCurrentLevel('month');
+              }}
+              className="flex items-center gap-4 p-6 bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl hover:border-blue-500/30 transition-all group text-left"
+            >
+              <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20 group-hover:bg-blue-500/20 transition-colors">
+                <Folder className="w-8 h-8 text-blue-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">{month}</h3>
+                <p className="text-sm text-slate-400">
+                  {filteredDocuments.filter(d => getMonthYearString(d.createdAt) === month).length} Laporan
+                </p>
+              </div>
+            </motion.button>
+          ))}
+        </div>
+      );
+    }
+
+    if (currentLevel === 'month') {
+      const monthDocs = filteredDocuments.filter(d => getMonthYearString(d.createdAt) === selectedMonth);
+      const weeks = new Set<number>();
+      monthDocs.forEach(doc => weeks.add(getWeekOfMonth(doc.createdAt)));
+      const sortedWeeks = Array.from(weeks).sort((a, b) => b - a);
+
+      return (
+        <div className="space-y-4">
+          <button 
+            onClick={() => setCurrentLevel('root')}
+            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium mb-2"
+          >
+            <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Bulan
+          </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {sortedWeeks.map((week) => (
+              <motion.button
+                key={week}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  setSelectedWeek(week);
+                  setCurrentLevel('week');
+                }}
+                className="flex items-center gap-4 p-6 bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl hover:border-blue-500/30 transition-all group text-left"
+              >
+                <div className="p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
+                  <Folder className="w-8 h-8 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Minggu ke-{week}</h3>
+                  <p className="text-sm text-slate-400">
+                    {monthDocs.filter(d => getWeekOfMonth(d.createdAt) === week).length} Laporan
+                  </p>
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    const weekDocs = filteredDocuments.filter(d => 
+      getMonthYearString(d.createdAt) === selectedMonth && 
+      getWeekOfMonth(d.createdAt) === selectedWeek
+    );
+
+    return (
+      <div className="space-y-4">
+        <button 
+          onClick={() => setCurrentLevel('month')}
+          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium mb-2"
+        >
+          <ChevronLeft className="w-4 h-4" /> Kembali ke {selectedMonth}
+        </button>
+        <div className="grid grid-cols-1 gap-4">
+          {weekDocs.map((document, index) => renderDocumentCard(document, index))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderDocumentCard = (document: ExcelDocument, index: number) => (
+    <motion.div
+      key={document.id}
+      layout
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.2, delay: index * 0.05 }}
+      className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-4 sm:p-5 border border-slate-700/50 hover:border-blue-500/30 transition group"
+    >
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+        {/* Icon */}
+        <div className="p-2.5 sm:p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20 flex-shrink-0">
+          {document.documentType === 'pdf' ? (
+            <FileType className="w-5 h-5 sm:w-6 sm:h-6 text-red-400" />
+          ) : (
+            <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-base sm:text-lg font-semibold text-white truncate">
+              {document.maintenanceName}
+            </h3>
+            <span className={`px-2 py-0.5 rounded text-xs font-medium ${document.documentType === 'pdf'
+              ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+              : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+              }`}>
+              {document.documentType.toUpperCase()}
+            </span>
+          </div>
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-1 text-xs sm:text-sm text-slate-400">
+            <div className="flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span>
+                {new Date(document.maintenanceTime).toLocaleDateString('id-ID', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric'
+                })}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+              <span className="truncate">{document.createdBy}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <FileDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span>{(document.fileSize / 1024).toFixed(0)} KB</span>
+            </div>
+            {document.specificDetail && (
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Box className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 text-blue-400" />
+                <span className="truncate text-blue-300 font-medium">{document.specificDetail}</span>
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-slate-500 mt-1 hidden sm:block">
+            Dibuat: {document.createdAt.toLocaleString('id-ID')}
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          {onEdit && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => handleEditClick(document)}
+              className="flex-1 sm:flex-initial p-2.5 sm:p-3 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-lg transition border border-blue-500/20"
+              title="Edit Report"
+            >
+              <Pencil className="w-4 h-4 sm:w-5 sm:h-5 mx-auto" />
+            </motion.button>
+          )}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              if (document.documentType === 'pdf') handleDownloadPDF(document);
+              else if (document.documentType === 'hse') handleDownloadHSE(document);
+              else handleDownload(document);
+            }}
+            className="flex-1 sm:flex-initial p-2.5 sm:p-3 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-lg transition border border-blue-500/20"
+            title={`Download ${document.documentType === 'pdf' ? 'PDF' : 'Excel'}`}
+          >
+            <Download className="w-4 h-4 sm:w-5 sm:h-5 mx-auto" />
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => openDeleteModal(document)}
+            className="flex-1 sm:flex-initial p-2.5 sm:p-3 bg-red-600/10 hover:bg-red-600/20 text-red-400 rounded-lg transition border border-red-500/20"
+            title="Delete"
+          >
+            <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 mx-auto" />
+          </motion.button>
+        </div>
+      </div>
+    </motion.div>
+  );
+
   const handleEditClick = async (doc: ExcelDocument) => {
     if (!onEdit) return;
 
@@ -825,112 +1069,9 @@ export function DocumentList({ onEdit }: DocumentListProps) {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:gap-4">
+        <div className={`${currentLevel !== 'week' && filterOverride === 'hse_utt' ? 'block' : 'grid grid-cols-1 gap-3 sm:gap-4'}`}>
           <AnimatePresence mode="popLayout">
-            {filteredDocuments.map((document, index) => (
-              <motion.div
-                key={document.id}
-                layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.2, delay: index * 0.05 }}
-                className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-4 sm:p-5 border border-slate-700/50 hover:border-blue-500/30 transition group"
-              >
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-                  {/* Icon */}
-                  <div className="p-2.5 sm:p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20 flex-shrink-0">
-                    {document.documentType === 'pdf' ? (
-                      <FileType className="w-5 h-5 sm:w-6 sm:h-6 text-red-400" />
-                    ) : (
-                      <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
-                    )}
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-base sm:text-lg font-semibold text-white truncate">
-                        {document.maintenanceName}
-                      </h3>
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${document.documentType === 'pdf'
-                        ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                        : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        }`}>
-                        {document.documentType.toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-1 text-xs sm:text-sm text-slate-400">
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        <span>
-                          {new Date(document.maintenanceTime).toLocaleDateString('id-ID', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric'
-                          })}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                        <span className="truncate">{document.createdBy}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <FileDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        <span>{(document.fileSize / 1024).toFixed(0)} KB</span>
-                      </div>
-                      {document.specificDetail && (
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <Box className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 text-blue-400" />
-                          <span className="truncate text-blue-300 font-medium">{document.specificDetail}</span>
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1 hidden sm:block">
-                      Dibuat: {document.createdAt.toLocaleString('id-ID')}
-                    </p>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 w-full sm:w-auto">
-                    {onEdit && (
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handleEditClick(document)}
-                        className="flex-1 sm:flex-initial p-2.5 sm:p-3 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-lg transition border border-blue-500/20"
-                        title="Edit Report"
-                      >
-                        <Pencil className="w-4 h-4 sm:w-5 sm:h-5 mx-auto" />
-                      </motion.button>
-                    )}
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => {
-                        if (document.documentType === 'pdf') handleDownloadPDF(document);
-                        else if (document.documentType === 'hse') handleDownloadHSE(document);
-                        else handleDownload(document);
-                      }}
-                      className="flex-1 sm:flex-initial p-2.5 sm:p-3 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-lg transition border border-blue-500/20"
-                      title={`Download ${document.documentType === 'pdf' ? 'PDF' : 'Excel'}`}
-                    >
-                      <Download className="w-4 h-4 sm:w-5 sm:h-5 mx-auto" />
-                    </motion.button>
-                    {/* Delete button - opens modal instead of browser confirm */}
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => openDeleteModal(document)}
-                      className="flex-1 sm:flex-initial p-2.5 sm:p-3 bg-red-600/10 hover:bg-red-600/20 text-red-400 rounded-lg transition border border-red-500/20"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 mx-auto" />
-                    </motion.button>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+            {renderContent()}
           </AnimatePresence>
         </div>
       )}

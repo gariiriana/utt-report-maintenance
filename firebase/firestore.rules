@@ -30,6 +30,23 @@ service cloud.firestore {
              && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hse';
     }
 
+    // ✅ Director check
+    function isDirector() {
+      let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return request.auth != null 
+             && request.auth.uid != null
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             && (role == 'dirut' || role == 'direksiSDM' || role == 'DireksiKeuangan');
+    }
+
+    // ✅ Division specific check
+    function isDivision(div) {
+      return request.auth != null 
+             && request.auth.uid != null
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == div;
+    }
+
     // ============================================================
     // 🛡️ SECURITY HELPER FUNCTIONS
     // ============================================================
@@ -61,7 +78,7 @@ service cloud.firestore {
                     && request.resource.data.uid == userId
                     && request.resource.data.keys().hasAll(['email', 'uid', 'role', 'companyType', 'createdAt'])
                     && hasAcceptableFieldCount(request.resource.data, 8)
-                    && (request.resource.data.role == 'admin' || request.resource.data.role == 'engineer' || request.resource.data.role == 'standby_engineer' || request.resource.data.role == 'tde' || request.resource.data.role == 'cbre' || request.resource.data.role == 'hse')
+                    && (request.resource.data.role == 'admin' || request.resource.data.role == 'engineer' || request.resource.data.role == 'standby_engineer' || request.resource.data.role == 'tde' || request.resource.data.role == 'cbre' || request.resource.data.role == 'hse' || request.resource.data.role == 'pmo' || request.resource.data.role == 'sales' || request.resource.data.role == 'presales' || request.resource.data.role == 'purchasing' || request.resource.data.role == 'dirut' || request.resource.data.role == 'direksiSDM' || request.resource.data.role == 'DireksiKeuangan')
                     && (request.resource.data.companyType == 'neutra' || request.resource.data.companyType == 'bri')
                     && isValidString(request.resource.data.email, 200)
                     && isValidString(request.resource.data.uid, 128);
@@ -285,6 +302,37 @@ service cloud.firestore {
                       && (!request.resource.data.keys().hasAny(['dataUrl']) || isValidPhotoData(request.resource.data.dataUrl));
         allow update, delete: if request.auth != null 
                               && (get(/databases/$(database)/documents/hse/$(reportId)).data.authorEmail == request.auth.token.email || isAdminSafe());
+      }
+    }
+
+    // ============================================================
+    // ISO DIVISION COLLECTIONS (PMO, SALES, PRESALES, PURCHASING)
+    // ============================================================
+    match /{division}/{fileId} {
+      allow create: if request.auth != null 
+                    && division in ['pmo', 'sales', 'presales', 'purchasing']
+                    && (isAdminSafe() || isDivision(division))
+                    && request.resource.data.keys().hasAll(['fileName', 'fileSize', 'fileType', 'uploadedBy', 'uploadedAt'])
+                    && hasAcceptableFieldCount(request.resource.data, 20);
+      
+      allow read: if request.auth != null 
+                  && division in ['pmo', 'sales', 'presales', 'purchasing']
+                  && (isAdminSafe() || isDivision(division) || isDirector());
+      
+      allow delete: if request.auth != null && isAdminSafe();
+
+      // ✅ ISO CHUNKS
+      match /chunks/{chunkId} {
+        allow create: if request.auth != null 
+                      && division in ['pmo', 'sales', 'presales', 'purchasing']
+                      && (isAdminSafe() || isDivision(division))
+                      && hasAcceptableFieldCount(request.resource.data, 10);
+        
+        allow read: if request.auth != null 
+                    && division in ['pmo', 'sales', 'presales', 'purchasing']
+                    && (isAdminSafe() || isDivision(division) || isDirector());
+        
+        allow delete: if request.auth != null && isAdminSafe();
       }
     }
 

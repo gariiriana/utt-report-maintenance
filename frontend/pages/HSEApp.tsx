@@ -5,23 +5,13 @@ import { useAuth } from '@/components/AuthContext';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import { DataCenterBackground } from '@/components/DataCenterBackground';
 import { HSEReportForm } from '@/components/HSEReportForm';
-import { DocumentList, ExcelDocument } from '@/components/DocumentList';
+import { DocumentList } from '@/components/DocumentList';
 import logoUTT from '@/assets/logo_utt.png';
 
 export function HSEApp() {
     const { user, logout } = useAuth();
     const [logoutModalOpen, setLogoutModalOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'report' | 'archive'>('report');
-    const [editingData, setEditingData] = useState<ExcelDocument | null>(null);
-
-    const handleEditReport = (doc: ExcelDocument) => {
-        setEditingData(doc);
-        setActiveTab('report');
-    };
-
-    const clearEditingData = () => {
-        setEditingData(null);
-    };
+    const [activeTab, setActiveTab] = useState<'report' | 'iso'>('report');
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 relative overflow-hidden font-geist text-slate-200">
@@ -101,14 +91,14 @@ export function HSEApp() {
                                 Create
                             </button>
                             <button
-                                onClick={() => setActiveTab('archive')}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'archive'
+                                onClick={() => setActiveTab('iso')}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'iso'
                                     ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20'
                                     : 'text-slate-500 hover:text-slate-300'
                                     }`}
                             >
                                 <FolderOpen className="w-4 h-4" />
-                                Archive
+                                Dokumen ISO
                             </button>
                         </div>
                     </div>
@@ -117,9 +107,9 @@ export function HSEApp() {
 
             <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
                 {activeTab === 'report' ? (
-                    <HSEReportForm editingData={editingData} onClearEdit={clearEditingData} />
+                    <HSEReportForm />
                 ) : (
-                    <DocumentList onEdit={handleEditReport} />
+                    <DocumentList filterOverride="hse_utt" />
                 )}
             </div>
 

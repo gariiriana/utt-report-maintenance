@@ -113,10 +113,37 @@ interface FileData {
     maintenanceType?: string; 
 }
 
-export function FileManagement() {
+interface FileManagementProps {
+    collectionName?: string;
+    allowUpload?: boolean;
+    divisionName?: string;
+    simpleMode?: boolean;
+}
+
+export function FileManagement({ 
+    collectionName = 'files', 
+    allowUpload: propAllowUpload,
+    divisionName,
+    simpleMode = false
+}: FileManagementProps = {}) {
     const { user, userRole } = useAuth();
     const isAdmin = userRole === 'admin';
     const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
+    
+    // Determine if user can upload: 
+    // 1. If propAllowUpload is explicitly set, use it.
+    // 2. Otherwise, admin can always upload to 'files'.
+    // 3. Division roles can upload if the collection matches their role.
+    const canUpload = propAllowUpload !== undefined 
+        ? propAllowUpload 
+        : (userRole === 'admin' || userRole === collectionName);
+
+    // Determine if user can delete:
+    // Only admin can delete from any collection for now, 
+    // or if we want users to delete their own, we might need more logic.
+    // User requested: "hanya bisa mengupload file dan menyimpan file yang mereka upload"
+    // Usually "menyimpan" implies they might not need delete, but let's keep it restricted to admin for safety unless asked.
+    const canDelete = userRole === 'admin';
 
     const [files, setFiles] = useState<FileData[]>([]);
     const [loading, setLoading] = useState(true);
@@ -124,7 +151,7 @@ export function FileManagement() {
     const [uploadProgress, setUploadProgress] = useState(0);
 
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-    const [selectedCategory, setSelectedCategory] = useState('Laporan Harian');
+    const [selectedCategory, setSelectedCategory] = useState(simpleMode ? 'Dokumen' : 'Laporan Harian');
     const [selectedMaintenance, setSelectedMaintenance] = useState(MAINTENANCE_TYPES[0]); 
     const [customCategory, setCustomCategory] = useState('');
     const [description, setDescription] = useState('');
@@ -147,7 +174,7 @@ export function FileManagement() {
 
 
     useEffect(() => {
-        const q = query(collection(db, 'files'), orderBy('uploadedAt', 'desc'));
+        const q = query(collection(db, collectionName), orderBy('uploadedAt', 'desc'));
 
         const unsubscribe = onSnapshot(
             q,
@@ -208,7 +235,7 @@ export function FileManagement() {
         if (selectedFiles.length === 0 || !user) return;
 
         const finalCategory =
-            selectedCategory === 'Custom' ? customCategory : selectedCategory;
+            simpleMode ? 'Dokumen' : (selectedCategory === 'Custom' ? customCategory : selectedCategory);
 
         if (!finalCategory.trim()) {
             toast.error('Please enter a category name');
@@ -233,7 +260,7 @@ export function FileManagement() {
                     chunks.push(base64Data.slice(start, end));
                 }
 
-                const fileDocRef = await addDoc(collection(db, 'files'), {
+                const fileDocRef = await addDoc(collection(db, collectionName), {
                     fileName: file.name,
                     fileSize: file.size,
                     fileType: file.type,
@@ -257,7 +284,7 @@ export function FileManagement() {
 
                     currentBatchChunks.forEach((chunkData, index) => {
                         const chunkIndex = i + index;
-                        const chunkRef = doc(collection(db, 'files', fileDocRef.id, 'chunks'), chunkIndex.toString());
+                        const chunkRef = doc(collection(db, collectionName, fileDocRef.id, 'chunks'), chunkIndex.toString());
                         batch.set(chunkRef, { index: chunkIndex, data: chunkData });
                     });
 
@@ -269,7 +296,7 @@ export function FileManagement() {
                 }
 
                 const finalBatch = writeBatch(db);
-                finalBatch.update(doc(db, 'files', fileDocRef.id), { status: 'completed' });
+                finalBatch.update(doc(db, collectionName, fileDocRef.id), { status: 'completed' });
                 await finalBatch.commit();
                 
                 completedCount++;
@@ -280,7 +307,7 @@ export function FileManagement() {
             setShowSuccessModal(true);
 
             setSelectedFiles([]);
-            setSelectedCategory('Laporan Harian');
+            setSelectedCategory(simpleMode ? 'Dokumen' : 'Laporan Harian');
             setCustomCategory('');
             setDescription('');
             setUploading(false);
@@ -294,7 +321,7 @@ export function FileManagement() {
     };
 
     const handleDelete = async () => {
-        if (!isAdmin) return;
+        if (!canDelete) return;
 
         if (selectedFileIds.length > 0 && !fileToDelete) {
             await performBulkDelete(selectedFileIds, `Deleting ${selectedFileIds.length} files...`);
@@ -307,13 +334,13 @@ export function FileManagement() {
         try {
             const batch = writeBatch(db);
 
-            const chunksSnapshot = await getDocs(collection(db, 'files', fileToDelete.id, 'chunks'));
+            const chunksSnapshot = await getDocs(collection(db, collectionName, fileToDelete.id, 'chunks'));
 
             chunksSnapshot.docs.forEach((chunkDoc) => {
                 batch.delete(chunkDoc.ref);
             });
 
-            const fileRef = doc(db, 'files', fileToDelete.id);
+            const fileRef = doc(db, collectionName, fileToDelete.id);
             batch.delete(fileRef);
 
             await batch.commit();
@@ -330,7 +357,7 @@ export function FileManagement() {
     };
 
     const performBulkDelete = async (ids: string[], loadingMessage: string) => {
-        if (ids.length === 0 || !isAdmin) return;
+        if (ids.length === 0 || !canDelete) return;
 
         setIsBulkDeleting(true);
         const toastId = toast.loading(loadingMessage);
@@ -339,13 +366,13 @@ export function FileManagement() {
             for (const fileId of ids) {
                 const batch = writeBatch(db);
 
-                const chunksSnapshot = await getDocs(collection(db, 'files', fileId, 'chunks'));
+                const chunksSnapshot = await getDocs(collection(db, collectionName, fileId, 'chunks'));
 
                 chunksSnapshot.docs.forEach((chunkDoc) => {
                     batch.delete(chunkDoc.ref);
                 });
 
-                batch.delete(doc(db, 'files', fileId));
+                batch.delete(doc(db, collectionName, fileId));
 
                 await batch.commit();
             }
@@ -367,7 +394,7 @@ export function FileManagement() {
         try {
             const toastId = toast.loading('Preparing download...');
 
-            const chunksSnapshot = await getDocs(query(collection(db, 'files', file.id, 'chunks'), orderBy('index')));
+            const chunksSnapshot = await getDocs(query(collection(db, collectionName, file.id, 'chunks'), orderBy('index')));
 
             if (chunksSnapshot.empty) {
                 toast.error('File data not found', { id: toastId });
@@ -439,7 +466,18 @@ export function FileManagement() {
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {isAdmin && (
+            {divisionName && (
+                <div className="mb-8">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
+                        Division: {divisionName}
+                    </h1>
+                    <p className="text-slate-400">
+                        Manage and access ISO documentation for {divisionName} division.
+                    </p>
+                </div>
+            )}
+
+            {canUpload && (
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -485,81 +523,83 @@ export function FileManagement() {
                             </div>
                         )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-2">
-                                    Category
-                                </label>
-                                <select
-                                    value={selectedCategory}
-                                    onChange={(e) => setSelectedCategory(e.target.value)}
-                                    disabled={uploading}
-                                    className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                >
-                                    {FILE_CATEGORIES.map((cat) => (
-                                        <option key={cat} value={cat}>
-                                            {cat}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-2">
-                                    Quarter
-                                </label>
-                                <select
-                                    value={selectedUploadQuarter}
-                                    onChange={(e) => setSelectedUploadQuarter(e.target.value)}
-                                    disabled={uploading}
-                                    className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                >
-                                    {QUARTERS.map((q) => (
-                                        <option key={q} value={q}>
-                                            {q}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedCategory) && (
-                                <div className="md:col-span-1">
+                        {!simpleMode && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
                                     <label className="block text-sm font-medium text-slate-300 mb-2">
-                                        Maintenance Type
+                                        Category
                                     </label>
                                     <select
-                                        value={selectedMaintenance}
-                                        onChange={(e) => setSelectedMaintenance(e.target.value)}
+                                        value={selectedCategory}
+                                        onChange={(e) => setSelectedCategory(e.target.value)}
                                         disabled={uploading}
                                         className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     >
-                                        {MAINTENANCE_TYPES.map(type => (
-                                            <option key={type} value={type}>{type}</option>
+                                        {FILE_CATEGORIES.map((cat) => (
+                                            <option key={cat} value={cat}>
+                                                {cat}
+                                            </option>
                                         ))}
                                     </select>
                                 </div>
-                            )}
 
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-2">
-                                    Year
-                                </label>
-                                <select
-                                    value={selectedUploadYear}
-                                    onChange={(e) => setSelectedUploadYear(e.target.value)}
-                                    disabled={uploading}
-                                    className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                >
-                                    {YEARS.map((y) => (
-                                        <option key={y} value={y}>
-                                            {y}
-                                        </option>
-                                    ))}
-                                </select>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                                        Quarter
+                                    </label>
+                                    <select
+                                        value={selectedUploadQuarter}
+                                        onChange={(e) => setSelectedUploadQuarter(e.target.value)}
+                                        disabled={uploading}
+                                        className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                        {QUARTERS.map((q) => (
+                                            <option key={q} value={q}>
+                                                {q}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedCategory) && (
+                                    <div className="md:col-span-1">
+                                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                                            Maintenance Type
+                                        </label>
+                                        <select
+                                            value={selectedMaintenance}
+                                            onChange={(e) => setSelectedMaintenance(e.target.value)}
+                                            disabled={uploading}
+                                            className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        >
+                                            {MAINTENANCE_TYPES.map(type => (
+                                                <option key={type} value={type}>{type}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                                        Year
+                                    </label>
+                                    <select
+                                        value={selectedUploadYear}
+                                        onChange={(e) => setSelectedUploadYear(e.target.value)}
+                                        disabled={uploading}
+                                        className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                        {YEARS.map((y) => (
+                                            <option key={y} value={y}>
+                                                {y}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
-                        {selectedCategory === 'Custom' && (
+                        {!simpleMode && selectedCategory === 'Custom' && (
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-2">
                                     Custom Category Name
@@ -1124,6 +1164,4 @@ export function FileManagement() {
             </AnimatePresence>
         </div>
     );
-};
-
-export default FileManagement;
+}

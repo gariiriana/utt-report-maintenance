@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from '@/components/AuthContext';
 import { Login } from '@/pages/Login';
 import { MainApp } from '@/pages/MainApp';
 import { HSEApp } from '@/pages/HSEApp';
+import { DivisionApp } from '@/pages/DivisionApp';
 import { ServerLoadingIndicator } from '@/components/ServerLoadingIndicator';
 import { HSEReportViewer } from '@/components/HSEReportViewer';
 import { useEffect } from 'react';
@@ -51,6 +52,10 @@ function AppContent() {
   if (user) {
     if (userRole === 'hse') {
       return <HSEApp />;
+    }
+    const isoRoles = ['pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
+    if (isoRoles.includes(userRole || '')) {
+      return <DivisionApp />;
     }
     return <MainApp />;
   }

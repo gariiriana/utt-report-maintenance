@@ -106,13 +106,21 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       ];
       setCards(pjuTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     } else if (lowerEmail === 'vrv@gmail.com') {
-      const vrvTemplate = [
-        'Checking Voltase', 'Checking Ampere', 'Checking Vibration',
-        'Checking Temperature', 'Checking Humidity', 'Checking Air Flow',
-        'Checking Noise', 'Vacuum Drain pump', 'Vacuum Drain pipe',
-        'Test Drain', 'Cleaning Filter', 'Cleaning Evaporator',
-        'Cleaning Fan', 'Nameplate', 'Remote'
-      ];
+      setMaintenanceName('vrv');
+      const isOutdoor = specificDetail.toLowerCase() === 'outdoor';
+      const vrvTemplate = isOutdoor 
+        ? [
+            'Voltage R-S', 'Voltage R-T', 'Voltage S-T', 'Voltage R-N', 'Voltage S-N', 'Voltage T-N', 'Voltage N-G',
+            'Current R', 'Current S', 'Current T', 'Pressure Suction', 'Pressure Discharge', 
+            'Cleaning Kondensor', 'Cleaning Fan', 'Nameplate'
+          ]
+        : [
+            'Checking Voltase', 'Checking Ampere', 'Checking Vibration',
+            'Checking Temperature', 'Checking Humidity', 'Checking Air Flow',
+            'Checking Noise', 'Vacuum Drain pump', 'Vacuum Drain pipe',
+            'Test Drain', 'Cleaning Filter', 'Cleaning Evaporator',
+            'Cleaning Fan', 'Nameplate', 'Remote'
+          ];
       setCards(vrvTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     } else if (lowerEmail === 'lv@gmail.com' || lowerEmail === 'ats@gmail.com' || lowerEmail === 'trafo@gmail.com') {
       const isTrafo = lowerEmail === 'trafo@gmail.com';
@@ -173,7 +181,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       ];
       setCards(busductTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     }
-  }, [user?.email, editingData]);
+  }, [user?.email, editingData, specificDetail]);
 
   useEffect(() => {
     if (editingData) {
@@ -611,11 +619,35 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Maintenance Name</label>
-                  <input type="text" value={maintenanceName} onChange={e => setMaintenanceName(e.target.value)} disabled={user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com'} className={`w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 ${(user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com') ? 'opacity-60 cursor-not-allowed' : ''}`} placeholder="e.g. FCU Maintenance" />
+                  <input 
+                    type="text" 
+                    value={maintenanceName} 
+                    onChange={e => setMaintenanceName(e.target.value)} 
+                    disabled={user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com' || user?.email === 'vrv@gmail.com'} 
+                    className={`w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 ${(user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com' || user?.email === 'vrv@gmail.com') ? 'opacity-60 cursor-not-allowed' : ''}`} 
+                    placeholder="e.g. FCU Maintenance" 
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Unit/Room (Optional)</label>
-                  <input type="text" value={specificDetail} onChange={e => setSpecificDetail(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Unit 102" />
+                  {user?.email === 'vrv@gmail.com' ? (
+                    <div className="relative group/select">
+                      <select
+                        value={specificDetail}
+                        onChange={e => setSpecificDetail(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer pr-10 transition-all hover:border-slate-500"
+                      >
+                        <option value="">Select Unit Type</option>
+                        <option value="outdoor">Outdoor</option>
+                        <option value="indoor">Indoor</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-500 group-focus-within/select:text-blue-500 transition-colors">
+                        <ChevronDown className="w-5 h-5" />
+                      </div>
+                    </div>
+                  ) : (
+                    <input type="text" value={specificDetail} onChange={e => setSpecificDetail(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Unit 102" />
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Maintenance Time</label>
