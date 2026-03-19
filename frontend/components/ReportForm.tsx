@@ -107,7 +107,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       ];
       setCards(pjuTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     } else if (lowerEmail === 'vrv@gmail.com') {
-      setMaintenanceName('vrv');
+      if (!maintenanceName) setMaintenanceName('vrv');
       const isOutdoor = specificDetail.toLowerCase() === 'outdoor';
       const vrvTemplate = isOutdoor 
         ? [
@@ -647,8 +647,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     type="text" 
                     value={maintenanceName} 
                     onChange={e => setMaintenanceName(e.target.value)} 
-                    disabled={user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com' || user?.email === 'vrv@gmail.com'} 
-                    className={`w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 ${(user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com' || user?.email === 'vrv@gmail.com') ? 'opacity-60 cursor-not-allowed' : ''}`} 
+                    disabled={user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com'} 
+                    className={`w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 ${(user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com') ? 'opacity-60 cursor-not-allowed' : ''}`} 
                     placeholder="e.g. FCU Maintenance" 
                   />
                 </div>
