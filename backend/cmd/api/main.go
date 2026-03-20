@@ -1,27 +1,51 @@
+// Command utt-report-maintenance-backend starts the standalone HTTP server.
+// This binary is used for local development and Docker deployments.
+// For production Vercel deployments, the api/index.go entry point is used instead.
 package main
 
 import (
-	"fmt"
-	"log"
-	"net/http"
+	"context"
+	"log/slog"
 	"os"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/routes"
+	"github.com/gariiriana/utt-report-maintenance/backend/internal/config"
 )
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
+	// Load .env for local development (no-op if file doesn't exist)
+	config.MustLoadDotEnv(".env")
+
+	// Parse CLI flags
+	flags := parseFlags()
+	if flags.Port == "" {
+		flags.Port = config.EnvString("PORT", "8080")
+	}
+	if flags.Verbose {
+		os.Setenv("LOG_LEVEL", "debug")
 	}
 
-	handler, err := routes.SetupRouter()
+	// Initialise structured logger
+	logCfg := config.DefaultLoggerConfig()
+	handler := config.BuildSlogHandler(logCfg)
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
+
+	logger.Info("starting utt-report-maintenance backend",
+		slog.String("port", flags.Port),
+		slog.String("env", config.EnvString("APP_ENV", "production")),
+	)
+
+	// Bootstrap application (wires dependencies)
+	app, err := bootstrap(flags)
 	if err != nil {
-		log.Fatalf("Failed to initialize router: %v", err)
+		logger.Error("failed to bootstrap application", "error", err.Error())
+		os.Exit(1)
 	}
 
-	fmt.Printf("Server starting at :%s...\n", port)
-	if err := http.ListenAndServe(":"+port, handler); err != nil {
-		log.Fatal(err)
+	// Run with graceful shutdown
+	ctx := context.Background()
+	if err := app.Server.Run(ctx); err != nil {
+		logger.Error("server exited with error", "error", err.Error())
+		os.Exit(1)
 	}
 }

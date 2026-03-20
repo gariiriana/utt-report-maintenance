@@ -1,0 +1,61 @@
+package controllers
+
+import (
+	"net/http"
+
+	"github.com/gariiriana/utt-report-maintenance/backend/internal/middlewares"
+	"github.com/gariiriana/utt-report-maintenance/backend/internal/services"
+	apperrors "github.com/gariiriana/utt-report-maintenance/backend/pkg/errors"
+	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
+)
+
+// AuditController handles audit log viewing (admin only).
+type AuditController struct {
+	AuditService *services.AuditService
+}
+
+// NewAuditController constructs an AuditController.
+func NewAuditController(auditSvc *services.AuditService) *AuditController {
+	return &AuditController{AuditService: auditSvc}
+}
+
+// GetAuditLogs handles GET /api/audit — admin retrieves all audit entries.
+func (c *AuditController) GetAuditLogs(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	role := middlewares.RoleFromContext(ctx)
+	if role != "admin" {
+		helpers.SendAppError(w, apperrors.Forbidden("audit logs require admin role"))
+		return
+	}
+
+	logs, err := c.AuditService.GetAll(ctx, 100)
+	if err != nil {
+		helpers.SendAppError(w, apperrors.Internal(err))
+		return
+	}
+	helpers.SendJSON(w, http.StatusOK, map[string]interface{}{
+		"status": "success",
+		"data":   logs,
+		"count":  len(logs),
+	})
+}
+
+// GetMyAuditLogs handles GET /api/audit/me — returns the authenticated user's audit trail.
+func (c *AuditController) GetMyAuditLogs(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	uid := middlewares.UIDFromContext(ctx)
+	if uid == "" {
+		helpers.SendAppError(w, apperrors.Unauthorized("authentication required"))
+		return
+	}
+
+	logs, err := c.AuditService.GetByUser(ctx, uid, 50)
+	if err != nil {
+		helpers.SendAppError(w, apperrors.Internal(err))
+		return
+	}
+	helpers.SendJSON(w, http.StatusOK, map[string]interface{}{
+		"status": "success",
+		"data":   logs,
+	})
+}
