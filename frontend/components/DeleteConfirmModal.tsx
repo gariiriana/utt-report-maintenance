@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, X } from 'lucide-react';
 
@@ -7,9 +6,10 @@ interface DeleteConfirmModalProps {
   onClose: () => void;
   onConfirm: () => void;
   documentName: string;
+  loading?: boolean;
 }
 
-export function DeleteConfirmModal({ isOpen, onClose, onConfirm, documentName }: DeleteConfirmModalProps) {
+export function DeleteConfirmModal({ isOpen, onClose, onConfirm, documentName, loading }: DeleteConfirmModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -74,23 +74,27 @@ export function DeleteConfirmModal({ isOpen, onClose, onConfirm, documentName }:
 
               <div className="grid grid-cols-2 gap-3">
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: loading ? 1 : 1.02 }}
+                  whileTap={{ scale: loading ? 1 : 0.98 }}
                   onClick={onClose}
-                  className="px-6 py-3 bg-slate-800/50 hover:bg-slate-700/50 text-white rounded-lg font-semibold transition border border-slate-600/50"
+                  disabled={loading}
+                  className={`px-6 py-3 bg-slate-800/50 hover:bg-slate-700/50 text-white rounded-lg font-semibold transition border border-slate-600/50 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   Cancel
                 </motion.button>
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: loading ? 1 : 1.02 }}
+                  whileTap={{ scale: loading ? 1 : 0.98 }}
+                  disabled={loading}
                   onClick={() => {
                     onConfirm();
-                    onClose();
                   }}
-                  className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-semibold transition shadow-lg shadow-red-500/20"
+                  className={`px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-semibold transition shadow-lg shadow-red-500/20 flex items-center justify-center gap-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                 >
-                  Delete
+                  {loading && (
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  )}
+                  {loading ? 'Deleting...' : 'Delete'}
                 </motion.button>
               </div>
 

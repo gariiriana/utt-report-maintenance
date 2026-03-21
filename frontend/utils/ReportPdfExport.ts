@@ -95,8 +95,14 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
 
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
   const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 10;
-  const usableWidth = pageWidth - 2 * margin;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const contentW = pageWidth - 2 * margin;
+
+  const THEME_RED = '#dc2626';
+  const DARK = '#1e293b';
+  const GRAY = '#64748b';
+  const SLATE_200 = '#e2e8f0';
 
   const isATS = userEmail === 'ats@gmail.com';
   const isPDU = userEmail === 'pdu@gmail.com';
@@ -117,64 +123,87 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
     ? `${specificDetail.toUpperCase()} - ${vrvUnitDetail.toUpperCase()}`
     : specificDetail;
 
+  // --- Helper Functions ---
+
   const drawHeader = (doc: any) => {
-    const isDwimitra = companyType !== 'bri';
-    const isCompact = isPDU || isLVlike || isVRV;
+    // Top Bar
+    doc.setFillColor(THEME_RED);
+    doc.rect(0, 0, pageWidth, 2.5, 'F');
 
-    const leftW = isCompact ? 22 : (isDwimitra ? 28 : 36);
-    const leftH = isCompact ? 9 : (isDwimitra ? 18 : 14);
-    const rightW = isCompact ? 22 : (isDwimitra ? 36 : 35);
-    const rightH = isCompact ? 9 : (isDwimitra ? 14 : 14);
+    // Header Frame
+    const headerH = 22;
+    const headerY = 6;
+    doc.setDrawColor(SLATE_200);
+    doc.setLineWidth(0.1); // Thinner frame for more tech look
+    doc.roundedRect(margin, headerY, contentW, headerH, 1, 1, 'D');
 
-    const headerTopY = 8;
+    // Grid Lines (Vertical)
+    const col1W = 35;
+    const col3W = 35;
+    doc.line(margin + col1W, headerY, margin + col1W, headerY + headerH);
+    doc.line(pageWidth - margin - col3W, headerY, pageWidth - margin - col3W, headerY + headerH);
 
+    // Left Logo
     if (logos.left) {
-      doc.addImage(logos.left, 'JPEG', margin, headerTopY, leftW, leftH, 'logo_left', 'FAST');
+      doc.addImage(logos.left, 'JPEG', margin + 3, headerY + 4, col1W - 6, 14, 'logo_l', 'FAST');
     }
+
+    // Right Logo
     if (logos.right) {
-      const rightY = headerTopY + (leftH - rightH) / 2;
-      doc.addImage(logos.right, 'JPEG', pageWidth - margin - rightW, rightY, rightW, rightH, 'logo_right', 'FAST');
+      doc.addImage(logos.right, 'JPEG', pageWidth - margin - col3W + 5, headerY + 5.5, col3W - 10, 11, 'logo_r', 'FAST');
     }
 
-    const textAreaPadding = 3;
-    const textAreaWidth = pageWidth - (2 * margin) - leftW - rightW - (2 * textAreaPadding);
-    const textCenterX = margin + leftW + textAreaPadding + (textAreaWidth / 2);
-
-    const tallLogoH = Math.max(leftH, rightH);
-    const textStartY = headerTopY + tallLogoH / 2 - (isCompact ? 4 : 8);
-
-    doc.setFontSize(isCompact ? 9 : 13).setFont('helvetica', 'bold');
-    const titleText = `DOKUMENTASI PM ${maintenanceName.toUpperCase()}`;
-    const splitTitle = doc.splitTextToSize(titleText, textAreaWidth);
-    doc.text(splitTitle, textCenterX, textStartY, { align: 'center' });
-
-    const titleLineH = isCompact ? 5 : 6;
-    let nextY = textStartY + splitTitle.length * titleLineH;
-
-    const longDate = new Date(maintenanceTime).toLocaleDateString('id-ID', { 
-      day: '2-digit', 
-      month: 'long', 
-      year: 'numeric' 
-    });
-    doc.setFontSize(isCompact ? 8 : 11).setFont('helvetica', 'normal');
-    doc.text(`(${longDate})`, textCenterX, nextY + 2, { align: 'center' });
-    nextY += isCompact ? 6 : 8;
+    // Center Title Block
+    const centerX = margin + col1W + (contentW - col1W - col3W) / 2;
+    doc.setFontSize(11).setFont('helvetica', 'bold').setTextColor(THEME_RED);
+    doc.text('LAPORAN MAINTENANCE ENGINEER', centerX, headerY + 6.5, { align: 'center' });
+    
+    doc.setFontSize(8.5).setFont('helvetica', 'bold').setTextColor(DARK);
+    doc.text(`DOKUMENTASI PM: ${maintenanceName.toUpperCase()}`, centerX, headerY + 11.5, { align: 'center' });
 
     if (finalSpecificDetail) {
-      doc.setFontSize(isCompact ? 7 : 10).setFont('helvetica', 'bold');
-      const splitDetail = doc.splitTextToSize(finalSpecificDetail.toUpperCase(), textAreaWidth);
-      doc.text(splitDetail, textCenterX, nextY + 2, { align: 'center' });
-      nextY += splitDetail.length * (isCompact ? 4 : 5) + 2;
+      doc.setFontSize(7.5).setFont('helvetica', 'bold').setTextColor(THEME_RED);
+      doc.text(`${finalSpecificDetail.toUpperCase()}`, centerX, headerY + 16, { align: 'center' });
     }
 
-    return Math.max(nextY + 6, isCompact ? 30 : 42);
+    const longDate = new Date(maintenanceTime).toLocaleDateString('id-ID', { 
+      day: '2-digit', month: 'long', year: 'numeric' 
+    });
+    doc.setFontSize(7).setFont('helvetica', 'normal').setTextColor(GRAY);
+    doc.text(`Tanggal Maintenance: ${longDate}`, centerX, headerY + 20, { align: 'center' });
+
+    return 31; // Next content Y
   };
+
+
+
+  const drawPhotoCard = (doc: any, x: number, y: number, w: number, h: number, capH: number, photo: PhotoCard, index: number) => {
+    doc.setFillColor(255, 255, 255).setDrawColor(SLATE_200).setLineWidth(0.2);
+    doc.roundedRect(x, y, w - 2, h + capH, 1, 1, 'FD');
+
+    if (photo.photoBase64) {
+      doc.setFillColor(DARK).rect(x + 0.5, y + 0.5, w - 3, h - 1, 'F');
+      doc.addImage(photo.photoBase64, 'JPEG', x + 1, y + 1, w - 4, h - 2, `p_${index}`, 'FAST');
+    } else {
+      doc.setFillColor(241, 245, 249).rect(x + 0.5, y + 0.5, w - 3, h - 1, 'F');
+      doc.setFontSize(7).setTextColor(GRAY).text('No Photo', x + (w - 2) / 2, y + h / 2, { align: 'center' });
+    }
+
+    doc.setFillColor(THEME_RED).rect(x + 0.5, y + 0.5, 9, 6, 'F');
+    doc.setFontSize(7).setFont('helvetica', 'bold').setTextColor(255, 255, 255);
+    doc.text(`${index + 1}`, x + 5, y + 4.5, { align: 'center' });
+
+    doc.setFontSize(isVRV || isPDU ? 6.5 : 7.5).setFont('helvetica', 'normal').setTextColor(DARK);
+    const splitCaption = doc.splitTextToSize(photo.description || '', w - 6);
+    doc.text(splitCaption, x + (w - 2) / 2, y + h + 5, { align: 'center' });
+  };
+
+  // --- Process Pages ---
 
   let curY = drawHeader(doc);
   let count = 0;
 
   if (isLVlike) {
-    const pageHeightMM = doc.internal.pageSize.getHeight();
     const capHLV = 10;
     const gapLV = 5;
     const normalPhotoH = 55;
@@ -184,68 +213,50 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
     while (pageStart < optimizedCards.length) {
       const pageCards = optimizedCards.slice(pageStart, pageStart + perPage);
       const rows = Math.ceil(pageCards.length / cols);
-
       if (!isFirstPage) { 
         doc.addPage(); 
         curY = drawHeader(doc); 
       }
-
-      const usablePageHeight = pageHeightMM - curY - margin;
-      const photoHLV = isFirstPage
-        ? Math.floor(usablePageHeight / rows - capHLV - gapLV)
-        : normalPhotoH;
-
+      const usablePageHeight = pageHeight - curY - margin - 12;
+      const photoHLV = isFirstPage ? Math.floor(usablePageHeight / rows - capHLV - gapLV) : normalPhotoH;
       for (let i = 0; i < pageCards.length; i += cols) {
         const row = pageCards.slice(i, i + cols);
         for (let j = 0; j < row.length; j++) {
-          const x = margin + j * (usableWidth / cols);
-          doc.rect(x, curY, usableWidth / cols - 2, photoHLV);
-          const b64 = row[j].photoBase64;
-          if (b64) {
-            doc.addImage(b64, 'JPEG', x + 1, curY + 1, usableWidth / cols - 4, photoHLV - 2, `p_${pageStart + i + j}`, 'FAST');
-          }
-          doc.rect(x, curY + photoHLV, usableWidth / cols - 2, capHLV);
-          doc.setFontSize(7).setFont('helvetica', 'normal');
-          doc.text(doc.splitTextToSize(row[j].description || '', usableWidth / cols - 6), x + (usableWidth / cols) / 2 - 1, curY + photoHLV + 5, { align: 'center' });
+          const x = margin + j * (contentW / cols);
+          drawPhotoCard(doc, x, curY, contentW / cols, photoHLV, capHLV, row[j], pageStart + i + j);
         }
         curY += photoHLV + capHLV + gapLV;
       }
-
       pageStart += perPage;
       isFirstPage = false;
     }
   } else {
     for (let i = 0; i < optimizedCards.length; i += cols) {
-      if (count > 0 && count % perPage === 0) { 
-        doc.addPage(); 
-        curY = drawHeader(doc); 
-      }
+      if (count > 0 && count % perPage === 0) { doc.addPage(); curY = drawHeader(doc); }
       const row = optimizedCards.slice(i, i + cols);
       for (let j = 0; j < row.length; j++) {
-        const x = margin + j * (usableWidth / cols);
-        doc.rect(x, curY, usableWidth / cols - 2, photoH);
-        const b64 = row[j].photoBase64;
-        if (b64) {
-          doc.addImage(b64, 'JPEG', x + 1, curY + 1, usableWidth / cols - 4, photoH - 2, `p_${i + j}`, 'FAST');
-        }
-        doc.rect(x, curY + photoH, usableWidth / cols - 2, capH);
-        doc.setFontSize(isVRV || isPDU ? 7 : 8).setFont('helvetica', 'normal');
-        doc.text(doc.splitTextToSize(row[j].description || '', usableWidth / cols - 6), x + (usableWidth / cols) / 2 - 1, curY + photoH + 5, { align: 'center' });
+        const x = margin + j * (contentW / cols);
+        drawPhotoCard(doc, x, curY, contentW / cols, photoH, capH, row[j], i + j);
         count++;
       }
       curY += photoH + capH + rowGap;
     }
   }
 
+  // --- Footers ---
+  const totalPages = (doc.internal as any).getNumberOfPages();
+  for (let pg = 1; pg <= totalPages; pg++) {
+    doc.setPage(pg);
+    doc.setFillColor(THEME_RED).rect(0, pageHeight - 2.5, pageWidth, 2.5, 'F');
+    doc.setFontSize(7.5).setTextColor(GRAY);
+    const footerCompany = companyType === 'bri' ? 'BANK RAKYAT INDONESIA' : 'PT DWIMITRA EKATAMA MANDIRI';
+    doc.text(`${footerCompany} — Maintenance Document`, margin, pageHeight - 6);
+    doc.text(`Page ${pg} of ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
+  }
+
   const safeName = maintenanceName.replace(/[/\\?%*:|"<>]/g, '-');
   const safeDate = formattedDate.replace(/\//g, '-');
-  const safeDetail = finalSpecificDetail 
-    ? `_${finalSpecificDetail.replace(/[/\\?%*:|"<>]/g, '-').replace(/\s+/g, '_')}` 
-    : '';
+  const safeDetail = finalSpecificDetail ? `_${finalSpecificDetail.replace(/[/\\?%*:|"<>]/g, '-').replace(/\s+/g, '_')}` : '';
 
-  return { 
-    doc, 
-    fileName: `Report_${safeName}_${safeDate}${safeDetail}.pdf`, 
-    filled: optimizedCards 
-  };
+  return { doc, fileName: `Report_${safeName}_${safeDate}${safeDetail}.pdf`, filled: optimizedCards };
 };

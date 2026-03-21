@@ -78,72 +78,70 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     const marginR = 14;
     const contentW = pageW - marginL - marginR;
 
-    const GREEN = '#16a34a';
-    const DARK = '#0f172a';
-    const GRAY = '#64748b';
-    const LIGHT_GRAY = '#f1f5f9';
+    const PRIMARY_RED = '#dc2626';
+    const DARK = '#1e293b'; // slate-800
+    const GRAY = '#64748b'; // slate-500
+    const LIGHT_GRAY = '#f8fafc'; // slate-50
 
-    const HEADER_H = 30;
+    const HEADER_H = 34;
     let headerDrawCount = 0;
     const drawPageHeader = () => {
         headerDrawCount++;
         const pg = headerDrawCount;
 
-        doc.setFillColor(22, 163, 74);
-        doc.rect(0, 0, pageW, 3, 'F');
+        // Top Accent
+        doc.setFillColor(PRIMARY_RED);
+        doc.rect(0, 0, pageW, 2.5, 'F');
 
-        const leftW = 28;
-        const leftH = 18;
+        // Header background (very subtle)
+        doc.setFillColor(252, 252, 252);
+        doc.rect(0, 2.5, pageW, HEADER_H - 2.5, 'F');
+
+        const leftW = 26;
+        const leftH = 16;
         const headerTopY = 8;
 
         if (logoDmeB64) {
             doc.addImage(logoDmeB64, 'JPEG', marginL, headerTopY, leftW, leftH, `logo_left_${pg}`, 'FAST');
-        } else {
-            doc.setFontSize(10);
-            doc.setTextColor(DARK);
-            doc.setFont('helvetica', 'bold');
-            doc.text('DME', marginL, headerTopY + 6);
         }
 
-        const rightW = 32;
-        const rightH = 12;
-        const isUTT = data.reportType === 'utt';
-        
+        const rightW = 30;
+        const rightH = 11;
         if (logoNeutradcB64) {
             const rightY = headerTopY + (leftH - rightH) / 2;
             doc.addImage(logoNeutradcB64, 'JPEG', pageW - marginR - rightW, rightY, rightW, rightH, `logo_right_${pg}`, 'FAST');
-        } else {
-            doc.setFontSize(9);
-            doc.setTextColor(DARK);
-            doc.setFont('helvetica', 'bold');
-            doc.text(isUTT ? 'UTT' : 'neutraDC', pageW - marginR - 20, headerTopY + 6);
         }
 
-        const titleY = headerTopY + 4;
-        doc.setFontSize(15);
+        const titleY = headerTopY + 3;
+        doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(DARK);
         doc.text('HSE INSPECTION REPORT', pageW / 2, titleY, { align: 'center' });
 
-        doc.setFontSize(8.5);
+        doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(GRAY);
-        doc.text('Health, Safety & Environment — Documentation', pageW / 2, titleY + 5, { align: 'center' });
+        doc.text('Safety, Health & Equipment Documentation System', pageW / 2, titleY + 5.5, { align: 'center' });
 
         const dateStr = data.date || new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
-        doc.setFontSize(8);
-        doc.text(`Tanggal: ${dateStr}`, pageW / 2, titleY + 9.5, { align: 'center' });
+        doc.setFontSize(9);
+        doc.setTextColor(PRIMARY_RED);
+        doc.setFont('helvetica', 'bold');
+        doc.text(dateStr, pageW / 2, titleY + 10.5, { align: 'center' });
 
-        doc.setDrawColor(22, 163, 74);
-        doc.setLineWidth(0.6);
-        doc.line(marginL, 26, pageW - marginR, 26);
+        // Divider
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.4);
+        doc.line(marginL, 30, pageW - marginR, 30);
     };
 
     drawPageHeader();
     let curY = HEADER_H;
 
+    // Info Section with cleaner look
     doc.setFillColor(LIGHT_GRAY);
-    doc.roundedRect(marginL, curY, contentW, 53, 3, 3, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(marginL, curY, contentW, 54, 2, 2, 'FD');
 
     const infoRows = [
         { label: 'Inspector K3', value: data.inspectorK3 || '-' },
@@ -155,31 +153,28 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     ];
 
     infoRows.forEach((row, i) => {
-        const rowY = curY + 6 + i * 7.5;
-        doc.setFontSize(9);
+        const rowY = curY + 7 + i * 8;
+        doc.setFontSize(8.5);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(DARK);
-        doc.text(`${row.label}`, marginL + 4, rowY);
-
-        doc.setFont('helvetica', 'normal');
         doc.setTextColor(GRAY);
-        doc.text(':', marginL + 28, rowY);
+        doc.text(row.label, marginL + 5, rowY);
 
         doc.setTextColor(DARK);
-        const lines = doc.splitTextToSize(row.value, contentW - 35);
-        doc.text(lines[0], marginL + 32, rowY);
+        const lines = doc.splitTextToSize(row.value, contentW - 40);
+        doc.text(`:  ${lines[0]}`, marginL + 32, rowY);
     });
 
-    curY += 49;
+    curY += 51;
 
-    doc.setFillColor(GREEN);
-    doc.roundedRect(marginL, curY, contentW, 8, 2, 2, 'F');
-    doc.setFontSize(9.5);
+    // Checklist Section Header
+    doc.setFillColor(PRIMARY_RED);
+    doc.rect(marginL, curY, contentW, 8.5, 'F');
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor('#ffffff');
-    doc.text('CHECKLIST KESELAMATAN KERJA', marginL + 4, curY + 5.5);
+    doc.text('I. CHECKLIST KESELAMATAN KERJA (REQUIRED)', marginL + 4, curY + 5.5);
 
-    curY += 11;
+    curY += 12;
 
     const checklistDefinition = [
         { key: 'mop', label: 'MOP' },
@@ -240,7 +235,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     const col2Items = regularItems.slice(itemsPerCol);
 
     const drawChecklistItem = (item: { label: string, value: boolean, isSub?: boolean }, x: number, y: number, width: number, isConclusion = false) => {
-        const bgColor = isConclusion ? '#f0f9ff' : (Math.floor(y / rowH) % 2 === 0 ? '#f8fafc' : '#ffffff');
+        const bgColor = isConclusion ? '#fdf2f2' : (Math.floor(y / rowH) % 2 === 0 ? '#f8fafc' : '#ffffff');
         doc.setFillColor(bgColor);
         doc.rect(x, y, width, rowH, 'F');
 
@@ -250,22 +245,14 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         const checked = item.value;
 
         if (checked) {
-            if (item.isSub) {
-                doc.setDrawColor(22, 163, 74);
-                doc.setLineWidth(0.5);
-                doc.line(centerX - 1.2, centerY, centerX - 0.3, centerY + 0.9);
-                doc.line(centerX - 0.3, centerY + 0.9, centerX + 1.2, centerY - 1.0);
-            } else {
-                doc.setFillColor(isConclusion ? '#3b82f6' : '#16a34a');
-                doc.circle(centerX, centerY, 2.7, 'F');
-                doc.setDrawColor(255, 255, 255);
-                doc.setLineWidth(0.4);
-                doc.line(centerX - 1.1, centerY, centerX - 0.2, centerY + 0.8);
-                doc.line(centerX - 0.2, centerY + 0.8, centerX + 1.1, centerY - 0.9);
-            }
-        }
- else {
-            doc.setFillColor(239, 68, 68);
+            doc.setFillColor(isConclusion ? PRIMARY_RED : '#ef4444');
+            doc.circle(centerX, centerY, 2.7, 'F');
+            doc.setDrawColor(255, 255, 255);
+            doc.setLineWidth(0.4);
+            doc.line(centerX - 1.1, centerY, centerX - 0.2, centerY + 0.8);
+            doc.line(centerX - 0.2, centerY + 0.8, centerX + 1.1, centerY - 0.9);
+        } else {
+            doc.setFillColor('#cbd5e1'); // slate-300 for unchecked
             doc.circle(centerX, centerY, 2.7, 'F');
             doc.setDrawColor(255, 255, 255);
             doc.setLineWidth(0.4);
@@ -282,90 +269,73 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     col1Items.forEach((item, i) => drawChecklistItem(item, marginL, curY + i * rowH, colW));
     col2Items.forEach((item, i) => drawChecklistItem(item, marginL + colW + 6, curY + i * rowH, colW));
 
-    curY += itemsPerCol * rowH + 4;
+    curY += itemsPerCol * rowH + 6;
 
     doc.setDrawColor(226, 232, 240);
     doc.setLineWidth(0.2);
     doc.line(marginL, curY, marginL + contentW, curY);
 
-    doc.setFontSize(7.5);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(GRAY);
-    doc.text('KESIMPULAN / KONDISI AKHIR', marginL + contentW / 2, curY + 4, { align: 'center' });
-
-    curY += 6;
-
+    curY += 4;
     conclusionItems.forEach((item, i) => {
         const x = i === 0 ? marginL : marginL + colW + 6;
         drawChecklistItem(item, x, curY, colW, true);
     });
 
-    curY += rowH + 10;
-
-    curY += 4;
-    curY += 2;
+    curY += rowH + 8;
 
     if (data.photos && data.photos.length > 0) {
-        doc.setFillColor(GREEN);
-        doc.roundedRect(marginL, curY, contentW, 8, 2, 2, 'F');
-        doc.setFontSize(9.5);
+        doc.setFillColor(PRIMARY_RED);
+        doc.rect(marginL, curY, contentW, 8.5, 'F');
+        doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor('#ffffff');
-        doc.text('FOTO DOKUMENTASI', marginL + 4, curY + 5.5);
+        doc.text('II. FOTO DOKUMENTASI & EVIDENCE', marginL + 4, curY + 5.5);
         curY += 12;
 
-        const photosPerRow = 3;
-        const photoGap = 4;
-        const photoW = (contentW - photoGap * (photosPerRow - 1)) / photosPerRow;
+        const photosPerRow = 2; // Made it 2 per row for better visibility in HSE
+        const photoGap = 5;
+        const photoW = (contentW - photoGap) / photosPerRow;
         const photoH = photoW * 0.75;
-        const descriptionH = 8;
+        const descriptionH = 10;
 
         for (let i = 0; i < data.photos.length; i++) {
             const col = i % photosPerRow;
             const x = marginL + col * (photoW + photoGap);
 
-            if (curY + photoH + descriptionH > pageH - 20) {
+            if (curY + photoH + descriptionH > pageH - 22) {
                 doc.addPage();
                 drawPageHeader();
                 curY = HEADER_H;
             }
 
             const y = curY;
+            const photo = data.photos[i];
+
+            // CARD DESIGN
+            doc.setFillColor(255, 255, 255);
+            doc.setDrawColor(226, 232, 240);
+            doc.roundedRect(x, y, photoW, photoH + descriptionH, 1, 1, 'FD');
 
             try {
-                const photo = data.photos[i];
-                const imgData = photo.base64;
-                const imgType = 'JPEG';
-                doc.addImage(imgData, imgType, x, y, photoW, photoH, `photo_${i}`, 'FAST');
-
-                doc.setDrawColor(200, 200, 200);
-                doc.setLineWidth(0.2);
-                doc.rect(x, y, photoW, photoH);
-
-                if (photo.description) {
-                    doc.setFontSize(7.5);
-                    doc.setFont('helvetica', 'italic');
-                    doc.setTextColor(DARK);
-                    const descLines = doc.splitTextToSize(photo.description, photoW);
-                    doc.text(descLines, x, y + photoH + 3.5);
-                }
+                doc.addImage(photo.base64, 'JPEG', x + 1, y + 1, photoW - 2, photoH - 2, `photo_${i}`, 'FAST');
             } catch (_) {
-                doc.setFillColor(220, 220, 220);
-                doc.rect(x, y, photoW, photoH, 'F');
-                doc.setFontSize(7);
-                doc.setTextColor(150, 150, 150);
-                doc.text('Foto Error', x + photoW / 2, y + photoH / 2, { align: 'center' });
+                doc.setFillColor(241, 245, 249);
+                doc.rect(x + 1, y + 1, photoW - 2, photoH - 2, 'F');
+                doc.setFontSize(7).setTextColor(GRAY).text('Foto Error', x + photoW / 2, y + photoH / 2, { align: 'center' });
             }
 
-            // Photo number label badge
-            doc.setFillColor(0, 0, 0, 0.7);
-            doc.rect(x, y + photoH - 6, 12, 6, 'F');
-            doc.setFontSize(7);
-            doc.setTextColor('#ffffff');
-            doc.setFont('helvetica', 'bold');
-            doc.text(`${i + 1}`, x + 6, y + photoH - 1.8, { align: 'center' });
+            // Photo Badge (Red)
+            doc.setFillColor(PRIMARY_RED);
+            doc.rect(x + 1, y + 1, 10, 6, 'F');
+            doc.setFontSize(7).setFont('helvetica', 'bold').setTextColor('#ffffff');
+            doc.text(`${i + 1}`, x + 6, y + 5, { align: 'center' });
 
-            // Move to next row after filling a row
+            if (photo.description) {
+                doc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(DARK);
+                const descLines = doc.splitTextToSize(photo.description, photoW - 6);
+                doc.text(descLines, x + photoW / 2, y + photoH + 5, { align: 'center' });
+            }
+
             if (col === photosPerRow - 1 || i === data.photos.length - 1) {
                 curY += photoH + descriptionH + photoGap;
             }
@@ -376,15 +346,14 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     for (let pg = 1; pg <= totalPages; pg++) {
         doc.setPage(pg);
 
-        doc.setFillColor(22, 163, 74);
-        doc.rect(0, pageH - 2, pageW, 2, 'F');
+        doc.setFillColor(PRIMARY_RED).rect(0, pageH - 2.5, pageW, 2.5, 'F');
 
         doc.setFontSize(7.5);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(GRAY);
         const footerCompany = data.reportType === 'utt' ? 'PT United Transworld Trading' : 'PT Dwimitra Ekatama Mandiri';
-        doc.text(`${footerCompany} — HSE Inspection Report`, marginL, pageH - 5);
-        doc.text(`Halaman ${pg} / ${totalPages}`, pageW - marginR, pageH - 5, { align: 'right' });
+        doc.text(`${footerCompany} — HSE Report`, marginL, pageH - 6);
+        doc.text(`Halaman ${pg} dari ${totalPages}`, pageW - marginR, pageH - 6, { align: 'right' });
     }
 
     return doc;

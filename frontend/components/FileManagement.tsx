@@ -130,6 +130,7 @@ export function FileManagement({
     const { user, userRole } = useAuth();
     const isAdmin = userRole === 'admin';
     const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
+    const isHSE = userRole === 'hse';
     
     // Determine if user can upload: 
     // 1. If propAllowUpload is explicitly set, use it.
@@ -140,11 +141,8 @@ export function FileManagement({
         : (userRole === 'admin' || userRole === collectionName);
 
     // Determine if user can delete:
-    // Only admin can delete from any collection for now, 
-    // or if we want users to delete their own, we might need more logic.
-    // User requested: "hanya bisa mengupload file dan menyimpan file yang mereka upload"
-    // Usually "menyimpan" implies they might not need delete, but let's keep it restricted to admin for safety unless asked.
-    const canDelete = userRole === 'admin';
+    // Administrative roles (Admin, TDE, CBRE, HSE, Engineer) can delete.
+    const canDelete = isAdmin || isTDEorCBRE || isHSE || userRole === 'engineer' || userRole === 'standby_engineer';
 
     const [files, setFiles] = useState<FileData[]>([]);
     const [loading, setLoading] = useState(true);
@@ -848,7 +846,7 @@ export function FileManagement({
                         {MAINTENANCE_TYPES.map((type) => {
                             const typeFiles = filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && f.maintenanceType === type);
                             const fileCount = typeFiles.length;
-                            if (fileCount === 0 && !isAdmin && !isTDEorCBRE) return null;
+                            if (fileCount === 0 && !canDelete) return null;
 
                             return (
                                 <motion.div
@@ -889,7 +887,7 @@ export function FileManagement({
                             </div>
                         ) : (
                             <>
-                                {isAdmin && (
+                                {canDelete && (
                                     <div className="flex items-center justify-between bg-slate-800/60 p-3 rounded-lg border border-slate-700/50 mb-4">
                                         <div className="flex items-center gap-3">
                                             <input
@@ -947,7 +945,7 @@ export function FileManagement({
                                         className={`bg-slate-700/30 rounded-xl p-3 sm:p-4 border transition flex items-start sm:items-center gap-3 sm:gap-4 ${selectedFileIds.includes(file.id) ? 'border-blue-500/50 bg-blue-500/5' : 'border-slate-600/50 hover:border-slate-500/50'
                                             }`}
                                     >
-                                        {isAdmin && (
+                                        {canDelete && (
                                             <div className="mt-1 sm:mt-0">
                                                 <input
                                                     type="checkbox"
@@ -1016,7 +1014,7 @@ export function FileManagement({
                                                     <Download className="w-4 h-4" />
                                                 </motion.button>
 
-                                                {isAdmin && (
+                                                {canDelete && (
                                                     <motion.button
                                                         whileHover={{ scale: 1.05 }}
                                                         whileTap={{ scale: 0.95 }}
