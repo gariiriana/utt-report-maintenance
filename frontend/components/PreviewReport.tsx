@@ -38,10 +38,11 @@ export function PreviewReport({
     const isLV = userEmail === 'lv@gmail.com' || userEmail === 'ats@gmail.com';
     const isLDBRDB = userEmail === 'ldb/rdb@gmail.com';
     const isVRV = userEmail === 'vrv@gmail.com';
-    const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV;
+    const isLightingSystem = userEmail.toLowerCase() === 'lightingsystem@gmail.com';
+    const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV || isLightingSystem;
 
     const columns = isVRV ? 3 : isSmallGrid ? 4 : 3;
-    const perPage = isPDU ? 20 : (isLV || isLDBRDB) ? 12 : isVRV ? 15 : 9;
+    const perPage = isPDU ? 20 : (isLV || isLDBRDB || isLightingSystem) ? 12 : isVRV ? 15 : 9;
     const filledCards = cards.filter(card => card.photoBase64 || card.description);
     const [acknowledged, setAcknowledged] = useState(false);
 

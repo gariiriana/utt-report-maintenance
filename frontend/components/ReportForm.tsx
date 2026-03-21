@@ -181,6 +181,15 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         'Visual inspect busduct', 'Cleaning busduct', 'Thermal on joint conection'
       ];
       setCards(busductTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
+    } else if (lowerEmail === 'lightingsystem@gmail.com') {
+      setMaintenanceName('Lighting System');
+      const lightingTemplate = [
+        'Nameplate', 'Kondisi Lampu', 'Pengecekan Instalasi Kabel',
+        'Pengecekan Panel Lighting', 'Measurement Voltage R-N', 'Measurement Voltage S-N',
+        'Measurement Voltage T-N', 'Measurement Ampere R', 'Measurement Ampere S',
+        'Measurement Ampere T', 'Cleaning Armature', 'Pengecekan MCB/Breaker'
+      ];
+      setCards(lightingTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     }
   }, [user?.email, editingData, specificDetail]);
 
@@ -344,8 +353,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const isLV = user?.email === 'lv@gmail.com';
     const isLDBRDB = user?.email === 'ldb/rdb@gmail.com';
     const isVRV = user?.email === 'vrv@gmail.com';
-    const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV || isATS;
-    const isLVlike = isLV || isLDBRDB;
+    const isLightingSystem = user?.email?.toLowerCase() === 'lightingsystem@gmail.com';
+    const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV || isATS || isLightingSystem;
+    const isLVlike = isLV || isLDBRDB || isLightingSystem;
 
     const cols = (isVRV || isATS) ? 3 : isSmallGrid ? 4 : 3;
     const perPage = isATS ? 12 : isPDU ? 20 : isLVlike ? 12 : isVRV ? 15 : 9;
