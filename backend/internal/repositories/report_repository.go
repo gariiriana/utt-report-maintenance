@@ -94,15 +94,30 @@ func (r *ReportRepository) Delete(ctx context.Context, collectionName, docID str
 	return nil
 }
 
-// Count returns the number of documents in a collection by fetching all IDs.
-// For large collections prefer a counter document pattern instead.
+// Count returns the number of documents in a collection Using the efficient
+// Count aggregation query (Firestore SDK v1.14.0+).
 func (r *ReportRepository) Count(ctx context.Context, collectionName string) (int64, error) {
-	docs, err := r.Client.Collection(collectionName).
-		Select().
-		Documents(ctx).GetAll()
+	q := r.Client.Collection(collectionName)
+	alias := "count"
+	aq := q.NewAggregationQuery().WithCount(alias)
+
+	results, err := aq.Get(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("Count(%s): %w", collectionName, err)
 	}
-	return int64(len(docs)), nil
+
+	countVal, ok := results[alias]
+	if !ok {
+		return 0, fmt.Errorf("Count(%s): failed to find aggregation result", collectionName)
+	}
+
+	// In the Go SDK (v1.14.0+), the Count result is returned as an int64
+	// in the AggregationResult map[string]interface{}.
+	count, ok := countVal.(int64)
+	if !ok {
+		return 0, fmt.Errorf("Count(%s): failed to parse aggregation result as int64 (type: %T)", collectionName, countVal)
+	}
+
+	return count, nil
 }
 

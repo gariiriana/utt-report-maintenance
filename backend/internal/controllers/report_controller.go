@@ -25,10 +25,30 @@ func NewReportController(service *services.ReportService, audit *services.AuditS
 }
 
 // HandleReport handles POST /api/report — save a new report document.
+// @Summary Create a new report
+// @Description Save a new report document to the specified collection.
+// @Tags reports
+// @Accept  json
+// @Produce  json
+// @Param   X-API-Secret  header  string  true  "API Secret"
+// @Param   Authorization header  string  true  "Firebase JWT Token (Bearer)"
+// @Param   report body models.CreateReportRequest true "Report data"
+// @Success 200 {object} models.SuccessResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/report [post]
 func (c *ReportController) HandleReport(w http.ResponseWriter, r *http.Request) {
-	var requestBody map[string]interface{}
-	if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
-		helpers.SendError(w, "Invalid request body", http.StatusBadRequest)
+	var req models.CreateReportRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.SendAppError(w, apperrors.BadRequest("Invalid request body"))
+		return
+	}
+
+	// Validate the request struct
+	if err := helpers.ValidateStruct(&req); err != nil {
+		helpers.SendAppError(w, err)
 		return
 	}
 
@@ -39,31 +59,38 @@ func (c *ReportController) HandleReport(w http.ResponseWriter, r *http.Request) 
 	requestID := middlewares.GetRequestID(ctx)
 	ip := helpers.GetClientIP(r)
 
-	// Inject authenticated user metadata
-	if uid != "" {
-		requestBody["author_uid"] = uid
-		requestBody["author_email"] = email
-	}
-
-	reportID, collectionName, err := c.Service.ProcessReport(ctx, requestBody)
+	reportID, collectionName, err := c.Service.ProcessReport(ctx, &req)
 	if err != nil {
 		// Check if it's an unauthorized collection error
 		if strings.HasPrefix(err.Error(), "unauthorized collection") {
 			c.AuditService.LogAction(ctx, models.ActionDeny, uid, email, role, "", "", requestID, ip, false, err.Error())
-			helpers.SendError(w, err.Error(), http.StatusForbidden)
+			helpers.SendAppError(w, apperrors.Forbidden(err.Error()))
 		} else {
 			c.AuditService.LogAction(ctx, models.ActionCreate, uid, email, role, "", "", requestID, ip, false, err.Error())
-			helpers.SendError(w, err.Error(), http.StatusInternalServerError)
+			helpers.SendAppError(w, apperrors.Internal(err))
 		}
 		return
 	}
 
 	c.AuditService.LogAction(ctx, models.ActionCreate, uid, email, role, collectionName, reportID, requestID, ip, true, "")
 	c.NotifService.NotifyReportCreated(ctx, collectionName, reportID, uid)
-	helpers.SendSuccess(w, reportID, collectionName, "Data saved to "+collectionName+" via Clean Architecture Backend!")
+	
+	// Use the new helper for success response
+	helpers.SendJSON(w, http.StatusOK, models.BuildSuccessResponse(reportID, collectionName, "Data saved successfully via Clean Architecture!"))
 }
 
 // GetReport handles GET /api/report/{collection}/{id}.
+// @Summary Get a report by ID
+// @Description Retrieve a single report document from a specific collection.
+// @Tags reports
+// @Produce  json
+// @Param   X-API-Secret  header  string  true  "API Secret"
+// @Param   Authorization header  string  true  "Firebase JWT Token (Bearer)"
+// @Param   collection path string true "Collection name (e.g., hse)"
+// @Param   id path string true "Report ID"
+// @Success 200 {object} models.SuccessResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Router /api/report/{collection}/{id} [get]
 func (c *ReportController) GetReport(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(parts) < 2 {
@@ -87,6 +114,15 @@ func (c *ReportController) GetReport(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListReports handles GET /api/reports/{collection}.
+// @Summary List reports in a collection
+// @Description Retrieve a list of reports from a specific collection.
+// @Tags reports
+// @Produce  json
+// @Param   X-API-Secret  header  string  true  "API Secret"
+// @Param   Authorization header  string  true  "Firebase JWT Token (Bearer)"
+// @Param   collection query string false "Collection name (defaults to hse)"
+// @Success 200 {array} models.SuccessResponse
+// @Router /api/reports [get]
 func (c *ReportController) ListReports(w http.ResponseWriter, r *http.Request) {
 	collection := r.URL.Query().Get("collection")
 	if collection == "" {
@@ -103,6 +139,15 @@ func (c *ReportController) ListReports(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteReport handles DELETE /api/report/{collection}/{id}.
+// @Summary Delete a report
+// @Description Remove a report document from the specified collection.
+// @Tags reports
+// @Param   X-API-Secret  header  string  true  "API Secret"
+// @Param   Authorization header  string  true  "Firebase JWT Token (Bearer)"
+// @Param   collection path string true "Collection name"
+// @Param   id path string true "Report ID"
+// @Success 204 "No Content"
+// @Router /api/report/{collection}/{id} [delete]
 func (c *ReportController) DeleteReport(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(parts) < 2 {

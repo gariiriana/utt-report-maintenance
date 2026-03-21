@@ -603,11 +603,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     if (!maintenanceName || !maintenanceTime) return toast.error('Isi nama & waktu');
     if (!cards.some(c => c.photoBase64 || c.description)) return toast.error('Minimal 1 card filled');
     
-    // Pass combined specific detail for preview
-    const finalSpecificDetail = (user?.email === 'vrv@gmail.com' && vrvUnitDetail) 
-      ? `${specificDetail.toUpperCase()} - ${vrvUnitDetail.toUpperCase()}`
-      : specificDetail;
-
     setShowPreview(true);
   };
 

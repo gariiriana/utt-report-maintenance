@@ -73,12 +73,17 @@ func (s *Server) shutdown() error {
 	return nil
 }
 
-// NewServerFromRouter is a convenience constructor that wires up the router
-// and returns a ready Server.
-func NewServerFromRouter(port string) (*Server, error) {
-	handler, err := routes.SetupRouter()
-	if err != nil {
-		return nil, fmt.Errorf("router setup failed: %w", err)
-	}
+// NewServerFromDeps wires up a router with injected dependencies and returns a Server.
+func NewServerFromDeps(port string, deps *routes.AppDeps) (*Server, error) {
+	handler := routes.SetupRouter(deps)
 	return NewServer(port, handler), nil
+}
+
+// NewServerFromRouter is a convenience constructor for legacy use or simple setups.
+func NewServerFromRouter(port string) (*Server, error) {
+	deps, err := routes.NewAppDeps(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to init deps: %w", err)
+	}
+	return NewServerFromDeps(port, deps)
 }

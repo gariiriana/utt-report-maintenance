@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gariiriana/utt-report-maintenance/backend/internal/middlewares"
@@ -10,11 +11,12 @@ import (
 var handler http.HandlerFunc
 
 func init() {
-	var err error
-	handler, err = routes.SetupRouter()
+	ctx := context.Background()
+	deps, err := routes.NewAppDeps(ctx)
 	if err != nil {
-		panic("Failed to initialize router: " + err.Error())
+		panic("Failed to initialize dependencies: " + err.Error())
 	}
+	handler = routes.SetupRouter(deps)
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {

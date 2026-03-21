@@ -1,6 +1,19 @@
+// @title UTT Report Maintenance API
+// @version 1.0
+// @description This is the backend server for the UTT Report Maintenance application.
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.url http://www.swagger.io/support
+// @contact.email support@swagger.io
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host report-utt.web.app
+// @BasePath /
+
 // Command utt-report-maintenance-backend starts the standalone HTTP server.
-// This binary is used for local development and Docker deployments.
-// For production Vercel deployments, the api/index.go entry point is used instead.
 package main
 
 import (

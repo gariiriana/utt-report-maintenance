@@ -34,11 +34,21 @@ func SendError(w http.ResponseWriter, message string, code int) {
 func SendAppError(w http.ResponseWriter, err *apperrors.AppError) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(err.StatusCode)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	
+	resp := map[string]interface{}{
 		"status":  "error",
 		"code":    err.Code,
 		"message": err.Message,
-	})
+	}
+
+	// If there's a wrapped validation error, include the field details
+	if ve, ok := err.Err.(*apperrors.ValidationError); ok {
+		resp["fields"] = ve.Fields
+	} else if err.Details != "" {
+		resp["details"] = err.Details
+	}
+
+	json.NewEncoder(w).Encode(resp)
 }
 
 // SendValidationError writes a 422 Unprocessable Entity with field-level errors.

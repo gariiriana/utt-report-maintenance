@@ -60,11 +60,30 @@ func (r *Report) ToListItem() ReportListItem {
 	}
 }
 
-// ReportFilter holds the available query filters for listing reports.
-type ReportFilter struct {
-	ReportType ReportType `json:"report_type,omitempty"`
-	AuthorUID  string     `json:"author_uid,omitempty"`
-	Status     string     `json:"status,omitempty"`
-	DateFrom   time.Time  `json:"date_from,omitempty"`
-	DateTo     time.Time  `json:"date_to,omitempty"`
+// Photo represents a single photo attachment in a report.
+type Photo struct {
+	URL         string `json:"url" validate:"required,url"`
+	Caption     string `json:"caption" validate:"max=200"`
+	StoragePath string `json:"storage_path,omitempty"`
+}
+
+// CreateReportRequest is the strictly typed payload for creating a new report.
+type CreateReportRequest struct {
+	Collection  string     `json:"collection" validate:"required,oneof=hse pdf_documents excel_documents service_reports"`
+	Title       string     `json:"title" validate:"required,min=3,max=100"`
+	Description string     `json:"description" validate:"max=500"`
+	ReportType  ReportType `json:"report_type" validate:"required"`
+	Tags        []string   `json:"tags" validate:"dive,max=20"`
+	Photos      []Photo    `json:"photos" validate:"dive"`
+	Metadata    map[string]interface{} `json:"metadata"`
+}
+
+// BuildSuccessResponse constructs a standard success response.
+func BuildSuccessResponse(reportID, collection, message string) map[string]interface{} {
+	return map[string]interface{}{
+		"status":     "success",
+		"reportId":   reportID,
+		"collection": collection,
+		"message":    message,
+	}
 }

@@ -1,0 +1,238 @@
+basePath: /
+definitions:
+  models.CreateReportRequest:
+    properties:
+      collection:
+        enum:
+        - hse
+        - pdf_documents
+        - excel_documents
+        - service_reports
+        type: string
+      description:
+        maxLength: 500
+        type: string
+      metadata:
+        additionalProperties: true
+        type: object
+      photos:
+        items:
+          $ref: '#/definitions/models.Photo'
+        type: array
+      report_type:
+        $ref: '#/definitions/models.ReportType'
+      tags:
+        items:
+          type: string
+        type: array
+      title:
+        maxLength: 100
+        minLength: 3
+        type: string
+    required:
+    - collection
+    - report_type
+    - title
+    type: object
+  models.ErrorResponse:
+    properties:
+      message:
+        type: string
+      status:
+        type: string
+    type: object
+  models.Photo:
+    properties:
+      caption:
+        maxLength: 200
+        type: string
+      storage_path:
+        type: string
+      url:
+        type: string
+    required:
+    - url
+    type: object
+  models.ReportType:
+    enum:
+    - hse
+    - pdf_documents
+    - excel_documents
+    - service_reports
+    type: string
+    x-enum-varnames:
+    - ReportTypeHSE
+    - ReportTypePDF
+    - ReportTypeExcel
+    - ReportTypeService
+  models.SuccessResponse:
+    properties:
+      collection:
+        type: string
+      message:
+        type: string
+      reportId:
+        type: string
+      status:
+        type: string
+    type: object
+host: report-utt.web.app
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: This is the backend server for the UTT Report Maintenance application.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: UTT Report Maintenance API
+  version: "1.0"
+paths:
+  /api/report:
+    post:
+      consumes:
+      - application/json
+      description: Save a new report document to the specified collection.
+      parameters:
+      - description: API Secret
+        in: header
+        name: X-API-Secret
+        required: true
+        type: string
+      - description: Firebase JWT Token (Bearer)
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Report data
+        in: body
+        name: report
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateReportRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Create a new report
+      tags:
+      - reports
+  /api/report/{collection}/{id}:
+    delete:
+      description: Remove a report document from the specified collection.
+      parameters:
+      - description: API Secret
+        in: header
+        name: X-API-Secret
+        required: true
+        type: string
+      - description: Firebase JWT Token (Bearer)
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Collection name
+        in: path
+        name: collection
+        required: true
+        type: string
+      - description: Report ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      summary: Delete a report
+      tags:
+      - reports
+    get:
+      description: Retrieve a single report document from a specific collection.
+      parameters:
+      - description: API Secret
+        in: header
+        name: X-API-Secret
+        required: true
+        type: string
+      - description: Firebase JWT Token (Bearer)
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Collection name (e.g., hse)
+        in: path
+        name: collection
+        required: true
+        type: string
+      - description: Report ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SuccessResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get a report by ID
+      tags:
+      - reports
+  /api/reports:
+    get:
+      description: Retrieve a list of reports from a specific collection.
+      parameters:
+      - description: API Secret
+        in: header
+        name: X-API-Secret
+        required: true
+        type: string
+      - description: Firebase JWT Token (Bearer)
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Collection name (defaults to hse)
+        in: query
+        name: collection
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SuccessResponse'
+            type: array
+      summary: List reports in a collection
+      tags:
+      - reports
+swagger: "2.0"

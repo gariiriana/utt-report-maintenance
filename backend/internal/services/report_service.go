@@ -6,42 +6,43 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/firestore"
 	"github.com/gariiriana/utt-report-maintenance/backend/internal/models"
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/repositories"
 	"github.com/gariiriana/utt-report-maintenance/backend/pkg/sanitizer"
 )
 
+// ReportRepository defines the data access layer for reports.
+type ReportRepository interface {
+	SaveReport(ctx context.Context, collectionName string, data map[string]interface{}) (*firestore.DocumentRef, error)
+	SaveSubData(ctx context.Context, docRef *firestore.DocumentRef, subCollectionName string, data map[string]interface{}) error
+	GetByID(ctx context.Context, collectionName, docID string) (*firestore.DocumentSnapshot, error)
+	List(ctx context.Context, collectionName string, limit, offset int) ([]*firestore.DocumentSnapshot, error)
+	Delete(ctx context.Context, collectionName, docID string) error
+}
+
 // ReportService holds business logic for creating and querying reports.
 type ReportService struct {
-	Repo *repositories.ReportRepository
+	Repo ReportRepository
 }
 
 // NewReportService constructs a new ReportService.
-func NewReportService(repo *repositories.ReportRepository) *ReportService {
+func NewReportService(repo ReportRepository) *ReportService {
 	return &ReportService{Repo: repo}
 }
 
 // ProcessReport validates, sanitises, and persists a report from an incoming request body.
-func (s *ReportService) ProcessReport(ctx context.Context, requestBody map[string]interface{}) (string, string, error) {
-	collectionName, ok := requestBody["collection"].(string)
-	if !ok || collectionName == "" {
-		collectionName = string(models.ReportTypeHSE)
-	}
-
+func (s *ReportService) ProcessReport(ctx context.Context, req *models.CreateReportRequest) (string, string, error) {
+	collectionName := req.Collection
 	if !models.AllowedCollections[collectionName] {
 		return "", "", fmt.Errorf("unauthorized collection: %s", collectionName)
 	}
 
 	reportData := make(map[string]interface{})
-	for k, v := range requestBody {
-		if k == "collection" || k == "sub_data" {
-			continue
-		}
-		reportData[k] = v
-	}
-
-	// Sanitize all string values
-	reportData = sanitizer.Map(reportData)
+	reportData["title"] = sanitizer.String(req.Title)
+	reportData["description"] = sanitizer.String(req.Description)
+	reportData["report_type"] = req.ReportType
+	reportData["tags"] = req.Tags
+	reportData["metadata"] = req.Metadata
 
 	// Enrich with server-side metadata
 	reportData["created_at"] = time.Now().UTC()
@@ -54,19 +55,22 @@ func (s *ReportService) ProcessReport(ctx context.Context, requestBody map[strin
 	}
 
 	// Save sub-data (photos) concurrently
-	if subData, ok := requestBody["sub_data"].([]interface{}); ok {
+	if len(req.Photos) > 0 {
 		var wg sync.WaitGroup
-		for i, item := range subData {
-			if itemMap, ok := item.(map[string]interface{}); ok {
-				wg.Add(1)
-				go func(idx int, data map[string]interface{}) {
-					defer wg.Done()
-					cleanData := sanitizer.Map(data)
-					if err := s.Repo.SaveSubData(ctx, docRef, "photos", cleanData); err != nil {
-						fmt.Printf("Warning: Failed to save photo %d: %v\n", idx, err)
-					}
-				}(i, itemMap)
-			}
+		for i, photo := range req.Photos {
+			wg.Add(1)
+			go func(idx int, p models.Photo) {
+				defer wg.Done()
+				photoData := map[string]interface{}{
+					"url":          p.URL,
+					"caption":      sanitizer.String(p.Caption),
+					"storage_path": p.StoragePath,
+					"created_at":   time.Now().UTC(),
+				}
+				if err := s.Repo.SaveSubData(ctx, docRef, "photos", photoData); err != nil {
+					fmt.Printf("Warning: Failed to save photo %d: %v\n", idx, err)
+				}
+			}(i, photo)
 		}
 		wg.Wait()
 	}

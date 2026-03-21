@@ -2,6 +2,7 @@ package routes
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	"github.com/gariiriana/utt-report-maintenance/backend/internal/config"
@@ -23,19 +24,17 @@ type AppDeps struct {
 	RateLimiter *middlewares.RateLimiter
 }
 
-// SetupRouter initialises all dependencies and returns the root HTTP handler.
-func SetupRouter() (http.HandlerFunc, error) {
-	ctx := context.Background()
-
+// NewAppDeps initialises all core dependencies and returns an AppDeps struct.
+func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 	// --- Infrastructure ---
 	firestoreClient, err := config.InitFirestore(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("NewAppDeps (firestore): %w", err)
 	}
 
 	authClient, err := config.InitAuthClient(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("NewAppDeps (auth): %w", err)
 	}
 
 	// --- Repositories ---
@@ -62,7 +61,7 @@ func SetupRouter() (http.HandlerFunc, error) {
 
 	rateLimiter := middlewares.NewRateLimiter(20, 40)
 
-	deps := &AppDeps{
+	return &AppDeps{
 		ReportCtrl:  reportCtrl,
 		AuthCtrl:    authCtrl,
 		HealthCtrl:  healthCtrl,
@@ -70,9 +69,12 @@ func SetupRouter() (http.HandlerFunc, error) {
 		ArchiveCtrl: archiveCtrl,
 		AuditCtrl:   auditCtrl,
 		RateLimiter: rateLimiter,
-	}
+	}, nil
+}
 
-	return buildHandler(deps), nil
+// SetupRouter configures the HTTP handler with the provided dependencies.
+func SetupRouter(deps *AppDeps) http.HandlerFunc {
+	return buildHandler(deps)
 }
 
 // buildHandler assembles the main routing function from wired dependencies.
