@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Trash2, Upload, Camera, FileType, Scissors, Eye, RefreshCw, ChevronDown, Save } from 'lucide-react';
+import { jsPDF } from 'jspdf';
 import { ExcelDocument } from '@/components/DocumentList';
 import { ImageEditor } from '@/components/ImageEditor';
 import { useAuth } from '@/components/AuthContext';
@@ -12,7 +13,12 @@ import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
 
-import { jsPDF } from 'jspdf';
+import { 
+  REPORT_TEMPLATES, 
+  VRV_TEMPLATE, 
+  LV_ATS_TRAFO_TEMPLATE 
+} from '@/config/templates';
+import { generateReportPDF, loadLogoBase64 } from '@/utils/ReportPdfExport';
 import { compressImage, compressBase64Image } from '@/utils/imageCompression';
 import { PreviewReport } from '@/components/PreviewReport';
 
@@ -66,130 +72,33 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     if (!user?.email || editingData) return;
     const lowerEmail = user.email.toLowerCase();
 
-    if (lowerEmail === 'fcu@gmail.com') {
-      const fcuTemplate = [
-        'R-S', 'R-T', 'S-T', 'R-N', 'S-N', 'T-N',
-        'Current R', 'Current S', 'Current T',
-        'Checking Vibration', 'Checking Air Flow', 'Checking Humidity',
-        'Checking Noise', 'Pressure Supply', 'Pressure Return',
-        'Checking Temperature', 'Cleaning Filter', 'Cleaning evaporator'
-      ];
-      setCards(fcuTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
-    } else if (lowerEmail.includes('dock') || lowerEmail.includes('leveler')) {
-      const dockTemplate = [
-        'Pengecekan Hidrolik', 'Pengecekan Platform/Deck', 'Pengecekan Lip Plate',
-        'Pelumasan Moving Parts', 'Pengecekan Safety Features', 'Test Operasional'
-      ];
-      setCards(dockTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
-    } else if (lowerEmail === 'pdu@gmail.com') {
-      const pduTemplate = [
-        'Name Plate', 'Measurement Temp Monitoring ISO-TRANS', 'Cleaning Panels menggunakan vacuum cleaner',
-        'Measurement Panel', 'Pengecekan Digital Power Meter (KW)', 'Pengecekan Digital Power Meter (Volt)',
-        'Pengecekan Digital Power Meter (Volt)', 'Pengecekan Digital Power Meter (Ampere)', 'Measurement Noise',
-        'Measurement Voltage R-S', 'Measurement Voltage S-T', 'Measurement Voltage T-R', 'Measurement Voltage R-N',
-        'Measurement Voltage S-N', 'Measurement Voltage T-N', 'Measurement Grounding', 'Measurement Ampere (R)',
-        'Measurement Ampere (S)', 'Measurement Ampere (T)', 'Measurement Ampere (N)'
-      ];
-      setCards(pduTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
-    } else if (lowerEmail === 'lps@gmail.com') {
-      const lpsTemplate = [
-        'Nameplate tiang', 'Cleaning Lightning Counter', 'Cleaning Obstruction lamp',
-        'Tigtening air terminal', 'Measurement obstruction lamp', 'Earthing resistance measurement',
-        'Lightning counter recording', 'Test continuitas wiring cable lightning'
-      ];
-      setCards(lpsTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
-    } else if (lowerEmail === 'pju@gmail.com') {
-      const pjuTemplate = [
-        'Cleaning Panel PJU dan Batrai', 'Tightening', 'Cleaning Solar Cell',
-        'Check Tegangan Batrai 1', 'Check Tegangan Batrai 2', 'Check Tegangan 2 Batrai',
-        'Check Tegangan Solar Cell', 'Tightening Sambungan Kabel', 'Check Visual Lampu LED',
-        'Cleaning LED Lampu Box LED'
-      ];
-      setCards(pjuTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
-    } else if (lowerEmail === 'vrv@gmail.com') {
+    let template: string[] | null = null;
+
+    if (lowerEmail === 'vrv@gmail.com') {
       if (!maintenanceName) setMaintenanceName('vrv');
       const isOutdoor = specificDetail.toLowerCase() === 'outdoor';
-      const vrvTemplate = isOutdoor 
-        ? [
-            'Voltage R-S', 'Voltage R-T', 'Voltage S-T', 'Voltage R-N', 'Voltage S-N', 'Voltage T-N', 'Voltage N-G',
-            'Current R', 'Current S', 'Current T', 'Pressure Suction', 'Pressure Discharge', 
-            'Cleaning Kondensor', 'Cleaning Fan', 'Nameplate'
-          ]
-        : [
-            'Checking Voltase', 'Checking Ampere', 'Checking Vibration',
-            'Checking Temperature', 'Checking Humidity', 'Checking Air Flow',
-            'Checking Noise', 'Vacuum Drain pump', 'Vacuum Drain pipe',
-            'Test Drain', 'Cleaning Filter', 'Cleaning Evaporator',
-            'Cleaning Fan', 'Nameplate', 'Remote'
-          ];
-      setCards(vrvTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
-    } else if (lowerEmail === 'lv@gmail.com' || lowerEmail === 'ats@gmail.com' || lowerEmail === 'trafo@gmail.com') {
+      template = isOutdoor ? VRV_TEMPLATE.outdoor : VRV_TEMPLATE.indoor;
+    } else if (['lv@gmail.com', 'ats@gmail.com', 'trafo@gmail.com'].includes(lowerEmail)) {
       const isTrafo = lowerEmail === 'trafo@gmail.com';
       setMaintenanceName(isTrafo ? 'Trafo' : (lowerEmail === 'lv@gmail.com' ? 'LV' : 'ATS'));
+      template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
+    } else {
+      // Check for direct email match or partial match for dock/leveler
+      template = REPORT_TEMPLATES[lowerEmail];
       
-      let lvTemplate = [
-        'Condition Panel', 'Check water pas', isTrafo ? 'Cleaning trafo' : 'Cleaning panel',
-        'Check Thermal Imager', 'Measurement Grounding', 'Measurement Voltage R - S',
-        'Measurement Voltage S - T', 'Measurement Voltage T - R', 'Measurement Voltage R - N',
-        'Measurement Voltage S - N', 'Measurement Voltage T - N', 'Measurement Voltage N - G',
-        'Measurement Ampere R', 'Measurement Ampere S', 'Measurement Ampere T',
-        'Measurement Ampere N', 'Measurement Voltage DPM', 'Measurement Voltage DPM',
-        'Measurement Ampere DPM', 'Measurement Daya DPM'
-      ];
-
-      if (lowerEmail === 'ats@gmail.com' || isTrafo) {
-        lvTemplate = lvTemplate.filter(t => t !== 'Check water pas');
+      if (!template && (lowerEmail.includes('dock') || lowerEmail.includes('leveler'))) {
+        template = REPORT_TEMPLATES['dock'];
       }
+      
+      // Update maintenance name for specific accounts if needed
+      if (lowerEmail === 'grounding@gmail.com') setMaintenanceName('Grounding');
+      if (lowerEmail === 'ldb/rdb@gmail.com') setMaintenanceName('LDB/RDB');
+      if (lowerEmail === 'busduct@gmail.com') setMaintenanceName('Busduct');
+      if (lowerEmail === 'lightingsystem@gmail.com') setMaintenanceName('Lighting System');
+    }
 
-      if (isTrafo) {
-        // Menambahkan Measurement Noise setelah Cleaning trafo
-        const cleaningIdx = lvTemplate.indexOf('Cleaning trafo');
-        if (cleaningIdx !== -1) {
-          lvTemplate.splice(cleaningIdx + 1, 0, 'Measurement Noise');
-        }
-      }
-
-      setCards(lvTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
-    } else if (lowerEmail === 'grounding@gmail.com') {
-      setMaintenanceName('Grounding');
-      const groundingTemplate = [
-        'Measurement', 'Before', 'After', 'Tightening'
-      ];
-      setCards(groundingTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
-    } else if (lowerEmail === 'ldb/rdb@gmail.com') {
-      setMaintenanceName('LDB/RDB');
-      const ldbRdbTemplate = [
-        'Condition panel', 'Tightening panel', 'Cleaning panel',
-        'Check Thermal Imager', 'Measurement Grounding', 'Measurement Voltage R - S',
-        'Measurement Voltage S - T', 'Measurement Voltage T - R', 'Measurement Voltage R - N',
-        'Measurement Voltage S - N', 'Measurement Voltage T - N', 'Measurement Voltage N - G',
-        'Measurement Ampere R', 'Measurement Ampere S', 'Measurement Ampere T',
-        'Measurement Ampere N', 'Measurement Voltage DPM', 'Measurement Voltage DPM',
-        'Measurement Ampere DPM', 'Measurement Daya DPM'
-      ];
-      setCards(ldbRdbTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
-    } else if (lowerEmail === 'acsplit@gmail.com') {
-      const acSplitTemplate = [
-        'Condition unit', 'Cleaning evaporator', 'Vacum draine AC', 'Cleaning Filter',
-        'Measurement Voltage', 'Measurement ampere', 'Cleaning fan outdoor', 'Cleaning Filter',
-        'Measurement pressure freon'
-      ];
-      setCards(acSplitTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
-    } else if (lowerEmail === 'busduct@gmail.com') {
-      setMaintenanceName('Busduct');
-      const busductTemplate = [
-        'Visual inspect busduct', 'Cleaning busduct', 'Thermal on joint conection'
-      ];
-      setCards(busductTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
-    } else if (lowerEmail === 'lightingsystem@gmail.com') {
-      setMaintenanceName('Lighting System');
-      const lightingTemplate = [
-        'Nameplate', 'Kondisi Lampu', 'Pengecekan Instalasi Kabel',
-        'Pengecekan Panel Lighting', 'Measurement Voltage R-N', 'Measurement Voltage S-N',
-        'Measurement Voltage T-N', 'Measurement Ampere R', 'Measurement Ampere S',
-        'Measurement Ampere T', 'Cleaning Armature', 'Pengecekan MCB/Breaker'
-      ];
-      setCards(lightingTemplate.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
+    if (template) {
+      setCards(template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     }
   }, [user?.email, editingData, specificDetail]);
 
@@ -291,192 +200,22 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   };
 
   const generatePDFDocument = async () => {
-    if (!maintenanceName || !maintenanceTime) return toast.error('Isi nama & waktu'), null;
-    const filled = cards.filter(c => c.photoBase64 || c.description);
-    if (!filled.length) return toast.error('Minimal 1 card filled'), null;
+    const logoLeftB64 = await loadLogoBase64(companyType === 'bri' ? logoBRILeft : logoDwimitra);
+    const logoRightB64 = await loadLogoBase64(companyType === 'bri' ? logoBRI : logoNeutraDC);
 
-    const formattedDate = new Date(maintenanceTime).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-    const loadLogo = (pathOrObj: string | { src: string }) => {
-      return new Promise<string>((resolve) => {
-        const url = typeof pathOrObj === 'string' ? pathOrObj : pathOrObj.src;
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0);
-          }
-          // Export as JPEG with 0.8 quality to keep header small
-          resolve(canvas.toDataURL('image/jpeg', 0.8));
-        };
-        img.onerror = () => resolve('');
-        img.src = url;
-      });
-    };
-
-    const logoLeftB64 = await loadLogo(companyType === 'bri' ? logoBRILeft : logoDwimitra);
-    const logoRightB64 = await loadLogo(companyType === 'bri' ? logoBRI : logoNeutraDC);
-
-    const optimizedCards: PhotoCard[] = [];
-
-    for (let i = 0; i < filled.length; i++) {
-      const c = filled[i];
-      if (c.photoBase64) {
-        toast.loading(`Optimizing photo ${i + 1}/${filled.length}...`, { id: 'export' });
-        try {
-          const compressed = await compressBase64Image(c.photoBase64, { maxWidth: 800, quality: 0.5 });
-          optimizedCards.push({ ...c, photoBase64: compressed });
-        } catch (err) {
-          console.error(`Fail at photo ${i}`, err);
-          optimizedCards.push(c);
-        }
-      } else {
-        optimizedCards.push(c);
+    return await generateReportPDF({
+      maintenanceName,
+      maintenanceTime,
+      specificDetail,
+      vrvUnitDetail,
+      cards,
+      companyType,
+      userEmail: user?.email || '',
+      logos: {
+        left: logoLeftB64,
+        right: logoRightB64
       }
-    }
-    
-    toast.dismiss('export');
-
-    const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 10;
-    const usableWidth = pageWidth - 2 * margin;
-
-    const isATS = user?.email === 'ats@gmail.com';
-    const isPDU = user?.email === 'pdu@gmail.com';
-    const isLV = user?.email === 'lv@gmail.com';
-    const isLDBRDB = user?.email === 'ldb/rdb@gmail.com';
-    const isVRV = user?.email === 'vrv@gmail.com';
-    const isLightingSystem = user?.email?.toLowerCase() === 'lightingsystem@gmail.com';
-    const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV || isATS || isLightingSystem;
-    const isLVlike = isLV || isLDBRDB || isLightingSystem;
-
-    const cols = (isVRV || isATS) ? 3 : isSmallGrid ? 4 : 3;
-    const perPage = isATS ? 12 : isPDU ? 20 : isLVlike ? 12 : isVRV ? 15 : 9;
-    const photoH = isATS ? 45 : isVRV ? 40 : isSmallGrid ? 38 : 55;
-    const capH = isATS ? 10 : isVRV ? 8 : isSmallGrid ? 10 : 12;
-    const rowGap = (isVRV || isATS) ? 3 : 5;
-
-    const finalSpecificDetail = (user?.email === 'vrv@gmail.com' && vrvUnitDetail) 
-      ? `${specificDetail.toUpperCase()} - ${vrvUnitDetail.toUpperCase()}`
-      : specificDetail;
-
-    const drawHeader = (doc: any) => {
-      const isDwimitra = companyType !== 'bri';
-
-      const isCompact = isPDU || isLVlike || isVRV;
-
-      const leftW = isCompact ? 22 : (isDwimitra ? 28 : 36);
-      const leftH = isCompact ? 9 : (isDwimitra ? 18 : 14);
-      const rightW = isCompact ? 22 : (isDwimitra ? 36 : 35);
-      const rightH = isCompact ? 9 : (isDwimitra ? 14 : 14);
-
-      const headerTopY = 8;
-
-      if (logoLeftB64) {
-        doc.addImage(logoLeftB64, 'JPEG', margin, headerTopY, leftW, leftH, 'logo_left', 'FAST');
-      }
-      if (logoRightB64) {
-        const rightY = headerTopY + (leftH - rightH) / 2;
-        doc.addImage(logoRightB64, 'JPEG', pageWidth - margin - rightW, rightY, rightW, rightH, 'logo_right', 'FAST');
-      }
-
-      const textAreaPadding = 3;
-      const textAreaWidth = pageWidth - (2 * margin) - leftW - rightW - (2 * textAreaPadding);
-      const textCenterX = margin + leftW + textAreaPadding + (textAreaWidth / 2);
-
-      const tallLogoH = Math.max(leftH, rightH);
-      const textStartY = headerTopY + tallLogoH / 2 - (isCompact ? 4 : 8);
-
-      doc.setFontSize(isCompact ? 9 : 13).setFont('helvetica', 'bold');
-      const titleText = `DOKUMENTASI PM ${maintenanceName.toUpperCase()}`;
-      const splitTitle = doc.splitTextToSize(titleText, textAreaWidth);
-      doc.text(splitTitle, textCenterX, textStartY, { align: 'center' });
-
-      const titleLineH = isCompact ? 5 : 6;
-      let nextY = textStartY + splitTitle.length * titleLineH;
-
-      const longDate = new Date(maintenanceTime).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
-      doc.setFontSize(isCompact ? 8 : 11).setFont('helvetica', 'normal');
-      doc.text(`(${longDate})`, textCenterX, nextY + 2, { align: 'center' });
-      nextY += isCompact ? 6 : 8;
-
-      if (finalSpecificDetail) {
-        doc.setFontSize(isCompact ? 7 : 10).setFont('helvetica', 'bold');
-        const splitDetail = doc.splitTextToSize(finalSpecificDetail.toUpperCase(), textAreaWidth);
-        doc.text(splitDetail, textCenterX, nextY + 2, { align: 'center' });
-        nextY += splitDetail.length * (isCompact ? 4 : 5) + 2;
-      }
-
-      return Math.max(nextY + 6, isCompact ? 30 : 42);
-    };
-
-    let curY = drawHeader(doc);
-    let count = 0;
-
-    if (isLVlike) {
-      const pageHeightMM = doc.internal.pageSize.getHeight();
-      const capHLV = 10;
-      const gapLV = 5;
-      const normalPhotoH = 55;
-      let pageStart = 0;
-      let isFirstPage = true;
-
-      while (pageStart < optimizedCards.length) {
-        const pageCards = optimizedCards.slice(pageStart, pageStart + perPage);
-        const rows = Math.ceil(pageCards.length / cols);
-
-        if (!isFirstPage) { doc.addPage(); curY = drawHeader(doc); }
-
-        const usablePageHeight = pageHeightMM - curY - margin;
-        const photoHLV = isFirstPage
-          ? Math.floor(usablePageHeight / rows - capHLV - gapLV)
-          : normalPhotoH;
-
-        for (let i = 0; i < pageCards.length; i += cols) {
-          const row = pageCards.slice(i, i + cols);
-          for (let j = 0; j < row.length; j++) {
-            const x = margin + j * (usableWidth / cols);
-            doc.rect(x, curY, usableWidth / cols - 2, photoHLV);
-            const b64 = row[j].photoBase64;
-            if (b64) doc.addImage(b64, 'JPEG', x + 1, curY + 1, usableWidth / cols - 4, photoHLV - 2, `p_${pageStart + i + j}`, 'FAST');
-            doc.rect(x, curY + photoHLV, usableWidth / cols - 2, capHLV);
-            doc.setFontSize(7).setFont('helvetica', 'normal');
-            doc.text(doc.splitTextToSize(row[j].description || '', usableWidth / cols - 6), x + (usableWidth / cols) / 2 - 1, curY + photoHLV + 5, { align: 'center' });
-          }
-          curY += photoHLV + capHLV + gapLV;
-        }
-
-        pageStart += perPage;
-        isFirstPage = false;
-      }
-    } else {
-      for (let i = 0; i < optimizedCards.length; i += cols) {
-        if (count > 0 && count % perPage === 0) { doc.addPage(); curY = drawHeader(doc); }
-        const row = optimizedCards.slice(i, i + cols);
-        for (let j = 0; j < row.length; j++) {
-          const x = margin + j * (usableWidth / cols);
-          doc.rect(x, curY, usableWidth / cols - 2, photoH);
-          const b64 = row[j].photoBase64;
-          if (b64) doc.addImage(b64, 'JPEG', x + 1, curY + 1, usableWidth / cols - 4, photoH - 2, `p_${i + j}`, 'FAST');
-          doc.rect(x, curY + photoH, usableWidth / cols - 2, capH);
-          doc.setFontSize(isVRV || isPDU ? 7 : 8).setFont('helvetica', 'normal');
-          doc.text(doc.splitTextToSize(row[j].description || '', usableWidth / cols - 6), x + (usableWidth / cols) / 2 - 1, curY + photoH + 5, { align: 'center' });
-          count++;
-        }
-        curY += photoH + capH + rowGap;
-      }
-    }
-    const safeName = maintenanceName.replace(/[/\\?%*:|"<>]/g, '-');
-    const safeDate = formattedDate.replace(/\//g, '-');
-    const safeDetail = finalSpecificDetail ? `_${finalSpecificDetail.replace(/[/\\?%*:|"<>]/g, '-').replace(/\s+/g, '_')}` : '';
-    return { doc, fileName: `Report_${safeName}_${safeDate}${safeDetail}.pdf`, filled: optimizedCards };
+    });
   };
 
   const saveReportViaAPI = async (apiUrl: string, collectionName: string, reportData: any, photos: any[]) => {

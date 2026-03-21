@@ -18,6 +18,7 @@ import {
     query,
     orderBy,
     onSnapshot,
+    updateDoc,
     doc,
     serverTimestamp,
     getDocs,
@@ -94,7 +95,7 @@ const ALLOWED_FILE_TYPES = [
 ];
 
 const MAX_FILE_SIZE = 40 * 1024 * 1024;
-const CHUNK_SIZE = 800 * 1024;
+const CHUNK_SIZE = 768 * 1024; // Multiple of 3 for safe base64 concatenation
 
 interface FileData {
     id: string;
@@ -196,12 +197,17 @@ export function FileManagement({
         return () => unsubscribe();
     }, []);
 
-    const fileToBase64 = (file: File): Promise<string> => {
+    const chunkToBase64 = (blob: Blob): Promise<string> => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result as string);
+            reader.onload = () => {
+                const result = reader.result as string;
+                // Remove prefix if it exists (only needed for first chunk)
+                const base64 = result.includes(',') ? result.split(',')[1] : result;
+                resolve(base64);
+            };
             reader.onerror = (error) => reject(error);
+            reader.readAsDataURL(blob);
         });
     };
 
@@ -250,15 +256,7 @@ export function FileManagement({
 
             for (let f = 0; f < selectedFiles.length; f++) {
                 const file = selectedFiles[f];
-                const base64Data = await fileToBase64(file);
-                const totalChunks = Math.ceil(base64Data.length / CHUNK_SIZE);
-                const chunks: string[] = [];
-
-                for (let i = 0; i < totalChunks; i++) {
-                    const start = i * CHUNK_SIZE;
-                    const end = start + CHUNK_SIZE;
-                    chunks.push(base64Data.slice(start, end));
-                }
+                const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
                 const fileDocRef = await addDoc(collection(db, collectionName), {
                     fileName: file.name,
@@ -277,27 +275,28 @@ export function FileManagement({
                     status: 'uploading'
                 });
 
-                const batchSize = 10; 
-                for (let i = 0; i < totalChunks; i += batchSize) {
-                    const batch = writeBatch(db);
-                    const currentBatchChunks = chunks.slice(i, i + batchSize);
-
-                    currentBatchChunks.forEach((chunkData, index) => {
-                        const chunkIndex = i + index;
-                        const chunkRef = doc(collection(db, collectionName, fileDocRef.id, 'chunks'), chunkIndex.toString());
-                        batch.set(chunkRef, { index: chunkIndex, data: chunkData });
-                    });
-
-                    await batch.commit();
+                for (let i = 0; i < totalChunks; i++) {
+                    const start = i * CHUNK_SIZE;
+                    const end = Math.min(start + CHUNK_SIZE, file.size);
+                    const chunkBlob = file.slice(start, end);
                     
-                    const currentFileProgress = Math.min(((i + batchSize) / totalChunks), 1);
-                    const overallProgress = ((completedCount + currentFileProgress) / selectedFiles.length) * 100;
+                    let chunkBase64 = await chunkToBase64(chunkBlob);
+                    
+                    // Add data prefix ONLY to the first chunk
+                    if (i === 0) {
+                        chunkBase64 = `data:${file.type};base64,${chunkBase64}`;
+                    }
+
+                    await addDoc(collection(db, collectionName, fileDocRef.id, 'chunks'), {
+                        index: i,
+                        data: chunkBase64
+                    });
+                    
+                    const overallProgress = ((completedCount + ((i + 1) / totalChunks)) / selectedFiles.length) * 100;
                     setUploadProgress(Math.min(overallProgress, 99));
                 }
 
-                const finalBatch = writeBatch(db);
-                finalBatch.update(doc(db, collectionName, fileDocRef.id), { status: 'completed' });
-                await finalBatch.commit();
+                await updateDoc(doc(db, collectionName, fileDocRef.id), { status: 'completed' });
                 
                 completedCount++;
                 setUploadProgress((completedCount / selectedFiles.length) * 100);

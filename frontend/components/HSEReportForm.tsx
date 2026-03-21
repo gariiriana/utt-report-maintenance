@@ -7,70 +7,18 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { HSEPhotoEditor } from '@/components/HSEPhotoEditor';
-import { generateHSEPdf, type HSEFormData, type HSEChecklist } from '@/utils/HSEPdfExport';
+import { generateHSEPdf, type HSEFormData } from '@/utils/HSEPdfExport';
 import { db } from '@/api/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, getDoc, getDocs, deleteDoc, QueryDocumentSnapshot } from 'firebase/firestore';
 import { useAuth } from '@/components/AuthContext';
 import { ExcelDocument } from '@/components/DocumentList';
 import { compressImage, compressBase64Image } from '@/utils/imageCompression';
 
-const INITIAL_CHECKLIST: HSEChecklist = {
-    mop: false,
-    jsa: false,
-    ptw: false,
-    ppe: false,
-    toolsBertagging: false,
-    logMaintenance: false,
-    housekeeping: false,
-    safeCondition: false,
-    safeAction: false,
-    safetySign: false,
-    ppeKhusus: false,
-    bodyHarness: false,
-    sarungTanganKulit: false,
-    apron: false,
-    kedokLas: false,
-    coverShoes: false,
-    respirator: false,
-    pitaBaricade: false,
-    safetyCone: false,
-    stikBariket: false,
-    underMaintenance: false,
-};
-
-const CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string; subItems?: { key: keyof HSEChecklist; label: string }[] }[] = [
-    { key: 'mop', label: 'MOP' },
-    { key: 'jsa', label: 'JSA' },
-    { key: 'ptw', label: 'PTW' },
-    { key: 'ppe', label: 'PPE Mandatory' },
-    { 
-        key: 'ppeKhusus', 
-        label: 'PPE Khusus',
-        subItems: [
-            { key: 'bodyHarness', label: 'Body Harness' },
-            { key: 'sarungTanganKulit', label: 'Sarung Tangan Kulit' },
-            { key: 'apron', label: 'Apron' },
-            { key: 'kedokLas', label: 'Kedok Las' },
-            { key: 'coverShoes', label: 'Cover Shoes' },
-            { key: 'respirator', label: 'Respirator' },
-        ]
-    },
-    { key: 'toolsBertagging', label: 'Tools Bertagging & sdh di-checklist' },
-    { key: 'logMaintenance', label: 'Log Maintenance' },
-    { key: 'housekeeping', label: 'Housekeeping Area Kerja' },
-    {
-        key: 'safetySign',
-        label: 'Safety Sign',
-        subItems: [
-            { key: 'pitaBaricade', label: 'Pita Baricade' },
-            { key: 'safetyCone', label: 'Safety Cone' },
-            { key: 'stikBariket', label: 'Stik Bariket' },
-            { key: 'underMaintenance', label: 'Under Maintenance' },
-        ]
-    },
-    { key: 'safeCondition', label: 'Safe Condition' },
-    { key: 'safeAction', label: 'Safe Action' },
-];
+import { 
+    INITIAL_HSE_CHECKLIST, 
+    HSE_CHECKLIST_LABELS, 
+    type HSEChecklist 
+} from '@/config/templates';
 
 interface PhotoItem {
     id: string;
@@ -92,7 +40,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
     const [pic, setPic] = useState('');
     const [anggota, setAnggota] = useState('');
     const [inspectorK3, setInspectorK3] = useState('');
-    const [checklist, setChecklist] = useState<HSEChecklist>({ ...INITIAL_CHECKLIST });
+    const [checklist, setChecklist] = useState<HSEChecklist>({ ...INITIAL_HSE_CHECKLIST });
     const [photos, setPhotos] = useState<PhotoItem[]>([]);
     const [checklistOpen, setChecklistOpen] = useState(true);
 
@@ -523,7 +471,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                             </div>
                             <h3 className="text-sm font-semibold text-white">Checklist Keselamatan Kerja</h3>
                             <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/25 px-2 py-0.5 rounded-full font-medium">
-                                {Object.values(checklist).filter(Boolean).length}/{CHECKLIST_LABELS.length}
+                                {Object.values(checklist).filter(Boolean).length}/{HSE_CHECKLIST_LABELS.length}
                             </span>
                         </div>
                         {checklistOpen ? (
@@ -544,7 +492,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                             >
                                 <div className="p-5">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        {CHECKLIST_LABELS.filter(item => !['safeCondition', 'safeAction'].includes(item.key)).map((item) => {
+                                        {HSE_CHECKLIST_LABELS.filter(item => !['safeCondition', 'safeAction'].includes(item.key)).map((item) => {
                                             const checked = checklist[item.key];
                                             const hasSubItems = item.subItems && item.subItems.length > 0;
 
@@ -605,7 +553,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        {CHECKLIST_LABELS.filter(item => ['safeCondition', 'safeAction'].includes(item.key)).map(({ key, label }) => {
+                                        {HSE_CHECKLIST_LABELS.filter(item => ['safeCondition', 'safeAction'].includes(item.key)).map(({ key, label }) => {
                                             const checked = checklist[key];
                                             return (
                                                 <motion.button
