@@ -141,9 +141,8 @@ export function PreviewReport({
                         </div>
                     </div>
 
-                    <div className="flex justify-between items-center mb-8 text-[11px] text-slate-500 uppercase font-black tracking-widest border-b-2 border-slate-100 pb-3">
+                    <div className="flex justify-center items-center mb-8 text-[11px] text-slate-500 uppercase font-black tracking-widest border-b-2 border-slate-100 pb-3">
                         <span>UTT Maintenance System • {maintenanceName}</span>
-                        <span>Engineer: {userEmail}</span>
                     </div>
 
                     <div
@@ -163,9 +162,7 @@ export function PreviewReport({
                                             <span className="text-[10px] font-black uppercase tracking-tighter">No Image</span>
                                         </div>
                                     )}
-                                    <div className="absolute top-1.5 left-1.5 bg-black text-white text-[9px] font-black px-2 py-0.5 rounded-sm">
-                                        IMG-{index + 1}
-                                    </div>
+                                    {/* Numbering removed as requested */}
                                 </div>
                                 <div className="p-2 bg-white min-h-[50px] flex items-center justify-center text-center">
                                     <p className="text-[10px] leading-tight text-slate-900 font-bold break-words px-1">

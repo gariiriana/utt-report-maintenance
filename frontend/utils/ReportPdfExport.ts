@@ -99,7 +99,7 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
   const margin = 14;
   const contentW = pageWidth - 2 * margin;
 
-  const THEME_RED = '#dc2626';
+  const THEME_BLUE = '#00599c';
   const DARK = '#1e293b';
   const GRAY = '#64748b';
   const SLATE_200 = '#e2e8f0';
@@ -127,7 +127,7 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
 
   const drawHeader = (doc: any) => {
     // Top Bar
-    doc.setFillColor(THEME_RED);
+    doc.setFillColor(THEME_BLUE);
     doc.rect(0, 0, pageWidth, 2.5, 'F');
 
     // Header Frame
@@ -155,14 +155,14 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
 
     // Center Title Block
     const centerX = margin + col1W + (contentW - col1W - col3W) / 2;
-    doc.setFontSize(11).setFont('helvetica', 'bold').setTextColor(THEME_RED);
-    doc.text('LAPORAN MAINTENANCE ENGINEER', centerX, headerY + 6.5, { align: 'center' });
+    doc.setFontSize(11).setFont('helvetica', 'bold').setTextColor(THEME_BLUE);
+    doc.text('LAPORAN MAINTENANCE', centerX, headerY + 6.5, { align: 'center' });
     
     doc.setFontSize(8.5).setFont('helvetica', 'bold').setTextColor(DARK);
     doc.text(`DOKUMENTASI PM: ${maintenanceName.toUpperCase()}`, centerX, headerY + 11.5, { align: 'center' });
 
     if (finalSpecificDetail) {
-      doc.setFontSize(7.5).setFont('helvetica', 'bold').setTextColor(THEME_RED);
+      doc.setFontSize(7.5).setFont('helvetica', 'bold').setTextColor(THEME_BLUE);
       doc.text(`${finalSpecificDetail.toUpperCase()}`, centerX, headerY + 16, { align: 'center' });
     }
 
@@ -189,9 +189,7 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
       doc.setFontSize(7).setTextColor(GRAY).text('No Photo', x + (w - 2) / 2, y + h / 2, { align: 'center' });
     }
 
-    doc.setFillColor(THEME_RED).rect(x + 0.5, y + 0.5, 9, 6, 'F');
-    doc.setFontSize(7).setFont('helvetica', 'bold').setTextColor(255, 255, 255);
-    doc.text(`${index + 1}`, x + 5, y + 4.5, { align: 'center' });
+    // Numbering removed as requested
 
     doc.setFontSize(isVRV || isPDU ? 6.5 : 7.5).setFont('helvetica', 'normal').setTextColor(DARK);
     const splitCaption = doc.splitTextToSize(photo.description || '', w - 6);
@@ -247,7 +245,7 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
   const totalPages = (doc.internal as any).getNumberOfPages();
   for (let pg = 1; pg <= totalPages; pg++) {
     doc.setPage(pg);
-    doc.setFillColor(THEME_RED).rect(0, pageHeight - 2.5, pageWidth, 2.5, 'F');
+    doc.setFillColor(THEME_BLUE).rect(0, pageHeight - 2.5, pageWidth, 2.5, 'F');
     doc.setFontSize(7.5).setTextColor(GRAY);
     const footerCompany = companyType === 'bri' ? 'BANK RAKYAT INDONESIA' : 'PT DWIMITRA EKATAMA MANDIRI';
     doc.text(`${footerCompany} — Maintenance Document`, margin, pageHeight - 6);
