@@ -8,19 +8,13 @@ import (
 	"github.com/gariiriana/utt-report-maintenance/backend/internal/models"
 	"github.com/gariiriana/utt-report-maintenance/backend/internal/repositories"
 )
-
-// UserService handles business logic for user management.
 type UserService struct {
 	Repo     *repositories.UserRepository
 	AuthSvc  *AuthService
 }
-
-// NewUserService constructs a new UserService.
 func NewUserService(repo *repositories.UserRepository, authSvc *AuthService) *UserService {
 	return &UserService{Repo: repo, AuthSvc: authSvc}
 }
-
-// GetProfile retrieves a user's profile from Firestore by UID.
 func (s *UserService) GetProfile(ctx context.Context, uid string) (*models.UserProfile, error) {
 	snap, err := s.Repo.GetByUID(ctx, uid)
 	if err != nil {
@@ -34,8 +28,6 @@ func (s *UserService) GetProfile(ctx context.Context, uid string) (*models.UserP
 	profile := user.ToProfile()
 	return &profile, nil
 }
-
-// UpsertFromLogin creates or updates a user document on each successful login.
 func (s *UserService) UpsertFromLogin(ctx context.Context, uid, email, displayName, photoURL string) error {
 	now := time.Now().UTC()
 	data := map[string]interface{}{
@@ -47,7 +39,6 @@ func (s *UserService) UpsertFromLogin(ctx context.Context, uid, email, displayNa
 		"last_login_at": now,
 		"updated_at":    now,
 	}
-	// Set created_at only on first upsert via Firestore merge
 	exists, err := s.Repo.Exists(ctx, uid)
 	if err != nil || !exists {
 		data["created_at"] = now
@@ -56,8 +47,6 @@ func (s *UserService) UpsertFromLogin(ctx context.Context, uid, email, displayNa
 
 	return s.Repo.Upsert(ctx, uid, data)
 }
-
-// UpdateRole sets a user's role both in Firestore and as a Firebase custom claim.
 func (s *UserService) UpdateRole(ctx context.Context, uid string, role models.UserRole) error {
 	allowedRoles := models.AllowedRoles()
 	valid := false
@@ -77,19 +66,14 @@ func (s *UserService) UpdateRole(ctx context.Context, uid string, role models.Us
 
 	if s.AuthSvc != nil {
 		if err := s.AuthSvc.SetRole(ctx, uid, string(role)); err != nil {
-			// Non-fatal: Firestore is source of truth, token refreshes on next login
 			fmt.Printf("Warning: failed to set Firebase custom claim for %s: %v\n", uid, err)
 		}
 	}
 	return nil
 }
-
-// Deactivate marks a user as inactive without deleting their data.
 func (s *UserService) Deactivate(ctx context.Context, uid string) error {
 	return s.Repo.UpdateField(ctx, uid, "is_active", false)
 }
-
-// ListUsers returns a paginated list of users.
 func (s *UserService) ListUsers(ctx context.Context, limit, offset int) ([]models.UserProfile, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20

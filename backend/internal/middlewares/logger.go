@@ -7,8 +7,6 @@ import (
 	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
 	"github.com/gariiriana/utt-report-maintenance/backend/pkg/logger"
 )
-
-// responseWriter wraps http.ResponseWriter to capture the status code.
 type responseWriter struct {
 	http.ResponseWriter
 	statusCode    int
@@ -33,9 +31,6 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 	rw.bytesWritten += int64(n)
 	return n, err
 }
-
-// Logger is an HTTP middleware that logs each incoming request with method, path,
-// status, duration, request ID, and remote IP using the structured logger.
 func Logger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -57,9 +52,6 @@ func Logger(next http.Handler) http.Handler {
 		next.ServeHTTP(rw, r)
 	})
 }
-
-// RecoverPanic is an HTTP middleware that recovers from panics, logs the event,
-// and returns a 500 Internal Server Error to the client.
 func RecoverPanic(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -72,9 +64,6 @@ func RecoverPanic(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
-
-// MaxBodySize limits the size of incoming request bodies to prevent abuse.
-// maxBytes is specified in bytes (e.g., 10 << 20 = 10 MiB).
 func MaxBodySize(maxBytes int64) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -83,8 +72,6 @@ func MaxBodySize(maxBytes int64) func(http.Handler) http.Handler {
 		})
 	}
 }
-
-// MethodCheck restricts allowed HTTP methods. Returns 405 for disallowed methods.
 func MethodCheck(allowedMethods ...string) func(http.Handler) http.Handler {
 	allowed := make(map[string]bool, len(allowedMethods))
 	for _, m := range allowedMethods {

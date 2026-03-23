@@ -180,9 +180,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
     const saveReportViaAPI = async (formData: HSEFormData, extraData: any) => {
         const apiUrl = import.meta.env.VITE_API_URL;
         if (!apiUrl) throw new Error('API URL not configured');
-
-        // Prepare sub_data (photos) correctly for the backend
-        // Note: Using dataUrl to match the Firestore structure used in handleSave
         const subData = formData.photos.map((p, i) => ({
             index: i + 1,
             dataUrl: p.base64,
@@ -234,9 +231,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             };
 
             let docId = '';
-            // For HSE reports, we skip the Vercel API and save directly to Firestore
-            // to avoid persistent 405 Method Not Allowed errors on Vercel.
-            // This is safer and uses the official Firebase SDK.
             const shouldBypassAPI = true;
 
             if (!shouldBypassAPI && !!import.meta.env.VITE_API_URL && !(editingData && editingData.documentType === 'hse')) {
@@ -247,15 +241,12 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             } else if (editingData && editingData.documentType === 'hse') {
                 docId = editingData.id;
                 await updateDoc(doc(db, 'hse', docId), reportData);
-
-                // Update photos subcollection
                 const photosRef = collection(db, `hse/${docId}/photos`);
                 const oldPhotos = await getDocs(photosRef);
                 for (const pDoc of oldPhotos.docs) {
                     await deleteDoc(doc(db, `hse/${docId}/photos`, pDoc.id));
                 }
             } else {
-                // Direct Firestore save for new reports
                 const docRef = await addDoc(collection(db, 'hse'), {
                     ...reportData,
                     createdAt: serverTimestamp(),
@@ -305,7 +296,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         }
         setIsGeneratingPdf(true);
         try {
-            // Try to save silently — does NOT block PDF if it fails
             try {
                 await handleSave(true, mode);
             } catch (saveErr) {

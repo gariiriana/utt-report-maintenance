@@ -10,20 +10,14 @@ import (
 	apperrors "github.com/gariiriana/utt-report-maintenance/backend/pkg/errors"
 	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
 )
-
-// AuthController handles authentication-related endpoints.
 type AuthController struct {
 	AuthService *services.AuthService
 	UserService *services.UserService
 	AuditSvc    *services.AuditService
 }
-
-// NewAuthController constructs an AuthController.
 func NewAuthController(auth *services.AuthService, user *services.UserService, audit *services.AuditService) *AuthController {
 	return &AuthController{AuthService: auth, UserService: user, AuditSvc: audit}
 }
-
-// Login handles POST /api/auth/login — exchanges a Firebase ID token for session context.
 func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		IDToken string `json:"id_token"`
@@ -43,8 +37,6 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 	email, _ := token.Claims["email"].(string)
 	displayName, _ := token.Claims["name"].(string)
 	photoURL, _ := token.Claims["picture"].(string)
-
-	// Upsert user record in Firestore
 	_ = c.UserService.UpsertFromLogin(ctx, token.UID, email, displayName, photoURL)
 
 	requestID := helpers.ExtractRequestID(r)
@@ -58,8 +50,6 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 		"message": "Login recorded successfully",
 	})
 }
-
-// Me handles GET /api/auth/me — returns the authenticated user's profile.
 func (c *AuthController) Me(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	uid := middlewares.UIDFromContext(ctx)
@@ -75,8 +65,6 @@ func (c *AuthController) Me(w http.ResponseWriter, r *http.Request) {
 	}
 	helpers.SendJSON(w, http.StatusOK, models.BuildAPIResponse(profile, nil))
 }
-
-// Logout handles POST /api/auth/logout — revokes Firebase refresh tokens.
 func (c *AuthController) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	uid := middlewares.UIDFromContext(ctx)

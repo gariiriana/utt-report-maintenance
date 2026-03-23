@@ -7,8 +7,6 @@ import (
 	"cloud.google.com/go/firestore"
 	"github.com/gariiriana/utt-report-maintenance/backend/internal/models"
 )
-
-// mockReportRepo is a manual mock for the ReportRepository interface.
 type mockReportRepo struct {
 	saveReportCalled bool
 	lastCollection   string

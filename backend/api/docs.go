@@ -6,9 +6,6 @@ import (
 
 	"github.com/gariiriana/utt-report-maintenance/backend/internal/routes"
 )
-
-// DocsHandler is the Vercel serverless API documentation entry point.
-// Returns a JSON schema of all available API routes.
 func DocsHandler(w http.ResponseWriter, r *http.Request) {
 	routeList := routes.Routes()
 

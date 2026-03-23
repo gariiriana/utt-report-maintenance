@@ -10,22 +10,15 @@ import (
 
 	"github.com/gariiriana/utt-report-maintenance/backend/pkg/logger"
 )
-
-// NotificationPayload is the body sent to a webhook endpoint.
 type NotificationPayload struct {
 	Event     string                 `json:"event"`
 	Timestamp time.Time              `json:"timestamp"`
 	Data      map[string]interface{} `json:"data,omitempty"`
 }
-
-// NotificationService sends in-app events and outbound webhooks.
 type NotificationService struct {
 	webhookURL string
 	httpClient *http.Client
 }
-
-// NewNotificationService constructs a NotificationService.
-// If webhookURL is empty, outbound webhook calls are skipped.
 func NewNotificationService(webhookURL string) *NotificationService {
 	return &NotificationService{
 		webhookURL: webhookURL,
@@ -34,9 +27,6 @@ func NewNotificationService(webhookURL string) *NotificationService {
 		},
 	}
 }
-
-// SendWebhook dispatches an event payload to the configured webhook URL.
-// The call is async (fire-and-forget) with structured error logging.
 func (s *NotificationService) SendWebhook(ctx context.Context, event string, data map[string]interface{}) {
 	if s.webhookURL == "" {
 		return
@@ -75,8 +65,6 @@ func (s *NotificationService) SendWebhook(ctx context.Context, event string, dat
 		}
 	}()
 }
-
-// NotifyReportCreated emits a report.created webhook event.
 func (s *NotificationService) NotifyReportCreated(ctx context.Context, collectionName, docID, userUID string) {
 	s.SendWebhook(ctx, "report.created", map[string]interface{}{
 		"collection": collectionName,
@@ -84,8 +72,6 @@ func (s *NotificationService) NotifyReportCreated(ctx context.Context, collectio
 		"user_uid":   userUID,
 	})
 }
-
-// NotifyReportDeleted emits a report.deleted webhook event.
 func (s *NotificationService) NotifyReportDeleted(ctx context.Context, collectionName, docID, userUID string) {
 	s.SendWebhook(ctx, "report.deleted", map[string]interface{}{
 		"collection": collectionName,
@@ -93,8 +79,6 @@ func (s *NotificationService) NotifyReportDeleted(ctx context.Context, collectio
 		"user_uid":   userUID,
 	})
 }
-
-// NotifyUserRoleChanged emits a user.role_changed webhook event.
 func (s *NotificationService) NotifyUserRoleChanged(ctx context.Context, uid, oldRole, newRole string) {
 	msg := fmt.Sprintf("User %s role changed: %s → %s", uid, oldRole, newRole)
 	s.SendWebhook(ctx, "user.role_changed", map[string]interface{}{

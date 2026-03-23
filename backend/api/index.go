@@ -20,10 +20,7 @@ func init() {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
-	// Debug header to confirm request reached our Go code
 	w.Header().Set("X-Backend-Handler", "go-direct-handler")
-
-	// Enable CORS for all requests at the entry point
 	if isOptions := middlewares.EnableCORS(w, r); isOptions {
 		return
 	}

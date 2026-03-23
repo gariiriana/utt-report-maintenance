@@ -10,14 +10,10 @@ import (
 
 	"github.com/gariiriana/utt-report-maintenance/backend/internal/routes"
 )
-
-// Server wraps an http.Server with lifecycle management helpers.
 type Server struct {
 	httpServer *http.Server
 	Port       string
 }
-
-// NewServer constructs a Server with sensible production timeouts.
 func NewServer(port string, handler http.Handler) *Server {
 	return &Server{
 		Port: port,
@@ -32,9 +28,6 @@ func NewServer(port string, handler http.Handler) *Server {
 		},
 	}
 }
-
-// Run starts the HTTP server and blocks until the context is cancelled,
-// then initiates a graceful shutdown.
 func (s *Server) Run(ctx context.Context) error {
 	ln, err := net.Listen("tcp", s.httpServer.Addr)
 	if err != nil {
@@ -59,8 +52,6 @@ func (s *Server) Run(ctx context.Context) error {
 		return s.shutdown()
 	}
 }
-
-// shutdown gracefully stops the HTTP server with a 15-second timeout.
 func (s *Server) shutdown() error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -72,14 +63,10 @@ func (s *Server) shutdown() error {
 	slog.Info("http server stopped gracefully")
 	return nil
 }
-
-// NewServerFromDeps wires up a router with injected dependencies and returns a Server.
 func NewServerFromDeps(port string, deps *routes.AppDeps) (*Server, error) {
 	handler := routes.SetupRouter(deps)
 	return NewServer(port, handler), nil
 }
-
-// NewServerFromRouter is a convenience constructor for legacy use or simple setups.
 func NewServerFromRouter(port string) (*Server, error) {
 	deps, err := routes.NewAppDeps(context.Background())
 	if err != nil {

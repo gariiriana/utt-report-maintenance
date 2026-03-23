@@ -1,8 +1,6 @@
 package models
 
 import "time"
-
-// UserRole defines the set of roles a user may have in the system.
 type UserRole string
 
 const (
@@ -12,8 +10,6 @@ const (
 	RoleEngineer  UserRole = "engineer"
 	RoleGuest     UserRole = "guest"
 )
-
-// User represents a user record as stored in Firestore under the "users" collection.
 type User struct {
 	UID           string    `json:"uid" firestore:"uid"`
 	Email         string    `json:"email" firestore:"email"`
@@ -27,15 +23,11 @@ type User struct {
 	CreatedAt     time.Time `json:"created_at" firestore:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at" firestore:"updated_at"`
 }
-
-// UpdateUserRequest is the request body for updating a user's role/department.
 type UpdateUserRequest struct {
 	Role       UserRole `json:"role"`
 	Department string   `json:"department,omitempty"`
 	IsActive   *bool    `json:"is_active,omitempty"`
 }
-
-// UserProfile is the safe public view of a user (no sensitive fields).
 type UserProfile struct {
 	UID         string   `json:"uid"`
 	Email       string   `json:"email"`
@@ -44,8 +36,6 @@ type UserProfile struct {
 	Role        UserRole `json:"role"`
 	Department  string   `json:"department,omitempty"`
 }
-
-// ToProfile converts a full User to a public UserProfile.
 func (u *User) ToProfile() UserProfile {
 	return UserProfile{
 		UID:         u.UID,
@@ -56,13 +46,9 @@ func (u *User) ToProfile() UserProfile {
 		Department:  u.Department,
 	}
 }
-
-// IsAdmin returns true when the user's role is admin.
 func (u *User) IsAdmin() bool {
 	return u.Role == RoleAdmin
 }
-
-// AllowedRoles returns a slice of all valid UserRole values.
 func AllowedRoles() []string {
 	return []string{
 		string(RoleAdmin),

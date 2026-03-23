@@ -22,7 +22,6 @@ export function usePresence() {
 
         const unsubscribeConnected = onValue(connectedRef, (snap) => {
             if (snap.val() === true) {
-                // User is connected! 
                 onDisconnect(userPresenceRef).remove().catch(err => {
                     console.error("Could not establish onDisconnect:", err);
                 });

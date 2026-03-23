@@ -115,8 +115,6 @@ export async function compressBase64Image(
                     width = height * aspectRatio;
                 }
             }
-
-            // Create canvas
             const canvas = document.createElement('canvas');
             canvas.width = width;
             canvas.height = height;

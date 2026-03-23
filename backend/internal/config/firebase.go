@@ -20,9 +20,6 @@ var (
 	firebaseApp     *firebase.App
 	firebaseErr     error
 )
-
-// getCredentialsJSON returns the Firebase service account credentials JSON,
-// preferring the environment variable over a local file.
 func getCredentialsJSON() ([]byte, error) {
 	if creds := os.Getenv("FIREBASE_SERVICE_ACCOUNT"); creds != "" {
 		return []byte(creds), nil
@@ -33,8 +30,6 @@ func getCredentialsJSON() ([]byte, error) {
 	}
 	return data, nil
 }
-
-// initFirebaseApp creates the Firebase app singleton.
 func initFirebaseApp(ctx context.Context) (*firebase.App, error) {
 	credJSON, err := getCredentialsJSON()
 	if err != nil {
@@ -47,9 +42,6 @@ func initFirebaseApp(ctx context.Context) (*firebase.App, error) {
 	}
 	return app, nil
 }
-
-// InitFirestore initialises and returns the Firestore client singleton.
-// Subsequent calls return the same client.
 func InitFirestore(ctx context.Context) (*firestore.Client, error) {
 	firestoreOnce.Do(func() {
 		var app *firebase.App
@@ -62,8 +54,6 @@ func InitFirestore(ctx context.Context) (*firestore.Client, error) {
 	})
 	return firestoreClient, firebaseErr
 }
-
-// InitAuthClient initialises and returns the Firebase Auth client singleton.
 func InitAuthClient(ctx context.Context) (*firebaseAuth.Client, error) {
 	authOnce.Do(func() {
 		if firebaseApp == nil {
@@ -82,9 +72,6 @@ func InitAuthClient(ctx context.Context) (*firebaseAuth.Client, error) {
 	})
 	return authClient, firebaseErr
 }
-
-// MustInitFirestore panics if Firestore cannot be initialised.
-// Intended for use during application startup only.
 func MustInitFirestore(ctx context.Context) *firestore.Client {
 	client, err := InitFirestore(ctx)
 	if err != nil {

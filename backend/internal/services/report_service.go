@@ -10,8 +10,6 @@ import (
 	"github.com/gariiriana/utt-report-maintenance/backend/internal/models"
 	"github.com/gariiriana/utt-report-maintenance/backend/pkg/sanitizer"
 )
-
-// ReportRepository defines the data access layer for reports.
 type ReportRepository interface {
 	SaveReport(ctx context.Context, collectionName string, data map[string]interface{}) (*firestore.DocumentRef, error)
 	SaveSubData(ctx context.Context, docRef *firestore.DocumentRef, subCollectionName string, data map[string]interface{}) error
@@ -19,18 +17,12 @@ type ReportRepository interface {
 	List(ctx context.Context, collectionName string, limit, offset int) ([]*firestore.DocumentSnapshot, error)
 	Delete(ctx context.Context, collectionName, docID string) error
 }
-
-// ReportService holds business logic for creating and querying reports.
 type ReportService struct {
 	Repo ReportRepository
 }
-
-// NewReportService constructs a new ReportService.
 func NewReportService(repo ReportRepository) *ReportService {
 	return &ReportService{Repo: repo}
 }
-
-// ProcessReport validates, sanitises, and persists a report from an incoming request body.
 func (s *ReportService) ProcessReport(ctx context.Context, req *models.CreateReportRequest) (string, string, error) {
 	collectionName := req.Collection
 	if !models.AllowedCollections[collectionName] {
@@ -43,8 +35,6 @@ func (s *ReportService) ProcessReport(ctx context.Context, req *models.CreateRep
 	reportData["report_type"] = req.ReportType
 	reportData["tags"] = req.Tags
 	reportData["metadata"] = req.Metadata
-
-	// Enrich with server-side metadata
 	reportData["created_at"] = time.Now().UTC()
 	reportData["updated_at"] = time.Now().UTC()
 	reportData["status"] = "active"
@@ -53,8 +43,6 @@ func (s *ReportService) ProcessReport(ctx context.Context, req *models.CreateRep
 	if err != nil {
 		return "", "", fmt.Errorf("error saving data: %w", err)
 	}
-
-	// Save sub-data (photos) concurrently
 	if len(req.Photos) > 0 {
 		var wg sync.WaitGroup
 		for i, photo := range req.Photos {
@@ -77,8 +65,6 @@ func (s *ReportService) ProcessReport(ctx context.Context, req *models.CreateRep
 
 	return docRef.ID, collectionName, nil
 }
-
-// GetReport retrieves a single report by ID from the specified collection.
 func (s *ReportService) GetReport(ctx context.Context, collectionName, docID string) (map[string]interface{}, error) {
 	if !models.AllowedCollections[collectionName] {
 		return nil, fmt.Errorf("unauthorized collection: %s", collectionName)
@@ -92,8 +78,6 @@ func (s *ReportService) GetReport(ctx context.Context, collectionName, docID str
 	data["id"] = snap.Ref.ID
 	return data, nil
 }
-
-// ListReports returns a paginated list of reports from a collection.
 func (s *ReportService) ListReports(ctx context.Context, collectionName string, limit, offset int) ([]map[string]interface{}, error) {
 	if !models.AllowedCollections[collectionName] {
 		return nil, fmt.Errorf("unauthorized collection: %s", collectionName)
@@ -116,8 +100,6 @@ func (s *ReportService) ListReports(ctx context.Context, collectionName string, 
 	}
 	return results, nil
 }
-
-// DeleteReport removes a report and records the author for audit purposes.
 func (s *ReportService) DeleteReport(ctx context.Context, collectionName, docID string) error {
 	if !models.AllowedCollections[collectionName] {
 		return fmt.Errorf("unauthorized collection: %s", collectionName)

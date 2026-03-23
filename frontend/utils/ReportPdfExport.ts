@@ -123,37 +123,24 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
     ? `${specificDetail.toUpperCase()} - ${vrvUnitDetail.toUpperCase()}`
     : specificDetail;
 
-  // --- Helper Functions ---
-
   const drawHeader = (doc: any) => {
-    // Top Bar
     doc.setFillColor(THEME_BLUE);
     doc.rect(0, 0, pageWidth, 2.5, 'F');
-
-    // Header Frame
     const headerH = 22;
     const headerY = 6;
     doc.setDrawColor(SLATE_200);
     doc.setLineWidth(0.1); // Thinner frame for more tech look
     doc.roundedRect(margin, headerY, contentW, headerH, 1, 1, 'D');
-
-    // Grid Lines (Vertical)
     const col1W = 35;
     const col3W = 35;
     doc.line(margin + col1W, headerY, margin + col1W, headerY + headerH);
     doc.line(pageWidth - margin - col3W, headerY, pageWidth - margin - col3W, headerY + headerH);
-
-    // Left Logo
     if (logos.left) {
       doc.addImage(logos.left, 'JPEG', margin + 3, headerY + 4, col1W - 6, 14, 'logo_l', 'FAST');
     }
-
-    // Right Logo
     if (logos.right) {
       doc.addImage(logos.right, 'JPEG', pageWidth - margin - col3W + 5, headerY + 5.5, col3W - 10, 11, 'logo_r', 'FAST');
     }
-
-    // Center Title Block
     const centerX = margin + col1W + (contentW - col1W - col3W) / 2;
     doc.setFontSize(11).setFont('helvetica', 'bold').setTextColor(THEME_BLUE);
     doc.text('LAPORAN MAINTENANCE', centerX, headerY + 6.5, { align: 'center' });
@@ -189,14 +176,10 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
       doc.setFontSize(7).setTextColor(GRAY).text('No Photo', x + (w - 2) / 2, y + h / 2, { align: 'center' });
     }
 
-    // Numbering removed as requested
-
     doc.setFontSize(isVRV || isPDU ? 6.5 : 7.5).setFont('helvetica', 'normal').setTextColor(DARK);
     const splitCaption = doc.splitTextToSize(photo.description || '', w - 6);
     doc.text(splitCaption, x + (w - 2) / 2, y + h + 5, { align: 'center' });
   };
-
-  // --- Process Pages ---
 
   let curY = drawHeader(doc);
   let count = 0;
@@ -240,8 +223,6 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
       curY += photoH + capH + rowGap;
     }
   }
-
-  // --- Footers ---
   const totalPages = (doc.internal as any).getNumberOfPages();
   for (let pg = 1; pg <= totalPages; pg++) {
     doc.setPage(pg);

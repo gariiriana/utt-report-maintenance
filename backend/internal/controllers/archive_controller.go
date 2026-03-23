@@ -8,18 +8,12 @@ import (
 	apperrors "github.com/gariiriana/utt-report-maintenance/backend/pkg/errors"
 	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
 )
-
-// ArchiveController handles archive management endpoints.
 type ArchiveController struct {
 	ArchiveService *services.ArchiveService
 }
-
-// NewArchiveController constructs an ArchiveController.
 func NewArchiveController(archiveSvc *services.ArchiveService) *ArchiveController {
 	return &ArchiveController{ArchiveService: archiveSvc}
 }
-
-// GetArchive handles GET /api/archive/{id}.
 func (c *ArchiveController) GetArchive(w http.ResponseWriter, r *http.Request) {
 	docID := strings.TrimPrefix(r.URL.Path, "/api/archive/")
 	if docID == "" {
@@ -35,8 +29,6 @@ func (c *ArchiveController) GetArchive(w http.ResponseWriter, r *http.Request) {
 	}
 	helpers.SendJSON(w, http.StatusOK, map[string]interface{}{"status": "success", "data": data})
 }
-
-// ListArchives handles GET /api/archive?collection={name}&limit={n}.
 func (c *ArchiveController) ListArchives(w http.ResponseWriter, r *http.Request) {
 	collection := r.URL.Query().Get("collection")
 	if collection == "" {
@@ -56,8 +48,6 @@ func (c *ArchiveController) ListArchives(w http.ResponseWriter, r *http.Request)
 		"count":  len(results),
 	})
 }
-
-// PermanentDelete handles DELETE /api/archive/{id} — admin permanently removes archived document.
 func (c *ArchiveController) PermanentDelete(w http.ResponseWriter, r *http.Request) {
 	docID := strings.TrimPrefix(r.URL.Path, "/api/archive/")
 	if docID == "" {

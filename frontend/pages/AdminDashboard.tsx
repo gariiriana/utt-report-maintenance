@@ -97,8 +97,6 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
   const loadAllDocuments = async () => {
     try {
       setLoading(true);
-
-      // Fetch Excel documents
       const excelQuery = query(
         collection(db, 'excel_documents'),
         orderBy('createdAt', 'desc')
@@ -229,13 +227,10 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
 
           return startRow + 3;
         };
-
-        // Load actual logos
         let logoLeftId: number;
         let logoNeutraDCId: number;
 
         try {
-          // Select left logo based on company type
           const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
           const logoLeftResponse = await fetch(leftLogo);
           const logoLeftBlob = await logoLeftResponse.blob();
@@ -245,8 +240,6 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
               (data, byte) => data + String.fromCharCode(byte), ''
             )
           );
-
-          // Select right logo based on company type
           const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
           const logoRightResponse = await fetch(rightLogo);
           const logoRightBlob = await logoRightResponse.blob();
@@ -363,13 +356,10 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         const usableWidth = pageWidth - marginLeft - marginRight;
 
         let currentY = marginTop;
-
-        // Load actual logos
         let logoLeftBase64 = '';
         let logoRightBase64 = '';
 
         try {
-          // Select left logo based on company type
           const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
           const logoLeftResponse = await fetch(leftLogo);
           const logoLeftBlob = await logoLeftResponse.blob();
@@ -379,8 +369,6 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
               (data, byte) => data + String.fromCharCode(byte), ''
             )
           );
-
-          // Select right logo based on company type
           const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
           const logoRightResponse = await fetch(rightLogo);
           const logoRightBlob = await logoRightResponse.blob();

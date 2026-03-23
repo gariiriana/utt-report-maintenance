@@ -9,13 +9,9 @@ import (
 	firebaseAuth "firebase.google.com/go/v4/auth"
 	"google.golang.org/api/option"
 )
-
-// FirebaseTokenVerifier wraps the Firebase Auth client for JWT verification.
 type FirebaseTokenVerifier struct {
 	client *firebaseAuth.Client
 }
-
-// FirebaseClaims holds the verified claims from a Firebase ID token.
 type FirebaseClaims struct {
 	UID           string
 	Email         string
@@ -25,8 +21,6 @@ type FirebaseClaims struct {
 	Role          string // custom claim
 	ExpiresAt     time.Time
 }
-
-// NewFirebaseTokenVerifier initialises a verifier using JSON credentials.
 func NewFirebaseTokenVerifier(ctx context.Context, credentialsJSON []byte) (*FirebaseTokenVerifier, error) {
 	opt := option.WithCredentialsJSON(credentialsJSON)
 	app, err := firebase.NewApp(ctx, nil, opt)
@@ -41,9 +35,6 @@ func NewFirebaseTokenVerifier(ctx context.Context, credentialsJSON []byte) (*Fir
 
 	return &FirebaseTokenVerifier{client: client}, nil
 }
-
-// Verify validates a Firebase ID token and returns the decoded claims.
-// It checks expiry, signature, audience, and issuer automatically.
 func (v *FirebaseTokenVerifier) Verify(ctx context.Context, idToken string) (*FirebaseClaims, error) {
 	decoded, err := v.client.VerifyIDToken(ctx, idToken)
 	if err != nil {
@@ -67,31 +58,21 @@ func (v *FirebaseTokenVerifier) Verify(ctx context.Context, idToken string) (*Fi
 	if picture, ok := decoded.Claims["picture"].(string); ok {
 		claims.Picture = picture
 	}
-	// Custom role claim set server-side via Firebase Admin SDK
 	if role, ok := decoded.Claims["role"].(string); ok {
 		claims.Role = role
 	}
 
 	return claims, nil
 }
-
-// IsAdmin returns true if the token claims contain the "admin" role.
 func (c *FirebaseClaims) IsAdmin() bool {
 	return c.Role == "admin"
 }
-
-// IsHSE returns true if the token claims contain the "hse" role.
 func (c *FirebaseClaims) IsHSE() bool {
 	return c.Role == "hse" || c.Role == "admin"
 }
-
-// HasRole checks whether the user has the specified role.
 func (c *FirebaseClaims) HasRole(role string) bool {
 	return c.Role == role || c.Role == "admin"
 }
-
-// ExtractBearerToken strips "Bearer " prefix from an Authorization header value.
-// Returns ("", false) if the header is not a valid Bearer token.
 func ExtractBearerToken(authHeader string) (string, bool) {
 	const prefix = "Bearer "
 	if len(authHeader) <= len(prefix) {

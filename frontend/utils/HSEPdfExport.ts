@@ -78,7 +78,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     const marginR = 14;
     const contentW = pageW - marginL - marginR;
 
-    const PRIMARY_RED = '#dc2626';
+    const PRIMARY_BLUE = '#00599c';
     const DARK = '#1e293b'; // slate-800
     const GRAY = '#64748b'; // slate-500
     const LIGHT_GRAY = '#f8fafc'; // slate-50
@@ -88,12 +88,8 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     const drawPageHeader = () => {
         headerDrawCount++;
         const pg = headerDrawCount;
-
-        // Top Accent
-        doc.setFillColor(PRIMARY_RED);
+        doc.setFillColor(PRIMARY_BLUE);
         doc.rect(0, 0, pageW, 2.5, 'F');
-
-        // Header background (very subtle)
         doc.setFillColor(252, 252, 252);
         doc.rect(0, 2.5, pageW, HEADER_H - 2.5, 'F');
 
@@ -125,11 +121,9 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
 
         const dateStr = data.date || new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
         doc.setFontSize(9);
-        doc.setTextColor(PRIMARY_RED);
+        doc.setTextColor(PRIMARY_BLUE);
         doc.setFont('helvetica', 'bold');
         doc.text(dateStr, pageW / 2, titleY + 10.5, { align: 'center' });
-
-        // Divider
         doc.setDrawColor(226, 232, 240);
         doc.setLineWidth(0.4);
         doc.line(marginL, 30, pageW - marginR, 30);
@@ -137,8 +131,6 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
 
     drawPageHeader();
     let curY = HEADER_H;
-
-    // Info Section with cleaner look
     doc.setFillColor(LIGHT_GRAY);
     doc.setDrawColor(226, 232, 240);
     doc.roundedRect(marginL, curY, contentW, 54, 2, 2, 'FD');
@@ -165,9 +157,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     });
 
     curY += 51;
-
-    // Checklist Section Header
-    doc.setFillColor(PRIMARY_RED);
+    doc.setFillColor(PRIMARY_BLUE);
     doc.rect(marginL, curY, contentW, 8.5, 'F');
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
@@ -245,7 +235,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         const checked = item.value;
 
         if (checked) {
-            doc.setFillColor(isConclusion ? PRIMARY_RED : '#ef4444');
+            doc.setFillColor(isConclusion ? PRIMARY_BLUE : '#3b82f6');
             doc.circle(centerX, centerY, 2.7, 'F');
             doc.setDrawColor(255, 255, 255);
             doc.setLineWidth(0.4);
@@ -284,7 +274,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     curY += rowH + 8;
 
     if (data.photos && data.photos.length > 0) {
-        doc.setFillColor(PRIMARY_RED);
+        doc.setFillColor(PRIMARY_BLUE);
         doc.rect(marginL, curY, contentW, 8.5, 'F');
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
@@ -310,8 +300,6 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
 
             const y = curY;
             const photo = data.photos[i];
-
-            // CARD DESIGN
             doc.setFillColor(255, 255, 255);
             doc.setDrawColor(226, 232, 240);
             doc.roundedRect(x, y, photoW, photoH + descriptionH, 1, 1, 'FD');
@@ -323,9 +311,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
                 doc.rect(x + 1, y + 1, photoW - 2, photoH - 2, 'F');
                 doc.setFontSize(7).setTextColor(GRAY).text('Foto Error', x + photoW / 2, y + photoH / 2, { align: 'center' });
             }
-
-            // Photo Badge (Red)
-            doc.setFillColor(PRIMARY_RED);
+            doc.setFillColor(PRIMARY_BLUE);
             doc.rect(x + 1, y + 1, 10, 6, 'F');
             doc.setFontSize(7).setFont('helvetica', 'bold').setTextColor('#ffffff');
             doc.text(`${i + 1}`, x + 6, y + 5, { align: 'center' });
@@ -346,7 +332,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     for (let pg = 1; pg <= totalPages; pg++) {
         doc.setPage(pg);
 
-        doc.setFillColor(PRIMARY_RED).rect(0, pageH - 2.5, pageW, 2.5, 'F');
+        doc.setFillColor(PRIMARY_BLUE).rect(0, pageH - 2.5, pageW, 2.5, 'F');
 
         doc.setFontSize(7.5);
         doc.setFont('helvetica', 'normal');
@@ -369,8 +355,6 @@ export async function generateHSEPdfBlob(data: HSEFormData): Promise<Blob> {
         logoDmeB64 = await loadImageAsBase64(dmeImg);
         logoSecondaryB64 = await loadImageAsBase64(secondaryImg);
     } catch (_) { }
-
-    // Compress photos...
     const processedData = { ...data, photos: [] as HSEPhoto[] };
     if (data.photos && data.photos.length > 0) {
         for (const photo of data.photos) {
@@ -397,8 +381,6 @@ export async function generateHSEPdf(data: HSEFormData) {
         logoDmeB64 = await loadImageAsBase64(dmeImg);
         logoSecondaryB64 = await loadImageAsBase64(secondaryImg);
     } catch (_) { }
-
-    // Compress photos...
     const processedData = { ...data, photos: [] as HSEPhoto[] };
     if (data.photos && data.photos.length > 0) {
         for (const photo of data.photos) {

@@ -50,7 +50,6 @@ if (import.meta.env.DEV) {
 
 /*
 if (recaptchaSiteKey) {
-  // App Check aktif hanya jika site key sudah dikonfigurasi
   initializeAppCheck(app, {
     provider: new ReCaptchaV3Provider(recaptchaSiteKey),
     isTokenAutoRefreshEnabled: true,

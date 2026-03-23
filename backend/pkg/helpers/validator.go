@@ -13,8 +13,6 @@ var validate *validator.Validate
 
 func init() {
 	validate = validator.New()
-
-	// Register a custom tag name to use 'json' tags in error messages
 	validate.RegisterTagNameFunc(func(fld reflect.StructField) string {
 		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
 		if name == "-" {
@@ -23,9 +21,6 @@ func init() {
 		return name
 	})
 }
-
-// ValidateStruct validates a struct using validator/v10 tags
-// and returns a formatted AppError if validation fails.
 func ValidateStruct(s interface{}) *apperrors.AppError {
 	err := validate.Struct(s)
 	if err == nil {

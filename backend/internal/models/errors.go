@@ -1,9 +1,6 @@
 package models
 
 import "time"
-
-// AppErrorModel is the JSON-serialisable form of an application error,
-// safe to send to clients (no internal stack traces).
 type AppErrorModel struct {
 	Status    string    `json:"status"`
 	Code      string    `json:"code"`
@@ -11,8 +8,6 @@ type AppErrorModel struct {
 	RequestID string    `json:"request_id,omitempty"`
 	Timestamp time.Time `json:"timestamp"`
 }
-
-// ValidationErrorModel contains field-level validation error messages.
 type ValidationErrorModel struct {
 	Status    string            `json:"status"`
 	Code      string            `json:"code"`
@@ -20,8 +15,6 @@ type ValidationErrorModel struct {
 	Fields    map[string]string `json:"fields"`
 	Timestamp time.Time         `json:"timestamp"`
 }
-
-// NewAppErrorModel constructs an AppErrorModel with the current UTC timestamp.
 func NewAppErrorModel(code, message, requestID string) AppErrorModel {
 	return AppErrorModel{
 		Status:    "error",
@@ -31,8 +24,6 @@ func NewAppErrorModel(code, message, requestID string) AppErrorModel {
 		Timestamp: time.Now().UTC(),
 	}
 }
-
-// NewValidationErrorModel constructs a ValidationErrorModel.
 func NewValidationErrorModel(fields map[string]string, requestID string) ValidationErrorModel {
 	return ValidationErrorModel{
 		Status:    "error",
@@ -42,8 +33,6 @@ func NewValidationErrorModel(fields map[string]string, requestID string) Validat
 		Timestamp: time.Now().UTC(),
 	}
 }
-
-// RateLimitErrorModel represents a 429 Too Many Requests error body.
 type RateLimitErrorModel struct {
 	Status     string    `json:"status"`
 	Code       string    `json:"code"`
@@ -51,8 +40,6 @@ type RateLimitErrorModel struct {
 	RetryAfter int       `json:"retry_after_seconds"`
 	Timestamp  time.Time `json:"timestamp"`
 }
-
-// NewRateLimitError constructs a RateLimitErrorModel.
 func NewRateLimitError(retryAfterSeconds int) RateLimitErrorModel {
 	return RateLimitErrorModel{
 		Status:     "error",

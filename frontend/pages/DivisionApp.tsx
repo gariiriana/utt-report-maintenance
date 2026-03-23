@@ -32,8 +32,6 @@ export function DivisionApp() {
     
     const isDirector = ['dirut', 'direksiSDM', 'DireksiKeuangan'].includes(userRole || '');
     const isDivisionUser = ['pmo', 'sales', 'presales', 'purchasing'].includes(userRole || '');
-
-    // Default to the user's own division if they are a division user
     const [activeDivision, setActiveDivision] = useState<string | null>(isDivisionUser ? userRole : null);
     const [showVault, setShowVault] = useState(false);
 

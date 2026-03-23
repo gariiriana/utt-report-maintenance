@@ -1,8 +1,6 @@
 package models
 
 import "time"
-
-// AuditAction classifies a recorded action.
 type AuditAction string
 
 const (
@@ -15,8 +13,6 @@ const (
 	ActionExport AuditAction = "EXPORT"
 	ActionDeny   AuditAction = "ACCESS_DENIED"
 )
-
-// AuditLog represents a single audit trail entry stored in the "audit_logs" collection.
 type AuditLog struct {
 	ID          string      `json:"id" firestore:"id"`
 	Action      AuditAction `json:"action" firestore:"action"`
@@ -33,8 +29,6 @@ type AuditLog struct {
 	Metadata    map[string]interface{} `json:"metadata,omitempty" firestore:"metadata,omitempty"`
 	Timestamp   time.Time   `json:"timestamp" firestore:"timestamp"`
 }
-
-// NewAuditLog is a convenience constructor for creating an audit log entry.
 func NewAuditLog(action AuditAction, userUID, userEmail, role, collection, resourceID, requestID, remoteIP string, success bool) AuditLog {
 	return AuditLog{
 		Action:     action,
@@ -49,8 +43,6 @@ func NewAuditLog(action AuditAction, userUID, userEmail, role, collection, resou
 		Timestamp:  time.Now().UTC(),
 	}
 }
-
-// AuditLogFilter holds filter criteria for querying audit logs.
 type AuditLogFilter struct {
 	UserUID    string      `json:"user_uid,omitempty"`
 	Action     AuditAction `json:"action,omitempty"`

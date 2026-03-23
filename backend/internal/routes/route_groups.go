@@ -1,41 +1,26 @@
 package routes
 
 import "net/http"
-
-// Group represents a collection of routes that share a path prefix and middleware set.
 type Group struct {
 	prefix      string
 	middlewares []MiddlewareFunc
 	deps        *AppDeps
 }
-
-// NewGroup creates a new route Group with the given prefix and optional middleware.
 func NewGroup(prefix string, deps *AppDeps, mws ...MiddlewareFunc) *Group {
 	return &Group{prefix: prefix, middlewares: mws, deps: deps}
 }
-
-// Apply wraps a handler in the group's middleware chain.
 func (g *Group) Apply(h http.Handler) http.Handler {
 	return BuildMiddlewareChain(g.middlewares...)(h)
 }
-
-// PublicGroup returns a group for unauthenticated public routes.
 func PublicGroup(deps *AppDeps) *Group {
 	return NewGroup("/api", deps)
 }
-
-// AuthGroup returns a group that pre-applies rate limiting.
-// Full Firebase JWT auth is applied route-by-route.
 func AuthGroup(deps *AppDeps) *Group {
 	return NewGroup("/api", deps, deps.RateLimiter.Middleware)
 }
-
-// AdminGroup returns a group with rate limiting (role check done in controller).
 func AdminGroup(deps *AppDeps) *Group {
 	return NewGroup("/api/admin", deps, deps.RateLimiter.Middleware)
 }
-
-// Routes returns a description of all application route groups.
 func Routes() []struct{ Method, Path, Description string } {
 	return []struct{ Method, Path, Description string }{
 		{"GET", "/health", "Liveness probe"},

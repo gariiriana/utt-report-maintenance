@@ -8,18 +8,12 @@ import (
 	apperrors "github.com/gariiriana/utt-report-maintenance/backend/pkg/errors"
 	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
 )
-
-// AuditController handles audit log viewing (admin only).
 type AuditController struct {
 	AuditService *services.AuditService
 }
-
-// NewAuditController constructs an AuditController.
 func NewAuditController(auditSvc *services.AuditService) *AuditController {
 	return &AuditController{AuditService: auditSvc}
 }
-
-// GetAuditLogs handles GET /api/audit — admin retrieves all audit entries.
 func (c *AuditController) GetAuditLogs(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	role := middlewares.RoleFromContext(ctx)
@@ -39,8 +33,6 @@ func (c *AuditController) GetAuditLogs(w http.ResponseWriter, r *http.Request) {
 		"count":  len(logs),
 	})
 }
-
-// GetMyAuditLogs handles GET /api/audit/me — returns the authenticated user's audit trail.
 func (c *AuditController) GetMyAuditLogs(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	uid := middlewares.UIDFromContext(ctx)

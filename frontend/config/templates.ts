@@ -101,8 +101,6 @@ export const LV_ATS_TRAFO_TEMPLATE = (email: string) => {
   return template;
 };
 
-// --- HSE REPORT SECTION ---
-
 export interface HSEChecklist {
   mop: boolean;
   jsa: boolean;

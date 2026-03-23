@@ -1,36 +1,20 @@
 package config
 
 import "strings"
-
-// SecurityPolicy holds all security-related configuration.
 type SecurityPolicy struct {
-	// CORS
 	AllowedOrigins   []string
 	AllowedMethods   []string
 	AllowedHeaders   []string
 	ExposedHeaders   []string
 	AllowCredentials bool
 	MaxAge           int // preflight cache in seconds
-
-	// Rate limiting
 	RateLimitRPS   int
 	RateLimitBurst int
-
-	// API secret
 	BackendAPISecret string
-
-	// Content Security Policy header value
 	CSP string
-
-	// HSTS max-age in seconds (0 = disabled)
 	HSTSMaxAge int
-
-	// Trusted proxy CIDR ranges (for IP extraction)
 	TrustedProxies []string
 }
-
-// DefaultSecurityPolicy returns a secure default policy.
-// Origins and secret should be overridden from environment variables.
 func DefaultSecurityPolicy(cfg *AppConfig) SecurityPolicy {
 	allowedOrigins := cfg.AllowedOrigins
 	if len(allowedOrigins) == 0 {
@@ -65,9 +49,6 @@ func DefaultSecurityPolicy(cfg *AppConfig) SecurityPolicy {
 		TrustedProxies: []string{"0.0.0.0/0"},
 	}
 }
-
-// IsOriginAllowed returns true if the given origin is in the AllowedOrigins list.
-// A wildcard "*" in the list permits all origins.
 func (p *SecurityPolicy) IsOriginAllowed(origin string) bool {
 	for _, o := range p.AllowedOrigins {
 		if o == "*" || strings.EqualFold(o, origin) {

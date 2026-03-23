@@ -4,12 +4,9 @@ import (
 	"fmt"
 	"net/http"
 )
-
-// ErrorCode represents a typed application error code.
 type ErrorCode string
 
 const (
-	// General errors
 	ErrCodeInternal      ErrorCode = "INTERNAL_ERROR"
 	ErrCodeNotFound      ErrorCode = "NOT_FOUND"
 	ErrCodeUnauthorized  ErrorCode = "UNAUTHORIZED"
@@ -18,8 +15,6 @@ const (
 	ErrCodeConflict      ErrorCode = "CONFLICT"
 	ErrCodeTimeout       ErrorCode = "TIMEOUT"
 	ErrCodeRateLimit     ErrorCode = "RATE_LIMIT_EXCEEDED"
-
-	// Domain-specific errors
 	ErrCodeInvalidToken   ErrorCode = "INVALID_TOKEN"
 	ErrCodeExpiredToken   ErrorCode = "EXPIRED_TOKEN"
 	ErrCodeInvalidPayload ErrorCode = "INVALID_PAYLOAD"
@@ -27,9 +22,6 @@ const (
 	ErrCodeQueryFailed    ErrorCode = "QUERY_FAILED"
 	ErrCodeDeleteFailed   ErrorCode = "DELETE_FAILED"
 )
-
-// AppError is the standard application error that carries HTTP status,
-// a machine-readable code, and a human-readable message.
 type AppError struct {
 	StatusCode int       `json:"-"`
 	Code       ErrorCode `json:"code"`
@@ -48,8 +40,6 @@ func (e *AppError) Error() string {
 func (e *AppError) Unwrap() error {
 	return e.Err
 }
-
-// ValidationError collects field-level validation failures.
 type ValidationError struct {
 	Fields map[string]string `json:"fields"`
 }
@@ -68,8 +58,6 @@ func (e *ValidationError) Add(field, message string) {
 func (e *ValidationError) HasErrors() bool {
 	return len(e.Fields) > 0
 }
-
-// --- Constructor helpers ---
 
 func New(code ErrorCode, message string) *AppError {
 	return &AppError{
@@ -111,8 +99,6 @@ func Internal(err error) *AppError {
 func RateLimit() *AppError {
 	return New(ErrCodeRateLimit, "too many requests, please slow down")
 }
-
-// codeToHTTP maps ErrorCode to an appropriate HTTP status code.
 func codeToHTTP(code ErrorCode) int {
 	switch code {
 	case ErrCodeNotFound:
@@ -133,8 +119,6 @@ func codeToHTTP(code ErrorCode) int {
 		return http.StatusInternalServerError
 	}
 }
-
-// Is checks whether a target error is an AppError with a matching code.
 func Is(err error, code ErrorCode) bool {
 	if appErr, ok := err.(*AppError); ok {
 		return appErr.Code == code

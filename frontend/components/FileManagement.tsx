@@ -131,17 +131,9 @@ export function FileManagement({
     const isAdmin = userRole === 'admin';
     const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
     const isHSE = userRole === 'hse';
-    
-    // Determine if user can upload: 
-    // 1. If propAllowUpload is explicitly set, use it.
-    // 2. Otherwise, admin can always upload to 'files'.
-    // 3. Division roles can upload if the collection matches their role.
     const canUpload = propAllowUpload !== undefined 
         ? propAllowUpload 
         : (userRole === 'admin' || userRole === collectionName);
-
-    // Determine if user can delete:
-    // Administrative roles (Admin, TDE, CBRE, HSE, Engineer) can delete.
     const canDelete = isAdmin || isTDEorCBRE || isHSE || userRole === 'engineer' || userRole === 'standby_engineer';
 
     const [files, setFiles] = useState<FileData[]>([]);
@@ -200,7 +192,6 @@ export function FileManagement({
             const reader = new FileReader();
             reader.onload = () => {
                 const result = reader.result as string;
-                // Remove prefix if it exists (only needed for first chunk)
                 const base64 = result.includes(',') ? result.split(',')[1] : result;
                 resolve(base64);
             };
@@ -279,8 +270,6 @@ export function FileManagement({
                     const chunkBlob = file.slice(start, end);
                     
                     let chunkBase64 = await chunkToBase64(chunkBlob);
-                    
-                    // Add data prefix ONLY to the first chunk
                     if (i === 0) {
                         chunkBase64 = `data:${file.type};base64,${chunkBase64}`;
                     }

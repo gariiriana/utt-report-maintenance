@@ -9,8 +9,6 @@ import (
 )
 
 var metricsStartTime = time.Now()
-
-// MetricsHandler is the Vercel serverless runtime metrics entry point.
 func MetricsHandler(w http.ResponseWriter, r *http.Request) {
 	var mem runtime.MemStats
 	runtime.ReadMemStats(&mem)

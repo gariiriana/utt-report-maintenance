@@ -6,21 +6,13 @@ import (
 
 	"cloud.google.com/go/firestore"
 )
-
-// ReportRepository handles Firestore CRUD operations for report documents.
 type ReportRepository struct {
 	Client *firestore.Client
 }
-
-// NewReportRepository constructs a new ReportRepository.
 func NewReportRepository(client *firestore.Client) *ReportRepository {
 	return &ReportRepository{Client: client}
 }
-
-// CollectionName returns the primary collection name (varies per report type).
 func (r *ReportRepository) CollectionName() string { return "reports" }
-
-// SaveReport adds a new document to the given collection.
 func (r *ReportRepository) SaveReport(ctx context.Context, collectionName string, data map[string]interface{}) (*firestore.DocumentRef, error) {
 	docRef, _, err := r.Client.Collection(collectionName).Add(ctx, data)
 	if err != nil {
@@ -28,8 +20,6 @@ func (r *ReportRepository) SaveReport(ctx context.Context, collectionName string
 	}
 	return docRef, nil
 }
-
-// SaveSubData adds a document to a sub-collection of an existing document.
 func (r *ReportRepository) SaveSubData(ctx context.Context, docRef *firestore.DocumentRef, subCollectionName string, data map[string]interface{}) error {
 	_, _, err := docRef.Collection(subCollectionName).Add(ctx, data)
 	if err != nil {
@@ -37,8 +27,6 @@ func (r *ReportRepository) SaveSubData(ctx context.Context, docRef *firestore.Do
 	}
 	return nil
 }
-
-// GetByID retrieves a single document by its ID from the specified collection.
 func (r *ReportRepository) GetByID(ctx context.Context, collectionName, docID string) (*firestore.DocumentSnapshot, error) {
 	snap, err := r.Client.Collection(collectionName).Doc(docID).Get(ctx)
 	if err != nil {
@@ -46,8 +34,6 @@ func (r *ReportRepository) GetByID(ctx context.Context, collectionName, docID st
 	}
 	return snap, nil
 }
-
-// List retrieves documents from a collection with limit and offset (using offset pagination).
 func (r *ReportRepository) List(ctx context.Context, collectionName string, limit, offset int) ([]*firestore.DocumentSnapshot, error) {
 	q := r.Client.Collection(collectionName).
 		OrderBy("created_at", firestore.Desc).
@@ -60,8 +46,6 @@ func (r *ReportRepository) List(ctx context.Context, collectionName string, limi
 	}
 	return docs, nil
 }
-
-// ListByAuthor retrieves reports belonging to a specific user.
 func (r *ReportRepository) ListByAuthor(ctx context.Context, collectionName, authorUID string, limit int) ([]*firestore.DocumentSnapshot, error) {
 	q := r.Client.Collection(collectionName).
 		Where("author_uid", "==", authorUID).
@@ -74,8 +58,6 @@ func (r *ReportRepository) ListByAuthor(ctx context.Context, collectionName, aut
 	}
 	return docs, nil
 }
-
-// Update merges the provided fields into an existing document.
 func (r *ReportRepository) Update(ctx context.Context, collectionName, docID string, updates map[string]interface{}) error {
 	ref := r.Client.Collection(collectionName).Doc(docID)
 	_, err := ref.Set(ctx, updates, firestore.MergeAll)
@@ -84,8 +66,6 @@ func (r *ReportRepository) Update(ctx context.Context, collectionName, docID str
 	}
 	return nil
 }
-
-// Delete removes a document from the given collection.
 func (r *ReportRepository) Delete(ctx context.Context, collectionName, docID string) error {
 	_, err := r.Client.Collection(collectionName).Doc(docID).Delete(ctx)
 	if err != nil {
@@ -93,9 +73,6 @@ func (r *ReportRepository) Delete(ctx context.Context, collectionName, docID str
 	}
 	return nil
 }
-
-// Count returns the number of documents in a collection Using the efficient
-// Count aggregation query (Firestore SDK v1.14.0+).
 func (r *ReportRepository) Count(ctx context.Context, collectionName string) (int64, error) {
 	q := r.Client.Collection(collectionName)
 	alias := "count"
@@ -110,9 +87,6 @@ func (r *ReportRepository) Count(ctx context.Context, collectionName string) (in
 	if !ok {
 		return 0, fmt.Errorf("Count(%s): failed to find aggregation result", collectionName)
 	}
-
-	// In the Go SDK (v1.14.0+), the Count result is returned as an int64
-	// in the AggregationResult map[string]interface{}.
 	count, ok := countVal.(int64)
 	if !ok {
 		return 0, fmt.Errorf("Count(%s): failed to parse aggregation result as int64 (type: %T)", collectionName, countVal)

@@ -6,13 +6,10 @@ import (
 
 	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
 )
-
-// RouteRequest dispatches an HTTP request to the correct controller based on path and method.
 func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 	path := r.URL.Path
 
 	switch {
-	// Health & metrics (public)
 	case path == "/health" || path == "/api/health":
 		deps.HealthCtrl.Liveness(w, r)
 
@@ -21,8 +18,6 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 
 	case path == "/metrics" || path == "/api/metrics":
 		deps.HealthCtrl.Metrics(w, r)
-
-	// Auth routes (public)
 	case path == "/api/auth/login" && r.Method == http.MethodPost:
 		deps.AuthCtrl.Login(w, r)
 
@@ -31,8 +26,6 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 
 	case path == "/api/auth/me" && r.Method == http.MethodGet:
 		deps.AuthCtrl.Me(w, r)
-
-	// Report routes (authenticated)
 	case path == "/api/report" && r.Method == http.MethodPost:
 		deps.ReportCtrl.HandleReport(w, r)
 
@@ -44,8 +37,6 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 
 	case strings.HasPrefix(path, "/api/report/") && r.Method == http.MethodDelete:
 		deps.ReportCtrl.DeleteReport(w, r)
-
-	// User routes (admin)
 	case path == "/api/users" && r.Method == http.MethodGet:
 		deps.UserCtrl.ListUsers(w, r)
 
@@ -57,8 +48,6 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 
 	case strings.HasPrefix(path, "/api/users/") && r.Method == http.MethodDelete:
 		deps.UserCtrl.Deactivate(w, r)
-
-	// Archive routes (authenticated)
 	case path == "/api/archive" && r.Method == http.MethodGet:
 		deps.ArchiveCtrl.ListArchives(w, r)
 
@@ -67,8 +56,6 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 
 	case strings.HasPrefix(path, "/api/archive/") && r.Method == http.MethodDelete:
 		deps.ArchiveCtrl.PermanentDelete(w, r)
-
-	// Audit routes (admin)
 	case path == "/api/audit" && r.Method == http.MethodGet:
 		deps.AuditCtrl.GetAuditLogs(w, r)
 

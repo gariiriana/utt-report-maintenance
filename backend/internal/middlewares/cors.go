@@ -5,8 +5,6 @@ import (
 	"os"
 	"strings"
 )
-
-// corsAllowedOrigins reads the ALLOWED_ORIGINS env variable and returns a set.
 func corsAllowedOrigins() map[string]bool {
 	raw := os.Getenv("ALLOWED_ORIGINS")
 	if raw == "" {
@@ -20,15 +18,10 @@ func corsAllowedOrigins() map[string]bool {
 	}
 	return result
 }
-
-// isAllowedOrigin returns true if the given origin is on the allowlist.
-// A wildcard "*" entry permits all origins.
 func isAllowedOrigin(origin string) bool {
 	allowed := corsAllowedOrigins()
 	return allowed["*"] || allowed[origin]
 }
-
-// CORSMiddleware is an http.Handler middleware version of CORS (for middleware chain use).
 func CORSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if EnableCORS(w, r) {
@@ -37,16 +30,12 @@ func CORSMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
-
-// EnableCORS handles CORS preflight and sets cross-origin response headers.
-// Returns true if the request was a preflight OPTIONS and the caller should stop.
 func EnableCORS(w http.ResponseWriter, r *http.Request) bool {
 	origin := r.Header.Get("Origin")
 
 	if origin != "" && isAllowedOrigin(origin) {
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 	} else if origin == "" {
-		// Non-browser / server-to-server request: allow but don't echo an origin
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 	}
 

@@ -11,20 +11,14 @@ import (
 	apperrors "github.com/gariiriana/utt-report-maintenance/backend/pkg/errors"
 	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
 )
-
-// UserController handles user management endpoints (admin only).
 type UserController struct {
 	UserService *services.UserService
 	AuditSvc    *services.AuditService
 	NotifSvc    *services.NotificationService
 }
-
-// NewUserController constructs a UserController.
 func NewUserController(user *services.UserService, audit *services.AuditService, notif *services.NotificationService) *UserController {
 	return &UserController{UserService: user, AuditSvc: audit, NotifSvc: notif}
 }
-
-// GetProfile handles GET /api/users/{uid} — admin retrieves any user's profile.
 func (c *UserController) GetProfile(w http.ResponseWriter, r *http.Request) {
 	uid := strings.TrimPrefix(r.URL.Path, "/api/users/")
 	if uid == "" {
@@ -40,8 +34,6 @@ func (c *UserController) GetProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	helpers.SendJSON(w, http.StatusOK, models.BuildAPIResponse(profile, nil))
 }
-
-// ListUsers handles GET /api/users — admin retrieves paginated user list.
 func (c *UserController) ListUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	users, err := c.UserService.ListUsers(ctx, 50, 0)
@@ -51,8 +43,6 @@ func (c *UserController) ListUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	helpers.SendJSON(w, http.StatusOK, models.BuildAPIResponse(users, nil))
 }
-
-// UpdateRole handles PATCH /api/users/{uid}/role — admin assigns a new role.
 func (c *UserController) UpdateRole(w http.ResponseWriter, r *http.Request) {
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(parts) < 3 {
@@ -90,8 +80,6 @@ func (c *UserController) UpdateRole(w http.ResponseWriter, r *http.Request) {
 		"message": "User role updated to " + body.Role,
 	})
 }
-
-// Deactivate handles DELETE /api/users/{uid} — soft deactivate a user account.
 func (c *UserController) Deactivate(w http.ResponseWriter, r *http.Request) {
 	uid := strings.TrimPrefix(r.URL.Path, "/api/users/")
 	if uid == "" {

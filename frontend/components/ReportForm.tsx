@@ -83,14 +83,11 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       setMaintenanceName(isTrafo ? 'Trafo' : (lowerEmail === 'lv@gmail.com' ? 'LV' : 'ATS'));
       template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
     } else {
-      // Check for direct email match or partial match for dock/leveler
       template = REPORT_TEMPLATES[lowerEmail];
       
       if (!template && (lowerEmail.includes('dock') || lowerEmail.includes('leveler'))) {
         template = REPORT_TEMPLATES['dock'];
       }
-      
-      // Update maintenance name for specific accounts if needed
       if (lowerEmail === 'grounding@gmail.com') setMaintenanceName('Grounding');
       if (lowerEmail === 'ldb/rdb@gmail.com') setMaintenanceName('LDB/RDB');
       if (lowerEmail === 'busduct@gmail.com') setMaintenanceName('Busduct');

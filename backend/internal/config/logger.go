@@ -5,16 +5,12 @@ import (
 	"log/slog"
 	"os"
 )
-
-// LoggerConfig holds configuration for the application logger.
 type LoggerConfig struct {
 	Level     slog.Level
 	Format    string // "json" | "text"
 	AddSource bool
 	Output    io.Writer
 }
-
-// DefaultLoggerConfig returns a production-ready logger config.
 func DefaultLoggerConfig() LoggerConfig {
 	lvl := parseLogLevel(EnvString("LOG_LEVEL", "info"))
 	format := EnvString("LOG_FORMAT", "json")
@@ -25,8 +21,6 @@ func DefaultLoggerConfig() LoggerConfig {
 		Output:    os.Stdout,
 	}
 }
-
-// BuildSlogHandler constructs a slog.Handler from the given LoggerConfig.
 func BuildSlogHandler(cfg LoggerConfig) slog.Handler {
 	opts := &slog.HandlerOptions{
 		Level:     cfg.Level,
@@ -41,8 +35,6 @@ func BuildSlogHandler(cfg LoggerConfig) slog.Handler {
 	}
 	return slog.NewJSONHandler(out, opts)
 }
-
-// parseLogLevel converts a string level name to a slog.Level.
 func parseLogLevel(level string) slog.Level {
 	switch level {
 	case "debug":

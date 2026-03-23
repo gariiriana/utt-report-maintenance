@@ -61,8 +61,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   const [documentToDelete, setDocumentToDelete] = useState<ExcelDocument | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkDeleting, setBulkDeleting] = useState(false);
-
-  // Folder navigation state
   const [currentLevel, setCurrentLevel] = useState<'root' | 'month' | 'week'>('root');
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null); 
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
@@ -82,8 +80,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
     try {
       setLoading(true);
-
-      // Fetch Excel documents
       const excelQuery = isAdmin
         ? query(collection(db, 'excel_documents'))
         : query(
@@ -109,8 +105,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           documentType: 'excel',
         });
       });
-
-      // Fetch PDF documents
       const pdfQuery = isAdmin
         ? query(collection(db, 'pdf_documents'))
         : query(
@@ -136,8 +130,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           documentType: 'pdf',
         });
       });
-
-      // Fetch HSE documents (Only for Admin or HSE Officer OR if filterOverride is hse_utt)
       const hseDocs: ExcelDocument[] = [];
       const showHSE = isAdmin || userRole === 'hse' || filterOverride === 'hse_utt';
       
@@ -176,8 +168,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           });
         });
       }
-
-      // If filterOverride is set, we might want to ONLY show those
       const allDocs = filterOverride === 'hse_utt' 
         ? hseDocs 
         : [...excelDocs, ...pdfDocs, ...hseDocs];
@@ -221,7 +211,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       const toastId = toast.loading(selectedIds.length > 0 ? `Menghapus ${selectedIds.length} dokumen...` : 'Menghapus dokumen...');
 
       if (selectedIds.length > 0) {
-        // Bulk Delete
         for (const id of selectedIds) {
           const docData = documents.find(d => d.id === id);
           if (docData) {
@@ -232,7 +221,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         toast.success(`${selectedIds.length} dokumen berhasil dihapus`, { id: toastId });
         setSelectedIds([]);
       } else if (documentToDelete) {
-        // Single Delete
         const collectionName = documentToDelete.documentType === 'hse' ? 'hse' : documentToDelete.documentType + '_documents';
         await deleteDoc(doc(db, collectionName, documentToDelete.id));
         toast.success('Dokumen berhasil dihapus', { id: toastId });
@@ -255,8 +243,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Maintenance Report');
-
-      // Set column widths - 3 photo columns + 2 spacing columns = 5 total
       worksheet.columns = [
         { width: 26 },  // Column A - Photo 1
         { width: 2 },   // Column B - Spacing
@@ -264,17 +250,12 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         { width: 2 },   // Column D - Spacing
         { width: 26 },  // Column E - Photo 3
       ];
-
-      // Format date
       const formattedDate = new Date(docData.maintenanceTime).toLocaleDateString('id-ID', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric'
       });
-
-      // Load logos
       try {
-        // Select left logo based on company type
         const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
         const logoLeftResponse = await fetch(leftLogo);
         const logoLeftBlob = await logoLeftResponse.blob();
@@ -284,8 +265,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
             (data, byte) => data + String.fromCharCode(byte), ''
           )
         );
-
-        // Select right logo based on company type
         const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
         const logoRightResponse = await fetch(rightLogo);
         const logoRightBlob = await logoRightResponse.blob();
@@ -305,8 +284,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           base64: logoRightBase64,
           extension: 'png',
         });
-
-        // Row 1: Title with floating logos
         worksheet.getRow(1).height = 50;
         worksheet.mergeCells('A1:E1');
         const titleCell = worksheet.getCell('A1');
@@ -319,15 +296,10 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           bottom: { style: 'thin', color: { argb: 'FF000000' } },
           right: { style: 'thin', color: { argb: 'FF000000' } }
         };
-
-        // Add floating logos
-        // ✅ Logo Dwimitra - LARGER size, positioned with proper spacing
         worksheet.addImage(dwimitraImageId, {
           tl: { col: 0.1, row: 0.15 }, // ✅ Better positioning
           ext: { width: 130, height: 50 } // ✅ LARGER size for better visibility
         });
-
-        // ✅ Logo NeutraDC - LARGER size, positioned with proper spacing
         worksheet.addImage(neutraDCImageId, {
           tl: { col: 4.4, row: 0.15 }, // ✅ Better positioning
           ext: { width: 130, height: 50 } // ✅ LARGER size for better visibility
@@ -336,8 +308,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       } catch (error) {
         console.error('Logo error:', error);
       }
-
-      // Row 2: Specific Detail (Unit/Ruangan) - menggantikan "FCU"
       worksheet.mergeCells('A2:E2');
       const equipmentCell = worksheet.getCell('A2');
       equipmentCell.value = docData.specificDetail || docData.maintenanceName; // ✅ Gunakan specificDetail jika ada
@@ -350,11 +320,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         right: { style: 'thin', color: { argb: 'FF000000' } }
       };
       worksheet.getRow(2).height = 30;
-
-      // Empty spacing row
       worksheet.getRow(3).height = 8;
-
-      // Add photos in 3-column grid
       let currentRow = 4;
       let finalPhotosData = docData.photosData || [];
 
@@ -434,8 +400,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         worksheet.getRow(currentRow).height = 8;
         currentRow++;
       }
-
-      // Generate and download
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -458,27 +422,19 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   const handleDownloadPDF = async (docData: ExcelDocument) => {
     try {
       toast.loading('Generating PDF from database...', { id: 'download-pdf' });
-
-      // Format date
       const formattedDate = new Date(docData.maintenanceTime).toLocaleDateString('id-ID', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric'
       });
-
-      // Create PDF (A4 portrait: 210mm x 297mm)
       const doc = new jsPDF('p', 'mm', 'a4');
       const pageWidth = doc.internal.pageSize.getWidth();
-
-      // Margins
       const marginTop = 15;
       const marginLeft = 10;
       const marginRight = 10;
       const usableWidth = pageWidth - marginLeft - marginRight;
 
       let currentY = marginTop;
-
-      // Load logos
       try {
         const processLogo = (url: string) => {
           return new Promise<string>((resolve) => {
@@ -508,27 +464,19 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           const isDwimitra = companyType !== 'bri';
 
           let headerY = 8; // Matching ReportForm.tsx anchor
-
-          // Normal sizing matches ReportForm
           const leftW = isPDU ? 22 : (isDwimitra ? 28 : 36);
           const leftH = isPDU ? 9 : (isDwimitra ? 18 : 14);
           const rightW = isPDU ? 22 : (isDwimitra ? 36 : 35);
           const rightH = isPDU ? 9 : (isDwimitra ? 14 : 14);
-
-          // Logo Left
           if (processedLogoLeft) {
             doc.addImage(processedLogoLeft, 'JPEG', marginLeft, headerY, leftW, leftH, 'logo_left', 'FAST');
           }
-
-          // Logo Right (Vertically centered relative to left logo height)
           if (processedLogoRight) {
             const rightY = headerY + (leftH - rightH) / 2;
             doc.addImage(processedLogoRight, 'JPEG', pageWidth - marginRight - rightW, rightY, rightW, rightH, 'logo_right', 'FAST');
           }
 
           headerY += Math.max(leftH, rightH) + (isPDU ? 4 : 5);
-
-          // Title
           doc.setFontSize(isPDU ? 10 : 14);
           doc.setFont('helvetica', 'bold');
           const titleText = `Dokumentasi PM ${docData.maintenanceName} (${formattedDate})`;
@@ -536,8 +484,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           doc.text(titleText, (pageWidth - titleWidth) / 2, headerY);
 
           headerY += (isPDU ? 6 : 8);
-
-          // Specific Detail / Equipment Name
           if (docData.specificDetail) {
             doc.setFontSize(isPDU ? 9 : 12);
             doc.setFont('helvetica', 'bold');
@@ -553,8 +499,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         };
 
         currentY = addPageHeader();
-
-        // Add photos in grid
         const isPDU = user?.email === 'pdu@gmail.com' || docData.createdBy === 'pdu@gmail.com';
         const columns = isPDU ? 4 : 3;
         const photosPerPage = isPDU ? 20 : 9;
@@ -595,19 +539,13 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           for (let j = 0; j < rowCards.length; j++) {
             const card = rowCards[j];
             const xPos = marginLeft + j * (photoWidth + spacing);
-
-            // Draw photo border/box
             doc.setDrawColor(0);
             doc.setLineWidth(0.3); // Thinner line for PDU
             doc.rect(xPos, currentY, photoWidth, photoHeight);
-
-            // Add photo if exists
             if (card.photoBase64) {
               try {
                 let b64 = card.photoBase64;
                 const sizeKB = (b64.length * 3) / 4 / 1024;
-
-                // Extra safety: compress on the fly if still huge
                 if (sizeKB > 800) {
                   try {
                     b64 = await compressBase64Image(b64, { maxWidth: 800, quality: 0.5 });
@@ -630,11 +568,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
                 console.error('Failed to add image:', imgError);
               }
             }
-
-            // Add caption box
             doc.rect(xPos, currentY + photoHeight, photoWidth, captionHeight);
-
-            // Add caption text
             if (card.description) {
               doc.setFontSize(isPDU ? 7 : 8);
               doc.setFont('helvetica', 'normal');
@@ -652,8 +586,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       } catch (error) {
         console.error('Failed to load logos:', error);
       }
-
-      // Generate PDF and download
       const pdfBlob = doc.output('blob');
       const url = URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
@@ -681,8 +613,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       }
 
       const hseData = hseDoc.data();
-
-      // Fetch photos from subcollection
       const photosSnap = await getDocs(collection(db, `hse/${docData.id}/photos`));
       const photos = photosSnap.docs
         .map(d => {
@@ -692,8 +622,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
             description: data.description || ''
           };
         });
-
-      // Map to HSEFormData structure
       const formData = {
         aktivitas: hseData.aktivitas,
         lokasi: hseData.lokasi,
@@ -714,31 +642,22 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       toast.error('Failed to download HSE PDF', { id: 'download-hse' });
     }
   };
-
-  // Filter documents
   const filteredDocuments = documents.filter(doc => {
-    // Filter by search query
     if (searchQuery && !doc.maintenanceName.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
-
-    // Filter by date
     if (filterDate) {
       const docDate = new Date(doc.maintenanceTime).toISOString().split('T')[0];
       if (docDate !== filterDate) {
         return false;
       }
     }
-
-    // Filter by document type
     if (filterType !== 'all' && doc.documentType !== filterType) {
       return false;
     }
 
     return true;
   });
-
-  // Grouping for HSE UTT Folder structure
   const renderContent = () => {
     if (filterOverride !== 'hse_utt') {
       return filteredDocuments.map((document, index) => renderDocumentCard(document, index));
@@ -975,8 +894,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
     try {
       toast.loading('Preparing data for editing...', { id: 'edit-prep' });
-
-      // Fetch photos from subcollection for backward compatibility or completeness
       let photosData = doc.photosData || [];
       if (photosData.length === 0) {
         const colName = doc.documentType === 'excel' ? 'excel_documents' : 'pdf_documents';

@@ -10,25 +10,16 @@ import (
 )
 
 var startTime = time.Now()
-
-// HealthController provides liveness and readiness endpoints.
 type HealthController struct{}
-
-// NewHealthController constructs a HealthController.
 func NewHealthController() *HealthController {
 	return &HealthController{}
 }
-
-// Liveness handles GET /health — returns 200 if the process is running.
 func (c *HealthController) Liveness(w http.ResponseWriter, r *http.Request) {
 	helpers.SendJSON(w, http.StatusOK, models.HealthStatus{
 		Status:    "ok",
 		Timestamp: time.Now().UTC(),
 	})
 }
-
-// Readiness handles GET /ready — returns 200 if the service is ready to handle requests.
-// In a more complete implementation, this would check DB connectivity etc.
 func (c *HealthController) Readiness(w http.ResponseWriter, r *http.Request) {
 	checks := map[string]string{
 		"process":  "ok",
@@ -44,8 +35,6 @@ func (c *HealthController) Readiness(w http.ResponseWriter, r *http.Request) {
 		Checks:    checks,
 	})
 }
-
-// Metrics handles GET /metrics — returns basic runtime metrics.
 func (c *HealthController) Metrics(w http.ResponseWriter, r *http.Request) {
 	var mem runtime.MemStats
 	runtime.ReadMemStats(&mem)
