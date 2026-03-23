@@ -48,7 +48,9 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   const isAdmin = userRole === 'admin';
   const isEngineer = userRole === 'tde' || userRole === 'cbre' || userRole === 'engineer' || userRole === 'standby_engineer';
   const isHSE = userRole === 'hse';
-  const canDelete = isAdmin || isEngineer || isHSE;
+  const canDelete = isAdmin || isEngineer || isHSE || 
+    userRole === 'pmo' || userRole === 'sales' || 
+    userRole === 'presales' || userRole === 'purchasing';
 
   const [documents, setDocuments] = useState<ExcelDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -658,6 +660,17 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
     return true;
   });
+
+  const docsInView = (() => {
+    if (filterOverride !== 'hse_utt') return filteredDocuments;
+    if (currentLevel === 'week') {
+      return filteredDocuments.filter(d => 
+        getMonthYearString(d.createdAt) === selectedMonth && 
+        getWeekOfMonth(d.createdAt) === selectedWeek
+      );
+    }
+    return [];
+  })();
   const renderContent = () => {
     if (filterOverride !== 'hse_utt') {
       return filteredDocuments.map((document, index) => renderDocumentCard(document, index));
@@ -1007,15 +1020,15 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         </div>
 
         {/* Bulk Actions Header */}
-        {canDelete && filteredDocuments.length > 0 && (
+        {canDelete && docsInView.length > 0 && (
           <div className="mt-4 pt-4 border-t border-slate-700/30 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <input
                 type="checkbox"
-                checked={filteredDocuments.length > 0 && filteredDocuments.every(d => selectedIds.includes(d.id))}
+                checked={docsInView.length > 0 && docsInView.every(d => selectedIds.includes(d.id))}
                 onChange={(e) => {
                   if (e.target.checked) {
-                    setSelectedIds(filteredDocuments.map(d => d.id));
+                    setSelectedIds(docsInView.map(d => d.id));
                   } else {
                     setSelectedIds([]);
                   }

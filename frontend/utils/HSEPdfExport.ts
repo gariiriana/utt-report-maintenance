@@ -123,7 +123,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         doc.setFontSize(9);
         doc.setTextColor(PRIMARY_BLUE);
         doc.setFont('helvetica', 'bold');
-        doc.text(dateStr, pageW / 2, titleY + 10.5, { align: 'center' });
+        doc.text(`Tanggal: ${dateStr}`, pageW / 2, titleY + 10.5, { align: 'center' });
         doc.setDrawColor(226, 232, 240);
         doc.setLineWidth(0.4);
         doc.line(marginL, 30, pageW - marginR, 30);
@@ -225,7 +225,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     const col2Items = regularItems.slice(itemsPerCol);
 
     const drawChecklistItem = (item: { label: string, value: boolean, isSub?: boolean }, x: number, y: number, width: number, isConclusion = false) => {
-        const bgColor = isConclusion ? '#fdf2f2' : (Math.floor(y / rowH) % 2 === 0 ? '#f8fafc' : '#ffffff');
+        const bgColor = isConclusion ? '#f0f7ff' : (Math.floor(y / rowH) % 2 === 0 ? '#f8fafc' : '#ffffff');
         doc.setFillColor(bgColor);
         doc.rect(x, y, width, rowH, 'F');
 
@@ -235,14 +235,14 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         const checked = item.value;
 
         if (checked) {
-            doc.setFillColor(isConclusion ? PRIMARY_BLUE : '#3b82f6');
+            doc.setFillColor('#10b981'); // Green for checked
             doc.circle(centerX, centerY, 2.7, 'F');
             doc.setDrawColor(255, 255, 255);
             doc.setLineWidth(0.4);
             doc.line(centerX - 1.1, centerY, centerX - 0.2, centerY + 0.8);
             doc.line(centerX - 0.2, centerY + 0.8, centerX + 1.1, centerY - 0.9);
         } else {
-            doc.setFillColor('#cbd5e1'); // slate-300 for unchecked
+            doc.setFillColor('#ef4444'); // Red for unchecked
             doc.circle(centerX, centerY, 2.7, 'F');
             doc.setDrawColor(255, 255, 255);
             doc.setLineWidth(0.4);
@@ -311,10 +311,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
                 doc.rect(x + 1, y + 1, photoW - 2, photoH - 2, 'F');
                 doc.setFontSize(7).setTextColor(GRAY).text('Foto Error', x + photoW / 2, y + photoH / 2, { align: 'center' });
             }
-            doc.setFillColor(PRIMARY_BLUE);
-            doc.rect(x + 1, y + 1, 10, 6, 'F');
-            doc.setFontSize(7).setFont('helvetica', 'bold').setTextColor('#ffffff');
-            doc.text(`${i + 1}`, x + 6, y + 5, { align: 'center' });
+
 
             if (photo.description) {
                 doc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(DARK);
