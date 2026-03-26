@@ -65,6 +65,13 @@ func SendNoContent(w http.ResponseWriter) {
 func ExtractRequestID(r *http.Request) string {
 	return r.Header.Get("X-Request-Id")
 }
+func ExtractParam(r *http.Request, key string) string {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) > 0 {
+		return parts[len(parts)-1]
+	}
+	return ""
+}
 func GetClientIP(r *http.Request) string {
 	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
 		parts := strings.Split(forwarded, ",")

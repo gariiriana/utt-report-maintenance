@@ -8,6 +8,8 @@ const (
 	RoleHSE       UserRole = "hse"
 	RoleDirector  UserRole = "director"
 	RoleEngineer  UserRole = "engineer"
+	RoleSiteManager UserRole = "site_manager"
+	RoleManager   UserRole = "manager"
 	RoleGuest     UserRole = "guest"
 )
 type User struct {
@@ -55,6 +57,7 @@ func AllowedRoles() []string {
 		string(RoleHSE),
 		string(RoleDirector),
 		string(RoleEngineer),
+		string(RoleSiteManager),
 		string(RoleGuest),
 	}
 }

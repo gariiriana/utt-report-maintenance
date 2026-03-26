@@ -19,6 +19,7 @@ type AppDeps struct {
 	UserCtrl    *controllers.UserController
 	ArchiveCtrl *controllers.ArchiveController
 	AuditCtrl   *controllers.AuditController
+	MaintenanceProgressCtrl *controllers.MaintenanceProgressController
 	RateLimiter *middlewares.RateLimiter
 }
 func NewAppDeps(ctx context.Context) (*AppDeps, error) {
@@ -35,11 +36,13 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 	userRepo   := repositories.NewUserRepository(firestoreClient)
 	auditRepo  := repositories.NewAuditRepository(firestoreClient)
 	archiveRepo := repositories.NewArchiveRepository(firestoreClient)
+	maintenanceRepo := repositories.NewMaintenanceProgressRepository(firestoreClient)
 	authSvc    := services.NewAuthService(authClient)
 	auditSvc   := services.NewAuditService(auditRepo)
 	userSvc    := services.NewUserService(userRepo, authSvc)
 	reportSvc  := services.NewReportService(reportRepo)
 	archiveSvc := services.NewArchiveService(archiveRepo)
+	maintenanceSvc := services.NewMaintenanceProgressService(maintenanceRepo)
 	notifSvc   := services.NewNotificationService("")
 	reportCtrl  := controllers.NewReportController(reportSvc, auditSvc, notifSvc)
 	authCtrl    := controllers.NewAuthController(authSvc, userSvc, auditSvc)
@@ -47,6 +50,7 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 	userCtrl    := controllers.NewUserController(userSvc, auditSvc, notifSvc)
 	archiveCtrl := controllers.NewArchiveController(archiveSvc)
 	auditCtrl   := controllers.NewAuditController(auditSvc)
+	maintenanceCtrl := controllers.NewMaintenanceProgressController(maintenanceSvc)
 
 	rateLimiter := middlewares.NewRateLimiter(20, 40)
 
@@ -57,6 +61,7 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 		UserCtrl:    userCtrl,
 		ArchiveCtrl: archiveCtrl,
 		AuditCtrl:   auditCtrl,
+		MaintenanceProgressCtrl: maintenanceCtrl,
 		RateLimiter: rateLimiter,
 	}, nil
 }

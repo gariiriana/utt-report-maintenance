@@ -29,3 +29,11 @@ type IAuditRepository interface {
 	ListByUser(ctx context.Context, userUID string, limit int) ([]*firestore.DocumentSnapshot, error)
 	ListAll(ctx context.Context, limit int) ([]*firestore.DocumentSnapshot, error)
 }
+type IMaintenanceProgressRepository interface {
+	IBaseRepository
+	Save(ctx context.Context, id string, data map[string]interface{}) error
+	GetByID(ctx context.Context, id string) (*firestore.DocumentSnapshot, error)
+	List(ctx context.Context) ([]*firestore.DocumentSnapshot, error)
+	Update(ctx context.Context, id string, data map[string]interface{}) error
+	Delete(ctx context.Context, id string) error
+}

@@ -4,6 +4,7 @@ import { Login } from '@/pages/Login';
 import { MainApp } from '@/pages/MainApp';
 import { HSEApp } from '@/pages/HSEApp';
 import { DivisionApp } from '@/pages/DivisionApp';
+import { SiteManagerDashboard } from '@/pages/SiteManagerDashboard';
 import { ServerLoadingIndicator } from '@/components/ServerLoadingIndicator';
 import { HSEReportViewer } from '@/components/HSEReportViewer';
 import { useEffect } from 'react';
@@ -56,6 +57,9 @@ function AppContent() {
     const isoRoles = ['pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
     if (isoRoles.includes(userRole || '')) {
       return <DivisionApp />;
+    }
+    if (userRole === 'site_manager' || userRole === 'manager') {
+      return <SiteManagerDashboard />;
     }
     return <MainApp />;
   }

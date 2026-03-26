@@ -62,6 +62,24 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 	case path == "/api/audit/me" && r.Method == http.MethodGet:
 		deps.AuditCtrl.GetMyAuditLogs(w, r)
 
+	case path == "/api/maintenance-progress" && r.Method == http.MethodGet:
+		deps.MaintenanceProgressCtrl.ListAll(w, r)
+	
+	case path == "/api/maintenance-progress" && r.Method == http.MethodPost:
+		deps.MaintenanceProgressCtrl.CreateProgress(w, r)
+
+	case strings.HasPrefix(path, "/api/maintenance-progress/") && r.Method == http.MethodDelete:
+		deps.MaintenanceProgressCtrl.DeleteProgress(w, r)
+
+	case path == "/api/maintenance-progress/summary" && r.Method == http.MethodGet:
+		deps.MaintenanceProgressCtrl.GetSummary(w, r)
+
+	case path == "/api/maintenance-progress/end-day" && r.Method == http.MethodPost:
+		deps.MaintenanceProgressCtrl.EndDay(w, r)
+
+	case strings.HasPrefix(path, "/api/maintenance-progress/") && r.Method == http.MethodPatch:
+		deps.MaintenanceProgressCtrl.UpdateProgress(w, r)
+
 	default:
 		helpers.SendError(w, "route not found", http.StatusNotFound)
 	}
