@@ -17,8 +17,10 @@ import {
   Plus,
   Trash2,
   FileText,
-  Download
+  Download,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
 
 interface MaintenanceProgress {
@@ -54,6 +56,7 @@ interface MaintenanceSummary {
 }
 
 export function SiteManagerDashboard() {
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'summary' | 'input'>('summary');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -257,6 +260,19 @@ export function SiteManagerDashboard() {
               Maintenance Progress Dashboard
             </h1>
             <div className="flex items-center gap-4 mt-2">
+              <div className="flex items-center gap-2 px-2 py-1 bg-slate-900/50 rounded-lg border border-slate-800">
+                <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] font-bold text-white">
+                  {user?.email?.[0].toUpperCase() || 'U'}
+                </div>
+                <span className="text-xs text-slate-400 hidden sm:inline">{user?.email}</span>
+                <button 
+                  onClick={() => logout()}
+                  className="p-1 hover:bg-slate-800 rounded transition-colors text-slate-400 hover:text-red-400"
+                  title="Logout"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}

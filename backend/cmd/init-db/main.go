@@ -4,10 +4,10 @@ import (
 	"context"
 	"log"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/config"
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/models"
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/repositories"
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/services"
+	"github.com/gariiriana/utt-report-maintenance/backend/logic/config"
+	"github.com/gariiriana/utt-report-maintenance/backend/logic/models"
+	"github.com/gariiriana/utt-report-maintenance/backend/logic/repositories"
+	"github.com/gariiriana/utt-report-maintenance/backend/logic/services"
 )
 
 func main() {

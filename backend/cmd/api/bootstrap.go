@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/routes"
+	"github.com/gariiriana/utt-report-maintenance/backend/logic/routes"
 )
 type App struct {
 	Server *Server
