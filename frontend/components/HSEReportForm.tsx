@@ -92,8 +92,66 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         } else if (editingData) {
             setAktivitas(editingData.maintenanceName || '');
             setLokasi(editingData.specificDetail || '');
+        } else if (user?.email) {
+            // Check for draft in localStorage
+            const savedDraft = localStorage.getItem('hse_report_form_draft');
+            if (savedDraft) {
+                try {
+                    const draft = JSON.parse(savedDraft);
+                    if (draft.userEmail === user.email) {
+                        setAktivitas(draft.aktivitas || '');
+                        setLokasi(draft.lokasi || '');
+                        setPersonil(draft.personil || '');
+                        setPic(draft.pic || '');
+                        setAnggota(draft.anggota || '');
+                        setInspectorK3(draft.inspectorK3 || '');
+                        if (draft.checklist) setChecklist(draft.checklist);
+                        if (draft.photos && draft.photos.length > 0) {
+                            setPhotos(draft.photos);
+                        }
+                        toast.success('Draft laporan HSE dipulihkan otomatis');
+                    }
+                } catch (err) {
+                    console.error('Failed to restore HSE draft:', err);
+                }
+            }
         }
-    }, [editingData]);
+    }, [editingData, user?.email]);
+
+    // Auto-save logic for HSE
+    useEffect(() => {
+        if (editingData || !user?.email) return;
+
+        const saveDraft = () => {
+            const draft = {
+                userEmail: user.email,
+                aktivitas,
+                lokasi,
+                personil,
+                pic,
+                anggota,
+                inspectorK3,
+                checklist,
+                photos: photos.map(p => ({
+                    id: p.id,
+                    dataUrl: p.dataUrl,
+                    description: p.description
+                })),
+                timestamp: new Date().getTime()
+            };
+            
+            try {
+                localStorage.setItem('hse_report_form_draft', JSON.stringify(draft));
+            } catch (err) {
+                if (err instanceof Error && err.name === 'QuotaExceededError') {
+                    console.warn('HSE Storage quota exceeded');
+                }
+            }
+        };
+
+        const timeoutId = setTimeout(saveDraft, 1500);
+        return () => clearTimeout(timeoutId);
+    }, [aktivitas, lokasi, personil, pic, anggota, inspectorK3, checklist, photos, user?.email, editingData]);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -276,6 +334,11 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
 
             if (!silent && toastId) {
                 toast.success(editingData ? 'Laporan HSE diperbarui!' : 'Laporan HSE tersimpan!', { id: toastId });
+                
+                // Clear draft after successful save
+                if (!editingData) {
+                    localStorage.removeItem('hse_report_form_draft');
+                }
             }
             return docId;
         } catch (err) {

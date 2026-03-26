@@ -70,6 +70,30 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
   useEffect(() => {
     if (!user?.email || editingData) return;
+    
+    // Check for draft in localStorage
+    const savedDraft = localStorage.getItem('report_form_draft');
+    if (savedDraft) {
+      try {
+        const draft = JSON.parse(savedDraft);
+        // Only restore if the draft belongs to the current user
+        if (draft.userEmail === user.email) {
+          setMaintenanceName(draft.maintenanceName || '');
+          setMaintenanceTime(draft.maintenanceTime || '');
+          setSpecificDetail(draft.specificDetail || '');
+          setVrvUnitDetail(draft.vrvUnitDetail || '');
+          setCompanyType(draft.companyType || 'neutra');
+          if (draft.cards && draft.cards.length > 0) {
+            setCards(draft.cards);
+          }
+          toast.success('Draft laporan dipulihkan otomatis');
+          return; // Skip template loading if we restored a draft
+        }
+      } catch (err) {
+        console.error('Failed to restore draft:', err);
+      }
+    }
+
     const lowerEmail = user.email.toLowerCase();
 
     let template: string[] | null = null;
@@ -122,6 +146,40 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       }
     }
   }, [editingData]);
+
+  // Auto-save logic
+  useEffect(() => {
+    if (editingData || !user?.email) return;
+
+    const saveDraft = () => {
+      const draft = {
+        userEmail: user.email,
+        maintenanceName,
+        maintenanceTime,
+        specificDetail,
+        vrvUnitDetail,
+        companyType,
+        cards: cards.map(c => ({
+          id: c.id,
+          description: c.description,
+          photoBase64: c.photoBase64 // We save base64 because Files can't be stringified
+        })),
+        timestamp: new Date().getTime()
+      };
+      
+      try {
+        localStorage.setItem('report_form_draft', JSON.stringify(draft));
+      } catch (err) {
+        // QuotaExceededError is common with large base64 images
+        if (err instanceof Error && err.name === 'QuotaExceededError') {
+          console.warn('Storage quota exceeded, draft might be incomplete');
+        }
+      }
+    };
+
+    const timeoutId = setTimeout(saveDraft, 1000); // Debounce save
+    return () => clearTimeout(timeoutId);
+  }, [maintenanceName, maintenanceTime, specificDetail, vrvUnitDetail, companyType, cards, user?.email, editingData]);
 
   const handlePhotoChange = async (id: string, file: File | null) => {
     if (file) {
@@ -327,6 +385,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       }
 
       toast.success(editingData ? 'Laporan diperbarui' : 'Laporan disimpan', { id: toastId });
+      
+      // Clear draft after successful save
+      if (!editingData) {
+        localStorage.removeItem('report_form_draft');
+      }
+      
       return docId;
     } catch (error) {
       console.error('Firestore save error:', error);
