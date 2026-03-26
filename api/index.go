@@ -20,6 +20,13 @@ func init() {
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	// Diagnostic endpoint
+	if r.URL.Path == "/api/test" {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"status":"ok","message":"Vercel Go Runtime is working"}`))
+		return
+	}
+
 	w.Header().Set("X-Backend-Handler", "go-root-handler")
 	if isOptions := middlewares.EnableCORS(w, r); isOptions {
 		return
