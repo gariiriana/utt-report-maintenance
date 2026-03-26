@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/gariiriana/utt-report-maintenance/core/config"
+	"github.com/gariiriana/utt-report-maintenance/backend/internal/config"
 )
 
 func main() {

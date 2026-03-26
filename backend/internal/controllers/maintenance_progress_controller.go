@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gariiriana/utt-report-maintenance/core/models"
-	"github.com/gariiriana/utt-report-maintenance/core/services"
-	"github.com/gariiriana/utt-report-maintenance/pkg/helpers"
-	"github.com/gariiriana/utt-report-maintenance/pkg/logger"
+	"github.com/gariiriana/utt-report-maintenance/backend/internal/models"
+	"github.com/gariiriana/utt-report-maintenance/backend/internal/services"
+	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
+	"github.com/gariiriana/utt-report-maintenance/backend/pkg/logger"
 )
 
 type MaintenanceProgressController struct {

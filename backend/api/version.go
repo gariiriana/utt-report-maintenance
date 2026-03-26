@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"runtime"
 
-	"github.com/gariiriana/utt-report-maintenance/pkg/helpers"
+	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
 )
 type VersionInfo struct {
 	App       string `json:"app"`

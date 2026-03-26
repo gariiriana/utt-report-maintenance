@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	firebaseAuth "firebase.google.com/go/v4/auth"
-	"github.com/gariiriana/utt-report-maintenance/pkg/helpers"
-	"github.com/gariiriana/utt-report-maintenance/pkg/logger"
+	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
+	"github.com/gariiriana/utt-report-maintenance/backend/pkg/logger"
 )
 type contextKey string
 

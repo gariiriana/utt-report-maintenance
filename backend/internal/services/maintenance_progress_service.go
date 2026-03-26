@@ -7,8 +7,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/gariiriana/utt-report-maintenance/core/models"
-	"github.com/gariiriana/utt-report-maintenance/core/repositories"
+	"github.com/gariiriana/utt-report-maintenance/backend/internal/models"
+	"github.com/gariiriana/utt-report-maintenance/backend/internal/repositories"
 )
 
 type IMaintenanceProgressService interface {

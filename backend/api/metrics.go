@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/gariiriana/utt-report-maintenance/pkg/helpers"
+	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
 )
 
 var metricsStartTime = time.Now()

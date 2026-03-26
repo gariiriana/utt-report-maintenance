@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gariiriana/utt-report-maintenance/core/services"
-	apperrors "github.com/gariiriana/utt-report-maintenance/pkg/errors"
-	"github.com/gariiriana/utt-report-maintenance/pkg/helpers"
+	"github.com/gariiriana/utt-report-maintenance/backend/internal/services"
+	apperrors "github.com/gariiriana/utt-report-maintenance/backend/pkg/errors"
+	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
 )
 type ArchiveController struct {
 	ArchiveService *services.ArchiveService

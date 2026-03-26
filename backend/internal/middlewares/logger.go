@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gariiriana/utt-report-maintenance/pkg/helpers"
-	"github.com/gariiriana/utt-report-maintenance/pkg/logger"
+	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
+	"github.com/gariiriana/utt-report-maintenance/backend/pkg/logger"
 )
 type responseWriter struct {
 	http.ResponseWriter

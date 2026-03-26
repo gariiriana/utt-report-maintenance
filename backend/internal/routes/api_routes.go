@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gariiriana/utt-report-maintenance/pkg/helpers"
+	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
 )
 func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 	path := r.URL.Path

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gariiriana/utt-report-maintenance/pkg/logger"
+	"github.com/gariiriana/utt-report-maintenance/backend/pkg/logger"
 )
 type NotificationPayload struct {
 	Event     string                 `json:"event"`
