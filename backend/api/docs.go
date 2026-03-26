@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/logic/routes"
+	"github.com/gariiriana/utt-report-maintenance/backend/internal/routes"
 )
 func DocsHandler(w http.ResponseWriter, r *http.Request) {
 	routeList := routes.Routes()

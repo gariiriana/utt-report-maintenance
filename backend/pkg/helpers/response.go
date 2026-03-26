@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/logic/models"
+	"github.com/gariiriana/utt-report-maintenance/backend/internal/models"
 	apperrors "github.com/gariiriana/utt-report-maintenance/backend/pkg/errors"
 )
 func SendSuccess(w http.ResponseWriter, reportID, collection, message string) {

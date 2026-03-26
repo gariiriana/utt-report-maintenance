@@ -3,7 +3,7 @@ package helpers
 import (
 	"testing"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/logic/models"
+	"github.com/gariiriana/utt-report-maintenance/backend/internal/models"
 )
 
 func TestValidateStruct(t *testing.T) {
