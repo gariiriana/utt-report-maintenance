@@ -18,42 +18,29 @@ import {
   Trash2,
   FileText,
   Download,
-  LogOut
+  LogOut,
+  UserCircle
 } from 'lucide-react';
 import { useAuth } from '@/components/AuthContext';
+import { 
+  collection, 
+  query, 
+  where, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  writeBatch,
+  serverTimestamp 
+} from 'firebase/firestore';
+import { db } from '@/api/firebase';
 import { toast } from 'sonner';
-
-interface MaintenanceProgress {
-  id: string;
-  category: string;
-  equipment_name: string;
-  plan_qty: number;
-  plan_start: string;
-  plan_finish: string;
-  actual_qty: number;
-  actual_percent: number;
-  remark: string;
-}
-
-interface CategorySummary {
-  category: string;
-  plan_qty: number;
-  weight_percent: number;
-  yesterday_qty: number;
-  yesterday_percent: number;
-  today_qty: number;
-  today_percent: number;
-}
-
-interface MaintenanceSummary {
-  category_summaries: CategorySummary[];
-  total_plan_qty: number;
-  total_yesterday_qty: number;
-  total_yesterday_percent: number;
-  total_today_qty: number;
-  total_today_percent: number;
-  daily_progress: number;
-}
+import { 
+  calculateMaintenanceSummary, 
+  type MaintenanceProgress, 
+  type MaintenanceSummary 
+} from '@/utils/MaintenanceLogic';
 
 export function SiteManagerDashboard() {
   const { user, logout } = useAuth();
@@ -65,11 +52,7 @@ export function SiteManagerDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedYear, setSelectedYear] = useState(2026);
   const [selectedQuarter, setSelectedQuarter] = useState('Q1');
-
-  const API_BASE = import.meta.env.VITE_API_URL || '';
-  const API_PREFIX = API_BASE ? '' : '/api';
-
-
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newProgress, setNewProgress] = useState({
     category: '',
@@ -81,42 +64,37 @@ export function SiteManagerDashboard() {
     remark: ''
   });
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      // Fetch summary
-      const summaryResp = await fetch(`${API_BASE}${API_PREFIX}/maintenance-progress/summary?year=${selectedYear}&quarter=${selectedQuarter}`, {
-        headers: { 'X-API-Secret': import.meta.env.VITE_API_SECRET || '' }
-      });
-      if (summaryResp.ok) {
-        const summaryData = await summaryResp.json();
-        setSummary(summaryData ?? null);
-      } else {
-        setSummary(null);
-      }
-
-      // Fetch all activities
-      const activitiesResp = await fetch(`${API_BASE}${API_PREFIX}/maintenance-progress?year=${selectedYear}&quarter=${selectedQuarter}`, {
-        headers: { 'X-API-Secret': import.meta.env.VITE_API_SECRET || '' }
-      });
-      if (activitiesResp.ok) {
-        const activitiesData = await activitiesResp.json();
-        setActivities(Array.isArray(activitiesData) ? activitiesData : []);
-      } else {
-        setActivities([]);
-      }
-    } catch (error) {
-      console.error('Fetch error:', error);
-      toast.error('Gagal mengambil data maintenance');
-      setSummary(null);
-      setActivities([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchData();
+    setLoading(true);
+    const q = query(
+      collection(db, 'maintenance_progress'),
+      where('year', '==', selectedYear),
+      where('quarter', '==', selectedQuarter)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data: MaintenanceProgress[] = [];
+      snapshot.forEach((doc) => {
+        const docData = doc.data();
+        data.push({ 
+          id: doc.id, 
+          ...docData,
+          remark: docData.remark || '',
+          yesterday_qty: docData.yesterday_qty || 0
+        } as MaintenanceProgress);
+      });
+      
+      setActivities(data);
+      const computedSummary = calculateMaintenanceSummary(data);
+      setSummary(computedSummary);
+      setLoading(false);
+    }, (error) => {
+      console.error('Firestore Error:', error);
+      toast.error('Gagal mengambil data dari Firestore');
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [selectedYear, selectedQuarter]);
 
   const handleAddItem = async () => {
@@ -127,19 +105,13 @@ export function SiteManagerDashboard() {
 
     setLoading(true);
     try {
-      const resp = await fetch(`${API_BASE}${API_PREFIX}/maintenance-progress`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Secret': import.meta.env.VITE_API_SECRET || ''
-        },
-        body: JSON.stringify({
-          ...newProgress,
-          year: selectedYear,
-          quarter: selectedQuarter
-        })
+      await addDoc(collection(db, 'maintenance_progress'), {
+        ...newProgress,
+        year: selectedYear,
+        quarter: selectedQuarter,
+        yesterday_qty: 0,
+        createdAt: serverTimestamp()
       });
-      if (!resp.ok) throw new Error('Failed to add item');
       toast.success('Perangkat baru berhasil ditambahkan!');
       setShowAddModal(false);
       setNewProgress({
@@ -151,7 +123,6 @@ export function SiteManagerDashboard() {
         actual_qty: 0,
         remark: ''
       });
-      await fetchData();
     } catch (err) {
       console.error(err);
       toast.error('Gagal menambahkan perangkat');
@@ -165,15 +136,8 @@ export function SiteManagerDashboard() {
 
     setLoading(true);
     try {
-      const resp = await fetch(`${API_BASE}${API_PREFIX}/maintenance-progress/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'X-API-Secret': import.meta.env.VITE_API_SECRET || ''
-        }
-      });
-      if (!resp.ok) throw new Error('Failed to delete item');
+      await deleteDoc(doc(db, 'maintenance_progress', id));
       toast.success('Perangkat berhasil dihapus');
-      await fetchData();
     } catch (err) {
       console.error(err);
       toast.error('Gagal menghapus perangkat');
@@ -189,15 +153,13 @@ export function SiteManagerDashboard() {
 
     setLoading(true);
     try {
-      const resp = await fetch(`${API_BASE}${API_PREFIX}/maintenance-progress/end-day`, {
-        method: 'POST',
-        headers: {
-          'X-API-Secret': import.meta.env.VITE_API_SECRET || ''
-        }
+      const batch = writeBatch(db);
+      activities.forEach((activity: MaintenanceProgress) => {
+        const docRef = doc(db, 'maintenance_progress', activity.id);
+        batch.update(docRef, { yesterday_qty: activity.actual_qty });
       });
-      if (!resp.ok) throw new Error('Failed to freeze data');
+      await batch.commit();
       toast.success('Daily progress berhasil dibekukan!');
-      await fetchData(); // Refresh both summary and activities
     } catch (err) {
       console.error(err);
       toast.error('Gagal membekukan data');
@@ -209,29 +171,21 @@ export function SiteManagerDashboard() {
   const handleUpdateProgress = async (id: string, actualQty: number, remark: string) => {
     setSaving(id);
     try {
-      const resp = await fetch(`${API_BASE}${API_PREFIX}/maintenance-progress/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Secret': import.meta.env.VITE_API_SECRET || ''
-        },
-        body: JSON.stringify({ actual_qty: actualQty, remark })
+      const docRef = doc(db, 'maintenance_progress', id);
+      await updateDoc(docRef, { 
+        actual_qty: actualQty, 
+        remark: remark || ''
       });
-
-      if (resp.ok) {
-        toast.success('Progress berhasil diupdate');
-        fetchData(); // Refresh both summary and activities
-      } else {
-        throw new Error('Update failed');
-      }
+      toast.success('Progress berhasil diupdate');
     } catch (error) {
+      console.error(error);
       toast.error('Gagal mengupdate progress');
     } finally {
       setSaving(null);
     }
   };
 
-  const filteredActivities = (activities || []).filter(a => 
+  const filteredActivities = (activities || []).filter((a: MaintenanceProgress) => 
     a.equipment_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     a.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -260,19 +214,6 @@ export function SiteManagerDashboard() {
               Maintenance Progress Dashboard
             </h1>
             <div className="flex items-center gap-4 mt-2">
-              <div className="flex items-center gap-2 px-2 py-1 bg-slate-900/50 rounded-lg border border-slate-800">
-                <div className="w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] font-bold text-white">
-                  {user?.email?.[0].toUpperCase() || 'U'}
-                </div>
-                <span className="text-xs text-slate-400 hidden sm:inline">{user?.email}</span>
-                <button 
-                  onClick={() => logout()}
-                  className="p-1 hover:bg-slate-800 rounded transition-colors text-slate-400 hover:text-red-400"
-                  title="Logout"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              </div>
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(Number(e.target.value))}
@@ -329,6 +270,15 @@ export function SiteManagerDashboard() {
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <TrendingUp className="w-4 h-4 group-hover:scale-110 transition-transform" />}
               End Day
+            </button>
+
+            <button
+              onClick={() => setShowLogoutModal(true)}
+              className="px-4 py-2 rounded-lg bg-slate-800/50 text-slate-400 border border-slate-700/50 hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center gap-2 group text-sm md:text-base"
+              title={`Logout dari ${user?.email}`}
+            >
+              <UserCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span className="hidden sm:inline">Profile</span>
             </button>
           </div>
         </div>
@@ -414,7 +364,7 @@ export function SiteManagerDashboard() {
                         <Download className="w-4 h-4" />
                         Export to PDF
                       </button>
-                      <button onClick={fetchData} className="p-2 text-slate-400 hover:text-white transition-colors" title="Refresh Data">
+                      <button onClick={() => toast.info('Data diperbarui secara real-time dari Firestore')} className="p-2 text-slate-400 hover:text-white transition-colors" title="Refresh Data">
                         <RefreshCw className="w-5 h-5" />
                       </button>
                     </div>
@@ -499,7 +449,7 @@ export function SiteManagerDashboard() {
                 <p className="text-lg">Belum ada data Maintenance Progress.</p>
                 <p className="text-sm mt-1">Gunakan script init-db untuk mengisi data awal.</p>
                 <button
-                  onClick={fetchData}
+                  onClick={() => toast.info('Data diperbarui secara real-time dari Firestore')}
                   className="mt-6 px-6 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors flex items-center gap-2"
                 >
                   <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -546,7 +496,7 @@ export function SiteManagerDashboard() {
                     </thead>
                     <tbody className="block md:table-row-group divide-y divide-slate-800/50 md:divide-slate-800 p-4 md:p-0">
                       {filteredActivities.length > 0 ? (
-                        filteredActivities.map((activity) => (
+                        filteredActivities.map((activity: MaintenanceProgress) => (
                           <ActivityRow
                             key={activity.id}
                             activity={activity}
@@ -713,6 +663,49 @@ export function SiteManagerDashboard() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Logout Confirmation Modal */}
+      <AnimatePresence>
+        {showLogoutModal && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLogoutModal(false)}
+              className="absolute inset-0 bg-slate-950/90 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl text-center"
+            >
+              <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <LogOut className="w-10 h-10 text-indigo-500" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Konfirmasi Logout</h3>
+              <p className="text-slate-400 mb-8">
+                Yakin ingin keluar dari akun <span className="text-indigo-400 font-medium">{user?.email}</span>?
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => logout()}
+                  className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-red-600/20"
+                >
+                  Ya, Logout Sekarang
+                </button>
+                <button
+                  onClick={() => setShowLogoutModal(false)}
+                  className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition-all"
+                >
+                  Batal
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -724,7 +717,7 @@ function ActivityRow({ activity, onUpdate, onDelete, isSaving }: {
   isSaving: boolean
 }) {
   const [qty, setQty] = useState(activity.actual_qty.toString());
-  const [remark, setRemark] = useState(activity.remark);
+  const [remark, setRemark] = useState(activity.remark || '');
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {

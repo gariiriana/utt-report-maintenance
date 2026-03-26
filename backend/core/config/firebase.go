@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	"cloud.google.com/go/firestore"
@@ -22,6 +23,7 @@ var (
 )
 func getCredentialsJSON() ([]byte, error) {
 	if creds := os.Getenv("FIREBASE_SERVICE_ACCOUNT"); creds != "" {
+		creds = strings.Trim(creds, "\"")
 		return []byte(creds), nil
 	}
 	// Try multiple paths

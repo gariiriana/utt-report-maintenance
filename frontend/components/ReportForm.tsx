@@ -68,6 +68,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [showPreview]);
 
+  const [wasDraftRestored, setWasDraftRestored] = useState(false);
+
   useEffect(() => {
     if (!user?.email || editingData) return;
     
@@ -86,6 +88,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           if (draft.cards && draft.cards.length > 0) {
             setCards(draft.cards);
           }
+          setWasDraftRestored(true);
           toast.success('Draft laporan dipulihkan otomatis');
           return; // Skip template loading if we restored a draft
         }
@@ -96,19 +99,17 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
     const lowerEmail = user.email.toLowerCase();
 
+    // Initial Template Logic
     let template: string[] | null = null;
-
     if (lowerEmail === 'vrv@gmail.com') {
       if (!maintenanceName) setMaintenanceName('vrv');
-      const isOutdoor = specificDetail.toLowerCase() === 'outdoor';
-      template = isOutdoor ? VRV_TEMPLATE.outdoor : VRV_TEMPLATE.indoor;
+      template = VRV_TEMPLATE.indoor; // Default VRV
     } else if (['lv@gmail.com', 'ats@gmail.com', 'trafo@gmail.com'].includes(lowerEmail)) {
       const isTrafo = lowerEmail === 'trafo@gmail.com';
       setMaintenanceName(isTrafo ? 'Trafo' : (lowerEmail === 'lv@gmail.com' ? 'LV' : 'ATS'));
       template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
     } else {
       template = REPORT_TEMPLATES[lowerEmail];
-      
       if (!template && (lowerEmail.includes('dock') || lowerEmail.includes('leveler'))) {
         template = REPORT_TEMPLATES['dock'];
       }
@@ -121,7 +122,19 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     if (template) {
       setCards(template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     }
-  }, [user?.email, editingData, specificDetail]);
+  }, [user?.email, editingData]);
+
+  // Separate effect for VRV template switching
+  useEffect(() => {
+    if (editingData || wasDraftRestored || user?.email?.toLowerCase() !== 'vrv@gmail.com') return;
+
+    const isOutdoor = specificDetail.toLowerCase() === 'outdoor';
+    const template = isOutdoor ? VRV_TEMPLATE.outdoor : VRV_TEMPLATE.indoor;
+    
+    if (template) {
+      setCards(template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
+    }
+  }, [specificDetail, user?.email, editingData, wasDraftRestored]);
 
   useEffect(() => {
     if (editingData) {
