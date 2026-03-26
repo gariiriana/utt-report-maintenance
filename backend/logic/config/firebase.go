@@ -24,11 +24,19 @@ func getCredentialsJSON() ([]byte, error) {
 	if creds := os.Getenv("FIREBASE_SERVICE_ACCOUNT"); creds != "" {
 		return []byte(creds), nil
 	}
-	data, err := os.ReadFile("firebase-service-account.json")
-	if err != nil {
-		return nil, fmt.Errorf("firebase credentials not found in env or file: %w", err)
+	// Try multiple paths
+	paths := []string{
+		"firebase-service-account.json",              // Root (if binary run from root)
+		"../firebase-service-account.json",           // If run from api/ folder
+		"backend/firebase-service-account.json",      // If run from root in some envs
+		"/var/task/firebase-service-account.json",    // Vercel absolute path
 	}
-	return data, nil
+	for _, p := range paths {
+		if data, err := os.ReadFile(p); err == nil {
+			return data, nil
+		}
+	}
+	return nil, fmt.Errorf("firebase credentials not found in env or common paths")
 }
 func initFirebaseApp(ctx context.Context) (*firebase.App, error) {
 	credJSON, err := getCredentialsJSON()
