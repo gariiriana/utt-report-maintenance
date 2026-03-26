@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
+	"github.com/gariiriana/utt-report-maintenance/pkg/helpers"
 )
 func HealthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
