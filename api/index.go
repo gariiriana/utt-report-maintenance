@@ -6,20 +6,35 @@ import (
 
 	"github.com/gariiriana/utt-report-maintenance/backend/core/middlewares"
 	"github.com/gariiriana/utt-report-maintenance/backend/core/routes"
+	"sync"
 )
 
-var handler http.HandlerFunc
+var (
+	handler     http.HandlerFunc
+	initOnce    sync.Once
+	initError   error
+)
 
-func init() {
-	ctx := context.Background()
-	deps, err := routes.NewAppDeps(ctx)
-	if err != nil {
-		panic("Failed to initialize dependencies: " + err.Error())
-	}
-	handler = routes.SetupRouter(deps)
+func initialize() {
+	initOnce.Do(func() {
+		ctx := context.Background()
+		deps, err := routes.NewAppDeps(ctx)
+		if err != nil {
+			initError = err
+			return
+		}
+		handler = routes.SetupRouter(deps)
+	})
 }
 
 func Handler(w http.ResponseWriter, r *http.Request) {
+	initialize()
+	if initError != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		w.Write([]byte(`{"status":"error","message":"Service Initialization Failed","error":"` + initError.Error() + `"}`))
+		return
+	}
 	// Diagnostic endpoint
 	if r.URL.Path == "/api/test" {
 		w.Header().Set("Content-Type", "application/json")
