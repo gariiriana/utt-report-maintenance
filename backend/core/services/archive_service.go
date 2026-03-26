@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/repositories"
+	"github.com/gariiriana/utt-report-maintenance/backend/core/repositories"
 )
 type ArchiveService struct {
 	Repo *repositories.ArchiveRepository

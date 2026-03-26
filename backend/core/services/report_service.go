@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/models"
+	"github.com/gariiriana/utt-report-maintenance/backend/core/models"
 	"github.com/gariiriana/utt-report-maintenance/backend/pkg/sanitizer"
 )
 type ReportRepository interface {

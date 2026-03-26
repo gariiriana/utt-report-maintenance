@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"cloud.google.com/go/firestore"
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/models"
+	"github.com/gariiriana/utt-report-maintenance/backend/core/models"
 )
 type mockReportRepo struct {
 	saveReportCalled bool

@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/models"
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/services"
+	"github.com/gariiriana/utt-report-maintenance/backend/core/models"
+	"github.com/gariiriana/utt-report-maintenance/backend/core/services"
 	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
 	"github.com/gariiriana/utt-report-maintenance/backend/pkg/logger"
 )

@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/middlewares"
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/routes"
+	"github.com/gariiriana/utt-report-maintenance/backend/core/middlewares"
+	"github.com/gariiriana/utt-report-maintenance/backend/core/routes"
 )
 
 var handler http.HandlerFunc

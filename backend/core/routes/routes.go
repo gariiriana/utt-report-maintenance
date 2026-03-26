@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/config"
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/controllers"
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/middlewares"
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/repositories"
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/services"
+	"github.com/gariiriana/utt-report-maintenance/backend/core/config"
+	"github.com/gariiriana/utt-report-maintenance/backend/core/controllers"
+	"github.com/gariiriana/utt-report-maintenance/backend/core/middlewares"
+	"github.com/gariiriana/utt-report-maintenance/backend/core/repositories"
+	"github.com/gariiriana/utt-report-maintenance/backend/core/services"
 	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
 )
 type AppDeps struct {

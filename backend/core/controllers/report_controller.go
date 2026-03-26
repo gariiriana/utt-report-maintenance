@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/middlewares"
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/models"
-	"github.com/gariiriana/utt-report-maintenance/backend/internal/services"
+	"github.com/gariiriana/utt-report-maintenance/backend/core/middlewares"
+	"github.com/gariiriana/utt-report-maintenance/backend/core/models"
+	"github.com/gariiriana/utt-report-maintenance/backend/core/services"
 	apperrors "github.com/gariiriana/utt-report-maintenance/backend/pkg/errors"
 	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
 )
