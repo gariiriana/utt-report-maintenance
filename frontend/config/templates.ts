@@ -52,7 +52,7 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
   ],
   'busduct@gmail.com': [
     'Visual inspect busduct', 'Cleaning busduct', 'Cleaning busduct',
-    'Cleaning busduct', 'Cleaning busduct', 'Cleaning busduct', 'Thermal on joint conection',
+    'Cleaning busduct', 'Cleaning busduct', 'Thermal on joint conection',
   ],
   'lightingsystem@gmail.com': [
     'Nameplate', 'measurement voltage', 'measurement ampere',
