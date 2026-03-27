@@ -23,9 +23,13 @@ var (
 )
 func getCredentialsJSON() ([]byte, error) {
 	if creds := os.Getenv("FIREBASE_SERVICE_ACCOUNT"); creds != "" {
+		// Clean up the string (remove quotes, spaces, and newlines that might come from Vercel UI)
+		creds = strings.TrimSpace(creds)
 		creds = strings.Trim(creds, "\"")
+		creds = strings.TrimSpace(creds)
 		return []byte(creds), nil
 	}
+
 	// Try multiple paths
 	paths := []string{
 		"firebase-service-account.json",              // Root (if binary run from root)

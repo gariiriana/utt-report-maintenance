@@ -32,9 +32,10 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	if initError != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)
-		w.Write([]byte(`{"status":"error","message":"Service Initialization Failed","error":"` + initError.Error() + `"}`))
+		w.Write([]byte(`{"status":"error","message":"Backend Initialization Failed","error":"` + initError.Error() + `","hint":"Check if FIREBASE_SERVICE_ACCOUNT env var is set correctly in Vercel"}`))
 		return
 	}
+
 	// Diagnostic endpoint
 	if r.URL.Path == "/api/test" {
 		w.Header().Set("Content-Type", "application/json")
