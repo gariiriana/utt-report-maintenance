@@ -51,13 +51,14 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Measurement pressure freon'
   ],
   'busduct@gmail.com': [
-    'Visual inspect busduct', 'Cleaning busduct', 'Thermal on joint conection'
+    'Visual inspect busduct', 'Cleaning busduct', 'Cleaning busduct',
+    'Cleaning busduct', 'Cleaning busduct', 'Cleaning busduct', 'Thermal on joint conection',
   ],
   'lightingsystem@gmail.com': [
-    'Nameplate', 'Kondisi Lampu', 'Pengecekan Instalasi Kabel',
-    'Pengecekan Panel Lighting', 'Measurement Voltage R-N', 'Measurement Voltage S-N',
-    'Measurement Voltage T-N', 'Measurement Ampere R', 'Measurement Ampere S',
-    'Measurement Ampere T', 'Cleaning Armature', 'Pengecekan MCB/Breaker'
+    'Nameplate', 'measurement voltage', 'measurement ampere',
+    'cleaning lampu', 'cleaning lampu', 'cleaning lampu',
+    'cleaning lampu', 'cleaning lampu', 'cleaning lampu',
+    'cleaning lampu', 'cleaning lampu', 'cleaning lampu'
   ]
 };
 
