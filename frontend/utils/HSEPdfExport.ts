@@ -23,6 +23,7 @@ export interface HSEChecklist {
     kedokLas?: boolean;
     coverShoes?: boolean;
     respirator?: boolean;
+    sarungTanganCutResistance?: boolean;
     pitaBaricade?: boolean;
     safetyCone?: boolean;
     stikBariket?: boolean;
@@ -181,6 +182,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
                 { key: 'kedokLas', label: 'Kedok Las' },
                 { key: 'coverShoes', label: 'Cover Shoes' },
                 { key: 'respirator', label: 'Respirator' },
+                { key: 'sarungTanganCutResistance', label: 'Sarung Tangan Cut Resistance' },
             ]
         },
         { key: 'toolsBertagging', label: 'Tools Bertagging & sdh di-checklist' },

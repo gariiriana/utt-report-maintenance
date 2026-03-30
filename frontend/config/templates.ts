@@ -120,6 +120,7 @@ export interface HSEChecklist {
   kedokLas: boolean;
   coverShoes: boolean;
   respirator: boolean;
+  sarungTanganCutResistance: boolean;
   pitaBaricade: boolean;
   safetyCone: boolean;
   stikBariket: boolean;
@@ -144,6 +145,7 @@ export const INITIAL_HSE_CHECKLIST: HSEChecklist = {
   kedokLas: false,
   coverShoes: false,
   respirator: false,
+  sarungTanganCutResistance: false,
   pitaBaricade: false,
   safetyCone: false,
   stikBariket: false,
@@ -165,6 +167,7 @@ export const HSE_CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string; sub
           { key: 'kedokLas', label: 'Kedok Las' },
           { key: 'coverShoes', label: 'Cover Shoes' },
           { key: 'respirator', label: 'Respirator' },
+          { key: 'sarungTanganCutResistance', label: 'Sarung Tangan Cut Resistance' },
       ]
   },
   { key: 'toolsBertagging', label: 'Tools Bertagging & sdh di-checklist' },

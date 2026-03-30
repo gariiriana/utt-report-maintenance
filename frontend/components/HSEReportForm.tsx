@@ -103,13 +103,13 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             const next = { ...prev, [key]: !prev[key] };
 
             if (key === 'ppeKhusus' && !next.ppeKhusus) {
-                next.bodyHarness = next.sarungTanganKulit = next.apron = next.kedokLas = next.coverShoes = next.respirator = false;
+                next.bodyHarness = next.sarungTanganKulit = next.apron = next.kedokLas = next.coverShoes = next.respirator = next.sarungTanganCutResistance = false;
             }
             if (key === 'safetySign' && !next.safetySign) {
                 next.pitaBaricade = next.safetyCone = next.stikBariket = next.underMaintenance = false;
             }
 
-            const ppeChildren = ['bodyHarness', 'sarungTanganKulit', 'apron', 'kedokLas', 'coverShoes', 'respirator'];
+            const ppeChildren = ['bodyHarness', 'sarungTanganKulit', 'apron', 'kedokLas', 'coverShoes', 'respirator', 'sarungTanganCutResistance'];
             if (ppeChildren.includes(key as string) && next[key as keyof HSEChecklist]) {
                 next.ppeKhusus = true;
             }
@@ -520,7 +520,12 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                                                                 exit={{ height: 0, opacity: 0 }}
                                                                 className="overflow-hidden ml-6 pl-4 border-l-2 border-slate-700/50 flex flex-col gap-2"
                                                             >
-                                                                {item.subItems?.map(sub => (
+                                                                {item.subItems?.filter(sub => {
+                                                                    if (sub.key === 'sarungTanganCutResistance') {
+                                                                        return user?.email === 'hse@gmail.com';
+                                                                    }
+                                                                    return true;
+                                                                }).map(sub => (
                                                                     <button
                                                                         key={sub.key}
                                                                         onClick={() => toggleCheck(sub.key)}
