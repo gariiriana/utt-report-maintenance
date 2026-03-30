@@ -80,17 +80,22 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         const draft = JSON.parse(savedDraft);
         // Only restore if the draft belongs to the current user
         if (draft.userEmail === user.email) {
-          setMaintenanceName(draft.maintenanceName || '');
-          setMaintenanceTime(draft.maintenanceTime || '');
-          setSpecificDetail(draft.specificDetail || '');
-          setVrvUnitDetail(draft.vrvUnitDetail || '');
-          setCompanyType(draft.companyType || 'neutra');
-          if (draft.cards && draft.cards.length > 0) {
-            setCards(draft.cards);
+          // Force reload template for coolingtower if draft is old (default 9 cards)
+          if (user.email === 'coolingtower@gmail.com' && (!draft.cards || draft.cards.length === 9) && !draft.maintenanceName) {
+            console.log('Detected old 9-card draft for coolingtower, skipping to load new 12-item template...');
+          } else {
+            setMaintenanceName(draft.maintenanceName || '');
+            setMaintenanceTime(draft.maintenanceTime || '');
+            setSpecificDetail(draft.specificDetail || '');
+            setVrvUnitDetail(draft.vrvUnitDetail || '');
+            setCompanyType(draft.companyType || 'neutra');
+            if (draft.cards && draft.cards.length > 0) {
+              setCards(draft.cards);
+            }
+            setWasDraftRestored(true);
+            toast.success('Draft laporan dipulihkan otomatis');
+            return; // Skip template loading if we restored a draft
           }
-          setWasDraftRestored(true);
-          toast.success('Draft laporan dipulihkan otomatis');
-          return; // Skip template loading if we restored a draft
         }
       } catch (err) {
         console.error('Failed to restore draft:', err);
@@ -117,6 +122,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       if (lowerEmail === 'ldb/rdb@gmail.com') setMaintenanceName('LDB/RDB');
       if (lowerEmail === 'busduct@gmail.com') setMaintenanceName('Busduct');
       if (lowerEmail === 'lightingsystem@gmail.com') setMaintenanceName('Lighting System');
+      if (lowerEmail === 'coolingtower@gmail.com') setMaintenanceName('Cooling Tower');
     }
 
     if (template) {
@@ -327,7 +333,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const toastId = toast.loading(editingData ? 'Updating report...' : 'Saving report...');
     try {
       const photosWithImage = cardsToSave.filter(c => c.photoBase64).length;
-      const fileName = pdfData?.fileName || `${maintenanceName}_${maintenanceTime}_${finalSpecificDetail || ''}.pdf`.replace(/\s+/g, '_');
+      const fileName = pdfData?.fileName || `${maintenanceName}${finalSpecificDetail ? ` (${finalSpecificDetail})` : ''}`.trim().replace(/\s+/g, ' ') + '.pdf';
 
       const reportData: any = {
         fileName,
@@ -527,7 +533,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
               <button onClick={() => document.getElementById('bulk')?.click()} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20">
-                <Upload className="w-5 h-5" /> Bulk Upload Photos
+                <Upload className="w-5 h-5" /> Upload Banyak Foto Sekaligus
               </button>
               <input id="bulk" type="file" multiple accept="image/*" className="hidden" onChange={handleBulkPhotoUpload} />
               <button onClick={() => setAddCardModalOpen(true)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20">

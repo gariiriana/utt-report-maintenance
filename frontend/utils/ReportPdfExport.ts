@@ -68,11 +68,7 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
     return null;
   }
 
-  const formattedDate = new Date(maintenanceTime).toLocaleDateString('id-ID', { 
-    day: '2-digit', 
-    month: '2-digit', 
-    year: 'numeric' 
-  });
+
 
   const optimizedCards: PhotoCard[] = [];
   for (let i = 0; i < filled.length; i++) {
@@ -233,9 +229,8 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
     doc.text(`Page ${pg} of ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
   }
 
-  const safeName = maintenanceName.replace(/[/\\?%*:|"<>]/g, '-');
-  const safeDate = formattedDate.replace(/\//g, '-');
-  const safeDetail = finalSpecificDetail ? `_${finalSpecificDetail.replace(/[/\\?%*:|"<>]/g, '-').replace(/\s+/g, '_')}` : '';
+  const safeName = maintenanceName.replace(/[/\\?%*:|"<>]/g, ' ').trim();
+  const safeDetail = finalSpecificDetail ? ` (${finalSpecificDetail.replace(/[/\\?%*:|"<>]/g, ' ').trim()})` : '';
 
-  return { doc, fileName: `Report_${safeName}_${safeDate}${safeDetail}.pdf`, filled: optimizedCards };
+  return { doc, fileName: `${safeName}${safeDetail}.pdf`, filled: optimizedCards };
 };

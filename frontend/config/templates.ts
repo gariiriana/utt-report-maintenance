@@ -59,6 +59,20 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'cleaning lampu', 'cleaning lampu', 'cleaning lampu',
     'cleaning lampu', 'cleaning lampu', 'cleaning lampu',
     'cleaning lampu', 'cleaning lampu', 'cleaning lampu'
+  ],
+  'coolingtower@gmail.com': [
+    'Visual inspection unit',
+    'Visual inspection and check panel',
+    'Cleaning unit',
+    'Voltage phasa to phasa',
+    'Voltage phasa to netral',
+    'Voltage netral to Grounding',
+    'Grounding Measurement',
+    'Vibration Measurement',
+    'Air Flow measurement',
+    'Noise measurement',
+    'Current measurement',
+    'Fan speed with Tachometer measurement'
   ]
 };
 
