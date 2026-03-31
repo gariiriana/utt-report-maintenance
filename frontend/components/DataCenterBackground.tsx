@@ -4,63 +4,21 @@ import { motion } from 'motion/react';
 export function DataCenterBackground() {
   return (
     <>
-      {/* Base Video Layer (Restored from previous request) */}
+      {/* Base Video Layer */}
       <div 
         id="bg-video-container" 
         className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-slate-950"
       >
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[177.77vh] min-w-full h-[56.25vw] min-h-full">
           <iframe
-            src="https://www.youtube-nocookie.com/embed/wBZGPQ-FQRI?autoplay=1&mute=1&loop=1&playlist=wBZGPQ-FQRI&controls=0&rel=0&playsinline=1&enablejsapi=1&showinfo=0&modestbranding=1&iv_load_policy=3&disablekb=1"
-            className="w-full h-full pointer-events-none opacity-60"
+            src="https://www.youtube-nocookie.com/embed/wBZGPQ-FQRI?autoplay=1&mute=1&loop=1&playlist=wBZGPQ-FQRI&controls=0&rel=0&playsinline=1&enablejsapi=1&showinfo=0&modestbranding=1&iv_load_policy=3&disablekb=1&origin=https://report-utt.web.app"
+            className="w-full h-full pointer-events-none opacity-100"
             allow="autoplay; encrypted-media"
             title="Professional Data Center Background"
           />
         </div>
-      </div>
-
-      {/* Premium Overlay Layers (Grid & LEDs) */}
-      <div className="fixed inset-0 z-[1] overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 opacity-30">
-          {/* Server Rack Perspective Grid */}
-          <div 
-            className="absolute inset-0"
-            style={{
-              backgroundImage: `
-                linear-gradient(to right, rgba(15, 23, 42, 0.9) 2px, transparent 2px),
-                linear-gradient(to bottom, rgba(15, 23, 42, 0.9) 2px, transparent 2px)
-              `,
-              backgroundSize: '40px 40px',
-              perspective: '1000px',
-              transform: 'rotateX(60deg) translateY(-200px) scale(2)',
-              transformOrigin: 'top center',
-            }}
-          />
-          
-          {/* Animated Server LEDs */}
-          <div className="absolute inset-0 grid grid-cols-12 gap-1 px-4 py-8">
-            {[...Array(144)].map((_, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0.1 }}
-                animate={{ 
-                  opacity: [0.1, 0.8, 0.1],
-                  backgroundColor: Math.random() > 0.8 ? '#3b82f6' : '#10b981'
-                }}
-                transition={{ 
-                  duration: 2 + Math.random() * 4,
-                  repeat: Infinity,
-                  delay: Math.random() * 5
-                }}
-                className="w-1 h-1 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]"
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Depth Fog / Gradients */}
-        <div className="absolute inset-0 bg-radial-gradient from-transparent via-slate-950/20 to-slate-950" />
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-transparent to-slate-950" />
+        {/* Subtle Edge Softening */}
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/20 via-transparent to-slate-950/40" />
       </div>
 
       <div className="absolute inset-0 z-10 opacity-20 pointer-events-none">
