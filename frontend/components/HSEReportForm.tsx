@@ -52,7 +52,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
     useEffect(() => {
         if (editingData && editingData.documentType === 'hse') {
             const fetchFullData = async () => {
-                const toastId = toast.loading('Loading report data...');
+                const toastId = toast.loading('Memuat data laporan...');
                 try {
                     const docSnap = await getDoc(doc(db, 'hse', editingData.id));
                     if (docSnap.exists()) {
@@ -122,31 +122,58 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         });
     };
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
 
-        files.forEach(async file => {
-            if (!file.type.startsWith('image/')) {
-                toast.error(`${file.name} bukan file gambar`);
-                return;
-            }
-            try {
-                const dataUrl = await compressImage(file);
-                setPhotos(prev => [...prev, { id: Date.now().toString() + Math.random(), dataUrl, description: '' }]);
-            } catch (err) {
-                console.error("Compression failed", err);
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const dataUrl = ev.target?.result as string;
-                    setPhotos(prev => [...prev, { id: Date.now().toString() + Math.random(), dataUrl, description: '' }]);
-                };
-                reader.readAsDataURL(file);
-            }
-        });
+        const toastId = toast.loading(`Memproses ${files.length} foto...`);
+        
+        try {
+            const results = await Promise.all(
+                files.map(async (file) => {
+                    if (!file.type.startsWith('image/')) {
+                        return null;
+                    }
+                    try {
+                        const dataUrl = await compressImage(file);
+                        return {
+                            id: `${Date.now()}-${Math.random()}`,
+                            dataUrl,
+                            description: ''
+                        };
+                    } catch (err) {
+                        console.error("Compression failed for", file.name, err);
+                        // Fallback to FileReader
+                        return new Promise<PhotoItem | null>((resolve) => {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                                resolve({
+                                    id: `${Date.now()}-${Math.random()}`,
+                                    dataUrl: ev.target?.result as string,
+                                    description: ''
+                                });
+                            };
+                            reader.onerror = () => resolve(null);
+                            reader.readAsDataURL(file);
+                        });
+                    }
+                })
+            );
 
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        toast.success(`${files.length} foto ditambahkan`);
+            const newPhotos = results.filter((p): p is PhotoItem => p !== null);
+
+            if (newPhotos.length > 0) {
+                setPhotos(prev => [...prev, ...newPhotos]);
+                toast.success(`${newPhotos.length} foto berhasil ditambahkan`, { id: toastId });
+            } else {
+                toast.error("Tidak ada foto valid yang berhasil diunggah", { id: toastId });
+            }
+        } catch (err) {
+            console.error("Bulk upload error:", err);
+            toast.error("Terjadi kesalahan saat mengunggah foto", { id: toastId });
+        } finally {
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
     };
 
 
@@ -306,16 +333,16 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                 await handleSave(true, mode);
             } catch (saveErr) {
                 console.warn('Save before PDF failed (non-blocking):', saveErr);
-                toast.warning('Data gagal disimpan ke server, tapi PDF tetap digenerate...');
+                toast.warning('Data gagal disimpan ke server, tapi PDF tetap dibuat...');
             }
 
             const formData = buildFormData();
             formData.reportType = mode;
             await generateHSEPdf(formData);
-            toast.success(`PDF ${mode.toUpperCase()} berhasil digenerate!`);
+            toast.success(`PDF ${mode.toUpperCase()} berhasil dibuat!`);
         } catch (err) {
             console.error('PDF Generation Error:', err);
-            toast.error(`Gagal generate PDF: ${(err as Error)?.message || 'Terjadi kesalahan'}`);
+            toast.error(`Gagal membuat PDF: ${(err as Error)?.message || 'Terjadi kesalahan'}`);
         } finally {
             setIsGeneratingPdf(false);
         }
@@ -330,7 +357,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                 {editingData && (
                     <div className="flex justify-end">
                         <button onClick={onClearEdit} className="px-4 py-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30 text-sm font-bold flex items-center gap-2">
-                            <Loader2 className="w-4 h-4" /> Clear Edit Mode
+                            <Loader2 className="w-4 h-4" /> Bersihkan Mode Edit
                         </button>
                     </div>
                 )}
@@ -621,7 +648,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                                 className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 hover:border-blue-500/50 rounded-xl transition font-medium text-sm"
                             >
                                 <Upload className="w-4 h-4" />
-                                Upload dari Device
+                                Unggah dari Perangkat
                             </motion.button>
                         </div>
 
@@ -698,7 +725,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                                 <Camera className="w-10 h-10 opacity-40" />
                                 <p className="text-sm text-center">
                                     Belum ada foto.<br />
-                                    Silakan upload dari device.
+                                    Silakan unggah dari perangkat.
                                 </p>
                             </motion.div>
                         )}
@@ -711,7 +738,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 mb-1">
                             <div className="h-[1px] flex-1 bg-slate-800"></div>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reports for UTT</span>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Laporan untuk UTT</span>
                             <div className="h-[1px] flex-1 bg-slate-800"></div>
                         </div>
                         <div className="flex flex-col sm:flex-row gap-3">
@@ -722,7 +749,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                                 disabled={isGeneratingPdf || isSaving}
                                 className="w-full flex items-center justify-center gap-2.5 py-4 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition shadow-lg shadow-green-900/20 text-sm disabled:opacity-50"
                             >
-                                <FileDown className="w-4 h-4" /> Export PDF (UTT)
+                                <FileDown className="w-4 h-4" /> Ekspor PDF (UTT)
                             </motion.button>
                         </div>
                     </div>
@@ -731,7 +758,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 mb-1">
                             <div className="h-[1px] flex-1 bg-slate-800"></div>
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reports for NeutraDC</span>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Laporan untuk NeutraDC</span>
                             <div className="h-[1px] flex-1 bg-slate-800"></div>
                         </div>
                         <div className="flex flex-col sm:flex-row gap-3">
@@ -742,7 +769,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                                 disabled={isGeneratingPdf || isSaving}
                                 className="w-full flex items-center justify-center gap-2.5 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition shadow-lg shadow-blue-900/20 text-sm disabled:opacity-50"
                             >
-                                <FileDown className="w-4 h-4" /> Export PDF (NeutraDC)
+                                <FileDown className="w-4 h-4" /> Ekspor PDF (NeutraDC)
                             </motion.button>
                         </div>
                     </div>
@@ -756,7 +783,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                         className="w-full flex items-center justify-center gap-2.5 py-3 bg-slate-900/40 hover:bg-slate-800 text-slate-400 border border-slate-800 rounded-xl font-medium transition text-xs disabled:opacity-50 mt-2"
                     >
                         {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                        {editingData ? 'Update Laporan ke Database' : 'Simpan Draft ke Database'}
+                        {editingData ? 'Perbarui Laporan ke Database' : 'Simpan Draft ke Database'}
                     </motion.button>
                 </div>
 

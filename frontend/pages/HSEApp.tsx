@@ -44,7 +44,7 @@ export function HSEApp() {
 
                         <div className="flex items-center gap-3">
                             <div className="hidden sm:block text-right">
-                                <p className="text-xs text-slate-500">Logged as</p>
+                                <p className="text-xs text-slate-500">Masuk sebagai</p>
                                 <p className="text-sm font-medium text-slate-300 truncate max-w-[200px]">
                                     {user?.email}
                                 </p>
@@ -56,7 +56,7 @@ export function HSEApp() {
                                 className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 rounded-lg border border-slate-700/50 transition text-sm"
                             >
                                 <LogOut className="w-4 h-4" />
-                                <span className="hidden sm:inline">Logout</span>
+                                <span className="hidden sm:inline">Keluar</span>
                             </motion.button>
                         </div>
                     </div>
@@ -72,10 +72,10 @@ export function HSEApp() {
                             </div>
                             <div>
                                 <h2 className="text-base sm:text-xl font-bold text-white">
-                                    HSE Inspection Report
+                                    Laporan Inspeksi HSE
                                 </h2>
                                 <p className="text-xs sm:text-sm text-slate-400">
-                                    Health, Safety & Environment — Maintenance Checklist
+                                    Kesehatan, Keselamatan & Lingkungan — Maintenance Checklist
                                 </p>
                             </div>
                         </div>
@@ -89,7 +89,7 @@ export function HSEApp() {
                                     }`}
                             >
                                 <FileText className="w-4 h-4" />
-                                Create
+                                Buat
                             </button>
                             <button
                                 onClick={() => setActiveTab('iso')}

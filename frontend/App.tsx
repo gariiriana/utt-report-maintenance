@@ -5,6 +5,7 @@ import { MainApp } from '@/pages/MainApp';
 import { HSEApp } from '@/pages/HSEApp';
 import { DivisionApp } from '@/pages/DivisionApp';
 import { SiteManagerDashboard } from '@/pages/SiteManagerDashboard';
+import { InventoryApp } from '@/pages/InventoryApp';
 import { ServerLoadingIndicator } from '@/components/ServerLoadingIndicator';
 import { HSEReportViewer } from '@/components/HSEReportViewer';
 import { useEffect } from 'react';
@@ -60,6 +61,9 @@ function AppContent() {
     }
     if (userRole === 'site_manager' || userRole === 'manager') {
       return <SiteManagerDashboard />;
+    }
+    if (userRole === 'inventory') {
+      return <InventoryApp />;
     }
     return <MainApp />;
   }

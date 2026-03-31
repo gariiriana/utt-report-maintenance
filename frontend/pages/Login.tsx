@@ -87,7 +87,7 @@ export function Login() {
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
-                  Email Address
+                  Alamat Email
                 </label>
                 <div className="relative group">
                   <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] sm:w-5 sm:h-5 text-slate-500 group-focus-within:text-indigo-400 transition" />
@@ -97,14 +97,14 @@ export function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-11 sm:pl-12 pr-4 py-3 sm:py-3.5 bg-slate-800/20 border border-slate-700/30 rounded-lg focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 outline-none transition text-white placeholder-slate-500 text-[15px] sm:text-base"
-                    placeholder="user@company.com"
+                    placeholder="user@perusahaan.com"
                   />
                 </div>
               </div>
 
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
-                  Password
+                  Kata Sandi
                 </label>
                 <div className="relative group">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] sm:w-5 sm:h-5 text-slate-500 group-focus-within:text-indigo-400 transition" />
@@ -114,7 +114,7 @@ export function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-11 sm:pl-12 pr-11 sm:pr-12 py-3 sm:py-3.5 bg-slate-800/20 border border-slate-700/30 rounded-lg focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 outline-none transition text-white placeholder-slate-500 text-[15px] sm:text-base"
-                    placeholder="Enter your password"
+                    placeholder="Masukkan kata sandi Anda"
                   />
                   <button
                     type="button"
@@ -140,12 +140,12 @@ export function Login() {
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Signing In...
+                    Sedang Masuk...
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
                     <LogIn className="w-[18px] h-[18px]" />
-                    Sign In
+                    Masuk
                   </span>
                 )}
               </motion.button>

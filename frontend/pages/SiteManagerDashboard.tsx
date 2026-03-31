@@ -195,7 +195,7 @@ export function SiteManagerDashboard() {
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
-          <p className="text-slate-400 animate-pulse">Memuat dashboard sitemanager...</p>
+          <p className="text-slate-400 animate-pulse">Memuat dashboard Manajer Situs...</p>
         </div>
       </div>
     );
@@ -211,7 +211,7 @@ export function SiteManagerDashboard() {
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-3">
               <LayoutDashboard className="w-6 h-6 md:w-8 md:h-8 text-indigo-500" />
-              Maintenance Progress Dashboard
+              Dashboard Progres Maintenance
             </h1>
             <div className="flex items-center gap-4 mt-2">
               <select
@@ -227,10 +227,10 @@ export function SiteManagerDashboard() {
                 onChange={(e) => setSelectedQuarter(e.target.value)}
                 className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg px-2 py-1 outline-none focus:border-indigo-500 transition-colors cursor-pointer"
               >
-                <option value="Q1">Quarter 1 (Jan-Mar)</option>
-                <option value="Q2">Quarter 2 (Apr-Jun)</option>
-                <option value="Q3">Quarter 3 (Jul-Sep)</option>
-                <option value="Q4">Quarter 4 (Oct-Dec)</option>
+                <option value="Q1">Kuartal 1 (Jan-Mar)</option>
+                <option value="Q2">Kuartal 2 (Apr-Jun)</option>
+                <option value="Q3">Kuartal 3 (Jul-Sep)</option>
+                <option value="Q4">Kuartal 4 (Okt-Des)</option>
               </select>
             </div>
           </div>
@@ -256,8 +256,8 @@ export function SiteManagerDashboard() {
               }`}
             >
               <ClipboardList className="w-4 h-4" />
-              <span className="hidden xs:inline">Update Progress</span>
-              <span className="xs:hidden">Update</span>
+              <span className="hidden xs:inline">Perbarui Progres</span>
+              <span className="xs:hidden">Perbarui</span>
             </button>
 
             <div className="hidden md:block w-px h-6 bg-slate-800 mx-1" />
@@ -269,7 +269,7 @@ export function SiteManagerDashboard() {
               title="Freeze data hari ini sebagai data kemarin"
             >
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <TrendingUp className="w-4 h-4 group-hover:scale-110 transition-transform" />}
-              End Day
+              Akhiri Hari
             </button>
 
             <button
@@ -278,7 +278,7 @@ export function SiteManagerDashboard() {
               title={`Logout dari ${user?.email}`}
             >
               <UserCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
-              <span className="hidden sm:inline">Profile</span>
+              <span className="hidden sm:inline">Profil</span>
             </button>
           </div>
         </div>
@@ -314,7 +314,7 @@ export function SiteManagerDashboard() {
                   <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl backdrop-blur-sm relative overflow-hidden group hover:border-indigo-500/50 transition-all">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 blur-[80px] -mr-8 -mt-8" />
                     <div className="flex items-center justify-between mb-4 relative z-10">
-                      <p className="text-slate-400 font-medium">Total Progress</p>
+                      <p className="text-slate-400 font-medium">Total Progres</p>
                       <div className="p-2 bg-indigo-500/10 rounded-lg">
                         <TrendingUp className="w-5 h-5 text-indigo-400" />
                       </div>
@@ -335,14 +335,14 @@ export function SiteManagerDashboard() {
 
                   <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl backdrop-blur-sm">
                     <div className="flex items-center justify-between mb-4">
-                      <p className="text-slate-400 font-medium">Daily Progress</p>
+                      <p className="text-slate-400 font-medium">Progres Harian</p>
                       <div className="p-2 bg-emerald-500/20 rounded-lg">
                         <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                       </div>
                     </div>
                     <div className="flex items-end gap-2">
                       <h2 className="text-4xl font-bold text-emerald-400">+{summary.daily_progress}%</h2>
-                      <p className="text-slate-500 mb-1">Growth today</p>
+                      <p className="text-slate-500 mb-1">Pertumbuhan hari ini</p>
                     </div>
                   </div>
                 </div>
@@ -352,7 +352,7 @@ export function SiteManagerDashboard() {
                   <div className="p-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
                       <FileText className="w-6 h-6 text-indigo-500" />
-                      Summary Per Kategori
+                      Ringkasan Per Kategori
                     </h3>
                     <div className="flex items-center gap-2">
                        <button
@@ -362,7 +362,7 @@ export function SiteManagerDashboard() {
                         className="flex items-center justify-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20 font-bold"
                       >
                         <Download className="w-4 h-4" />
-                        Export to PDF
+                        Ekspor ke PDF
                       </button>
                       <button onClick={() => toast.info('Data diperbarui secara real-time dari Firestore')} className="p-2 text-slate-400 hover:text-white transition-colors" title="Refresh Data">
                         <RefreshCw className="w-5 h-5" />
@@ -392,7 +392,7 @@ export function SiteManagerDashboard() {
                             </td>
                             <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-none">
                               <div className="flex justify-between items-center md:justify-center">
-                                <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Plan Qty</span>
+                                <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Qty Rencana</span>
                                 <span className="text-slate-400 font-mono">{cat.plan_qty}</span>
                               </div>
                             </td>

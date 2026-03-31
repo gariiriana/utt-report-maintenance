@@ -185,7 +185,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       console.error('Error fetching documents:', error);
 
       if (error?.code === 'failed-precondition' && error?.message?.includes('index')) {
-        toast.error('Database index diperlukan. Klik link di console browser untuk create index.', {
+        toast.error('Database index diperlukan. Klik link di console browser untuk buat index.', {
           duration: 8000,
         });
       } else {
@@ -414,16 +414,16 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       link.click();
       URL.revokeObjectURL(url);
 
-      toast.success('File downloaded successfully!', { id: 'download' });
+      toast.success('File berhasil diunduh!', { id: 'download' });
     } catch (error) {
       console.error('Download error:', error);
-      toast.error('Failed to download file', { id: 'download' });
+      toast.error('Gagal mengunduh file', { id: 'download' });
     }
   };
 
   const handleDownloadPDF = async (docData: ExcelDocument) => {
     try {
-      toast.loading('Generating PDF from database...', { id: 'download-pdf' });
+      toast.loading('Menghasilkan PDF dari database...', { id: 'download-pdf' });
       const formattedDate = new Date(docData.maintenanceTime).toLocaleDateString('id-ID', {
         day: '2-digit',
         month: '2-digit',
@@ -607,7 +607,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
   const handleDownloadHSE = async (docData: ExcelDocument) => {
     try {
-      toast.loading('Loading HSE report data...', { id: 'download-hse' });
+      toast.loading('Memuat data laporan HSE...', { id: 'download-hse' });
       const hseDoc = await getDoc(doc(db, 'hse', docData.id));
 
       if (!hseDoc.exists()) {
@@ -638,10 +638,10 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       };
 
       await generateHSEPdf(formData);
-      toast.success('HSE PDF downloaded!', { id: 'download-hse' });
+      toast.success('PDF HSE berhasil diunduh!', { id: 'download-hse' });
     } catch (error) {
       console.error('Download HSE error:', error);
-      toast.error('Failed to download HSE PDF', { id: 'download-hse' });
+      toast.error('Gagal mengunduh PDF HSE', { id: 'download-hse' });
     }
   };
   const filteredDocuments = documents.filter(doc => {

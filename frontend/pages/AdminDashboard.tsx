@@ -63,7 +63,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
     if (!onEdit) return;
 
     try {
-      toast.loading('Preparing data for editing...', { id: 'edit-prep' });
+      toast.loading('Menyiapkan data untuk pengeditan...', { id: 'edit-prep' });
 
       let photosData = doc.photosData || [];
       if (photosData.length === 0) {
@@ -90,7 +90,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
       toast.dismiss('edit-prep');
     } catch (err) {
       console.error('Failed to prepare data for edit:', err);
-      toast.error('Failed to prepare data for editing', { id: 'edit-prep' });
+      toast.error('Gagal menyiapkan data untuk pengeditan', { id: 'edit-prep' });
     }
   };
 
@@ -139,9 +139,9 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
 
       if (error?.message?.includes('BloomFilter')) {
         console.warn('BloomFilter error detected. This usually happens when user document is not yet created.');
-        toast.error('Please wait a moment and refresh the page.', { duration: 5000 });
+        toast.error('Tunggu sebentar dan muat ulang halaman.', { duration: 5000 });
       } else {
-        toast.error('Failed to load documents');
+        toast.error('Gagal memuat dokumen');
       }
 
       setLoading(false);
@@ -150,7 +150,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
 
   const handleRegenerate = async (doc: DocumentData) => {
     try {
-      toast.loading(`Regenerating ${doc.type.toUpperCase()}...`, { id: 'regen' });
+      toast.loading(`Memperbarui ${doc.type.toUpperCase()}...`, { id: 'regen' });
 
       let photosData = doc.photosData || [];
       if (photosData.length === 0) {
@@ -500,10 +500,10 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         URL.revokeObjectURL(url);
       }
 
-      toast.success(`${doc.type.toUpperCase()} regenerated successfully!`, { id: 'regen' });
+      toast.success(`${doc.type.toUpperCase()} berhasil diperbarui!`, { id: 'regen' });
     } catch (error) {
       console.error('Regenerate error:', error);
-      toast.error('Failed to regenerate document', { id: 'regen' });
+      toast.error('Gagal memperbarui dokumen', { id: 'regen' });
     }
   };
 
@@ -553,9 +553,9 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
             <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white">Admin Dashboard</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-white">Dashboard Admin</h1>
             <div className="flex items-center gap-2">
-              <p className="text-xs sm:text-sm text-purple-300">Manage all documents and monitor system activity</p>
+              <p className="text-xs sm:text-sm text-purple-300">Kelola semua dokumen dan pantau aktivitas sistem</p>
               {onlineUsers.length > 0 && (
                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30">
                   <span className="relative flex h-2 w-2">
@@ -592,12 +592,12 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         >
           <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
             <Database className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
-            <p className="text-[10px] sm:text-xs text-slate-400">Total Documents</p>
+            <p className="text-[10px] sm:text-xs text-slate-400">Total Dokumen</p>
           </div>
           <p className="text-xl sm:text-2xl font-bold text-white">{stats.totalDocuments}</p>
           <div className="flex items-center gap-1 mt-0.5 sm:mt-1">
             <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-400" />
-            <p className="text-[10px] sm:text-xs text-emerald-400">All time</p>
+            <p className="text-[10px] sm:text-xs text-emerald-400">Sepanjang waktu</p>
           </div>
         </motion.div>
 
@@ -609,10 +609,10 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         >
           <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
             <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
-            <p className="text-[10px] sm:text-xs text-slate-400">Excel Files</p>
+            <p className="text-[10px] sm:text-xs text-slate-400">File Excel</p>
           </div>
           <p className="text-xl sm:text-2xl font-bold text-white">{stats.totalExcel}</p>
-          <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1">Documents</p>
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1">Dokumen</p>
         </motion.div>
 
         <motion.div
@@ -623,10 +623,10 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         >
           <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
             <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" />
-            <p className="text-[10px] sm:text-xs text-slate-400">PDF Files</p>
+            <p className="text-[10px] sm:text-xs text-slate-400">File PDF</p>
           </div>
           <p className="text-xl sm:text-2xl font-bold text-white">{stats.totalPDF}</p>
-          <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1">Documents</p>
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1">Dokumen</p>
         </motion.div>
 
         <motion.div
@@ -637,10 +637,10 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         >
           <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
             <User className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-            <p className="text-[10px] sm:text-xs text-slate-400">Active Users</p>
+            <p className="text-[10px] sm:text-xs text-slate-400">Pengguna Aktif</p>
           </div>
           <p className="text-xl sm:text-2xl font-bold text-white">{stats.totalUsers}</p>
-          <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1">Contributors</p>
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1">Kontributor</p>
         </motion.div>
       </div>
 
@@ -652,7 +652,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search documents..."
+              placeholder="Cari dokumen..."
               className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white placeholder-slate-500 text-sm"
             />
           </div>
@@ -664,9 +664,9 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
               onChange={(e) => setFilterType(e.target.value as 'all' | 'excel' | 'pdf')}
               className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white appearance-none cursor-pointer text-sm"
             >
-              <option value="all">All Documents</option>
-              <option value="excel">Excel Only</option>
-              <option value="pdf">PDF Only</option>
+              <option value="all">Semua Dokumen</option>
+              <option value="excel">Excel Saja</option>
+              <option value="pdf">PDF Saja</option>
             </select>
           </div>
 
@@ -684,11 +684,11 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
               }}
               className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 outline-none transition text-white appearance-none cursor-pointer text-sm"
             >
-              <option value="all">All Time</option>
-              <option value="today">Today</option>
-              <option value="week">Last 7 Days</option>
-              <option value="month">Last 30 Days</option>
-              <option value="custom">Custom Range</option>
+              <option value="all">Semua Waktu</option>
+              <option value="today">Hari Ini</option>
+              <option value="week">7 Hari Terakhir</option>
+              <option value="month">30 Hari Terakhir</option>
+              <option value="custom">Rentang Kustom</option>
             </select>
           </div>
         </div>
@@ -701,7 +701,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 outline-none transition text-white text-sm"
-                placeholder="Start Date"
+                placeholder="Tanggal Mulai"
               />
             </div>
             <div className="relative">
@@ -710,7 +710,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 outline-none transition text-white text-sm"
-                placeholder="End Date"
+                placeholder="Tanggal Selesai"
               />
             </div>
           </div>
@@ -756,15 +756,15 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
 
                   <div className="grid grid-cols-2 gap-2 text-xs mb-3">
                     <div>
-                      <p className="text-slate-500">Created By</p>
+                      <p className="text-slate-500">Dibuat Oleh</p>
                       <p className="text-slate-300 truncate">{doc.createdBy}</p>
                     </div>
                     <div>
-                      <p className="text-slate-500">Date</p>
+                      <p className="text-slate-500">Tanggal</p>
                       <p className="text-slate-300">{doc.createdAt.toDate().toLocaleDateString('id-ID')}</p>
                     </div>
                     <div>
-                      <p className="text-slate-500">Photos</p>
+                      <p className="text-slate-500">Foto</p>
                       <p className="text-slate-300">{doc.photosWithImage}/{doc.totalPhotos}</p>
                     </div>
                     <div>

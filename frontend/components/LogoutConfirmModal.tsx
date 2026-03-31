@@ -66,7 +66,7 @@ export function LogoutConfirmModal({ isOpen, onClose, onConfirm, userEmail }: Lo
                   {userEmail}
                 </p>
                 <p className="text-orange-400 text-xs sm:text-sm mt-3">
-                  💡 Anda harus login kembali untuk mengakses aplikasi
+                  💡 Anda harus masuk kembali untuk mengakses aplikasi
                 </p>
               </div>
 
@@ -77,7 +77,7 @@ export function LogoutConfirmModal({ isOpen, onClose, onConfirm, userEmail }: Lo
                   onClick={onClose}
                   className="px-6 py-3 bg-slate-800/50 hover:bg-slate-700/50 text-white rounded-lg font-semibold transition border border-slate-600/50"
                 >
-                  Cancel
+                  Batal
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
@@ -88,7 +88,7 @@ export function LogoutConfirmModal({ isOpen, onClose, onConfirm, userEmail }: Lo
                   }}
                   className="px-6 py-3 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white rounded-lg font-semibold transition shadow-lg shadow-orange-500/20"
                 >
-                  Logout
+                  Keluar
                 </motion.button>
               </div>
 

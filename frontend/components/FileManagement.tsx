@@ -179,7 +179,7 @@ export function FileManagement({
             },
             (error) => {
                 console.error('Error loading files:', error);
-                toast.error('Failed to load files');
+                toast.error('Gagal memuat file');
                 setLoading(false);
             }
         );
@@ -207,11 +207,11 @@ export function FileManagement({
 
             newFiles.forEach(file => {
                 if (file.size > MAX_FILE_SIZE) {
-                    toast.error(`File "${file.name}" too large (Max 10MB)`);
+                    toast.error(`File "${file.name}" terlalu besar (Maks 10MB)`);
                     return;
                 }
                 if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-                    toast.error(`File type "${file.name}" not supported`);
+                    toast.error(`Tipe file "${file.name}" tidak didukung`);
                     return;
                 }
                 validFiles.push(file);
@@ -233,7 +233,7 @@ export function FileManagement({
             simpleMode ? 'Dokumen' : (selectedCategory === 'Custom' ? customCategory : selectedCategory);
 
         if (!finalCategory.trim()) {
-            toast.error('Please enter a category name');
+            toast.error('Harap masukkan nama kategori');
             return;
         }
 
@@ -298,10 +298,10 @@ export function FileManagement({
             setDescription('');
             setUploading(false);
 
-            toast.success(`${selectedFiles.length} file(s) uploaded successfully!`);
+            toast.success(`${selectedFiles.length} file berhasil diunggah!`);
         } catch (error) {
             console.error('Error uploading file:', error);
-            toast.error('Failed to upload some files');
+            toast.error('Gagal mengunggah beberapa file');
             setUploading(false);
         }
     };
@@ -331,12 +331,12 @@ export function FileManagement({
 
             await batch.commit();
 
-            toast.success('File deleted successfully!');
+            toast.success('File berhasil dihapus!');
             setDeleteModalOpen(false);
             setFileToDelete(null);
         } catch (error) {
             console.error('Error deleting file:', error);
-            toast.error('Failed to delete file');
+            toast.error('Gagal menghapus file');
         } finally {
             setIsBulkDeleting(false);
         }
@@ -363,13 +363,13 @@ export function FileManagement({
                 await batch.commit();
             }
 
-            toast.success(`Action completed successfully!`, { id: toastId });
+            toast.success(`Tindakan berhasil diselesaikan!`, { id: toastId });
             setSelectedFileIds([]);
             setFileToDelete(null);
             setDeleteModalOpen(false);
         } catch (error) {
             console.error('Error in bulk delete:', error);
-            toast.error('Failed to complete some operations', { id: toastId });
+            toast.error('Gagal menyelesaikan beberapa operasi', { id: toastId });
         } finally {
             setIsBulkDeleting(false);
         }
@@ -378,12 +378,12 @@ export function FileManagement({
 
     const handleDownload = async (file: FileData) => {
         try {
-            const toastId = toast.loading('Preparing download...');
+            const toastId = toast.loading('Menyiapkan unduhan...');
 
             const chunksSnapshot = await getDocs(query(collection(db, collectionName, file.id, 'chunks'), orderBy('index')));
 
             if (chunksSnapshot.empty) {
-                toast.error('File data not found', { id: toastId });
+                toast.error('Data file tidak ditemukan', { id: toastId });
                 return;
             }
 
@@ -410,10 +410,10 @@ export function FileManagement({
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
 
-            toast.success('File downloaded!', { id: toastId });
+            toast.success('File berhasil diunduh!', { id: toastId });
         } catch (error) {
             console.error('Error downloading file:', error);
-            toast.error('Failed to download file');
+            toast.error('Gagal mengunduh file');
         }
     };
 
@@ -455,10 +455,10 @@ export function FileManagement({
             {divisionName && (
                 <div className="mb-8">
                     <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
-                        Division: {divisionName}
+                        Divisi: {divisionName}
                     </h1>
                     <p className="text-slate-400">
-                        Manage and access ISO documentation for {divisionName} division.
+                        Kelola dan akses dokumentasi ISO untuk divisi {divisionName}.
                     </p>
                 </div>
             )}
@@ -471,7 +471,7 @@ export function FileManagement({
                 >
                     <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
                         <Upload className="w-5 h-5 text-blue-400" />
-                        Upload File
+                        Unggah File
                     </h2>
 
                     <div className="space-y-4">
@@ -485,8 +485,8 @@ export function FileManagement({
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                             />
                             <Upload className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-                            <p className="text-sm text-slate-300 font-medium">Click or drag files to upload</p>
-                            <p className="text-xs text-slate-500 mt-1">PDF, Excel, Word - Max 10MB per file</p>
+                            <p className="text-sm text-slate-300 font-medium">Klik atau seret file untuk mengunggah</p>
+                            <p className="text-xs text-slate-500 mt-1">PDF, Excel, Word - Maks 10MB per file</p>
                         </div>
 
                         {selectedFiles.length > 0 && (
@@ -513,7 +513,7 @@ export function FileManagement({
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-slate-300 mb-2">
-                                        Category
+                                        Kategori
                                     </label>
                                     <select
                                         value={selectedCategory}
@@ -550,7 +550,7 @@ export function FileManagement({
                                 {['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedCategory) && (
                                     <div className="md:col-span-1">
                                         <label className="block text-sm font-medium text-slate-300 mb-2">
-                                            Maintenance Type
+                                            Tipe Maintenance
                                         </label>
                                         <select
                                             value={selectedMaintenance}
@@ -567,7 +567,7 @@ export function FileManagement({
 
                                 <div>
                                     <label className="block text-sm font-medium text-slate-300 mb-2">
-                                        Year
+                                        Tahun
                                     </label>
                                     <select
                                         value={selectedUploadYear}
@@ -588,14 +588,14 @@ export function FileManagement({
                         {!simpleMode && selectedCategory === 'Custom' && (
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                                    Custom Category Name
+                                    Nama Kategori Kustom
                                 </label>
                                 <input
                                     type="text"
                                     value={customCategory}
                                     onChange={(e) => setCustomCategory(e.target.value)}
                                     disabled={uploading}
-                                    placeholder="Enter category name..."
+                                    placeholder="Masukkan nama kategori..."
                                     className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                 />
                             </div>
@@ -609,7 +609,7 @@ export function FileManagement({
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 disabled={uploading}
-                                placeholder="Add a description..."
+                                placeholder="Tambah deskripsi..."
                                 rows={3}
                                 className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                             />
@@ -618,7 +618,7 @@ export function FileManagement({
                         {uploading && (
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between text-sm text-slate-400">
-                                    <span>Uploading... (Encrypting & Sharding)</span>
+                                    <span>Mengunggah... (Mengenkripsi & Membagi)</span>
                                     <span>{uploadProgress.toFixed(0)}%</span>
                                 </div>
                                 <div className="w-full bg-slate-700 rounded-full h-2">
@@ -641,12 +641,12 @@ export function FileManagement({
                                 {uploading ? (
                                     <>
                                         <Loader2 className="w-5 h-5 animate-spin" />
-                                        Processing...
+                                        Memproses...
                                     </>
                                 ) : (
                                     <>
                                         <Upload className="w-5 h-5" />
-                                        Upload File
+                                        Unggah File
                                     </>
                                 )}
                             </motion.button>
@@ -670,7 +670,7 @@ export function FileManagement({
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search files..."
+                                placeholder="Cari file..."
                                 className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm sm:text-base placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
                             />
                         </div>
@@ -725,7 +725,7 @@ export function FileManagement({
                         {searchQuery ? (
                             <>
                                 <Search className="w-5 h-5 text-blue-400 flex-shrink-0" />
-                                <span className="truncate">Search Results ({filteredFiles.length})</span>
+                                <span className="truncate">Hasil Pencarian ({filteredFiles.length})</span>
                             </>
                         ) : selectedMType ? (
                             <>
@@ -745,7 +745,7 @@ export function FileManagement({
                         ) : (
                             <>
                                 <FolderOpen className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-                                <span>Categories ({[...new Set(files.map(f => f.category))].length})</span>
+                                <span>Kategori ({[...new Set(files.map(f => f.category))].length})</span>
                             </>
                         )}
                     </h2>
@@ -761,7 +761,7 @@ export function FileManagement({
                                 className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1.5 transition-colors whitespace-nowrap"
                             >
                                 <X className="w-4 h-4" />
-                                Back to {selectedMType ? 'Maintenance Types' : selectedQuarter ? 'Quarters' : 'Folders'}
+                                Kembali ke {selectedMType ? 'Tipe Maintenance' : selectedQuarter ? 'Kuartal' : 'Folder'}
                             </button>
                         </div>
                     )}

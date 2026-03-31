@@ -87,7 +87,7 @@ export function DivisionApp() {
                                 className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 rounded-lg border border-slate-700/50 transition text-sm"
                             >
                                 <LogOut className="w-4 h-4" />
-                                <span className="hidden sm:inline">Logout</span>
+                                <span className="hidden sm:inline">Keluar</span>
                             </motion.button>
                         </div>
                     </div>
@@ -100,15 +100,15 @@ export function DivisionApp() {
                     <div className="space-y-8">
                         <div>
                         <div>
-                            <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">Executive Registry</h2>
-                            <p className="text-slate-400 text-lg">Select a department to access their ISO records directly.</p>
+                            <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">Registri Eksekutif</h2>
+                            <p className="text-slate-400 text-lg">Pilih departemen untuk mengakses arsip ISO secara langsung.</p>
                         </div>
 
                         <div className="flex flex-col lg:flex-row gap-8 min-h-[600px]">
                             {/* Sidebar Navigation - Registry Table Look */}
                             <div className="w-full lg:w-80 flex flex-col shrink-0 bg-slate-900/40 backdrop-blur-md rounded-3xl border border-slate-800/60 overflow-hidden shadow-2xl">
                                 <div className="px-6 py-5 border-b border-slate-800/80 bg-slate-800/20">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Department Registry</p>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">Registri Departemen</p>
                                 </div>
                                 <div className="flex flex-col">
                                     {DIVISIONS.map((div, index) => {
@@ -147,7 +147,7 @@ export function DivisionApp() {
                                                     <p className={`text-sm font-bold transition-colors ${IsActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>
                                                         {div.name}
                                                     </p>
-                                                    <p className="text-[9px] uppercase tracking-widest text-slate-600 font-bold group-hover:text-slate-500 transition-colors">ISO Control</p>
+                                                    <p className="text-[9px] uppercase tracking-widest text-slate-600 font-bold group-hover:text-slate-500 transition-colors">Kontrol ISO</p>
                                                 </div>
                                                 
                                                 <ChevronRight size={14} className={`transition-all duration-300 ${IsActive ? 'text-blue-400 translate-x-1' : 'text-slate-700 opacity-0 group-hover:opacity-100 group-hover:translate-x-0'}`} />
@@ -165,9 +165,9 @@ export function DivisionApp() {
                                     <ShieldCheck size={36} className="text-slate-500 animate-pulse" />
                                 </div>
                                 <div className="relative z-10 max-w-xs">
-                                    <h3 className="text-2xl font-bold text-slate-300 mb-3 italic tracking-tight">System Ready</h3>
+                                    <h3 className="text-2xl font-bold text-slate-300 mb-3 italic tracking-tight">Sistem Siap</h3>
                                     <p className="text-slate-500 text-sm leading-relaxed px-4">
-                                        Select a department from the registry table on the left to gain instantaneous access to their secure ISO documentation vault.
+                                        Pilih departemen dari tabel registri di sebelah kiri untuk mendapatkan akses instan ke penyimpanan dokumen ISO yang aman.
                                     </p>
                                 </div>
                                 
@@ -188,7 +188,7 @@ export function DivisionApp() {
                                 className="px-4 py-2 text-sm text-slate-400 hover:text-white flex items-center gap-2 transition-colors mb-4"
                             >
                                 <ChevronRight className="w-4 h-4 rotate-180" />
-                                Back to Hub
+                                Kembali ke Beranda
                             </button>
                         )}
                         

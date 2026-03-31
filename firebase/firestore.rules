@@ -348,6 +348,28 @@ service cloud.firestore {
     }
 
     // ============================================================
+    // INVENTORY BORROWINGS COLLECTION
+    // ============================================================
+    match /inventory_borrowings/{docId} {
+      // ✅ Pengajuan baru oleh Standby Engineer atau Admin
+      allow create: if request.auth != null 
+                    && (isStandbyEngineer() || isAdminSafe())
+                    && hasAcceptableFieldCount(request.resource.data, 15)
+                    && request.resource.data.engineerEmail == request.auth.token.email;
+      
+      // ✅ User yang login bisa baca status (transparansi pimpinan & tim)
+      allow read: if request.auth != null;
+      
+      // ✅ Engineer bisa update (untuk proses pengembalian), Admin akses penuh
+      allow update: if request.auth != null 
+                    && (isAdminSafe() || (isStandbyEngineer() && resource.data.engineerEmail == request.auth.token.email))
+                    && hasAcceptableFieldCount(request.resource.data, 20);
+      
+      // ✅ Hanya Admin yang bisa hapus riwayat
+      allow delete: if request.auth != null && isAdminSafe();
+    }
+
+    // ============================================================
     // DEFAULT — Block semua akses ke collection lain
     // ============================================================
     match /{document=**} {

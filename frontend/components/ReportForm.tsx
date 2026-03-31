@@ -13,10 +13,10 @@ import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
 
-import { 
-  REPORT_TEMPLATES, 
-  VRV_TEMPLATE, 
-  LV_ATS_TRAFO_TEMPLATE 
+import {
+  REPORT_TEMPLATES,
+  VRV_TEMPLATE,
+  LV_ATS_TRAFO_TEMPLATE
 } from '@/config/templates';
 import { generateReportPDF, loadLogoBase64 } from '@/utils/ReportPdfExport';
 import { compressImage, compressBase64Image } from '@/utils/imageCompression';
@@ -72,7 +72,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
   useEffect(() => {
     if (!user?.email || editingData) return;
-    
+
     // Check for draft in localStorage
     const savedDraft = localStorage.getItem('report_form_draft');
     if (savedDraft) {
@@ -81,8 +81,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         // Only restore if the draft belongs to the current user
         if (draft.userEmail === user.email) {
           // Force reload template for coolingtower if draft is old (default 9 cards)
-          if ((user.email === 'coolingtower@gmail.com' && (!draft.cards || draft.cards.length === 9) && !draft.maintenanceName) || 
-              (user.email === 'acsplit@gmail.com' && (!draft.cards || draft.cards.length === 9) && !draft.maintenanceName)) {
+          if ((user.email === 'coolingtower@gmail.com' && (!draft.cards || draft.cards.length === 9) && !draft.maintenanceName) ||
+            (user.email === 'acsplit@gmail.com' && (!draft.cards || draft.cards.length === 9) && !draft.maintenanceName)) {
             console.log('Detected old 9-card draft, skipping to load new 12-item template...');
           } else {
             setMaintenanceName(draft.maintenanceName || '');
@@ -138,7 +138,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
     const isOutdoor = specificDetail.toLowerCase() === 'outdoor';
     const template = isOutdoor ? VRV_TEMPLATE.outdoor : VRV_TEMPLATE.indoor;
-    
+
     if (template) {
       setCards(template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     }
@@ -148,7 +148,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     if (editingData) {
       setMaintenanceName(editingData.maintenanceName);
       setMaintenanceTime(editingData.maintenanceTime);
-      
+
       if (user?.email === 'vrv@gmail.com' && editingData.specificDetail?.includes(' - ')) {
         const [type, ...rest] = editingData.specificDetail.split(' - ');
         setSpecificDetail(type.toLowerCase());
@@ -187,7 +187,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         })),
         timestamp: new Date().getTime()
       };
-      
+
       try {
         localStorage.setItem('report_form_draft', JSON.stringify(draft));
       } catch (err) {
@@ -325,7 +325,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const saveReportToFirestore = async (pdfData?: { doc: jsPDF, fileName: string, filled: PhotoCard[] }) => {
     if (!maintenanceName || !maintenanceTime) return toast.error('Isi nama & waktu'), null;
 
-    const finalSpecificDetail = (user?.email === 'vrv@gmail.com' && vrvUnitDetail) 
+    const finalSpecificDetail = (user?.email === 'vrv@gmail.com' && vrvUnitDetail)
       ? `${specificDetail.toUpperCase()} - ${vrvUnitDetail.toUpperCase()}`
       : specificDetail;
 
@@ -406,12 +406,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       }
 
       toast.success(editingData ? 'Laporan diperbarui' : 'Laporan disimpan', { id: toastId });
-      
+
       // Clear draft after successful save
       if (!editingData) {
         localStorage.removeItem('report_form_draft');
       }
-      
+
       return docId;
     } catch (error) {
       console.error('Firestore save error:', error);
@@ -423,7 +423,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const handlePreviewPDF = () => {
     if (!maintenanceName || !maintenanceTime) return toast.error('Isi nama & waktu');
     if (!cards.some(c => c.photoBase64 || c.description)) return toast.error('Minimal 1 card filled');
-    
+
     setShowPreview(true);
   };
 
@@ -450,7 +450,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div className="flex gap-4">
                 <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-700/50 min-w-[120px]">
-                  <p className="text-xs text-slate-500 uppercase font-bold">Photos</p>
+                  <p className="text-xs text-slate-500 uppercase font-bold">Foto</p>
                   <p className="text-xl font-bold text-white">{uploadedCount} / {cards.length}</p>
                 </div>
                 <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-700/50 min-w-[120px]">
@@ -468,18 +468,18 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 mb-6 font-geist">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Maintenance Name</label>
-                  <input 
-                    type="text" 
-                    value={maintenanceName} 
-                    onChange={e => setMaintenanceName(e.target.value)} 
-                    disabled={user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com'} 
-                    className={`w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 ${(user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com') ? 'opacity-60 cursor-not-allowed' : ''}`} 
-                    placeholder="e.g. FCU Maintenance" 
+                  <label className="block text-sm font-medium text-slate-400 mb-2">Nama Maintenance</label>
+                  <input
+                    type="text"
+                    value={maintenanceName}
+                    onChange={e => setMaintenanceName(e.target.value)}
+                    disabled={user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com'}
+                    className={`w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 ${(user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com') ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    placeholder="cth. Maintenance FCU"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Unit/Room (Optional)</label>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">Unit/Ruangan (Opsional)</label>
                   {user?.email === 'vrv@gmail.com' ? (
                     <div className="flex flex-col sm:flex-row gap-3">
                       <div className="relative group/select flex-1">
@@ -488,7 +488,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                           onChange={e => setSpecificDetail(e.target.value)}
                           className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer pr-10 transition-all hover:border-slate-500"
                         >
-                          <option value="">Select Unit Type</option>
+                          <option value="">Pilih Tipe Unit</option>
                           <option value="outdoor">Outdoor</option>
                           <option value="indoor">Indoor</option>
                         </select>
@@ -497,25 +497,25 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                         </div>
                       </div>
                       <div className="flex-[1.5]">
-                        <input 
-                          type="text" 
-                          value={vrvUnitDetail} 
-                          onChange={e => setVrvUnitDetail(e.target.value)} 
-                          className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500" 
-                          placeholder="e.g. Lantai 2 / Ruang Panel" 
+                        <input
+                          type="text"
+                          value={vrvUnitDetail}
+                          onChange={e => setVrvUnitDetail(e.target.value)}
+                          className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="cth. Lantai 2 / Ruang Panel"
                         />
                       </div>
                     </div>
                   ) : (
-                    <input type="text" value={specificDetail} onChange={e => setSpecificDetail(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Unit 102" />
+                    <input type="text" value={specificDetail} onChange={e => setSpecificDetail(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="cth. Unit 102" />
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Maintenance Time</label>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">Waktu Maintenance</label>
                   <input type="date" value={maintenanceTime} onChange={e => setMaintenanceTime(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Site / Project</label>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">Situs / Proyek</label>
                   <div className="relative group/select">
                     <select
                       value={companyType}
@@ -535,11 +535,11 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
               <button onClick={() => document.getElementById('bulk')?.click()} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20">
-                <Upload className="w-5 h-5" /> Upload Banyak Foto Sekaligus
+                <Upload className="w-5 h-5" /> Unggah Banyak Foto Sekaligus
               </button>
               <input id="bulk" type="file" multiple accept="image/*" className="hidden" onChange={handleBulkPhotoUpload} />
               <button onClick={() => setAddCardModalOpen(true)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20">
-                <Plus className="w-5 h-5" /> Add Manual Card
+                <Plus className="w-5 h-5" /> Tambah Kartu Manual
               </button>
             </div>
 
@@ -562,25 +562,25 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     ) : (
                       <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-slate-800/80 transition group/upload">
                         <Camera className="w-8 h-8 text-slate-700 group-hover/upload:text-blue-500 transition-colors" />
-                        <span className="text-[10px] text-slate-600 font-bold uppercase mt-2 group-hover/upload:text-slate-400">Upload Photo</span>
+                        <span className="text-[10px] text-slate-600 font-bold uppercase mt-2 group-hover/upload:text-slate-400">Unggah Foto</span>
                         <input type="file" className="hidden" accept="image/*" onChange={e => handlePhotoChange(card.id, e.target.files?.[0] || null)} />
                       </label>
                     )}
                   </div>
-                  <textarea value={card.description} onChange={e => handleDescriptionChange(card.id, e.target.value)} className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg p-3 text-sm text-white outline-none focus:ring-1 focus:ring-blue-500 transition placeholder:text-slate-700" rows={2} placeholder="Enter documentation description..." />
+                  <textarea value={card.description} onChange={e => handleDescriptionChange(card.id, e.target.value)} className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg p-3 text-sm text-white outline-none focus:ring-1 focus:ring-blue-500 transition placeholder:text-slate-700" rows={2} placeholder="Masukkan deskripsi dokumentasi..." />
                 </div>
               ))}
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 mt-12 justify-center">
               <button onClick={handlePreviewPDF} className="px-8 py-4 bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center gap-3 border border-slate-700 hover:bg-slate-700 transition shadow-xl border-b-4 border-slate-950 active:border-b-0 active:translate-y-1">
-                <Eye className="w-6 h-6" /> PREVIEW
+                <Eye className="w-6 h-6" /> PRATINJAU
               </button>
               <button onClick={handleManualSave} className="px-8 py-4 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition border-b-4 border-blue-800 active:border-b-0 active:translate-y-1">
-                <Save className="w-6 h-6" /> {editingData ? 'UPDATE CHANGES' : 'SAVE TO ARCHIVE'}
+                <Save className="w-6 h-6" /> {editingData ? 'PERBARUI PERUBAHAN' : 'SIMPAN KE ARSIP'}
               </button>
               <button onClick={handleExportPDF} className="px-8 py-4 bg-red-600 text-white rounded-xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-red-600/20 hover:bg-red-700 transition border-b-4 border-red-800 active:border-b-0 active:translate-y-1">
-                <FileType className="w-6 h-6" /> EXPORT TO PDF
+                <FileType className="w-6 h-6" /> EKSPOR KE PDF
               </button>
             </div>
           </motion.div>
@@ -589,7 +589,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             key="preview"
             maintenanceName={maintenanceName}
             maintenanceTime={maintenanceTime}
-            specificDetail={(user?.email === 'vrv@gmail.com' && vrvUnitDetail) 
+            specificDetail={(user?.email === 'vrv@gmail.com' && vrvUnitDetail)
               ? `${specificDetail.toUpperCase()} - ${vrvUnitDetail.toUpperCase()}`
               : specificDetail}
             cards={cards}
