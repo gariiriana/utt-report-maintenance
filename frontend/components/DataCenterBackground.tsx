@@ -11,7 +11,7 @@ export function DataCenterBackground() {
       >
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[177.77vh] min-w-full h-[56.25vw] min-h-full">
           <iframe
-            src="https://www.youtube-nocookie.com/embed/wBZGPQ-FQRI?autoplay=1&mute=1&loop=1&playlist=wBZGPQ-FQRI&controls=0&rel=0&playsinline=1&enablejsapi=1&showinfo=0&modestbranding=1&iv_load_policy=3&disablekb=1&origin=https://report-utt.web.app"
+            src="https://www.youtube.com/embed/wBZGPQ-FQRI?autoplay=1&mute=1&loop=1&playlist=wBZGPQ-FQRI&controls=0&rel=0&playsinline=1&modestbranding=1&iv_load_policy=3"
             className="w-full h-full pointer-events-none opacity-100"
             allow="autoplay; encrypted-media"
             title="Professional Data Center Background"
