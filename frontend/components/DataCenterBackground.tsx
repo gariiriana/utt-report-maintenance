@@ -7,14 +7,16 @@ export function DataCenterBackground() {
       {/* Base Video Layer */}
       <div 
         id="bg-video-container" 
-        className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-transparent"
+        className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-slate-950"
       >
-        <iframe
-          src="https://www.youtube.com/embed/wBZGPQ-FQRI?autoplay=1&mute=1&loop=1&playlist=wBZGPQ-FQRI&controls=0&rel=0&playsinline=1"
-          className="absolute inset-0 w-full h-full border-0 pointer-events-none opacity-100"
-          allow="autoplay; encrypted-media"
-          title="Professional Data Center Background"
-        />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[177.77vh] min-w-full h-[56.25vw] min-h-full">
+          <iframe
+            src="https://www.youtube.com/embed/wBZGPQ-FQRI?autoplay=1&mute=1&loop=1&playlist=wBZGPQ-FQRI&controls=0&rel=0&playsinline=1"
+            className="w-full h-full pointer-events-none opacity-100"
+            allow="autoplay; encrypted-media"
+            title="Professional Data Center Background"
+          />
+        </div>
         {/* Subtle Edge Softening */}
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950/20 via-transparent to-slate-950/40" />
       </div>
