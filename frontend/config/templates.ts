@@ -46,9 +46,9 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Measurement Ampere DPM', 'Measurement Daya DPM'
   ],
   'acsplit@gmail.com': [
-    'Condition unit', 'Cleaning evaporator', 'Vacum draine AC', 'Cleaning Filter',
-    'Measurement Voltage', 'Measurement ampere', 'Cleaning fan outdoor', 'Cleaning Filter',
-    'Measurement pressure freon'
+    'Cleaning filter', 'Cleaning Evaporator', 'Cleaning cover', 'Vaccum drain',
+    'Cek humidity', 'Cek temperatur', 'Cek air flow', 'Remote',
+    'Nameplate', 'Cek Voltage', 'Cek Ampere', 'Tightening'
   ],
   'busduct@gmail.com': [
     'Visual inspect busduct', 'Cleaning busduct', 'Cleaning busduct',

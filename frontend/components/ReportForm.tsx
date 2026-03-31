@@ -81,8 +81,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         // Only restore if the draft belongs to the current user
         if (draft.userEmail === user.email) {
           // Force reload template for coolingtower if draft is old (default 9 cards)
-          if (user.email === 'coolingtower@gmail.com' && (!draft.cards || draft.cards.length === 9) && !draft.maintenanceName) {
-            console.log('Detected old 9-card draft for coolingtower, skipping to load new 12-item template...');
+          if ((user.email === 'coolingtower@gmail.com' && (!draft.cards || draft.cards.length === 9) && !draft.maintenanceName) || 
+              (user.email === 'acsplit@gmail.com' && (!draft.cards || draft.cards.length === 9) && !draft.maintenanceName)) {
+            console.log('Detected old 9-card draft, skipping to load new 12-item template...');
           } else {
             setMaintenanceName(draft.maintenanceName || '');
             setMaintenanceTime(draft.maintenanceTime || '');
@@ -123,6 +124,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       if (lowerEmail === 'busduct@gmail.com') setMaintenanceName('Busduct');
       if (lowerEmail === 'lightingsystem@gmail.com') setMaintenanceName('Lighting System');
       if (lowerEmail === 'coolingtower@gmail.com') setMaintenanceName('Cooling Tower');
+      if (lowerEmail === 'acsplit@gmail.com') setMaintenanceName('AC Split');
     }
 
     if (template) {

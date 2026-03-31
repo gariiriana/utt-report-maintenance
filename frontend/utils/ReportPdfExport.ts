@@ -106,14 +106,15 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
   const isLDBRDB = userEmail === 'ldb/rdb@gmail.com';
   const isVRV = userEmail === 'vrv@gmail.com';
   const isLightingSystem = userEmail?.toLowerCase() === 'lightingsystem@gmail.com';
-  const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV || isATS || isLightingSystem;
+  const isACSplit = userEmail === 'acsplit@gmail.com';
+  const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV || isATS || isLightingSystem || isACSplit;
   const isLVlike = isLV || isLDBRDB || isLightingSystem;
 
-  const cols = (isVRV || isATS) ? 3 : isSmallGrid ? 4 : 3;
-  const perPage = isATS ? 12 : isPDU ? 20 : isLVlike ? 12 : isVRV ? 15 : 9;
-  const photoH = isATS ? 45 : isVRV ? 40 : isSmallGrid ? 38 : 55;
-  const capH = isATS ? 10 : isVRV ? 8 : isSmallGrid ? 10 : 12;
-  const rowGap = (isVRV || isATS) ? 3 : 5;
+  const cols = (isVRV || isATS || isACSplit) ? 3 : isSmallGrid ? 4 : 3;
+  const perPage = (isATS || isACSplit) ? 12 : isPDU ? 20 : isLVlike ? 12 : isVRV ? 15 : 9;
+  const photoH = (isATS || isACSplit) ? 45 : isVRV ? 40 : isSmallGrid ? 38 : 55;
+  const capH = (isATS || isACSplit) ? 10 : isVRV ? 8 : isSmallGrid ? 10 : 12;
+  const rowGap = (isVRV || isATS || isACSplit) ? 3 : 5;
 
   const finalSpecificDetail = (userEmail === 'vrv@gmail.com' && vrvUnitDetail) 
     ? `${specificDetail.toUpperCase()} - ${vrvUnitDetail.toUpperCase()}`
