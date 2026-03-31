@@ -94,8 +94,8 @@ const ALLOWED_FILE_TYPES = [
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ];
 
-const MAX_FILE_SIZE = 40 * 1024 * 1024;
-const CHUNK_SIZE = 768 * 1024; // Multiple of 3 for safe base64 concatenation
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const CHUNK_SIZE = 512 * 1024; // Reduced from 768KB to ensure Base64 encoded chunks fit Firestore's 1MB limit
 
 interface FileData {
     id: string;
@@ -207,7 +207,7 @@ export function FileManagement({
 
             newFiles.forEach(file => {
                 if (file.size > MAX_FILE_SIZE) {
-                    toast.error(`File "${file.name}" too large (Max 30MB)`);
+                    toast.error(`File "${file.name}" too large (Max 10MB)`);
                     return;
                 }
                 if (!ALLOWED_FILE_TYPES.includes(file.type)) {
@@ -486,7 +486,7 @@ export function FileManagement({
                             />
                             <Upload className="w-8 h-8 text-slate-500 mx-auto mb-2" />
                             <p className="text-sm text-slate-300 font-medium">Click or drag files to upload</p>
-                            <p className="text-xs text-slate-500 mt-1">PDF, Excel, Word - Max 40MB per file</p>
+                            <p className="text-xs text-slate-500 mt-1">PDF, Excel, Word - Max 10MB per file</p>
                         </div>
 
                         {selectedFiles.length > 0 && (
