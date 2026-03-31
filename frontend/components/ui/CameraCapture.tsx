@@ -17,25 +17,67 @@ export function CameraCapture({ onCapture, placeholder = "Ambil Foto Wajah" }: C
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const startCamera = async () => {
+    setError(null);
+    console.log("--- Camera Diagnostics ---");
+    
+    // 1. Check if secure context
+    if (!window.isSecureContext) {
+      setError("Kamera butuh link HTTPS atau localhost.");
+      return;
+    }
+
+    // 2. Check if mediaDevices is supported
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+      setError("Browser tidak mendukung fitur kamera.");
+      return;
+    }
+
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'user', // Selfie camera
-          width: { ideal: 400 },
-          height: { ideal: 400 }
-        } 
-      });
-      setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
+      // 3. Enumerate devices to see what is actually available
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      console.log("Available video devices:", videoDevices);
+
+      if (videoDevices.length === 0) {
+        setError("Hardware kamera tidak ditemukan di perangkat ini.");
+        return;
       }
-      setIsCameraActive(true);
-      setError(null);
-    } catch (err) {
-      console.error("Camera access error:", err);
-      setError("Gagal mengakses kamera. Pastikan izin kamera sudah diberikan.");
+
+      // 4. Try getting user media with different constraints
+      const constraints = [
+        { video: { facingMode: 'user' } },
+        { video: { facingMode: { ideal: 'user' } } },
+        { video: true }
+      ];
+
+      for (const constraint of constraints) {
+        try {
+          console.log("Attempting camera with constraint:", constraint);
+          const mediaStream = await navigator.mediaDevices.getUserMedia(constraint);
+          setStream(mediaStream);
+          setIsCameraActive(true);
+          setError(null);
+          console.log("Camera successfully started!");
+          return;
+        } catch (err) {
+          console.warn(`Constraint ${JSON.stringify(constraint)} failed:`, err);
+          continue;
+        }
+      }
+
+      setError("Kamera ditemukan tapi gagal diakses. Pastikan izin diberikan atau kamera tidak dipakai aplikasi lain.");
+    } catch (diagErr: any) {
+      console.error("Diagnostic error:", diagErr);
+      setError(`Gagal memproses kamera: ${diagErr.message}`);
     }
   };
+
+  // Effect to handle video element srcObject when stream or videoRef changes
+  useEffect(() => {
+    if (isCameraActive && stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [isCameraActive, stream]);
 
   const stopCamera = () => {
     if (stream) {

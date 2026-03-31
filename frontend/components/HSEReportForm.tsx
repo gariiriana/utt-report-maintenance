@@ -126,41 +126,43 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
 
-        const toastId = toast.loading(`Memproses ${files.length} foto...`);
+        const toastId = toast.loading(`Memproses 0/${files.length} foto...`);
+        const newPhotos: PhotoItem[] = [];
         
         try {
-            const results = await Promise.all(
-                files.map(async (file) => {
-                    if (!file.type.startsWith('image/')) {
-                        return null;
-                    }
-                    try {
-                        const dataUrl = await compressImage(file);
-                        return {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                if (!file.type.startsWith('image/')) continue;
+
+                // Update loading toast with progress
+                toast.loading(`Memproses ${i + 1}/${files.length} foto...`, { id: toastId });
+
+                try {
+                    const dataUrl = await compressImage(file);
+                    newPhotos.push({
+                        id: `${Date.now()}-${Math.random()}`,
+                        dataUrl,
+                        description: ''
+                    });
+                } catch (err) {
+                    console.error("Compression failed for", file.name, err);
+                    // Fallback to simple FileReader if compression fails
+                    const readerResult = await new Promise<string | null>((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => resolve(ev.target?.result as string);
+                        reader.onerror = () => resolve(null);
+                        reader.readAsDataURL(file);
+                    });
+                    
+                    if (readerResult) {
+                        newPhotos.push({
                             id: `${Date.now()}-${Math.random()}`,
-                            dataUrl,
+                            dataUrl: readerResult,
                             description: ''
-                        };
-                    } catch (err) {
-                        console.error("Compression failed for", file.name, err);
-                        // Fallback to FileReader
-                        return new Promise<PhotoItem | null>((resolve) => {
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                                resolve({
-                                    id: `${Date.now()}-${Math.random()}`,
-                                    dataUrl: ev.target?.result as string,
-                                    description: ''
-                                });
-                            };
-                            reader.onerror = () => resolve(null);
-                            reader.readAsDataURL(file);
                         });
                     }
-                })
-            );
-
-            const newPhotos = results.filter((p): p is PhotoItem => p !== null);
+                }
+            }
 
             if (newPhotos.length > 0) {
                 setPhotos(prev => [...prev, ...newPhotos]);
