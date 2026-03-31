@@ -3,14 +3,110 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   User, Package, ClipboardList, Calendar, 
   Clock, Send, ShieldCheck, Plus, Trash2, 
-  Layers, Camera
+  Layers, Camera, Check
 } from 'lucide-react';
 import { SignaturePad } from './ui/SignaturePad';
 import { CameraCapture } from './ui/CameraCapture';
 import { db } from '@/api/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/components/AuthContext';
+import { useScreenshot } from '@/hooks/useScreenshot';
 import { toast } from 'sonner';
+
+interface SuccessReceiptProps {
+  data: any;
+  onDone: () => void;
+}
+
+function SuccessReceipt({ data, onDone }: SuccessReceiptProps) {
+  const { takeScreenshot } = useScreenshot();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="space-y-6"
+    >
+      <div id="borrowing-receipt" className="bg-slate-950 border border-slate-800 rounded-3xl p-8 space-y-6 shadow-2xl relative overflow-hidden">
+        {/* Decorative Background for Screenshot */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2" />
+        
+        <div className="text-center space-y-2 relative z-10">
+          <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/30">
+            <ShieldCheck className="w-8 h-8 text-emerald-400" />
+          </div>
+          <h3 className="text-2xl font-black text-white uppercase tracking-tight">Pengajuan Berhasil!</h3>
+          <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Digital Receipt • {new Date().toLocaleDateString('id-ID')}</p>
+        </div>
+
+        <div className="space-y-4 pt-4 border-t border-slate-900">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Peminjam</p>
+              <p className="text-sm font-bold text-slate-200">{data.borrowerName}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Waktu</p>
+              <p className="text-sm font-bold text-slate-200">{data.requestDate} @{data.requestTime}</p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Daftar Barang</p>
+            <div className="space-y-1.5">
+              {data.items.map((item: any, i: number) => (
+                <div key={i} className="flex justify-between items-center bg-slate-900/50 p-2.5 rounded-xl border border-slate-800/50">
+                  <span className="text-xs font-bold text-slate-300">{item.name}</span>
+                  <span className="text-[10px] font-black bg-blue-600/20 text-blue-400 px-2 py-0.5 rounded-md">{item.quantity} Qty</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 pt-4">
+             <div className="space-y-2 text-center">
+                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1">Foto Wajah</p>
+                <div className="bg-slate-900 p-1 rounded-xl border border-slate-800 aspect-square flex items-center justify-center overflow-hidden">
+                   <img src={data.facePhoto} className="w-full h-full object-cover rounded-lg" alt="Face photo" />
+                </div>
+             </div>
+             <div className="space-y-2 text-center">
+                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1">Tanda Tangan</p>
+                <div className="bg-slate-900 p-1 rounded-xl border border-slate-800 aspect-square flex items-center justify-center overflow-hidden">
+                   <img src={data.requestSignature} className="max-h-full invert brightness-200 opacity-80" alt="Signature" />
+                </div>
+             </div>
+          </div>
+        </div>
+
+        <div className="pt-6 text-center">
+          <p className="text-[10px] font-bold text-slate-700 uppercase tracking-widest">Sultanah Maintenance System • Security Verified</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3">
+        <button
+          onClick={() => {
+            toast.promise(takeScreenshot('borrowing-receipt', `receipt-${data.borrowerName.replace(/\s+/g, '-')}.png`), {
+              loading: 'Menyiapkan gambar...',
+              success: 'Berhasil disimpan!',
+              error: 'Gagal mengambil gambar'
+            });
+          }}
+          className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all border border-slate-700"
+        >
+          <Camera className="w-4 h-4" /> Simpan Sebagai Gambar
+        </button>
+        <button
+          onClick={onDone}
+          className="flex-1 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-xl shadow-blue-900/20"
+        >
+          <Check className="w-4 h-4" /> Selesai
+        </button>
+      </div>
+    </motion.div>
+  );
+}
 
 interface BorrowingItem {
   id: string;
@@ -25,6 +121,7 @@ interface BorrowingFormProps {
 export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [submittedData, setSubmittedData] = useState<any | null>(null);
   
   const [formData, setFormData] = useState<{
     borrowerName: string;
@@ -99,7 +196,8 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
       });
 
       toast.success('Pengajuan berhasil dikirim', { id: toastId });
-      onSuccess();
+      setSubmittedData({ ...formData });
+      // We don't call onSuccess() yet, we show the receipt first
       setFormData({
         borrowerName: '',
         items: [{ id: Math.random().toString(36).substr(2, 9), name: '', quantity: 1 }],
@@ -123,6 +221,22 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
       animate={{ opacity: 1, y: 0 }}
       className="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden shadow-2xl p-6"
     >
+      <AnimatePresence mode="wait">
+        {submittedData ? (
+          <SuccessReceipt 
+            data={submittedData} 
+            onDone={() => {
+              setSubmittedData(null);
+              onSuccess();
+            }} 
+          />
+        ) : (
+          <motion.div
+            key="form"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
       <div className="flex items-center gap-3 mb-8">
         <div className="p-3 bg-blue-500/15 rounded-xl">
           <ClipboardList className="w-5 h-5 text-blue-400" />
@@ -312,6 +426,9 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
           </button>
         </div>
       </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

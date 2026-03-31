@@ -17,6 +17,8 @@ import { Button } from '@/components/ui/button';
 import { DataCenterBackground } from '@/components/DataCenterBackground';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import logoUTT from '@/assets/logo_utt.png';
+import { useScreenshot } from '@/hooks/useScreenshot';
+import { Camera } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function InventoryApp() {
@@ -27,6 +29,7 @@ export function InventoryApp() {
   const [searchTerm, setSearchTerm] = useState('');
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const { takeScreenshot } = useScreenshot();
 
   useEffect(() => {
     const q = query(
@@ -106,6 +109,19 @@ export function InventoryApp() {
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Masuk sebagai Tim Peminjaman</p>
                 <p className="text-sm font-medium text-slate-300">{user?.email}</p>
              </div>
+             <Button 
+                variant="outline" 
+                onClick={() => {
+                  toast.promise(takeScreenshot('inventory-dashboard', `inventory-report-${new Date().toISOString().split('T')[0]}.png`), {
+                    loading: 'Menyiapkan tangkapan layar...',
+                    success: 'Tangkapan layar berhasil disimpan!',
+                    error: 'Gagal mengambil tangkapan layar'
+                  });
+                }}
+                className="bg-blue-600/10 border-blue-500/20 text-blue-400 hover:bg-blue-600 hover:text-white transition-all mr-2"
+             >
+                <Camera className="w-4 h-4 mr-2" /> Capture View
+             </Button>
              <Button variant="outline" onClick={() => setLogoutModalOpen(true)} className="bg-slate-800/50 border-slate-700 text-slate-300 hover:bg-red-600/10 hover:text-red-400 transition-colors">
                 <LogOut className="w-4 h-4 mr-2" /> Keluar
              </Button>
@@ -113,7 +129,7 @@ export function InventoryApp() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6 relative z-10">
+      <main id="inventory-dashboard" className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6 relative z-10">
         {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
