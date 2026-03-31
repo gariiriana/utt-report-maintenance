@@ -4,9 +4,24 @@ import { motion } from 'motion/react';
 export function DataCenterBackground() {
   return (
     <>
-      {/* Base Server Grid Layer */}
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-slate-950">
-        <div className="absolute inset-0 opacity-40">
+      {/* Base Video Layer (Restored from previous request) */}
+      <div 
+        id="bg-video-container" 
+        className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-slate-950"
+      >
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[177.77vh] min-w-full h-[56.25vw] min-h-full">
+          <iframe
+            src="https://www.youtube-nocookie.com/embed/wBZGPQ-FQRI?autoplay=1&mute=1&loop=1&playlist=wBZGPQ-FQRI&controls=0&rel=0&playsinline=1&enablejsapi=1&showinfo=0&modestbranding=1&iv_load_policy=3&disablekb=1"
+            className="w-full h-full pointer-events-none opacity-60"
+            allow="autoplay; encrypted-media"
+            title="Professional Data Center Background"
+          />
+        </div>
+      </div>
+
+      {/* Premium Overlay Layers (Grid & LEDs) */}
+      <div className="fixed inset-0 z-[1] overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 opacity-30">
           {/* Server Rack Perspective Grid */}
           <div 
             className="absolute inset-0"
@@ -44,8 +59,8 @@ export function DataCenterBackground() {
         </div>
 
         {/* Depth Fog / Gradients */}
-        <div className="absolute inset-0 bg-radial-gradient from-transparent via-slate-950/40 to-slate-950" />
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-transparent to-slate-950/80" />
+        <div className="absolute inset-0 bg-radial-gradient from-transparent via-slate-950/20 to-slate-950" />
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-transparent to-slate-950" />
       </div>
 
       <div className="absolute inset-0 z-10 opacity-20 pointer-events-none">

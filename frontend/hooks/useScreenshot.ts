@@ -10,8 +10,9 @@ export function useScreenshot() {
     }
 
     try {
-      // Temporarily hide elements that shouldn't be in the screenshot if needed
-      // For example, buttons or navigation elements
+      // Temporarily hide elements that shouldn't be in the screenshot
+      const bgVideo = document.getElementById('bg-video-container');
+      if (bgVideo) bgVideo.style.display = 'none';
       
       const canvas = await html2canvas(element, {
         useCORS: true,
@@ -20,6 +21,9 @@ export function useScreenshot() {
         scale: 2, // Higher quality
         logging: false,
       });
+
+      // Restore hidden elements
+      if (bgVideo) bgVideo.style.display = 'block';
 
       const image = canvas.toDataURL('image/png');
       const link = document.createElement('a');
