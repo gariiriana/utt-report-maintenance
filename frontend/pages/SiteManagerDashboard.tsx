@@ -371,63 +371,77 @@ export function SiteManagerDashboard() {
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
-                      <thead className="hidden md:table-header-group bg-slate-950/50 text-slate-400 text-xs uppercase tracking-wider">
-                        <tr>
-                          <th className="px-6 py-4 font-medium">Kategori</th>
-                          <th className="px-6 py-4 font-medium text-center">Plan Qty</th>
-                          <th className="px-6 py-4 font-medium text-center">Weight %</th>
-                          <th className="px-6 py-4 font-medium text-center bg-slate-900/30">Yesterday %</th>
-                          <th className="px-6 py-4 font-medium text-center bg-indigo-900/10">Today %</th>
-                          <th className="px-6 py-4 font-medium text-center">Status</th>
+                      <thead className="hidden md:table-header-group text-slate-300 text-[10px] uppercase tracking-wider font-bold">
+                        <tr className="bg-slate-950/80">
+                          <th rowSpan={3} className="px-4 py-3 border border-slate-800 text-center bg-blue-600/20">No</th>
+                          <th rowSpan={3} className="px-4 py-3 border border-slate-800 text-center bg-blue-600/20">DESKRIPSI</th>
+                          <th colSpan={2} className="px-4 py-3 border border-slate-800 text-center bg-blue-600/20">PLAN</th>
+                          <th colSpan={4} className="px-4 py-3 border border-slate-800 text-center bg-blue-600/20 text-blue-400">PROGRESS</th>
+                        </tr>
+                        <tr className="bg-slate-950/80">
+                          <th rowSpan={2} className="px-4 py-2 border border-slate-800 text-center bg-blue-600/10">Qty</th>
+                          <th rowSpan={2} className="px-4 py-2 border border-slate-800 text-center bg-blue-600/10">Weight %</th>
+                          <th colSpan={2} className="px-4 py-2 border border-slate-800 text-center bg-emerald-900/30 text-emerald-400">Yesterday</th>
+                          <th colSpan={2} className="px-4 py-2 border border-slate-800 text-center bg-purple-900/30 text-purple-400">Today</th>
+                        </tr>
+                        <tr className="bg-slate-950/80 text-[9px]">
+                          <th className="px-4 py-2 border border-slate-800 text-center bg-emerald-900/20">Qty</th>
+                          <th className="px-4 py-2 border border-slate-800 text-center bg-emerald-900/20">Weight %</th>
+                          <th className="px-4 py-2 border border-slate-800 text-center bg-purple-900/20">Qty</th>
+                          <th className="px-4 py-2 border border-slate-800 text-center bg-purple-900/20">Weight %</th>
                         </tr>
                       </thead>
                       <tbody className="block md:table-row-group divide-y divide-slate-800/50 md:divide-slate-800">
                         {(summary.category_summaries || []).map((cat, idx) => (
-                          <tr key={idx} className="block md:table-row bg-slate-900/20 md:bg-transparent border border-slate-800 md:border-none rounded-2xl mb-4 md:mb-0 overflow-hidden hover:bg-white/[0.02] transition-colors">
-                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-none">
-                              <div className="flex flex-col">
+                          <tr key={idx} className="block md:table-row bg-slate-900/20 md:bg-transparent border border-slate-800 md:border-none rounded-2xl mb-4 md:mb-0 overflow-hidden hover:bg-white/[0.02] transition-colors group">
+                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-slate-800 text-center bg-slate-950/40 font-bold text-indigo-400">
+                              <div className="flex justify-between items-center md:justify-center">
+                                <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase">No</span>
+                                <span>1.{idx + 1}</span>
+                              </div>
+                            </td>
+                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-slate-800 text-center">
+                              <div className="flex flex-col items-center justify-center">
                                 <span className="md:hidden text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-1">Kategori</span>
-                                <span className="font-medium text-slate-200">{cat.category}</span>
+                                <span className="font-bold text-slate-200 tracking-wide text-xs">{cat.category}</span>
                               </div>
                             </td>
-                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-none">
+                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-slate-800">
                               <div className="flex justify-between items-center md:justify-center">
-                                <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Qty Rencana</span>
-                                <span className="text-slate-400 font-mono">{cat.plan_qty}</span>
+                                <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Plan Qty</span>
+                                <span className="text-slate-400 font-mono text-xs">{cat.plan_qty.toLocaleString()}</span>
                               </div>
                             </td>
-                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-none">
+                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-slate-800">
                               <div className="flex justify-between items-center md:justify-center">
-                                <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Weight</span>
-                                <span className="text-slate-400 font-mono">{cat.weight_percent.toFixed(2)}%</span>
+                                <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Plan Weight</span>
+                                <span className="text-slate-400 font-mono text-xs">{cat.weight_percent.toFixed(2)}%</span>
                               </div>
                             </td>
-                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-none bg-slate-900/40 md:bg-slate-900/20">
+                            {/* Yesterday Columns */}
+                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-slate-800 bg-emerald-900/5">
                               <div className="flex justify-between items-center md:justify-center">
-                                <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Yesterday %</span>
-                                <span className="text-slate-400 font-mono">{cat.yesterday_percent.toFixed(2)}%</span>
+                                <span className="md:hidden text-[10px] font-bold text-emerald-500/70 uppercase tracking-wider">Yesterday Qty</span>
+                                <span className="text-emerald-400/80 font-mono text-xs">{cat.yesterday_qty.toLocaleString()}</span>
                               </div>
                             </td>
-                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-none bg-indigo-900/20 md:bg-indigo-900/10">
+                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-slate-800 bg-emerald-900/10">
                               <div className="flex justify-between items-center md:justify-center">
-                                <span className="md:hidden text-[10px] font-bold text-indigo-400 uppercase tracking-wider font-bold">Today %</span>
-                                <span className="text-indigo-400 font-bold font-mono">{cat.today_percent.toFixed(2)}%</span>
+                                <span className="md:hidden text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Yesterday %</span>
+                                <span className="text-emerald-400 font-mono font-bold text-xs">{cat.yesterday_percent.toFixed(2)}%</span>
                               </div>
                             </td>
-                            <td className="block md:table-cell px-6 py-4">
+                            {/* Today Columns */}
+                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-slate-800 bg-purple-900/5">
                               <div className="flex justify-between items-center md:justify-center">
-                                <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</span>
-                                {cat.today_percent >= 100 ? (
-                                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-medium border border-emerald-500/20">
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    Complete
-                                  </span>
-                                ) : (
-                                  <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 text-xs font-medium border border-amber-500/20">
-                                    <RefreshCw className="w-3 h-3" />
-                                    On Progress
-                                  </span>
-                                )}
+                                <span className="md:hidden text-[10px] font-bold text-purple-500/70 uppercase tracking-wider">Today Qty</span>
+                                <span className="text-purple-400/80 font-mono text-xs">{cat.today_qty.toLocaleString()}</span>
+                              </div>
+                            </td>
+                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-slate-800 bg-purple-900/10">
+                              <div className="flex justify-between items-center md:justify-center">
+                                <span className="md:hidden text-[10px] font-bold text-purple-400 uppercase tracking-wider font-bold">Today %</span>
+                                <span className="text-purple-400 font-bold font-mono text-xs">{cat.today_percent.toFixed(2)}%</span>
                               </div>
                             </td>
                           </tr>

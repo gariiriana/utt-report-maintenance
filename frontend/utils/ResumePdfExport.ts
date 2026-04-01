@@ -123,34 +123,57 @@ export async function generateResumePdf(summary: MaintenanceSummary) {
     drawCard(2, 'DAILY GROWTH', `+${summary.daily_progress.toFixed(2)}%`, 'Peningkatan harian', [16, 185, 129]);
 
     // 4. Main Table
-    const tableData = summary.category_summaries.map(cat => [
+    const tableData = summary.category_summaries.map((cat, idx) => [
+        `1.${idx + 1}`,
         cat.category,
         cat.plan_qty.toLocaleString(),
         `${cat.weight_percent.toFixed(2)}%`,
+        cat.yesterday_qty.toLocaleString(),
         `${cat.yesterday_percent.toFixed(2)}%`,
-        `${cat.today_percent.toFixed(2)}%`,
-        cat.today_percent >= 100 ? 'COMPLETE' : 'ON PROGRESS'
+        cat.today_qty.toLocaleString(),
+        `${cat.today_percent.toFixed(2)}%`
     ]);
 
     autoTable(doc, {
         startY: startY + cardH + 10,
-        head: [['KATEGORI', 'PLAN QTY', 'WEIGHT %', 'YESTERDAY %', 'TODAY %', 'STATUS']],
+        head: [
+            [
+                { content: 'No', rowSpan: 3, styles: { halign: 'center', valign: 'middle' } }, 
+                { content: 'DESKRIPSI', rowSpan: 3, styles: { valign: 'middle' } }, 
+                { content: 'PLAN', colSpan: 2, styles: { halign: 'center' } }, 
+                { content: 'PROGRESS', colSpan: 4, styles: { halign: 'center' } }
+            ],
+            [
+                { content: 'Qty', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } }, 
+                { content: 'Weight %', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } }, 
+                { content: 'Yesterday', colSpan: 2, styles: { halign: 'center' } }, 
+                { content: 'Today', colSpan: 2, styles: { halign: 'center' } }
+            ],
+            [
+                { content: 'Qty', styles: { halign: 'center' } }, 
+                { content: 'Weight %', styles: { halign: 'center' } }, 
+                { content: 'Qty', styles: { halign: 'center' } }, 
+                { content: 'Weight %', styles: { halign: 'center' } }
+            ]
+        ],
         body: tableData,
-        theme: 'striped',
+        theme: 'grid',
         headStyles: {
             fillColor: [0, 89, 156],
             textColor: 255,
-            fontSize: 9,
+            fontSize: 7,
             fontStyle: 'bold',
-            halign: 'center'
+            lineWidth: 0.1
         },
         columnStyles: {
-            0: { cellWidth: 'auto', halign: 'left' },
-            1: { cellWidth: 30, halign: 'center' },
-            2: { cellWidth: 25, halign: 'center' },
-            3: { cellWidth: 28, halign: 'center' },
-            4: { cellWidth: 25, halign: 'center', fontStyle: 'bold' },
-            5: { cellWidth: 30, halign: 'center' }
+            0: { cellWidth: 10, halign: 'center' },
+            1: { cellWidth: 'auto', halign: 'center' },
+            2: { cellWidth: 15, halign: 'center' },
+            3: { cellWidth: 15, halign: 'center' },
+            4: { cellWidth: 15, halign: 'center' },
+            5: { cellWidth: 15, halign: 'center' },
+            6: { cellWidth: 15, halign: 'center' },
+            7: { cellWidth: 15, halign: 'center' }
         },
         bodyStyles: {
             fontSize: 8.5,
@@ -160,16 +183,11 @@ export async function generateResumePdf(summary: MaintenanceSummary) {
             fillColor: [248, 250, 252]
         },
         didDrawCell: (data) => {
-            if (data.section === 'body' && data.column.index === 4) {
-                doc.setTextColor(0, 89, 156);
-            }
             if (data.section === 'body' && data.column.index === 5) {
-                const text = data.cell.text[0];
-                if (text === 'COMPLETE') {
-                    doc.setTextColor(16, 185, 129);
-                } else {
-                    doc.setTextColor(217, 119, 6);
-                }
+                doc.setTextColor(16, 185, 129); // Emerald for Yesterday %
+            }
+            if (data.section === 'body' && data.column.index === 7) {
+                doc.setTextColor(0, 89, 156); // Blue for Today %
             }
         }
     });
