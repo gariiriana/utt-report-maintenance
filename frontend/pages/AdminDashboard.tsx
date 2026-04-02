@@ -511,7 +511,8 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
     const matchesSearch =
       doc.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       doc.maintenanceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doc.createdBy.toLowerCase().includes(searchTerm.toLowerCase());
+      doc.createdBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (doc.specificDetail || '').toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesFilter = filterType === 'all' || doc.type === filterType;
 

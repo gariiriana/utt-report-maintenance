@@ -645,21 +645,31 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
     }
   };
   const filteredDocuments = documents.filter(doc => {
-    if (searchQuery && !doc.maintenanceName.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      const inMaintenanceName = doc.maintenanceName.toLowerCase().includes(lowerQuery);
+      const inSpecificDetail = (doc.specificDetail || '').toLowerCase().includes(lowerQuery);
+      const inFileName = doc.fileName.toLowerCase().includes(lowerQuery);
+      
+      if (!inMaintenanceName && !inSpecificDetail && !inFileName) {
+        return false;
+      }
     }
+    
     if (filterDate) {
       const docDate = new Date(doc.maintenanceTime).toISOString().split('T')[0];
       if (docDate !== filterDate) {
         return false;
       }
     }
+    
     if (filterType !== 'all' && doc.documentType !== filterType) {
       return false;
     }
 
     return true;
   });
+
 
   const docsInView = (() => {
     if (filterOverride !== 'hse_utt') return filteredDocuments;
