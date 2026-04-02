@@ -73,36 +73,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   useEffect(() => {
     if (!user?.email || editingData) return;
 
-    // Check for draft in localStorage
-    const savedDraft = localStorage.getItem('report_form_draft');
-    if (savedDraft) {
-      try {
-        const draft = JSON.parse(savedDraft);
-        // Only restore if the draft belongs to the current user
-        if (draft.userEmail === user.email) {
-          // Force reload template for coolingtower if draft is old (default 9 cards)
-          if ((user.email === 'coolingtower@gmail.com' && (!draft.cards || draft.cards.length === 9) && !draft.maintenanceName) ||
-            (user.email === 'acsplit@gmail.com' && (!draft.cards || draft.cards.length === 9) && !draft.maintenanceName)) {
-            console.log('Detected old 9-card draft, skipping to load new 12-item template...');
-          } else {
-            setMaintenanceName(draft.maintenanceName || '');
-            setMaintenanceTime(draft.maintenanceTime || '');
-            setSpecificDetail(draft.specificDetail || '');
-            setVrvUnitDetail(draft.vrvUnitDetail || '');
-            setCompanyType(draft.companyType || 'neutra');
-            if (draft.cards && draft.cards.length > 0) {
-              setCards(draft.cards);
-            }
-            setWasDraftRestored(true);
-            toast.success('Draft laporan dipulihkan otomatis');
-            return; // Skip template loading if we restored a draft
-          }
-        }
-      } catch (err) {
-        console.error('Failed to restore draft:', err);
-      }
-    }
-
     const lowerEmail = user.email.toLowerCase();
 
     // Initial Template Logic
@@ -442,6 +412,58 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
   const uploadedCount = cards.filter(c => c.photoBase64).length;
 
+  const handleResetFormInternal = () => {
+    localStorage.removeItem('report_form_draft');
+    
+    // Reset basic info
+    setMaintenanceName('');
+    setMaintenanceTime('');
+    setSpecificDetail('');
+    setVrvUnitDetail('');
+    setWasDraftRestored(false);
+
+    // Re-load template
+    const lowerEmail = user?.email?.toLowerCase();
+    if (lowerEmail) {
+      let template: string[] | null = null;
+      if (lowerEmail === 'vrv@gmail.com') {
+        setMaintenanceName('vrv');
+        template = VRV_TEMPLATE.indoor;
+      } else if (['lv@gmail.com', 'ats@gmail.com', 'trafo@gmail.com'].includes(lowerEmail)) {
+        const isTrafo = lowerEmail === 'trafo@gmail.com';
+        setMaintenanceName(isTrafo ? 'Trafo' : (lowerEmail === 'lv@gmail.com' ? 'LV' : 'ATS'));
+        template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
+      } else {
+        template = REPORT_TEMPLATES[lowerEmail];
+        if (!template && (lowerEmail.includes('dock') || lowerEmail.includes('leveler'))) {
+          template = REPORT_TEMPLATES['dock'];
+        }
+        if (lowerEmail === 'grounding@gmail.com') setMaintenanceName('Grounding');
+        if (lowerEmail === 'ldb/rdb@gmail.com') setMaintenanceName('LDB/RDB');
+        if (lowerEmail === 'busduct@gmail.com') setMaintenanceName('Busduct');
+        if (lowerEmail === 'lightingsystem@gmail.com') setMaintenanceName('Lighting System');
+        if (lowerEmail === 'coolingtower@gmail.com') setMaintenanceName('Cooling Tower');
+        if (lowerEmail === 'acsplit@gmail.com') setMaintenanceName('AC Split');
+      }
+
+      if (template) {
+        setCards(template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
+      } else {
+        setCards([
+          { id: '1', photo: null, description: '' },
+          { id: '2', photo: null, description: '' },
+          { id: '3', photo: null, description: '' },
+          { id: '4', photo: null, description: '' },
+          { id: '5', photo: null, description: '' },
+          { id: '6', photo: null, description: '' },
+          { id: '7', photo: null, description: '' },
+          { id: '8', photo: null, description: '' },
+          { id: '9', photo: null, description: '' },
+        ]);
+      }
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 relative z-10">
       <AnimatePresence mode="wait">
@@ -459,8 +481,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 </div>
               </div>
               {editingData && (
-                <button onClick={onClearEdit} className="px-4 py-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30 text-sm font-bold flex items-center gap-2">
-                  <RefreshCw className="w-4 h-4" /> Refresh
+                <button onClick={onClearEdit} className="px-4 py-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30 text-sm font-bold flex items-center gap-2 hover:bg-blue-600/30 transition-all">
+                  <RefreshCw className="w-4 h-4" /> Batal Edit
                 </button>
               )}
             </div>

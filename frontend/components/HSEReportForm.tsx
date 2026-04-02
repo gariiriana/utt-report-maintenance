@@ -363,13 +363,19 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
     return (
         <>
             <div className="space-y-6">
-                {editingData && (
-                    <div className="flex justify-end">
-                        <button onClick={onClearEdit} className="px-4 py-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30 text-sm font-bold flex items-center gap-2">
-                            <Loader2 className="w-4 h-4" /> Bersihkan Mode Edit
-                        </button>
+                <div className="flex justify-between items-center bg-slate-900/40 p-4 rounded-xl border border-slate-700/30 mb-2">
+                    <div className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                        Mode: {editingData ? 'Edit Laporan' : 'Laporan Baru'}
                     </div>
-                )}
+                    {editingData && (
+                        <div className="flex gap-2">
+                            <button onClick={onClearEdit} className="px-4 py-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30 text-sm font-bold flex items-center gap-2 transition hover:bg-blue-600/30">
+                                <Loader2 className="w-4 h-4" /> Batal Edit
+                            </button>
+                        </div>
+                    )}
+                </div>
 
                 {/* ── INFO SECTION ───────────────────────────────────────────── */}
                 <motion.div
