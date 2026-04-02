@@ -10,7 +10,6 @@ import { FileManagement } from '@/components/FileManagement';
 import { CorrectiveMaintenance } from '@/components/CorrectiveMaintenance';
 import { Footer } from '@/components/Footer';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal'; 
-import { DataCenterBackground } from '@/components/DataCenterBackground'; 
 import { InventoryBorrowing } from '@/components/InventoryBorrowing'; 
 import logoUTT from '@/assets/logo_utt.png';
 
@@ -45,8 +44,7 @@ export function MainApp() {
 
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      <DataCenterBackground />
+    <div className="min-h-screen flex flex-col">
 
       <div className="bg-slate-900/60 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">

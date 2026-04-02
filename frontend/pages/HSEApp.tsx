@@ -4,7 +4,6 @@ import { LogOut, ShieldCheck, HardHat, FileText, Folder } from 'lucide-react';
 import { useAuth } from '@/components/AuthContext';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import { Footer } from '@/components/Footer';
-import { DataCenterBackground } from '@/components/DataCenterBackground';
 import { HSEReportForm } from '@/components/HSEReportForm';
 import { DocumentList } from '@/components/DocumentList';
 import logoUTT from '@/assets/logo_utt.png';
@@ -15,8 +14,7 @@ export function HSEApp() {
     const [activeTab, setActiveTab] = useState<'report' | 'iso'>('report');
 
     return (
-        <div className="min-h-screen relative overflow-hidden font-geist text-slate-200">
-            <DataCenterBackground />
+        <div className="min-h-screen font-geist text-slate-200">
 
             <div className="bg-slate-900/60 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-50">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4">

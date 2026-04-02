@@ -29,6 +29,9 @@ export interface HSEChecklist {
     stikBariket?: boolean;
     underMaintenance?: boolean;
     fullBodyHarness?: boolean;
+    dokumen?: boolean;
+    msds?: boolean;
+    pelindungMata?: boolean;
 }
 
 export interface HSEPhoto {
@@ -183,6 +186,14 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
                 { key: 'coverShoes', label: 'Cover Shoes' },
                 { key: 'respirator', label: 'Respirator' },
                 { key: 'sarungTanganCutResistance', label: 'Sarung Tangan Cut Resistance' },
+                { key: 'pelindungMata', label: 'Pelindung Mata' },
+            ]
+        },
+        { 
+            key: 'dokumen', 
+            label: 'Dokumen',
+            subItems: [
+                { key: 'msds', label: 'MSDS' },
             ]
         },
         { key: 'toolsBertagging', label: 'Tools Bertagging & sdh di-checklist' },
@@ -203,6 +214,10 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     const regularItems: { label: string; value: boolean; isSub?: boolean }[] = [];
     checklistDefinition.forEach(item => {
         const val = !!(data.checklist as any)[item.key];
+        
+        // Skip 'dokumen' if it's not checked (as requested)
+        if (item.key === 'dokumen' && !val) return;
+
         regularItems.push({ label: item.label, value: val });
         
         if (val && item.subItems) {

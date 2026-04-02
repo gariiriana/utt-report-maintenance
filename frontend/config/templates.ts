@@ -139,6 +139,9 @@ export interface HSEChecklist {
   safetyCone: boolean;
   stikBariket: boolean;
   underMaintenance: boolean;
+  dokumen: boolean;
+  msds: boolean;
+  pelindungMata: boolean;
 }
 
 export const INITIAL_HSE_CHECKLIST: HSEChecklist = {
@@ -164,6 +167,9 @@ export const INITIAL_HSE_CHECKLIST: HSEChecklist = {
   safetyCone: false,
   stikBariket: false,
   underMaintenance: false,
+  dokumen: false,
+  msds: false,
+  pelindungMata: false,
 };
 
 export const HSE_CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string; subItems?: { key: keyof HSEChecklist; label: string }[] }[] = [
@@ -182,6 +188,14 @@ export const HSE_CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string; sub
           { key: 'coverShoes', label: 'Cover Shoes' },
           { key: 'respirator', label: 'Respirator' },
           { key: 'sarungTanganCutResistance', label: 'Sarung Tangan Cut Resistance' },
+          { key: 'pelindungMata', label: 'Pelindung Mata' },
+      ]
+  },
+  { 
+      key: 'dokumen', 
+      label: 'Dokumen',
+      subItems: [
+          { key: 'msds', label: 'MSDS' },
       ]
   },
   { key: 'toolsBertagging', label: 'Tools Bertagging & sdh di-checklist' },

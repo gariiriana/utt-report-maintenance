@@ -1,26 +1,22 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { DataCenterBackground } from '@/components/DataCenterBackground';
 import { 
-  BarChart3, 
-  ClipboardList, 
   TrendingUp, 
-  Calendar, 
-  CheckCircle2, 
   ArrowRight,
   Save,
   Loader2,
-  RefreshCw,
   LayoutDashboard,
   Search,
   Database,
   Plus,
   Trash2,
-  FileText,
   Download,
   LogOut,
+  LogIn,
+  ShieldCheck,
   UserCircle
 } from 'lucide-react';
+import logoUTT from '@/assets/logo_utt.png';
 import { useAuth } from '@/components/AuthContext';
 import { 
   collection, 
@@ -32,7 +28,8 @@ import {
   deleteDoc, 
   doc, 
   writeBatch,
-  serverTimestamp 
+  serverTimestamp,
+  getDocs
 } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { toast } from 'sonner';
@@ -42,7 +39,94 @@ import {
   type MaintenanceSummary 
 } from '@/utils/MaintenanceLogic';
 
-export function SiteManagerDashboard() {
+function StatDonut({ label, percent, sublabel, color, delay = 0, glowColor }: { 
+  label: string; 
+  percent: number; 
+  sublabel?: string; 
+  color: string; 
+  glowColor: string;
+  delay?: number;
+}) {
+  const radius = 42;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (Math.min(100, Math.max(0, percent)) / 100) * circumference;
+  const uniqueId = label.toLowerCase().replace(/\s+/g, '-');
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+      className="flex flex-col items-center justify-center p-3 md:p-6 rounded-[2.5rem] bg-slate-950/20 border border-white/5 backdrop-blur-xl hover:border-white/10 transition-all duration-500 group relative overflow-hidden"
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
+      
+      <div className="relative w-20 h-20 md:w-32 md:h-32 flex items-center justify-center mb-3 md:mb-5">
+        <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90 drop-shadow-[0_0_8px_rgba(0,0,0,0.3)]">
+          <defs>
+            <linearGradient id={`gradient-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={color} stopOpacity="1" />
+              <stop offset="100%" stopColor={glowColor} stopOpacity="1" />
+            </linearGradient>
+            <filter id={`glow-${uniqueId}`}>
+              <feGaussianBlur stdDeviation="2" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+          {/* Background Track */}
+          <circle
+            cx="50"
+            cy="50"
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            className="text-white/[0.03]"
+            strokeWidth="4"
+          />
+          {/* Progress Stroke */}
+          <motion.circle
+            cx="50"
+            cy="50"
+            r={radius}
+            fill="none"
+            stroke={`url(#gradient-${uniqueId})`}
+            strokeWidth="5"
+            strokeLinecap="round"
+            initial={{ strokeDashoffset: circumference }}
+            animate={{ strokeDashoffset }}
+            transition={{ delay: delay + 0.4, duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+            style={{ 
+              strokeDasharray: circumference,
+              filter: `drop-shadow(0 0 5px ${glowColor}66)`
+            }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <div className="flex items-baseline">
+            <span className="text-sm md:text-3xl font-black text-white tracking-tighter">
+              {label === 'Harian' && percent > 0 ? '+' : ''}{percent.toFixed(2)}
+            </span>
+            <span className="text-[8px] md:text-sm font-bold text-white/50 ml-0.5">%</span>
+          </div>
+          {sublabel && (
+            <span className="hidden md:block text-[9px] text-slate-500 font-bold mt-1 uppercase tracking-widest leading-none">
+              {sublabel}
+            </span>
+          )}
+        </div>
+      </div>
+      
+      <div className="flex flex-col items-center gap-1">
+        <p className="text-[8px] md:text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] group-hover:text-white transition-colors duration-300">
+          {label}
+        </p>
+        <div className="h-0.5 w-4 rounded-full bg-white/10 group-hover:w-8 group-hover:bg-indigo-500 transition-all duration-500" />
+      </div>
+    </motion.div>
+  );
+}
+
+export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'summary' | 'input'>('summary');
   const [loading, setLoading] = useState(true);
@@ -97,6 +181,15 @@ export function SiteManagerDashboard() {
     return () => unsubscribe();
   }, [selectedYear, selectedQuarter]);
 
+  // Direct Auto-Adjustment for Excel Data - Full Reset (v5 - 31 Mar 2026)
+  useEffect(() => {
+    if (user && activities.length > 0 && !localStorage.getItem('excel_sync_v5_done')) {
+      handleExcelSync(true).then(() => {
+        localStorage.setItem('excel_sync_v5_done', 'true');
+      });
+    }
+  }, [user, activities.length]);
+
   const handleAddItem = async () => {
     if (!newProgress.category || !newProgress.equipment_name) {
       toast.error('Kategori dan Nama Perangkat wajib diisi!');
@@ -138,9 +231,132 @@ export function SiteManagerDashboard() {
     try {
       await deleteDoc(doc(db, 'maintenance_progress', id));
       toast.success('Perangkat berhasil dihapus');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExcelSync = async (isAuto = false) => {
+    if (!isAuto && !window.confirm('Ingin melakukan reset penuh database dengan data Excel 31 Mar 2026? Semua data lama untuk periode ini akan dihapus dan dibuat ulang.')) return;
+    
+    setLoading(true);
+    try {
+      // ========================================================
+      // DATA FINAL - PROGRESS Q1 2026, per 31 Mar 2026
+      // TOTAL PLAN: 5110 | YESTERDAY: 4558.67 (89.21%) | TODAY: 4589 (89.80%)
+      // Verified manually per-item from spreadsheet screenshot
+      // ========================================================
+      const officialData = [
+        // A. ELECTRICAL SYSTEM: Plan=640, Yes=524, Today=541
+        // Verification: 8+15+20+7+52+161+175+119+19+6+4+40+14 = 640 ✓
+        // Yes: 8+15+0+7+52+130+154+111+19+6+0+22+0 = 524 ✓
+        // Today: 8+15+0+7+52+130+154+111+19+6+0+39+0 = 541 ✓
+        { cat: "A. ELECTRICAL SYSTEM", name: "TRANSFORMATOR",                   plan: 8,    yes: 8,      today: 8    },
+        { cat: "A. ELECTRICAL SYSTEM", name: "AUTOMATIC TRANSFER SWITCH (ATS)", plan: 15,   yes: 15,     today: 15   },
+        { cat: "A. ELECTRICAL SYSTEM", name: "MV & RMU PANEL",                  plan: 20,   yes: 0,      today: 0    },
+        { cat: "A. ELECTRICAL SYSTEM", name: "LV PANEL",                        plan: 7,    yes: 7,      today: 7    },
+        { cat: "A. ELECTRICAL SYSTEM", name: "PDU PANEL",                       plan: 52,   yes: 52,     today: 52   },
+        { cat: "A. ELECTRICAL SYSTEM", name: "LDB & RDB PANEL",                 plan: 161,  yes: 130,    today: 130  },
+        { cat: "A. ELECTRICAL SYSTEM", name: "GROUNDING",                       plan: 175,  yes: 154,    today: 154  },
+        { cat: "A. ELECTRICAL SYSTEM", name: "LIGHTNING PROTECTION",            plan: 119,  yes: 111,    today: 111  },
+        { cat: "A. ELECTRICAL SYSTEM", name: "UNINTERRUPTIBLE POWER SUPPLY (UPS)",plan: 19, yes: 19,     today: 19   },
+        { cat: "A. ELECTRICAL SYSTEM", name: "GENERATOR SET (GENSET)",          plan: 6,    yes: 6,      today: 6    },
+        { cat: "A. ELECTRICAL SYSTEM", name: "LOAD & CAP BANK",                 plan: 4,    yes: 0,      today: 0    },
+        { cat: "A. ELECTRICAL SYSTEM", name: "BUSDUCT",                         plan: 40,   yes: 22,     today: 39   },
+        { cat: "A. ELECTRICAL SYSTEM", name: "EXHAUST FAN",                     plan: 14,   yes: 0,      today: 0    },
+
+        // B. COOLING SYSTEM: Plan=371, Yes=160, Today=162
+        // Verification: 3+12+133+3+40+25+126+12+11+6 = 371 ✓
+        // Yes: 3+0+0+0+0+25+112+12+8+0 = 160 ✓ | Today: 3+0+0+0+0+25+114+12+8+0 = 162 ✓
+        { cat: "B. COOLING SYSTEM", name: "COOLING TOWER",                      plan: 3,    yes: 3,      today: 3    },
+        { cat: "B. COOLING SYSTEM", name: "COOLING PUMP",                       plan: 12,   yes: 0,      today: 0    },
+        { cat: "B. COOLING SYSTEM", name: "PHYSICAL COOLING AUTOMATION & TEST TAN", plan: 133, yes: 0,   today: 0    },
+        { cat: "B. COOLING SYSTEM", name: "CHILLER",                            plan: 3,    yes: 0,      today: 0    },
+        { cat: "B. COOLING SYSTEM", name: "CRAC",                               plan: 40,   yes: 0,      today: 0    },
+        { cat: "B. COOLING SYSTEM", name: "FCU",                                plan: 25,   yes: 25,     today: 25   },
+        { cat: "B. COOLING SYSTEM", name: "VRV",                                plan: 126,  yes: 112,    today: 114  },
+        { cat: "B. COOLING SYSTEM", name: "PAHU",                               plan: 12,   yes: 12,     today: 12   },
+        { cat: "B. COOLING SYSTEM", name: "SPLITWALL",                          plan: 11,   yes: 8,      today: 8    },
+        { cat: "B. COOLING SYSTEM", name: "Presuraziation & Degassing",         plan: 6,    yes: 0,      today: 0    },
+
+        // C. FIRE SYSTEM: Plan=1116, Yes=970, Today=997
+        // Verification: 942+167+7 = 1116 ✓ | Yes: 834+129+7=970 ✓ | Today: 861+129+7=997 ✓
+        { cat: "C. FIRE SYSTEM", name: "FSS",                                   plan: 942,  yes: 834,    today: 861  },
+        { cat: "C. FIRE SYSTEM", name: "Hydrant System",                        plan: 167,  yes: 129,    today: 129  },
+        { cat: "C. FIRE SYSTEM", name: "PREACTION",                             plan: 7,    yes: 7,      today: 7    },
+
+        // D. FUEL SYSTEM: Plan=27, Yes=27, Today=27
+        // Verification: 13+14 = 27 ✓
+        { cat: "D. FUEL SYSTEM", name: "Fuel Pump",                             plan: 13,   yes: 13,     today: 13   },
+        { cat: "D. FUEL SYSTEM", name: "FUEL TANK",                             plan: 14,   yes: 14,     today: 14   },
+
+        // E. LIFTING SYSTEM (formerly PESAWAT ANGKUT): Plan=24, Yes=7.67, Today=17
+        // Lift Units: 3 rows x 7 = 21 plan | Yes=4.67, Today=14 (3x row: 14.00 @ 66.67%)
+        // Dock Leveller: plan=3, yes=3, today=3
+        // Total: 21+3=24 ✓ | Yes: 4.67+3=7.67 ✓ | Today: 14+3=17 ✓
+        { cat: "E. LIFTING SYSTEM", name: "Lift Units",                         plan: 21,   yes: 4.67,   today: 14   },
+        { cat: "E. LIFTING SYSTEM", name: "DOCK LEVELLER",                      plan: 3,    yes: 3,      today: 3    },
+
+        // F. LEAK DETECTION: Plan=115, Yes=115, Today=115
+        // Verification: 75+40 = 115 ✓
+        { cat: "F. LEAK DETECTION", name: "Water Leak",                         plan: 75,   yes: 75,     today: 75   },
+        { cat: "F. LEAK DETECTION", name: "FUEL LEAK DETECTION",                plan: 40,   yes: 40,     today: 40   },
+
+        // G. PLUMBING SYSTEM: Plan=40, Yes=5, Today=5
+        // STP: 4 | Water Treatment: 3 rows x 1 = 3 total plan, yes=1, today=1 | Pump: 33
+        // Total: 4+3+33 = 40 ✓ | Yes: 4+1+0=5 ✓ | Today: 4+1+0=5 ✓
+        { cat: "G. PLUMBING SYSTEM", name: "STP",                               plan: 4,    yes: 4,      today: 4    },
+        { cat: "G. PLUMBING SYSTEM", name: "WATER TREATMENT",                   plan: 3,    yes: 1,      today: 1    },
+        { cat: "G. PLUMBING SYSTEM", name: "PUMP",                              plan: 33,   yes: 0,      today: 0    },
+
+        // H. GATE & DOOR: Plan=27, Yes=0, Today=10
+        // Gate: 7, yes=0, today=4 (57.14%) | Road Blocker: PM Q2 (plan=0, skip) | Door: 14 | X-Ray: 6
+        // Total: 7+14+6 = 27 ✓ | Yes: 0 ✓ | Today: 4+0+6 = 10 ✓
+        { cat: "H. GATE & DOOR", name: "Gate",                                  plan: 7,    yes: 0,      today: 4    },
+        { cat: "H. GATE & DOOR", name: "DOOR",                                  plan: 14,   yes: 0,      today: 0    },
+        { cat: "H. GATE & DOOR", name: "X-RAY",                                 plan: 6,    yes: 0,      today: 6    },
+
+        // I. LIGHTING SYSTEM: Plan=2750, Yes=2750, Today=2715
+        // PJU & ALL LIGHTING: 2750, today=2715 (98.73%)
+        { cat: "I. LIGHTING SYSTEM", name: "PJU & ALL LIGHTING",                plan: 2750, yes: 2750,   today: 2715 },
+      ];
+
+      // STRATEGY: Full DELETE then INSERT for guaranteed 100% accuracy
+      // Step 1: Fetch all current records for this period
+      const existingQuery = query(
+        collection(db, 'maintenance_progress'),
+        where('year', '==', selectedYear),
+        where('quarter', '==', selectedQuarter)
+      );
+      const existingSnap = await getDocs(existingQuery);
+
+      // Step 2: Delete everything in this period
+      const deleteBatch = writeBatch(db);
+      existingSnap.docs.forEach(d => deleteBatch.delete(d.ref));
+      await deleteBatch.commit();
+
+      // Step 3: Insert fresh from officialData
+      const insertBatch = writeBatch(db);
+      officialData.forEach(item => {
+        const newRef = doc(collection(db, 'maintenance_progress'));
+        insertBatch.set(newRef, {
+          category:       item.cat,
+          equipment_name: item.name,
+          plan_qty:       item.plan,
+          yesterday_qty:  item.yes,
+          actual_qty:     item.today,
+          year:           selectedYear,
+          quarter:        selectedQuarter,
+          remark:         '',
+          createdAt:      serverTimestamp()
+        });
+      });
+      await insertBatch.commit();
+
+      toast.success('✅ Database direset & disinkronkan sempurna! Total: 5110 unit | 89.80%');
     } catch (err) {
       console.error(err);
-      toast.error('Gagal menghapus perangkat');
+      toast.error('Gagal sinkronisasi excel');
     } finally {
       setLoading(false);
     }
@@ -202,337 +418,273 @@ export function SiteManagerDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 p-4 sm:p-8 relative overflow-hidden">
-      <DataCenterBackground />
-      
-      {/* Header Container */}
-      <div className="max-w-7xl mx-auto mb-8 relative z-10">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight flex items-center gap-3">
-              <LayoutDashboard className="w-6 h-6 md:w-8 md:h-8 text-indigo-500" />
-              Dashboard Progres Maintenance
-            </h1>
-            <div className="flex items-center gap-4 mt-2">
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(Number(e.target.value))}
-                className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg px-2 py-1 outline-none focus:border-indigo-500 transition-colors cursor-pointer"
-              >
-                <option value={2026}>Tahun 2026</option>
-                <option value={2025}>Tahun 2025</option>
-              </select>
-              <select
-                value={selectedQuarter}
-                onChange={(e) => setSelectedQuarter(e.target.value)}
-                className="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg px-2 py-1 outline-none focus:border-indigo-500 transition-colors cursor-pointer"
-              >
-                <option value="Q1">Kuartal 1 (Jan-Mar)</option>
-                <option value="Q2">Kuartal 2 (Apr-Jun)</option>
-                <option value="Q3">Kuartal 3 (Jul-Sep)</option>
-                <option value="Q4">Kuartal 4 (Okt-Des)</option>
-              </select>
+    <div className="min-h-screen text-slate-200">
+      <div className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6">
+          <div className="flex flex-col py-3 md:py-4 gap-3 md:gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 md:gap-3 min-w-0 max-w-[65%] md:max-w-none">
+                {user ? (
+                  <>
+                    <div className="hidden sm:block p-3 bg-slate-900 border border-slate-800 rounded-2xl">
+                       <LayoutDashboard className="w-8 h-8 text-indigo-400" />
+                    </div>
+                    <div>
+                       <h1 className="text-sm md:text-3xl font-black text-white tracking-tight leading-none mb-1 uppercase">
+                          Dashboard Progres
+                       </h1>
+                       <div className="flex items-center gap-2 text-indigo-400 text-[8px] sm:text-xs font-bold uppercase tracking-wider">
+                          <ShieldCheck className="w-3.5 h-3.5" /> Monitoring Real-time
+                       </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                    <img
+                      src={logoUTT}
+                      alt="PT United Transworld Trading"
+                      className="w-8 h-8 sm:w-10 sm:h-10 md:w-16 md:h-16 flex-shrink-0 object-contain"
+                    />
+                    <div className="min-w-0">
+                      <h1 className="text-[9px] sm:text-sm md:text-lg font-black text-white tracking-tight leading-none mb-0.5 uppercase whitespace-nowrap overflow-hidden text-ellipsis">
+                        PT United Transworld Trading
+                      </h1>
+                      <div className="flex items-center gap-2 text-indigo-400 text-[7px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap">
+                        Maintenance Progress Report
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {!user ? (
+                <button
+                  onClick={onLogin}
+                  className="px-3 py-1.5 md:px-8 md:py-3 rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/20 hover:bg-indigo-500 transition-all flex items-center justify-center gap-1.5 font-black text-[9px] md:text-sm tracking-wide flex-shrink-0 ml-1"
+                >
+                  <LogIn className="w-3.5 h-3.5 md:w-5 md:h-5" />
+                  <span>Login</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowLogoutModal(true)}
+                  className="p-2 md:px-4 md:py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-400 hover:text-white transition-all flex items-center justify-center gap-2 group flex-shrink-0"
+                >
+                  <UserCircle className="w-5 h-5 md:w-6 md:h-6" />
+                  <span className="hidden sm:inline">Keluar</span>
+                </button>
+              )}
             </div>
-          </div>
-          <div className="grid grid-cols-2 md:flex items-center gap-2 bg-slate-900/50 p-1 rounded-xl border border-slate-800">
-            <button
-              onClick={() => setActiveTab('summary')}
-              className={`px-3 md:px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 text-sm md:text-base ${
-                activeTab === 'summary' 
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' 
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4" />
-              <span className="hidden xs:inline">Resume</span>
-              <span className="xs:hidden">Resume</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('input')}
-              className={`px-3 md:px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 text-sm md:text-base ${
-                activeTab === 'input' 
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' 
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <ClipboardList className="w-4 h-4" />
-              <span className="hidden xs:inline">Perbarui Progres</span>
-              <span className="xs:hidden">Perbarui</span>
-            </button>
 
-            <div className="hidden md:block w-px h-6 bg-slate-800 mx-1" />
+            <div className="flex flex-wrap items-center gap-2 md:gap-4">
+              <div className="flex items-center gap-2 bg-slate-900/50 p-1 rounded-xl border border-white/5">
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="bg-transparent text-slate-300 text-[10px] sm:text-xs font-bold px-2 py-1 outline-none cursor-pointer uppercase"
+                >
+                  <option value={2026} className="bg-slate-900">2026</option>
+                  <option value={2025} className="bg-slate-900">2025</option>
+                </select>
+                <div className="w-px h-3 bg-white/10" />
+                <select
+                  value={selectedQuarter}
+                  onChange={(e) => setSelectedQuarter(e.target.value)}
+                  className="bg-transparent text-slate-300 text-[10px] sm:text-xs font-bold px-2 py-1 outline-none cursor-pointer uppercase"
+                >
+                  <option value="Q1" className="bg-slate-900">Q1</option>
+                  <option value="Q2" className="bg-slate-900">Q2</option>
+                  <option value="Q3" className="bg-slate-900">Q3</option>
+                  <option value="Q4" className="bg-slate-900">Q4</option>
+                </select>
+              </div>
 
-            <button
-              onClick={handleEndDay}
-              disabled={loading}
-              className="col-span-2 md:col-span-1 px-4 py-2 rounded-lg bg-emerald-600/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-2 group text-sm md:text-base"
-              title="Freeze data hari ini sebagai data kemarin"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <TrendingUp className="w-4 h-4 group-hover:scale-110 transition-transform" />}
-              Akhiri Hari
-            </button>
-
-            <button
-              onClick={() => setShowLogoutModal(true)}
-              className="px-4 py-2 rounded-lg bg-slate-800/50 text-slate-400 border border-slate-700/50 hover:bg-slate-800 hover:text-white transition-all flex items-center justify-center gap-2 group text-sm md:text-base"
-              title={`Logout dari ${user?.email}`}
-            >
-              <UserCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
-              <span className="hidden sm:inline">Profil</span>
-            </button>
+              {user && (
+                <div className="flex items-center gap-2 bg-slate-900/50 p-1 rounded-xl border border-white/5 ml-auto">
+                  <button
+                    onClick={() => setActiveTab('summary')}
+                    className={`px-3 py-1.5 rounded-lg transition-all text-[10px] sm:text-xs font-bold uppercase ${
+                      activeTab === 'summary' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Summary
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('input')}
+                    className={`px-3 py-1.5 rounded-lg transition-all text-[10px] sm:text-xs font-bold uppercase ${
+                      activeTab === 'input' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    Input Data
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto relative z-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 relative z-10">
         <AnimatePresence mode="wait">
-          {activeTab === 'summary' && (
-            summary ? (
-              <motion.div
-                key="summary"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="space-y-6"
-              >
-                {/* Stat Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl backdrop-blur-sm relative overflow-hidden group hover:border-indigo-500/50 transition-all">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-slate-500/5 blur-[80px] -mr-8 -mt-8" />
-                    <div className="flex items-center justify-between mb-4 relative z-10">
-                      <p className="text-slate-400 font-medium">Progress Kemarin</p>
-                      <div className="p-2 bg-slate-800 rounded-lg">
-                        <Calendar className="w-5 h-5 text-slate-400" />
-                      </div>
-                    </div>
-                    <div className="flex items-end gap-2 relative z-10">
-                      <h2 className="text-4xl font-bold text-white">{summary.total_yesterday_percent.toFixed(2)}%</h2>
-                      <p className="text-slate-500 mb-1">{summary.total_yesterday_qty.toFixed(2)} unit</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl backdrop-blur-sm relative overflow-hidden group hover:border-indigo-500/50 transition-all">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 blur-[80px] -mr-8 -mt-8" />
-                    <div className="flex items-center justify-between mb-4 relative z-10">
-                      <p className="text-slate-400 font-medium">Total Progres</p>
-                      <div className="p-2 bg-indigo-500/10 rounded-lg">
-                        <TrendingUp className="w-5 h-5 text-indigo-400" />
-                      </div>
-                    </div>
-                    <div className="flex items-end gap-2 relative z-10">
-                      <h2 className="text-4xl font-bold text-white">{summary.total_today_percent.toFixed(2)}%</h2>
-                      <p className="text-slate-500 mb-1">{summary.total_today_qty.toFixed(2)} unit</p>
-                    </div>
-                    <div className="mt-6 h-2 bg-slate-800 rounded-full overflow-hidden relative z-10">
-                      <motion.div 
-                        initial={{ width: 0 }}
-                        animate={{ width: `${summary.total_today_percent}%` }}
-                        transition={{ duration: 1, ease: "easeOut" }}
-                        className="h-full bg-gradient-to-r from-indigo-600 to-violet-600 rounded-full shadow-[0_0_12px_rgba(79,70,229,0.4)]"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl backdrop-blur-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <p className="text-slate-400 font-medium">Progres Harian</p>
-                      <div className="p-2 bg-emerald-500/20 rounded-lg">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                      </div>
-                    </div>
-                    <div className="flex items-end gap-2">
-                      <h2 className="text-4xl font-bold text-emerald-400">+{summary.daily_progress}%</h2>
-                      <p className="text-slate-500 mb-1">Pertumbuhan hari ini</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Category Table */}
-                <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden backdrop-blur-sm">
-                  <div className="p-6 border-b border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                      <FileText className="w-6 h-6 text-indigo-500" />
-                      Ringkasan Per Kategori
-                    </h3>
-                    <div className="flex items-center gap-2">
-                       <button
-                        onClick={() => {
-                            import('@/utils/ResumePdfExport').then(m => m.generateResumePdf(summary!));
-                        }}
-                        className="flex items-center justify-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-500/20 font-bold"
-                      >
-                        <Download className="w-4 h-4" />
-                        Ekspor ke PDF
-                      </button>
-                      <button onClick={() => toast.info('Data diperbarui secara real-time dari Firestore')} className="p-2 text-slate-400 hover:text-white transition-colors" title="Refresh Data">
-                        <RefreshCw className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead className="hidden md:table-header-group text-slate-300 text-[10px] uppercase tracking-wider font-bold">
-                        <tr className="bg-slate-950/80">
-                          <th rowSpan={3} className="px-4 py-3 border border-slate-800 text-center bg-blue-600/20">No</th>
-                          <th rowSpan={3} className="px-4 py-3 border border-slate-800 text-center bg-blue-600/20">DESKRIPSI</th>
-                          <th colSpan={2} className="px-4 py-3 border border-slate-800 text-center bg-blue-600/20">PLAN</th>
-                          <th colSpan={4} className="px-4 py-3 border border-slate-800 text-center bg-blue-600/20 text-blue-400">PROGRESS</th>
-                        </tr>
-                        <tr className="bg-slate-950/80">
-                          <th rowSpan={2} className="px-4 py-2 border border-slate-800 text-center bg-blue-600/10">Qty</th>
-                          <th rowSpan={2} className="px-4 py-2 border border-slate-800 text-center bg-blue-600/10">Weight %</th>
-                          <th colSpan={2} className="px-4 py-2 border border-slate-800 text-center bg-emerald-900/30 text-emerald-400">Yesterday</th>
-                          <th colSpan={2} className="px-4 py-2 border border-slate-800 text-center bg-purple-900/30 text-purple-400">Today</th>
-                        </tr>
-                        <tr className="bg-slate-950/80 text-[9px]">
-                          <th className="px-4 py-2 border border-slate-800 text-center bg-emerald-900/20">Qty</th>
-                          <th className="px-4 py-2 border border-slate-800 text-center bg-emerald-900/20">Weight %</th>
-                          <th className="px-4 py-2 border border-slate-800 text-center bg-purple-900/20">Qty</th>
-                          <th className="px-4 py-2 border border-slate-800 text-center bg-purple-900/20">Weight %</th>
-                        </tr>
-                      </thead>
-                      <tbody className="block md:table-row-group divide-y divide-slate-800/50 md:divide-slate-800">
-                        {(summary.category_summaries || []).map((cat, idx) => (
-                          <tr key={idx} className="block md:table-row bg-slate-900/20 md:bg-transparent border border-slate-800 md:border-none rounded-2xl mb-4 md:mb-0 overflow-hidden hover:bg-white/[0.02] transition-colors group">
-                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-slate-800 text-center bg-slate-950/40 font-bold text-indigo-400">
-                              <div className="flex justify-between items-center md:justify-center">
-                                <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase">No</span>
-                                <span>1.{idx + 1}</span>
-                              </div>
-                            </td>
-                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-slate-800 text-center">
-                              <div className="flex flex-col items-center justify-center">
-                                <span className="md:hidden text-[10px] font-bold text-indigo-400 uppercase tracking-wider mb-1">Kategori</span>
-                                <span className="font-bold text-slate-200 tracking-wide text-xs">{cat.category}</span>
-                              </div>
-                            </td>
-                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-slate-800">
-                              <div className="flex justify-between items-center md:justify-center">
-                                <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Plan Qty</span>
-                                <span className="text-slate-400 font-mono text-xs">{cat.plan_qty.toLocaleString()}</span>
-                              </div>
-                            </td>
-                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-slate-800">
-                              <div className="flex justify-between items-center md:justify-center">
-                                <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Plan Weight</span>
-                                <span className="text-slate-400 font-mono text-xs">{cat.weight_percent.toFixed(2)}%</span>
-                              </div>
-                            </td>
-                            {/* Yesterday Columns */}
-                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-slate-800 bg-emerald-900/5">
-                              <div className="flex justify-between items-center md:justify-center">
-                                <span className="md:hidden text-[10px] font-bold text-emerald-500/70 uppercase tracking-wider">Yesterday Qty</span>
-                                <span className="text-emerald-400/80 font-mono text-xs">{cat.yesterday_qty.toLocaleString()}</span>
-                              </div>
-                            </td>
-                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-slate-800 bg-emerald-900/10">
-                              <div className="flex justify-between items-center md:justify-center">
-                                <span className="md:hidden text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Yesterday %</span>
-                                <span className="text-emerald-400 font-mono font-bold text-xs">{cat.yesterday_percent.toFixed(2)}%</span>
-                              </div>
-                            </td>
-                            {/* Today Columns */}
-                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-slate-800 bg-purple-900/5">
-                              <div className="flex justify-between items-center md:justify-center">
-                                <span className="md:hidden text-[10px] font-bold text-purple-500/70 uppercase tracking-wider">Today Qty</span>
-                                <span className="text-purple-400/80 font-mono text-xs">{cat.today_qty.toLocaleString()}</span>
-                              </div>
-                            </td>
-                            <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-slate-800 bg-purple-900/10">
-                              <div className="flex justify-between items-center md:justify-center">
-                                <span className="md:hidden text-[10px] font-bold text-purple-400 uppercase tracking-wider font-bold">Today %</span>
-                                <span className="text-purple-400 font-bold font-mono text-xs">{cat.today_percent.toFixed(2)}%</span>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex flex-col items-center justify-center py-20 text-slate-500"
-              >
-                <div className="p-4 bg-slate-900 rounded-full mb-4">
-                  <Database className="w-8 h-8 text-slate-700" />
-                </div>
-                <p className="text-lg">Belum ada data Maintenance Progress.</p>
-                <p className="text-sm mt-1">Gunakan script init-db untuk mengisi data awal.</p>
-                <button
-                  onClick={() => toast.info('Data diperbarui secara real-time dari Firestore')}
-                  className="mt-6 px-6 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors flex items-center gap-2"
-                >
-                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                  Coba Muat Ulang
-                </button>
-              </motion.div>
-            )
-          )}
-
-          {activeTab === 'input' && (
+          {activeTab === 'summary' ? (
             <motion.div
-              key="input"
-              initial={{ opacity: 0, y: 20 }}
+              key="summary"
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
+              exit={{ opacity: 0, y: -10 }}
               className="space-y-6"
             >
-              {/* Search & Filters */}
-              <div className="relative group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
-                <input
-                  type="text"
-                  placeholder="Cari perangkat atau kategori..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl py-4 pl-12 pr-4 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none backdrop-blur-sm transition-all"
-                />
+              {summary && (
+                <>
+                  <div className="grid grid-cols-3 gap-3 md:gap-12 max-w-5xl mx-auto py-6">
+                    <StatDonut 
+                      label="Kemarin" 
+                      percent={summary.total_yesterday_percent} 
+                      sublabel={`${summary.total_yesterday_qty.toFixed(0)} UNIT`}
+                      color="#94a3b8"
+                      glowColor="#cbd5e1"
+                      delay={0.1}
+                    />
+                    <StatDonut 
+                      label="Total" 
+                      percent={summary.total_today_percent} 
+                      color="#6366f1"
+                      glowColor="#818cf8"
+                      delay={0.2}
+                    />
+                    <StatDonut 
+                      label="Harian" 
+                      percent={summary.daily_progress} 
+                      color="#10b981"
+                      glowColor="#34d399"
+                      delay={0.3}
+                    />
+                  </div>
+
+                  <div className="bg-slate-900/40 border border-white/5 rounded-2xl overflow-hidden backdrop-blur-md">
+                    <div className="p-4 md:p-6 border-b border-white/5 flex items-center justify-between">
+                      <h3 className="text-xs md:text-lg font-black uppercase tracking-widest text-slate-400">Ringkasan Progres</h3>
+                      {user && (
+                        <button
+                          onClick={() => import('@/utils/ResumePdfExport').then(m => m.generateResumePdf(summary))}
+                          className="p-2 md:px-4 md:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white transition-all flex items-center gap-2 text-[10px] md:text-sm font-bold uppercase tracking-wider"
+                        >
+                          <Download className="w-4 h-4" />
+                          <span className="hidden sm:inline">PDF Report</span>
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-white/10">
+                      <table className="w-full text-center border-collapse min-w-[700px]">
+                        <thead>
+                          <tr className="bg-slate-900/50 text-[8px] md:text-[11px] font-black tracking-[0.2em] text-slate-400 uppercase">
+                            <th rowSpan={3} className="sticky left-0 z-30 bg-slate-950 p-3 md:px-4 border border-white/5 w-10 md:w-16 shadow-[2px_0_10px_rgba(0,0,0,0.3)]">NO</th>
+                            <th rowSpan={3} className="sticky left-10 md:left-16 z-30 bg-slate-950 p-3 md:px-6 border border-white/5 min-w-[140px] md:min-w-[280px] text-center shadow-[4px_0_15px_rgba(0,0,0,0.3)]">KATEGORI</th>
+                            <th colSpan={2} className="p-3 border border-white/5 bg-indigo-500/10 text-indigo-400">PLAN</th>
+                            <th colSpan={4} className="p-3 border border-white/5 bg-emerald-500/10 text-emerald-400">PROGRESS</th>
+                          </tr>
+                          <tr className="bg-white/[0.01] text-[7px] md:text-[9px]">
+                            <th rowSpan={2} className="p-1 md:p-3 border border-white/5 bg-indigo-500/5">QTY</th>
+                            <th rowSpan={2} className="p-1 md:p-3 border border-white/5 bg-indigo-500/5">WEIGHT %</th>
+                            <th colSpan={2} className="p-1 md:p-3 border border-white/5 bg-emerald-500/5">YESTERDAY</th>
+                            <th colSpan={2} className="p-1 md:p-3 border border-white/5 bg-purple-500/5 text-purple-400">TODAY</th>
+                          </tr>
+                          <tr className="text-[6px] md:text-[8px] text-slate-600">
+                            <th className="p-1 md:p-2 border border-white/5">QTY</th>
+                            <th className="p-1 md:p-2 border border-white/5">%</th>
+                            <th className="p-1 md:p-2 border border-white/5">QTY</th>
+                            <th className="p-1 md:p-2 border border-white/5">%</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {summary.category_summaries.map((cat, idx) => (
+                            <tr key={idx} className="hover:bg-white/[0.02] transition-all group">
+                              <td className="sticky left-0 z-20 bg-slate-900 group-hover:bg-slate-800/90 p-2 md:px-4 border border-white/5 text-slate-500 font-bold font-mono">
+                                1.{idx + 1}
+                              </td>
+                              <td className="sticky left-10 md:left-16 z-20 bg-slate-900 group-hover:bg-slate-800/90 p-2 md:px-6 border border-white/5 text-center">
+                                <span className="font-bold text-slate-200 uppercase text-[9px] md:text-sm tracking-tight">{cat.category}</span>
+                              </td>
+                              <td className="p-2 md:p-4 border border-white/5 text-slate-400">{cat.plan_qty.toLocaleString()}</td>
+                              <td className="p-2 md:p-4 border border-white/5 text-indigo-400 font-bold">{cat.weight_percent.toFixed(2)}%</td>
+                              <td className="p-2 md:p-4 border border-white/5 text-slate-500">{cat.yesterday_qty.toLocaleString()}</td>
+                              <td className="p-2 md:p-4 border border-white/5 text-emerald-400 font-black">{cat.yesterday_percent.toFixed(2)}%</td>
+                              <td className="p-2 md:p-4 border border-white/5 text-slate-500">{cat.today_qty.toLocaleString()}</td>
+                              <td className="p-2 md:p-4 border border-white/5 text-purple-400 font-black">{cat.today_percent.toFixed(2)}%</td>
+                            </tr>
+                          ))}
+                          <tr className="bg-slate-950 font-black text-[10px] md:text-base border-t-2 border-indigo-500/30">
+                            <td colSpan={2} className="sticky left-0 z-20 bg-slate-950 p-4 md:p-8 text-white uppercase tracking-[0.3em] text-right border border-white/5">
+                              TOTAL
+                            </td>
+                            <td className="p-2 border border-white/5 text-slate-400">{summary.total_plan_qty.toLocaleString()}</td>
+                            <td className="p-2 border border-white/5 text-indigo-400">100.00%</td>
+                            <td className="p-2 border border-white/5 text-slate-500">{summary.total_yesterday_qty.toLocaleString()}</td>
+                            <td className="p-2 border border-white/5 text-emerald-400 tracking-tighter">{summary.total_yesterday_percent.toFixed(2)}%</td>
+                            <td className="p-2 border border-white/5 text-slate-500">{summary.total_today_qty.toLocaleString()}</td>
+                            <td className="p-2 border border-white/5 text-purple-400 tracking-tighter">{summary.total_today_percent.toFixed(2)}%</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="input"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="Search equipment or category..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-slate-900 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
+                  />
+                </div>
+                <button
+                  onClick={handleEndDay}
+                  disabled={loading}
+                  className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold hover:bg-slate-700 transition-all flex items-center gap-2 border border-white/5"
+                >
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Akhiri Hari & Freeze
+                </button>
               </div>
 
-              {/* Progress Update Table */}
-              <div className="bg-slate-900/50 border border-slate-800 rounded-2xl overflow-hidden backdrop-blur-sm">
+              <div className="bg-slate-900/40 border border-white/5 rounded-2xl overflow-hidden backdrop-blur-md">
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse">
-                    <thead className="hidden md:table-header-group bg-slate-950/50 text-slate-400 text-xs uppercase tracking-wider">
+                    <thead className="bg-white/[0.02] text-slate-500 text-[10px] font-black uppercase tracking-widest">
                       <tr>
-                        <th className="px-6 py-4 font-medium">Perangkat</th>
-                        <th className="px-6 py-4 font-medium text-center">Plan Qty</th>
-                        <th className="px-6 py-4 font-medium text-center">Plan Period</th>
-                        <th className="px-6 py-4 font-medium text-center w-32">Actual Qty</th>
-                        <th className="px-6 py-4 font-medium text-center">Progress</th>
-                        <th className="px-6 py-4 font-medium">Remark</th>
-                        <th className="px-6 py-4 font-medium text-center">Action</th>
+                        <th className="px-6 py-4 text-left">Equipment</th>
+                        <th className="px-6 py-4 text-center">Plan Qty</th>
+                        <th className="px-6 py-4 text-center">Period</th>
+                        <th className="px-6 py-4 text-center w-32">Actual</th>
+                        <th className="px-6 py-4 text-center">Progres</th>
+                        <th className="px-6 py-4 text-left">Remark</th>
+                        <th className="px-6 py-4 text-center">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="block md:table-row-group divide-y divide-slate-800/50 md:divide-slate-800 p-4 md:p-0">
-                      {filteredActivities.length > 0 ? (
-                        filteredActivities.map((activity: MaintenanceProgress) => (
-                          <ActivityRow
-                            key={activity.id}
-                            activity={activity}
-                            onUpdate={handleUpdateProgress}
-                            onDelete={handleDelete}
-                            isSaving={saving === activity.id}
-                          />
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={7} className="px-6 py-12 text-center text-slate-600">
-                            {loading ? (
-                              <div className="flex flex-col items-center gap-2">
-                                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-                                <span>Memuat data...</span>
-                              </div>
-                            ) : (
-                              "Tidak ada data perangkat yang ditemukan."
-                            )}
-                          </td>
-                        </tr>
-                      )}
+                    <tbody className="divide-y divide-white/5">
+                      {filteredActivities.map((activity) => (
+                        <ActivityRow
+                          key={activity.id}
+                          activity={activity}
+                          onUpdate={handleUpdateProgress}
+                          onDelete={handleDelete}
+                          isSaving={saving === activity.id}
+                        />
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -540,17 +692,18 @@ export function SiteManagerDashboard() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </main>
 
-      {/* Floating Action Button */}
-      <motion.button
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => setShowAddModal(true)}
-        className="fixed bottom-8 right-8 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl shadow-indigo-500/40 flex items-center justify-center z-[50] group"
-      >
-        <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
-      </motion.button>
+      {user && (
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setShowAddModal(true)}
+          className="fixed bottom-8 right-8 w-16 h-16 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center z-50 group border-b-4 border-indigo-800"
+        >
+          <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
+        </motion.button>
+      )}
 
       {/* Add Item Modal */}
       <AnimatePresence>
@@ -591,7 +744,14 @@ export function SiteManagerDashboard() {
                       placeholder="Contoh: A. ELECTRICAL SYSTEM"
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 md:p-3.5 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
                     />
-                    {/* ... datalist ... */}
+                    <datalist id="categories">
+                      <option value="A. ELECTRICAL SYSTEM" />
+                      <option value="B. HVAC SYSTEM" />
+                      <option value="C. PLUMBING SYSTEM" />
+                      <option value="D. FIRE PROTECT. SYSTEM" />
+                      <option value="E. LIFT & ESCALATOR" />
+                      <option value="F. CIVIL & ARCHITECTURE" />
+                    </datalist>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-400 mb-2">Nama Perangkat</label>
@@ -759,9 +919,9 @@ function ActivityRow({ activity, onUpdate, onDelete, isSaving }: {
       <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-none">
         <div className="flex justify-between items-center md:justify-center">
           <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Plan Period</span>
-          <div className="flex items-center gap-3 md:flex-col md:gap-0.5 text-xs text-slate-500">
+          <div className="flex items-center gap-2 text-[10px] md:text-[11px] text-slate-500 font-medium">
             <span>{activity.plan_start}</span>
-            <ArrowRight className="w-3 h-3 md:rotate-90" />
+            <ArrowRight className="w-3 h-3 text-slate-600" />
             <span>{activity.plan_finish}</span>
           </div>
         </div>

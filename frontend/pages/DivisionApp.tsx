@@ -14,7 +14,6 @@ import { useAuth } from '@/components/AuthContext';
 import { FileManagement } from '@/components/FileManagement';
 import { DocumentList } from '@/components/DocumentList';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
-import { DataCenterBackground } from '@/components/DataCenterBackground';
 import { Footer } from '@/components/Footer';
 import logoUTT from '@/assets/logo_utt.png';
 
@@ -45,8 +44,7 @@ export function DivisionApp() {
     const getDivisionDetails = (id: string) => DIVISIONS.find(d => d.id === id);
 
     return (
-        <div className="min-h-screen relative overflow-hidden font-geist text-slate-200">
-            <DataCenterBackground />
+        <div className="min-h-screen flex flex-col">
 
             {/* Sticky Header */}
             <div className="bg-slate-900/60 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-50">

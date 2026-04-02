@@ -6,7 +6,6 @@ import {
   Layers, Camera, Check
 } from 'lucide-react';
 import { SignaturePad } from './ui/SignaturePad';
-import { CameraCapture } from './ui/CameraCapture';
 import { db } from '@/api/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '@/components/AuthContext';
@@ -63,14 +62,8 @@ function SuccessReceipt({ data, onDone }: SuccessReceiptProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 pt-4">
-             <div className="space-y-2 text-center">
-                <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1">Foto Wajah</p>
-                <div className="bg-slate-900 p-1 rounded-xl border border-slate-800 aspect-square flex items-center justify-center overflow-hidden">
-                   <img src={data.facePhoto} className="w-full h-full object-cover rounded-lg" alt="Face photo" />
-                </div>
-             </div>
-             <div className="space-y-2 text-center">
+          <div className="pt-4 flex justify-center">
+             <div className="space-y-2 text-center w-full max-w-[200px]">
                 <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mb-1">Tanda Tangan</p>
                 <div className="bg-slate-900 p-1 rounded-xl border border-slate-800 aspect-square flex items-center justify-center overflow-hidden">
                    <img src={data.requestSignature} className="max-h-full invert brightness-200 opacity-80" alt="Signature" />
@@ -130,15 +123,13 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
     requestDate: string;
     requestTime: string;
     requestSignature: string;
-    facePhoto: string;
   }>({
     borrowerName: '',
     items: [{ id: Math.random().toString(36).substr(2, 9), name: '', quantity: 1 }],
     purpose: '',
     requestDate: new Date().toISOString().split('T')[0],
     requestTime: new Date().toTimeString().slice(0, 5),
-    requestSignature: '',
-    facePhoto: ''
+    requestSignature: ''
   });
 
   const addItem = () => {
@@ -170,8 +161,8 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
     
     // Validation
     const hasEmptyItems = formData.items.some(item => !item.name.trim() || Number(item.quantity) < 1);
-    if (!formData.borrowerName || hasEmptyItems || !formData.purpose || !formData.requestSignature || !formData.facePhoto) {
-      return toast.error('Harap lengkapi semua field, item, foto wajah, dan tanda tangan');
+    if (!formData.borrowerName || hasEmptyItems || !formData.purpose || !formData.requestSignature) {
+      return toast.error('Harap lengkapi semua field, item, dan tanda tangan');
     }
 
     setLoading(true);
@@ -188,7 +179,6 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
         requestDate: formData.requestDate,
         requestTime: formData.requestTime,
         requestSignature: formData.requestSignature,
-        facePhoto: formData.facePhoto,
         engineerEmail: user?.email,
         status: 'pending',
         createdAt: serverTimestamp(),
@@ -204,8 +194,7 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
         purpose: '',
         requestDate: new Date().toISOString().split('T')[0],
         requestTime: new Date().toTimeString().slice(0, 5),
-        requestSignature: '',
-        facePhoto: ''
+        requestSignature: ''
       });
     } catch (error) {
       console.error('Submit error:', error);
@@ -389,16 +378,8 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
           </div>
         </div>
 
-        {/* Section 4: Evidence */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
-          <div className="space-y-4">
-            <label className="text-xs font-bold text-blue-400 uppercase tracking-widest pl-1 flex items-center gap-1.5">
-              <Camera className="w-3.5 h-3.5" /> Foto Wajah (Bukti)
-            </label>
-            <CameraCapture onCapture={dataUrl => setFormData({ ...formData, facePhoto: dataUrl })} />
-          </div>
-
-          <div className="space-y-4">
+        <div className="pt-4 flex justify-center">
+          <div className="w-full max-w-md space-y-4">
             <label className="text-xs font-bold text-red-400/80 uppercase tracking-widest pl-1 flex items-center gap-1.5">
               <ShieldCheck className="w-3.5 h-3.5" /> Tanda Tangan Peminjam
             </label>

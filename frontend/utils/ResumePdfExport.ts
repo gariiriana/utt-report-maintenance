@@ -139,7 +139,7 @@ export async function generateResumePdf(summary: MaintenanceSummary) {
         head: [
             [
                 { content: 'No', rowSpan: 3, styles: { halign: 'center', valign: 'middle' } }, 
-                { content: 'DESKRIPSI', rowSpan: 3, styles: { valign: 'middle' } }, 
+                { content: 'DESKRIPSI', rowSpan: 3, styles: { halign: 'center', valign: 'middle' } }, 
                 { content: 'PLAN', colSpan: 2, styles: { halign: 'center' } }, 
                 { content: 'PROGRESS', colSpan: 4, styles: { halign: 'center' } }
             ],

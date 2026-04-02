@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
-import { DataCenterBackground } from '@/components/DataCenterBackground';
 import { Lock, Mail, Eye, EyeOff, LogIn } from 'lucide-react';
 
 
@@ -50,16 +49,14 @@ export function Login() {
 
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
-      <DataCenterBackground />
-
+    <div className="min-h-screen font-geist text-slate-200 flex items-center justify-center p-4 sm:p-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="bg-slate-900/5 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-2xl border border-white/5 overflow-hidden">
+        <div className="bg-slate-900/5 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-2xl border border-white/5">
           <div className="h-1 bg-gradient-to-r from-indigo-600/50 via-indigo-500/50 to-purple-500/50" />
 
           <div className="p-6 sm:p-8">
@@ -149,6 +146,7 @@ export function Login() {
                   </span>
                 )}
               </motion.button>
+
             </form>
           </div>
         </div>

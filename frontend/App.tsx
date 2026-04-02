@@ -6,10 +6,12 @@ import { HSEApp } from '@/pages/HSEApp';
 import { DivisionApp } from '@/pages/DivisionApp';
 import { SiteManagerDashboard } from '@/pages/SiteManagerDashboard';
 import { InventoryApp } from '@/pages/InventoryApp';
+import { DataCenterBackground } from '@/components/DataCenterBackground';
 import { ServerLoadingIndicator } from '@/components/ServerLoadingIndicator';
 import { HSEReportViewer } from '@/components/HSEReportViewer';
 import { useEffect } from 'react';
 import { logFirebaseEvent } from '@/api/firebase';
+import { motion, AnimatePresence } from 'motion/react';
 
 
 function getHSEReportIdFromUri(): string | null {
@@ -51,24 +53,48 @@ function AppContent() {
     return <ServerLoadingIndicator />;
   }
 
-  if (user) {
-    if (userRole === 'hse') {
-      return <HSEApp />;
-    }
-    const isoRoles = ['pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
-    if (isoRoles.includes(userRole || '')) {
-      return <DivisionApp />;
-    }
-    if (userRole === 'site_manager' || userRole === 'manager') {
-      return <SiteManagerDashboard />;
-    }
-    if (userRole === 'inventory') {
-      return <InventoryApp />;
-    }
-    return <MainApp />;
-  }
-
-  return <Login />;
+  return (
+    <div className="relative min-h-screen bg-slate-950 overflow-x-hidden">
+      {/* 
+        Stabilize the background at the App level. 
+        This prevents the 'removeChild' error and flickering when switching pages.
+      */}
+      <DataCenterBackground />
+      
+      <div className="relative z-10 w-full min-h-screen">
+        <AnimatePresence mode="wait">
+          {user ? (
+            <motion.div
+              key={`private-${userRole}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              {(() => {
+                if (userRole === 'hse') return <HSEApp />;
+                const isoRoles = ['pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
+                if (isoRoles.includes(userRole || '')) return <DivisionApp />;
+                if (userRole === 'site_manager' || userRole === 'manager') return <SiteManagerDashboard />;
+                if (userRole === 'inventory') return <InventoryApp />;
+                return <MainApp />;
+              })()}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="login"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.4 }}
+            >
+              <Login />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
 }
 
 export default function App() {
@@ -82,10 +108,13 @@ export default function App() {
 
   if (PUBLIC_HSE_REPORT_ID) {
     return (
-      <>
-        <HSEReportViewer reportId={PUBLIC_HSE_REPORT_ID} />
-        <Toaster position="top-center" richColors />
-      </>
+      <div className="relative min-h-screen bg-slate-950">
+        <DataCenterBackground />
+        <div className="relative z-10">
+          <HSEReportViewer reportId={PUBLIC_HSE_REPORT_ID} />
+          <Toaster position="top-center" richColors />
+        </div>
+      </div>
     );
   }
 

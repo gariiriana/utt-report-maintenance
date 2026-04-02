@@ -118,6 +118,13 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                 next.safetySign = true;
             }
 
+            if (key === 'dokumen' && !next.dokumen) {
+                next.msds = false;
+            }
+            if (key === 'msds' && next.msds) {
+                next.dokumen = true;
+            }
+
             return next;
         });
     };
@@ -517,7 +524,11 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                             >
                                 <div className="p-5">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                        {HSE_CHECKLIST_LABELS.filter(item => !['safeCondition', 'safeAction'].includes(item.key)).map((item) => {
+                                        {HSE_CHECKLIST_LABELS.filter(item => {
+                                            if (['safeCondition', 'safeAction'].includes(item.key)) return false;
+                                            if (item.key === 'dokumen' && user?.email !== 'hse@gmail.com') return false;
+                                            return true;
+                                        }).map((item) => {
                                             const checked = checklist[item.key];
                                             const hasSubItems = item.subItems && item.subItems.length > 0;
 
@@ -550,7 +561,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                                                                 className="overflow-hidden ml-6 pl-4 border-l-2 border-slate-700/50 flex flex-col gap-2"
                                                             >
                                                                 {item.subItems?.filter(sub => {
-                                                                    if (sub.key === 'sarungTanganCutResistance') {
+                                                                    if (['sarungTanganCutResistance', 'pelindungMata', 'msds'].includes(sub.key as string)) {
                                                                         return user?.email === 'hse@gmail.com';
                                                                     }
                                                                     return true;
