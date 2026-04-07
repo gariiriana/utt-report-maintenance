@@ -73,6 +73,12 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Noise measurement',
     'Current measurement',
     'Fan speed with Tachometer measurement'
+  ],
+  'crac@gmail.com': [
+    'Display CRAC', 'Cleaning Filter', 'Cleaning unit', 'Measurement Grounding',
+    'Measurement temperature/Humidity', 'Measurement air flow', 'Measurement vibration',
+    'Measurement Voltage fasa to fasa', 'Measurement Voltage fasa to netral',
+    'Measurement Voltage power supply', 'Measurement Ampere', 'Measurement DPM'
   ]
 };
 

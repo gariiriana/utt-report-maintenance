@@ -95,6 +95,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       if (lowerEmail === 'lightingsystem@gmail.com') setMaintenanceName('Lighting System');
       if (lowerEmail === 'coolingtower@gmail.com') setMaintenanceName('Cooling Tower');
       if (lowerEmail === 'acsplit@gmail.com') setMaintenanceName('AC Split');
+      if (lowerEmail === 'crac@gmail.com') setMaintenanceName('CRAC');
     }
 
     if (template) {
@@ -444,6 +445,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         if (lowerEmail === 'lightingsystem@gmail.com') setMaintenanceName('Lighting System');
         if (lowerEmail === 'coolingtower@gmail.com') setMaintenanceName('Cooling Tower');
         if (lowerEmail === 'acsplit@gmail.com') setMaintenanceName('AC Split');
+        if (lowerEmail === 'crac@gmail.com') setMaintenanceName('CRAC');
       }
 
       if (template) {
