@@ -99,6 +99,17 @@ export const VRV_TEMPLATE = {
 
 export const LV_ATS_TRAFO_TEMPLATE = (email: string) => {
   const isTrafo = email === 'trafo@gmail.com';
+  
+  if (email === 'lv@gmail.com') {
+    return [
+      'Cleaning panel', 'Cleaning panel', 'Cleaning panel',
+      'Check Thermal Imager', 'Measurement Grounding', 'Measurement voltage fasa to fasa',
+      'Measurement voltage fasa to netral', 'Measurement voltage N to G',
+      'Measurement Ampere R', 'Measurement Ampere S', 'Measurement Ampere T',
+      'Measurement Ampere N'
+    ];
+  }
+
   let template = [
     'Condition Panel', 'Check water pas', isTrafo ? 'Cleaning trafo' : 'Cleaning panel',
     'Check Thermal Imager', 'Measurement Grounding', 'Measurement Voltage R - S',
