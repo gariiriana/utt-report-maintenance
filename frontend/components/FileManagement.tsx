@@ -95,7 +95,7 @@ const ALLOWED_FILE_TYPES = [
 ];
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const CHUNK_SIZE = 512 * 1024; // Reduced from 768KB to ensure Base64 encoded chunks fit Firestore's 1MB limit
+const CHUNK_SIZE = 524286; // Adjusted to a multiple of 3 (524286 % 3 = 0) to avoid Base64 padding issues in intermediate chunks
 
 interface FileData {
     id: string;
@@ -279,6 +279,9 @@ export function FileManagement({
                         data: chunkBase64
                     });
                     
+                    // Add a tiny delay to help prevent "resource-exhausted" errors on slow connections
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    
                     const overallProgress = ((completedCount + ((i + 1) / totalChunks)) / selectedFiles.length) * 100;
                     setUploadProgress(Math.min(overallProgress, 99));
                 }
@@ -387,20 +390,34 @@ export function FileManagement({
                 return;
             }
 
-            let fullBase64 = '';
+            const byteArrays: Uint8Array[] = [];
+            let mimeString = file.fileType || 'application/octet-stream';
+
             chunksSnapshot.docs.forEach((doc) => {
-                fullBase64 += doc.data().data;
+                const chunkData = doc.data().data;
+                let base64Part = chunkData;
+                
+                // If this is the first chunk and it has the data URI prefix
+                if (chunkData.includes(';base64,')) {
+                    const parts = chunkData.split(';base64,');
+                    mimeString = parts[0].split(':')[1] || mimeString;
+                    base64Part = parts[1];
+                }
+
+                try {
+                    const byteString = atob(base64Part);
+                    const bytes = new Uint8Array(byteString.length);
+                    for (let i = 0; i < byteString.length; i++) {
+                        bytes[i] = byteString.charCodeAt(i);
+                    }
+                    byteArrays.push(bytes);
+                } catch (e) {
+                    console.error('Failed to decode chunk:', e);
+                    throw new Error('Invalid Base64 chunk data');
+                }
             });
 
-            const byteString = atob(fullBase64.split(',')[1]);
-            const mimeString = fullBase64.split(',')[0].split(':')[1].split(';')[0];
-            const ab = new ArrayBuffer(byteString.length);
-            const ia = new Uint8Array(ab);
-            for (let i = 0; i < byteString.length; i++) {
-                ia[i] = byteString.charCodeAt(i);
-            }
-            const blob = new Blob([ab], { type: mimeString });
-
+            const blob = new Blob(byteArrays, { type: mimeString });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
