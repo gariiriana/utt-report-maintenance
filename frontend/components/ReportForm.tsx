@@ -68,18 +68,16 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [showPreview]);
 
-  const [wasDraftRestored, setWasDraftRestored] = useState(false);
 
   useEffect(() => {
     if (!user?.email || editingData) return;
 
     const lowerEmail = user.email.toLowerCase();
 
-    // Initial Template Logic
     let template: string[] | null = null;
     if (lowerEmail === 'vrv@gmail.com') {
       if (!maintenanceName) setMaintenanceName('vrv');
-      template = VRV_TEMPLATE.indoor; // Default VRV
+      template = VRV_TEMPLATE.indoor;
     } else if (['lv@gmail.com', 'ats@gmail.com', 'trafo@gmail.com'].includes(lowerEmail)) {
       const isTrafo = lowerEmail === 'trafo@gmail.com';
       setMaintenanceName(isTrafo ? 'Trafo' : (lowerEmail === 'lv@gmail.com' ? 'LV' : 'ATS'));
@@ -104,9 +102,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }
   }, [user?.email, editingData]);
 
-  // Separate effect for VRV template switching
   useEffect(() => {
-    if (editingData || wasDraftRestored || user?.email?.toLowerCase() !== 'vrv@gmail.com') return;
+    if (editingData || user?.email?.toLowerCase() !== 'vrv@gmail.com') return;
 
     const isOutdoor = specificDetail.toLowerCase() === 'outdoor';
     const template = isOutdoor ? VRV_TEMPLATE.outdoor : VRV_TEMPLATE.indoor;
@@ -114,7 +111,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     if (template) {
       setCards(template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     }
-  }, [specificDetail, user?.email, editingData, wasDraftRestored]);
+  }, [specificDetail, user?.email, editingData]);
 
   useEffect(() => {
     if (editingData) {
@@ -140,7 +137,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }
   }, [editingData]);
 
-  // Auto-save logic
   useEffect(() => {
     if (editingData || !user?.email) return;
 
@@ -155,7 +151,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         cards: cards.map(c => ({
           id: c.id,
           description: c.description,
-          photoBase64: c.photoBase64 // We save base64 because Files can't be stringified
+          photoBase64: c.photoBase64
         })),
         timestamp: new Date().getTime()
       };
@@ -163,14 +159,14 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       try {
         localStorage.setItem('report_form_draft', JSON.stringify(draft));
       } catch (err) {
-        // QuotaExceededError is common with large base64 images
+
         if (err instanceof Error && err.name === 'QuotaExceededError') {
           console.warn('Storage quota exceeded, draft might be incomplete');
         }
       }
     };
 
-    const timeoutId = setTimeout(saveDraft, 1000); // Debounce save
+    const timeoutId = setTimeout(saveDraft, 1000);
     return () => clearTimeout(timeoutId);
   }, [maintenanceName, maintenanceTime, specificDetail, vrvUnitDetail, companyType, cards, user?.email, editingData]);
 
@@ -379,7 +375,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       toast.success(editingData ? 'Laporan diperbarui' : 'Laporan disimpan', { id: toastId });
 
-      // Clear draft after successful save
       if (!editingData) {
         localStorage.removeItem('report_form_draft');
       }
@@ -414,59 +409,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
   const uploadedCount = cards.filter(c => c.photoBase64).length;
 
-  const handleResetFormInternal = () => {
-    localStorage.removeItem('report_form_draft');
-    
-    // Reset basic info
-    setMaintenanceName('');
-    setMaintenanceTime('');
-    setSpecificDetail('');
-    setVrvUnitDetail('');
-    setWasDraftRestored(false);
-
-    // Re-load template
-    const lowerEmail = user?.email?.toLowerCase();
-    if (lowerEmail) {
-      let template: string[] | null = null;
-      if (lowerEmail === 'vrv@gmail.com') {
-        setMaintenanceName('vrv');
-        template = VRV_TEMPLATE.indoor;
-      } else if (['lv@gmail.com', 'ats@gmail.com', 'trafo@gmail.com'].includes(lowerEmail)) {
-        const isTrafo = lowerEmail === 'trafo@gmail.com';
-        setMaintenanceName(isTrafo ? 'Trafo' : (lowerEmail === 'lv@gmail.com' ? 'LV' : 'ATS'));
-        template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
-      } else {
-        template = REPORT_TEMPLATES[lowerEmail];
-        if (!template && (lowerEmail.includes('dock') || lowerEmail.includes('leveler'))) {
-          template = REPORT_TEMPLATES['dock'];
-        }
-        if (lowerEmail === 'grounding@gmail.com') setMaintenanceName('Grounding');
-        if (lowerEmail === 'ldb/rdb@gmail.com') setMaintenanceName('LDB/RDB');
-        if (lowerEmail === 'busduct@gmail.com') setMaintenanceName('Busduct');
-        if (lowerEmail === 'lightingsystem@gmail.com') setMaintenanceName('Lighting System');
-        if (lowerEmail === 'coolingtower@gmail.com') setMaintenanceName('Cooling Tower');
-        if (lowerEmail === 'acsplit@gmail.com') setMaintenanceName('AC Split');
-        if (lowerEmail === 'crac@gmail.com') setMaintenanceName('CRAC');
-        if (lowerEmail === 'wld@gmail.com') setMaintenanceName('WLD');
-      }
-
-      if (template) {
-        setCards(template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
-      } else {
-        setCards([
-          { id: '1', photo: null, description: '' },
-          { id: '2', photo: null, description: '' },
-          { id: '3', photo: null, description: '' },
-          { id: '4', photo: null, description: '' },
-          { id: '5', photo: null, description: '' },
-          { id: '6', photo: null, description: '' },
-          { id: '7', photo: null, description: '' },
-          { id: '8', photo: null, description: '' },
-          { id: '9', photo: null, description: '' },
-        ]);
-      }
-    }
-  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 relative z-10">

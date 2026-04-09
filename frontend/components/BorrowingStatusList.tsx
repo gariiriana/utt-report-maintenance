@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { db } from '@/api/firebase';
 import { collection, query, where, onSnapshot, updateDoc, doc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { useAuth } from '@/components/AuthContext';
-import { 
-  Clock, Package, User, CheckCircle2, 
+import {
+  Clock, Package, User, CheckCircle2,
   RefreshCcw, Layers, ClipboardList
 } from 'lucide-react';
 import { Badge } from './ui/badge';
@@ -125,7 +125,7 @@ export function BorrowingStatusList() {
                 </div>
 
                 <div className="p-4 space-y-5">
-                  {/* Items List */}
+                  {}
                   <div className="space-y-2">
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em] pl-0.5">Daftar Barang</p>
                     <div className="space-y-2 max-h-36 overflow-y-auto pr-1 scrollbar-none">
@@ -179,7 +179,7 @@ export function BorrowingStatusList() {
                       KEMBALIKAN BARANG
                     </Button>
                   )}
-                  
+
                   {doc.status === 'completed' && doc.returnTime && (
                     <div className="pt-2 border-t border-slate-800/60 mt-2">
                        <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-500/80 uppercase tracking-wider">
@@ -194,7 +194,7 @@ export function BorrowingStatusList() {
         </div>
       )}
 
-      {/* Return Modal */}
+      {}
       <AnimatePresence>
         {returnId && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" onClick={() => setReturnId(null)}>
@@ -240,8 +240,8 @@ export function BorrowingStatusList() {
 
               <div className="flex gap-3 pt-2">
                 <Button variant="ghost" onClick={() => setReturnId(null)} className="flex-1 rounded-xl h-12 font-bold text-slate-400 hover:bg-slate-800/50">Batal</Button>
-                <Button 
-                   onClick={() => handleReturn(returnId)} 
+                <Button
+                   onClick={() => handleReturn(returnId)}
                    disabled={!returnSignature}
                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-12 font-bold shadow-lg shadow-emerald-900/20 transition-all active:scale-[0.98]"
                 >

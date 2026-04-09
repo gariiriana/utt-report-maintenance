@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '@/api/firebase';
-import { 
-  collection, query, onSnapshot, updateDoc, doc, 
-  serverTimestamp, orderBy 
+import {
+  collection, query, onSnapshot, updateDoc, doc,
+  serverTimestamp, orderBy
 } from 'firebase/firestore';
 import { useAuth } from '@/components/AuthContext';
-import { 
-  Check, X, Search, History, Package, 
-  AlertCircle, ChevronRight, LogOut, ArrowRightLeft, 
+import {
+  Check, X, Search, History, Package,
+  AlertCircle, ChevronRight, LogOut, ArrowRightLeft,
   Inbox, Calendar, QrCode, RefreshCcw, Hash, CheckCircle2,
   Layers, ClipboardList, Info
 } from 'lucide-react';
@@ -64,7 +64,7 @@ export function InventoryApp() {
   const filteredData = borrowings.filter(item => {
     const matchesFilter = filter === 'all' || item.status === filter;
     const itemsString = item.items?.map((i: any) => i.name).join(' ') || '';
-    const matchesSearch = itemsString.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchesSearch = itemsString.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          item.borrowerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          item.engineerEmail.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesFilter && matchesSearch;
@@ -92,7 +92,7 @@ export function InventoryApp() {
     <div className="min-h-screen relative overflow-hidden flex flex-col">
       <DataCenterBackground />
 
-      {/* Header */}
+      {}
       <header className="bg-slate-900/60 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -109,8 +109,8 @@ export function InventoryApp() {
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Masuk sebagai Tim Peminjaman</p>
                 <p className="text-sm font-medium text-slate-300">{user?.email}</p>
              </div>
-             <Button 
-                variant="outline" 
+             <Button
+                variant="outline"
                 onClick={() => {
                   toast.promise(takeScreenshot('inventory-dashboard', `inventory-report-${new Date().toISOString().split('T')[0]}.png`), {
                     loading: 'Menyiapkan tangkapan layar...',
@@ -130,7 +130,7 @@ export function InventoryApp() {
       </header>
 
       <main id="inventory-dashboard" className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6 relative z-10">
-        {/* Stats Row */}
+        {}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: 'Menunggu', count: stats.pending, icon: Inbox, color: 'blue' },
@@ -156,9 +156,9 @@ export function InventoryApp() {
           ))}
         </div>
 
-        {/* Dashboard Content */}
+        {}
         <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-3xl overflow-hidden shadow-2xl flex flex-col min-h-[500px]">
-          {/* Toolbar */}
+          {}
           <div className="p-4 md:p-6 border-b border-slate-800/60 bg-slate-900/40 flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="relative w-full md:w-96 group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
@@ -183,8 +183,8 @@ export function InventoryApp() {
                    key={t.id}
                    onClick={() => setFilter(t.id as any)}
                    className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
-                     filter === t.id 
-                       ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' 
+                     filter === t.id
+                       ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
                        : 'bg-slate-800/40 text-slate-500 hover:text-slate-300 border border-transparent'
                    }`}
                  >
@@ -194,7 +194,7 @@ export function InventoryApp() {
             </div>
           </div>
 
-          {/* Table Area */}
+          {}
           <div className="flex-1 overflow-x-auto">
             {loading ? (
               <div className="p-20 flex flex-col items-center justify-center gap-4">
@@ -220,8 +220,8 @@ export function InventoryApp() {
                   {filteredData.map((item) => {
                     const statusInfo = getStatusInfo(item.status);
                     return (
-                      <motion.tr 
-                        key={item.id} 
+                      <motion.tr
+                        key={item.id}
                         layout
                         className="hover:bg-slate-800/20 transition-colors group cursor-pointer"
                         onClick={() => setSelectedItem(item)}
@@ -233,7 +233,7 @@ export function InventoryApp() {
                              </div>
                              <div>
                                 <p className="font-bold text-white text-sm uppercase tracking-wide group-hover:text-blue-400 transition-colors">
-                                   {item.items?.[0]?.name || 'Unknown Item'} 
+                                   {item.items?.[0]?.name || 'Unknown Item'}
                                    {item.items?.length > 1 ? ` (+${item.items.length - 1} more)` : ''}
                                 </p>
                                 <p className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
@@ -288,7 +288,7 @@ export function InventoryApp() {
         </div>
       </main>
 
-      {/* Detail Modal */}
+      {}
       <AnimatePresence>
         {selectedItem && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" onClick={() => setSelectedItem(null)}>
@@ -301,7 +301,7 @@ export function InventoryApp() {
             >
                <div className="p-1.5 flex flex-col flex-1">
                   <div className="p-8 space-y-8 overflow-y-auto max-h-[80vh]">
-                     {/* Item Info */}
+                     {}
                      <div className="flex justify-between items-start">
                          <div className="space-y-1">
                             <div className="flex items-center gap-2 text-blue-400 text-[10px] font-bold uppercase tracking-widest">
@@ -360,7 +360,7 @@ export function InventoryApp() {
                          </div>
                       </div>
 
-                     {/* Signatures */}
+                     {}
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {selectedItem.requestSignature && (
                            <div className="space-y-3">
@@ -390,7 +390,7 @@ export function InventoryApp() {
                            <Button onClick={() => handleUpdateStatus(selectedItem.id, 'borrowed')} className="flex-1 h-14 rounded-2xl font-bold bg-blue-600 hover:bg-blue-500 shadow-xl shadow-blue-900/30">SETUJUI PEMINJAMAN</Button>
                         </div>
                      )}
-                     
+
                      {selectedItem.status === 'return_pending' && (
                         <div className="pt-4">
                            <Button onClick={() => handleUpdateStatus(selectedItem.id, 'completed')} className="w-full h-14 rounded-2xl font-bold bg-emerald-600 hover:bg-emerald-500 shadow-xl shadow-emerald-900/30">KONFIRMASI PENGEMBALIAN SELESAI</Button>

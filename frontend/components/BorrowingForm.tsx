@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  User, Package, ClipboardList, Calendar, 
-  Clock, Send, ShieldCheck, Plus, Trash2, 
+import {
+  User, Package, ClipboardList, Calendar,
+  Clock, Send, ShieldCheck, Plus, Trash2,
   Layers, Camera, Check
 } from 'lucide-react';
 import { SignaturePad } from './ui/SignaturePad';
@@ -27,9 +27,9 @@ function SuccessReceipt({ data, onDone }: SuccessReceiptProps) {
       className="space-y-6"
     >
       <div id="borrowing-receipt" className="bg-slate-950 border border-slate-800 rounded-3xl p-8 space-y-6 shadow-2xl relative overflow-hidden">
-        {/* Decorative Background for Screenshot */}
+        {}
         <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2" />
-        
+
         <div className="text-center space-y-2 relative z-10">
           <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/30">
             <ShieldCheck className="w-8 h-8 text-emerald-400" />
@@ -115,7 +115,7 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [submittedData, setSubmittedData] = useState<any | null>(null);
-  
+
   const [formData, setFormData] = useState<{
     borrowerName: string;
     items: BorrowingItem[];
@@ -150,7 +150,7 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
   const updateItem = (id: string, field: 'name' | 'quantity', value: string | number) => {
     setFormData(prev => ({
       ...prev,
-      items: prev.items.map(item => 
+      items: prev.items.map(item =>
         item.id === id ? { ...item, [field]: value } : item
       )
     }));
@@ -158,8 +158,7 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validation
+
     const hasEmptyItems = formData.items.some(item => !item.name.trim() || Number(item.quantity) < 1);
     if (!formData.borrowerName || hasEmptyItems || !formData.purpose || !formData.requestSignature) {
       return toast.error('Harap lengkapi semua field, item, dan tanda tangan');
@@ -171,9 +170,9 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
     try {
       await addDoc(collection(db, 'inventory_borrowings'), {
         borrowerName: formData.borrowerName,
-        items: formData.items.map(({ name, quantity }) => ({ 
-          name: name.trim(), 
-          quantity: typeof quantity === 'string' ? parseInt(quantity) || 1 : quantity 
+        items: formData.items.map(({ name, quantity }) => ({
+          name: name.trim(),
+          quantity: typeof quantity === 'string' ? parseInt(quantity) || 1 : quantity
         })),
         purpose: formData.purpose,
         requestDate: formData.requestDate,
@@ -187,7 +186,7 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
 
       toast.success('Pengajuan berhasil dikirim', { id: toastId });
       setSubmittedData({ ...formData });
-      // We don't call onSuccess() yet, we show the receipt first
+
       setFormData({
         borrowerName: '',
         items: [{ id: Math.random().toString(36).substr(2, 9), name: '', quantity: 1 }],
@@ -212,12 +211,12 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
     >
       <AnimatePresence mode="wait">
         {submittedData ? (
-          <SuccessReceipt 
-            data={submittedData} 
+          <SuccessReceipt
+            data={submittedData}
             onDone={() => {
               setSubmittedData(null);
               onSuccess();
-            }} 
+            }}
           />
         ) : (
           <motion.div
@@ -238,7 +237,7 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-6">
-          {/* Section 1: Borrower Info */}
+          {}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Nama Peminjam</label>
@@ -271,13 +270,13 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
             </div>
           </div>
 
-          {/* Section 2: Items List */}
+          {}
           <div className="space-y-4">
             <div className="flex items-center justify-between pl-1">
                <label className="text-xs font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2">
                  <Layers className="w-3.5 h-3.5" /> Daftar Barang Pinjaman
                </label>
-               <button 
+               <button
                 type="button"
                 onClick={addItem}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all border border-blue-500/20"
@@ -307,7 +306,7 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
                         className="w-full pl-8 sm:pl-10 pr-3 py-2.5 sm:py-3 bg-slate-900 border border-slate-800 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-medium text-white placeholder-slate-700 outline-none focus:border-blue-500/50 transition"
                        />
                     </div>
-                    
+
                     <div className="w-16 sm:w-32 relative">
                         <label className="text-[8px] sm:text-[9px] font-black text-slate-600 uppercase tracking-widest absolute -top-1.5 left-2 sm:left-3 bg-slate-950 px-1 border border-slate-800 rounded-full z-10">Qty</label>
                         <input
@@ -344,7 +343,7 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
             </div>
           </div>
 
-          {/* Section 3: Time & Date */}
+          {}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Tanggal Pengajuan</label>
@@ -387,7 +386,7 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
           </div>
         </div>
 
-        {/* Submit */}
+        {}
         <div className="pt-6">
           <button
             type="submit"

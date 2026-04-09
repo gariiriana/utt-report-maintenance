@@ -2,7 +2,6 @@
 @import './tailwind.css';
 @import './theme.css';
 
-/* Data Center Custom Styles */
 @keyframes pulse-glow {
 
   0%,
@@ -35,7 +34,6 @@
   animation: data-flow 3s linear infinite;
 }
 
-/* Bell Swing Animation */
 @keyframes swing {
 
   0%,
@@ -65,7 +63,6 @@
   transform-origin: top center;
 }
 
-/* Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -84,14 +81,12 @@
   background: linear-gradient(180deg, #2563eb, #4f46e5);
 }
 
-/* Glass effect enhancement */
 .glass-effect {
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* Input autofill override */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
@@ -100,7 +95,6 @@ input:-webkit-autofill:focus {
   transition: background-color 5000s ease-in-out 0s;
 }
 
-/* Hide number input spinners */
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: none;

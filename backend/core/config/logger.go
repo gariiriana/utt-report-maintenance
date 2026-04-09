@@ -7,7 +7,7 @@ import (
 )
 type LoggerConfig struct {
 	Level     slog.Level
-	Format    string // "json" | "text"
+	Format    string
 	AddSource bool
 	Output    io.Writer
 }

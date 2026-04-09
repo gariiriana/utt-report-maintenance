@@ -162,7 +162,7 @@ export function PreviewReport({
                                             <span className="text-[10px] font-black uppercase tracking-tighter">No Image</span>
                                         </div>
                                     )}
-                                    {/* Numbering removed as requested */}
+                                    {}
                                 </div>
                                 <div className="p-2 bg-white min-h-[50px] flex items-center justify-center text-center">
                                     <p className="text-[10px] leading-tight text-slate-900 font-bold break-words px-1">

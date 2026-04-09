@@ -2,9 +2,9 @@ package main
 
 import "flag"
 type AppFlags struct {
-	Port    string // HTTP listen port
-	Env     string // Application environment
-	Verbose bool   // Enable debug logging
+	Port    string
+	Env     string
+	Verbose bool
 }
 func parseFlags() *AppFlags {
 	f := &AppFlags{}

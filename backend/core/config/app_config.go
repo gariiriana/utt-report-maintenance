@@ -20,7 +20,7 @@ type AppConfig struct {
 	FirebaseProjectID       string
 	FirebaseServiceAccount  string
 	LogLevel  string
-	LogFormat string // "json" | "text"
+	LogFormat string
 }
 func Load() (*AppConfig, error) {
 	cfg := &AppConfig{

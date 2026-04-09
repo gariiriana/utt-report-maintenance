@@ -20,7 +20,7 @@ type PageMeta struct {
 }
 type CursorPaginationRequest struct {
 	Limit      int    `json:"limit"`
-	StartAfter string `json:"start_after,omitempty"` // document ID to start after
+	StartAfter string `json:"start_after,omitempty"`
 }
 type CursorPaginationResponse struct {
 	Status     string      `json:"status"`

@@ -10,19 +10,18 @@ export function useScreenshot() {
     }
 
     try {
-      // Temporarily hide elements that shouldn't be in the screenshot
+
       const bgVideo = document.getElementById('bg-video-container');
       if (bgVideo) bgVideo.style.display = 'none';
-      
+
       const canvas = await html2canvas(element, {
         useCORS: true,
         allowTaint: true,
-        backgroundColor: '#020617', // Match the slate-950 background
-        scale: 2, // Higher quality
+        backgroundColor: '#020617',
+        scale: 2,
         logging: false,
       });
 
-      // Restore hidden elements
       if (bgVideo) bgVideo.style.display = 'block';
 
       const image = canvas.toDataURL('image/png');
@@ -30,7 +29,7 @@ export function useScreenshot() {
       link.href = image;
       link.download = fileName;
       link.click();
-      
+
       return true;
     } catch (error) {
       console.error('Screenshot capture failed:', error);

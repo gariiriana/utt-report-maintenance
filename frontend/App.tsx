@@ -13,11 +13,10 @@ import { useEffect } from 'react';
 import { logFirebaseEvent } from '@/api/firebase';
 import { motion, AnimatePresence } from 'motion/react';
 
-
 function getHSEReportIdFromUri(): string | null {
   try {
     let id: string | null = null;
-    
+
     const pathParts = window.location.pathname.split('/').filter(Boolean);
     const hseIdx = pathParts.indexOf('hse');
     if (hseIdx !== -1 && pathParts[hseIdx + 1]) {
@@ -25,7 +24,7 @@ function getHSEReportIdFromUri(): string | null {
     }
 
     if (!id) {
-      const hashParts = window.location.hash.replace('#', '').split('/').filter(Boolean); 
+      const hashParts = window.location.hash.replace('#', '').split('/').filter(Boolean);
       const hseHashIdx = hashParts.indexOf('hse');
       if (hseHashIdx !== -1 && hashParts[hseHashIdx + 1]) {
         id = hashParts[hseHashIdx + 1];
@@ -55,12 +54,9 @@ function AppContent() {
 
   return (
     <div className="relative min-h-screen bg-slate-950 overflow-x-hidden">
-      {/* 
-        Stabilize the background at the App level. 
-        This prevents the 'removeChild' error and flickering when switching pages.
-      */}
+      {}
       <DataCenterBackground />
-      
+
       <div className="relative z-10 w-full min-h-screen">
         <AnimatePresence mode="wait">
           {user ? (
@@ -104,7 +100,6 @@ export default function App() {
       platform: 'web'
     });
   }, []);
-
 
   if (PUBLIC_HSE_REPORT_ID) {
     return (

@@ -5,12 +5,12 @@ import { useAuth } from '@/components/AuthContext';
 import { ReportForm } from '@/components/ReportForm';
 import { DocumentList } from '@/components/DocumentList';
 import { AdminDashboard } from '@/pages/AdminDashboard';
-import { ExcelDocument } from '@/components/DocumentList'; 
+import { ExcelDocument } from '@/components/DocumentList';
 import { FileManagement } from '@/components/FileManagement';
 import { CorrectiveMaintenance } from '@/components/CorrectiveMaintenance';
 import { Footer } from '@/components/Footer';
-import { LogoutConfirmModal } from '@/components/LogoutConfirmModal'; 
-import { InventoryBorrowing } from '@/components/InventoryBorrowing'; 
+import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
+import { InventoryBorrowing } from '@/components/InventoryBorrowing';
 import logoUTT from '@/assets/logo_utt.png';
 
 type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'inventory';
@@ -23,7 +23,7 @@ export function MainApp() {
 
   const getDefaultTab = (): Tab => {
     if (isAdmin) return 'admin';
-    return 'report'; 
+    return 'report';
   };
 
   const [activeTab, setActiveTab] = useState<Tab>(getDefaultTab());
@@ -41,7 +41,6 @@ export function MainApp() {
   const clearEditingData = () => {
     setEditingData(null);
   };
-
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -71,7 +70,7 @@ export function MainApp() {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => setLogoutModalOpen(true)} // ✅ NEW: Open logout modal
+                onClick={() => setLogoutModalOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 rounded-lg border border-slate-700/50 transition"
               >
                 <LogOut className="w-4 h-4" />
@@ -103,7 +102,7 @@ export function MainApp() {
                   </div>
                   <motion.button
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => setLogoutModalOpen(true)} 
+                    onClick={() => setLogoutModalOpen(true)}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600/10 hover:bg-red-600/20 text-red-400 rounded-lg border border-red-500/20 transition"
                   >
                     <LogOut className="w-4 h-4" />
@@ -134,8 +133,6 @@ export function MainApp() {
                 <span className="sm:hidden">Admin</span>
               </motion.button>
             )}
-
-
 
             <motion.button
               whileHover={{ scale: 1.02 }}

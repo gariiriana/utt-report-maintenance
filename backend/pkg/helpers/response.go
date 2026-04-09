@@ -28,7 +28,7 @@ func SendError(w http.ResponseWriter, message string, code int) {
 func SendAppError(w http.ResponseWriter, err *apperrors.AppError) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(err.StatusCode)
-	
+
 	resp := map[string]interface{}{
 		"status":  "error",
 		"code":    err.Code,

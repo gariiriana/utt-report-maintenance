@@ -56,7 +56,7 @@ func (c *MaintenanceProgressController) DeleteProgress(w http.ResponseWriter, r 
 func (c *MaintenanceProgressController) ListAll(w http.ResponseWriter, r *http.Request) {
 	yearStr := r.URL.Query().Get("year")
 	quarter := r.URL.Query().Get("quarter")
-	
+
 	year, _ := strconv.Atoi(yearStr)
 	logger.Info("maintenance_list_all", "year", year, "quarter", quarter, "yearStr", yearStr)
 
@@ -72,7 +72,7 @@ func (c *MaintenanceProgressController) ListAll(w http.ResponseWriter, r *http.R
 func (c *MaintenanceProgressController) GetSummary(w http.ResponseWriter, r *http.Request) {
 	yearStr := r.URL.Query().Get("year")
 	quarter := r.URL.Query().Get("quarter")
-	
+
 	year, _ := strconv.Atoi(yearStr)
 	logger.Info("maintenance_get_summary", "year", year, "quarter", quarter, "yearStr", yearStr)
 

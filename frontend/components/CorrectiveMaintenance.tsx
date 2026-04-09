@@ -37,16 +37,16 @@ interface CorrectiveReport {
     location: string;
     photoBase64: string;
     photoDescription: string;
-    quarter: string; 
-    year: string; 
-    category: string; 
+    quarter: string;
+    year: string;
+    category: string;
     reportedBy: string;
     reportedByEmail: string;
     reportedAt: any;
 }
 
 interface CorrectiveMaintenanceProps {
-    readOnly?: boolean; 
+    readOnly?: boolean;
 }
 
 export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanceProps) {
@@ -67,8 +67,8 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
         location: '',
         photoBase64: '',
         photoDescription: '',
-        quarter: 'Q1', 
-        year: new Date().getFullYear().toString(), 
+        quarter: 'Q1',
+        year: new Date().getFullYear().toString(),
     });
 
     const [editingPhoto, setEditingPhoto] = useState(false);

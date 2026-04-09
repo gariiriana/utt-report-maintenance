@@ -64,7 +64,7 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 
 	case path == "/api/maintenance-progress" && r.Method == http.MethodGet:
 		deps.MaintenanceProgressCtrl.ListAll(w, r)
-	
+
 	case path == "/api/maintenance-progress" && r.Method == http.MethodPost:
 		deps.MaintenanceProgressCtrl.CreateProgress(w, r)
 

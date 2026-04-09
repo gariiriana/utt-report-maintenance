@@ -83,7 +83,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         createdAt: doc.createdAt.toDate(),
         photosData: photosData,
         documentType: doc.type,
-        fileSize: 0 
+        fileSize: 0
       };
 
       onEdit(excelDoc);
@@ -802,7 +802,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
           )}
         </div>
 
-        {/* Desktop Table View */}
+        {}
         <div className="hidden md:block overflow-x-auto">
           {loading ? (
             <div className="flex items-center justify-center py-12">
@@ -894,7 +894,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         </div>
       </div>
 
-      {/* Footer Info */}
+      {}
       <div className="mt-6 text-center">
         <p className="text-sm text-slate-500">
           Showing {filteredDocuments.length} of {documents.length} documents

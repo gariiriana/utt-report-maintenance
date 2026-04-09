@@ -4,9 +4,9 @@ import { motion } from 'motion/react';
 export function DataCenterBackground() {
   return (
     <>
-      {/* Base Video Layer */}
-      <div 
-        id="bg-video-container" 
+      {}
+      <div
+        id="bg-video-container"
         className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-slate-950"
       >
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[177.77vh] min-w-full h-[56.25vw] min-h-full">
@@ -17,7 +17,7 @@ export function DataCenterBackground() {
             title="Professional Data Center Background"
           />
         </div>
-        {/* Subtle Edge Softening */}
+        {}
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950/20 via-transparent to-slate-950/40" />
       </div>
 

@@ -21,7 +21,6 @@ export function SignaturePad({ onSave, onClear, className = '', placeholder = 'S
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas resolution
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * window.devicePixelRatio;
     canvas.height = rect.height * window.devicePixelRatio;
@@ -30,7 +29,7 @@ export function SignaturePad({ onSave, onClear, className = '', placeholder = 'S
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.lineWidth = 2.5;
-    ctx.strokeStyle = '#f8fafc'; // slate-50
+    ctx.strokeStyle = '#f8fafc';
   }, []);
 
   const getCoordinates = (e: React.MouseEvent | React.TouchEvent | MouseEvent | TouchEvent) => {
@@ -93,7 +92,7 @@ export function SignaturePad({ onSave, onClear, className = '', placeholder = 'S
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       setIsEmpty(true);
       onClear?.();
-      onSave(''); // Clear the saved value
+      onSave('');
     }
   };
 

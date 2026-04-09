@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, User, FileDown, FileType, Pencil, Box, Folder, ChevronLeft } from 'lucide-react';
-import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore'; 
+import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
@@ -28,14 +28,14 @@ export interface ExcelDocument {
   fileName: string;
   maintenanceName: string;
   maintenanceTime: string;
-  specificDetail?: string; 
+  specificDetail?: string;
   createdAt: Date;
   createdBy: string;
   fileSize: number;
   totalPhotos: number;
   photosWithImage: number;
   photosData: PhotoData[];
-  documentType: 'excel' | 'pdf' | 'hse'; 
+  documentType: 'excel' | 'pdf' | 'hse';
 }
 
 interface DocumentListProps {
@@ -48,8 +48,8 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   const isAdmin = userRole === 'admin';
   const isEngineer = userRole === 'tde' || userRole === 'cbre' || userRole === 'engineer' || userRole === 'standby_engineer';
   const isHSE = userRole === 'hse';
-  const canDelete = isAdmin || isEngineer || isHSE || 
-    userRole === 'pmo' || userRole === 'sales' || 
+  const canDelete = isAdmin || isEngineer || isHSE ||
+    userRole === 'pmo' || userRole === 'sales' ||
     userRole === 'presales' || userRole === 'purchasing';
 
   const [documents, setDocuments] = useState<ExcelDocument[]>([]);
@@ -57,14 +57,14 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   const [filterDate, setFilterDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
-  const [filterType, setFilterType] = useState<'all' | 'excel' | 'pdf' | 'hse'>('all'); 
+  const [filterType, setFilterType] = useState<'all' | 'excel' | 'pdf' | 'hse'>('all');
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<ExcelDocument | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [currentLevel, setCurrentLevel] = useState<'root' | 'month' | 'week'>('root');
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null); 
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
 
   const getMonthYearString = (date: Date) => {
@@ -134,7 +134,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       });
       const hseDocs: ExcelDocument[] = [];
       const showHSE = isAdmin || userRole === 'hse' || filterOverride === 'hse_utt';
-      
+
       if (showHSE) {
         let hseQuery;
         if (filterOverride === 'hse_utt') {
@@ -170,8 +170,8 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           });
         });
       }
-      const allDocs = filterOverride === 'hse_utt' 
-        ? hseDocs 
+      const allDocs = filterOverride === 'hse_utt'
+        ? hseDocs
         : [...excelDocs, ...pdfDocs, ...hseDocs];
 
       allDocs.sort((a, b) => {
@@ -194,11 +194,11 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
     } finally {
       setLoading(false);
     }
-  }, [user, sortBy, userRole]); 
+  }, [user, sortBy, userRole]);
 
   useEffect(() => {
     fetchDocuments();
-  }, [fetchDocuments]); 
+  }, [fetchDocuments]);
 
   const openDeleteModal = (document: ExcelDocument) => {
     setDocumentToDelete(document);
@@ -246,11 +246,11 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Maintenance Report');
       worksheet.columns = [
-        { width: 26 },  // Column A - Photo 1
-        { width: 2 },   // Column B - Spacing
-        { width: 26 },  // Column C - Photo 2
-        { width: 2 },   // Column D - Spacing
-        { width: 26 },  // Column E - Photo 3
+        { width: 26 },
+        { width: 2 },
+        { width: 26 },
+        { width: 2 },
+        { width: 26 },
       ];
       const formattedDate = new Date(docData.maintenanceTime).toLocaleDateString('id-ID', {
         day: '2-digit',
@@ -290,7 +290,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         worksheet.mergeCells('A1:E1');
         const titleCell = worksheet.getCell('A1');
         titleCell.value = `Dokumentasi PM ${docData.maintenanceName} (${formattedDate})`;
-        titleCell.font = { size: 11, bold: true }; // ✅ Dikecilkan dari 14 → 11
+        titleCell.font = { size: 11, bold: true };
         titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
         titleCell.border = {
           top: { style: 'thin', color: { argb: 'FF000000' } },
@@ -299,12 +299,12 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           right: { style: 'thin', color: { argb: 'FF000000' } }
         };
         worksheet.addImage(dwimitraImageId, {
-          tl: { col: 0.1, row: 0.15 }, // ✅ Better positioning
-          ext: { width: 130, height: 50 } // ✅ LARGER size for better visibility
+          tl: { col: 0.1, row: 0.15 },
+          ext: { width: 130, height: 50 }
         });
         worksheet.addImage(neutraDCImageId, {
-          tl: { col: 4.4, row: 0.15 }, // ✅ Better positioning
-          ext: { width: 130, height: 50 } // ✅ LARGER size for better visibility
+          tl: { col: 4.4, row: 0.15 },
+          ext: { width: 130, height: 50 }
         });
 
       } catch (error) {
@@ -312,8 +312,8 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       }
       worksheet.mergeCells('A2:E2');
       const equipmentCell = worksheet.getCell('A2');
-      equipmentCell.value = docData.specificDetail || docData.maintenanceName; // ✅ Gunakan specificDetail jika ada
-      equipmentCell.font = { size: 10, bold: true }; // ✅ Dikecilkan dari 12 → 10 (proporsional dengan Row 1)
+      equipmentCell.value = docData.specificDetail || docData.maintenanceName;
+      equipmentCell.font = { size: 10, bold: true };
       equipmentCell.alignment = { horizontal: 'center', vertical: 'middle' };
       equipmentCell.border = {
         top: { style: 'thin', color: { argb: 'FF000000' } },
@@ -465,7 +465,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           const isPDU = user?.email === 'pdu@gmail.com' || docData.createdBy === 'pdu@gmail.com';
           const isDwimitra = companyType !== 'bri';
 
-          let headerY = 8; // Matching ReportForm.tsx anchor
+          let headerY = 8;
           const leftW = isPDU ? 22 : (isDwimitra ? 28 : 36);
           const leftH = isPDU ? 9 : (isDwimitra ? 18 : 14);
           const rightW = isPDU ? 22 : (isDwimitra ? 36 : 35);
@@ -497,7 +497,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
             headerY += (isPDU ? 3 : 5);
           }
 
-          return headerY; // Return Y position after header
+          return headerY;
         };
 
         currentY = addPageHeader();
@@ -533,7 +533,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         for (let i = 0; i < photosData.length; i += columns) {
           if (photoCount > 0 && photoCount % photosPerPage === 0) {
             doc.addPage();
-            currentY = addPageHeader(); 
+            currentY = addPageHeader();
           }
 
           const rowCards = photosData.slice(i, i + columns);
@@ -542,7 +542,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
             const card = rowCards[j];
             const xPos = marginLeft + j * (photoWidth + spacing);
             doc.setDrawColor(0);
-            doc.setLineWidth(0.3); // Thinner line for PDU
+            doc.setLineWidth(0.3);
             doc.rect(xPos, currentY, photoWidth, photoHeight);
             if (card.photoBase64) {
               try {
@@ -650,19 +650,19 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       const inMaintenanceName = doc.maintenanceName.toLowerCase().includes(lowerQuery);
       const inSpecificDetail = (doc.specificDetail || '').toLowerCase().includes(lowerQuery);
       const inFileName = doc.fileName.toLowerCase().includes(lowerQuery);
-      
+
       if (!inMaintenanceName && !inSpecificDetail && !inFileName) {
         return false;
       }
     }
-    
+
     if (filterDate) {
       const docDate = new Date(doc.maintenanceTime).toISOString().split('T')[0];
       if (docDate !== filterDate) {
         return false;
       }
     }
-    
+
     if (filterType !== 'all' && doc.documentType !== filterType) {
       return false;
     }
@@ -670,12 +670,11 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
     return true;
   });
 
-
   const docsInView = (() => {
     if (filterOverride !== 'hse_utt') return filteredDocuments;
     if (currentLevel === 'week') {
-      return filteredDocuments.filter(d => 
-        getMonthYearString(d.createdAt) === selectedMonth && 
+      return filteredDocuments.filter(d =>
+        getMonthYearString(d.createdAt) === selectedMonth &&
         getWeekOfMonth(d.createdAt) === selectedWeek
       );
     }
@@ -698,7 +697,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         const [monthA, yearA] = a.split(' ');
         const [monthB, yearB] = b.split(' ');
         if (yearA !== yearB) return parseInt(yearB) - parseInt(yearA);
-        return monthMap[monthB] - monthMap[monthA]; 
+        return monthMap[monthB] - monthMap[monthA];
       });
 
       return (
@@ -737,7 +736,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
       return (
         <div className="space-y-4">
-          <button 
+          <button
             onClick={() => setCurrentLevel('root')}
             className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium mb-2"
           >
@@ -771,14 +770,14 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       );
     }
 
-    const weekDocs = filteredDocuments.filter(d => 
-      getMonthYearString(d.createdAt) === selectedMonth && 
+    const weekDocs = filteredDocuments.filter(d =>
+      getMonthYearString(d.createdAt) === selectedMonth &&
       getWeekOfMonth(d.createdAt) === selectedWeek
     );
 
     return (
       <div className="space-y-4">
-        <button 
+        <button
           onClick={() => setCurrentLevel('month')}
           className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium mb-2"
         >
@@ -802,7 +801,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-4 sm:p-5 border border-slate-700/50 hover:border-blue-500/30 transition group"
     >
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-        {/* Checkbox for Bulk Section */}
+        {}
         {canDelete && (
           <div className="flex-shrink-0 mr-1">
             <input
@@ -817,7 +816,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           </div>
         )}
 
-        {/* Icon */}
+        {}
         <div className="p-2.5 sm:p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20 flex-shrink-0">
           {document.documentType === 'pdf' ? (
             <FileType className="w-5 h-5 sm:w-6 sm:h-6 text-red-400" />
@@ -826,7 +825,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           )}
         </div>
 
-        {/* Info */}
+        {}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="text-base sm:text-lg font-semibold text-white truncate">
@@ -870,7 +869,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           </p>
         </div>
 
-        {/* Actions */}
+        {}
         <div className="flex items-center gap-2 w-full sm:w-auto">
           {onEdit && (
             <motion.button
@@ -940,7 +939,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 relative z-10">
-      {/* Header */}
+      {}
       <div className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 border border-slate-700/50">
         <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
           <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
@@ -952,9 +951,9 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           </div>
         </div>
 
-        {/* Filters */}
+        {}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-          {/* Search */}
+          {}
           <div className="relative">
             <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
             <input
@@ -966,7 +965,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
             />
           </div>
 
-          {/* Date Filter */}
+          {}
           <div className="relative">
             <Calendar className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
             <input
@@ -977,7 +976,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
             />
           </div>
 
-          {/* Sort */}
+          {}
           <div className="relative">
             <Filter className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
             <select
@@ -990,7 +989,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
             </select>
           </div>
 
-          {/* Document Type Filter */}
+          {}
           <div className="relative">
             <FileType className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
             <select
@@ -1005,7 +1004,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           </div>
         </div>
 
-        {/* Stats */}
+        {}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-4">
           <div className="bg-slate-800/30 rounded-lg p-3 border border-slate-700/30">
             <p className="text-xs text-slate-500">Total Dokumen</p>
@@ -1029,7 +1028,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           </div>
         </div>
 
-        {/* Bulk Actions Header */}
+        {}
         {canDelete && docsInView.length > 0 && (
           <div className="mt-4 pt-4 border-t border-slate-700/30 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">

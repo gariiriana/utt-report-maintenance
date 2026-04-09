@@ -17,7 +17,7 @@ export function usePresence() {
         if (!user) return;
 
         const userPresenceRef = ref(rtdb, `presence/${user.uid}`);
-        
+
         const connectedRef = ref(rtdb, '.info/connected');
 
         const unsubscribeConnected = onValue(connectedRef, (snap) => {

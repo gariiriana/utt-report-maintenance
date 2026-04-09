@@ -83,9 +83,9 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     const contentW = pageW - marginL - marginR;
 
     const PRIMARY_BLUE = '#00599c';
-    const DARK = '#1e293b'; // slate-800
-    const GRAY = '#64748b'; // slate-500
-    const LIGHT_GRAY = '#f8fafc'; // slate-50
+    const DARK = '#1e293b';
+    const GRAY = '#64748b';
+    const LIGHT_GRAY = '#f8fafc';
 
     const HEADER_H = 34;
     let headerDrawCount = 0;
@@ -175,8 +175,8 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         { key: 'jsa', label: 'JSA' },
         { key: 'ptw', label: 'PTW' },
         { key: 'ppe', label: 'PPE Mandatory' },
-        { 
-            key: 'ppeKhusus', 
+        {
+            key: 'ppeKhusus',
             label: 'PPE Khusus',
             subItems: [
                 { key: 'bodyHarness', label: 'Body Harness' },
@@ -189,8 +189,8 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
                 { key: 'pelindungMata', label: 'Pelindung Mata' },
             ]
         },
-        { 
-            key: 'dokumen', 
+        {
+            key: 'dokumen',
             label: 'Dokumen',
             subItems: [
                 { key: 'msds', label: 'MSDS' },
@@ -199,8 +199,8 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         { key: 'toolsBertagging', label: 'Tools Bertagging & sdh di-checklist' },
         { key: 'logMaintenance', label: 'Log Maintenance' },
         { key: 'housekeeping', label: 'Housekeeping Area Kerja' },
-        { 
-            key: 'safetySign', 
+        {
+            key: 'safetySign',
             label: 'Safety Sign',
             subItems: [
                 { key: 'pitaBaricade', label: 'Pita Baricade' },
@@ -214,12 +214,11 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     const regularItems: { label: string; value: boolean; isSub?: boolean }[] = [];
     checklistDefinition.forEach(item => {
         const val = !!(data.checklist as any)[item.key];
-        
-        // Skip 'dokumen' if it's not checked (as requested)
+
         if (item.key === 'dokumen' && !val) return;
 
         regularItems.push({ label: item.label, value: val });
-        
+
         if (val && item.subItems) {
             item.subItems.forEach(sub => {
                 const subVal = !!(data.checklist as any)[sub.key];
@@ -252,14 +251,14 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         const checked = item.value;
 
         if (checked) {
-            doc.setFillColor('#10b981'); // Green for checked
+            doc.setFillColor('#10b981');
             doc.circle(centerX, centerY, 2.7, 'F');
             doc.setDrawColor(255, 255, 255);
             doc.setLineWidth(0.4);
             doc.line(centerX - 1.1, centerY, centerX - 0.2, centerY + 0.8);
             doc.line(centerX - 0.2, centerY + 0.8, centerX + 1.1, centerY - 0.9);
         } else {
-            doc.setFillColor('#ef4444'); // Red for unchecked
+            doc.setFillColor('#ef4444');
             doc.circle(centerX, centerY, 2.7, 'F');
             doc.setDrawColor(255, 255, 255);
             doc.setLineWidth(0.4);
@@ -299,7 +298,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         doc.text('II. FOTO DOKUMENTASI & EVIDENCE', marginL + 4, curY + 5.5);
         curY += 12;
 
-        const photosPerRow = 2; // Made it 2 per row for better visibility in HSE
+        const photosPerRow = 2;
         const photoGap = 5;
         const photoW = (contentW - photoGap) / photosPerRow;
         const photoH = photoW * 0.75;
@@ -328,7 +327,6 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
                 doc.rect(x + 1, y + 1, photoW - 2, photoH - 2, 'F');
                 doc.setFontSize(7).setTextColor(GRAY).text('Foto Error', x + photoW / 2, y + photoH / 2, { align: 'center' });
             }
-
 
             if (photo.description) {
                 doc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(DARK);
@@ -422,4 +420,3 @@ export async function generateHSEPdf(data: HSEFormData) {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 }
-

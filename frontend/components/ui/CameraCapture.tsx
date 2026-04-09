@@ -12,28 +12,26 @@ export function CameraCapture({ onCapture, placeholder = "Ambil Foto Wajah" }: C
   const [preview, setPreview] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const startCamera = async () => {
     setError(null);
     console.log("--- Camera Diagnostics ---");
-    
-    // 1. Check if secure context
+
     if (!window.isSecureContext) {
       setError("Kamera butuh link HTTPS atau localhost.");
       return;
     }
 
-    // 2. Check if mediaDevices is supported
     if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
       setError("Browser tidak mendukung fitur kamera.");
       return;
     }
 
     try {
-      // 3. Enumerate devices to see what is actually available
+
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = devices.filter(device => device.kind === 'videoinput');
       console.log("Available video devices:", videoDevices);
@@ -43,7 +41,6 @@ export function CameraCapture({ onCapture, placeholder = "Ambil Foto Wajah" }: C
         return;
       }
 
-      // 4. Try getting user media with different constraints
       const constraints = [
         { video: { facingMode: 'user' } },
         { video: { facingMode: { ideal: 'user' } } },
@@ -72,7 +69,6 @@ export function CameraCapture({ onCapture, placeholder = "Ambil Foto Wajah" }: C
     }
   };
 
-  // Effect to handle video element srcObject when stream or videoRef changes
   useEffect(() => {
     if (isCameraActive && stream && videoRef.current) {
       videoRef.current.srcObject = stream;
@@ -94,18 +90,16 @@ export function CameraCapture({ onCapture, placeholder = "Ambil Foto Wajah" }: C
       const context = canvas.getContext('2d');
 
       if (context) {
-        // Set canvas to a square size for consistent face capture
+
         const size = Math.min(video.videoWidth, video.videoHeight);
         canvas.width = 300;
         canvas.height = 300;
-        
-        // Center crop
+
         const startX = (video.videoWidth - size) / 2;
         const startY = (video.videoHeight - size) / 2;
-        
+
         context.drawImage(video, startX, startY, size, size, 0, 0, 300, 300);
-        
-        // Convert to low-quality JPEG to save space in Firestore
+
         const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
         setPreview(dataUrl);
         onCapture(dataUrl);
@@ -133,8 +127,8 @@ export function CameraCapture({ onCapture, placeholder = "Ambil Foto Wajah" }: C
                 <User className="w-8 h-8" />
              </div>
              <Button
-                type="button" 
-                variant="outline" 
+                type="button"
+                variant="outline"
                 onClick={startCamera}
                 className="bg-slate-900 border-slate-800 text-slate-400 hover:text-white"
              >
@@ -146,16 +140,16 @@ export function CameraCapture({ onCapture, placeholder = "Ambil Foto Wajah" }: C
 
         {isCameraActive && !preview && (
           <div className="relative w-full h-full">
-            <video 
-              ref={videoRef} 
-              autoPlay 
-              playsInline 
-              muted 
-              className="w-full h-full object-cover scale-x-[-1]" // Mirrored for natural selfie feel
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover scale-x-[-1]"
             />
             <div className="absolute inset-0 border-[30px] border-black/20 pointer-events-none rounded-full scale-90 opacity-50" />
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-               <button 
+               <button
                   type="button"
                   onClick={capturePhoto}
                   className="p-4 bg-blue-600 hover:bg-blue-500 text-white rounded-full shadow-xl shadow-blue-900/40 transition-all active:scale-95 group/cap"
@@ -170,7 +164,7 @@ export function CameraCapture({ onCapture, placeholder = "Ambil Foto Wajah" }: C
           <div className="relative w-full h-full">
             <img src={preview} alt="Evidence" className="w-full h-full object-cover" />
             <div className="absolute top-2 right-2 flex gap-2">
-              <button 
+              <button
                 type="button"
                 onClick={clearPhoto}
                 className="p-2 bg-slate-900/80 hover:bg-red-500/80 text-white rounded-lg backdrop-blur-md border border-white/10 transition-colors"
@@ -188,8 +182,8 @@ export function CameraCapture({ onCapture, placeholder = "Ambil Foto Wajah" }: C
         )}
       </div>
       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] text-center">{placeholder}</p>
-      
-      {/* Hidden Canvas for Processing */}
+
+      {}
       <canvas ref={canvasRef} className="hidden" />
     </div>
   );

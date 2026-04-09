@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  TrendingUp, 
+import {
+  TrendingUp,
   ArrowRight,
   Save,
   Loader2,
@@ -18,32 +18,32 @@ import {
 } from 'lucide-react';
 import logoUTT from '@/assets/logo_utt.png';
 import { useAuth } from '@/components/AuthContext';
-import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
   writeBatch,
   serverTimestamp,
   getDocs
 } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { toast } from 'sonner';
-import { 
-  calculateMaintenanceSummary, 
-  type MaintenanceProgress, 
-  type MaintenanceSummary 
+import {
+  calculateMaintenanceSummary,
+  type MaintenanceProgress,
+  type MaintenanceSummary
 } from '@/utils/MaintenanceLogic';
 
-function StatDonut({ label, percent, sublabel, color, delay = 0, glowColor }: { 
-  label: string; 
-  percent: number; 
-  sublabel?: string; 
-  color: string; 
+function StatDonut({ label, percent, sublabel, color, delay = 0, glowColor }: {
+  label: string;
+  percent: number;
+  sublabel?: string;
+  color: string;
   glowColor: string;
   delay?: number;
 }) {
@@ -53,14 +53,14 @@ function StatDonut({ label, percent, sublabel, color, delay = 0, glowColor }: {
   const uniqueId = label.toLowerCase().replace(/\s+/g, '-');
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
       className="flex flex-col items-center justify-center p-3 md:p-6 rounded-[2.5rem] bg-slate-950/20 border border-white/5 backdrop-blur-xl hover:border-white/10 transition-all duration-500 group relative overflow-hidden"
     >
       <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none" />
-      
+
       <div className="relative w-20 h-20 md:w-32 md:h-32 flex items-center justify-center mb-3 md:mb-5">
         <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90 drop-shadow-[0_0_8px_rgba(0,0,0,0.3)]">
           <defs>
@@ -73,7 +73,7 @@ function StatDonut({ label, percent, sublabel, color, delay = 0, glowColor }: {
               <feComposite in="SourceGraphic" in2="blur" operator="over" />
             </filter>
           </defs>
-          {/* Background Track */}
+          {}
           <circle
             cx="50"
             cy="50"
@@ -83,7 +83,7 @@ function StatDonut({ label, percent, sublabel, color, delay = 0, glowColor }: {
             className="text-white/[0.03]"
             strokeWidth="4"
           />
-          {/* Progress Stroke */}
+          {}
           <motion.circle
             cx="50"
             cy="50"
@@ -95,7 +95,7 @@ function StatDonut({ label, percent, sublabel, color, delay = 0, glowColor }: {
             initial={{ strokeDashoffset: circumference }}
             animate={{ strokeDashoffset }}
             transition={{ delay: delay + 0.4, duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
-            style={{ 
+            style={{
               strokeDasharray: circumference,
               filter: `drop-shadow(0 0 5px ${glowColor}66)`
             }}
@@ -115,7 +115,7 @@ function StatDonut({ label, percent, sublabel, color, delay = 0, glowColor }: {
           )}
         </div>
       </div>
-      
+
       <div className="flex flex-col items-center gap-1">
         <p className="text-[8px] md:text-[11px] font-black text-slate-400 uppercase tracking-[0.3em] group-hover:text-white transition-colors duration-300">
           {label}
@@ -160,14 +160,14 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
       const data: MaintenanceProgress[] = [];
       snapshot.forEach((doc) => {
         const docData = doc.data();
-        data.push({ 
-          id: doc.id, 
+        data.push({
+          id: doc.id,
           ...docData,
           remark: docData.remark || '',
           yesterday_qty: docData.yesterday_qty || 0
         } as MaintenanceProgress);
       });
-      
+
       setActivities(data);
       const computedSummary = calculateMaintenanceSummary(data);
       setSummary(computedSummary);
@@ -181,7 +181,6 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
     return () => unsubscribe();
   }, [selectedYear, selectedQuarter]);
 
-  // Direct Auto-Adjustment for Excel Data - Full Reset (v5 - 31 Mar 2026)
   useEffect(() => {
     if (user && activities.length > 0 && !localStorage.getItem('excel_sync_v5_done')) {
       handleExcelSync(true).then(() => {
@@ -238,19 +237,12 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
 
   const handleExcelSync = async (isAuto = false) => {
     if (!isAuto && !window.confirm('Ingin melakukan reset penuh database dengan data Excel 31 Mar 2026? Semua data lama untuk periode ini akan dihapus dan dibuat ulang.')) return;
-    
+
     setLoading(true);
     try {
-      // ========================================================
-      // DATA FINAL - PROGRESS Q1 2026, per 31 Mar 2026
-      // TOTAL PLAN: 5110 | YESTERDAY: 4558.67 (89.21%) | TODAY: 4589 (89.80%)
-      // Verified manually per-item from spreadsheet screenshot
-      // ========================================================
+
       const officialData = [
-        // A. ELECTRICAL SYSTEM: Plan=640, Yes=524, Today=541
-        // Verification: 8+15+20+7+52+161+175+119+19+6+4+40+14 = 640 ✓
-        // Yes: 8+15+0+7+52+130+154+111+19+6+0+22+0 = 524 ✓
-        // Today: 8+15+0+7+52+130+154+111+19+6+0+39+0 = 541 ✓
+
         { cat: "A. ELECTRICAL SYSTEM", name: "TRANSFORMATOR",                   plan: 8,    yes: 8,      today: 8    },
         { cat: "A. ELECTRICAL SYSTEM", name: "AUTOMATIC TRANSFER SWITCH (ATS)", plan: 15,   yes: 15,     today: 15   },
         { cat: "A. ELECTRICAL SYSTEM", name: "MV & RMU PANEL",                  plan: 20,   yes: 0,      today: 0    },
@@ -265,9 +257,6 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
         { cat: "A. ELECTRICAL SYSTEM", name: "BUSDUCT",                         plan: 40,   yes: 22,     today: 39   },
         { cat: "A. ELECTRICAL SYSTEM", name: "EXHAUST FAN",                     plan: 14,   yes: 0,      today: 0    },
 
-        // B. COOLING SYSTEM: Plan=371, Yes=160, Today=162
-        // Verification: 3+12+133+3+40+25+126+12+11+6 = 371 ✓
-        // Yes: 3+0+0+0+0+25+112+12+8+0 = 160 ✓ | Today: 3+0+0+0+0+25+114+12+8+0 = 162 ✓
         { cat: "B. COOLING SYSTEM", name: "COOLING TOWER",                      plan: 3,    yes: 3,      today: 3    },
         { cat: "B. COOLING SYSTEM", name: "COOLING PUMP",                       plan: 12,   yes: 0,      today: 0    },
         { cat: "B. COOLING SYSTEM", name: "PHYSICAL COOLING AUTOMATION & TEST TAN", plan: 133, yes: 0,   today: 0    },
@@ -279,50 +268,30 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
         { cat: "B. COOLING SYSTEM", name: "SPLITWALL",                          plan: 11,   yes: 8,      today: 8    },
         { cat: "B. COOLING SYSTEM", name: "Presuraziation & Degassing",         plan: 6,    yes: 0,      today: 0    },
 
-        // C. FIRE SYSTEM: Plan=1116, Yes=970, Today=997
-        // Verification: 942+167+7 = 1116 ✓ | Yes: 834+129+7=970 ✓ | Today: 861+129+7=997 ✓
         { cat: "C. FIRE SYSTEM", name: "FSS",                                   plan: 942,  yes: 834,    today: 861  },
         { cat: "C. FIRE SYSTEM", name: "Hydrant System",                        plan: 167,  yes: 129,    today: 129  },
         { cat: "C. FIRE SYSTEM", name: "PREACTION",                             plan: 7,    yes: 7,      today: 7    },
 
-        // D. FUEL SYSTEM: Plan=27, Yes=27, Today=27
-        // Verification: 13+14 = 27 ✓
         { cat: "D. FUEL SYSTEM", name: "Fuel Pump",                             plan: 13,   yes: 13,     today: 13   },
         { cat: "D. FUEL SYSTEM", name: "FUEL TANK",                             plan: 14,   yes: 14,     today: 14   },
 
-        // E. LIFTING SYSTEM (formerly PESAWAT ANGKUT): Plan=24, Yes=7.67, Today=17
-        // Lift Units: 3 rows x 7 = 21 plan | Yes=4.67, Today=14 (3x row: 14.00 @ 66.67%)
-        // Dock Leveller: plan=3, yes=3, today=3
-        // Total: 21+3=24 ✓ | Yes: 4.67+3=7.67 ✓ | Today: 14+3=17 ✓
         { cat: "E. LIFTING SYSTEM", name: "Lift Units",                         plan: 21,   yes: 4.67,   today: 14   },
         { cat: "E. LIFTING SYSTEM", name: "DOCK LEVELLER",                      plan: 3,    yes: 3,      today: 3    },
 
-        // F. LEAK DETECTION: Plan=115, Yes=115, Today=115
-        // Verification: 75+40 = 115 ✓
         { cat: "F. LEAK DETECTION", name: "Water Leak",                         plan: 75,   yes: 75,     today: 75   },
         { cat: "F. LEAK DETECTION", name: "FUEL LEAK DETECTION",                plan: 40,   yes: 40,     today: 40   },
 
-        // G. PLUMBING SYSTEM: Plan=40, Yes=5, Today=5
-        // STP: 4 | Water Treatment: 3 rows x 1 = 3 total plan, yes=1, today=1 | Pump: 33
-        // Total: 4+3+33 = 40 ✓ | Yes: 4+1+0=5 ✓ | Today: 4+1+0=5 ✓
         { cat: "G. PLUMBING SYSTEM", name: "STP",                               plan: 4,    yes: 4,      today: 4    },
         { cat: "G. PLUMBING SYSTEM", name: "WATER TREATMENT",                   plan: 3,    yes: 1,      today: 1    },
         { cat: "G. PLUMBING SYSTEM", name: "PUMP",                              plan: 33,   yes: 0,      today: 0    },
 
-        // H. GATE & DOOR: Plan=27, Yes=0, Today=10
-        // Gate: 7, yes=0, today=4 (57.14%) | Road Blocker: PM Q2 (plan=0, skip) | Door: 14 | X-Ray: 6
-        // Total: 7+14+6 = 27 ✓ | Yes: 0 ✓ | Today: 4+0+6 = 10 ✓
         { cat: "H. GATE & DOOR", name: "Gate",                                  plan: 7,    yes: 0,      today: 4    },
         { cat: "H. GATE & DOOR", name: "DOOR",                                  plan: 14,   yes: 0,      today: 0    },
         { cat: "H. GATE & DOOR", name: "X-RAY",                                 plan: 6,    yes: 0,      today: 6    },
 
-        // I. LIGHTING SYSTEM: Plan=2750, Yes=2750, Today=2715
-        // PJU & ALL LIGHTING: 2750, today=2715 (98.73%)
         { cat: "I. LIGHTING SYSTEM", name: "PJU & ALL LIGHTING",                plan: 2750, yes: 2750,   today: 2715 },
       ];
 
-      // STRATEGY: Full DELETE then INSERT for guaranteed 100% accuracy
-      // Step 1: Fetch all current records for this period
       const existingQuery = query(
         collection(db, 'maintenance_progress'),
         where('year', '==', selectedYear),
@@ -330,12 +299,10 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
       );
       const existingSnap = await getDocs(existingQuery);
 
-      // Step 2: Delete everything in this period
       const deleteBatch = writeBatch(db);
       existingSnap.docs.forEach(d => deleteBatch.delete(d.ref));
       await deleteBatch.commit();
 
-      // Step 3: Insert fresh from officialData
       const insertBatch = writeBatch(db);
       officialData.forEach(item => {
         const newRef = doc(collection(db, 'maintenance_progress'));
@@ -388,8 +355,8 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
     setSaving(id);
     try {
       const docRef = doc(db, 'maintenance_progress', id);
-      await updateDoc(docRef, { 
-        actual_qty: actualQty, 
+      await updateDoc(docRef, {
+        actual_qty: actualQty,
         remark: remark || ''
       });
       toast.success('Progress berhasil diupdate');
@@ -401,7 +368,7 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
     }
   };
 
-  const filteredActivities = (activities || []).filter((a: MaintenanceProgress) => 
+  const filteredActivities = (activities || []).filter((a: MaintenanceProgress) =>
     a.equipment_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     a.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -537,24 +504,24 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
               {summary && (
                 <>
                   <div className="grid grid-cols-3 gap-3 md:gap-12 max-w-5xl mx-auto py-6">
-                    <StatDonut 
-                      label="Kemarin" 
-                      percent={summary.total_yesterday_percent} 
+                    <StatDonut
+                      label="Kemarin"
+                      percent={summary.total_yesterday_percent}
                       sublabel={`${summary.total_yesterday_qty.toFixed(0)} UNIT`}
                       color="#94a3b8"
                       glowColor="#cbd5e1"
                       delay={0.1}
                     />
-                    <StatDonut 
-                      label="Total" 
-                      percent={summary.total_today_percent} 
+                    <StatDonut
+                      label="Total"
+                      percent={summary.total_today_percent}
                       color="#6366f1"
                       glowColor="#818cf8"
                       delay={0.2}
                     />
-                    <StatDonut 
-                      label="Harian" 
-                      percent={summary.daily_progress} 
+                    <StatDonut
+                      label="Harian"
+                      percent={summary.daily_progress}
                       color="#10b981"
                       glowColor="#34d399"
                       delay={0.3}
@@ -574,7 +541,7 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                         </button>
                       )}
                     </div>
-                    
+
                     <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-white/10">
                       <table className="w-full text-center border-collapse min-w-[700px]">
                         <thead>
@@ -705,7 +672,7 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
         </motion.button>
       )}
 
-      {/* Add Item Modal */}
+      {}
       <AnimatePresence>
         {showAddModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -838,7 +805,7 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
         )}
       </AnimatePresence>
 
-      {/* Logout Confirmation Modal */}
+      {}
       <AnimatePresence>
         {showLogoutModal && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
@@ -884,8 +851,8 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
   );
 }
 
-function ActivityRow({ activity, onUpdate, onDelete, isSaving }: { 
-  activity: MaintenanceProgress, 
+function ActivityRow({ activity, onUpdate, onDelete, isSaving }: {
+  activity: MaintenanceProgress,
   onUpdate: (id: string, qty: number, remark: string) => Promise<void>,
   onDelete: (id: string) => Promise<void>,
   isSaving: boolean
@@ -945,7 +912,7 @@ function ActivityRow({ activity, onUpdate, onDelete, isSaving }: {
           <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Progress</span>
           <div className="flex flex-col items-center gap-1">
             <div className="w-24 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-              <div 
+              <div
                 className={`h-full transition-all duration-500 ${
                   progressPercent >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'
                 }`}
@@ -984,8 +951,8 @@ function ActivityRow({ activity, onUpdate, onDelete, isSaving }: {
             }}
             disabled={!hasChanges || isSaving}
             className={`flex-1 md:flex-none flex items-center justify-center h-12 w-full md:w-12 rounded-xl transition-all ${
-              hasChanges 
-                ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/20' 
+              hasChanges
+                ? 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-500/20'
                 : 'bg-slate-800/50 text-slate-600 cursor-not-allowed'
             }`}
           >

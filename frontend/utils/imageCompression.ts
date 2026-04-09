@@ -1,20 +1,10 @@
-/**
- * Image Compression Utility
- * Compresses images to reduce file size for PDF/Excel exports
- */
 
 export interface CompressionOptions {
     maxWidth?: number;
     maxHeight?: number;
-    quality?: number; 
+    quality?: number;
 }
 
-/**
- * Compress an image file using HTML5 Canvas
- * @param file - The image file to compress
- * @param options - Compression options
- * @returns Promise<string> - Base64 encoded compressed image
- */
 export async function compressImage(
     file: File,
     options: CompressionOptions = {}
@@ -22,7 +12,7 @@ export async function compressImage(
     const {
         maxWidth = 800,
         maxHeight = 800,
-        quality = 0.5,    
+        quality = 0.5,
     } = options;
 
     return new Promise((resolve, reject) => {
@@ -81,12 +71,6 @@ export async function compressImage(
     });
 }
 
-/**
- * Compress base64 image string
- * @param base64String - Base64 encoded image
- * @param options - Compression options
- * @returns Promise<string> - Compressed base64 string
- */
 export async function compressBase64Image(
     base64String: string,
     options: CompressionOptions = {}
@@ -141,11 +125,6 @@ export async function compressBase64Image(
     });
 }
 
-/**
- * Get file size in KB from base64 string
- * @param base64String - Base64 encoded string
- * @returns number - Size in KB
- */
 export function getBase64SizeKB(base64String: string): number {
     const base64Length = base64String.length - (base64String.indexOf(',') + 1);
     const sizeInBytes = (base64Length * 3) / 4;

@@ -32,9 +32,6 @@ export interface MaintenanceSummary {
   daily_progress: number;
 }
 
-/**
- * Replicates the calculations from the Go backend for the dashboard summary.
- */
 export function calculateMaintenanceSummary(activities: MaintenanceProgress[]): MaintenanceSummary {
   if (!activities || activities.length === 0) {
     return {
@@ -58,25 +55,22 @@ export function calculateMaintenanceSummary(activities: MaintenanceProgress[]): 
     daily_progress: 0
   };
 
-  // Group by category
   const groups: Record<string, MaintenanceProgress[]> = {};
   activities.forEach(a => {
     if (!groups[a.category]) groups[a.category] = [];
     groups[a.category].push(a);
-    
+
     result.total_plan_qty += a.plan_qty;
     result.total_yesterday_qty += a.yesterday_qty || 0;
     result.total_today_qty += a.actual_qty;
   });
 
-  // Calculate totals
   if (result.total_plan_qty > 0) {
     result.total_yesterday_percent = Math.round((result.total_yesterday_qty / result.total_plan_qty) * 10000) / 100;
     result.total_today_percent = Math.round((result.total_today_qty / result.total_plan_qty) * 10000) / 100;
   }
   result.daily_progress = Math.round((result.total_today_percent - result.total_yesterday_percent) * 100) / 100;
 
-  // Calculate category summaries
   Object.keys(groups).sort().forEach(catName => {
     const catItems = groups[catName];
     const catPlan = catItems.reduce((sum, item) => sum + item.plan_qty, 0);

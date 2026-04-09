@@ -50,7 +50,6 @@ export async function generateResumePdf(summary: MaintenanceSummary) {
     const margin = 14;
     const contentW = pageW - (margin * 2);
 
-    // Load Logos
     let logoDmeB64 = '';
     let logoUttB64 = '';
     try {
@@ -58,8 +57,7 @@ export async function generateResumePdf(summary: MaintenanceSummary) {
         logoUttB64 = await loadImageAsBase64(logoUtt);
     } catch (_) {}
 
-    // 1. Header with Logos
-    doc.setFillColor(0, 89, 156); // DME Blue
+    doc.setFillColor(0, 89, 156);
     doc.rect(0, 0, pageW, 2.5, 'F');
 
     if (logoDmeB64) {
@@ -81,33 +79,29 @@ export async function generateResumePdf(summary: MaintenanceSummary) {
     doc.setDrawColor(226, 232, 240);
     doc.line(margin, 30, pageW - margin, 30);
 
-    // 2. Info Section (Date)
     const dateStr = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
     doc.setFontSize(10);
     doc.setTextColor(0, 89, 156);
     doc.setFont('helvetica', 'bold');
     doc.text(`Tanggal Laporan: ${dateStr}`, margin, 38);
 
-    // 3. Overall Stats Cards
     const startY = 45;
     const cardW = (contentW - 10) / 3;
     const cardH = 22;
 
-    // Card Backgrounds
     doc.setDrawColor(226, 232, 240);
     doc.setFillColor(248, 250, 252);
     doc.roundedRect(margin, startY, cardW, cardH, 2, 2, 'FD');
     doc.roundedRect(margin + cardW + 5, startY, cardW, cardH, 2, 2, 'FD');
     doc.roundedRect(margin + (cardW + 5) * 2, startY, cardW, cardH, 2, 2, 'FD');
 
-    // Card Texts
     const drawCard = (idx: number, title: string, value: string, sub: string, color = [30, 41, 59]) => {
         const x = margin + (cardW + 5) * idx;
         doc.setFontSize(8);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(100, 116, 139);
         doc.text(title, x + 5, startY + 7);
-        
+
         doc.setFontSize(14);
         doc.setTextColor(color[0], color[1], color[2]);
         doc.text(value, x + 5, startY + 14);
@@ -122,7 +116,6 @@ export async function generateResumePdf(summary: MaintenanceSummary) {
     drawCard(1, 'TOTAL PROGRESS', `${summary.total_today_percent.toFixed(2)}%`, `${summary.total_today_qty.toFixed(2)} unit`, [0, 89, 156]);
     drawCard(2, 'DAILY GROWTH', `+${summary.daily_progress.toFixed(2)}%`, 'Peningkatan harian', [16, 185, 129]);
 
-    // 4. Main Table
     const tableData = summary.category_summaries.map((cat, idx) => [
         `1.${idx + 1}`,
         cat.category,
@@ -138,21 +131,21 @@ export async function generateResumePdf(summary: MaintenanceSummary) {
         startY: startY + cardH + 10,
         head: [
             [
-                { content: 'No', rowSpan: 3, styles: { halign: 'center', valign: 'middle' } }, 
-                { content: 'DESKRIPSI', rowSpan: 3, styles: { halign: 'center', valign: 'middle' } }, 
-                { content: 'PLAN', colSpan: 2, styles: { halign: 'center' } }, 
+                { content: 'No', rowSpan: 3, styles: { halign: 'center', valign: 'middle' } },
+                { content: 'DESKRIPSI', rowSpan: 3, styles: { halign: 'center', valign: 'middle' } },
+                { content: 'PLAN', colSpan: 2, styles: { halign: 'center' } },
                 { content: 'PROGRESS', colSpan: 4, styles: { halign: 'center' } }
             ],
             [
-                { content: 'Qty', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } }, 
-                { content: 'Weight %', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } }, 
-                { content: 'Yesterday', colSpan: 2, styles: { halign: 'center' } }, 
+                { content: 'Qty', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+                { content: 'Weight %', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+                { content: 'Yesterday', colSpan: 2, styles: { halign: 'center' } },
                 { content: 'Today', colSpan: 2, styles: { halign: 'center' } }
             ],
             [
-                { content: 'Qty', styles: { halign: 'center' } }, 
-                { content: 'Weight %', styles: { halign: 'center' } }, 
-                { content: 'Qty', styles: { halign: 'center' } }, 
+                { content: 'Qty', styles: { halign: 'center' } },
+                { content: 'Weight %', styles: { halign: 'center' } },
+                { content: 'Qty', styles: { halign: 'center' } },
                 { content: 'Weight %', styles: { halign: 'center' } }
             ]
         ],
@@ -184,15 +177,14 @@ export async function generateResumePdf(summary: MaintenanceSummary) {
         },
         didDrawCell: (data) => {
             if (data.section === 'body' && data.column.index === 5) {
-                doc.setTextColor(16, 185, 129); // Emerald for Yesterday %
+                doc.setTextColor(16, 185, 129);
             }
             if (data.section === 'body' && data.column.index === 7) {
-                doc.setTextColor(0, 89, 156); // Blue for Today %
+                doc.setTextColor(0, 89, 156);
             }
         }
     });
 
-    // Footer
     const totalPages = (doc.internal as any).getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);

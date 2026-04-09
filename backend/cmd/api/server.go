@@ -24,7 +24,7 @@ func NewServer(port string, handler http.Handler) *Server {
 			ReadTimeout:       15 * time.Second,
 			WriteTimeout:      30 * time.Second,
 			IdleTimeout:       120 * time.Second,
-			MaxHeaderBytes:    1 << 20, // 1 MiB
+			MaxHeaderBytes:    1 << 20,
 		},
 	}
 }

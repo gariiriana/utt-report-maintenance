@@ -36,7 +36,6 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Diagnostic endpoint
 	if r.URL.Path == "/api/test" {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status":"ok","message":"Root Bridge is working"}`))

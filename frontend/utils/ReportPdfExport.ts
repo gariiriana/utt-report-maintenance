@@ -46,13 +46,13 @@ export const loadLogoBase64 = (pathOrObj: string | { src: string }): Promise<str
 };
 
 export const generateReportPDF = async (options: ExportOptions): Promise<PDFExportResult | null> => {
-  const { 
-    maintenanceName, 
-    maintenanceTime, 
-    specificDetail, 
-    vrvUnitDetail, 
-    cards, 
-    companyType, 
+  const {
+    maintenanceName,
+    maintenanceTime,
+    specificDetail,
+    vrvUnitDetail,
+    cards,
+    companyType,
     userEmail,
     logos
   } = options;
@@ -67,8 +67,6 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
     toast.error('Minimal 1 card filled');
     return null;
   }
-
-
 
   const optimizedCards: PhotoCard[] = [];
   for (let i = 0; i < filled.length; i++) {
@@ -86,7 +84,7 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
       optimizedCards.push(c);
     }
   }
-  
+
   toast.dismiss('export');
 
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
@@ -118,7 +116,7 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
   const capH = (isATS || isACSplit || isCRAC) ? 10 : isVRV ? 8 : isSmallGrid ? 10 : 12;
   const rowGap = (isVRV || isATS || isACSplit || isCRAC) ? 3 : 5;
 
-  const finalSpecificDetail = (userEmail === 'vrv@gmail.com' && vrvUnitDetail) 
+  const finalSpecificDetail = (userEmail === 'vrv@gmail.com' && vrvUnitDetail)
     ? `${specificDetail.toUpperCase()} - ${vrvUnitDetail.toUpperCase()}`
     : specificDetail;
 
@@ -128,7 +126,7 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
     const headerH = 22;
     const headerY = 6;
     doc.setDrawColor(SLATE_200);
-    doc.setLineWidth(0.1); // Thinner frame for more tech look
+    doc.setLineWidth(0.1);
     doc.roundedRect(margin, headerY, contentW, headerH, 1, 1, 'D');
     const col1W = 35;
     const col3W = 35;
@@ -143,7 +141,7 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
     const centerX = margin + col1W + (contentW - col1W - col3W) / 2;
     doc.setFontSize(11).setFont('helvetica', 'bold').setTextColor(THEME_BLUE);
     doc.text('LAPORAN MAINTENANCE', centerX, headerY + 6.5, { align: 'center' });
-    
+
     doc.setFontSize(8.5).setFont('helvetica', 'bold').setTextColor(DARK);
     doc.text(`DOKUMENTASI PM: ${maintenanceName.toUpperCase()}`, centerX, headerY + 11.5, { align: 'center' });
 
@@ -152,16 +150,14 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
       doc.text(`${finalSpecificDetail.toUpperCase()}`, centerX, headerY + 16, { align: 'center' });
     }
 
-    const longDate = new Date(maintenanceTime).toLocaleDateString('id-ID', { 
-      day: '2-digit', month: 'long', year: 'numeric' 
+    const longDate = new Date(maintenanceTime).toLocaleDateString('id-ID', {
+      day: '2-digit', month: 'long', year: 'numeric'
     });
     doc.setFontSize(7).setFont('helvetica', 'normal').setTextColor(GRAY);
     doc.text(`Tanggal Maintenance: ${longDate}`, centerX, headerY + 20, { align: 'center' });
 
-    return 31; // Next content Y
+    return 31;
   };
-
-
 
   const drawPhotoCard = (doc: any, x: number, y: number, w: number, h: number, capH: number, photo: PhotoCard, index: number) => {
     doc.setFillColor(255, 255, 255).setDrawColor(SLATE_200).setLineWidth(0.2);
@@ -193,9 +189,9 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
     while (pageStart < optimizedCards.length) {
       const pageCards = optimizedCards.slice(pageStart, pageStart + perPage);
       const rows = Math.ceil(pageCards.length / cols);
-      if (!isFirstPage) { 
-        doc.addPage(); 
-        curY = drawHeader(doc); 
+      if (!isFirstPage) {
+        doc.addPage();
+        curY = drawHeader(doc);
       }
       const usablePageHeight = pageHeight - curY - margin - 12;
       const photoHLV = isFirstPage ? Math.floor(usablePageHeight / rows - capHLV - gapLV) : normalPhotoH;

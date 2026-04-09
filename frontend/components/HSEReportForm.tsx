@@ -14,10 +14,10 @@ import { useAuth } from '@/components/AuthContext';
 import { ExcelDocument } from '@/components/DocumentList';
 import { compressImage, compressBase64Image } from '@/utils/imageCompression';
 
-import { 
-    INITIAL_HSE_CHECKLIST, 
-    HSE_CHECKLIST_LABELS, 
-    type HSEChecklist 
+import {
+    INITIAL_HSE_CHECKLIST,
+    HSE_CHECKLIST_LABELS,
+    type HSEChecklist
 } from '@/config/templates';
 
 interface PhotoItem {
@@ -95,7 +95,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         }
     }, [editingData, user?.email]);
 
-
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const toggleCheck = (key: keyof HSEChecklist) => {
@@ -135,13 +134,12 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
 
         const toastId = toast.loading(`Memproses 0/${files.length} foto...`);
         const newPhotos: PhotoItem[] = [];
-        
+
         try {
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
                 if (!file.type.startsWith('image/')) continue;
 
-                // Update loading toast with progress
                 toast.loading(`Memproses ${i + 1}/${files.length} foto...`, { id: toastId });
 
                 try {
@@ -153,14 +151,14 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                     });
                 } catch (err) {
                     console.error("Compression failed for", file.name, err);
-                    // Fallback to simple FileReader if compression fails
+
                     const readerResult = await new Promise<string | null>((resolve) => {
                         const reader = new FileReader();
                         reader.onload = (ev) => resolve(ev.target?.result as string);
                         reader.onerror = () => resolve(null);
                         reader.readAsDataURL(file);
                     });
-                    
+
                     if (readerResult) {
                         newPhotos.push({
                             id: `${Date.now()}-${Math.random()}`,
@@ -184,7 +182,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
-
 
     const removePhoto = (id: string) => {
         setPhotos(prev => prev.filter(p => p.id !== id));
@@ -258,7 +255,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         try {
             const formData = buildFormData();
             if (reportType) formData.reportType = reportType;
-            
+
             const reportData = {
                 ...formData,
                 photos: photos.map(p => p.dataUrl.substring(0, 50) + '...'),
@@ -313,8 +310,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
 
             if (!silent && toastId) {
                 toast.success(editingData ? 'Laporan HSE diperbarui!' : 'Laporan HSE tersimpan!', { id: toastId });
-                
-                // Clear draft after successful save
+
                 if (!editingData) {
                     localStorage.removeItem('hse_report_form_draft');
                 }
@@ -357,9 +353,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
         }
     };
 
-
-
-
     return (
         <>
             <div className="space-y-6">
@@ -377,7 +370,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                     )}
                 </div>
 
-                {/* ── INFO SECTION ───────────────────────────────────────────── */}
+                {}
                 <motion.div
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -392,7 +385,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                     </div>
                     <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-                        {/* Inspector K3 */}
+                        {}
                         <div className="sm:col-span-2">
                             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                                 <span className="flex items-center gap-1.5">
@@ -408,7 +401,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                             />
                         </div>
 
-                        {/* Aktivitas */}
+                        {}
                         <div className="sm:col-span-2">
                             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                                 <span className="flex items-center gap-1.5">
@@ -424,7 +417,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                             />
                         </div>
 
-                        {/* Lokasi */}
+                        {}
                         <div className="sm:col-span-2">
                             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                                 <span className="flex items-center gap-1.5">
@@ -440,7 +433,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                             />
                         </div>
 
-                        {/* Personil */}
+                        {}
                         <div>
                             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                                 <span className="flex items-center gap-1.5">
@@ -456,7 +449,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                             />
                         </div>
 
-                        {/* PIC */}
+                        {}
                         <div>
                             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                                 <span className="flex items-center gap-1.5">
@@ -472,7 +465,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                             />
                         </div>
 
-                        {/* Anggota */}
+                        {}
                         <div className="sm:col-span-2">
                             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                                 <span className="flex items-center gap-1.5">
@@ -492,7 +485,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                         </div>
                 </motion.div>
 
-                {/* ── CHECKLIST SECTION ──────────────────────────────────────── */}
+                {}
                 <motion.div
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -671,7 +664,6 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                             </motion.button>
                         </div>
 
-
                         {photos.length > 0 ? (
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                 <AnimatePresence>
@@ -751,9 +743,9 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                     </div>
                 </motion.div>
 
-                {/* ── ACTION BUTTONS ─────────────────────────────────────────── */}
+                {}
                 <div className="space-y-4">
-                    {/* UTT Section */}
+                    {}
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 mb-1">
                             <div className="h-[1px] flex-1 bg-slate-800"></div>
@@ -773,7 +765,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                         </div>
                     </div>
 
-                    {/* NeutraDC Section */}
+                    {}
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 mb-1">
                             <div className="h-[1px] flex-1 bg-slate-800"></div>
@@ -792,8 +784,8 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                             </motion.button>
                         </div>
                     </div>
-                    
-                    {/* General Save */}
+
+                    {}
                     <motion.button
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.98 }}
@@ -806,13 +798,13 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                     </motion.button>
                 </div>
 
-                {/* Catatan bawah */}
+                {}
                 <p className="text-center text-[10px] text-slate-600 pb-4 mt-4 uppercase tracking-[0.2em]">
                     🛡️ Safety Implementation System 🛡️
                 </p>
             </div>
 
-            {/* Photo Editor Modal */}
+            {}
             <AnimatePresence>
                 {editingPhoto && (
                     <HSEPhotoEditor

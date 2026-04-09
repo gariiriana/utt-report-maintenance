@@ -19,7 +19,7 @@ interface NotificationItem {
     maintenanceType: string;
     quarter: string;
     year: string;
-    uploadedAt: any; // Changed from Timestamp to any to avoid type error after removing Timestamp import
+    uploadedAt: any;
 }
 
 interface NotificationCenterProps {

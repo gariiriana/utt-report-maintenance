@@ -69,7 +69,7 @@ func EnvStringSlice(key string, defaultVals []string) []string {
 func MustLoadDotEnv(filepath string) {
 	data, err := os.ReadFile(filepath)
 	if err != nil {
-		return // .env is optional; not a fatal error
+		return
 	}
 	lines := strings.Split(string(data), "\n")
 	for _, line := range lines {

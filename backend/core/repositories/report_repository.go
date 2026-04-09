@@ -94,4 +94,3 @@ func (r *ReportRepository) Count(ctx context.Context, collectionName string) (in
 
 	return count, nil
 }
-

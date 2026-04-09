@@ -70,7 +70,6 @@ func (s *maintenanceProgressService) ListAll(ctx context.Context, year int, quar
 			return nil, err
 		}
 
-		// Filter by year and quarter
 		if year > 0 && p.Year != year {
 			continue
 		}
@@ -102,7 +101,6 @@ func (s *maintenanceProgressService) GetSummary(ctx context.Context, year int, q
 	var totalPlanQty float64
 	var totalActualQty float64
 
-	// First pass: Calculate Category Plan Qty and Total Plan Qty
 	for _, p := range progressList {
 		if _, ok := summaryMap[p.Category]; !ok {
 			summaryMap[p.Category] = &models.CategorySummary{Category: p.Category}
@@ -126,7 +124,6 @@ func (s *maintenanceProgressService) GetSummary(ctx context.Context, year int, q
 			cs.YesterdayPercent = (cs.YesterdayQty / cs.PlanQty) * 100
 		}
 
-		// Round to 2 decimal places
 		cs.WeightPercent = math.Round(cs.WeightPercent*100) / 100
 		cs.TodayPercent = math.Round(cs.TodayPercent*100) / 100
 		cs.YesterdayPercent = math.Round(cs.YesterdayPercent*100) / 100
@@ -185,10 +182,6 @@ func (s *maintenanceProgressService) CreateProgress(ctx context.Context, p model
 func (s *maintenanceProgressService) DeleteProgress(ctx context.Context, id string) error {
 	return s.repo.Delete(ctx, id)
 }
-
-// Actually, I should check if the repo has a Delete method.
-// Looking back at the repo... it doesn't. I'll add a Delete method to the repo or just use Set with delete logic.
-// For now, I'll add a proper Delete to the repo.
 
 func (s *maintenanceProgressService) EndDay(ctx context.Context) error {
 	progressList, err := s.ListAll(ctx, 0, "")

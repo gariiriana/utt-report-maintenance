@@ -28,9 +28,6 @@ if (typeof window !== 'undefined') {
   });
 }
 
-/**
- * Helper to log events safely
- */
 export const logFirebaseEvent = async (eventName: string, params?: Record<string, any>) => {
   if (analyticsPromise) {
     const analytics = await analyticsPromise;
@@ -46,16 +43,6 @@ export { analyticsPromise as analytics };
 if (import.meta.env.DEV) {
   (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
 }
-
-
-/*
-if (recaptchaSiteKey) {
-  initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider(recaptchaSiteKey),
-    isTokenAutoRefreshEnabled: true,
-  });
-}
-*/
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);

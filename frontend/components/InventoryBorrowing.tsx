@@ -10,7 +10,7 @@ export function InventoryBorrowing() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 relative z-10 space-y-8">
       <div className="flex flex-col md:flex-row items-center justify-center gap-6 pb-6 border-b border-slate-700/30">
-        
+
         <div className="grid grid-cols-2 p-1.5 bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-800 shadow-xl overflow-hidden w-full md:w-auto">
           <button
             onClick={() => setActiveTab('form')}
@@ -37,7 +37,7 @@ export function InventoryBorrowing() {
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {}
       <div className="min-h-[400px]">
         <AnimatePresence mode="wait">
           {activeTab === 'form' ? (
@@ -59,7 +59,7 @@ export function InventoryBorrowing() {
               className="space-y-6"
             >
               <div className="mb-8">
-                 {/* Card 2: Prosedur */}
+                 {}
                  <div className="p-5 md:p-8 bg-slate-900 ring-1 ring-slate-800/50 backdrop-blur-xl rounded-3xl md:rounded-[2.5rem] border-l-4 border-l-emerald-500 flex flex-col gap-4 shadow-2xl hover:bg-slate-800/50 transition-all max-w-2xl mx-auto">
                     <div className="flex items-center gap-2.5">
                        <div className="p-2.5 bg-emerald-500/10 rounded-2xl">

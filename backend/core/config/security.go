@@ -7,7 +7,7 @@ type SecurityPolicy struct {
 	AllowedHeaders   []string
 	ExposedHeaders   []string
 	AllowCredentials bool
-	MaxAge           int // preflight cache in seconds
+	MaxAge           int
 	RateLimitRPS   int
 	RateLimitBurst int
 	BackendAPISecret string
@@ -45,7 +45,7 @@ func DefaultSecurityPolicy(cfg *AppConfig) SecurityPolicy {
 			"connect-src 'self' https://*.googleapis.com https://*.firebase.googleapis.com",
 			"frame-ancestors 'none'",
 		}, "; "),
-		HSTSMaxAge:     31536000, // 1 year
+		HSTSMaxAge:     31536000,
 		TrustedProxies: []string{"0.0.0.0/0"},
 	}
 }

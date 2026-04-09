@@ -4,7 +4,6 @@ import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
 import { Lock, Mail, Eye, EyeOff, LogIn } from 'lucide-react';
 
-
 import logoUTT from '@/assets/logo_utt.png';
 
 export function Login() {
@@ -29,9 +28,9 @@ export function Login() {
       toast.success('Login berhasil!');
     } catch (error: any) {
       console.error('Login error:', error);
-      
+
       let errorMessage = 'Login gagal. Silakan coba lagi.';
-      
+
       if (error.code === 'auth/network-request-failed') {
         errorMessage = 'Koneksi gagal. Jika kamu pakai VPN atau Adblocker, coba matikan dulu ya bray!';
       } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
@@ -39,14 +38,12 @@ export function Login() {
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = 'Terlalu banyak percobaan login. Coba lagi nanti.';
       }
-      
+
       toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
-
-
 
   return (
     <div className="min-h-screen font-geist text-slate-200 flex items-center justify-center p-4 sm:p-6">
@@ -153,4 +150,4 @@ export function Login() {
       </motion.div>
     </div>
   );
-}
+}

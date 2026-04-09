@@ -57,7 +57,7 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
         const fetchReport = async () => {
             let cleanId = reportId.trim().replace(/[.,!?;:]+$/, '');
             console.log('[HSE DEBUG] Fetching report with cleaned ID:', cleanId);
-            
+
             try {
                 const docSnap = await getDocFromServer(doc(db, 'hse', cleanId));
                 if (!docSnap.exists()) {

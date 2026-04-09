@@ -90,7 +90,7 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
 export const VRV_TEMPLATE = {
   outdoor: [
     'Voltage R-S', 'Voltage R-T', 'Voltage S-T', 'Voltage R-N', 'Voltage S-N', 'Voltage T-N', 'Voltage N-G',
-    'Current R', 'Current S', 'Current T', 'Pressure Suction', 'Pressure Discharge', 
+    'Current R', 'Current S', 'Current T', 'Pressure Suction', 'Pressure Discharge',
     'Cleaning Kondensor', 'Cleaning Fan', 'Nameplate'
   ],
   indoor: [
@@ -104,7 +104,7 @@ export const VRV_TEMPLATE = {
 
 export const LV_ATS_TRAFO_TEMPLATE = (email: string) => {
   const isTrafo = email === 'trafo@gmail.com';
-  
+
   if (email === 'lv@gmail.com') {
     return [
       'Cleaning panel', 'Cleaning panel', 'Cleaning panel',
@@ -199,8 +199,8 @@ export const HSE_CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string; sub
   { key: 'jsa', label: 'JSA' },
   { key: 'ptw', label: 'PTW' },
   { key: 'ppe', label: 'PPE Mandatory' },
-  { 
-      key: 'ppeKhusus', 
+  {
+      key: 'ppeKhusus',
       label: 'PPE Khusus',
       subItems: [
           { key: 'bodyHarness', label: 'Body Harness' },
@@ -213,8 +213,8 @@ export const HSE_CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string; sub
           { key: 'pelindungMata', label: 'Pelindung Mata' },
       ]
   },
-  { 
-      key: 'dokumen', 
+  {
+      key: 'dokumen',
       label: 'Dokumen',
       subItems: [
           { key: 'msds', label: 'MSDS' },

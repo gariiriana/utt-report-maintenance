@@ -4,7 +4,7 @@ import "time"
 
 type MaintenanceProgress struct {
 	ID            string    `json:"id" firestore:"id"`
-	Category      string    `json:"category" firestore:"category"`       // e.g., "A. ELECTRICAL SYSTEM"
+	Category      string    `json:"category" firestore:"category"`
 	EquipmentName string    `json:"equipment_name" firestore:"equipment_name"`
 	PlanQty       float64   `json:"plan_qty" firestore:"plan_qty"`
 	PlanStart     string    `json:"plan_start" firestore:"plan_start"`
@@ -14,25 +14,25 @@ type MaintenanceProgress struct {
 	ActualStart   string    `json:"actual_start,omitempty" firestore:"actual_start,omitempty"`
 	ActualFinish  string    `json:"actual_finish,omitempty" firestore:"actual_finish,omitempty"`
 	ActualQty     float64   `json:"actual_qty" firestore:"actual_qty"`
-	ActualPercent float64   `json:"actual_percent" firestore:"actual_percent"` // (ActualQty / PlanQty) * 100
+	ActualPercent float64   `json:"actual_percent" firestore:"actual_percent"`
 	TargetQty     float64   `json:"target_qty" firestore:"target_qty"`
 	TargetPercent float64   `json:"target_percent" firestore:"target_percent"`
 	YesterdayQty  float64   `json:"yesterday_qty" firestore:"yesterday_qty"`
 	YesterdayPercent float64 `json:"yesterday_percent" firestore:"yesterday_percent"`
 	Remark        string    `json:"remark,omitempty" firestore:"remark,omitempty"`
 	Year          int       `json:"year" firestore:"year"`
-	Quarter       string    `json:"quarter" firestore:"quarter"` // e.g., "Q1", "Q2"
+	Quarter       string    `json:"quarter" firestore:"quarter"`
 	UpdatedAt     time.Time `json:"updated_at" firestore:"updated_at"`
 }
 
 type CategorySummary struct {
 	Category        string  `json:"category"`
 	PlanQty         float64 `json:"plan_qty"`
-	WeightPercent   float64 `json:"weight_percent"`   // (Category PlanQty / Total PlanQty) * 100
+	WeightPercent   float64 `json:"weight_percent"`
 	YesterdayQty    float64 `json:"yesterday_qty"`
-	YesterdayPercent float64 `json:"yesterday_percent"` // (Category YesterdayQty / Category PlanQty) * 100
+	YesterdayPercent float64 `json:"yesterday_percent"`
 	TodayQty        float64 `json:"today_qty"`
-	TodayPercent    float64 `json:"today_percent"`     // (Category TodayQty / Category PlanQty) * 100
+	TodayPercent    float64 `json:"today_percent"`
 }
 
 type MaintenanceSummary struct {
@@ -42,5 +42,5 @@ type MaintenanceSummary struct {
 	TotalYesterdayPercent float64       `json:"total_yesterday_percent"`
 	TotalTodayQty     float64           `json:"total_today_qty"`
 	TotalTodayPercent float64           `json:"total_today_percent"`
-	DailyProgress     float64           `json:"daily_progress"` // TotalTodayPercent - TotalYesterdayPercent
+	DailyProgress     float64           `json:"daily_progress"`
 }

@@ -5,7 +5,7 @@ import puppeteer from 'puppeteer';
   const page = await browser.newPage();
 
   const errors = [];
-  
+
   page.on('console', msg => {
     if (msg.type() === 'error') {
       errors.push('CONSOLE ERROR: ' + msg.text());
@@ -27,7 +27,7 @@ import puppeteer from 'puppeteer';
     console.log('No errors found!');
   }
   errors.forEach(e => console.log(e));
-  
+
   const bodyText = await page.evaluate(() => document.body ? document.body.innerText : 'no body');
   console.log('\nBody text preview:', bodyText.substring(0, 200));
 

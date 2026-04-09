@@ -71,7 +71,7 @@ func (r *UserRepository) ListByRole(ctx context.Context, role string) ([]*firest
 func (r *UserRepository) Exists(ctx context.Context, uid string) (bool, error) {
 	snap, err := r.Client.Collection(userCollection).Doc(uid).Get(ctx)
 	if err != nil {
-		return false, nil // not found is treated as does not exist
+		return false, nil
 	}
 	return snap.Exists(), nil
 }

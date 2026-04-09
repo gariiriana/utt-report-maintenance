@@ -18,7 +18,7 @@ type FirebaseClaims struct {
 	EmailVerified bool
 	Name          string
 	Picture       string
-	Role          string // custom claim
+	Role          string
 	ExpiresAt     time.Time
 }
 func NewFirebaseTokenVerifier(ctx context.Context, credentialsJSON []byte) (*FirebaseTokenVerifier, error) {

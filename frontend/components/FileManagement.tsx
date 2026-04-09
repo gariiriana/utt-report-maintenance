@@ -85,7 +85,7 @@ const MAINTENANCE_TYPES = [
 ];
 
 const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
-const YEARS = ['2025', '2026', '2027', '2028', '2029', '2030']; 
+const YEARS = ['2025', '2026', '2027', '2028', '2029', '2030'];
 const ALLOWED_FILE_TYPES = [
     'application/pdf',
     'application/vnd.ms-excel',
@@ -95,7 +95,7 @@ const ALLOWED_FILE_TYPES = [
 ];
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const CHUNK_SIZE = 524286; // Adjusted to a multiple of 3 (524286 % 3 = 0) to avoid Base64 padding issues in intermediate chunks
+const CHUNK_SIZE = 524286;
 
 interface FileData {
     id: string;
@@ -103,15 +103,15 @@ interface FileData {
     fileSize: number;
     fileType: string;
     category: string;
-    quarter?: string; 
-    year?: string; 
+    quarter?: string;
+    year?: string;
     customCategory?: string;
     uploadedBy: string;
     uploadedByEmail: string;
     uploadedAt: any;
     description?: string;
     totalChunks: number;
-    maintenanceType?: string; 
+    maintenanceType?: string;
 }
 
 interface FileManagementProps {
@@ -121,8 +121,8 @@ interface FileManagementProps {
     simpleMode?: boolean;
 }
 
-export function FileManagement({ 
-    collectionName = 'files', 
+export function FileManagement({
+    collectionName = 'files',
     allowUpload: propAllowUpload,
     divisionName,
     simpleMode = false
@@ -131,8 +131,8 @@ export function FileManagement({
     const isAdmin = userRole === 'admin';
     const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
     const isHSE = userRole === 'hse';
-    const canUpload = propAllowUpload !== undefined 
-        ? propAllowUpload 
+    const canUpload = propAllowUpload !== undefined
+        ? propAllowUpload
         : (userRole === 'admin' || userRole === collectionName);
     const canDelete = isAdmin || isTDEorCBRE || isHSE || userRole === 'engineer' || userRole === 'standby_engineer';
 
@@ -143,26 +143,25 @@ export function FileManagement({
 
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [selectedCategory, setSelectedCategory] = useState(simpleMode ? 'Dokumen' : 'Laporan Harian');
-    const [selectedMaintenance, setSelectedMaintenance] = useState(MAINTENANCE_TYPES[0]); 
+    const [selectedMaintenance, setSelectedMaintenance] = useState(MAINTENANCE_TYPES[0]);
     const [customCategory, setCustomCategory] = useState('');
     const [description, setDescription] = useState('');
     const [selectedUploadQuarter, setSelectedUploadQuarter] = useState('Q1');
-    const [selectedUploadYear, setSelectedUploadYear] = useState(new Date().getFullYear().toString()); 
+    const [selectedUploadYear, setSelectedUploadYear] = useState(new Date().getFullYear().toString());
 
     const [searchQuery, setSearchQuery] = useState('');
     const [filterCategory, setFilterCategory] = useState('All');
-    const [filterYear, setFilterYear] = useState('All'); 
+    const [filterYear, setFilterYear] = useState('All');
     const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
-    const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null); 
-    const [selectedMType, setSelectedMType] = useState<string | null>(null); 
-    const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]); 
+    const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null);
+    const [selectedMType, setSelectedMType] = useState<string | null>(null);
+    const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [fileToDelete, setFileToDelete] = useState<FileData | null>(null);
     const [isBulkDeleting, setIsBulkDeleting] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [uploadedFilesCount, setUploadedFilesCount] = useState(0);
-
 
     useEffect(() => {
         const q = query(collection(db, collectionName), orderBy('uploadedAt', 'desc'));
@@ -218,7 +217,7 @@ export function FileManagement({
             });
 
             setSelectedFiles(prev => [...prev, ...validFiles]);
-            e.target.value = ''; 
+            e.target.value = '';
         }
     };
 
@@ -252,7 +251,7 @@ export function FileManagement({
                     fileSize: file.size,
                     fileType: file.type,
                     category: finalCategory,
-                    maintenanceType: (['MOP', 'JSEA', 'PTW', 'Service Report'].includes(finalCategory)) ? selectedMaintenance : null, 
+                    maintenanceType: (['MOP', 'JSEA', 'PTW', 'Service Report'].includes(finalCategory)) ? selectedMaintenance : null,
                     quarter: selectedUploadQuarter,
                     year: selectedUploadYear,
                     customCategory: selectedCategory === 'Custom' ? customCategory : null,
@@ -268,7 +267,7 @@ export function FileManagement({
                     const start = i * CHUNK_SIZE;
                     const end = Math.min(start + CHUNK_SIZE, file.size);
                     const chunkBlob = file.slice(start, end);
-                    
+
                     let chunkBase64 = await chunkToBase64(chunkBlob);
                     if (i === 0) {
                         chunkBase64 = `data:${file.type};base64,${chunkBase64}`;
@@ -278,16 +277,15 @@ export function FileManagement({
                         index: i,
                         data: chunkBase64
                     });
-                    
-                    // Add a tiny delay to help prevent "resource-exhausted" errors on slow connections
+
                     await new Promise(resolve => setTimeout(resolve, 50));
-                    
+
                     const overallProgress = ((completedCount + ((i + 1) / totalChunks)) / selectedFiles.length) * 100;
                     setUploadProgress(Math.min(overallProgress, 99));
                 }
 
                 await updateDoc(doc(db, collectionName, fileDocRef.id), { status: 'completed' });
-                
+
                 completedCount++;
                 setUploadProgress((completedCount / selectedFiles.length) * 100);
             }
@@ -378,7 +376,6 @@ export function FileManagement({
         }
     };
 
-
     const handleDownload = async (file: FileData) => {
         try {
             const toastId = toast.loading('Menyiapkan unduhan...');
@@ -396,8 +393,7 @@ export function FileManagement({
             chunksSnapshot.docs.forEach((doc) => {
                 const chunkData = doc.data().data;
                 let base64Part = chunkData;
-                
-                // If this is the first chunk and it has the data URI prefix
+
                 if (chunkData.includes(';base64,')) {
                     const parts = chunkData.split(';base64,');
                     mimeString = parts[0].split(':')[1] || mimeString;
@@ -441,7 +437,7 @@ export function FileManagement({
         const matchesCategory =
             filterCategory === 'All' || file.category === filterCategory;
         const matchesYear =
-            filterYear === 'All' || file.year === filterYear; 
+            filterYear === 'All' || file.year === filterYear;
         const matchesMType = !selectedMType || file.maintenanceType === selectedMType;
         return matchesSearch && matchesCategory && matchesYear && matchesMType;
     });
@@ -515,7 +511,7 @@ export function FileManagement({
                                             <span className="text-xs text-slate-200 truncate">{file.name}</span>
                                             <span className="text-[10px] text-slate-500">{formatFileSize(file.size)}</span>
                                         </div>
-                                        <button 
+                                        <button
                                             onClick={() => removeFile(idx)}
                                             className="p-1 hover:bg-red-500/20 text-slate-500 hover:text-red-400 rounded transition-colors"
                                         >
@@ -924,7 +920,7 @@ export function FileManagement({
                                                 initial={{ opacity: 0, scale: 0.9 }}
                                                 animate={{ opacity: 1, scale: 1 }}
                                                 onClick={() => {
-                                                    setFileToDelete(null); 
+                                                    setFileToDelete(null);
                                                     setDeleteModalOpen(true);
                                                 }}
                                                 className="flex items-center gap-2 px-3 py-1.5 bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg border border-red-500/20 transition text-sm font-medium"
@@ -1026,7 +1022,7 @@ export function FileManagement({
                                                         whileTap={{ scale: 0.95 }}
                                                         onClick={() => {
                                                             setFileToDelete(file);
-                                                            setSelectedFileIds([]); 
+                                                            setSelectedFileIds([]);
                                                             setDeleteModalOpen(true);
                                                         }}
                                                         className="p-2 sm:p-2.5 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition border border-red-500/10"
