@@ -25,3 +25,11 @@ Thumbs.db
 .vercel
 .firebase/
 .env*.local
+
+# Rust / WebAssembly
+rust-image-worker/target/
+wasm-pack-v*/
+rustup-init.exe
+wasm-pack-init.exe
+wasm-pack-init.stamp
+wasm-pack.tar.gz
