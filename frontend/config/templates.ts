@@ -81,9 +81,9 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Measurement Voltage power supply', 'Measurement Ampere', 'Measurement DPM'
   ],
   'wld@gmail.com': [
-    'Status', 'Test Ping', 'System Setting', 'Voltage Measurement',
-    'Communication Setting', 'Tag Cable', 'Current Measurement',
-    'Cleaning', 'Test'
+    'Status', 'Test Ping', 'System Setting', 'Communication Setting',
+    'Tag Cable', 'Cleaning', 'Voltage Measurement', 'Current Measurement',
+    'Test'
   ]
 };
 

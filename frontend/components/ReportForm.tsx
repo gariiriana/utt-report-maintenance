@@ -22,6 +22,22 @@ import { generateReportPDF, loadLogoBase64 } from '@/utils/ReportPdfExport';
 import { compressImage, compressBase64Image } from '@/utils/imageCompression';
 import { PreviewReport } from '@/components/PreviewReport';
 
+import imgStatusWld from '@/assets/Wld/status.jpeg';
+import imgTestPingWld from '@/assets/Wld/test_ping.jpeg';
+import imgSystemSettingWld from '@/assets/Wld/system_setting.jpeg';
+import imgVoltageMeasurementWld from '@/assets/Wld/voltage_measurement.jpeg';
+import imgCommunicationSettingWld from '@/assets/Wld/communication_setting.jpeg';
+import imgCurrentMeasurementWld from '@/assets/Wld/current_measurement.jpeg';
+
+const WLD_DEFAULT_PHOTOS: Record<string, string> = {
+  'Status': imgStatusWld,
+  'Test Ping': imgTestPingWld,
+  'System Setting': imgSystemSettingWld,
+  'Voltage Measurement': imgVoltageMeasurementWld,
+  'Communication Setting': imgCommunicationSettingWld,
+  'Current Measurement': imgCurrentMeasurementWld,
+};
+
 export interface PhotoCard {
   id: string;
   photo: File | null;
@@ -98,7 +114,27 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }
 
     if (template) {
-      setCards(template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
+      if (lowerEmail === 'wld@gmail.com') {
+        const loadDefaultPhotos = async () => {
+          const cardsWithDefaults = await Promise.all(template.map(async (desc, idx) => {
+            const defaultUrl = WLD_DEFAULT_PHOTOS[desc];
+            let b64 = undefined;
+            if (defaultUrl) {
+              b64 = await loadLogoBase64(defaultUrl);
+            }
+            return {
+              id: `${idx + 1}`,
+              photo: null,
+              photoBase64: b64,
+              description: desc
+            };
+          }));
+          setCards(cardsWithDefaults);
+        };
+        loadDefaultPhotos();
+      } else {
+        setCards(template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
+      }
     }
   }, [user?.email, editingData]);
 
