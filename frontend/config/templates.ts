@@ -79,6 +79,11 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Measurement temperature/Humidity', 'Measurement air flow', 'Measurement vibration',
     'Measurement Voltage fasa to fasa', 'Measurement Voltage fasa to netral',
     'Measurement Voltage power supply', 'Measurement Ampere', 'Measurement DPM'
+  ],
+  'wld@gmail.com': [
+    'Status', 'Test Ping', 'System Setting', 'Voltage Measurement',
+    'Communication Setting', 'Tag Cable', 'Current Measurement',
+    'Cleaning', 'Test'
   ]
 };
 

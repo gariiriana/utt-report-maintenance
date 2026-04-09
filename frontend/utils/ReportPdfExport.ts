@@ -108,10 +108,11 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
   const isLightingSystem = userEmail?.toLowerCase() === 'lightingsystem@gmail.com';
   const isACSplit = userEmail === 'acsplit@gmail.com';
   const isCRAC = userEmail === 'crac@gmail.com';
-  const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV || isATS || isLightingSystem || isACSplit || isCRAC;
+  const isWLD = userEmail === 'wld@gmail.com';
+  const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV || isATS || isLightingSystem || isACSplit || isCRAC || isWLD;
   const isLVlike = isLV || isLDBRDB || isLightingSystem;
 
-  const cols = (isVRV || isATS || isACSplit || isCRAC) ? 3 : isSmallGrid ? 4 : 3;
+  const cols = (isVRV || isATS || isACSplit || isCRAC || isWLD) ? 3 : isSmallGrid ? 4 : 3;
   const perPage = (isATS || isACSplit || isCRAC) ? 12 : isPDU ? 20 : isLVlike ? 12 : isVRV ? 15 : 9;
   const photoH = (isATS || isACSplit || isCRAC) ? 45 : isVRV ? 40 : isSmallGrid ? 38 : 55;
   const capH = (isATS || isACSplit || isCRAC) ? 10 : isVRV ? 8 : isSmallGrid ? 10 : 12;
