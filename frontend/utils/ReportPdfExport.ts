@@ -112,9 +112,9 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
 
   const cols = (isVRV || isATS || isACSplit || isCRAC || isWLD) ? 3 : isSmallGrid ? 4 : 3;
   const perPage = (isATS || isACSplit || isCRAC) ? 12 : isPDU ? 20 : isLVlike ? 12 : isVRV ? 15 : 9;
-  const photoH = (isATS || isACSplit || isCRAC) ? 45 : isVRV ? 40 : isSmallGrid ? 38 : 55;
-  const capH = (isATS || isACSplit || isCRAC) ? 10 : isVRV ? 8 : isSmallGrid ? 10 : 12;
-  const rowGap = (isVRV || isATS || isACSplit || isCRAC) ? 3 : 5;
+  const photoH = (isATS || isACSplit || isCRAC) ? 45 : isVRV ? 40 : isWLD ? 56 : isSmallGrid ? 38 : 55;
+  const capH = (isATS || isACSplit || isCRAC) ? 10 : isVRV ? 8 : isWLD ? 12 : isSmallGrid ? 10 : 12;
+  const rowGap = (isVRV || isATS || isACSplit || isCRAC || isWLD) ? (isWLD ? 10 : 3) : 5;
 
   const finalSpecificDetail = (userEmail === 'vrv@gmail.com' && vrvUnitDetail)
     ? `${specificDetail.toUpperCase()} - ${vrvUnitDetail.toUpperCase()}`
