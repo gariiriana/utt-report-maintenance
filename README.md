@@ -1,127 +1,100 @@
-## 📋 Deskripsi
+# 🚀 UTT Report Maintenance
 
-**UTT Report Maintenance** adalah aplikasi web modern untuk dokumentasi foto maintenance data center yang dirancang khusus untuk PT United Transworld Trading. Aplikasi ini memungkinkan engineer untuk membuat laporan maintenance dengan foto-foto dokumentasi, lalu mengekspor ke format Excel atau PDF dengan layout profesional dan logo perusahaan.
+[![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://reactjs.org/)
+[![Go](https://img.shields.io/badge/Go-1.24-00ADD8?style=flat-square&logo=go)](https://go.dev/)
+[![Firebase](https://img.shields.io/badge/Firebase-Cloud-FFCA28?style=flat-square&logo=firebase)](https://firebase.google.com/)
+[![Tailwind](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-007ACC?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?style=flat-square&logo=vite)](https://vitejs.dev/)
 
-### 🎯 Tujuan Project
+**UTT Report Maintenance** adalah aplikasi sistem dokumentasi profesional yang dirancang khusus untuk memfasilitasi pelaporan pemeliharaan (maintenance) infrastruktur kritis, khususnya data center, bagi PT United Transworld Trading.
 
-- ✅ Mempermudah engineer dalam membuat laporan maintenance dengan foto
-- ✅ Standarisasi format laporan dengan logo dan layout yang konsisten
-- ✅ Arsip digital semua dokumen maintenance di cloud (Firestore)
-- ✅ Akses mudah untuk re-download dokumen yang pernah dibuat
-- ✅ Admin dashboard untuk monitoring semua aktivitas dokumentasi
+---
 
-  ## ✨ Features
+## 🏗️ Core Stack
 
-### 🔐 Authentication & Authorization
-- **Firebase Authentication** - Login dengan email/password
-- **Auto-create User Document** - User profile otomatis dibuat saat login pertama
-- **Role-based Access Control** - Admin memiliki akses penuh ke semua dokumen
-- **Secure Firestore Rules** - User hanya bisa akses dokumen mereka sendiri
+Aplikasi ini dibangun menggunakan arsitektur modern yang memisahkan antara frontend yang interaktif dan backend yang skalabel.
 
-### 📝 Create Report
-- **Input Metadata** - Nama maintenance, waktu, dan detail spesifik (unit/ruangan)
-- **Photo Cards** - Upload foto dengan deskripsi dalam grid layout
-- **Drag & Drop** - Upload foto dengan mudah
-- **Image Preview** - Preview foto sebelum export
-- **Dual Export** - Export ke Excel dan PDF sekaligus
+### **Frontend**
+- **⚛️ React 18 & TypeScript**: Menjamin antarmuka yang responsif dengan *type-safety* yang ketat.
+- **⚡ Vite**: Generasi terbaru build tool untuk performa pengembangan yang super cepat.
+- **🎨 Tailwind CSS v4**: Framework styling utility-first untuk desain yang bersih dan modern.
+- **✨ Framer Motion**: Memberikan pengalaman pengguna yang emosional melalui animasi yang halus.
+- **🧩 Radix UI / Shadcn**: Komponen UI yang aksesibel dan mudah dikustomisasi.
 
-### 📊 Excel Export
-- **Professional Layout** - Grid 3 kolom dengan border tebal
-- **Dual Logo** - Logo Dwimitra (kiri) dan NeutraDC (kanan)
-- **Multi-page Header** - Header lengkap di setiap halaman (setiap 9 foto)
-- **Auto-sizing** - Kolom dan row disesuaikan otomatis
-- **Base64 Storage** - Foto disimpan dalam format base64 di Firestore
+### **Backend & Cloud**
+- **🐹 Go (Golang)**: Digunakan untuk pengolahan data intensif dan manajemen API backend.
+- **🔥 Firebase Ecosystem**: 
+  - **Authentication**: Manajemen user yang aman dan teruji.
+  - **Firestore**: Database NoSQL real-time untuk penyimpanan arsip laporan.
+  - **Security Rules**: Memastikan integritas dan keamanan data di level database.
 
-### 📄 PDF Export
-- **A4 Portrait** - Format standar untuk printing
-- **Professional Header** - Logo + Title + Equipment di setiap halaman
-- **Photo Grid** - 3 kolom x 3 baris per halaman (9 foto)
-- **Caption Box** - Deskripsi di bawah setiap foto
-- **Multi-page** - Otomatis buat halaman baru setiap 9 foto
+### **Reporting Engines**
+- **📊 ExcelJS**: Engine generasi file Excel (.xlsx) dengan layout grid yang presisi.
+- **📄 jsPDF & AutoTable**: Transformasi laporan dari web langsung ke format PDF (A4) siap cetak.
 
-### 🗂️ Document Archive
-- **List View** - Semua dokumen yang pernah dibuat
-- **Advanced Filter** - Filter by tanggal, search by nama, sort by terbaru/terlama
-- **Document Type Filter** - Filter Excel only atau PDF only
-- **Re-generate** - Download ulang Excel/PDF dari database
-- **Delete Document** - Hapus dokumen dengan konfirmasi modal
-- **Statistics** - Total dokumen, size, dan filter status
+---
 
-### 👨‍💼 Admin Dashboard
-- **View All Documents** - Lihat semua dokumen dari semua user
-- **User Statistics** - Total users, total dokumen, breakdown Excel/PDF
-- **Advanced Filtering** - Search, date filter, type filter
-- **Download Anyone's Document** - Admin bisa download dokumen siapa saja
-- **Responsive Table** - Desktop table view, mobile card view
+## ✨ Fitur Unggulan
 
-### 🎨 UI/UX
-- **Modern Design** - Gradient biru dengan glassmorphism effect
-- **Smooth Animations** - Motion/Framer Motion untuk animasi halus
-- **Responsive** - Mobile-first design, responsive di semua device
+### 🔐 Keamanan & Akses
+- **Role-Based Access Control (RBAC)**: Diferensiasi akses antara Engineer dan Administrator.
+- **Secure Authentication**: Sistem login terpadu menggunakan Firebase Auth.
+- **Row-Level Security**: User hanya dapat memanipulasi data miliknya sendiri.
 
-  ## 🛠️ Tech Stack
+### 📝 Manajemen Laporan (Report Management)
+- **Fluid Photo Upload**: Mendukung drag-and-drop dan preview instan.
+- **Dynamic Metadata**: Pengisian detail maintenance yang fleksibel sesuai unit/ruangan.
+- **Instant Export**: Konversi laporan ke format Excel dan PDF secara simultan.
 
-### Frontend
-- **⚡ Vite** - Build tool super cepat
-- **⚛️ React 18** - UI library
-- **🎨 Tailwind CSS v4** - Utility-first CSS framework
-- **🔥 TypeScript** - Type safety
-- **📦 Motion (Framer Motion)** - Animation library
-- **🎯 React Router** - Client-side routing
-- **🔔 Sonner** - Toast notifications
+### 📄 Dokumentasi Profesional
+- **Standardized Layout**: Output laporan dengan header resmi, logo Dwimitra & NeutraDC.
+- **Auto-pagination**: Pengaturan halaman otomatis (9 foto per halaman) untuk tampilan yang rapi.
+- **Base64 Cloud Storage**: Foto disimpan dengan efisiensi tinggi di Firestore.
 
-### Backend & Database
-- **🔥 Firebase Authentication** - User authentication
-- **🗄️ Cloud Firestore** - NoSQL database
-- **🔒 Firestore Security Rules** - Row-level security
+### 📊 Admin Dashboard
+- **Comprehensive Analytics**: Statistik total dokumen, user aktif, dan distribusi tipe file.
+- **Master Archive**: Kemampuan bagi Admin untuk memonitor dan mengunduh laporan dari seluruh Engineer.
 
-### Libraries & Tools
-- **📊 ExcelJS** - Excel file generation
-- **📄 jsPDF** - PDF file generation
-- **🎭 Lucide React** - Icon library
-- **🌐 Vercel** - Hosting & deployment
+---
 
-  ## 🚀 Usage
+## 🚀 Panduan Instalasi
 
-### 1️⃣ Login
-- Gunakan email dan password yang sudah terdaftar
-- Atau gunakan **Demo Account** (lihat Credentials di bawah)
-- User document otomatis dibuat saat login pertama kali
+### Prasyarat
+- Node.js (v18+)
+- Go (v1.24+)
+- pnpm / npm
 
-### 2️⃣ Create Report
-1. Klik tab **"Create Report"**
-2. Isi form:
-   - **Nama Maintenance** (contoh: Preventive Maintenance FCU)
-   - **Waktu Maintenance** (pilih tanggal dari calendar)
-   - **Detail Spesifik** (optional - contoh: FCU Ruang Server Lantai 2)
-3. Tambah foto:
-   - Klik card **"Click to upload photo"**
-   - Atau drag & drop foto ke card
-4. Isi deskripsi foto di setiap card
-5. Klik **"Export to Excel"** atau **"Export to PDF"**
-6. File otomatis terdownload DAN tersimpan di database
+### Instalasi Dependencies
+```bash
+# Clone repository
+git clone https://github.com/gariiriana/utt-report-maintenance.git
 
-### 3️⃣ Document Archive
-1. Klik tab **"Document Archive"**
-2. Lihat semua dokumen yang pernah dibuat
-3. Gunakan filter:
-   - **Search** - Cari by nama maintenance
-   - **Date** - Filter by tanggal
-   - **Sort** - Terbaru atau terlama
-   - **Type** - Excel only atau PDF only
-4. Klik **Download** untuk re-generate dari database
-5. Klik **Delete** untuk hapus dokumen
+# Install frontend dependencies
+npm install
 
-### 4️⃣ Admin Dashboard (Admin Only)
-1. Login sebagai Admin (lihat credentials di bawah)
-2. Klik tab **"Admin Dashboard"**
-3. Lihat statistik:
-   - Total Documents
-   - Total Excel Files
-   - Total PDF Files
-   - Active Users
-4. Filter & search dokumen dari semua user
-5. Download dokumen siapa saja
-- **Dark Theme** - Tema gelap dengan aksen biru/ungu
-- **Toast Notifications** - Feedback real-time dengan Sonner
-- **Loading States** - Skeleton dan spinner untuk loading state
+# Build backend
+npm run backend:build
+```
+
+### Menjalankan Development Server
+```bash
+npm run dev
+```
+
+---
+
+## 📱 Workflow Penggunaan
+1. **Login**: Autentikasi menggunakan kredensial terdaftar.
+2. **Input Data**: Isi informasi maintenance dan unggah foto dokumentasi.
+3. **Capture**: Masukkan deskripsi untuk setiap foto guna memberikan konteks teknis.
+4. **Export**: Pilih format output (Excel/PDF). File akan terunduh dan tersimpan di sistem arsip.
+5. **Archive**: Akses laporan lama kapan saja melalui tab Document Archive.
+
+---
+
+## 📄 Lisensi
+Sistem ini bersifat privat dan dikembangkan eksklusif untuk kebutuhan operasional **PT United Transworld Trading**.
+
+---
+*Built with ❤️ by [Gari Iriana](https://github.com/gariiriana)*
