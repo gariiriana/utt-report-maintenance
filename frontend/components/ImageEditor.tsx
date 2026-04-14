@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
-import Cropper from 'react-easy-crop';
+import { useState, useCallback, useRef } from 'react';
+import ReactCrop, { centerCrop, makeAspectCrop, type Crop, type PixelCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 import { motion } from 'motion/react';
-import { X, Check, RotateCw, ZoomIn, Scissors } from 'lucide-react';
+import { X, Check, RotateCw, ZoomIn, Scissors, RefreshCcw } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ImageEditorProps {
@@ -11,14 +12,38 @@ interface ImageEditorProps {
 }
 
 export function ImageEditor({ image, onSave, onCancel }: ImageEditorProps) {
-    const [crop, setCrop] = useState({ x: 0, y: 0 });
+    const [crop, setCrop] = useState<Crop>();
+    const [pixelCrop, setPixelCrop] = useState<PixelCrop>();
     const [zoom, setZoom] = useState(1);
     const [rotation, setRotation] = useState(0);
-    const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+    const imgRef = useRef<HTMLImageElement>(null);
 
-    const onCropComplete = useCallback((_croppedArea: any, croppedAreaPixels: any) => {
-        setCroppedAreaPixels(croppedAreaPixels);
-    }, []);
+    const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+        const { width, height } = e.currentTarget;
+        
+        // Langsung set kotak crop 90% dari ukuran foto agar tidak jadi garis tipis
+        const initialCrop = centerCrop(
+            {
+                unit: '%',
+                width: 90,
+                height: 90,
+            },
+            width,
+            height
+        );
+        
+        setCrop(initialCrop);
+
+        // Langsung set pixel crop juga biar tombol "Apply" langsung work
+        const pc: PixelCrop = {
+            unit: 'px',
+            x: (width * (initialCrop.x || 0)) / 100,
+            y: (height * (initialCrop.y || 0)) / 100,
+            width: (width * (initialCrop.width || 0)) / 100,
+            height: (height * (initialCrop.height || 0)) / 100,
+        };
+        setPixelCrop(pc);
+    };
 
     const createImage = (url: string): Promise<HTMLImageElement> =>
         new Promise((resolve, reject) => {
@@ -86,15 +111,52 @@ export function ImageEditor({ image, onSave, onCancel }: ImageEditorProps) {
 
     const handleSave = async () => {
         try {
+            if (!pixelCrop || !imgRef.current) {
+                toast.error('Please select a crop area');
+                return;
+            }
+
+            const img = imgRef.current;
+            const scaleX = img.naturalWidth / img.width;
+            const scaleY = img.naturalHeight / img.height;
+
+            const scaledCrop = {
+                x: pixelCrop.x * scaleX,
+                y: pixelCrop.y * scaleY,
+                width: pixelCrop.width * scaleX,
+                height: pixelCrop.height * scaleY,
+            };
+
             const croppedImage = await getCroppedImg(
                 image,
-                croppedAreaPixels,
+                scaledCrop,
                 rotation
             );
             onSave(croppedImage);
         } catch (e) {
             console.error(e);
             toast.error('Failed to crop image');
+        }
+    };
+
+    const handleReset = () => {
+        setZoom(1);
+        setRotation(0);
+        if (imgRef.current) {
+            const { width, height } = imgRef.current;
+            const newCrop = centerCrop(
+                { unit: '%', width: 90, height: 90 },
+                width,
+                height
+            );
+            setCrop(newCrop);
+            setPixelCrop({
+                unit: 'px',
+                x: (width * (newCrop.x || 0)) / 100,
+                y: (height * (newCrop.y || 0)) / 100,
+                width: (width * (newCrop.width || 0)) / 100,
+                height: (height * (newCrop.height || 0)) / 100,
+            });
         }
     };
 
@@ -129,20 +191,74 @@ export function ImageEditor({ image, onSave, onCancel }: ImageEditorProps) {
                     </button>
                 </div>
 
-                <div className="relative flex-1 min-h-[400px] bg-slate-950">
-                    <Cropper
-                        image={image}
-                        crop={crop}
-                        zoom={zoom}
-                        rotation={rotation}
-                        onCropChange={setCrop}
-                        onCropComplete={onCropComplete}
-                        onZoomChange={setZoom}
-                        onRotationChange={setRotation}
-                        objectFit="contain"
-                        restrictPosition={false}
-                        showGrid={false}
-                    />
+                <div className="relative flex-1 min-h-[400px] bg-slate-950 flex items-center justify-center p-8 overflow-hidden">
+                    <style>{`
+                        .ReactCrop {
+                            max-height: 60vh;
+                        }
+                        .ReactCrop__crop-selection {
+                            border: 2px solid #3b82f6 !important;
+                            box-shadow: 0 0 0 9999em rgba(0, 0, 0, 0.7) !important;
+                        }
+                        .ReactCrop__drag-handle {
+                            background-color: #3b82f6 !important;
+                            width: 12px !important;
+                            height: 12px !important;
+                            border: 2px solid #ffffff !important;
+                            border-radius: 2px !important;
+                        }
+                        /* Corner bars styling to match screenshot selection bars */
+                        .ReactCrop__drag-handle.ord-nw,
+                        .ReactCrop__drag-handle.ord-ne,
+                        .ReactCrop__drag-handle.ord-sw,
+                        .ReactCrop__drag-handle.ord-se {
+                            width: 24px !important;
+                            height: 24px !important;
+                            background-color: transparent !important;
+                            border: none !important;
+                        }
+                        .ReactCrop__drag-handle.ord-nw { border-top: 4px solid #3b82f6 !important; border-left: 4px solid #3b82f6 !important; }
+                        .ReactCrop__drag-handle.ord-ne { border-top: 4px solid #3b82f6 !important; border-right: 4px solid #3b82f6 !important; }
+                        .ReactCrop__drag-handle.ord-sw { border-bottom: 4px solid #3b82f6 !important; border-left: 4px solid #3b82f6 !important; }
+                        .ReactCrop__drag-handle.ord-se { border-bottom: 4px solid #3b82f6 !important; border-right: 4px solid #3b82f6 !important; }
+
+                        .ReactCrop__drag-handle::after {
+                            display: none !important;
+                        }
+                    `}</style>
+
+                    <div 
+                        className="relative transition-transform duration-200 ease-out"
+                        style={{ 
+                            transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                        }}
+                    >
+                        <ReactCrop
+                            crop={crop}
+                            onChange={(c) => setCrop(c)}
+                            onComplete={(c) => setPixelCrop(c)}
+                            keepSelection={true}
+                        >
+                            <img
+                                ref={imgRef}
+                                src={image}
+                                alt="Crop me"
+                                onLoad={onImageLoad}
+                                className="max-w-full max-h-[60vh] object-contain select-none shadow-2xl rounded-lg"
+                                style={{ transformOrigin: 'center' }}
+                            />
+                        </ReactCrop>
+                    </div>
+                    
+                    <div className="absolute top-4 right-4 z-10">
+                         <button
+                            onClick={handleReset}
+                            className="p-2 bg-slate-800/80 hover:bg-slate-700 backdrop-blur-sm rounded-lg text-slate-300 transition-colors shadow-lg"
+                            title="Reset"
+                        >
+                            <RefreshCcw className="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="p-6 bg-slate-900 border-t border-slate-800">
@@ -172,7 +288,7 @@ export function ImageEditor({ image, onSave, onCancel }: ImageEditorProps) {
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
                                 <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                                    <RotateCw className="w-4 h-4 text-slate-500" />
+                                    <RotateCw className="w-4 h-4 text-emerald-500" />
                                     Rotation
                                 </label>
                                 <span className="text-xs font-mono text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
