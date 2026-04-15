@@ -39,9 +39,11 @@ export function PreviewReport({
     const isLDBRDB = userEmail === 'ldb/rdb@gmail.com';
     const isVRV = userEmail === 'vrv@gmail.com';
     const isLightingSystem = userEmail.toLowerCase() === 'lightingsystem@gmail.com';
-    const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV || isLightingSystem;
+    const isWLD = userEmail === 'wld@gmail.com';
+    const isFLD = userEmail === 'fld@gmail.com';
+    const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV || isLightingSystem || isWLD || isFLD;
 
-    const columns = isVRV ? 3 : isSmallGrid ? 4 : 3;
+    const columns = (isVRV || isWLD || isFLD) ? 3 : isSmallGrid ? 4 : 3;
     const perPage = isPDU ? 20 : (isLV || isLDBRDB || isLightingSystem) ? 12 : isVRV ? 15 : 9;
     const filledCards = cards.filter(card => card.photoBase64 || card.description);
     const [acknowledged, setAcknowledged] = useState(false);
@@ -153,7 +155,7 @@ export function PreviewReport({
                     >
                         {filledCards.map((card, index) => (
                             <div key={card.id || index} className="flex flex-col border-2 border-slate-900 overflow-hidden shadow-sm">
-                                <div className="relative overflow-hidden bg-slate-100 flex items-center justify-center shrink-0 border-b-2 border-slate-900" style={{ height: isVRV ? '200px' : isSmallGrid ? '150px' : '210px' }}>
+                                <div className="relative overflow-hidden bg-slate-100 flex items-center justify-center shrink-0 border-b-2 border-slate-900" style={{ height: (isVRV || isWLD || isFLD) ? '200px' : isSmallGrid ? '150px' : '210px' }}>
                                     {card.photoBase64 ? (
                                         <img src={card.photoBase64} alt={`Doc ${index + 1}`} className="w-full h-full object-cover" />
                                     ) : (

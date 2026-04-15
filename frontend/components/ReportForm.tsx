@@ -28,6 +28,8 @@ import imgSystemSettingWld from '@/assets/Wld/system_setting.jpeg';
 import imgVoltageMeasurementWld from '@/assets/Wld/voltage_measurement.jpeg';
 import imgCommunicationSettingWld from '@/assets/Wld/communication_setting.jpeg';
 import imgCurrentMeasurementWld from '@/assets/Wld/current_measurement.jpeg';
+import imgFgBbox2CablesFld from '@/assets/Fld/fg_bbox_2_cables.jpeg';
+import imgTesPingFld from '@/assets/Fld/tes_ping_fld.jpeg';
 
 const WLD_DEFAULT_PHOTOS: Record<string, string> = {
   'Status': imgStatusWld,
@@ -35,6 +37,7 @@ const WLD_DEFAULT_PHOTOS: Record<string, string> = {
   'System Setting': imgSystemSettingWld,
   'Voltage Measurement': imgVoltageMeasurementWld,
   'Communication Setting': imgCommunicationSettingWld,
+  'FG BBOX #2 CABLES': imgFgBbox2CablesFld,
   'Current Measurement': imgCurrentMeasurementWld,
 };
 
@@ -111,13 +114,17 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       if (lowerEmail === 'acsplit@gmail.com') setMaintenanceName('AC Split');
       if (lowerEmail === 'crac@gmail.com') setMaintenanceName('CRAC');
       if (lowerEmail === 'wld@gmail.com') setMaintenanceName('WLD');
+      if (lowerEmail === 'fld@gmail.com') setMaintenanceName('FLD');
     }
 
     if (template) {
-      if (lowerEmail === 'wld@gmail.com') {
+      if (lowerEmail === 'wld@gmail.com' || lowerEmail === 'fld@gmail.com') {
         const loadDefaultPhotos = async () => {
           const cardsWithDefaults = await Promise.all(template.map(async (desc, idx) => {
-            const defaultUrl = WLD_DEFAULT_PHOTOS[desc];
+            let defaultUrl = WLD_DEFAULT_PHOTOS[desc];
+            if (lowerEmail === 'fld@gmail.com' && desc === 'Test Ping') {
+              defaultUrl = imgTesPingFld;
+            }
             let b64 = undefined;
             if (defaultUrl) {
               b64 = await loadLogoBase64(defaultUrl);
