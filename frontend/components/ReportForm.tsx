@@ -87,7 +87,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [activeCameraCardId, setActiveCameraCardId] = useState<string | null>(null);
   const [isDraftLoading, setIsDraftLoading] = useState(true);
   const [focusedCardId, setFocusedCardId] = useState<string | null>(null);
-  const [cardClipboard, setCardClipboard] = useState<{ photoBase64: string | null, description: string } | null>(null);
+  const [cardClipboard, setCardClipboard] = useState<{ photoBase64?: string, description: string } | null>(null);
 
   // Helper to get active unit
   const activeUnit = units.find(u => u.id === activeUnitId) || null;
@@ -251,7 +251,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         const cardToCopy = cards.find(c => c.id === focusedCardId);
         if (cardToCopy) {
           setCardClipboard({
-            photoBase64: cardToCopy.photoBase64 || null,
+            photoBase64: cardToCopy.photoBase64,
             description: cardToCopy.description
           });
           toast.success('Kartu disalin ke clipboard', { 
