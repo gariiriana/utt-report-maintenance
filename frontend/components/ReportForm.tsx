@@ -579,18 +579,18 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Waktu Maintenance</label>
-                  <input type="date" value={maintenanceTime} onChange={e => setMaintenanceTime(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
-                <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Detail Unit Maintenance</label>
                   <input
                     type="text"
                     value={specificDetail}
-                    onChange={e => setSpecificDetail(e.target.value)}
+                    onChange={(e) => setSpecificDetail(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-blue-400 font-bold outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="cth. FCU-01 / VRV-02"
                   />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">Waktu Maintenance</label>
+                  <input type="date" value={maintenanceTime} onChange={(e) => setMaintenanceTime(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Situs / Proyek</label>
