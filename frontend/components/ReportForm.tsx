@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Upload, Camera, FileType, Scissors, Eye, RefreshCw, ChevronDown, Save } from 'lucide-react';
+import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, Save, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { ExcelDocument } from '@/components/DocumentList';
 import { ImageEditor } from '@/components/ImageEditor';
@@ -49,6 +49,13 @@ export interface PhotoCard {
   description: string;
 }
 
+export interface ReportUnit {
+  id: string;
+  specificDetail: string;
+  vrvUnitDetail: string;
+  cards: PhotoCard[];
+}
+
 interface ReportFormProps {
   editingData?: ExcelDocument | null;
   onClearEdit?: () => void;
@@ -59,25 +66,115 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [companyType, setCompanyType] = useState<'neutra' | 'bri'>('neutra');
   const [maintenanceName, setMaintenanceName] = useState('');
   const [maintenanceTime, setMaintenanceTime] = useState('');
-  const [specificDetail, setSpecificDetail] = useState('');
-  const [vrvUnitDetail, setVrvUnitDetail] = useState('');
-  const [cards, setCards] = useState<PhotoCard[]>([
-    { id: '1', photo: null, description: '' },
-    { id: '2', photo: null, description: '' },
-    { id: '3', photo: null, description: '' },
-    { id: '4', photo: null, description: '' },
-    { id: '5', photo: null, description: '' },
-    { id: '6', photo: null, description: '' },
-    { id: '7', photo: null, description: '' },
-    { id: '8', photo: null, description: '' },
-    { id: '9', photo: null, description: '' },
-  ]);
+  
+  // NEW: Multi-Unit State
+  const [units, setUnits] = useState<ReportUnit[]>([]);
+  const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
+  const tabContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    if (tabContainerRef.current) {
+      const scrollAmount = 200;
+      tabContainerRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [addCardModalOpen, setAddCardModalOpen] = useState(false);
   const [numberOfCardsToAdd, setNumberOfCardsToAdd] = useState('1');
   const [showPreview, setShowPreview] = useState(false);
   const [activeCameraCardId, setActiveCameraCardId] = useState<string | null>(null);
+
+  // Helper to get active unit
+  const activeUnit = units.find(u => u.id === activeUnitId) || null;
+  const cards = activeUnit?.cards || [];
+  const setCards = (newCards: PhotoCard[] | ((prev: PhotoCard[]) => PhotoCard[])) => {
+    if (!activeUnitId) return;
+    setUnits(prev => prev.map(u => {
+      if (u.id === activeUnitId) {
+        return {
+          ...u,
+          cards: typeof newCards === 'function' ? (newCards as any)(u.cards) : newCards
+        };
+      }
+      return u;
+    }));
+  };
+
+  const setSpecificDetail = (val: string) => {
+    if (!activeUnitId) return;
+    setUnits(prev => prev.map(u => u.id === activeUnitId ? { ...u, specificDetail: val } : u));
+  };
+  const setVrvUnitDetail = (val: string) => {
+    if (!activeUnitId) return;
+    setUnits(prev => prev.map(u => u.id === activeUnitId ? { ...u, vrvUnitDetail: val } : u));
+  };
+
+  const specificDetail = activeUnit?.specificDetail || '';
+  const vrvUnitDetail = activeUnit?.vrvUnitDetail || '';
+
+  const createDefaultCards = (count: number = 11) => {
+    return Array.from({ length: count }, (_, i) => ({
+      id: `${i + 1}`,
+      photo: null,
+      description: ''
+    }));
+  };
+
+  const addNewUnit = async (name: string = '') => {
+    const newId = Math.random().toString(36).substr(2, 9);
+    
+    // Initial cards
+    let initialCards = createDefaultCards(11);
+    
+    // Auto-apply template if possible
+    if (user?.email) {
+      const lowerEmail = user.email.toLowerCase();
+      let template: string[] | null = null;
+      
+      if (lowerEmail === 'vrv@gmail.com') {
+        template = VRV_TEMPLATE.indoor;
+      } else if (['lv@gmail.com', 'ats@gmail.com', 'trafo@gmail.com'].includes(lowerEmail)) {
+        template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
+      } else {
+        template = REPORT_TEMPLATES[lowerEmail];
+        if (!template && (lowerEmail.includes('dock') || lowerEmail.includes('leveler'))) {
+          template = REPORT_TEMPLATES['dock'];
+        }
+      }
+
+      if (template) {
+        if (lowerEmail === 'wld@gmail.com' || lowerEmail === 'fld@gmail.com') {
+          initialCards = await Promise.all(template.map(async (desc, idx) => {
+            let defaultUrl = WLD_DEFAULT_PHOTOS[desc];
+            if (lowerEmail === 'fld@gmail.com' && desc === 'Test Ping') defaultUrl = imgTesPingFld;
+            let b64 = defaultUrl ? await loadLogoBase64(defaultUrl) : undefined;
+            return { id: `${idx + 1}`, photo: null, photoBase64: b64, description: desc };
+          }));
+        } else {
+          initialCards = template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc }));
+        }
+      }
+    }
+
+    const newUnit: ReportUnit = {
+      id: newId,
+      specificDetail: name,
+      vrvUnitDetail: '',
+      cards: initialCards.length > 0 ? initialCards : createDefaultCards(11)
+    };
+    
+    setUnits(prev => [...prev, newUnit]);
+    setActiveUnitId(newId);
+    return newId;
+  };
+
+  // Initialize first unit if empty
+  useEffect(() => {
+    if (units.length === 0 && !editingData) {
+      addNewUnit();
+    }
+  }, [units.length, editingData]);
 
   useEffect(() => {
     if (authCompanyType) {
@@ -93,23 +190,22 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   useEffect(() => {
     if (!user?.email || editingData) return;
 
-    const saved = localStorage.getItem('report_form_draft');
+    const saved = localStorage.getItem('report_form_draft_v2'); // New key for multi-unit draft
     if (saved) {
       try {
         const draft = JSON.parse(saved);
         if (draft.userEmail === user.email) {
           setMaintenanceName(draft.maintenanceName || '');
           setMaintenanceTime(draft.maintenanceTime || '');
-          setSpecificDetail(draft.specificDetail || '');
-          setVrvUnitDetail(draft.vrvUnitDetail || '');
           if (draft.companyType) setCompanyType(draft.companyType);
-          if (draft.cards && draft.cards.length > 0) {
-            setCards(draft.cards.map((c: any) => ({
-              ...c,
-              photo: null // Rehydrate photo object as null (base64 is in photoBase64)
+          if (draft.units && draft.units.length > 0) {
+            setUnits(draft.units.map((u: any) => ({
+              ...u,
+              cards: u.cards.map((c: any) => ({ ...c, photo: null }))
             })));
+            setActiveUnitId(draft.units[0].id);
           }
-          toast.info('Draft laporan otomatis dimuat', { duration: 2000 });
+          toast.info('Draft multi-unit dimuat', { duration: 2000 });
         }
       } catch (err) {
         console.error('Failed to load draft:', err);
@@ -118,70 +214,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   }, [user?.email, editingData]);
 
 
-  useEffect(() => {
-    if (!user?.email || editingData) return;
-
-    // Skip template initialization if a draft exists for this user
-    const saved = localStorage.getItem('report_form_draft');
-    if (saved) {
-      try {
-        if (JSON.parse(saved).userEmail === user.email) return;
-      } catch (e) {}
-    }
-
-    const lowerEmail = user.email.toLowerCase();
-
-    let template: string[] | null = null;
-    if (lowerEmail === 'vrv@gmail.com') {
-      if (!maintenanceName) setMaintenanceName('vrv');
-      template = VRV_TEMPLATE.indoor;
-    } else if (['lv@gmail.com', 'ats@gmail.com', 'trafo@gmail.com'].includes(lowerEmail)) {
-      const isTrafo = lowerEmail === 'trafo@gmail.com';
-      setMaintenanceName(isTrafo ? 'Trafo' : (lowerEmail === 'lv@gmail.com' ? 'LV' : 'ATS'));
-      template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
-    } else {
-      template = REPORT_TEMPLATES[lowerEmail];
-      if (!template && (lowerEmail.includes('dock') || lowerEmail.includes('leveler'))) {
-        template = REPORT_TEMPLATES['dock'];
-      }
-      if (lowerEmail === 'grounding@gmail.com') setMaintenanceName('Grounding');
-      if (lowerEmail === 'ldb/rdb@gmail.com') setMaintenanceName('LDB/RDB');
-      if (lowerEmail === 'busduct@gmail.com') setMaintenanceName('Busduct');
-      if (lowerEmail === 'lightingsystem@gmail.com') setMaintenanceName('Lighting System');
-      if (lowerEmail === 'coolingtower@gmail.com') setMaintenanceName('Cooling Tower');
-      if (lowerEmail === 'acsplit@gmail.com') setMaintenanceName('AC Split');
-      if (lowerEmail === 'crac@gmail.com') setMaintenanceName('CRAC');
-      if (lowerEmail === 'wld@gmail.com') setMaintenanceName('WLD');
-      if (lowerEmail === 'fld@gmail.com') setMaintenanceName('FLD');
-    }
-
-    if (template) {
-      if (lowerEmail === 'wld@gmail.com' || lowerEmail === 'fld@gmail.com') {
-        const loadDefaultPhotos = async () => {
-          const cardsWithDefaults = await Promise.all(template.map(async (desc, idx) => {
-            let defaultUrl = WLD_DEFAULT_PHOTOS[desc];
-            if (lowerEmail === 'fld@gmail.com' && desc === 'Test Ping') {
-              defaultUrl = imgTesPingFld;
-            }
-            let b64 = undefined;
-            if (defaultUrl) {
-              b64 = await loadLogoBase64(defaultUrl);
-            }
-            return {
-              id: `${idx + 1}`,
-              photo: null,
-              photoBase64: b64,
-              description: desc
-            };
-          }));
-          setCards(cardsWithDefaults);
-        };
-        loadDefaultPhotos();
-      } else {
-        setCards(template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
-      }
-    }
-  }, [user?.email, editingData]);
+  // Remove the old auto-template useEffect as it's now handled in addNewUnit
 
   useEffect(() => {
     if (editingData || user?.email?.toLowerCase() !== 'vrv@gmail.com') return;
@@ -226,23 +259,23 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         userEmail: user.email,
         maintenanceName,
         maintenanceTime,
-        specificDetail,
-        vrvUnitDetail,
         companyType,
-        cards: cards.map(c => ({
-          id: c.id,
-          description: c.description,
-          photoBase64: c.photoBase64
+        units: units.map(u => ({
+          ...u,
+          cards: u.cards.map(c => ({
+            id: c.id,
+            description: c.description,
+            photoBase64: c.photoBase64
+          }))
         })),
         timestamp: new Date().getTime()
       };
 
       try {
-        localStorage.setItem('report_form_draft', JSON.stringify(draft));
+        localStorage.setItem('report_form_draft_v2', JSON.stringify(draft));
       } catch (err) {
-
         if (err instanceof Error && err.name === 'QuotaExceededError') {
-          console.warn('Storage quota exceeded, draft might be incomplete');
+          console.warn('Storage quota exceeded');
         }
       }
     };
@@ -335,16 +368,20 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     else toast.error('Minimal 1 card');
   };
 
-  const generatePDFDocument = async () => {
+  const generatePDFDocument = async (unit: ReportUnit) => {
     const logoLeftB64 = await loadLogoBase64(companyType === 'bri' ? logoBRILeft : logoDwimitra);
     const logoRightB64 = await loadLogoBase64(companyType === 'bri' ? logoBRI : logoNeutraDC);
+
+    const finalSpecificDetail = (user?.email === 'vrv@gmail.com' && unit.vrvUnitDetail)
+      ? `${unit.specificDetail.toUpperCase()} - ${unit.vrvUnitDetail.toUpperCase()}`
+      : unit.specificDetail;
 
     return await generateReportPDF({
       maintenanceName,
       maintenanceTime,
-      specificDetail,
-      vrvUnitDetail,
-      cards,
+      specificDetail: finalSpecificDetail,
+      vrvUnitDetail: unit.vrvUnitDetail,
+      cards: unit.cards,
       companyType,
       userEmail: user?.email || '',
       logos: {
@@ -382,17 +419,17 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }
   };
 
-  const saveReportToFirestore = async (pdfData?: { doc: jsPDF, fileName: string, filled: PhotoCard[] }) => {
+  const saveReportToFirestore = async (unit: ReportUnit, pdfData?: { doc: jsPDF, fileName: string, filled: PhotoCard[] }) => {
     if (!maintenanceName || !maintenanceTime) return toast.error('Isi nama & waktu'), null;
 
-    const finalSpecificDetail = (user?.email === 'vrv@gmail.com' && vrvUnitDetail)
-      ? `${specificDetail.toUpperCase()} - ${vrvUnitDetail.toUpperCase()}`
-      : specificDetail;
+    const finalSpecificDetail = (user?.email === 'vrv@gmail.com' && unit.vrvUnitDetail)
+      ? `${unit.specificDetail.toUpperCase()} - ${unit.vrvUnitDetail.toUpperCase()}`
+      : unit.specificDetail;
 
-    const cardsToSave = pdfData ? pdfData.filled : cards.filter(c => c.photoBase64 || c.description);
-    if (!cardsToSave.length) return toast.error('Minimal 1 card filled'), null;
+    const cardsToSave = pdfData ? pdfData.filled : unit.cards.filter(c => c.photoBase64 || c.description);
+    if (!cardsToSave.length) return toast.error(`Unit ${unit.specificDetail || 'Untitled'} minimal 1 card filled`), null;
 
-    const toastId = toast.loading(editingData ? 'Updating report...' : 'Saving report...');
+    const toastId = toast.loading(`Saving unit ${unit.specificDetail || '#'}...`);
     try {
       const photosWithImage = cardsToSave.filter(c => c.photoBase64).length;
       const fileName = pdfData?.fileName || `${maintenanceName}${finalSpecificDetail ? ` (${finalSpecificDetail})` : ''}`.trim().replace(/\s+/g, ' ') + '.pdf';
@@ -426,7 +463,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
         const docIdFromAPI = await saveReportViaAPI(apiUrl, collectionName, reportData, photos);
         if (docIdFromAPI) {
-          toast.success('Laporan disimpan (via API)', { id: toastId });
+          toast.success(`Unit ${unit.specificDetail} disimpan (via API)`, { id: toastId });
           return docIdFromAPI;
         }
       }
@@ -435,7 +472,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       if (editingData) {
         docId = editingData.id;
         await updateDoc(doc(db, collectionName, docId), reportData);
-
         const photosRef = collection(db, `${collectionName}/${docId}/photos`);
         const existingPhotos = await getDocs(photosRef);
         for (const photoDoc of existingPhotos.docs) {
@@ -465,12 +501,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         }
       }
 
-      toast.success(editingData ? 'Laporan diperbarui' : 'Laporan disimpan', { id: toastId });
-
-      if (!editingData) {
-        localStorage.removeItem('report_form_draft');
-      }
-
+      toast.success(`Unit ${unit.specificDetail} berhasil disimpan`, { id: toastId });
       return docId;
     } catch (error) {
       console.error('Firestore save error:', error);
@@ -479,24 +510,25 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }
   };
 
-  const handlePreviewPDF = () => {
-    if (!maintenanceName || !maintenanceTime) return toast.error('Isi nama & waktu');
-    if (!cards.some(c => c.photoBase64 || c.description)) return toast.error('Minimal 1 card filled');
 
-    setShowPreview(true);
-  };
 
-  const handleExportPDF = async () => {
-    const result = await generatePDFDocument();
+  const handleExportPDF = async (unit?: ReportUnit) => {
+    const targetUnit = unit || activeUnit;
+    if (!targetUnit) return toast.error('Unit tidak terpilih');
+    
+    const result = await generatePDFDocument(targetUnit);
     if (result) {
       const { doc, fileName } = result;
       doc.save(fileName);
-      await saveReportToFirestore(result);
+      await saveReportToFirestore(targetUnit, result);
     }
   };
 
+
+
   const handleManualSave = async () => {
-    await saveReportToFirestore();
+    if (!activeUnit) return;
+    await saveReportToFirestore(activeUnit);
   };
 
   const uploadedCount = cards.filter(c => c.photoBase64).length;
@@ -526,49 +558,18 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             </div>
 
             <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 mb-6 font-geist">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 mb-6 font-geist">
+              {/* Main Maintenance Info */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Nama Maintenance</label>
                   <input
                     type="text"
                     value={maintenanceName}
                     onChange={e => setMaintenanceName(e.target.value)}
-                    disabled={user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com'}
-                    className={`w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 ${(user?.email === 'lv@gmail.com' || user?.email === 'ats@gmail.com' || user?.email === 'grounding@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com') ? 'opacity-60 cursor-not-allowed' : ''}`}
-                    placeholder="cth. Maintenance FCU"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="cth. Maintenance Bulanan"
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Unit/Ruangan (Opsional)</label>
-                  {user?.email === 'vrv@gmail.com' ? (
-                    <div className="flex flex-col sm:flex-row gap-3">
-                      <div className="relative group/select flex-1">
-                        <select
-                          value={specificDetail}
-                          onChange={e => setSpecificDetail(e.target.value)}
-                          className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer pr-10 transition-all hover:border-slate-500"
-                        >
-                          <option value="">Pilih Tipe Unit</option>
-                          <option value="outdoor">Outdoor</option>
-                          <option value="indoor">Indoor</option>
-                        </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-500 group-focus-within/select:text-blue-500 transition-colors">
-                          <ChevronDown className="w-5 h-5" />
-                        </div>
-                      </div>
-                      <div className="flex-[1.5]">
-                        <input
-                          type="text"
-                          value={vrvUnitDetail}
-                          onChange={e => setVrvUnitDetail(e.target.value)}
-                          className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="cth. Lantai 2 / Ruang Panel"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <input type="text" value={specificDetail} onChange={e => setSpecificDetail(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500" placeholder="cth. Unit 102" />
-                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Waktu Maintenance</label>
@@ -576,21 +577,107 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Situs / Proyek</label>
-                  <div className="relative group/select">
-                    <select
-                      value={companyType}
-                      onChange={e => setCompanyType(e.target.value as 'neutra' | 'bri')}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer pr-10 transition-all hover:border-slate-500"
+                  <select
+                    value={companyType}
+                    onChange={e => setCompanyType(e.target.value as 'neutra' | 'bri')}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer pr-10"
+                  >
+                    <option value="neutra">NeutraDC</option>
+                    <option value="bri">Bank BRI</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Excel-style Sheet Tabs */}
+              <div className="mt-8 select-none">
+                <div className="flex items-center bg-slate-950/50 backdrop-blur-md border border-slate-800/50 rounded-t-xl overflow-hidden h-10 shadow-2xl">
+                  <div className="flex items-center px-2 border-r border-slate-800/50 gap-1 shrink-0">
+                    <button onClick={() => scrollTabs('left')} className="p-1.5 hover:bg-white/5 transition-colors rounded-lg text-slate-500 hover:text-blue-400"><ChevronLeft className="w-4 h-4" /></button>
+                    <button onClick={() => scrollTabs('right')} className="p-1.5 hover:bg-white/5 transition-colors rounded-lg text-slate-500 hover:text-blue-400"><ChevronRight className="w-4 h-4" /></button>
+                  </div>
+                  
+                  <div ref={tabContainerRef} className="flex-1 flex items-end overflow-x-auto no-scrollbar h-full scroll-smooth">
+                    {units.map((unit, idx) => (
+                      <div
+                        key={unit.id}
+                        onClick={() => setActiveUnitId(unit.id)}
+                        className={`group relative flex items-center min-w-[110px] sm:min-w-[140px] h-full px-3 sm:px-5 cursor-pointer transition-all duration-200 border-r border-slate-800/50 shrink-0 ${
+                          activeUnitId === unit.id 
+                            ? 'bg-slate-900/80 z-10 shadow-[inset_0_-2px_10px_rgba(0,0,0,0.5)]' 
+                            : 'bg-transparent hover:bg-white/5'
+                        }`}
+                      >
+                        {activeUnitId === unit.id ? (
+                          <div className="flex items-center gap-2 sm:gap-3 w-full">
+                             <input
+                              autoFocus
+                              value={specificDetail}
+                              onChange={(e) => setSpecificDetail(e.target.value)}
+                              className="bg-transparent border-none outline-none text-blue-400 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider w-full"
+                              placeholder="NAMA UNIT..."
+                            />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (units.length > 1) {
+                                  setUnits(prev => prev.filter(u => u.id !== unit.id));
+                                  if (activeUnitId === unit.id) setActiveUnitId(units[idx === 0 ? 1 : idx - 1].id);
+                                }
+                              }}
+                              className="p-1 text-slate-600 hover:text-red-400 transition-colors shrink-0"
+                            >
+                              <X className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 w-full">
+                            <span className="text-slate-500 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider truncate group-hover:text-slate-300">
+                              {unit.specificDetail || `Unit ${idx + 1}`}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {activeUnitId === unit.id && (
+                          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex items-center px-1 border-l border-slate-800/50 shrink-0 bg-slate-900/40">
+                    <button
+                      onClick={() => addNewUnit(`Unit ${units.length + 1}`)}
+                      className="p-2 hover:bg-blue-600/10 text-blue-500/60 hover:text-blue-400 flex items-center justify-center transition-all rounded-lg"
+                      title="Tambah Unit Baru"
                     >
-                      <option value="neutra">NeutraDC</option>
-                      <option value="bri">Bank BRI</option>
-                    </select>
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-500 group-focus-within/select:text-blue-500 transition-colors">
-                      <ChevronDown className="w-5 h-5" />
-                    </div>
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Secondary Shadow Bar / Connector to Content */}
+                <div className="h-1 bg-slate-900/40 border-b border-slate-800/50 mb-10 shadow-sm" />
+              </div>
+            </div>
+
+            {/* Current Unit Detail Header */}
+            {activeUnit && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 px-2 gap-4">
+                <div className="flex-1">
+                  <h2 className="text-base sm:text-lg md:text-xl font-black text-white tracking-tight flex items-wrap items-center gap-2 sm:gap-3">
+                    <span className="px-1.5 py-0.5 bg-blue-600 text-[9px] rounded flex items-center justify-center font-mono">#{units.findIndex(u => u.id === activeUnitId) + 1}</span>
+                    <span className="whitespace-nowrap">DOKUMENTASI:</span> 
+                    <span className="text-blue-500 truncate max-w-[150px] sm:max-w-none ml-1">{activeUnit.specificDetail || '(Tanpa Nama Unit)'}</span>
+                  </h2>
+                </div>
+                <div className="flex items-center gap-3 self-start sm:self-auto">
+                  <div className="px-3 py-1.5 bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-full flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">SEDANG DIEDIT</span>
                   </div>
                 </div>
               </div>
+            )}
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -652,15 +739,19 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               ))}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 mt-12 justify-center">
-              <button onClick={handlePreviewPDF} className="px-8 py-4 bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center gap-3 border border-slate-700 hover:bg-slate-700 transition shadow-xl border-b-4 border-slate-950 active:border-b-0 active:translate-y-1">
-                <Eye className="w-6 h-6" /> PRATINJAU
+            <div className="flex flex-wrap items-center justify-center gap-6 mt-12 bg-slate-900/40 p-8 rounded-[2rem] border border-slate-700/30 backdrop-blur-xl">
+              <button 
+                onClick={handleManualSave} 
+                className="px-10 py-4 bg-blue-600/20 text-blue-400 rounded-xl font-black flex items-center justify-center gap-3 border border-blue-500/30 hover:bg-blue-600/30 transition shadow-xl active:scale-95 text-sm sm:text-base"
+              >
+                <Save className="w-6 h-6" /> SIMPAN KE CLOUD
               </button>
-              <button onClick={handleManualSave} className="px-8 py-4 bg-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition border-b-4 border-blue-800 active:border-b-0 active:translate-y-1">
-                <Save className="w-6 h-6" /> {editingData ? 'PERBARUI PERUBAHAN' : 'SIMPAN KE ARSIP'}
-              </button>
-              <button onClick={handleExportPDF} className="px-8 py-4 bg-red-600 text-white rounded-xl font-bold flex items-center justify-center gap-3 shadow-xl shadow-red-600/20 hover:bg-red-700 transition border-b-4 border-red-800 active:border-b-0 active:translate-y-1">
-                <FileType className="w-6 h-6" /> EKSPOR KE PDF
+
+              <button 
+                onClick={() => handleExportPDF()} 
+                className="px-12 py-5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl font-black flex items-center justify-center gap-3 shadow-2xl shadow-red-600/30 hover:from-red-700 hover:to-rose-700 transition active:scale-95 text-base sm:text-lg border-b-4 border-red-900 active:border-b-0"
+              >
+                <FileType className="w-8 h-8" /> EXPORT PDF (SUB-REPORT {activeUnit?.specificDetail})
               </button>
             </div>
           </motion.div>
@@ -715,6 +806,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           />
         )}
       </AnimatePresence>
+
+
     </div>
   );
 }
