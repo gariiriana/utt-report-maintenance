@@ -1,30 +1,37 @@
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-dist/
-build/
-
+# Environment files
 .env
 .env.*
+.env*.local
 !.env.example
-firebase-service-account.json
 
+# Service accounts & Credentials
+firebase-service-account.json
+backend/firebase-service-account.json
+*.pem
+*.key
+
+# Build artifacts
+dist/
+build/
+backend/server.exe
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Editor / OS files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 .DS_Store
-
 Thumbs.db
-
-*.tsbuildinfo
 .vercel
 .firebase/
-.env*.local
+
+# Typescript
+*.tsbuildinfo
 
 # Rust / WebAssembly
 rust-image-worker/target/
@@ -33,3 +40,4 @@ rustup-init.exe
 wasm-pack-init.exe
 wasm-pack-init.stamp
 wasm-pack.tar.gz
+node_modules
