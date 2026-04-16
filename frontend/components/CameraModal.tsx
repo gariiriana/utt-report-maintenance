@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
 import { X, Camera, RefreshCw, Check, AlertCircle, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
@@ -218,6 +219,10 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
   };
 
   useEffect(() => {
+    // Scroll lock
+    const originalStyle = window.getComputedStyle(document.body).overflow;
+    document.body.style.overflow = 'hidden';
+
     // Check permission status on mount
     if ('permissions' in navigator) {
       navigator.permissions.query({ name: 'geolocation' }).then((status) => {
@@ -232,15 +237,17 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     fetchLocation();
 
     return () => {
+      document.body.style.overflow = originalStyle;
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
     };
   }, [facingMode]);
+
   // ── Shared watermark overlay (used in both live & photo preview) ──────────
   const capturedTimestampRef = useRef<string>('');
 
-  const WatermarkOverlay = () => {
+  const WatermarkOverlay = ({ className = "bottom-12 left-12" }: { className?: string }) => {
     const displayTime = capturedTimestampRef.current ||
       new Date().toLocaleString('id-ID', {
         day: '2-digit', month: '2-digit', year: 'numeric',
@@ -248,21 +255,21 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
       }).replace(/\//g, '.').replace(' ', ', ');
 
     return (
-      <div className="absolute bottom-4 left-4 pointer-events-none z-50">
+      <div className={`absolute ${className} pointer-events-none z-50`}>
         <div className="relative border-l-[3px] border-blue-500 pl-3">
           <div className="flex flex-col gap-[2px]">
-            <span className="text-white font-black text-[13px] uppercase tracking-widest leading-none drop-shadow-lg">
+            <span className="text-white font-black text-[13px] uppercase tracking-widest leading-none">
               NEUTRADC
             </span>
-            <span className="text-white/90 text-[10px] font-bold drop-shadow-lg">
+            <span className="text-white/90 text-[10px] font-bold">
               {displayTime}
             </span>
             {locationData && (
               <div className="flex items-center gap-1.5 mt-0.5">
-                <div className="w-3.5 h-3.5 rounded-full bg-blue-500 flex items-center justify-center shrink-0 shadow-sm">
+                <div className="w-3.5 h-3.5 rounded-full bg-blue-500 flex items-center justify-center shrink-0">
                   <MapPin className="w-2 h-2 text-white" />
                 </div>
-                <span className="text-white text-[10px] font-semibold drop-shadow-lg">
+                <span className="text-white text-[10px] font-semibold">
                   {locationData.coords}
                 </span>
               </div>
@@ -270,7 +277,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
             {locationData?.address &&
              !locationData.address.includes('Mengambil') &&
              !locationData.address.includes('terdeteksi') && (
-              <span className="text-white/75 text-[9px] leading-tight italic mt-0.5 max-w-[280px] drop-shadow-lg">
+              <span className="text-white/75 text-[9px] leading-tight italic mt-0.5 max-w-[280px]">
                 {locationData.address}
               </span>
             )}
@@ -315,7 +322,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
       ctx.drawImage(img, 0, 0);
 
       // Burn Watermark
-      const pad   = Math.round(canvas.width * 0.04);
+      const pad   = Math.round(canvas.width * 0.06);
       const fBase = Math.max(16, canvas.width * 0.034);
       const lineH = fBase * 1.45;
 
@@ -334,14 +341,6 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
       const blockY = canvas.height - blockH - pad * 0.4;
       const textX  = pad + 12;
 
-      // Dark gradient for backing
-      const grad = ctx.createLinearGradient(0, blockY - pad, 0, canvas.height);
-      grad.addColorStop(0,   'rgba(0,0,0,0)');
-      grad.addColorStop(0.5, 'rgba(0,0,0,0.6)');
-      grad.addColorStop(1,   'rgba(0,0,0,0.8)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, blockY - pad, canvas.width, canvas.height - (blockY - pad));
-
       // Blue line
       ctx.fillStyle = '#3b82f6';
       ctx.fillRect(pad, blockY + 4, 4, blockH - 8);
@@ -352,21 +351,15 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
       textLines.forEach((line, i) => {
         const y = blockY + pad * 0.4 + i * lineH;
-        ctx.shadowColor   = 'rgba(0,0,0,0.6)';
-        ctx.shadowBlur    = 4;
-        ctx.shadowOffsetX = 1;
-        ctx.shadowOffsetY = 1;
 
         if (i === 2 && locationData?.coords) {
           const r  = line.size * 0.45;
           const cx = textX - 4;
           const cy = y + line.size * 0.5;
-          ctx.shadowBlur = 0;
           ctx.fillStyle  = '#3b82f6';
           ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
           ctx.fillStyle  = 'white';
           ctx.beginPath(); ctx.arc(cx, cy, r * 0.42, 0, Math.PI * 2); ctx.fill();
-          ctx.shadowBlur = 4;
           ctx.font      = `${line.weight} ${line.size}px 'Inter', sans-serif`;
           ctx.fillStyle = `rgba(255,255,255,${line.alpha})`;
           ctx.fillText(line.text, textX + r * 2 + 2, y);
@@ -388,19 +381,18 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     capturedTimestampRef.current = '';
   };
 
-
-  return (
+  const modalContent = (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl sm:p-8"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md sm:p-8"
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0, y: 30 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.95, opacity: 0, y: 30 }}
-        className="bg-slate-900 border border-slate-700/50 rounded-3xl w-full max-w-lg max-h-[92vh] overflow-hidden shadow-2xl flex flex-col relative"
+        className="bg-slate-900 border border-slate-700/50 rounded-3xl w-full max-w-lg max-h-[92vh] overflow-hidden shadow-2xl flex flex-col relative z-[10000]"
       >
         {/* Header */}
         <div className="p-4 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-900">
@@ -456,7 +448,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                 className="w-full h-auto max-h-[65vh] object-contain block"
                 alt="Captured"
               />
-              <WatermarkOverlay />
+              <WatermarkOverlay className="bottom-4 left-6" />
             </div>
           ) : (
             <>
@@ -561,4 +553,6 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
       </motion.div>
     </motion.div>
   );
+
+  return createPortal(modalContent, document.body);
 }

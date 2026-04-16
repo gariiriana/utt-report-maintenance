@@ -114,8 +114,8 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
   const cols = (isVRV || isATS || isACSplit || isCRAC || isWLD || isFLD) ? 3 : isSmallGrid ? 4 : 3;
   const perPage = (isATS || isACSplit || isCRAC) ? 12 : isPDU ? 20 : isLVlike ? 12 : isVRV ? 15 : 9;
   const photoH = (isATS || isACSplit || isCRAC) ? 45 : isVRV ? 40 : (isWLD || isFLD) ? 56 : isSmallGrid ? 38 : 55;
-  const capH = (isATS || isACSplit || isCRAC) ? 10 : isVRV ? 8 : (isWLD || isFLD) ? 12 : isSmallGrid ? 10 : 12;
-  const rowGap = (isVRV || isATS || isACSplit || isCRAC || isWLD || isFLD) ? ((isWLD || isFLD) ? 10 : 3) : 5;
+  const capH = (isATS || isACSplit || isCRAC) ? 7.5 : isVRV ? 6.5 : (isWLD || isFLD) ? 10 : isSmallGrid ? 8 : 10;
+  const rowGap = (isVRV || isATS || isACSplit || isCRAC || isWLD || isFLD) ? ((isWLD || isFLD) ? 8 : 2.5) : 4;
 
   const finalSpecificDetail = (userEmail === 'vrv@gmail.com' && vrvUnitDetail)
     ? `${specificDetail.toUpperCase()} - ${vrvUnitDetail.toUpperCase()}`
@@ -182,25 +182,35 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
     doc.setDrawColor(SLATE_200).setLineWidth(0.3);
     doc.line(cardX, cardY + h, cardX + cardW, cardY + h);
 
-    // Caption / remark area — neatly fit inside the capH box
+    // Caption / remark area — perfectly synchronized with camera watermark style
     const captionText = photo.description || '';
-    const fontSize = isVRV || isPDU ? 6.5 : 7;
-    doc.setFontSize(fontSize).setFont('helvetica', 'bold').setTextColor(DARK);
+    const fontSize = 4.5; 
+    doc.setFontSize(fontSize).setFont('helvetica', 'normal').setTextColor(DARK);
 
-    const maxWidth = cardW - 6;
-    const lineHeight = fontSize * 0.45; // mm per line at this font size
+    const leftPadding = 2.0;
+    const maxWidth = cardW - (leftPadding + 3);
+    const spacingFactor = 1.05; // Extra tight like the watermark
+    const lineHeight = (fontSize * 0.3528) * spacingFactor;
     const splitCaption = doc.splitTextToSize(captionText, maxWidth);
 
-    // Limit to lines that fit within capH (reserve 2mm top + 2mm bottom padding)
-    const availableH = capH - 4;
+    // Limit to lines that fit
+    const availableH = capH - 2;
     const maxLines = Math.max(1, Math.floor(availableH / lineHeight));
     const displayLines = splitCaption.slice(0, maxLines);
 
-    // Vertically center the block of text in the capH area
-    const blockH = displayLines.length * lineHeight;
-    const textStartY = cardY + h + (capH - blockH) / 2 + lineHeight * 0.8;
+    const totalTextH = displayLines.length * lineHeight;
+    const textStartY = cardY + h + (capH - totalTextH) / 2 + (lineHeight * 0.7);
 
-    doc.text(displayLines, cardX + cardW / 2, textStartY, { align: 'center', lineHeightFactor: 1.3 });
+    // Ultra-slim blue accent line matching camera watermark exactly
+    doc.setFillColor(THEME_BLUE);
+    const lineThickness = 0.35;
+    const lineH = Math.max(2, totalTextH);
+    doc.rect(cardX + 1.2, cardY + h + (capH - lineH) / 2, lineThickness, lineH, 'F');
+
+    doc.text(displayLines, cardX + leftPadding + 1.2, textStartY, { 
+      align: 'left', 
+      lineHeightFactor: spacingFactor 
+    });
   };
 
   let curY = drawHeader(doc);
