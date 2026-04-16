@@ -51,6 +51,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     
     const timeout = retry ? 0 : 500;
     setTimeout(() => {
+    const tryFetch = (highAccuracy: boolean) => {
       navigator.geolocation.getCurrentPosition(async (pos) => {
         const { latitude, longitude } = pos.coords;
         const coordsString = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
@@ -81,37 +82,38 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
           const provinsi = addr1.state || addr2.state || 'Jawa Barat';
           const kodepos = addr1.postcode || addr2.postcode || '17530';
 
-          const fullAddressParts = [
-            pCode,
-            desa,
-            kecamatan,
-            provinsi,
-            kodepos
-          ].filter(Boolean);
+          const fullAddressParts = [pCode, desa, kecamatan, provinsi, kodepos].filter(Boolean);
+          const detailAddress = fullAddressParts.length >= 3 ? fullAddressParts.join(', ') : '';
 
-          const detailAddress = fullAddressParts.length >= 3 
-            ? fullAddressParts.join(', ')
-            : '';
-
-          setLocationData({
-            coords: coordsString,
-            address: detailAddress,
-            loading: false
-          });
+          setLocationData({ coords: coordsString, address: detailAddress, loading: false });
         } catch (err: unknown) {
-          if (err instanceof Error && err.name === 'AbortError') return; // cancelled — silently ignore
+          if (err instanceof Error && err.name === 'AbortError') return; 
           console.error('Reverse Geocode Error:', err);
           setLocationData({ coords: coordsString, address: '', loading: false });
         }
       }, (err) => {
-        console.error('Geolocation error:', err);
+        console.warn(`Geolocation error (${highAccuracy ? 'High' : 'Low'} Accuracy):`, err);
+        if (highAccuracy && err.code !== 1) {
+          // Fallback to low accuracy if high fails (unless permission denied)
+          tryFetch(false);
+          return;
+        }
+        
         let msg = 'Gagal mengambil lokasi';
         if (err.code === 1) msg = 'Izin lokasi ditolak';
         else if (err.code === 3) msg = 'Waktu pencarian lokasi habis';
         
         toast.error(msg);
         setLocationData(null);
-      }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 });
+      }, { 
+        enableHighAccuracy: highAccuracy, 
+        timeout: highAccuracy ? 8000 : 15000, 
+        maximumAge: highAccuracy ? 0 : 60000 
+      });
+    };
+
+    const waitTimeout = retry ? 0 : 500;
+    setTimeout(() => tryFetch(true), waitTimeout);
     }, timeout);
   }, []);
 
