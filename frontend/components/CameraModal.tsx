@@ -103,7 +103,9 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
             kodepos
           ].filter(Boolean);
 
-          const detailAddress = fullAddressParts.join(', ');
+          const detailAddress = fullAddressParts.length >= 3 
+            ? fullAddressParts.join(', ')
+            : ''; // Keep empty if not complete
 
           setLocationData({
             coords: coordsString,
@@ -306,13 +308,17 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
         
         context.fillStyle = 'white';
         context.fillText(line, x + iconSize + 8, y);
-      } else if (i === 3) {
-        // Address - Italic
-        context.font = `italic 400 ${fontSize * 0.75}px sans-serif`;
-        context.fillStyle = 'rgba(255, 255, 255, 0.7)';
-        context.fillText(line, x, y);
       }
     });
+
+    if (locationData?.address && 
+        locationData.address !== '' && 
+        !locationData.address.includes('Mengambil') && 
+        !locationData.address.includes('terdeteksi')) {
+      context.font = `italic 400 ${fontSize * 0.75}px sans-serif`;
+      context.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      context.fillText(locationData.address, padding * 0.8, canvas.height - boxHeight + (3 * lineSpacing) + (padding * 0.5));
+    }
     
     const base64 = canvas.toDataURL('image/jpeg', 0.8);
     setCapturedImage(base64);
@@ -482,9 +488,13 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                               {locationData?.coords || 'Mencari Koordinat...'}
                             </span>
                           </div>
-                          <span className="text-white/70 text-[9px] leading-tight italic mt-1 line-clamp-2 drop-shadow-lg">
-                            {locationData?.address || 'Mencari Alamat Lokasi...'}
-                          </span>
+                          {locationData?.address && 
+                           !locationData.address.includes('Mengambil') && 
+                           !locationData.address.includes('terdeteksi') && (
+                            <span className="text-white/70 text-[9px] leading-tight italic mt-1 line-clamp-2 drop-shadow-lg">
+                              {locationData.address}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
