@@ -14,7 +14,7 @@ interface CameraModalProps {
 export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentasi' }: CameraModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [stream, setStream] = useState<MediaStream | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -26,34 +26,8 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     loading: boolean;
   } | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<'prompt' | 'granted' | 'denied' | 'loading'>('loading');
-  const [plusCode, setPlusCode] = useState<string>('');
   // AbortController ref — cancels in-flight Nominatim requests if user re-triggers
   const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Small helper to encode Plus Code (Open Location Code)
-  const encodePlusCode = (lat: number, lng: number) => {
-    const codeAlphabet = "23456789CFGHJMPQRVWX";
-    const encode = (val: number, length: number) => {
-      let res = "";
-      for (let i = 0; i < length; i++) {
-        const digit = Math.floor(val % 20);
-        res = codeAlphabet[digit] + res;
-        val /= 20;
-      }
-      return res;
-    };
-    
-    // Normalize and shift
-    const latVal = (lat + 90) * 8000;
-    const lngVal = (lng + 180) * 8000;
-    
-    const latPart = encode(latVal, 4);
-    const lngPart = encode(lngVal, 4);
-    
-    // Simple 8-char code generator (rough approximation of global code)
-    // For a real Plus Code, we need the standard algorithm, but for visual:
-    return `${latPart.slice(0,2)}${lngPart.slice(0,2)}+${latPart.slice(2,4)}${lngPart.slice(2,4)}`;
-  };
 
   // Core fetch logic — wrapped in useCallback so the debounce hook gets a stable reference
   const _doFetchLocation = useCallback(async (retry = false) => {
@@ -81,8 +55,6 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
         const { latitude, longitude } = pos.coords;
         const coordsString = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
         
-        setPlusCode('J5CX+5R7');
-
         try {
           // Fetch 1: Zoom 18 (Street Level)
           const res1 = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`, {
@@ -144,7 +116,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
   }, []);
 
   // Debounced wrapper — prevents hitting the Nominatim API more than once per 800ms
-  const { debouncedFn: fetchLocation, isPending: isLocationPending } = useDebouncedCallback(
+  const { debouncedFn: fetchLocation } = useDebouncedCallback(
     _doFetchLocation as (...args: unknown[]) => unknown,
     800
   );
@@ -158,7 +130,6 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
     const handleStream = (newStream: MediaStream) => {
       streamRef.current = newStream;
-      setStream(newStream);
       if (videoRef.current) {
         videoRef.current.srcObject = newStream;
       }
@@ -172,9 +143,8 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
       
       // Stop existing tracks if any before switching
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
         streamRef.current = null;
-        setStream(null);
         // Small delay to let the OS release the camera lock
         await new Promise(resolve => setTimeout(resolve, 200));
       }
@@ -234,7 +204,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     return () => {
       document.body.style.overflow = originalStyle;
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
       }
     };
   }, [facingMode]);
