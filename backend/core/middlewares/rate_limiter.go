@@ -17,10 +17,10 @@ type bucket struct {
 }
 
 type RateLimiter struct {
-	rps    float64
-	burst  float64
-	mu     sync.RWMutex
-	ipMap  map[string]*bucket
+	rps   float64
+	burst float64
+	mu    sync.RWMutex
+	ipMap map[string]*bucket
 }
 
 func NewRateLimiter(rps, burst int) *RateLimiter {
@@ -31,6 +31,18 @@ func NewRateLimiter(rps, burst int) *RateLimiter {
 	}
 	go rl.cleanup()
 	return rl
+}
+
+// NewThrottle creates a standalone per-route throttle middleware.
+// Use this to apply different rate limits to different endpoints
+// (e.g., 5 rps for heavy endpoints, 60 rps for health checks).
+//
+// Usage:
+//
+//	heavyThrottle := middlewares.NewThrottle(5, 10)
+//	heavyThrottle.Middleware(myHandler)
+func NewThrottle(rps, burst int) *RateLimiter {
+	return NewRateLimiter(rps, burst)
 }
 
 func (rl *RateLimiter) Allow(ip string) bool {
@@ -76,6 +88,23 @@ func (rl *RateLimiter) Middleware(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// ThrottleFunc wraps a HandlerFunc directly without needing an http.Handler.
+// Convenient for inline use in route switches.
+func (rl *RateLimiter) ThrottleFunc(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ip := helpers.GetClientIP(r)
+		if !rl.Allow(ip) {
+			requestID := r.Header.Get("X-Request-Id")
+			logger.LogSecurityEvent("throttle_exceeded", requestID, ip, fmt.Sprintf("limit=%.0f/s burst=%.0f", rl.rps, rl.burst))
+			w.Header().Set("Retry-After", "10")
+			w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%.0f", rl.rps))
+			helpers.SendError(w, "Request throttled. Please wait before retrying.", http.StatusTooManyRequests)
+			return
+		}
+		next(w, r)
+	}
 }
 
 func (rl *RateLimiter) cleanup() {

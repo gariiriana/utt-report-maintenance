@@ -6,10 +6,16 @@ import (
 
 	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
 )
+
 func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 	path := r.URL.Path
 
+	// Convenience aliases
+	heavy    := deps.ThrottleHeavy.ThrottleFunc
+	standard := deps.ThrottleStandard.ThrottleFunc
+
 	switch {
+	// --- Health (no per-route throttle — global rate limiter is enough) ---
 	case path == "/health" || path == "/api/health":
 		deps.HealthCtrl.Liveness(w, r)
 
@@ -18,6 +24,8 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 
 	case path == "/metrics" || path == "/api/metrics":
 		deps.HealthCtrl.Metrics(w, r)
+
+	// --- Auth (no extra throttle — global covers it) ---
 	case path == "/api/auth/login" && r.Method == http.MethodPost:
 		deps.AuthCtrl.Login(w, r)
 
@@ -26,59 +34,69 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 
 	case path == "/api/auth/me" && r.Method == http.MethodGet:
 		deps.AuthCtrl.Me(w, r)
+
+	// --- Reports ---
 	case path == "/api/report" && r.Method == http.MethodPost:
-		deps.ReportCtrl.HandleReport(w, r)
+		// HEAVY: uploading a report with base64 photos is expensive
+		heavy(deps.ReportCtrl.HandleReport)(w, r)
 
 	case path == "/api/reports" && r.Method == http.MethodGet:
-		deps.ReportCtrl.ListReports(w, r)
+		standard(deps.ReportCtrl.ListReports)(w, r)
 
 	case strings.HasPrefix(path, "/api/report/") && r.Method == http.MethodGet:
-		deps.ReportCtrl.GetReport(w, r)
+		standard(deps.ReportCtrl.GetReport)(w, r)
 
 	case strings.HasPrefix(path, "/api/report/") && r.Method == http.MethodDelete:
-		deps.ReportCtrl.DeleteReport(w, r)
+		heavy(deps.ReportCtrl.DeleteReport)(w, r)
+
+	// --- Users ---
 	case path == "/api/users" && r.Method == http.MethodGet:
-		deps.UserCtrl.ListUsers(w, r)
+		standard(deps.UserCtrl.ListUsers)(w, r)
 
 	case strings.HasPrefix(path, "/api/users/") && strings.HasSuffix(path, "/role") && r.Method == http.MethodPatch:
-		deps.UserCtrl.UpdateRole(w, r)
+		heavy(deps.UserCtrl.UpdateRole)(w, r)
 
 	case strings.HasPrefix(path, "/api/users/") && r.Method == http.MethodGet:
-		deps.UserCtrl.GetProfile(w, r)
+		standard(deps.UserCtrl.GetProfile)(w, r)
 
 	case strings.HasPrefix(path, "/api/users/") && r.Method == http.MethodDelete:
-		deps.UserCtrl.Deactivate(w, r)
+		heavy(deps.UserCtrl.Deactivate)(w, r)
+
+	// --- Archive ---
 	case path == "/api/archive" && r.Method == http.MethodGet:
-		deps.ArchiveCtrl.ListArchives(w, r)
+		standard(deps.ArchiveCtrl.ListArchives)(w, r)
 
 	case strings.HasPrefix(path, "/api/archive/") && r.Method == http.MethodGet:
-		deps.ArchiveCtrl.GetArchive(w, r)
+		standard(deps.ArchiveCtrl.GetArchive)(w, r)
 
 	case strings.HasPrefix(path, "/api/archive/") && r.Method == http.MethodDelete:
-		deps.ArchiveCtrl.PermanentDelete(w, r)
+		heavy(deps.ArchiveCtrl.PermanentDelete)(w, r)
+
+	// --- Audit ---
 	case path == "/api/audit" && r.Method == http.MethodGet:
-		deps.AuditCtrl.GetAuditLogs(w, r)
+		standard(deps.AuditCtrl.GetAuditLogs)(w, r)
 
 	case path == "/api/audit/me" && r.Method == http.MethodGet:
-		deps.AuditCtrl.GetMyAuditLogs(w, r)
+		standard(deps.AuditCtrl.GetMyAuditLogs)(w, r)
 
+	// --- Maintenance Progress ---
 	case path == "/api/maintenance-progress" && r.Method == http.MethodGet:
-		deps.MaintenanceProgressCtrl.ListAll(w, r)
+		standard(deps.MaintenanceProgressCtrl.ListAll)(w, r)
 
 	case path == "/api/maintenance-progress" && r.Method == http.MethodPost:
-		deps.MaintenanceProgressCtrl.CreateProgress(w, r)
+		heavy(deps.MaintenanceProgressCtrl.CreateProgress)(w, r)
 
 	case strings.HasPrefix(path, "/api/maintenance-progress/") && r.Method == http.MethodDelete:
-		deps.MaintenanceProgressCtrl.DeleteProgress(w, r)
+		heavy(deps.MaintenanceProgressCtrl.DeleteProgress)(w, r)
 
 	case path == "/api/maintenance-progress/summary" && r.Method == http.MethodGet:
-		deps.MaintenanceProgressCtrl.GetSummary(w, r)
+		standard(deps.MaintenanceProgressCtrl.GetSummary)(w, r)
 
 	case path == "/api/maintenance-progress/end-day" && r.Method == http.MethodPost:
-		deps.MaintenanceProgressCtrl.EndDay(w, r)
+		heavy(deps.MaintenanceProgressCtrl.EndDay)(w, r)
 
 	case strings.HasPrefix(path, "/api/maintenance-progress/") && r.Method == http.MethodPatch:
-		deps.MaintenanceProgressCtrl.UpdateProgress(w, r)
+		heavy(deps.MaintenanceProgressCtrl.UpdateProgress)(w, r)
 
 	default:
 		helpers.SendError(w, "route not found", http.StatusNotFound)

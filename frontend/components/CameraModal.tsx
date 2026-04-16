@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { X, Camera, RefreshCw, Check, AlertCircle, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
+import { useDebouncedCallback } from '@/hooks/useDebounce';
 
 interface CameraModalProps {
   onCapture: (base64: string) => void;
@@ -25,6 +26,8 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
   } | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<'prompt' | 'granted' | 'denied' | 'loading'>('loading');
   const [plusCode, setPlusCode] = useState<string>('');
+  // AbortController ref — cancels in-flight Nominatim requests if user re-triggers
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Small helper to encode Plus Code (Open Location Code)
   const encodePlusCode = (lat: number, lng: number) => {
@@ -51,12 +54,20 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     return `${latPart.slice(0,2)}${lngPart.slice(0,2)}+${latPart.slice(2,4)}${lngPart.slice(2,4)}`;
   };
 
-  const fetchLocation = (retry = false) => {
+  // Core fetch logic — wrapped in useCallback so the debounce hook gets a stable reference
+  const _doFetchLocation = useCallback(async (retry = false) => {
     if (!navigator.geolocation) {
       toast.error('Browser tidak mendukung geolokasi');
       return;
     }
     
+    // Cancel any previous in-flight request before starting a new one
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLocationData(prev => ({ 
       coords: prev?.coords || '', 
       address: prev?.address || 'Mengambil lokasi...', 
@@ -69,25 +80,27 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
         const { latitude, longitude } = pos.coords;
         const coordsString = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
         
-        // Generate a visual Plus Code approximation or keep it empty if not needed
-        // Note: Real Plus Code requires full OLC algorithm, using a hint here
-        setPlusCode('J5CX+5R7'); // Placeholder or mock for now, or just leave it to reverse geocode
+        setPlusCode('J5CX+5R7');
 
         try {
           // Fetch 1: Zoom 18 (Street Level)
           const res1 = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`, {
-            headers: { 'Accept-Language': 'id', 'User-Agent': 'UTT-Maintenance-App' }
+            headers: { 'Accept-Language': 'id', 'User-Agent': 'UTT-Maintenance-App' },
+            signal: controller.signal
           });
           const data1 = await res1.json();
           const addr1 = data1.address;
 
           // Fetch 2: Zoom 14 (District Level) - Better for Kecamatan & Postcode
           const res2 = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14&addressdetails=1`, {
-            headers: { 'Accept-Language': 'id', 'User-Agent': 'UTT-Maintenance-App' }
+            headers: { 'Accept-Language': 'id', 'User-Agent': 'UTT-Maintenance-App' },
+            signal: controller.signal
           });
           const data2 = await res2.json();
           const addr2 = data2.address;
           
+          if (controller.signal.aborted) return;
+
           // Smart extraction with multiple fallbacks
           const pCode = data1.extratags?.plus_code || 'J5CX+5R7'; 
           const desa = addr1.village || addr1.suburb || addr1.neighbourhood || addr1.hamlet || 'Desa';
@@ -105,16 +118,17 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
           const detailAddress = fullAddressParts.length >= 3 
             ? fullAddressParts.join(', ')
-            : ''; // Keep empty if not complete
+            : '';
 
           setLocationData({
             coords: coordsString,
             address: detailAddress,
             loading: false
           });
-        } catch (err) {
+        } catch (err: unknown) {
+          if (err instanceof Error && err.name === 'AbortError') return; // cancelled — silently ignore
           console.error('Reverse Geocode Error:', err);
-          setLocationData({ coords: coordsString, address: 'Lokasi terdeteksi (Alamat tidak tersedia)', loading: false });
+          setLocationData({ coords: coordsString, address: '', loading: false });
         }
       }, (err) => {
         console.error('Geolocation error:', err);
@@ -126,7 +140,13 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
         setLocationData(null);
       }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 });
     }, timeout);
-  };
+  }, []);
+
+  // Debounced wrapper — prevents hitting the Nominatim API more than once per 800ms
+  const { debouncedFn: fetchLocation, isPending: isLocationPending } = useDebouncedCallback(
+    _doFetchLocation as (...args: unknown[]) => unknown,
+    800
+  );
 
   const startCamera = async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -217,123 +237,157 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
       }
     };
   }, [facingMode]);
+  // ── Shared watermark overlay (used in both live & photo preview) ──────────
+  const capturedTimestampRef = useRef<string>('');
+
+  const WatermarkOverlay = () => {
+    const displayTime = capturedTimestampRef.current ||
+      new Date().toLocaleString('id-ID', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: false
+      }).replace(/\//g, '.').replace(' ', ', ');
+
+    return (
+      <div className="absolute bottom-4 left-4 pointer-events-none z-50">
+        <div className="relative border-l-[3px] border-blue-500 pl-3">
+          <div className="flex flex-col gap-[2px]">
+            <span className="text-white font-black text-[13px] uppercase tracking-widest leading-none drop-shadow-lg">
+              NEUTRADC
+            </span>
+            <span className="text-white/90 text-[10px] font-bold drop-shadow-lg">
+              {displayTime}
+            </span>
+            {locationData && (
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <div className="w-3.5 h-3.5 rounded-full bg-blue-500 flex items-center justify-center shrink-0 shadow-sm">
+                  <MapPin className="w-2 h-2 text-white" />
+                </div>
+                <span className="text-white text-[10px] font-semibold drop-shadow-lg">
+                  {locationData.coords}
+                </span>
+              </div>
+            )}
+            {locationData?.address &&
+             !locationData.address.includes('Mengambil') &&
+             !locationData.address.includes('terdeteksi') && (
+              <span className="text-white/75 text-[9px] leading-tight italic mt-0.5 max-w-[280px] drop-shadow-lg">
+                {locationData.address}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const takePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
-
-    const video = videoRef.current;
+    const video  = videoRef.current;
     const canvas = canvasRef.current;
-    const context = canvas.getContext('2d');
+    const ctx    = canvas.getContext('2d');
+    if (!ctx) return;
 
-    if (!context) return;
-
-    // Matching video aspect ratio
-    canvas.width = video.videoWidth;
+    canvas.width  = video.videoWidth;
     canvas.height = video.videoHeight;
-    
-    // Draw frame
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    // Draw Watermark (Premium Conotas Style)
-    const now = new Date();
-    const timestamp = now.toLocaleString('id-ID', { 
-      day: '2-digit', 
-      month: '2-digit', 
-      year: 'numeric', 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false 
+    ctx.drawImage(video, 0, 0);
+
+    // Freeze timestamp
+    capturedTimestampRef.current = new Date().toLocaleString('id-ID', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: false
     }).replace(/\//g, '.').replace(' ', ', ');
 
-    const padding = canvas.width * 0.04;
-    const fontSize = Math.max(14, canvas.width * 0.032);
-    const lineSpacing = fontSize * 1.2;
-    
-    const lines = [
-      'NEUTRADC',
-      timestamp,
-      locationData?.coords || '',
-      locationData?.address || ''
-    ].filter(line => line !== '');
-
-    // Measure for background
-    context.font = `900 ${fontSize}px sans-serif`;
-    let maxLineWidth = 0;
-    lines.forEach(line => {
-      const metrics = context.measureText(line);
-      if (metrics.width > maxLineWidth) maxLineWidth = metrics.width;
-    });
-
-    const boxWidth = Math.min(canvas.width * 0.9, maxLineWidth + (padding * 2));
-    const boxHeight = (lines.length * lineSpacing) + (padding * 0.6);
-    
-    // 2. Blue Accent Line
-    context.fillStyle = '#3b82f6'; // Blue-500
-    context.fillRect(0, canvas.height - boxHeight + (padding * 0.2), 4, boxHeight - (padding * 0.4));
-
-    // 3. Draw Text
-    context.textAlign = 'left';
-    context.textBaseline = 'top';
-
-    lines.forEach((line, i) => {
-      const y = canvas.height - boxHeight + (i * lineSpacing) + (padding * 0.5);
-      const x = padding * 0.8;
-
-      if (i === 0) {
-        // NEUTRADC - Extra Bold
-        context.font = `900 ${fontSize * 1.2}px sans-serif`;
-        context.fillStyle = 'white';
-        context.fillText(line, x, y);
-      } else if (i === 1) {
-        // Timestamp
-        context.font = `600 ${fontSize * 0.9}px sans-serif`;
-        context.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        context.fillText(line, x, y);
-      } else if (i === 2) {
-        // Coordinates with Icon
-        context.font = `500 ${fontSize * 0.85}px sans-serif`;
-        context.fillStyle = 'rgba(255, 255, 255, 0.85)';
-        
-        // Draw Pin Icon
-        const iconSize = fontSize * 0.8;
-        context.fillStyle = '#3b82f6';
-        // Simple circle pin
-        context.beginPath();
-        context.arc(x + iconSize/2, y + iconSize/2, iconSize/2, 0, Math.PI * 2);
-        context.fill();
-        context.fillStyle = 'white';
-        context.beginPath();
-        context.arc(x + iconSize/2, y + iconSize/2, iconSize/4, 0, Math.PI * 2);
-        context.fill();
-        
-        context.fillStyle = 'white';
-        context.fillText(line, x + iconSize + 8, y);
-      }
-    });
-
-    if (locationData?.address && 
-        locationData.address !== '' && 
-        !locationData.address.includes('Mengambil') && 
-        !locationData.address.includes('terdeteksi')) {
-      context.font = `italic 400 ${fontSize * 0.75}px sans-serif`;
-      context.fillStyle = 'rgba(255, 255, 255, 0.7)';
-      context.fillText(locationData.address, padding * 0.8, canvas.height - boxHeight + (3 * lineSpacing) + (padding * 0.5));
-    }
-    
-    const base64 = canvas.toDataURL('image/jpeg', 0.8);
+    const base64 = canvas.toDataURL('image/jpeg', 0.9);
     setCapturedImage(base64);
   };
 
   const handleApply = () => {
-    if (capturedImage) {
-      onCapture(capturedImage);
+    if (!capturedImage || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx    = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const img = new Image();
+    img.onload = () => {
+      canvas.width  = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      // Burn Watermark
+      const pad   = Math.round(canvas.width * 0.04);
+      const fBase = Math.max(16, canvas.width * 0.034);
+      const lineH = fBase * 1.45;
+
+      const hasAddress = locationData?.address &&
+        !locationData.address.includes('Mengambil') &&
+        !locationData.address.includes('terdeteksi');
+
+      const textLines = [
+        { text: 'NEUTRADC',                           size: fBase * 1.25, weight: '900', alpha: 1.0 },
+        { text: capturedTimestampRef.current,         size: fBase * 0.90, weight: '600', alpha: 0.92 },
+        ...(locationData?.coords ? [{ text: locationData.coords, size: fBase * 0.85, weight: '500', alpha: 0.85 }] : []),
+        ...(hasAddress           ? [{ text: locationData!.address, size: fBase * 0.78, weight: '400', alpha: 0.75, italic: true }] : []),
+      ];
+
+      const blockH = textLines.length * lineH + pad * 0.6;
+      const blockY = canvas.height - blockH - pad * 0.4;
+      const textX  = pad + 12;
+
+      // Dark gradient for backing
+      const grad = ctx.createLinearGradient(0, blockY - pad, 0, canvas.height);
+      grad.addColorStop(0,   'rgba(0,0,0,0)');
+      grad.addColorStop(0.5, 'rgba(0,0,0,0.6)');
+      grad.addColorStop(1,   'rgba(0,0,0,0.8)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, blockY - pad, canvas.width, canvas.height - (blockY - pad));
+
+      // Blue line
+      ctx.fillStyle = '#3b82f6';
+      ctx.fillRect(pad, blockY + 4, 4, blockH - 8);
+
+      // Text lines
+      ctx.textAlign    = 'left';
+      ctx.textBaseline = 'top';
+
+      textLines.forEach((line, i) => {
+        const y = blockY + pad * 0.4 + i * lineH;
+        ctx.shadowColor   = 'rgba(0,0,0,0.6)';
+        ctx.shadowBlur    = 4;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+
+        if (i === 2 && locationData?.coords) {
+          const r  = line.size * 0.45;
+          const cx = textX - 4;
+          const cy = y + line.size * 0.5;
+          ctx.shadowBlur = 0;
+          ctx.fillStyle  = '#3b82f6';
+          ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle  = 'white';
+          ctx.beginPath(); ctx.arc(cx, cy, r * 0.42, 0, Math.PI * 2); ctx.fill();
+          ctx.shadowBlur = 4;
+          ctx.font      = `${line.weight} ${line.size}px 'Inter', sans-serif`;
+          ctx.fillStyle = `rgba(255,255,255,${line.alpha})`;
+          ctx.fillText(line.text, textX + r * 2 + 2, y);
+        } else {
+          ctx.font      = `${line.italic ? 'italic ' : ''}${line.weight} ${line.size}px 'Inter', sans-serif`;
+          ctx.fillStyle = `rgba(255,255,255,${line.alpha})`;
+          ctx.fillText(line.text, textX, y);
+        }
+      });
+
+      onCapture(canvas.toDataURL('image/jpeg', 0.85));
       onClose();
-    }
+    };
+    img.src = capturedImage;
   };
 
   const retake = () => {
     setCapturedImage(null);
+    capturedTimestampRef.current = '';
   };
+
 
   return (
     <motion.div
@@ -348,7 +402,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
         exit={{ scale: 0.95, opacity: 0, y: 30 }}
         className="bg-slate-900 border border-slate-700/50 rounded-3xl w-full max-w-lg max-h-[92vh] overflow-hidden shadow-2xl flex flex-col relative"
       >
-        {/* Header - Made more compact */}
+        {/* Header */}
         <div className="p-4 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-900">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-500/15 rounded-lg">
@@ -378,23 +432,32 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setFacingMode(prev => prev === 'environment' ? 'user' : 'environment')}
-              className="p-2 hover:bg-slate-800 rounded-xl transition text-slate-400"
-              title="Putar Kamera"
-            >
-              <RefreshCw className="w-5 h-5" />
-            </button>
+            {!capturedImage && (
+              <button
+                onClick={() => setFacingMode(prev => prev === 'environment' ? 'user' : 'environment')}
+                className="p-2 hover:bg-slate-800 rounded-xl transition text-slate-400"
+                title="Putar Kamera"
+              >
+                <RefreshCw className="w-5 h-5" />
+              </button>
+            )}
             <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-xl transition text-slate-400">
               <X className="w-6 h-6" />
             </button>
           </div>
         </div>
 
-        {/* Viewfinder */}
-        <div className="relative aspect-square bg-black overflow-hidden flex items-center justify-center">
+        {/* Viewfinder / Preview */}
+        <div className={`relative bg-black overflow-hidden flex items-center justify-center ${capturedImage ? '' : 'aspect-square'}`}>
           {capturedImage ? (
-            <img src={capturedImage} className="w-full h-full object-cover" alt="Captured" />
+            <div className="relative w-full overflow-hidden">
+              <img
+                src={capturedImage}
+                className="w-full h-auto max-h-[65vh] object-contain block"
+                alt="Captured"
+              />
+              <WatermarkOverlay />
+            </div>
           ) : (
             <>
               <video
@@ -428,7 +491,6 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
               {isReady && !error && (
                 <>
-                  {/* Visual Viewfinder Guides - Simplified to a clear frame */}
                   <div className="absolute inset-8 border-2 border-white/5 rounded-2xl pointer-events-none">
                     <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-white/40 -mt-0.5 -ml-0.5 rounded-tl-lg" />
                     <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-white/40 -mt-0.5 -mr-0.5 rounded-tr-lg" />
@@ -436,69 +498,25 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                     <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-white/40 -mb-0.5 -mr-0.5 rounded-br-lg" />
                   </div>
 
-                  {/* Permission Prompt Overlay if not granted */}
                   {permissionStatus !== 'granted' && (
-                    <div className="absolute inset-0 z-[60] bg-black/60 flex flex-col items-center justify-center p-8 text-center backdrop-blur-sm">
-                      <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mb-4">
-                        <MapPin className="w-8 h-8 text-blue-400" />
+                    <div className="absolute inset-0 z-[60] bg-black/70 flex flex-col items-center justify-center p-8 text-center backdrop-blur-sm">
+                      <div className="w-14 h-14 bg-blue-500/20 rounded-full flex items-center justify-center mb-4">
+                        <MapPin className="w-7 h-7 text-blue-400" />
                       </div>
-                      <h4 className="text-white font-bold mb-2">Izin Lokasi Diperlukan</h4>
-                      <p className="text-slate-300 text-xs leading-relaxed mb-6">
+                      <h4 className="text-white font-bold mb-2 text-sm">Izin Lokasi Diperlukan</h4>
+                      <p className="text-slate-300 text-[10px] leading-relaxed mb-6 max-w-[240px]">
                         Untuk menambahkan watermark koordinat dan alamat di foto, kami memerlukan izin akses lokasi perangkat Anda.
                       </p>
                       <button 
                         onClick={() => fetchLocation(true)}
-                        className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-sm font-bold transition-all shadow-xl shadow-blue-600/20 active:scale-95"
+                        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-xl shadow-blue-600/20 active:scale-95"
                       >
                         Izinkan Akses Lokasi
                       </button>
-                      {permissionStatus === 'denied' && (
-                        <p className="mt-4 text-[10px] text-red-400 font-medium">
-                          Akses ditolak. Silakan aktifkan izin lokasi di pengaturan browser Anda dan refresh halaman.
-                        </p>
-                      )}
                     </div>
                   )}
 
-                  {/* Floating Top Right Close Button (Backup) */}
-                  <button 
-                    onClick={onClose}
-                    className="absolute top-4 right-4 z-[70] p-2 bg-black/40 backdrop-blur-md rounded-full text-white/80 hover:text-white border border-white/10"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
-
-                  {/* Live Watermark Preview Overlay - Positioned INSIDE the frame nicely */}
-                  {permissionStatus === 'granted' && (
-                    <div className="absolute bottom-8 left-8 w-full p-4 pointer-events-none">
-                      <div className="relative overflow-hidden max-w-[80%] border-l-4 border-blue-500 pl-3">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-white font-black text-[13px] uppercase tracking-widest leading-none drop-shadow-lg">NEUTRADC</span>
-                          <span className="text-white/90 text-[10px] font-bold drop-shadow-lg">
-                            {new Date().toLocaleString('id-ID', { 
-                              day: '2-digit', month: '2-digit', year: 'numeric', 
-                              hour: '2-digit', minute: '2-digit', hour12: false 
-                            }).replace(/\//g, '.').replace(' ', ', ')}
-                          </span>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center">
-                              <MapPin className="w-2.5 h-2.5 text-white" />
-                            </div>
-                            <span className="text-white text-[10px] font-semibold drop-shadow-lg">
-                              {locationData?.coords || 'Mencari Koordinat...'}
-                            </span>
-                          </div>
-                          {locationData?.address && 
-                           !locationData.address.includes('Mengambil') && 
-                           !locationData.address.includes('terdeteksi') && (
-                            <span className="text-white/70 text-[9px] leading-tight italic mt-1 line-clamp-2 drop-shadow-lg">
-                              {locationData.address}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  {permissionStatus === 'granted' && <WatermarkOverlay />}
                 </>
               )}
             </>
@@ -524,14 +542,14 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                   onClick={retake}
                   className="flex-1 flex items-center justify-center gap-2 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold transition shadow-xl"
                 >
-                  <RefreshCw className="w-5 h-5" />
+                  <RefreshCw className="w-4 h-4" />
                   Ulangi
                 </button>
                 <button
                   onClick={handleApply}
                   className="flex-1 flex items-center justify-center gap-2 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold transition shadow-xl shadow-blue-600/20"
                 >
-                  <Check className="w-5 h-5" />
+                  <Check className="w-4 h-4" />
                   Pakai Foto
                 </button>
               </div>

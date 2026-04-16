@@ -20,7 +20,9 @@ type AppDeps struct {
 	ArchiveCtrl *controllers.ArchiveController
 	AuditCtrl   *controllers.AuditController
 	MaintenanceProgressCtrl *controllers.MaintenanceProgressController
-	RateLimiter *middlewares.RateLimiter
+	RateLimiter      *middlewares.RateLimiter // global catch-all
+	ThrottleHeavy    *middlewares.RateLimiter // POST/DELETE — 5 rps, burst 10
+	ThrottleStandard *middlewares.RateLimiter // GET lists   — 20 rps, burst 40
 }
 func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 	firestoreClient, err := config.InitFirestore(ctx)
@@ -52,7 +54,9 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 	auditCtrl   := controllers.NewAuditController(auditSvc)
 	maintenanceCtrl := controllers.NewMaintenanceProgressController(maintenanceSvc)
 
-	rateLimiter := middlewares.NewRateLimiter(20, 40)
+	rateLimiter     := middlewares.NewRateLimiter(20, 40)
+	throttleHeavy    := middlewares.NewThrottle(5, 10)   // expensive write/delete ops
+	throttleStandard := middlewares.NewThrottle(20, 40)  // normal read ops
 
 	return &AppDeps{
 		ReportCtrl:  reportCtrl,
@@ -62,7 +66,9 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 		ArchiveCtrl: archiveCtrl,
 		AuditCtrl:   auditCtrl,
 		MaintenanceProgressCtrl: maintenanceCtrl,
-		RateLimiter: rateLimiter,
+		RateLimiter:      rateLimiter,
+		ThrottleHeavy:    throttleHeavy,
+		ThrottleStandard: throttleStandard,
 	}, nil
 }
 func SetupRouter(deps *AppDeps) http.HandlerFunc {
