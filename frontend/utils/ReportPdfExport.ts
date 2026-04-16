@@ -161,20 +161,46 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
   };
 
   const drawPhotoCard = (doc: any, x: number, y: number, w: number, h: number, capH: number, photo: PhotoCard, index: number) => {
-    doc.setFillColor(255, 255, 255).setDrawColor(SLATE_200).setLineWidth(0.2);
-    doc.roundedRect(x, y, w - 2, h + capH, 1, 1, 'FD');
+    const cardW = w - 2;
+    const cardX = x;
+    const cardY = y;
 
+    // Card background + border
+    doc.setFillColor(255, 255, 255).setDrawColor(SLATE_200).setLineWidth(0.2);
+    doc.roundedRect(cardX, cardY, cardW, h + capH, 1, 1, 'FD');
+
+    // Photo area
     if (photo.photoBase64) {
-      doc.setFillColor(DARK).rect(x + 0.5, y + 0.5, w - 3, h - 1, 'F');
-      doc.addImage(photo.photoBase64, 'JPEG', x + 1, y + 1, w - 4, h - 2, `p_${index}`, 'FAST');
+      doc.setFillColor(DARK).rect(cardX + 0.5, cardY + 0.5, cardW - 1, h - 1, 'F');
+      doc.addImage(photo.photoBase64, 'JPEG', cardX + 1, cardY + 1, cardW - 2, h - 2, `p_${index}`, 'FAST');
     } else {
-      doc.setFillColor(241, 245, 249).rect(x + 0.5, y + 0.5, w - 3, h - 1, 'F');
-      doc.setFontSize(7).setTextColor(GRAY).text('No Photo', x + (w - 2) / 2, y + h / 2, { align: 'center' });
+      doc.setFillColor(241, 245, 249).rect(cardX + 0.5, cardY + 0.5, cardW - 1, h - 1, 'F');
+      doc.setFontSize(7).setTextColor(GRAY).text('No Photo', cardX + cardW / 2, cardY + h / 2, { align: 'center' });
     }
 
-    doc.setFontSize(isVRV || isPDU ? 6.5 : 7.5).setFont('helvetica', 'normal').setTextColor(DARK);
-    const splitCaption = doc.splitTextToSize(photo.description || '', w - 6);
-    doc.text(splitCaption, x + (w - 2) / 2, y + h + 5, { align: 'center' });
+    // Separator line between photo and caption
+    doc.setDrawColor(SLATE_200).setLineWidth(0.3);
+    doc.line(cardX, cardY + h, cardX + cardW, cardY + h);
+
+    // Caption / remark area — neatly fit inside the capH box
+    const captionText = photo.description || '';
+    const fontSize = isVRV || isPDU ? 6.5 : 7;
+    doc.setFontSize(fontSize).setFont('helvetica', 'bold').setTextColor(DARK);
+
+    const maxWidth = cardW - 6;
+    const lineHeight = fontSize * 0.45; // mm per line at this font size
+    const splitCaption = doc.splitTextToSize(captionText, maxWidth);
+
+    // Limit to lines that fit within capH (reserve 2mm top + 2mm bottom padding)
+    const availableH = capH - 4;
+    const maxLines = Math.max(1, Math.floor(availableH / lineHeight));
+    const displayLines = splitCaption.slice(0, maxLines);
+
+    // Vertically center the block of text in the capH area
+    const blockH = displayLines.length * lineHeight;
+    const textStartY = cardY + h + (capH - blockH) / 2 + lineHeight * 0.8;
+
+    doc.text(displayLines, cardX + cardW / 2, textStartY, { align: 'center', lineHeightFactor: 1.3 });
   };
 
   let curY = drawHeader(doc);
