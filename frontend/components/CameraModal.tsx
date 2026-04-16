@@ -157,6 +157,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     }
 
     const handleStream = (newStream: MediaStream) => {
+      streamRef.current = newStream;
       setStream(newStream);
       if (videoRef.current) {
         videoRef.current.srcObject = newStream;
@@ -170,49 +171,45 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
       setError(null);
       
       // Stop existing tracks if any before switching
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+        setStream(null);
+        // Small delay to let the OS release the camera lock
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
 
-      // Attempt 1: Target Facing Mode with smoother frame rate
+      // Attempt 1: Target Facing Mode
       try {
         const constraints = {
           video: {
             facingMode: facingMode,
             width: { ideal: 1280 },
-            height: { ideal: 720 },
-            frameRate: { ideal: 30, max: 60 }
+            height: { ideal: 720 }
           }
         };
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        handleStream(stream);
+        const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+        handleStream(newStream);
       } catch (err) {
         console.warn(`Attempt 1 (${facingMode}) failed:`, err);
         
-        // Attempt 2: Fallback to any camera without strict constraints
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { frameRate: { ideal: 24 } } 
-          });
-          handleStream(stream);
-        } catch (err2) {
-          throw err2;
-        }
+        // Attempt 2: Fallback
+        const newStream = await navigator.mediaDevices.getUserMedia({ 
+          video: true 
+        });
+        handleStream(newStream);
       }
     } catch (err: any) {
       console.error('Camera Access Error:', err);
       let errorMsg = 'Gagal mengakses kamera.';
       
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        errorMsg = 'Izin kamera ditolak. Silakan berikan izin akses kamera di pengaturan browser Anda.';
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        errorMsg = 'Tidak ditemukan perangkat kamera pada perangkat ini.';
+        errorMsg = 'Izin kamera ditolak. Silakan berikan izin akses kamera.';
       } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
         errorMsg = 'Kamera sedang digunakan oleh aplikasi lain.';
       }
 
       setError(errorMsg);
-      toast.error('Gagal akses kamera');
     } finally {
       setIsInitializing(false);
     }
@@ -223,14 +220,12 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     const originalStyle = window.getComputedStyle(document.body).overflow;
     document.body.style.overflow = 'hidden';
 
-    // Check permission status on mount
+    // Check permission status
     if ('permissions' in navigator) {
-      navigator.permissions.query({ name: 'geolocation' }).then((status) => {
+      navigator.permissions.query({ name: 'geolocation' } as any).then((status) => {
         setPermissionStatus(status.state as any);
         status.onchange = () => setPermissionStatus(status.state as any);
       });
-    } else {
-      setPermissionStatus('prompt');
     }
 
     startCamera();
@@ -238,8 +233,8 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
     return () => {
       document.body.style.overflow = originalStyle;
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
   }, [facingMode]);
