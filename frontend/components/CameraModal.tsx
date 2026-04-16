@@ -17,6 +17,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
   const [isReady, setIsReady] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
 
   const startCamera = async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -38,25 +39,30 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
       setIsInitializing(true);
       setError(null);
       
-      // Attempt 1: Back camera with HD resolution
+      // Stop existing tracks if any before switching
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+
+      // Attempt 1: Target Facing Mode
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: 'environment',
+            facingMode: facingMode,
             width: { ideal: 1280 },
             height: { ideal: 720 }
           }
         });
         handleStream(stream);
       } catch (err) {
-        console.warn('Attempt 1 (environment) failed:', err);
+        console.warn(`Attempt 1 (${facingMode}) failed:`, err);
         
-        // Attempt 2: Default camera without resolution constraints
+        // Attempt 2: Fallback to any camera
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });
           handleStream(stream);
         } catch (err2) {
-          throw err2; // Final failure
+          throw err2;
         }
       }
     } catch (err: any) {
@@ -86,7 +92,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, []);
+  }, [facingMode]);
 
   const takePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -140,9 +146,18 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
             </div>
             <h3 className="font-bold text-white tracking-tight">{title}</h3>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-xl transition text-slate-400">
-            <X className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setFacingMode(prev => prev === 'environment' ? 'user' : 'environment')}
+              className="p-2 hover:bg-slate-800 rounded-xl transition text-slate-400"
+              title="Putar Kamera"
+            >
+              <RefreshCw className="w-5 h-5" />
+            </button>
+            <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-xl transition text-slate-400">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Viewfinder */}
