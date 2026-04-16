@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, Save, ChevronLeft, ChevronRight, X, Eye } from 'lucide-react';
+import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, Save, ChevronLeft, ChevronRight, X, Eye, Download } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { ExcelDocument } from '@/components/DocumentList';
 import { ImageEditor } from '@/components/ImageEditor';
@@ -85,6 +85,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [numberOfCardsToAdd, setNumberOfCardsToAdd] = useState('1');
   const [showPreview, setShowPreview] = useState(false);
   const [activeCameraCardId, setActiveCameraCardId] = useState<string | null>(null);
+  const [isDraftLoading, setIsDraftLoading] = useState(true);
 
   // Helper to get active unit
   const activeUnit = units.find(u => u.id === activeUnitId) || null;
@@ -178,10 +179,11 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
   // Initialize first unit if empty
   useEffect(() => {
-    if (units.length === 0 && !editingData) {
+    if (isDraftLoading || editingData) return;
+    if (units.length === 0) {
       addNewUnit();
     }
-  }, [units.length, editingData]);
+  }, [isDraftLoading, units.length, editingData]);
 
   useEffect(() => {
     if (authCompanyType) {
@@ -195,7 +197,18 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
   // Load Draft Logic
   useEffect(() => {
-    if (!user?.email || editingData) return;
+    if (!user?.email || editingData) {
+      setIsDraftLoading(false);
+      return;
+    }
+
+    const finished = localStorage.getItem('report_finished');
+    if (finished === 'true') {
+      localStorage.removeItem('report_form_draft_v2');
+      localStorage.removeItem('report_finished');
+      setIsDraftLoading(false);
+      return;
+    }
 
     const saved = localStorage.getItem('report_form_draft_v2'); // New key for multi-unit draft
     if (saved) {
@@ -218,13 +231,18 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         console.error('Failed to load draft:', err);
       }
     }
+    setIsDraftLoading(false);
   }, [user?.email, editingData]);
 
 
   // Remove the old auto-template useEffect as it's now handled in addNewUnit
 
   useEffect(() => {
-    if (editingData || user?.email?.toLowerCase() !== 'vrv@gmail.com') return;
+    if (editingData || user?.email?.toLowerCase() !== 'vrv@gmail.com' || isDraftLoading) return;
+
+    // Only auto-apply template if current unit is empty or has default structure
+    const hasExistingPhotos = cards.some(c => c.photoBase64);
+    if (hasExistingPhotos) return;
 
     const isOutdoor = specificDetail.toLowerCase() === 'outdoor';
     const template = isOutdoor ? VRV_TEMPLATE.outdoor : VRV_TEMPLATE.indoor;
@@ -232,7 +250,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     if (template) {
       setCards(template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     }
-  }, [specificDetail, user?.email, editingData]);
+  }, [specificDetail, user?.email, editingData, isDraftLoading]);
 
   useEffect(() => {
     if (editingData) {
@@ -259,7 +277,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   }, [editingData]);
 
   useEffect(() => {
-    if (editingData || !user?.email) return;
+    if (editingData || !user?.email || isDraftLoading) return;
 
     const saveDraft = () => {
       const draft = {
@@ -282,14 +300,18 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         localStorage.setItem('report_form_draft_v2', JSON.stringify(draft));
       } catch (err) {
         if (err instanceof Error && err.name === 'QuotaExceededError') {
-          console.warn('Storage quota exceeded');
+          console.error('Storage quota exceeded');
+          toast.error('Memori penyimpanan penuh! Foto mungkin tidak tersimpan di draft.', {
+            duration: 5000,
+            id: 'quota-error'
+          });
         }
       }
     };
 
     const timeoutId = setTimeout(saveDraft, 1000);
     return () => clearTimeout(timeoutId);
-  }, [maintenanceName, maintenanceTime, specificDetail, vrvUnitDetail, companyType, cards, user?.email, editingData]);
+  }, [maintenanceName, maintenanceTime, specificDetail, vrvUnitDetail, companyType, units, cards, user?.email, editingData, isDraftLoading]);
 
   const handlePhotoChange = async (id: string, file: File | null) => {
     if (file) {
@@ -359,6 +381,20 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
   const handleDescriptionChange = (id: string, description: string) => {
     setCards(prev => prev.map(c => c.id === id ? { ...c, description } : c));
+  };
+
+  const handleDownloadPhoto = (base64: string, description: string, index: number) => {
+    const link = document.createElement('a');
+    link.href = base64;
+    const ts = new Date().getTime();
+    const cleanMain = (maintenanceName || 'report').substring(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const cleanUnit = (specificDetail || 'unit').substring(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const cleanDesc = (description || `doc${index + 1}`).substring(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    link.download = `${cleanMain}_${cleanUnit}_${cleanDesc}_${ts}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Foto diunduh');
   };
 
   const confirmAddCards = () => {
@@ -528,6 +564,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       const { doc, fileName } = result;
       doc.save(fileName);
       await saveReportToFirestore(targetUnit, result);
+      localStorage.setItem('report_finished', 'true');
     }
   };
 
@@ -719,6 +756,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       <>
                         <img src={card.photoBase64} className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => handleDownloadPhoto(card.photoBase64!, card.description, idx)} className="p-2.5 bg-emerald-600/20 backdrop-blur-md rounded-lg hover:bg-emerald-600/30 transition shadow-xl" title="Download Foto"><Download className="w-4 h-4 text-emerald-400" /></button>
                           <button onClick={() => setEditingCardId(card.id)} className="p-2.5 bg-white/20 backdrop-blur-md rounded-lg hover:bg-white/30 transition shadow-xl" title="Edit/Crop"><Scissors className="w-4 h-4 text-white" /></button>
                           <button onClick={() => handlePhotoChange(card.id, null)} className="p-2.5 bg-red-600/20 backdrop-blur-md rounded-lg hover:bg-red-600/30 transition shadow-xl" title="Hapus Foto"><Trash2 className="w-4 h-4 text-red-400" /></button>
                         </div>
@@ -761,7 +799,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 onClick={handleManualSave} 
                 className="px-10 py-4 bg-blue-600/20 text-blue-400 rounded-xl font-black flex items-center justify-center gap-3 border border-blue-500/30 hover:bg-blue-600/30 transition shadow-xl active:scale-95 text-sm sm:text-base"
               >
-                <Save className="w-6 h-6" /> SIMPAN KE CLOUD
+                <Save className="w-6 h-6" /> SIMPAN KE ARSIP DOKUMEN!
               </button>
 
               <button 
@@ -818,6 +856,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             image={cards.find(c => c.id === editingCardId)?.photoBase64 || ''}
             onSave={base64 => handleApplyEdit(editingCardId, base64)}
             onCancel={() => setEditingCardId(null)}
+            description={cards.find(c => c.id === editingCardId)?.description}
+            maintenanceName={maintenanceName}
+            specificDetail={specificDetail}
           />
         )}
       </AnimatePresence>
@@ -827,6 +868,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           <CameraModal
             onCapture={(base64) => handleCapture(activeCameraCardId, base64)}
             onClose={() => setActiveCameraCardId(null)}
+            description={cards.find(c => c.id === activeCameraCardId)?.description}
+            maintenanceName={maintenanceName}
+            specificDetail={specificDetail}
           />
         )}
       </AnimatePresence>

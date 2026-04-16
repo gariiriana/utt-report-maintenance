@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import { X, Camera, RefreshCw, Check, AlertCircle, MapPin } from 'lucide-react';
+import { X, Camera, SwitchCamera, RefreshCw, Check, AlertCircle, MapPin, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDebouncedCallback } from '@/hooks/useDebounce';
 
@@ -9,9 +9,12 @@ interface CameraModalProps {
   onCapture: (base64: string) => void;
   onClose: () => void;
   title?: string;
+  description?: string;
+  maintenanceName?: string;
+  specificDetail?: string;
 }
 
-export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentasi' }: CameraModalProps) {
+export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentasi', description, maintenanceName, specificDetail }: CameraModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -275,72 +278,94 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     setCapturedImage(base64);
   };
 
-  const handleApply = () => {
-    if (!capturedImage || !canvasRef.current) return;
+  const getWatermarkedBase64 = (): Promise<string> => {
+    return new Promise((resolve) => {
+      if (!capturedImage || !canvasRef.current) return resolve('');
 
-    const canvas = canvasRef.current;
-    const ctx    = canvas.getContext('2d');
-    if (!ctx) return;
+      const canvas = canvasRef.current;
+      const ctx    = canvas.getContext('2d');
+      if (!ctx) return resolve('');
 
-    const img = new Image();
-    img.onload = () => {
-      canvas.width  = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
+      const img = new Image();
+      img.onload = () => {
+        canvas.width  = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
 
-      // Burn Watermark
-      const pad   = Math.round(canvas.width * 0.06);
-      const fBase = Math.max(16, canvas.width * 0.034);
-      const lineH = fBase * 1.45;
+        // Burn Watermark
+        const pad   = Math.round(canvas.width * 0.06);
+        const fBase = Math.max(16, canvas.width * 0.034);
+        const lineH = fBase * 1.45;
 
-      const hasAddress = locationData?.address &&
-        !locationData.address.includes('Mengambil') &&
-        !locationData.address.includes('terdeteksi');
+        const hasAddress = locationData?.address &&
+          !locationData.address.includes('Mengambil') &&
+          !locationData.address.includes('terdeteksi');
 
-      const textLines = [
-        { text: 'NEUTRADC',                           size: fBase * 1.25, weight: '900', alpha: 1.0 },
-        { text: capturedTimestampRef.current,         size: fBase * 0.90, weight: '600', alpha: 0.92 },
-        ...(locationData?.coords ? [{ text: locationData.coords, size: fBase * 0.85, weight: '500', alpha: 0.85 }] : []),
-        ...(hasAddress           ? [{ text: locationData!.address, size: fBase * 0.78, weight: '400', alpha: 0.75, italic: true }] : []),
-      ];
+        const textLines = [
+          { text: 'NEUTRADC',                           size: fBase * 1.25, weight: '900', alpha: 1.0 },
+          { text: capturedTimestampRef.current,         size: fBase * 0.90, weight: '600', alpha: 0.92 },
+          ...(locationData?.coords ? [{ text: locationData.coords, size: fBase * 0.85, weight: '500', alpha: 0.85 }] : []),
+          ...(hasAddress           ? [{ text: locationData!.address, size: fBase * 0.78, weight: '400', alpha: 0.75, italic: true }] : []),
+        ];
 
-      const blockH = textLines.length * lineH + pad * 0.6;
-      const blockY = canvas.height - blockH - pad * 0.4;
-      const textX  = pad + 12;
+        const blockH = textLines.length * lineH + pad * 0.6;
+        const blockY = canvas.height - blockH - pad * 0.4;
+        const textX  = pad + 12;
 
-      // Blue line
-      ctx.fillStyle = '#3b82f6';
-      ctx.fillRect(pad, blockY + 4, 4, blockH - 8);
+        ctx.fillStyle = '#3b82f6';
+        ctx.fillRect(pad, blockY + 4, 4, blockH - 8);
 
-      // Text lines
-      ctx.textAlign    = 'left';
-      ctx.textBaseline = 'top';
+        ctx.textAlign    = 'left';
+        ctx.textBaseline = 'top';
 
-      textLines.forEach((line, i) => {
-        const y = blockY + pad * 0.4 + i * lineH;
+        textLines.forEach((line, i) => {
+          const y = blockY + pad * 0.4 + i * lineH;
+          if (i === 2 && locationData?.coords) {
+            const r  = line.size * 0.45;
+            const cx = textX - 4;
+            const cy = y + line.size * 0.5;
+            ctx.fillStyle  = '#3b82f6';
+            ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle  = 'white';
+            ctx.beginPath(); ctx.arc(cx, cy, r * 0.42, 0, Math.PI * 2); ctx.fill();
+            ctx.font      = `${line.weight} ${line.size}px 'Inter', sans-serif`;
+            ctx.fillStyle = `rgba(255,255,255,${line.alpha})`;
+            ctx.fillText(line.text, textX + r * 2 + 2, y);
+          } else {
+            ctx.font      = `${line.italic ? 'italic ' : ''}${line.weight} ${line.size}px 'Inter', sans-serif`;
+            ctx.fillStyle = `rgba(255,255,255,${line.alpha})`;
+            ctx.fillText(line.text, textX, y);
+          }
+        });
 
-        if (i === 2 && locationData?.coords) {
-          const r  = line.size * 0.45;
-          const cx = textX - 4;
-          const cy = y + line.size * 0.5;
-          ctx.fillStyle  = '#3b82f6';
-          ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
-          ctx.fillStyle  = 'white';
-          ctx.beginPath(); ctx.arc(cx, cy, r * 0.42, 0, Math.PI * 2); ctx.fill();
-          ctx.font      = `${line.weight} ${line.size}px 'Inter', sans-serif`;
-          ctx.fillStyle = `rgba(255,255,255,${line.alpha})`;
-          ctx.fillText(line.text, textX + r * 2 + 2, y);
-        } else {
-          ctx.font      = `${line.italic ? 'italic ' : ''}${line.weight} ${line.size}px 'Inter', sans-serif`;
-          ctx.fillStyle = `rgba(255,255,255,${line.alpha})`;
-          ctx.fillText(line.text, textX, y);
-        }
-      });
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = capturedImage;
+    });
+  };
 
-      onCapture(canvas.toDataURL('image/jpeg', 0.85));
+  const handleApply = async () => {
+    const finalImage = await getWatermarkedBase64();
+    if (finalImage) {
+      onCapture(finalImage);
       onClose();
-    };
-    img.src = capturedImage;
+    }
+  };
+
+  const downloadCapturedImage = async () => {
+    const finalImage = await getWatermarkedBase64();
+    if (!finalImage) return;
+
+    const link = document.body.appendChild(document.createElement('a'));
+    link.href = finalImage;
+    const ts = new Date().getTime();
+    const cleanMain = (maintenanceName || 'report').substring(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const cleanUnit = (specificDetail || 'unit').substring(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const cleanDesc = (description || 'capture').substring(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    link.download = `${cleanMain}_${cleanUnit}_${cleanDesc}_${ts}.jpg`;
+    link.click();
+    link.remove();
+    toast.success('Gambar berhasil diunduh');
   };
 
   const retake = () => {
@@ -392,13 +417,22 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
           </div>
           <div className="flex items-center gap-2">
             {!capturedImage && (
-              <button
-                onClick={() => setFacingMode(prev => prev === 'environment' ? 'user' : 'environment')}
-                className="p-2 hover:bg-slate-800 rounded-xl transition text-slate-400"
-                title="Putar Kamera"
-              >
-                <RefreshCw className="w-5 h-5" />
-              </button>
+              <>
+                <button
+                  onClick={startCamera}
+                  className="p-2 hover:bg-slate-800 rounded-xl transition text-slate-400"
+                  title="Refresh Kamera"
+                >
+                  <RefreshCw className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setFacingMode(prev => prev === 'environment' ? 'user' : 'environment')}
+                  className="p-2 hover:bg-slate-800 rounded-xl transition text-slate-400"
+                  title="Putar Kamera"
+                >
+                  <SwitchCamera className="w-5 h-5" />
+                </button>
+              </>
             )}
             <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-xl transition text-slate-400">
               <X className="w-6 h-6" />
@@ -503,6 +537,13 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                 >
                   <RefreshCw className="w-4 h-4" />
                   Ulangi
+                </button>
+                <button
+                  onClick={downloadCapturedImage}
+                  className="flex-1 flex items-center justify-center gap-2 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold transition shadow-xl"
+                >
+                  <Download className="w-4 h-4" />
+                  Download
                 </button>
                 <button
                   onClick={handleApply}

@@ -2,16 +2,19 @@ import { useState, useCallback, useRef } from 'react';
 import ReactCrop, { centerCrop, makeAspectCrop, type Crop, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { motion } from 'motion/react';
-import { X, Check, RotateCw, ZoomIn, Scissors, RefreshCcw } from 'lucide-react';
+import { X, Check, RotateCw, ZoomIn, Scissors, RefreshCcw, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ImageEditorProps {
     image: string;
     onSave: (editedImage: string) => void;
     onCancel: () => void;
+    description?: string;
+    maintenanceName?: string;
+    specificDetail?: string;
 }
 
-export function ImageEditor({ image, onSave, onCancel }: ImageEditorProps) {
+export function ImageEditor({ image, onSave, onCancel, description, maintenanceName, specificDetail }: ImageEditorProps) {
     const [crop, setCrop] = useState<Crop>();
     const [pixelCrop, setPixelCrop] = useState<PixelCrop>();
     const [zoom, setZoom] = useState(1);
@@ -137,6 +140,20 @@ export function ImageEditor({ image, onSave, onCancel }: ImageEditorProps) {
             console.error(e);
             toast.error('Failed to crop image');
         }
+    };
+
+    const handleDownload = () => {
+        const link = document.createElement('a');
+        link.href = image;
+        const ts = new Date().getTime();
+        const cleanMain = (maintenanceName || 'report').substring(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const cleanUnit = (specificDetail || 'unit').substring(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const cleanDesc = (description || 'edited').substring(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        link.download = `${cleanMain}_${cleanUnit}_${cleanDesc}_${ts}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success('Foto diunduh');
     };
 
     const handleReset = () => {
@@ -309,6 +326,14 @@ export function ImageEditor({ image, onSave, onCancel }: ImageEditorProps) {
                     </div>
 
                     <div className="flex items-center justify-end gap-3 pt-2">
+                        <button
+                            onClick={handleDownload}
+                            className="px-5 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 rounded-xl font-medium transition flex items-center gap-2 border border-emerald-500/20"
+                        >
+                            <Download className="w-4 h-4" />
+                            Download
+                        </button>
+                        <div className="flex-1" />
                         <button
                             onClick={onCancel}
                             className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition"
