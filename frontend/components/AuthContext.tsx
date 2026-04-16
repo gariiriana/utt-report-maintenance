@@ -3,10 +3,12 @@ import {
   User,
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence
 } from 'firebase/auth';
 import { auth, db } from '@/api/firebase';
-import { doc, setDoc, serverTimestamp, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc, onSnapshot, getDocFromCache } from 'firebase/firestore';
 
 interface UserData {
   email: string;
@@ -35,6 +37,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let unsubscribeDoc: (() => void) | null = null;
+    
+    // Explicitly set persistence
+    setPersistence(auth, browserLocalPersistence).catch(err => console.error("Persistence failed", err));
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
@@ -46,7 +51,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (user) {
         try {
+          // Use a shorter timeout or handle offline gracefully
           const userDocRef = doc(db, 'users', user.uid);
+          // Firestore with persistence enabled will automatically try cache first or in parallel
           const userDoc = await getDoc(userDocRef);
 
           if (!userDoc.exists()) {
@@ -60,8 +67,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
             setUserRole(isAdminEmail ? 'admin' : 'engineer');
           }
+          }
         } catch (error) {
-          console.warn('Error creating user document:', error);
+          console.warn('Error creating/fetching user document:', error);
+          // Don't block loading if it's just a connectivity issue
+          setLoading(false);
         }
 
         const userDocRef = doc(db, 'users', user.uid);
@@ -101,6 +111,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
+    if (!navigator.onLine) {
+      throw new Error('Login memerlukan koneksi internet untuk verifikasi keamanan pertama kali.');
+    }
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
     if (userCredential.user) {

@@ -83,8 +83,8 @@ service cloud.firestore {
                     && isValidString(request.resource.data.email, 200)
                     && isValidString(request.resource.data.uid, 128);
       
-      allow read: if request.auth != null 
-                  && (request.auth.uid == userId || isAdminSafe() || isStandbyEngineer());
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && (isAdminSafe() || isStandbyEngineer());
       
       allow update: if request.auth != null 
                     && (
