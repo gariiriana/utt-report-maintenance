@@ -87,8 +87,7 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
   ],
   'fld@gmail.com': [
     'Status', 'Test Ping', 'System Setting', 'FG BBOX #2 CABLES',
-    'Tag Cable', 'Cleaning', 'Voltage Measurement', 'Current Measurement',
-    'Test'
+    'Tag Cable', 'Cleaning', 'MAPS', 'Test'
   ]
 };
 

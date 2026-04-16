@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, Save, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, Save, ChevronLeft, ChevronRight, X, Eye } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { ExcelDocument } from '@/components/DocumentList';
 import { ImageEditor } from '@/components/ImageEditor';
@@ -762,6 +762,13 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 className="px-10 py-4 bg-blue-600/20 text-blue-400 rounded-xl font-black flex items-center justify-center gap-3 border border-blue-500/30 hover:bg-blue-600/30 transition shadow-xl active:scale-95 text-sm sm:text-base"
               >
                 <Save className="w-6 h-6" /> SIMPAN KE CLOUD
+              </button>
+
+              <button 
+                onClick={() => setShowPreview(true)} 
+                className="px-10 py-4 bg-emerald-600/20 text-emerald-400 rounded-xl font-black flex items-center justify-center gap-3 border border-emerald-500/30 hover:bg-emerald-600/30 transition shadow-xl active:scale-95 text-sm sm:text-base"
+              >
+                <Eye className="w-6 h-6" /> PREVIEW REPORT
               </button>
 
               <button 
