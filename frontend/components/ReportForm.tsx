@@ -21,6 +21,7 @@ import {
 import { generateReportPDF, loadLogoBase64 } from '@/utils/ReportPdfExport';
 import { compressImage, compressBase64Image } from '@/utils/imageCompression';
 import { PreviewReport } from '@/components/PreviewReport';
+import { CameraModal } from '@/components/CameraModal';
 
 import imgStatusWld from '@/assets/Wld/status.jpeg';
 import imgTestPingWld from '@/assets/Wld/test_ping.jpeg';
@@ -54,7 +55,7 @@ interface ReportFormProps {
 }
 
 export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
-  const { user, companyType: authCompanyType } = useAuth();
+  const { user, userRole, companyType: authCompanyType } = useAuth();
   const [companyType, setCompanyType] = useState<'neutra' | 'bri'>('neutra');
   const [maintenanceName, setMaintenanceName] = useState('');
   const [maintenanceTime, setMaintenanceTime] = useState('');
@@ -76,6 +77,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [addCardModalOpen, setAddCardModalOpen] = useState(false);
   const [numberOfCardsToAdd, setNumberOfCardsToAdd] = useState('1');
   const [showPreview, setShowPreview] = useState(false);
+  const [activeCameraCardId, setActiveCameraCardId] = useState<string | null>(null);
 
   useEffect(() => {
     if (authCompanyType) {
@@ -87,9 +89,45 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [showPreview]);
 
+  // Load Draft Logic
+  useEffect(() => {
+    if (!user?.email || editingData) return;
+
+    const saved = localStorage.getItem('report_form_draft');
+    if (saved) {
+      try {
+        const draft = JSON.parse(saved);
+        if (draft.userEmail === user.email) {
+          setMaintenanceName(draft.maintenanceName || '');
+          setMaintenanceTime(draft.maintenanceTime || '');
+          setSpecificDetail(draft.specificDetail || '');
+          setVrvUnitDetail(draft.vrvUnitDetail || '');
+          if (draft.companyType) setCompanyType(draft.companyType);
+          if (draft.cards && draft.cards.length > 0) {
+            setCards(draft.cards.map((c: any) => ({
+              ...c,
+              photo: null // Rehydrate photo object as null (base64 is in photoBase64)
+            })));
+          }
+          toast.info('Draft laporan otomatis dimuat', { duration: 2000 });
+        }
+      } catch (err) {
+        console.error('Failed to load draft:', err);
+      }
+    }
+  }, [user?.email, editingData]);
+
 
   useEffect(() => {
     if (!user?.email || editingData) return;
+
+    // Skip template initialization if a draft exists for this user
+    const saved = localStorage.getItem('report_form_draft');
+    if (saved) {
+      try {
+        if (JSON.parse(saved).userEmail === user.email) return;
+      } catch (e) {}
+    }
 
     const lowerEmail = user.email.toLowerCase();
 
@@ -226,6 +264,17 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       }
     } else {
       setCards(prev => prev.map(c => c.id === id ? { ...c, photo: null, photoBase64: undefined } : c));
+    }
+  };
+
+  const handleCapture = async (id: string, base64: string) => {
+    try {
+      toast.loading('Compressing...', { id: `camera-${id}` });
+      const compressed = await compressBase64Image(base64, { maxWidth: 800, quality: 0.5 });
+      setCards(prev => prev.map(c => c.id === id ? { ...c, photo: null, photoBase64: compressed } : c));
+      toast.success('Foto ditangkap', { id: `camera-${id}` });
+    } catch {
+      toast.error('Gagal memproses foto kamera', { id: `camera-${id}` });
     }
   };
 
@@ -571,11 +620,31 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                         </div>
                       </>
                     ) : (
-                      <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-slate-800/80 transition group/upload">
-                        <Camera className="w-8 h-8 text-slate-700 group-hover/upload:text-blue-500 transition-colors" />
-                        <span className="text-[10px] text-slate-600 font-bold uppercase mt-2 group-hover/upload:text-slate-400">Unggah Foto</span>
-                        <input type="file" className="hidden" accept="image/*" onChange={e => handlePhotoChange(card.id, e.target.files?.[0] || null)} />
-                      </label>
+                      <div className="w-full h-full bg-slate-950 flex transition-all">
+                        {(!userRole || userRole === 'engineer' || userRole === 'standby_engineer') ? (
+                          <>
+                            <button 
+                              onClick={() => setActiveCameraCardId(card.id)}
+                              className="flex-1 flex flex-col items-center justify-center gap-2 hover:bg-blue-600/10 transition-colors group/camera border-r border-slate-800/50"
+                            >
+                              <Camera className="w-7 h-7 text-slate-600 group-hover/camera:text-blue-400 transition-colors" />
+                              <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tight group-hover/camera:text-slate-300">Ambil Foto</span>
+                            </button>
+                            
+                            <label className="flex-1 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-emerald-600/10 transition-colors group/upload">
+                              <Upload className="w-7 h-7 text-slate-600 group-hover/upload:text-emerald-400 transition-colors" />
+                              <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tight group-hover/upload:text-slate-300">Unggah Foto</span>
+                              <input type="file" className="hidden" accept="image/*" onChange={e => handlePhotoChange(card.id, e.target.files?.[0] || null)} />
+                            </label>
+                          </>
+                        ) : (
+                          <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-slate-800/80 transition-colors group/upload">
+                            <Upload className="w-8 h-8 text-slate-700 group-hover/upload:text-blue-500 transition-colors" />
+                            <span className="text-[10px] text-slate-600 font-bold uppercase mt-2 group-hover/upload:text-slate-400">Unggah Foto</span>
+                            <input type="file" className="hidden" accept="image/*" onChange={e => handlePhotoChange(card.id, e.target.files?.[0] || null)} />
+                          </label>
+                        )}
+                      </div>
                     )}
                   </div>
                   <textarea value={card.description} onChange={e => handleDescriptionChange(card.id, e.target.value)} className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg p-3 text-sm text-white outline-none focus:ring-1 focus:ring-blue-500 transition placeholder:text-slate-700" rows={2} placeholder="Masukkan deskripsi dokumentasi..." />
@@ -634,6 +703,15 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             image={cards.find(c => c.id === editingCardId)?.photoBase64 || ''}
             onSave={base64 => handleApplyEdit(editingCardId, base64)}
             onCancel={() => setEditingCardId(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {activeCameraCardId && (
+          <CameraModal
+            onCapture={(base64) => handleCapture(activeCameraCardId, base64)}
+            onClose={() => setActiveCameraCardId(null)}
           />
         )}
       </AnimatePresence>
