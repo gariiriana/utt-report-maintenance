@@ -51,7 +51,8 @@ export interface PhotoCard {
 
 export interface ReportUnit {
   id: string;
-  specificDetail: string;
+  tabName: string; // Excel Tab Marker (e.g., Sub A)
+  specificDetail: string; // Detail Unit Maintenance (e.g., FCU-01)
   vrvUnitDetail: string;
   cards: PhotoCard[];
 }
@@ -101,6 +102,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }));
   };
 
+  const setTabName = (val: string) => {
+    if (!activeUnitId) return;
+    setUnits(prev => prev.map(u => u.id === activeUnitId ? { ...u, tabName: val } : u));
+  };
   const setSpecificDetail = (val: string) => {
     if (!activeUnitId) return;
     setUnits(prev => prev.map(u => u.id === activeUnitId ? { ...u, specificDetail: val } : u));
@@ -110,6 +115,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     setUnits(prev => prev.map(u => u.id === activeUnitId ? { ...u, vrvUnitDetail: val } : u));
   };
 
+  const tabName = activeUnit?.tabName || '';
   const specificDetail = activeUnit?.specificDetail || '';
   const vrvUnitDetail = activeUnit?.vrvUnitDetail || '';
 
@@ -159,7 +165,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
     const newUnit: ReportUnit = {
       id: newId,
-      specificDetail: name,
+      tabName: name || `Unit ${units.length + 1}`,
+      specificDetail: '',
       vrvUnitDetail: '',
       cards: initialCards.length > 0 ? initialCards : createDefaultCards(11)
     };
@@ -560,7 +567,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 mb-6 font-geist">
             <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 mb-6 font-geist">
               {/* Main Maintenance Info */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Nama Maintenance</label>
                   <input
@@ -574,6 +581,16 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Waktu Maintenance</label>
                   <input type="date" value={maintenanceTime} onChange={e => setMaintenanceTime(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-400 mb-2">Detail Unit Maintenance</label>
+                  <input
+                    type="text"
+                    value={specificDetail}
+                    onChange={e => setSpecificDetail(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-blue-400 font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="cth. FCU-01 / VRV-02"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Situs / Proyek</label>
@@ -611,8 +628,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                           <div className="flex items-center gap-2 sm:gap-3 w-full">
                              <input
                               autoFocus
-                              value={specificDetail}
-                              onChange={(e) => setSpecificDetail(e.target.value)}
+                              value={tabName}
+                              onChange={(e) => setTabName(e.target.value)}
                               className="bg-transparent border-none outline-none text-blue-400 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider w-full"
                               placeholder="NAMA UNIT..."
                             />
@@ -632,7 +649,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                         ) : (
                           <div className="flex items-center gap-2 w-full">
                             <span className="text-slate-500 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider truncate group-hover:text-slate-300">
-                              {unit.specificDetail || `Unit ${idx + 1}`}
+                              {unit.tabName || `Unit ${idx + 1}`}
                             </span>
                           </div>
                         )}
