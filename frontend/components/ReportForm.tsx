@@ -576,10 +576,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         reportData.createdAt = serverTimestamp();
       }
 
-      const collectionName = editingData?.documentType === 'excel' ? 'excel_documents' : 'pdf_documents';
       const apiUrl = import.meta.env.VITE_API_URL;
+      const isOnline = navigator.onLine;
 
-      if (apiUrl && !editingData) {
+      if (isOnline && apiUrl && !editingData) {
         const photos = cardsToSave.map((card, i) => ({
           index: i + 1,
           photoBase64: card.photoBase64 || '',

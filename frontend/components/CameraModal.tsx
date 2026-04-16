@@ -60,6 +60,12 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
         const coordsString = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
         
         try {
+          // If offline, don't even try Nominatim (prevents hangs)
+          if (!navigator.onLine) {
+            setLocationData({ coords: coordsString, address: 'Lokasi Offline (GPS)', loading: false });
+            return;
+          }
+
           // Fetch 1: Zoom 18 (Street Level)
           const res1 = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`, {
             headers: { 'Accept-Language': 'id', 'User-Agent': 'UTT-Maintenance-App' },
