@@ -26,7 +26,7 @@ Aplikasi ini mengadopsi arsitektur decoupled yang modern, menggabungkan interakt
 ### **Backend & Cloud**
 
 - **🐹 Go (Golang)**: Engine backend berperforma tinggi untuk manajemen data intensif.
-- **🔥 Firebase Ecosystem**: 
+- **🔥 Firebase Ecosystem**:
   - **Authentication**: Protokol keamanan user tingkat lanjut.
   - **Firestore**: Database NoSQL real-time untuk sinkronisasi arsip laporan.
   - **Security Rules**: Validasi integritas data pada level database.
@@ -36,19 +36,24 @@ Aplikasi ini mengadopsi arsitektur decoupled yang modern, menggabungkan interakt
 ## ✨ Fitur Unggulan
 
 ### 📸 Smart Camera & Watermarking
+
 Sistem pengambilan foto dokumentasi pintar yang menyematkan metadata teknis secara presisi langsung ke dalam citra:
+
 - **Real-time GPS Integration**: Menyematkan koordinat Latitude/Longitude secara akurat.
 - **Dynamic Address Lookup**: Konversi koordinat menjadi alamat lokasi fisik secara otomatis.
 - **"Burn-on-Apply" Technology**: Sinkronisasi sempurna antara tampilan preview di perangkat dengan hasil akhir foto yang dihasilkan.
 - **Professional Branding**: Watermark eksklusif NEUTRADC dengan gradien khusus untuk keterbacaan tinggi.
 
 ### ⚡ Optimasi Performa
+
 Dirancang untuk menangani beban kerja operasional yang tinggi dengan efisiensi maksimal:
+
 - **Frontend Debouncing**: Optimasi request API geolokasi untuk mengurangi latensi dan penggunaan bandwidth.
 - **Tiered API Throttling**: Sistem *rate-limiting* berlapis (Heavy/Standard/Global) di sisi backend untuk menjaga integritas server dari beban berlebih.
 - **AbortController Integration**: Manajemen siklus hidup request untuk memastikan konsistensi data selama pencarian lokasi.
 
 ### 📝 Manajemen Laporan (Report Management)
+
 - **Fluid Photo Upload**: Alur kerja dokumentasi yang intuitif dengan preview instan.
 - **Professional Export**: Konversi laporan ke format Excel (.xlsx) dan PDF (A4) siap cetak secara simultan.
 - **Auto-pagination**: Pengaturan tata letak otomatis yang rapi (9 foto per halaman) untuk laporan PDF.
@@ -58,11 +63,13 @@ Dirancang untuk menangani beban kerja operasional yang tinggi dengan efisiensi m
 ## 🚀 Panduan Instalasi
 
 ### Prasyarat
+
 - Node.js (v18+)
 - Go (v1.24+)
 - pnpm / npm
 
 ### Instalasi Dependencies
+
 ```bash
 # Clone repository
 git clone https://github.com/gariiriana/utt-report-maintenance.git
@@ -75,6 +82,7 @@ npm run backend:build
 ```
 
 ### Menjalankan Development Server
+
 ```bash
 npm run dev
 ```
@@ -92,6 +100,7 @@ npm run dev
 ---
 
 ## 📄 Lisensi
+
 Sistem ini bersifat privat dan dikembangkan eksklusif untuk kebutuhan operasional **PT United Transworld Trading (UTT)**. Dokumen dan source code ini merupakan properti perusahaan yang dilindungi.
 
 ---
