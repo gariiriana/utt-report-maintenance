@@ -82,10 +82,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [addCardModalOpen, setAddCardModalOpen] = useState(false);
-  const [numberOfCardsToAdd, setNumberOfCardsToAdd] = useState('1');
+  const [numberOfCardsToAdd, setNumberOfCardsToAdd] = useState<string>('1');
   const [showPreview, setShowPreview] = useState(false);
   const [activeCameraCardId, setActiveCameraCardId] = useState<string | null>(null);
   const [isDraftLoading, setIsDraftLoading] = useState(true);
+  const [focusedCardId, setFocusedCardId] = useState<string | null>(null);
+  const [cardClipboard, setCardClipboard] = useState<{ photoBase64: string | null, description: string } | null>(null);
 
   // Helper to get active unit
   const activeUnit = units.find(u => u.id === activeUnitId) || null;
@@ -235,7 +237,55 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   }, [user?.email, editingData]);
 
 
-  // Remove the old auto-template useEffect as it's now handled in addNewUnit
+  // Keyboard Shortcuts (Copy-Paste)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in a description textarea or input
+      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) {
+        return;
+      }
+
+      // Ctrl + C (Copy)
+      if (e.ctrlKey && e.key === 'c') {
+        if (!focusedCardId) return;
+        const cardToCopy = cards.find(c => c.id === focusedCardId);
+        if (cardToCopy) {
+          setCardClipboard({
+            photoBase64: cardToCopy.photoBase64 || null,
+            description: cardToCopy.description
+          });
+          toast.success('Kartu disalin ke clipboard', { 
+            icon: '📋',
+            duration: 1500 
+          });
+        }
+      }
+
+      // Ctrl + V (Paste)
+      if (e.ctrlKey && e.key === 'v') {
+        if (!focusedCardId || !cardClipboard) return;
+        
+        setCards(prev => prev.map(c => {
+          if (c.id === focusedCardId) {
+            return {
+              ...c,
+              photoBase64: cardClipboard.photoBase64,
+              description: cardClipboard.description
+            };
+          }
+          return c;
+        }));
+        
+        toast.success('Konten kartu ditempel', { 
+          icon: '📥',
+          duration: 1500 
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [focusedCardId, cardClipboard, cards]);
 
   useEffect(() => {
     if (editingData || user?.email?.toLowerCase() !== 'vrv@gmail.com' || isDraftLoading) return;
@@ -746,7 +796,15 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {cards.map((card, idx) => (
-                <div key={card.id} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50 relative group transition-all hover:border-blue-500/30">
+                <div 
+                  key={card.id} 
+                  onClick={() => setFocusedCardId(card.id)}
+                  className={`bg-slate-800/50 p-4 rounded-xl border relative group transition-all duration-300 ${
+                    focusedCardId === card.id 
+                    ? 'border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.2)] ring-1 ring-blue-500/50' 
+                    : 'border-slate-700/50 hover:border-blue-500/30'
+                  }`}
+                >
                   <div className="flex justify-between items-center mb-3">
                     <span className="text-xs font-bold text-slate-500 tracking-wider uppercase">Doc #{idx + 1}</span>
                     <button onClick={() => removeCard(card.id)} className="text-slate-500 hover:text-red-400 transition" title="Hapus Card"><Trash2 className="w-4 h-4" /></button>
