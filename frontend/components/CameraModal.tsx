@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { X, Camera, RefreshCw, Check, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -181,21 +181,12 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
               )}
 
               {isReady && !error && (
-                <>
-                  <button 
-                    onClick={onClose}
-                    className="absolute top-4 right-4 z-[30] p-3 bg-black/50 backdrop-blur-md rounded-full text-white hover:bg-black/70 transition-all active:scale-95 shadow-lg"
-                    title="Tutup Kamera"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
                   <div className="absolute inset-x-8 inset-y-8 border-2 border-white/20 rounded-2xl pointer-events-none">
                     <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-white/60 -mt-0.5 -ml-0.5 rounded-tl-lg" />
                     <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-white/60 -mt-0.5 -mr-0.5 rounded-tr-lg" />
                     <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-white/60 -mb-0.5 -ml-0.5 rounded-bl-lg" />
-                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-white/60 -mb-0.5 -mr-0.5 rounded-br-lg" />
+                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-white/60 -mb-0.5 -mr-0.5 rounded-tr-lg" />
                   </div>
-                </>
               )}
             </>
           )}
