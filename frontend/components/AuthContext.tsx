@@ -67,7 +67,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
             setUserRole(isAdminEmail ? 'admin' : 'engineer');
           }
-          }
         } catch (error) {
           console.warn('Error creating/fetching user document:', error);
           // Don't block loading if it's just a connectivity issue
