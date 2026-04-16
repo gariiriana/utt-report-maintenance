@@ -413,7 +413,7 @@ export function FileManagement({
                 }
             });
 
-            const blob = new Blob(byteArrays, { type: mimeString });
+            const blob = new Blob(byteArrays as any[], { type: mimeString });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;

@@ -287,6 +287,39 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusedCardId, cardClipboard, cards]);
 
+  // Handle External Paste (Images)
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      // Ignore if typing in a description textarea or input
+      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) {
+        return;
+      }
+
+      const items = e.clipboardData?.items;
+      if (!items || !focusedCardId) return;
+
+      for (const item of items) {
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          if (file) {
+            const toastId = toast.loading('Memproses gambar dari clipboard...');
+            try {
+              const base64 = await compressImage(file);
+              setCards(prev => prev.map(c => c.id === focusedCardId ? { ...c, photo: file, photoBase64: base64 } : c));
+              toast.success('Gambar berhasil ditempel!', { id: toastId });
+            } catch (error) {
+              console.error('Paste error:', error);
+              toast.error('Gagal menempel gambar', { id: toastId });
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [focusedCardId]);
+
   useEffect(() => {
     if (editingData || user?.email?.toLowerCase() !== 'vrv@gmail.com' || isDraftLoading) return;
 
