@@ -99,7 +99,7 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Measurement Ampere',
     'Cleaning Panel',
     'Test Manual Mode',
-    'Cleaning Chain Manual Mode',
+    'Measurement Noise',
     'Gap rollingdoor ke lantai dan atap mesin',
     'Test fungsi push button'
   ]

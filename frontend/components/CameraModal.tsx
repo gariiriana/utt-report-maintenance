@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'motion/react';
-import { X, Camera, SwitchCamera, RefreshCw, Check, AlertCircle, MapPin, Download } from 'lucide-react';
+import { X, Camera, SwitchCamera, RefreshCw, Check, AlertCircle, MapPin, Download, Zap, ZapOff, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDebouncedCallback } from '@/hooks/useDebounce';
+import { Slider } from './ui/slider';
 
 interface CameraModalProps {
   onCapture: (base64: string) => void;
@@ -31,6 +32,13 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
   const [permissionStatus, setPermissionStatus] = useState<'prompt' | 'granted' | 'denied' | 'loading'>('loading');
   // AbortController ref — cancels in-flight Nominatim requests if user re-triggers
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Flash & Zoom State
+  const [torchSupported, setTorchSupported] = useState(false);
+  const [isTorchOn, setIsTorchOn] = useState(false);
+  const [zoomSupported, setZoomSupported] = useState(false);
+  const [zoomRange, setZoomRange] = useState({ min: 1, max: 1, step: 0.1 });
+  const [zoom, setZoom] = useState(1);
 
   // Core fetch logic — wrapped in useCallback so the debounce hook gets a stable reference
   const _doFetchLocation = useCallback(async (retry = false) => {
@@ -139,8 +147,39 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
       return;
     }
 
-    const handleStream = (newStream: MediaStream) => {
+    const handleStream = async (newStream: MediaStream) => {
       streamRef.current = newStream;
+      const videoTrack = newStream.getVideoTracks()[0];
+      
+      if (videoTrack) {
+        try {
+          // Check Capabilities
+          const caps = videoTrack.getCapabilities() as any;
+          console.log("Camera Capabilities:", caps);
+          
+          if (caps.torch) {
+            setTorchSupported(true);
+            setIsTorchOn(false); // Reset torch when switching camera
+          } else {
+            setTorchSupported(false);
+          }
+          
+          if (caps.zoom) {
+            setZoomSupported(true);
+            setZoomRange({
+              min: caps.zoom.min || 1,
+              max: caps.zoom.max || 1,
+              step: caps.zoom.step || 0.1
+            });
+            setZoom(caps.zoom.min || 1);
+          } else {
+            setZoomSupported(false);
+          }
+        } catch (e) {
+          console.warn("Failed to get camera capabilities:", e);
+        }
+      }
+
       if (videoRef.current) {
         videoRef.current.srcObject = newStream;
       }
@@ -193,6 +232,39 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
       setError(errorMsg);
     } finally {
       setIsInitializing(false);
+    }
+  };
+
+  const toggleTorch = async () => {
+    if (!streamRef.current) return;
+    const videoTrack = streamRef.current.getVideoTracks()[0];
+    if (videoTrack && torchSupported) {
+      try {
+        const newState = !isTorchOn;
+        await videoTrack.applyConstraints({
+          advanced: [{ torch: newState }]
+        } as any);
+        setIsTorchOn(newState);
+      } catch (err) {
+        console.error("Failed to toggle torch:", err);
+        toast.error("Gagal mengaktifkan senter");
+      }
+    }
+  };
+
+  const handleZoomChange = async (value: number[]) => {
+    const zoomValue = value[0];
+    setZoom(zoomValue);
+    if (!streamRef.current) return;
+    const videoTrack = streamRef.current.getVideoTracks()[0];
+    if (videoTrack && zoomSupported) {
+      try {
+        await videoTrack.applyConstraints({
+          advanced: [{ zoom: zoomValue }]
+        } as any);
+      } catch (err) {
+        console.error("Failed to apply zoom:", err);
+      }
     }
   };
 
@@ -424,6 +496,15 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
           <div className="flex items-center gap-2">
             {!capturedImage && (
               <>
+                {torchSupported && (
+                  <button
+                    onClick={toggleTorch}
+                    className={`p-2 rounded-xl transition ${isTorchOn ? 'bg-amber-500/20 text-amber-400' : 'text-slate-400 hover:bg-slate-800'}`}
+                    title="Toggle Flash"
+                  >
+                    {isTorchOn ? <Zap className="w-5 h-5 fill-amber-400" /> : <ZapOff className="w-5 h-5" />}
+                  </button>
+                )}
                 <button
                   onClick={startCamera}
                   className="p-2 hover:bg-slate-800 rounded-xl transition text-slate-400"
@@ -516,6 +597,36 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                   )}
 
                   {permissionStatus === 'granted' && <WatermarkOverlay />}
+
+                  {/* Zoom Control Overlay */}
+                  {zoomSupported && !capturedImage && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-4 bg-black/30 backdrop-blur-md p-3 rounded-2xl border border-white/10 z-[70]">
+                      <button 
+                        onClick={() => handleZoomChange([Math.min(zoomRange.max, zoom + 0.5)])}
+                        className="p-1.5 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition"
+                      >
+                        <ZoomIn className="w-4 h-4" />
+                      </button>
+                      <div className="h-32 flex items-center justify-center">
+                        <Slider
+                          defaultValue={[zoom]}
+                          value={[zoom]}
+                          min={zoomRange.min}
+                          max={zoomRange.max}
+                          step={zoomRange.step}
+                          orientation="vertical"
+                          onValueChange={handleZoomChange}
+                          className="h-full"
+                        />
+                      </div>
+                      <button 
+                        onClick={() => handleZoomChange([Math.max(zoomRange.min, zoom - 0.5)])}
+                        className="p-1.5 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition"
+                      >
+                        <ZoomOut className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
             </>
