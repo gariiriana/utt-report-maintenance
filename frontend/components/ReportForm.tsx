@@ -221,13 +221,32 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           setMaintenanceTime(draft.maintenanceTime || '');
           if (draft.companyType) setCompanyType(draft.companyType);
           if (draft.units && draft.units.length > 0) {
-            setUnits(draft.units.map((u: any) => ({
-              ...u,
-              cards: u.cards.map((c: any) => ({ ...c, photo: null }))
-            })));
+            const lowerEmail = user.email.toLowerCase();
+            let template: string[] | null = null;
+            if (lowerEmail === 'vrv@gmail.com') {
+              template = VRV_TEMPLATE.indoor; // Default to indoor for draft sync simplicity
+            } else if (['lv@gmail.com', 'ats@gmail.com', 'trafo@gmail.com'].includes(lowerEmail)) {
+              template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
+            } else {
+              template = REPORT_TEMPLATES[lowerEmail] || (lowerEmail.includes('dock') || lowerEmail.includes('leveler') ? REPORT_TEMPLATES['dock'] : null);
+            }
+
+            setUnits(draft.units.map((u: any) => {
+              let unitCards = u.cards.map((c: any) => ({ ...c, photo: null }));
+              if (template && unitCards.length < template.length) {
+                const missing = template.slice(unitCards.length);
+                const appended = missing.map((desc, i) => ({
+                  id: `${unitCards.length + i + 1}`,
+                  photo: null,
+                  description: desc
+                }));
+                unitCards = [...unitCards, ...appended];
+              }
+              return { ...u, cards: unitCards };
+            }));
             setActiveUnitId(draft.units[0].id);
           }
-          toast.info('Draft multi-unit dimuat', { duration: 2000 });
+          toast.info('Draft multi-unit dimuat (disinkronisasi dengan template)', { duration: 2000 });
         }
       } catch (err) {
         console.error('Failed to load draft:', err);

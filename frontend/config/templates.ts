@@ -91,7 +91,7 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
   ],
   'door@gmail.com': [
     'Visual inspection Button Operation',
-    'Cleaning rolling door',
+    'Cleaning relling door',
     'Cleaning Motor',
     'Lubrication Chain Motor',
     'Lubrication Gear Motor',
@@ -99,7 +99,9 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Measurement Ampere',
     'Cleaning Panel',
     'Test Manual Mode',
-    'Cleaning Chain Manual Mode'
+    'Cleaning Chain Manual Mode',
+    'Gap rollingdoor ke lantai dan atap mesin',
+    'Test fungsi push button'
   ]
 };
 
