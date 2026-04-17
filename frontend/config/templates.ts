@@ -88,6 +88,18 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
   'fld@gmail.com': [
     'Status', 'Test Ping', 'System Setting', 'FG BBOX #2 CABLES',
     'Tag Cable', 'Cleaning', 'MAPS', 'Test'
+  ],
+  'door@gmail.com': [
+    'Visual inspection Button Operation',
+    'Cleaning rolling door',
+    'Cleaning Motor',
+    'Lubrication Chain Motor',
+    'Lubrication Gear Motor',
+    'Measurement Voltage Phase to Phase',
+    'Measurement Ampere',
+    'Cleaning Panel',
+    'Test Manual Mode',
+    'Cleaning Chain Manual Mode'
   ]
 };
 
