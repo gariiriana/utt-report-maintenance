@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef } from 'react';
-import ReactCrop, { centerCrop, makeAspectCrop, type Crop, type PixelCrop } from 'react-image-crop';
+import { useState, useRef } from 'react';
+import ReactCrop, { centerCrop, type Crop, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { motion } from 'motion/react';
 import { X, Check, RotateCw, ZoomIn, Scissors, RefreshCcw, Download } from 'lucide-react';

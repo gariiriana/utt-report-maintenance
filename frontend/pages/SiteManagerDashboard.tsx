@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  TrendingUp,
   ArrowRight,
   Save,
   Loader2,

@@ -46,7 +46,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
       toast.error('Browser tidak mendukung geolokasi');
       return;
     }
-    
+
     // Cancel any previous in-flight request before starting a new one
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -54,83 +54,83 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    setLocationData(prev => ({ 
-      coords: prev?.coords || '', 
-      address: prev?.address || 'Mengambil lokasi...', 
-      loading: true 
+    setLocationData(prev => ({
+      coords: prev?.coords || '',
+      address: prev?.address || 'Mengambil lokasi...',
+      loading: true
     }));
-    
+
     const timeout = retry ? 0 : 500;
     setTimeout(() => {
-    const tryFetch = (highAccuracy: boolean) => {
-      navigator.geolocation.getCurrentPosition(async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        const coordsString = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-        
-        try {
-          // If offline, don't even try Nominatim (prevents hangs)
-          if (!navigator.onLine) {
-            setLocationData({ coords: coordsString, address: 'Lokasi Offline (GPS)', loading: false });
+      const tryFetch = (highAccuracy: boolean) => {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          const coordsString = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+
+          try {
+            // If offline, don't even try Nominatim (prevents hangs)
+            if (!navigator.onLine) {
+              setLocationData({ coords: coordsString, address: 'Lokasi Offline (GPS)', loading: false });
+              return;
+            }
+
+            // Fetch 1: Zoom 18 (Street Level)
+            const res1 = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`, {
+              headers: { 'Accept-Language': 'id', 'User-Agent': 'UTT-Maintenance-App' },
+              signal: controller.signal
+            });
+            const data1 = await res1.json();
+            const addr1 = data1.address;
+
+            // Fetch 2: Zoom 14 (District Level) - Better for Kecamatan & Postcode
+            const res2 = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14&addressdetails=1`, {
+              headers: { 'Accept-Language': 'id', 'User-Agent': 'UTT-Maintenance-App' },
+              signal: controller.signal
+            });
+            const data2 = await res2.json();
+            const addr2 = data2.address;
+
+            if (controller.signal.aborted) return;
+
+            // Smart extraction with multiple fallbacks
+            const pCode = data1.extratags?.plus_code || 'J5CX+5R7';
+            const desa = addr1.village || addr1.suburb || addr1.neighbourhood || addr1.hamlet || 'Desa';
+            const kecamatan = addr1.city_district || addr1.municipality || addr2.city_district || addr2.municipality || addr2.county || 'Cikarang Pusat';
+            const provinsi = addr1.state || addr2.state || 'Jawa Barat';
+            const kodepos = addr1.postcode || addr2.postcode || '17530';
+
+            const fullAddressParts = [pCode, desa, kecamatan, provinsi, kodepos].filter(Boolean);
+            const detailAddress = fullAddressParts.length >= 3 ? fullAddressParts.join(', ') : '';
+
+            setLocationData({ coords: coordsString, address: detailAddress, loading: false });
+          } catch (err: unknown) {
+            if (err instanceof Error && err.name === 'AbortError') return;
+            console.error('Reverse Geocode Error:', err);
+            setLocationData({ coords: coordsString, address: '', loading: false });
+          }
+        }, (err) => {
+          console.warn(`Geolocation error (${highAccuracy ? 'High' : 'Low'} Accuracy):`, err);
+          if (highAccuracy && err.code !== 1) {
+            // Fallback to low accuracy if high fails (unless permission denied)
+            tryFetch(false);
             return;
           }
 
-          // Fetch 1: Zoom 18 (Street Level)
-          const res1 = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`, {
-            headers: { 'Accept-Language': 'id', 'User-Agent': 'UTT-Maintenance-App' },
-            signal: controller.signal
-          });
-          const data1 = await res1.json();
-          const addr1 = data1.address;
+          let msg = 'Gagal mengambil lokasi';
+          if (err.code === 1) msg = 'Izin lokasi ditolak';
+          else if (err.code === 3) msg = 'Waktu pencarian lokasi habis';
 
-          // Fetch 2: Zoom 14 (District Level) - Better for Kecamatan & Postcode
-          const res2 = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14&addressdetails=1`, {
-            headers: { 'Accept-Language': 'id', 'User-Agent': 'UTT-Maintenance-App' },
-            signal: controller.signal
-          });
-          const data2 = await res2.json();
-          const addr2 = data2.address;
-          
-          if (controller.signal.aborted) return;
+          toast.error(msg);
+          setLocationData(null);
+        }, {
+          enableHighAccuracy: highAccuracy,
+          timeout: highAccuracy ? 8000 : 15000,
+          maximumAge: highAccuracy ? 0 : 60000
+        });
+      };
 
-          // Smart extraction with multiple fallbacks
-          const pCode = data1.extratags?.plus_code || 'J5CX+5R7'; 
-          const desa = addr1.village || addr1.suburb || addr1.neighbourhood || addr1.hamlet || 'Desa';
-          const kecamatan = addr1.city_district || addr1.municipality || addr2.city_district || addr2.municipality || addr2.county || 'Cikarang Pusat';
-          const provinsi = addr1.state || addr2.state || 'Jawa Barat';
-          const kodepos = addr1.postcode || addr2.postcode || '17530';
-
-          const fullAddressParts = [pCode, desa, kecamatan, provinsi, kodepos].filter(Boolean);
-          const detailAddress = fullAddressParts.length >= 3 ? fullAddressParts.join(', ') : '';
-
-          setLocationData({ coords: coordsString, address: detailAddress, loading: false });
-        } catch (err: unknown) {
-          if (err instanceof Error && err.name === 'AbortError') return; 
-          console.error('Reverse Geocode Error:', err);
-          setLocationData({ coords: coordsString, address: '', loading: false });
-        }
-      }, (err) => {
-        console.warn(`Geolocation error (${highAccuracy ? 'High' : 'Low'} Accuracy):`, err);
-        if (highAccuracy && err.code !== 1) {
-          // Fallback to low accuracy if high fails (unless permission denied)
-          tryFetch(false);
-          return;
-        }
-        
-        let msg = 'Gagal mengambil lokasi';
-        if (err.code === 1) msg = 'Izin lokasi ditolak';
-        else if (err.code === 3) msg = 'Waktu pencarian lokasi habis';
-        
-        toast.error(msg);
-        setLocationData(null);
-      }, { 
-        enableHighAccuracy: highAccuracy, 
-        timeout: highAccuracy ? 8000 : 15000, 
-        maximumAge: highAccuracy ? 0 : 60000 
-      });
-    };
-
-    const waitTimeout = retry ? 0 : 500;
-    setTimeout(() => tryFetch(true), waitTimeout);
+      const waitTimeout = retry ? 0 : 500;
+      setTimeout(() => tryFetch(true), waitTimeout);
     }, timeout);
   }, []);
 
@@ -150,20 +150,20 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     const handleStream = async (newStream: MediaStream) => {
       streamRef.current = newStream;
       const videoTrack = newStream.getVideoTracks()[0];
-      
+
       if (videoTrack) {
         try {
           // Check Capabilities
           const caps = videoTrack.getCapabilities() as any;
           console.log("Camera Capabilities:", caps);
-          
+
           if (caps.torch) {
             setTorchSupported(true);
             setIsTorchOn(false); // Reset torch when switching camera
           } else {
             setTorchSupported(false);
           }
-          
+
           if (caps.zoom) {
             setZoomSupported(true);
             setZoomRange({
@@ -190,7 +190,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     try {
       setIsInitializing(true);
       setError(null);
-      
+
       // Stop existing tracks if any before switching
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
@@ -212,17 +212,17 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
         handleStream(newStream);
       } catch (err) {
         console.warn(`Attempt 1 (${facingMode}) failed:`, err);
-        
+
         // Attempt 2: Fallback
-        const newStream = await navigator.mediaDevices.getUserMedia({ 
-          video: true 
+        const newStream = await navigator.mediaDevices.getUserMedia({
+          video: true
         });
         handleStream(newStream);
       }
     } catch (err: any) {
       console.error('Camera Access Error:', err);
       let errorMsg = 'Gagal mengakses kamera.';
-      
+
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         errorMsg = 'Izin kamera ditolak. Silakan berikan izin akses kamera.';
       } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
@@ -323,12 +323,12 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
               </div>
             )}
             {locationData?.address &&
-             !locationData.address.includes('Mengambil') &&
-             !locationData.address.includes('terdeteksi') && (
-              <span className="text-white/75 text-[9px] leading-tight italic mt-0.5 max-w-[280px]">
-                {locationData.address}
-              </span>
-            )}
+              !locationData.address.includes('Mengambil') &&
+              !locationData.address.includes('terdeteksi') && (
+                <span className="text-white/75 text-[9px] leading-tight italic mt-0.5 max-w-[280px]">
+                  {locationData.address}
+                </span>
+              )}
           </div>
         </div>
       </div>
@@ -337,12 +337,12 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
   const takePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
-    const video  = videoRef.current;
+    const video = videoRef.current;
     const canvas = canvasRef.current;
-    const ctx    = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    canvas.width  = video.videoWidth;
+    canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0);
 
@@ -361,17 +361,17 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
       if (!capturedImage || !canvasRef.current) return resolve('');
 
       const canvas = canvasRef.current;
-      const ctx    = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d');
       if (!ctx) return resolve('');
 
       const img = new Image();
       img.onload = () => {
-        canvas.width  = img.width;
+        canvas.width = img.width;
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
 
         // Burn Watermark
-        const pad   = Math.round(canvas.width * 0.06);
+        const pad = Math.round(canvas.width * 0.06);
         const fBase = Math.max(16, canvas.width * 0.034);
         const lineH = fBase * 1.45;
 
@@ -380,37 +380,37 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
           !locationData.address.includes('terdeteksi');
 
         const textLines = [
-          { text: 'NEUTRADC',                           size: fBase * 1.25, weight: '900', alpha: 1.0 },
-          { text: capturedTimestampRef.current,         size: fBase * 0.90, weight: '600', alpha: 0.92 },
+          { text: 'NEUTRADC', size: fBase * 1.25, weight: '900', alpha: 1.0 },
+          { text: capturedTimestampRef.current, size: fBase * 0.90, weight: '600', alpha: 0.92 },
           ...(locationData?.coords ? [{ text: locationData.coords, size: fBase * 0.85, weight: '500', alpha: 0.85 }] : []),
-          ...(hasAddress           ? [{ text: locationData!.address, size: fBase * 0.78, weight: '400', alpha: 0.75, italic: true }] : []),
+          ...(hasAddress ? [{ text: locationData!.address, size: fBase * 0.78, weight: '400', alpha: 0.75, italic: true }] : []),
         ];
 
         const blockH = textLines.length * lineH + pad * 0.6;
         const blockY = canvas.height - blockH - pad * 0.4;
-        const textX  = pad + 12;
+        const textX = pad + 12;
 
         ctx.fillStyle = '#3b82f6';
         ctx.fillRect(pad, blockY + 4, 4, blockH - 8);
 
-        ctx.textAlign    = 'left';
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
 
         textLines.forEach((line, i) => {
           const y = blockY + pad * 0.4 + i * lineH;
           if (i === 2 && locationData?.coords) {
-            const r  = line.size * 0.45;
+            const r = line.size * 0.45;
             const cx = textX - 4;
             const cy = y + line.size * 0.5;
-            ctx.fillStyle  = '#3b82f6';
+            ctx.fillStyle = '#3b82f6';
             ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle  = 'white';
+            ctx.fillStyle = 'white';
             ctx.beginPath(); ctx.arc(cx, cy, r * 0.42, 0, Math.PI * 2); ctx.fill();
-            ctx.font      = `${line.weight} ${line.size}px 'Inter', sans-serif`;
+            ctx.font = `${line.weight} ${line.size}px 'Inter', sans-serif`;
             ctx.fillStyle = `rgba(255,255,255,${line.alpha})`;
             ctx.fillText(line.text, textX + r * 2 + 2, y);
           } else {
-            ctx.font      = `${line.italic ? 'italic ' : ''}${line.weight} ${line.size}px 'Inter', sans-serif`;
+            ctx.font = `${line.italic ? 'italic ' : ''}${line.weight} ${line.size}px 'Inter', sans-serif`;
             ctx.fillStyle = `rgba(255,255,255,${line.alpha})`;
             ctx.fillText(line.text, textX, y);
           }
@@ -473,7 +473,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
             <div className="flex flex-col">
               <h3 className="font-bold text-white text-xs tracking-tight">{title}</h3>
               {locationData ? (
-                <button 
+                <button
                   onClick={() => fetchLocation(true)}
                   className="flex items-center gap-1 group"
                 >
@@ -483,7 +483,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                   </span>
                 </button>
               ) : (
-                <button 
+                <button
                   onClick={() => fetchLocation(true)}
                   className="flex items-center gap-1 px-2 py-0.5 bg-red-500/10 rounded-full border border-red-500/20"
                 >
@@ -546,7 +546,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                 playsInline
                 className={`w-full h-full object-cover ${isReady ? 'opacity-100' : 'opacity-0'} transition-opacity`}
               />
-              
+
               {isInitializing && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4">
                   <div className="w-12 h-12 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
@@ -560,7 +560,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                     <AlertCircle className="w-8 h-8 text-red-500" />
                   </div>
                   <p className="text-sm text-slate-300 leading-relaxed">{error}</p>
-                  <button 
+                  <button
                     onClick={startCamera}
                     className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-bold transition"
                   >
@@ -587,7 +587,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                       <p className="text-slate-300 text-[10px] leading-relaxed mb-6 max-w-[240px]">
                         Untuk menambahkan watermark koordinat dan alamat di foto, kami memerlukan izin akses lokasi perangkat Anda.
                       </p>
-                      <button 
+                      <button
                         onClick={() => fetchLocation(true)}
                         className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-xl shadow-blue-600/20 active:scale-95"
                       >
@@ -601,7 +601,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                   {/* Zoom Control Overlay */}
                   {zoomSupported && !capturedImage && (
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-4 bg-black/30 backdrop-blur-md p-3 rounded-2xl border border-white/10 z-[70]">
-                      <button 
+                      <button
                         onClick={() => handleZoomChange([Math.min(zoomRange.max, zoom + 0.5)])}
                         className="p-1.5 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition"
                       >
@@ -619,7 +619,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                           className="h-full"
                         />
                       </div>
-                      <button 
+                      <button
                         onClick={() => handleZoomChange([Math.max(zoomRange.min, zoom - 0.5)])}
                         className="p-1.5 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition"
                       >
@@ -643,7 +643,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                 className="w-20 h-20 bg-white rounded-full p-1 border-4 border-slate-700 hover:scale-105 active:scale-95 transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed group"
               >
                 <div className="w-full h-full bg-slate-100 rounded-full flex items-center justify-center group-hover:bg-white transition">
-                   <div className="w-8 h-8 border-4 border-slate-900 rounded-full" />
+                  <div className="w-8 h-8 border-4 border-slate-900 rounded-full" />
                 </div>
               </button>
             ) : (

@@ -8,7 +8,7 @@ import {
   browserLocalPersistence
 } from 'firebase/auth';
 import { auth, db } from '@/api/firebase';
-import { doc, setDoc, serverTimestamp, getDoc, onSnapshot, getDocFromCache } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc, onSnapshot } from 'firebase/firestore';
 
 interface UserData {
   email: string;
