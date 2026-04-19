@@ -22,6 +22,7 @@ import { generateReportPDF, loadLogoBase64 } from '@/utils/ReportPdfExport';
 import { compressImage, compressBase64Image } from '@/utils/imageCompression';
 import { PreviewReport } from '@/components/PreviewReport';
 import { CameraModal } from '@/components/CameraModal';
+import { draftStorage } from '@/utils/draftStorage';
 
 import imgStatusWld from '@/assets/Wld/status.jpeg';
 import imgTestPingWld from '@/assets/Wld/test_ping.jpeg';
@@ -204,55 +205,77 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       return;
     }
 
-    const finished = localStorage.getItem('report_finished');
-    if (finished === 'true') {
-      localStorage.removeItem('report_form_draft_v2');
-      localStorage.removeItem('report_finished');
-      setIsDraftLoading(false);
-      return;
-    }
-
-    const saved = localStorage.getItem('report_form_draft_v2'); // New key for multi-unit draft
-    if (saved) {
-      try {
-        const draft = JSON.parse(saved);
-        if (draft.userEmail === user.email) {
-          setMaintenanceName(draft.maintenanceName || '');
-          setMaintenanceTime(draft.maintenanceTime || '');
-          if (draft.companyType) setCompanyType(draft.companyType);
-          if (draft.units && draft.units.length > 0) {
-            const lowerEmail = user.email.toLowerCase();
-            let template: string[] | null = null;
-            if (lowerEmail === 'vrv@gmail.com') {
-              template = VRV_TEMPLATE.indoor; // Default to indoor for draft sync simplicity
-            } else if (['lv@gmail.com', 'ats@gmail.com', 'trafo@gmail.com'].includes(lowerEmail)) {
-              template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
-            } else {
-              template = REPORT_TEMPLATES[lowerEmail] || (lowerEmail.includes('dock') || lowerEmail.includes('leveler') ? REPORT_TEMPLATES['dock'] : null);
-            }
-
-            setUnits(draft.units.map((u: any) => {
-              let unitCards = u.cards.map((c: any) => ({ ...c, photo: null }));
-              if (template && unitCards.length < template.length) {
-                const missing = template.slice(unitCards.length);
-                const appended = missing.map((desc, i) => ({
-                  id: `${unitCards.length + i + 1}`,
-                  photo: null,
-                  description: desc
-                }));
-                unitCards = [...unitCards, ...appended];
-              }
-              return { ...u, cards: unitCards };
-            }));
-            setActiveUnitId(draft.units[0].id);
-          }
-          toast.info('Draft multi-unit dimuat (disinkronisasi dengan template)', { duration: 2000 });
-        }
-      } catch (err) {
-        console.error('Failed to load draft:', err);
+    const loadDraft = async () => {
+      const finished = localStorage.getItem('report_finished');
+      if (finished === 'true') {
+        await draftStorage.remove('report_form_draft_v2');
+        localStorage.removeItem('report_finished');
+        setIsDraftLoading(false);
+        return;
       }
-    }
-    setIsDraftLoading(false);
+
+      // 1. Try Loading from IndexedDB (New Storage)
+      let saved = await draftStorage.get('report_form_draft_v2');
+      
+      // 2. Fallback to LocalStorage (Migration)
+      if (!saved) {
+        const legacySaved = localStorage.getItem('report_form_draft_v2');
+        if (legacySaved) {
+          try {
+            saved = JSON.parse(legacySaved);
+            // Move to IndexedDB and remove from localStorage
+            await draftStorage.set('report_form_draft_v2', saved);
+            localStorage.removeItem('report_form_draft_v2');
+            console.log('Draft migrated from localStorage to IndexedDB');
+          } catch (e) {
+            console.error('Failed to parse legacy draft:', e);
+          }
+        }
+      }
+
+      if (saved) {
+        try {
+          const draft = typeof saved === 'string' ? JSON.parse(saved) : saved;
+          if (draft.userEmail === user.email) {
+            setMaintenanceName(draft.maintenanceName || '');
+            setMaintenanceTime(draft.maintenanceTime || '');
+            if (draft.companyType) setCompanyType(draft.companyType);
+            if (draft.units && draft.units.length > 0) {
+              const lowerEmail = user?.email?.toLowerCase() || '';
+              let template: string[] | null = null;
+              if (lowerEmail === 'vrv@gmail.com') {
+                template = VRV_TEMPLATE.indoor; // Default to indoor for draft sync simplicity
+              } else if (['lv@gmail.com', 'ats@gmail.com', 'trafo@gmail.com'].includes(lowerEmail)) {
+                template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
+              } else {
+                template = REPORT_TEMPLATES[lowerEmail] || (lowerEmail.includes('dock') || lowerEmail.includes('leveler') ? REPORT_TEMPLATES['dock'] : null);
+              }
+
+              setUnits(draft.units.map((u: any) => {
+                let unitCards = u.cards.map((c: any) => ({ ...c, photo: null }));
+                if (template && unitCards.length < template.length) {
+                  const missing = template.slice(unitCards.length);
+                  const appended = missing.map((desc, i) => ({
+                    id: `${unitCards.length + i + 1}`,
+                    photo: null,
+                    description: desc
+                  }));
+                  unitCards = [...unitCards, ...appended];
+                }
+                return { ...u, cards: unitCards };
+              }));
+              setActiveUnitId(draft.units[0].id);
+            }
+            toast.info('Draft dimuat dari penyimpanan aman (IndexedDB)', { duration: 2000 });
+          }
+        } catch (err) {
+          console.error('Failed to process draft:', err);
+        }
+      }
+      setIsDraftLoading(false);
+    };
+
+    loadDraft();
   }, [user?.email, editingData]);
 
 
@@ -381,7 +404,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   useEffect(() => {
     if (editingData || !user?.email || isDraftLoading) return;
 
-    const saveDraft = () => {
+    const saveDraft = async () => {
       const draft = {
         userEmail: user.email,
         maintenanceName,
@@ -399,21 +422,16 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       };
 
       try {
-        localStorage.setItem('report_form_draft_v2', JSON.stringify(draft));
+        await draftStorage.set('report_form_draft_v2', draft);
       } catch (err) {
-        if (err instanceof Error && err.name === 'QuotaExceededError') {
-          console.error('Storage quota exceeded');
-          toast.error('Memori penyimpanan penuh! Foto mungkin tidak tersimpan di draft.', {
-            duration: 5000,
-            id: 'quota-error'
-          });
-        }
+        console.error('Storage error:', err);
+        // IndexedDB handles much larger data, so quota issues are rare
       }
     };
 
     const timeoutId = setTimeout(saveDraft, 1000);
     return () => clearTimeout(timeoutId);
-  }, [maintenanceName, maintenanceTime, specificDetail, vrvUnitDetail, companyType, units, cards, user?.email, editingData, isDraftLoading]);
+  }, [maintenanceName, maintenanceTime, companyType, units, user?.email, editingData, isDraftLoading]);
 
   const handlePhotoChange = async (id: string, file: File | null) => {
     if (file) {
@@ -940,7 +958,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             companyType={companyType}
             userEmail={user?.email || ''}
             onBack={() => setShowPreview(false)}
-            onExport={handleExportPDF}
+            onExport={() => handleExportPDF()}
           />
         )}
       </AnimatePresence>
