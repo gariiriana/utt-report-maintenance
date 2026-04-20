@@ -503,36 +503,90 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   };
 
   const handleBulkPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files?.length) return;
-    const toastId = toast.loading(`Processing ${files.length} photos...`);
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const toastId = toast.loading(`Memproses ${files.length} foto...`);
+    let successCount = 0;
+    let failCount = 0;
+    const MAX_SIZE = 20 * 1024 * 1024; // 20MB
+
     try {
-      const currentCards = [...cards];
-      let fileIndex = 0;
-      for (let i = 0; i < currentCards.length && fileIndex < files.length; i++) {
-        if (!currentCards[i].photo) {
-          if (files[fileIndex].size <= 5 * 1024 * 1024) {
-            currentCards[i] = { ...currentCards[i], photo: files[fileIndex], photoBase64: await compressImage(files[fileIndex]) };
-            fileIndex++;
-          } else {
-            toast.error(`File ${files[fileIndex].name} too large`, { id: toastId });
-            fileIndex++; i--;
+      const results: { file: File; base64: string }[] = [];
+      
+      // Batch processing for speed (3 at a time)
+      const batchSize = 3;
+      for (let i = 0; i < files.length; i += batchSize) {
+        const batch = files.slice(i, i + batchSize);
+        await Promise.all(batch.map(async (file) => {
+          if (file.size > MAX_SIZE) {
+            failCount++;
+            return;
           }
-        }
+          try {
+            const b64 = await compressImage(file);
+            results.push({ file, base64: b64 });
+            successCount++;
+          } catch (err) {
+            console.error('Compression failed:', err);
+            failCount++;
+          }
+        }));
+        
+        const totalProcessed = successCount + failCount;
+        toast.loading(`Memproses: ${totalProcessed} / ${files.length} foto...`, { id: toastId });
       }
-      while (fileIndex < files.length) {
-        if (files[fileIndex].size <= 5 * 1024 * 1024) {
-          const nextId = (Math.max(...currentCards.map(c => parseInt(c.id))) + 1).toString();
-          currentCards.push({ id: nextId, photo: files[fileIndex], photoBase64: await compressImage(files[fileIndex]), description: '' });
-        }
-        fileIndex++;
+
+      if (successCount > 0) {
+        setCards(prev => {
+          const newCards = [...prev];
+          let resultIdx = 0;
+
+          // 1. Fill empty slots first (where no photo exists)
+          for (let i = 0; i < newCards.length && resultIdx < results.length; i++) {
+            if (!newCards[i].photoBase64 && !newCards[i].photo) {
+              newCards[i] = { 
+                ...newCards[i], 
+                photo: results[resultIdx].file, 
+                photoBase64: results[resultIdx].base64 
+              };
+              resultIdx++;
+            }
+          }
+
+          // 2. Append remaining to new cards
+          while (resultIdx < results.length) {
+            const maxId = newCards.length > 0 ? Math.max(...newCards.map(c => parseInt(c.id) || 0)) : 0;
+            newCards.push({
+              id: (maxId + 1).toString(),
+              photo: results[resultIdx].file,
+              photoBase64: results[resultIdx].base64,
+              description: ''
+            });
+            resultIdx++;
+          }
+
+          return newCards;
+        });
       }
-      setCards(currentCards);
-      toast.success('Upload complete', { id: toastId });
-    } catch {
-      toast.error('Gagal process foto', { id: toastId });
+
+      if (failCount > 0) {
+        toast.error(`${successCount} berhasil, ${failCount} gagal (Pastikan ukuran file < 20MB)`, { 
+          id: toastId, 
+          duration: 5000 
+        });
+      } else if (successCount > 0) {
+        toast.success(`Berhasil mengunggah ${successCount} foto!`, { id: toastId });
+      } else {
+        toast.error('Tidak ada foto yang berhasil diproses', { id: toastId });
+      }
+
+    } catch (error) {
+      console.error('Bulk upload error:', error);
+      toast.error('Terjadi kesalahan sistem saat memproses foto', { id: toastId });
+    } finally {
+      e.target.value = '';
     }
-    e.target.value = '';
   };
 
   const handleApplyEdit = (id: string, editedBase64: string) => {
