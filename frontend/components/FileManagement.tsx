@@ -133,7 +133,7 @@ export function FileManagement({
     const isHSE = userRole === 'hse';
     const canUpload = propAllowUpload !== undefined
         ? propAllowUpload
-        : (userRole === 'admin' || userRole === collectionName);
+        : (userRole === 'admin' || userRole === collectionName || (collectionName === 'files' && (userRole === 'engineer' || userRole === 'standby_engineer')));
     const canDelete = isAdmin || isTDEorCBRE || isHSE || userRole === 'engineer' || userRole === 'standby_engineer';
 
     const [files, setFiles] = useState<FileData[]>([]);

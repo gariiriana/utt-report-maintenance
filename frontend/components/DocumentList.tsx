@@ -82,7 +82,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
     try {
       setLoading(true);
-      const excelQuery = isAdmin
+      const excelQuery = (isAdmin || isEngineer)
         ? query(collection(db, 'excel_documents'))
         : query(
           collection(db, 'excel_documents'),
@@ -107,7 +107,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           documentType: 'excel',
         });
       });
-      const pdfQuery = isAdmin
+      const pdfQuery = (isAdmin || isEngineer)
         ? query(collection(db, 'pdf_documents'))
         : query(
           collection(db, 'pdf_documents'),

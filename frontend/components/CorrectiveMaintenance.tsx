@@ -51,8 +51,8 @@ interface CorrectiveMaintenanceProps {
 
 export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanceProps) {
     const { user, userRole } = useAuth();
-    const canCreate = !readOnly && userRole === 'standby_engineer';
-    const canDelete = !readOnly && (userRole === 'admin' || userRole === 'standby_engineer');
+    const canCreate = !readOnly && (userRole === 'engineer' || userRole === 'standby_engineer' || userRole === 'admin');
+    const canDelete = !readOnly && (userRole === 'admin' || userRole === 'engineer' || userRole === 'standby_engineer');
 
     const [reports, setReports] = useState<CorrectiveReport[]>([]);
     const [loading, setLoading] = useState(true);
@@ -100,8 +100,8 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
         const file = e.target.files?.[0];
         if (!file) return;
 
-        if (file.size > 5 * 1024 * 1024) {
-            toast.error('Max photo size is 5MB');
+        if (file.size > 20 * 1024 * 1024) {
+            toast.error('Max photo size is 20MB');
             return;
         }
 
