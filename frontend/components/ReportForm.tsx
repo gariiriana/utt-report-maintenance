@@ -273,7 +273,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               }));
               setActiveUnitId(draft.units[0].id);
             }
-            toast.info('Draft dimuat dari penyimpanan aman (IndexedDB)', { duration: 2000 });
           }
         } catch (err) {
           console.error('Failed to process draft:', err);
