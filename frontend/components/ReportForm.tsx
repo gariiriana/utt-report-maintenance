@@ -188,28 +188,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   };
 
   // Initialize first unit if empty
-  const handleNewReport = async () => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus semua data laporan ini dan memulai laporan baru?')) return;
-    
-    setMaintenanceName('');
-    setMaintenanceTime(new Date().toISOString().slice(0, 16));
-    
-    // Clear draft from storage FIRST to prevent auto-save from writing it back mid-reset
-    if (user?.email) {
-      const storageKey = `report_draft_${user.email}`;
-      await draftStorage.remove(storageKey);
-    }
-
-    // Reset units to trigger initial unit creation
-    setUnits([]);
-    
-    if (editingData) {
-      onClearEdit?.();
-    }
-    
-    toast.success('Laporan baru telah dimulai');
-  };
-
   useEffect(() => {
     if (isDraftLoading || editingData) return;
     if (units.length === 0) {
@@ -782,6 +760,18 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       doc.save(fileName);
       await saveReportToFirestore(targetUnit, result);
       localStorage.setItem('report_finished', 'true');
+
+      // Clear draft after successful export to start fresh next time
+      if (user?.email && !editingData) {
+        const storageKey = `report_draft_${user.email}`;
+        await draftStorage.remove(storageKey).catch(err => console.error("Failed to clear draft:", err));
+        
+        // Reset states to default empty report
+        setMaintenanceName('');
+        setMaintenanceTime(new Date().toISOString().slice(0, 16));
+        setUnits([]); // This will trigger the effect to add "Unit 1"
+        toast.info("Laporan selesai diekspor. Draft telah dibersihkan.");
+      }
     }
   };
 
@@ -940,16 +930,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   </h2>
                 </div>
                 <div className="flex items-center gap-3 self-start sm:self-auto">
-                  {(userRole === 'engineer' || userRole === 'standby_engineer') && (
-                    <button
-                      onClick={handleNewReport}
-                      className="px-4 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-full flex items-center gap-2 transition-all font-bold text-[9px] uppercase tracking-widest group shadow-lg shadow-red-500/5"
-                      title="Reset Laporan & Mulai Baru"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5 group-hover:rotate-180 transition-transform duration-500" />
-                      <span>New Report</span>
-                    </button>
-                  )}
                   <div className="px-3 py-1.5 bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-full flex items-center gap-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">SEDANG DIEDIT</span>
