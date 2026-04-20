@@ -125,10 +125,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       return u;
     }));
   };
-  const setVrvUnitDetail = (val: string) => {
-    if (!activeUnitId) return;
-    setUnits(prev => prev.map(u => u.id === activeUnitId ? { ...u, vrvUnitDetail: val } : u));
-  };
 
   const tabName = activeUnit?.tabName || '';
   const specificDetail = activeUnit?.specificDetail || '';
@@ -208,7 +204,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     setUnits([]);
     
     if (editingData) {
-      onClearEdit();
+      onClearEdit?.();
     }
     
     toast.success('Laporan baru telah dimulai');
