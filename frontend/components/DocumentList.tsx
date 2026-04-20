@@ -46,11 +46,10 @@ interface DocumentListProps {
 export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   const { user, userRole, companyType } = useAuth();
   const isAdmin = userRole === 'admin';
-  const isEngineer = userRole === 'tde' || userRole === 'cbre' || userRole === 'engineer' || userRole === 'standby_engineer';
-  const isHSE = userRole === 'hse';
-  const canDelete = isAdmin || isEngineer || isHSE ||
-    userRole === 'pmo' || userRole === 'sales' ||
-    userRole === 'presales' || userRole === 'purchasing';
+  const isPrivileged = isAdmin || userRole === 'manager' || userRole === 'site_manager' || userRole === 'hse' || 
+    userRole === 'dirut' || userRole === 'direksiSDM' || userRole === 'DireksiKeuangan';
+  const isEngineer = userRole === 'engineer' || userRole === 'standby_engineer' || userRole === 'tde' || userRole === 'cbre';
+  const canDelete = isPrivileged || isEngineer;
 
   const [documents, setDocuments] = useState<ExcelDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,7 +81,8 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
     try {
       setLoading(true);
-      const excelQuery = (isAdmin || isEngineer)
+      // Explicit query for non-privileged users to match Firestore rules
+      const excelQuery = isPrivileged
         ? query(collection(db, 'excel_documents'))
         : query(
           collection(db, 'excel_documents'),
@@ -107,7 +107,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           documentType: 'excel',
         });
       });
-      const pdfQuery = (isAdmin || isEngineer)
+      const pdfQuery = isPrivileged
         ? query(collection(db, 'pdf_documents'))
         : query(
           collection(db, 'pdf_documents'),

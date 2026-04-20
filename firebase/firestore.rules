@@ -51,6 +51,14 @@ service cloud.firestore {
                  get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'cbre');
     }
 
+    // ✅ Privileged roles that can see all archived documents
+    function isPrivilegedRole() {
+       return request.auth != null 
+             && request.auth.uid != null
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'manager', 'site_manager', 'hse', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
+    }
+
     // ✅ Division specific check
     function isDivision(div) {
       return request.auth != null 
@@ -131,12 +139,12 @@ service cloud.firestore {
                     && (!request.resource.data.keys().hasAny(['specificDetail']) || request.resource.data.specificDetail is string);
       
       allow read, delete: if request.auth != null 
-                  && (resource.data.createdBy == request.auth.token.email 
-                      || isAdminSafe()
-                      || isEngineer());
+                  && (resource.data.createdBy == request.auth.token.get('email', '') 
+                      || resource.data.createdBy == request.auth.token.email
+                      || isPrivilegedRole());
       
       allow update: if request.auth != null 
-                    && (resource.data.createdBy == request.auth.token.email || isAdminSafe() || isEngineer())
+                    && (resource.data.createdBy == request.auth.token.email || isPrivilegedRole())
                     && hasAcceptableFieldCount(request.resource.data, 15);
 
       // ✅ Subcollection foto
@@ -146,7 +154,7 @@ service cloud.firestore {
                       && hasAcceptableFieldCount(request.resource.data, 6)
                       && (!request.resource.data.keys().hasAny(['dataUrl']) || isValidPhotoData(request.resource.data.dataUrl));
         allow update, delete: if request.auth != null 
-                              && (get(/databases/$(database)/documents/excel_documents/$(docId)).data.createdBy == request.auth.token.email || isAdminSafe() || isEngineer());
+                              && (get(/databases/$(database)/documents/excel_documents/$(docId)).data.createdBy == request.auth.token.email || isPrivilegedRole());
       }
     }
     
@@ -174,11 +182,11 @@ service cloud.firestore {
       
       allow read, delete: if request.auth != null 
                   && (resource.data.createdBy == request.auth.token.email 
-                      || isAdminSafe()
-                      || isEngineer());
+                      || resource.data.createdBy == request.auth.token.get('email', '')
+                      || isPrivilegedRole());
       
       allow update: if request.auth != null 
-                    && (resource.data.createdBy == request.auth.token.email || isAdminSafe() || isEngineer())
+                    && (resource.data.createdBy == request.auth.token.email || isPrivilegedRole())
                     && hasAcceptableFieldCount(request.resource.data, 15);
 
       // ✅ Subcollection foto
@@ -188,7 +196,7 @@ service cloud.firestore {
                       && hasAcceptableFieldCount(request.resource.data, 6)
                       && (!request.resource.data.keys().hasAny(['dataUrl']) || isValidPhotoData(request.resource.data.dataUrl));
         allow update, delete: if request.auth != null 
-                              && (get(/databases/$(database)/documents/pdf_documents/$(docId)).data.createdBy == request.auth.token.email || isAdminSafe() || isEngineer());
+                              && (get(/databases/$(database)/documents/pdf_documents/$(docId)).data.createdBy == request.auth.token.email || isPrivilegedRole());
       }
     }
     
