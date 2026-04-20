@@ -721,21 +721,23 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       for (let i = 0; i < cardsToSave.length; i++) {
         const card = cardsToSave[i];
-        if (card.photoBase64) {
-          let b64 = card.photoBase64;
+        let b64 = card.photoBase64 || '';
+        
+        if (b64) {
           const sizeInBytes = (b64.length * 3) / 4;
           if (sizeInBytes > 800 * 1024) {
             try {
               b64 = await compressBase64Image(b64, { maxWidth: 800, quality: 0.5 });
             } catch (err) { console.error("Compression failure", err); }
           }
-          await addDoc(collection(db, `${editingData ? collectionName : 'pdf_documents'}/${docId}/photos`), {
-            index: i + 1,
-            photoBase64: b64,
-            description: card.description || '',
-            hasPhoto: true
-          });
         }
+        
+        await addDoc(collection(db, `${editingData ? collectionName : 'pdf_documents'}/${docId}/photos`), {
+          index: i + 1,
+          photoBase64: b64,
+          description: card.description || '',
+          hasPhoto: !!b64
+        });
       }
 
       toast.success(`Unit ${unit.specificDetail} berhasil disimpan`, { id: toastId });
