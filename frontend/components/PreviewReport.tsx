@@ -34,17 +34,21 @@ export function PreviewReport({
     onBack,
     onExport
 }: PreviewReportProps) {
+    const isATS = userEmail === 'ats@gmail.com';
     const isPDU = userEmail === 'pdu@gmail.com';
-    const isLV = userEmail === 'lv@gmail.com' || userEmail === 'ats@gmail.com';
+    const isLV = userEmail === 'lv@gmail.com';
     const isLDBRDB = userEmail === 'ldb/rdb@gmail.com';
     const isVRV = userEmail === 'vrv@gmail.com';
     const isLightingSystem = userEmail.toLowerCase() === 'lightingsystem@gmail.com';
+    const isACSplit = userEmail === 'acsplit@gmail.com';
+    const isCRAC = userEmail === 'crac@gmail.com';
     const isWLD = userEmail === 'wld@gmail.com';
     const isFLD = userEmail === 'fld@gmail.com';
-    const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV || isLightingSystem || isWLD || isFLD;
+    const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV || isATS || isLightingSystem || isACSplit || isCRAC || isWLD || isFLD;
+    const isLVlike = isLV || isLDBRDB || isLightingSystem;
 
-    const columns = (isVRV || isWLD || isFLD) ? 3 : isSmallGrid ? 4 : 3;
-    const perPage = isPDU ? 20 : (isLV || isLDBRDB || isLightingSystem) ? 12 : isVRV ? 15 : 9;
+    const columns = (isVRV || isATS || isACSplit || isCRAC || isWLD || isFLD) ? 3 : isSmallGrid ? 4 : 3;
+    const perPage = (isATS || isACSplit || isCRAC) ? 12 : isPDU ? 20 : isLVlike ? 12 : isVRV ? 15 : 9;
     const filledCards = cards.filter(card => card.photoBase64 || card.description);
     const [acknowledged, setAcknowledged] = useState(false);
 
@@ -126,26 +130,27 @@ export function PreviewReport({
                             <img src={leftLogo} alt="Logo Left" className={isPDU ? "h-10 w-auto" : "h-20 w-auto object-contain"} />
                         </div>
                         <div className="text-center flex-1 mx-4 max-w-[500px] overflow-hidden">
-                            <h2 className={`font-bold uppercase tracking-tighter text-slate-900 break-words ${isPDU ? "text-sm" : "text-xl"}`}>
-                                Dokumentasi PM {maintenanceName}
+                            <h1 className="text-blue-600 font-bold text-base sm:text-lg tracking-tight uppercase mb-1">
+                                Laporan Maintenance
+                            </h1>
+                            <h2 className={`font-bold uppercase tracking-tighter text-slate-800 break-words ${isPDU ? "text-[10px]" : "text-[15px]"}`}>
+                                Dokumentasi PM: {maintenanceName}
                             </h2>
-                            <p className={`text-slate-700 font-semibold ${isPDU ? "text-xs" : "text-lg"}`}>
-                                ({formattedDate})
-                            </p>
                             {specificDetail && (
-                                <p className={`mt-2 font-black text-slate-900 uppercase tracking-widest break-words ${isPDU ? "text-[10px]" : "text-sm"}`}>
+                                <p className={`mt-0.5 font-bold text-blue-600 uppercase tracking-widest break-words ${isPDU ? "text-[8px]" : "text-[13px]"}`}>
                                     {specificDetail}
                                 </p>
                             )}
+                            <p className={`mt-1 text-slate-500 font-medium ${isPDU ? "text-[8px]" : "text-[11px]"}`}>
+                                Tanggal Maintenance: {formattedDate}
+                            </p>
                         </div>
                         <div className="w-[110px] flex-shrink-0 flex justify-end">
                             <img src={rightLogo} alt="Logo Right" className={isPDU ? "h-10 w-auto" : "h-14 w-auto object-contain"} />
                         </div>
                     </div>
 
-                    <div className="flex justify-center items-center mb-8 text-[11px] text-slate-500 uppercase font-black tracking-widest border-b-2 border-slate-100 pb-3">
-                        <span>UTT Maintenance System • {maintenanceName}</span>
-                    </div>
+                    <div className="h-px w-full bg-slate-100 mb-8" />
 
                     <div
                         className="grid gap-3"
@@ -166,8 +171,9 @@ export function PreviewReport({
                                     )}
                                     {}
                                 </div>
-                                <div className="p-2 bg-white min-h-[50px] flex items-center justify-center text-center">
-                                    <p className="text-[10px] leading-tight text-slate-900 font-bold break-words px-1">
+                                <div className="p-2 bg-white min-h-[50px] flex items-center gap-2 text-left relative">
+                                    <div className="absolute left-1 top-2 bottom-2 w-[2px] bg-blue-600 rounded-full" />
+                                    <p className="text-[12px] leading-tight text-slate-900 font-bold break-words pl-2 pr-1">
                                         {card.description || 'N/A'}
                                     </p>
                                 </div>
