@@ -32,11 +32,23 @@ service cloud.firestore {
 
     // ✅ Director check
     function isDirector() {
-      let role = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
       return request.auth != null 
              && request.auth.uid != null
              && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-             && (role == 'dirut' || role == 'direksiSDM' || role == 'DireksiKeuangan');
+             && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'dirut' || 
+                 get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'direksiSDM' || 
+                 get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'DireksiKeuangan');
+    }
+
+    // ✅ Multi-role Engineer check (matches frontend logic)
+    function isEngineer() {
+      return request.auth != null 
+             && request.auth.uid != null
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'engineer' || 
+                 get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'standby_engineer' || 
+                 get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'tde' || 
+                 get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'cbre');
     }
 
     // ✅ Division specific check
@@ -120,10 +132,11 @@ service cloud.firestore {
       
       allow read, delete: if request.auth != null 
                   && (resource.data.createdBy == request.auth.token.email 
-                      || isAdminSafe());
+                      || isAdminSafe()
+                      || isEngineer());
       
       allow update: if request.auth != null 
-                    && (resource.data.createdBy == request.auth.token.email || isAdminSafe())
+                    && (resource.data.createdBy == request.auth.token.email || isAdminSafe() || isEngineer())
                     && hasAcceptableFieldCount(request.resource.data, 15);
 
       // ✅ Subcollection foto
@@ -133,7 +146,7 @@ service cloud.firestore {
                       && hasAcceptableFieldCount(request.resource.data, 6)
                       && (!request.resource.data.keys().hasAny(['dataUrl']) || isValidPhotoData(request.resource.data.dataUrl));
         allow update, delete: if request.auth != null 
-                              && (get(/databases/$(database)/documents/excel_documents/$(docId)).data.createdBy == request.auth.token.email || isAdminSafe());
+                              && (get(/databases/$(database)/documents/excel_documents/$(docId)).data.createdBy == request.auth.token.email || isAdminSafe() || isEngineer());
       }
     }
     
@@ -161,10 +174,11 @@ service cloud.firestore {
       
       allow read, delete: if request.auth != null 
                   && (resource.data.createdBy == request.auth.token.email 
-                      || isAdminSafe());
+                      || isAdminSafe()
+                      || isEngineer());
       
       allow update: if request.auth != null 
-                    && (resource.data.createdBy == request.auth.token.email || isAdminSafe())
+                    && (resource.data.createdBy == request.auth.token.email || isAdminSafe() || isEngineer())
                     && hasAcceptableFieldCount(request.resource.data, 15);
 
       // ✅ Subcollection foto
@@ -174,7 +188,7 @@ service cloud.firestore {
                       && hasAcceptableFieldCount(request.resource.data, 6)
                       && (!request.resource.data.keys().hasAny(['dataUrl']) || isValidPhotoData(request.resource.data.dataUrl));
         allow update, delete: if request.auth != null 
-                              && (get(/databases/$(database)/documents/pdf_documents/$(docId)).data.createdBy == request.auth.token.email || isAdminSafe());
+                              && (get(/databases/$(database)/documents/pdf_documents/$(docId)).data.createdBy == request.auth.token.email || isAdminSafe() || isEngineer());
       }
     }
     
@@ -182,8 +196,7 @@ service cloud.firestore {
     // FILES COLLECTION
     // ============================================================
     match /files/{fileId} {
-      allow create: if request.auth != null 
-                     && (isAdminSafe() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'engineer' || isStandbyEngineer())
+      allow create: if request.auth != null && (isAdminSafe() || isEngineer())
                     && request.resource.data.keys().hasAll([
                       'fileName',
                       'fileSize',
@@ -210,7 +223,7 @@ service cloud.firestore {
       // ✅ CHUNKS SUB-COLLECTION
       match /chunks/{chunkId} {
         allow create: if request.auth != null 
-                      && (isAdminSafe() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'engineer' || isStandbyEngineer())
+                      && (isAdminSafe() || isEngineer())
                       && hasAcceptableFieldCount(request.resource.data, 10);
         
         allow read: if request.auth != null;
