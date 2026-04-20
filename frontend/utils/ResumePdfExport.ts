@@ -44,7 +44,7 @@ function loadImageAsBase64(url: string): Promise<string> {
     });
 }
 
-export async function generateResumePdf(summary: MaintenanceSummary) {
+export async function generateResumePdf(summary: MaintenanceSummary, maintenanceName?: string, projectName?: string) {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const pageW = doc.internal.pageSize.getWidth();
     const margin = 14;
@@ -70,11 +70,11 @@ export async function generateResumePdf(summary: MaintenanceSummary) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.setTextColor(30, 41, 59);
-    doc.text('MAINTENANCE PROGRESS RESUME', pageW / 2, 18, { align: 'center' });
+    doc.text(maintenanceName ? maintenanceName.toUpperCase() : 'MAINTENANCE PROGRESS RESUME', pageW / 2, 18, { align: 'center' });
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
-    doc.text('Reporting & Monitoring System - Q1 2026', pageW / 2, 23, { align: 'center' });
+    doc.text(projectName ? `Situs: ${projectName}` : 'Reporting & Monitoring System - Q1 2026', pageW / 2, 23, { align: 'center' });
 
     doc.setDrawColor(226, 232, 240);
     doc.line(margin, 30, pageW - margin, 30);
@@ -176,11 +176,14 @@ export async function generateResumePdf(summary: MaintenanceSummary) {
             fillColor: [248, 250, 252]
         },
         didDrawCell: (data) => {
-            if (data.section === 'body' && data.column.index === 5) {
-                doc.setTextColor(16, 185, 129);
-            }
-            if (data.section === 'body' && data.column.index === 7) {
-                doc.setTextColor(0, 89, 156);
+            if (data.section === 'body') {
+                if (data.column.index === 5) {
+                    doc.setTextColor(16, 185, 129);
+                } else if (data.column.index === 7) {
+                    doc.setTextColor(0, 89, 156);
+                } else {
+                    doc.setTextColor(51); // Reset to default body text color
+                }
             }
         }
     });
@@ -203,5 +206,8 @@ export async function generateResumePdf(summary: MaintenanceSummary) {
         );
     }
 
-    doc.save(`Maintenance_Resume_${dateStr.replace(/ /g, '_')}.pdf`);
+    const fileName = maintenanceName 
+        ? `${maintenanceName.replace(/ /g, '_')}_Resume_${dateStr.replace(/ /g, '_')}.pdf`
+        : `Maintenance_Resume_${dateStr.replace(/ /g, '_')}.pdf`;
+    doc.save(fileName);
 }

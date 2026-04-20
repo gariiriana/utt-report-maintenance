@@ -532,7 +532,7 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                       <h3 className="text-xs md:text-lg font-black uppercase tracking-widest text-slate-400">Ringkasan Progres</h3>
                       {user && (
                         <button
-                          onClick={() => import('@/utils/ResumePdfExport').then(m => m.generateResumePdf(summary))}
+                          onClick={() => import('@/utils/ResumePdfExport').then(m => m.generateResumePdf(summary, `RESUME MAINTENANCE ${selectedQuarter} ${selectedYear}`, `Reporting & Monitoring System - PT United Transworld Trading`))}
                           className="p-2 md:px-4 md:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white transition-all flex items-center gap-2 text-[10px] md:text-sm font-bold uppercase tracking-wider"
                         >
                           <Download className="w-4 h-4" />

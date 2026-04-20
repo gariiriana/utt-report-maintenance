@@ -112,7 +112,18 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   };
   const setSpecificDetail = (val: string) => {
     if (!activeUnitId) return;
-    setUnits(prev => prev.map(u => u.id === activeUnitId ? { ...u, specificDetail: val } : u));
+    setUnits(prev => prev.map(u => {
+      if (u.id === activeUnitId) {
+        // Auto-sync tab name if it's currently default (e.g. "Unit 1")
+        const isDefaultTab = !u.tabName || /^Unit \d+$/i.test(u.tabName);
+        return { 
+          ...u, 
+          specificDetail: val,
+          tabName: isDefaultTab ? (val || u.tabName) : u.tabName
+        };
+      }
+      return u;
+    }));
   };
   const setVrvUnitDetail = (val: string) => {
     if (!activeUnitId) return;
@@ -723,7 +734,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             </div>
 
             <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 mb-6 font-geist">
-            <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 mb-6 font-geist">
               {/* Main Maintenance Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <div>
@@ -833,7 +843,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 {/* Secondary Shadow Bar / Connector to Content */}
                 <div className="h-1 bg-slate-900/40 border-b border-slate-800/50 mb-10 shadow-sm" />
               </div>
-            </div>
 
             {/* Current Unit Detail Header */}
             {activeUnit && (

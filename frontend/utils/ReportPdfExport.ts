@@ -184,7 +184,7 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
 
     // Caption / remark area — perfectly synchronized with camera watermark style
     const captionText = photo.description || '';
-    const fontSize = 4.5; 
+    const fontSize = 7.0; 
     doc.setFontSize(fontSize).setFont('helvetica', 'normal').setTextColor(DARK);
 
     const leftPadding = 2.0;
