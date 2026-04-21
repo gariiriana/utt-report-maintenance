@@ -1008,26 +1008,31 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               ))}
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-6 mt-12 bg-slate-900/40 p-8 rounded-[2rem] border border-slate-700/30 backdrop-blur-xl">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 mt-12 bg-slate-900/40 p-6 sm:p-8 rounded-[2rem] border border-slate-700/30 backdrop-blur-xl">
               <button 
                 onClick={handleManualSave} 
-                className="px-10 py-4 bg-blue-600/20 text-blue-400 rounded-xl font-black flex items-center justify-center gap-3 border border-blue-500/30 hover:bg-blue-600/30 transition shadow-xl active:scale-95 text-sm sm:text-base"
+                className="w-full sm:w-auto px-6 py-4 sm:px-10 bg-blue-600/20 text-blue-400 rounded-xl font-black flex items-center justify-center gap-3 border border-blue-500/30 hover:bg-blue-600/30 transition shadow-xl active:scale-95 text-xs sm:text-sm lg:text-base group"
               >
-                <Save className="w-6 h-6" /> SIMPAN KE ARSIP DOKUMEN!
+                <Save className="w-5 h-5 sm:w-6 sm:h-6 group-active:scale-90 transition-transform" /> 
+                <span className="whitespace-nowrap">SIMPAN KE ARSIP DOKUMEN!</span>
               </button>
 
               <button 
                 onClick={() => setShowPreview(true)} 
-                className="px-10 py-4 bg-emerald-600/20 text-emerald-400 rounded-xl font-black flex items-center justify-center gap-3 border border-emerald-500/30 hover:bg-emerald-600/30 transition shadow-xl active:scale-95 text-sm sm:text-base"
+                className="w-full sm:w-auto px-6 py-4 sm:px-10 bg-emerald-600/20 text-emerald-400 rounded-xl font-black flex items-center justify-center gap-3 border border-emerald-500/30 hover:bg-emerald-600/30 transition shadow-xl active:scale-95 text-xs sm:text-sm lg:text-base group"
               >
-                <Eye className="w-6 h-6" /> PREVIEW REPORT
+                <Eye className="w-5 h-5 sm:w-6 sm:h-6 group-active:scale-90 transition-transform" />
+                <span className="whitespace-nowrap">PREVIEW REPORT</span>
               </button>
 
               <button 
                 onClick={() => handleExportPDF()} 
-                className="px-12 py-5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl font-black flex items-center justify-center gap-3 shadow-2xl shadow-red-600/30 hover:from-red-700 hover:to-rose-700 transition active:scale-95 text-base sm:text-lg border-b-4 border-red-900 active:border-b-0"
+                className="w-full sm:w-auto px-6 py-4 sm:px-12 sm:py-5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl font-black flex items-center justify-center gap-3 shadow-2xl shadow-red-600/30 hover:from-red-700 hover:to-rose-700 transition active:scale-95 text-sm sm:text-base lg:text-lg border-b-4 border-red-900 active:border-b-0 group"
               >
-                <FileType className="w-8 h-8" /> EXPORT PDF (SUB-REPORT {activeUnit?.specificDetail})
+                <FileType className="w-6 h-6 sm:w-8 sm:h-8 group-active:scale-90 transition-transform" />
+                <span className="uppercase text-center">
+                  EXPORT PDF <span className="hidden sm:inline">(SUB-REPORT {activeUnit?.specificDetail})</span>
+                </span>
               </button>
             </div>
           </motion.div>
