@@ -24,7 +24,7 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
     const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
         const { width, height } = e.currentTarget;
         
-        // Langsung set kotak crop 90% dari ukuran foto agar tidak jadi garis tipis
+
         const initialCrop = centerCrop(
             {
                 unit: '%',
@@ -37,7 +37,7 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
         
         setCrop(initialCrop);
 
-        // Langsung set pixel crop juga biar tombol "Apply" langsung work
+
         const pc: PixelCrop = {
             unit: 'px',
             x: (width * (initialCrop.x || 0)) / 100,
@@ -224,7 +224,7 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
                             border: 2px solid #ffffff !important;
                             border-radius: 2px !important;
                         }
-                        /* Corner bars styling to match screenshot selection bars */
+
                         .ReactCrop__drag-handle.ord-nw,
                         .ReactCrop__drag-handle.ord-ne,
                         .ReactCrop__drag-handle.ord-sw,

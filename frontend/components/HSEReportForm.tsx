@@ -370,7 +370,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                     )}
                 </div>
 
-                {}
+
                 <motion.div
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -385,7 +385,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                     </div>
                     <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-                        {}
+        
                         <div className="sm:col-span-2">
                             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                                 <span className="flex items-center gap-1.5">
@@ -401,7 +401,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                             />
                         </div>
 
-                        {}
+        
                         <div className="sm:col-span-2">
                             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                                 <span className="flex items-center gap-1.5">
@@ -417,7 +417,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                             />
                         </div>
 
-                        {}
+        
                         <div className="sm:col-span-2">
                             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                                 <span className="flex items-center gap-1.5">
@@ -433,7 +433,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                             />
                         </div>
 
-                        {}
+        
                         <div>
                             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                                 <span className="flex items-center gap-1.5">
@@ -449,7 +449,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                             />
                         </div>
 
-                        {}
+        
                         <div>
                             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                                 <span className="flex items-center gap-1.5">
@@ -465,7 +465,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                             />
                         </div>
 
-                        {}
+        
                         <div className="sm:col-span-2">
                             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
                                 <span className="flex items-center gap-1.5">
@@ -485,7 +485,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                         </div>
                 </motion.div>
 
-                {}
+
                 <motion.div
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -743,9 +743,9 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                     </div>
                 </motion.div>
 
-                {}
+
                 <div className="space-y-4">
-                    {}
+    
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 mb-1">
                             <div className="h-[1px] flex-1 bg-slate-800"></div>
@@ -765,7 +765,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                         </div>
                     </div>
 
-                    {}
+    
                     <div className="space-y-2">
                         <div className="flex items-center gap-2 mb-1">
                             <div className="h-[1px] flex-1 bg-slate-800"></div>
@@ -785,7 +785,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                         </div>
                     </div>
 
-                    {}
+    
                     <motion.button
                         whileHover={{ scale: 1.01 }}
                         whileTap={{ scale: 0.98 }}
@@ -798,7 +798,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                     </motion.button>
                 </div>
 
-                {}
+
                 <p className="text-center text-[10px] text-slate-600 pb-4 mt-4 uppercase tracking-[0.2em]">
                     🛡️ Safety Implementation System 🛡️
                 </p>

@@ -30,24 +30,24 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     loading: boolean;
   } | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<'prompt' | 'granted' | 'denied' | 'loading'>('loading');
-  // AbortController ref — cancels in-flight Nominatim requests if user re-triggers
+
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Flash & Zoom State
+
   const [torchSupported, setTorchSupported] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
   const [zoomSupported, setZoomSupported] = useState(false);
   const [zoomRange, setZoomRange] = useState({ min: 1, max: 1, step: 0.1 });
   const [zoom, setZoom] = useState(1);
 
-  // Core fetch logic — wrapped in useCallback so the debounce hook gets a stable reference
+
   const _doFetchLocation = useCallback(async (retry = false) => {
     if (!navigator.geolocation) {
       toast.error('Browser tidak mendukung geolokasi');
       return;
     }
 
-    // Cancel any previous in-flight request before starting a new one
+
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -68,13 +68,13 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
           const coordsString = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
 
           try {
-            // If offline, don't even try Nominatim (prevents hangs)
+
             if (!navigator.onLine) {
               setLocationData({ coords: coordsString, address: 'Lokasi Offline (GPS)', loading: false });
               return;
             }
 
-            // Fetch 1: Zoom 18 (Street Level)
+
             const res1 = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`, {
               headers: { 'Accept-Language': 'id', 'User-Agent': 'UTT-Maintenance-App' },
               signal: controller.signal
@@ -82,7 +82,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
             const data1 = await res1.json();
             const addr1 = data1.address;
 
-            // Fetch 2: Zoom 14 (District Level) - Better for Kecamatan & Postcode
+
             const res2 = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=14&addressdetails=1`, {
               headers: { 'Accept-Language': 'id', 'User-Agent': 'UTT-Maintenance-App' },
               signal: controller.signal
@@ -92,7 +92,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
             if (controller.signal.aborted) return;
 
-            // Smart extraction with multiple fallbacks
+
             const pCode = data1.extratags?.plus_code || 'J5CX+5R7';
             const desa = addr1.village || addr1.suburb || addr1.neighbourhood || addr1.hamlet || 'Desa';
             const kecamatan = addr1.city_district || addr1.municipality || addr2.city_district || addr2.municipality || addr2.county || 'Cikarang Pusat';
@@ -111,7 +111,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
         }, (err) => {
           console.warn(`Geolocation error (${highAccuracy ? 'High' : 'Low'} Accuracy):`, err);
           if (highAccuracy && err.code !== 1) {
-            // Fallback to low accuracy if high fails (unless permission denied)
+
             tryFetch(false);
             return;
           }
@@ -134,7 +134,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     }, timeout);
   }, []);
 
-  // Debounced wrapper — prevents hitting the Nominatim API more than once per 800ms
+
   const { debouncedFn: fetchLocation } = useDebouncedCallback(
     _doFetchLocation as (...args: unknown[]) => unknown,
     800
@@ -153,13 +153,13 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
       if (videoTrack) {
         try {
-          // Check Capabilities
+
           const caps = videoTrack.getCapabilities() as any;
           console.log("Camera Capabilities:", caps);
 
           if (caps.torch) {
             setTorchSupported(true);
-            setIsTorchOn(false); // Reset torch when switching camera
+            setIsTorchOn(false);
           } else {
             setTorchSupported(false);
           }
@@ -191,15 +191,15 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
       setIsInitializing(true);
       setError(null);
 
-      // Stop existing tracks if any before switching
+
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track: MediaStreamTrack) => track.stop());
         streamRef.current = null;
-        // Small delay to let the OS release the camera lock
+
         await new Promise(resolve => setTimeout(resolve, 200));
       }
 
-      // Attempt 1: Target Facing Mode
+
       try {
         const constraints = {
           video: {
@@ -213,7 +213,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
       } catch (err) {
         console.warn(`Attempt 1 (${facingMode}) failed:`, err);
 
-        // Attempt 2: Fallback
+
         const newStream = await navigator.mediaDevices.getUserMedia({
           video: true
         });
@@ -269,11 +269,11 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
   };
 
   useEffect(() => {
-    // Scroll lock
+
     const originalStyle = window.getComputedStyle(document.body).overflow;
     document.body.style.overflow = 'hidden';
 
-    // Check permission status
+
     if ('permissions' in navigator) {
       navigator.permissions.query({ name: 'geolocation' } as any).then((status) => {
         setPermissionStatus(status.state as any);
@@ -292,7 +292,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     };
   }, [facingMode]);
 
-  // ── Shared watermark overlay (used in both live & photo preview) ──────────
+
   const capturedTimestampRef = useRef<string>('');
 
   const WatermarkOverlay = ({ className = "bottom-12 left-12" }: { className?: string }) => {
@@ -346,7 +346,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0);
 
-    // Freeze timestamp
+
     capturedTimestampRef.current = new Date().toLocaleString('id-ID', {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit', hour12: false
@@ -370,7 +370,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
 
-        // Burn Watermark
+
         const pad = Math.round(canvas.width * 0.06);
         const fBase = Math.max(16, canvas.width * 0.034);
         const lineH = fBase * 1.45;
@@ -464,7 +464,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
         exit={{ scale: 0.95, opacity: 0, y: 30 }}
         className="bg-slate-900 border border-slate-700/50 rounded-3xl w-full max-w-lg max-h-[92vh] overflow-hidden shadow-2xl flex flex-col relative z-[10000]"
       >
-        {/* Header */}
+
         <div className="p-4 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-900">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-500/15 rounded-lg">
@@ -527,7 +527,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
           </div>
         </div>
 
-        {/* Viewfinder / Preview */}
+
         <div className={`relative bg-black overflow-hidden flex items-center justify-center ${capturedImage ? '' : 'aspect-square'}`}>
           {capturedImage ? (
             <div className="relative w-full overflow-hidden">
@@ -598,7 +598,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
                   {permissionStatus === 'granted' && <WatermarkOverlay />}
 
-                  {/* Zoom Control Overlay */}
+
                   {zoomSupported && !capturedImage && (
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-4 bg-black/30 backdrop-blur-md p-3 rounded-2xl border border-white/10 z-[70]">
                       <button
@@ -633,7 +633,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
           )}
         </div>
 
-        {/* Footer Actions */}
+
         <div className="p-8 bg-slate-900/50">
           <div className="flex items-center justify-center gap-6">
             {!capturedImage ? (

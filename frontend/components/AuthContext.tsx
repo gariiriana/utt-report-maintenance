@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let unsubscribeDoc: (() => void) | null = null;
     
-    // Explicitly set persistence
+
     setPersistence(auth, browserLocalPersistence).catch(err => console.error("Persistence failed", err));
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -51,9 +51,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (user) {
         try {
-          // Use a shorter timeout or handle offline gracefully
+
           const userDocRef = doc(db, 'users', user.uid);
-          // Firestore with persistence enabled will automatically try cache first or in parallel
+
           const userDoc = await getDoc(userDocRef);
 
           if (!userDoc.exists()) {
@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } catch (error) {
           console.warn('Error creating/fetching user document:', error);
-          // Don't block loading if it's just a connectivity issue
+
           setLoading(false);
         }
 

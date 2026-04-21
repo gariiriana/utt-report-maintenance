@@ -185,7 +185,7 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                 exit={{ scale: 0.95, opacity: 0 }}
                 className="bg-slate-900 border border-slate-700/50 rounded-2xl w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden shadow-2xl"
             >
-                {}
+
                 <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/80 flex-shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-green-500/15 rounded-lg">
@@ -205,7 +205,7 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                 </div>
 
                 <div className="flex flex-col lg:flex-row flex-1 overflow-hidden min-h-0">
-                    {}
+    
                     <div className="flex-1 bg-slate-950 overflow-auto flex items-start justify-center p-4 min-h-[300px]">
                         {isReady ? (
                             <canvas
@@ -223,11 +223,11 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                         )}
                     </div>
 
-                    {}
+    
                     <div className="lg:w-72 border-t lg:border-t-0 lg:border-l border-slate-800 bg-slate-900/60 flex flex-col overflow-y-auto">
                         <div className="p-4 space-y-5">
 
-                            {}
+            
                             <div>
                                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                                     <Palette className="w-3.5 h-3.5" /> Preset Label
@@ -246,7 +246,7 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                                 </div>
                             </div>
 
-                            {}
+            
                             <div>
                                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2">
                                     <AlignLeft className="w-3.5 h-3.5" /> Teks
@@ -260,7 +260,7 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                                 />
                             </div>
 
-                            {}
+            
                             <div>
                                 <div className="flex items-center justify-between mb-2">
                                     <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Ukuran</p>
@@ -291,7 +291,7 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                                 </div>
                             </div>
 
-                            {}
+            
                             <div>
                                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Warna Teks</p>
                                 <div className="flex gap-2 flex-wrap">
@@ -307,7 +307,7 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                                 </div>
                             </div>
 
-                            {}
+            
                             <div>
                                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Background Label</p>
                                 <div className="flex gap-2 flex-wrap">
@@ -331,7 +331,7 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                                 )}
                             </div>
 
-                            {}
+            
                             <div>
                                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Preview Teks</p>
                                 <div className="flex items-center justify-center p-3 bg-slate-800/50 rounded-lg min-h-[50px]">
@@ -348,7 +348,7 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                                 </div>
                             </div>
 
-                            {}
+            
                             {overlays.length > 0 && (
                                 <div className="flex items-center justify-between py-2 px-3 bg-slate-800/50 rounded-lg">
                                     <span className="text-xs text-slate-400">{overlays.length} teks ditambahkan</span>
@@ -363,7 +363,7 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                             )}
                         </div>
 
-                        {}
+        
                         <div className="p-4 border-t border-slate-800 mt-auto flex gap-3">
                             <button
                                 onClick={onCancel}

@@ -52,8 +52,8 @@ export interface PhotoCard {
 
 export interface ReportUnit {
   id: string;
-  tabName: string; // Excel Tab Marker (e.g., Sub A)
-  specificDetail: string; // Detail Unit Maintenance (e.g., FCU-01)
+  tabName: string;
+  specificDetail: string;
   vrvUnitDetail: string;
   cards: PhotoCard[];
 }
@@ -69,7 +69,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [maintenanceName, setMaintenanceName] = useState('');
   const [maintenanceTime, setMaintenanceTime] = useState('');
   
-  // NEW: Multi-Unit State
+
   const [units, setUnits] = useState<ReportUnit[]>([]);
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
   const tabContainerRef = useRef<HTMLDivElement>(null);
@@ -90,7 +90,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [focusedCardId, setFocusedCardId] = useState<string | null>(null);
   const [cardClipboard, setCardClipboard] = useState<{ photoBase64?: string, description: string } | null>(null);
 
-  // Helper to get active unit
+
   const activeUnit = units.find(u => u.id === activeUnitId) || null;
   const cards = activeUnit?.cards || [];
   const setCards = (newCards: PhotoCard[] | ((prev: PhotoCard[]) => PhotoCard[])) => {
@@ -114,7 +114,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     if (!activeUnitId) return;
     setUnits(prev => prev.map(u => {
       if (u.id === activeUnitId) {
-        // Auto-sync tab name if it's currently default (e.g. "Unit 1")
+
         const isDefaultTab = !u.tabName || /^Unit \d+$/i.test(u.tabName);
         return { 
           ...u, 
@@ -141,10 +141,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const addNewUnit = async (name: string = '') => {
     const newId = Math.random().toString(36).substr(2, 9);
     
-    // Initial cards
+
     let initialCards = createDefaultCards(11);
     
-    // Auto-apply template if possible
     if (user?.email) {
       const lowerEmail = user.email.toLowerCase();
       let template: string[] | null = null;
@@ -187,7 +186,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     return newId;
   };
 
-  // Initialize first unit if empty
+
   useEffect(() => {
     if (isDraftLoading || editingData) return;
     if (units.length === 0) {
@@ -205,7 +204,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [showPreview]);
 
-  // Load Draft Logic
+
   useEffect(() => {
     if (!user?.email || editingData) {
       setIsDraftLoading(false);
@@ -221,16 +220,16 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         return;
       }
 
-      // 1. Try Loading from IndexedDB (New Storage)
+
       let saved = await draftStorage.get('report_form_draft_v2');
       
-      // 2. Fallback to LocalStorage (Migration)
+
       if (!saved) {
         const legacySaved = localStorage.getItem('report_form_draft_v2');
         if (legacySaved) {
           try {
             saved = JSON.parse(legacySaved);
-            // Move to IndexedDB and remove from localStorage
+
             await draftStorage.set('report_form_draft_v2', saved);
             localStorage.removeItem('report_form_draft_v2');
             console.log('Draft migrated from localStorage to IndexedDB');
@@ -251,7 +250,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               const lowerEmail = user?.email?.toLowerCase() || '';
               let template: string[] | null = null;
               if (lowerEmail === 'vrv@gmail.com') {
-                template = VRV_TEMPLATE.indoor; // Default to indoor for draft sync simplicity
+
               } else if (['lv@gmail.com', 'ats@gmail.com', 'trafo@gmail.com'].includes(lowerEmail)) {
                 template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
               } else {
@@ -285,15 +284,15 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   }, [user?.email, editingData]);
 
 
-  // Keyboard Shortcuts (Copy-Paste)
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing in a description textarea or input
+      
       if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) {
         return;
       }
 
-      // Ctrl + C (Copy)
+
       if (e.ctrlKey && e.key === 'c') {
         if (!focusedCardId) return;
         const cardToCopy = cards.find(c => c.id === focusedCardId);
@@ -309,7 +308,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         }
       }
 
-      // Ctrl + V (Paste)
+
       if (e.ctrlKey && e.key === 'v') {
         if (!focusedCardId || !cardClipboard) return;
         
@@ -335,10 +334,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [focusedCardId, cardClipboard, cards]);
 
-  // Handle External Paste (Images)
+
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
-      // Ignore if typing in a description textarea or input
+      
       if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) {
         return;
       }
@@ -371,7 +370,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   useEffect(() => {
     if (editingData || user?.email?.toLowerCase() !== 'vrv@gmail.com' || isDraftLoading) return;
 
-    // Only auto-apply template if current unit is empty or has default structure
+
     const hasExistingPhotos = cards.some(c => c.photoBase64);
     if (hasExistingPhotos) return;
 
@@ -406,7 +405,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           }))
         : createDefaultCards(11);
 
-      // Initialize units with the edited data
+
       const editUnit: ReportUnit = {
         id: `edit-${Date.now()}`,
         tabName: (finalSpec || 'Edit').toUpperCase(),
@@ -444,7 +443,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         await draftStorage.set('report_form_draft_v2', draft);
       } catch (err) {
         console.error('Storage error:', err);
-        // IndexedDB handles much larger data, so quota issues are rare
+
       }
     };
 
@@ -486,12 +485,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const toastId = toast.loading(`Memproses ${files.length} foto...`);
     let successCount = 0;
     let failCount = 0;
-    const MAX_SIZE = 20 * 1024 * 1024; // 20MB
+    const MAX_SIZE = 20 * 1024 * 1024;
 
     try {
       const results: { file: File; base64: string }[] = [];
       
-      // Batch processing for speed (3 at a time)
+
       const batchSize = 3;
       for (let i = 0; i < files.length; i += batchSize) {
         const batch = files.slice(i, i + batchSize);
@@ -519,7 +518,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           const newCards = [...prev];
           let resultIdx = 0;
 
-          // 1. Fill empty slots first (where no photo exists)
+
           for (let i = 0; i < newCards.length && resultIdx < results.length; i++) {
             if (!newCards[i].photoBase64 && !newCards[i].photo) {
               newCards[i] = { 
@@ -531,7 +530,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             }
           }
 
-          // 2. Append remaining to new cards
+
           while (resultIdx < results.length) {
             const maxId = newCards.length > 0 ? Math.max(...newCards.map(c => parseInt(c.id) || 0)) : 0;
             newCards.push({
@@ -762,15 +761,15 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       await saveReportToFirestore(targetUnit, result);
       localStorage.setItem('report_finished', 'true');
 
-      // Clear draft after successful export to start fresh next time
+
       if (user?.email && !editingData) {
         const storageKey = `report_draft_${user.email}`;
         await draftStorage.remove(storageKey).catch(err => console.error("Failed to clear draft:", err));
         
-        // Reset states to default empty report
+
         setMaintenanceName('');
         setMaintenanceTime(new Date().toISOString().slice(0, 16));
-        setUnits([]); // This will trigger the effect to add "Unit 1"
+        setUnits([]);
         toast.info("Laporan selesai diekspor. Draft telah dibersihkan.");
       }
     }
@@ -810,7 +809,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             </div>
 
             <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 mb-6 font-geist">
-              {/* Main Maintenance Info */}
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <div>
                   <label className="block text-sm font-medium text-slate-400 mb-2">Nama Maintenance</label>
@@ -849,7 +848,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 </div>
               </div>
 
-              {/* Excel-style Sheet Tabs */}
+
               <div className="mt-8 select-none">
                 <div className="flex items-center bg-slate-950/50 backdrop-blur-md border border-slate-800/50 rounded-t-xl overflow-hidden h-10 shadow-2xl">
                   <div className="flex items-center px-2 border-r border-slate-800/50 gap-1 shrink-0">
@@ -916,11 +915,11 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   </div>
                 </div>
                 
-                {/* Secondary Shadow Bar / Connector to Content */}
+
                 <div className="h-1 bg-slate-900/40 border-b border-slate-800/50 mb-10 shadow-sm" />
               </div>
 
-            {/* Current Unit Detail Header */}
+
             {activeUnit && (
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 px-2 gap-4">
                 <div className="flex-1">

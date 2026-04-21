@@ -17,7 +17,7 @@ export function DataCenterBackground() {
             title="Professional Data Center Background"
           />
         </div>
-        {}
+
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950/20 via-transparent to-slate-950/40" />
       </div>
 

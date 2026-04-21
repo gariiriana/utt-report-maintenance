@@ -165,11 +165,9 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
     const cardX = x;
     const cardY = y;
 
-    // Card background + border
     doc.setFillColor(255, 255, 255).setDrawColor(SLATE_200).setLineWidth(0.2);
     doc.roundedRect(cardX, cardY, cardW, h + capH, 1, 1, 'FD');
 
-    // Photo area
     if (photo.photoBase64) {
       doc.setFillColor(DARK).rect(cardX + 0.5, cardY + 0.5, cardW - 1, h - 1, 'F');
       doc.addImage(photo.photoBase64, 'JPEG', cardX + 1, cardY + 1, cardW - 2, h - 2, `p_${index}`, 'FAST');
@@ -178,22 +176,19 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
       doc.setFontSize(7).setTextColor(GRAY).text('No Photo', cardX + cardW / 2, cardY + h / 2, { align: 'center' });
     }
 
-    // Separator line between photo and caption
     doc.setDrawColor(SLATE_200).setLineWidth(0.3);
     doc.line(cardX, cardY + h, cardX + cardW, cardY + h);
 
-    // Caption / remark area — perfectly synchronized with camera watermark style
     const captionText = photo.description || '';
     const fontSize = 7.0; 
     doc.setFontSize(fontSize).setFont('helvetica', 'normal').setTextColor(DARK);
 
     const leftPadding = 2.0;
     const maxWidth = cardW - (leftPadding + 3);
-    const spacingFactor = 1.05; // Extra tight like the watermark
+    const spacingFactor = 1.05;
     const lineHeight = (fontSize * 0.3528) * spacingFactor;
     const splitCaption = doc.splitTextToSize(captionText, maxWidth);
 
-    // Limit to lines that fit
     const availableH = capH - 2;
     const maxLines = Math.max(1, Math.floor(availableH / lineHeight));
     const displayLines = splitCaption.slice(0, maxLines);
@@ -201,7 +196,6 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
     const totalTextH = displayLines.length * lineHeight;
     const textStartY = cardY + h + (capH - totalTextH) / 2 + (lineHeight * 0.7);
 
-    // Ultra-slim blue accent line matching camera watermark exactly
     doc.setFillColor(THEME_BLUE);
     const lineThickness = 0.35;
     const lineH = Math.max(2, totalTextH);

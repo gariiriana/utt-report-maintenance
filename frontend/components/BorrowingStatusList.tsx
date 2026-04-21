@@ -125,7 +125,7 @@ export function BorrowingStatusList() {
                 </div>
 
                 <div className="p-4 space-y-5">
-                  {}
+
                   <div className="space-y-2">
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.15em] pl-0.5">Daftar Barang</p>
                     <div className="space-y-2 max-h-36 overflow-y-auto pr-1 scrollbar-none">

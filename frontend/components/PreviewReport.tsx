@@ -169,7 +169,7 @@ export function PreviewReport({
                                             <span className="text-[10px] font-black uppercase tracking-tighter">No Image</span>
                                         </div>
                                     )}
-                                    {}
+
                                 </div>
                                 <div className="p-2 bg-white min-h-[50px] flex items-center gap-2 text-left relative">
                                     <div className="absolute left-1 top-2 bottom-2 w-[2px] bg-blue-600 rounded-full" />

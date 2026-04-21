@@ -37,7 +37,7 @@ export function InventoryBorrowing() {
         </div>
       </div>
 
-      {}
+
       <div className="min-h-[400px]">
         <AnimatePresence mode="wait">
           {activeTab === 'form' ? (
@@ -59,7 +59,7 @@ export function InventoryBorrowing() {
               className="space-y-6"
             >
               <div className="mb-8">
-                 {}
+           
                  <div className="p-5 md:p-8 bg-slate-900 ring-1 ring-slate-800/50 backdrop-blur-xl rounded-3xl md:rounded-[2.5rem] border-l-4 border-l-emerald-500 flex flex-col gap-4 shadow-2xl hover:bg-slate-800/50 transition-all max-w-2xl mx-auto">
                     <div className="flex items-center gap-2.5">
                        <div className="p-2.5 bg-emerald-500/10 rounded-2xl">

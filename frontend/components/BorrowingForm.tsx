@@ -27,7 +27,7 @@ function SuccessReceipt({ data, onDone }: SuccessReceiptProps) {
       className="space-y-6"
     >
       <div id="borrowing-receipt" className="bg-slate-950 border border-slate-800 rounded-3xl p-8 space-y-6 shadow-2xl relative overflow-hidden">
-        {}
+
         <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2" />
 
         <div className="text-center space-y-2 relative z-10">
@@ -237,7 +237,7 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-6">
-          {}
+  
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Nama Peminjam</label>
@@ -270,7 +270,7 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
             </div>
           </div>
 
-          {}
+  
           <div className="space-y-4">
             <div className="flex items-center justify-between pl-1">
                <label className="text-xs font-bold text-blue-400 uppercase tracking-widest flex items-center gap-2">
@@ -343,7 +343,7 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
             </div>
           </div>
 
-          {}
+  
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-1">Tanggal Pengajuan</label>
@@ -386,7 +386,7 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
           </div>
         </div>
 
-        {}
+
         <div className="pt-6">
           <button
             type="submit"

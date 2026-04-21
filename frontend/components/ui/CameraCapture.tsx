@@ -183,7 +183,7 @@ export function CameraCapture({ onCapture, placeholder = "Ambil Foto Wajah" }: C
       </div>
       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] text-center">{placeholder}</p>
 
-      {}
+
       <canvas ref={canvasRef} className="hidden" />
     </div>
   );

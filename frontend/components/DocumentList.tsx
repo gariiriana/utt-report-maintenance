@@ -81,7 +81,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
     try {
       setLoading(true);
-      // Explicit query for non-privileged users to match Firestore rules
+
       const excelQuery = isPrivileged
         ? query(collection(db, 'excel_documents'))
         : query(
@@ -801,7 +801,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-4 sm:p-5 border border-slate-700/50 hover:border-blue-500/30 transition group"
     >
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-        {}
+
         {canDelete && (
           <div className="flex-shrink-0 mr-1">
             <input
@@ -816,7 +816,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           </div>
         )}
 
-        {}
+
         <div className="p-2.5 sm:p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20 flex-shrink-0">
           {document.documentType === 'pdf' ? (
             <FileType className="w-5 h-5 sm:w-6 sm:h-6 text-red-400" />
@@ -825,7 +825,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           )}
         </div>
 
-        {}
+
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <h3 className="text-base sm:text-lg font-semibold text-white truncate">
@@ -869,7 +869,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           </p>
         </div>
 
-        {}
+
         <div className="flex items-center gap-2 w-full sm:w-auto">
           {onEdit && (
             <motion.button
@@ -951,9 +951,9 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           </div>
         </div>
 
-        {}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-          {}
+  
           <div className="relative">
             <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
             <input
@@ -965,7 +965,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
             />
           </div>
 
-          {}
+  
           <div className="relative">
             <Calendar className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
             <input
@@ -976,7 +976,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
             />
           </div>
 
-          {}
+  
           <div className="relative">
             <Filter className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
             <select
@@ -989,7 +989,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
             </select>
           </div>
 
-          {}
+  
           <div className="relative">
             <FileType className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
             <select
@@ -1004,7 +1004,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           </div>
         </div>
 
-        {}
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-4">
           <div className="bg-slate-800/30 rounded-lg p-3 border border-slate-700/30">
             <p className="text-xs text-slate-500">Total Dokumen</p>
@@ -1028,7 +1028,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           </div>
         </div>
 
-        {}
+
         {canDelete && docsInView.length > 0 && (
           <div className="mt-4 pt-4 border-t border-slate-700/30 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">

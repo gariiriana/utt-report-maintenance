@@ -182,7 +182,7 @@ export async function generateResumePdf(summary: MaintenanceSummary, maintenance
                 } else if (data.column.index === 7) {
                     doc.setTextColor(0, 89, 156);
                 } else {
-                    doc.setTextColor(51); // Reset to default body text color
+                    doc.setTextColor(51);
                 }
             }
         }
