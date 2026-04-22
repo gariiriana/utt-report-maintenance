@@ -918,14 +918,20 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       toast.loading('Preparing data for editing...', { id: 'edit-prep' });
       let photosData = doc.photosData || [];
       if (photosData.length === 0) {
-        const colName = doc.documentType === 'excel' ? 'excel_documents' : 'pdf_documents';
-        const photosSnap = await getDocs(
-          collection(db, `${colName}/${doc.id}/photos`)
-        );
-        if (!photosSnap.empty) {
-          photosData = photosSnap.docs
-            .map(d => d.data() as any)
-            .sort((a, b) => a.index - b.index);
+        let colName = '';
+        if (doc.documentType === 'excel') colName = 'excel_documents';
+        else if (doc.documentType === 'pdf') colName = 'pdf_documents';
+        else if (doc.documentType === 'hse') colName = 'hse';
+
+        if (colName) {
+          const photosSnap = await getDocs(
+            collection(db, `${colName}/${doc.id}/photos`)
+          );
+          if (!photosSnap.empty) {
+            photosData = photosSnap.docs
+              .map(d => d.data() as any)
+              .sort((a, b) => a.index - b.index);
+          }
         }
       }
 

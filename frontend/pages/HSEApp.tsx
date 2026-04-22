@@ -12,6 +12,16 @@ export function HSEApp() {
     const { user, logout } = useAuth();
     const [logoutModalOpen, setLogoutModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState<'report' | 'iso'>('report');
+    const [editingData, setEditingData] = useState<any>(null);
+
+    const handleEditReport = (data: any) => {
+        setEditingData(data);
+        setActiveTab('report');
+    };
+
+    const handleClearEdit = () => {
+        setEditingData(null);
+    };
 
     return (
         <div className="min-h-screen font-geist text-slate-200">
@@ -106,9 +116,15 @@ export function HSEApp() {
 
             <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
                 {activeTab === 'report' ? (
-                    <HSEReportForm />
+                    <HSEReportForm 
+                        editingData={editingData} 
+                        onClearEdit={handleClearEdit} 
+                    />
                 ) : (
-                    <DocumentList filterOverride="hse_utt" />
+                    <DocumentList 
+                        filterOverride="hse_utt" 
+                        onEdit={handleEditReport} 
+                    />
                 )}
             </div>
 

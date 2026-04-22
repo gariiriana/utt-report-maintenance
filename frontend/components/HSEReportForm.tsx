@@ -19,6 +19,7 @@ import {
     HSE_CHECKLIST_LABELS,
     type HSEChecklist
 } from '@/config/templates';
+import { draftStorage } from '@/utils/draftStorage';
 
 interface PhotoItem {
     id: string;
@@ -48,6 +49,9 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
 
     const [isSaving, setIsSaving] = useState(false);
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+    const [isDraftLoading, setIsDraftLoading] = useState(true);
+    const [isExporting, setIsExporting] = useState(false);
+    const [isExported, setIsExported] = useState(false);
 
     useEffect(() => {
         if (editingData && editingData.documentType === 'hse') {
@@ -94,6 +98,70 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             setLokasi(editingData.specificDetail || '');
         }
     }, [editingData, user?.email]);
+
+    useEffect(() => {
+        if (editingData || !user?.email) {
+            setIsDraftLoading(false);
+            return;
+        }
+
+        const loadDraft = async () => {
+            const saved = await draftStorage.get(`hse_draft_${user.email}`);
+            if (saved) {
+                try {
+                    setAktivitas(saved.aktivitas || '');
+                    setLokasi(saved.lokasi || '');
+                    setPersonil(saved.personil || '');
+                    setPic(saved.pic || '');
+                    setAnggota(saved.anggota || '');
+                    setInspectorK3(saved.inspectorK3 || '');
+                    if (saved.checklist) setChecklist(saved.checklist);
+                    if (saved.photos && saved.photos.length > 0) {
+                        setPhotos(saved.photos);
+                    }
+                } catch (err) {
+                    console.error('Failed to load HSE draft:', err);
+                }
+            }
+            setIsDraftLoading(false);
+        };
+        loadDraft();
+    }, [user?.email, editingData]);
+
+    useEffect(() => {
+        if (editingData || !user?.email || isDraftLoading || isExporting || isExported) {
+            if (isExported && user?.email && !editingData) {
+                draftStorage.remove(`hse_draft_${user.email}`);
+            }
+            return;
+        }
+
+        const saveDraft = async () => {
+            const draft = {
+                aktivitas,
+                lokasi,
+                personil,
+                pic,
+                anggota,
+                inspectorK3,
+                checklist,
+                photos: photos.map(p => ({
+                    id: p.id,
+                    dataUrl: p.dataUrl,
+                    description: p.description
+                })),
+                timestamp: new Date().getTime()
+            };
+            try {
+                await draftStorage.set(`hse_draft_${user.email}`, draft);
+            } catch (err) {
+                console.error('Failed to save HSE draft:', err);
+            }
+        };
+
+        const timeoutId = setTimeout(saveDraft, 2000);
+        return () => clearTimeout(timeoutId);
+    }, [aktivitas, lokasi, personil, pic, anggota, inspectorK3, checklist, photos, user?.email, editingData, isDraftLoading, isExporting]);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -277,8 +345,10 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                 await updateDoc(doc(db, 'hse', docId), reportData);
                 const photosRef = collection(db, `hse/${docId}/photos`);
                 const oldPhotos = await getDocs(photosRef);
-                for (const pDoc of oldPhotos.docs) {
-                    await deleteDoc(doc(db, `hse/${docId}/photos`, pDoc.id));
+                if (!oldPhotos.empty) {
+                    await Promise.all(oldPhotos.docs.map(pDoc => 
+                        deleteDoc(doc(db, `hse/${docId}/photos`, pDoc.id))
+                    ));
                 }
             } else {
                 const docRef = await addDoc(collection(db, 'hse'), {
@@ -288,32 +358,35 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                 docId = docRef.id;
             }
 
-            for (let i = 0; i < photos.length; i++) {
-                let dataUrl = photos[i].dataUrl;
-                const sizeInBytes = (dataUrl.length * 3) / 4;
-
-                if (sizeInBytes > 800 * 1024) {
-                    try {
-                        dataUrl = await compressBase64Image(dataUrl, { maxWidth: 800, quality: 0.5 });
-                    } catch (err) {
-                        console.error("HSE Compression failure", err);
-                    }
+            if (photos.length > 0) {
+                const totalPhotos = photos.length;
+                if (!silent && toastId) {
+                    toast.loading(`Menyimpan ${totalPhotos} foto...`, { id: toastId });
                 }
 
-                await addDoc(collection(db, `hse/${docId}/photos`), {
-                    index: i + 1,
-                    dataUrl: dataUrl,
-                    description: photos[i].description || '',
-                    createdAt: serverTimestamp(),
-                });
+                await Promise.all(photos.map(async (photo, index) => {
+                    let dataUrl = photo.dataUrl;
+                    const sizeInBytes = (dataUrl.length * 3) / 4;
+
+                    if (sizeInBytes > 800 * 1024) {
+                        try {
+                            dataUrl = await compressBase64Image(dataUrl, { maxWidth: 800, quality: 0.5 });
+                        } catch (err) {
+                            console.error("HSE Compression failure", err);
+                        }
+                    }
+
+                    await addDoc(collection(db, `hse/${docId}/photos`), {
+                        index: index + 1,
+                        dataUrl: dataUrl,
+                        description: photo.description || '',
+                        createdAt: serverTimestamp(),
+                    });
+                }));
             }
 
             if (!silent && toastId) {
                 toast.success(editingData ? 'Laporan HSE diperbarui!' : 'Laporan HSE tersimpan!', { id: toastId });
-
-                if (!editingData) {
-                    localStorage.removeItem('hse_report_form_draft');
-                }
             }
             return docId;
         } catch (err) {
@@ -332,6 +405,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             toast.error('Aktivitas wajib diisi sebelum export PDF');
             return;
         }
+        setIsExporting(true);
         setIsGeneratingPdf(true);
         try {
             try {
@@ -344,12 +418,20 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             const formData = buildFormData();
             formData.reportType = mode;
             await generateHSEPdf(formData);
+            setIsExported(true); // Tandai sudah diexport
+            
+            // PAKSA HAPUS DRAFT DETIK INI JUGA!
+            if (user?.email && !editingData) {
+                await draftStorage.remove(`hse_draft_${user.email}`).catch(console.error);
+            }
+            
             toast.success(`PDF ${mode.toUpperCase()} berhasil dibuat!`);
         } catch (err) {
             console.error('PDF Generation Error:', err);
             toast.error(`Gagal membuat PDF: ${(err as Error)?.message || 'Terjadi kesalahan'}`);
         } finally {
             setIsGeneratingPdf(false);
+            setIsExporting(false);
         }
     };
 

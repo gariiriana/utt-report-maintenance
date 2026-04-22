@@ -56,6 +56,7 @@ export interface ReportUnit {
   specificDetail: string;
   vrvUnitDetail: string;
   cards: PhotoCard[];
+  isExported?: boolean;
 }
 
 interface ReportFormProps {
@@ -89,6 +90,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [isDraftLoading, setIsDraftLoading] = useState(true);
   const [focusedCardId, setFocusedCardId] = useState<string | null>(null);
   const [cardClipboard, setCardClipboard] = useState<{ photoBase64?: string, description: string } | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
 
   const activeUnit = units.find(u => u.id === activeUnitId) || null;
@@ -212,15 +214,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }
 
     const loadDraft = async () => {
-      const finished = localStorage.getItem('report_finished');
-      if (finished === 'true') {
-        await draftStorage.remove('report_form_draft_v2');
-        localStorage.removeItem('report_finished');
-        setIsDraftLoading(false);
-        return;
-      }
-
-
       let saved = await draftStorage.get('report_form_draft_v2');
       
 
@@ -420,7 +413,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   }, [editingData]);
 
   useEffect(() => {
-    if (editingData || !user?.email || isDraftLoading) return;
+    if (editingData || !user?.email || isDraftLoading || isExporting) return;
 
     const saveDraft = async () => {
       const draft = {
@@ -428,14 +421,16 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         maintenanceName,
         maintenanceTime,
         companyType,
-        units: units.map(u => ({
-          ...u,
-          cards: u.cards.map(c => ({
-            id: c.id,
-            description: c.description,
-            photoBase64: c.photoBase64
-          }))
-        })),
+        units: units
+          .filter(u => !u.isExported) // Cuma simpan yang belum di-export
+          .map(u => ({
+            ...u,
+            cards: u.cards.map(c => ({
+              id: c.id,
+              description: c.description,
+              photoBase64: c.photoBase64
+            }))
+          })),
         timestamp: new Date().getTime()
       };
 
@@ -443,13 +438,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         await draftStorage.set('report_form_draft_v2', draft);
       } catch (err) {
         console.error('Storage error:', err);
-
       }
     };
 
     const timeoutId = setTimeout(saveDraft, 1000);
     return () => clearTimeout(timeoutId);
-  }, [maintenanceName, maintenanceTime, companyType, units, user?.email, editingData, isDraftLoading]);
+  }, [maintenanceName, maintenanceTime, companyType, units, user?.email, editingData, isDraftLoading, isExporting]);
 
   const handlePhotoChange = async (id: string, file: File | null) => {
     if (file) {
@@ -710,33 +704,38 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         await updateDoc(doc(db, collectionName, docId), reportData);
         const photosRef = collection(db, `${collectionName}/${docId}/photos`);
         const existingPhotos = await getDocs(photosRef);
-        for (const photoDoc of existingPhotos.docs) {
-          await deleteDoc(doc(db, `${collectionName}/${docId}/photos`, photoDoc.id));
+        if (!existingPhotos.empty) {
+          await Promise.all(existingPhotos.docs.map(photoDoc => 
+            deleteDoc(doc(db, `${collectionName}/${docId}/photos`, photoDoc.id))
+          ));
         }
       } else {
         const docRef = await addDoc(collection(db, 'pdf_documents'), reportData);
         docId = docRef.id;
       }
 
-      for (let i = 0; i < cardsToSave.length; i++) {
-        const card = cardsToSave[i];
-        let b64 = card.photoBase64 || '';
+      if (cardsToSave.length > 0) {
+        if (toastId) toast.loading(`Saving ${cardsToSave.length} photos...`, { id: toastId });
         
-        if (b64) {
-          const sizeInBytes = (b64.length * 3) / 4;
-          if (sizeInBytes > 800 * 1024) {
-            try {
-              b64 = await compressBase64Image(b64, { maxWidth: 800, quality: 0.5 });
-            } catch (err) { console.error("Compression failure", err); }
+        await Promise.all(cardsToSave.map(async (card, i) => {
+          let b64 = card.photoBase64 || '';
+          
+          if (b64) {
+            const sizeInBytes = (b64.length * 3) / 4;
+            if (sizeInBytes > 800 * 1024) {
+              try {
+                b64 = await compressBase64Image(b64, { maxWidth: 800, quality: 0.5 });
+              } catch (err) { console.error("Compression failure", err); }
+            }
           }
-        }
-        
-        await addDoc(collection(db, `${editingData ? collectionName : 'pdf_documents'}/${docId}/photos`), {
-          index: i + 1,
-          photoBase64: b64,
-          description: card.description || '',
-          hasPhoto: !!b64
-        });
+          
+          await addDoc(collection(db, `${editingData ? collectionName : 'pdf_documents'}/${docId}/photos`), {
+            index: i + 1,
+            photoBase64: b64,
+            description: card.description || '',
+            hasPhoto: !!b64
+          });
+        }));
       }
 
       toast.success(`Unit ${unit.specificDetail} berhasil disimpan`, { id: toastId });
@@ -754,24 +753,54 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const targetUnit = unit || activeUnit;
     if (!targetUnit) return toast.error('Unit tidak terpilih');
     
-    const result = await generatePDFDocument(targetUnit);
-    if (result) {
-      const { doc, fileName } = result;
-      doc.save(fileName);
-      await saveReportToFirestore(targetUnit, result);
-      localStorage.setItem('report_finished', 'true');
-
-
-      if (user?.email && !editingData) {
-        const storageKey = `report_draft_${user.email}`;
-        await draftStorage.remove(storageKey).catch(err => console.error("Failed to clear draft:", err));
+    setIsExporting(true);
+    const toastId = toast.loading('Memproses export PDF & Menyimpan data...');
+    try {
+      const result = await generatePDFDocument(targetUnit);
+      if (result) {
+        const { doc, fileName } = result;
         
-
-        setMaintenanceName('');
-        setMaintenanceTime(new Date().toISOString().slice(0, 16));
-        setUnits([]);
-        toast.info("Laporan selesai diekspor. Draft telah dibersihkan.");
+        const saveResult = await saveReportToFirestore(targetUnit, result);
+        if (saveResult) {
+          doc.save(fileName);
+          
+          // Tandai unit ini sudah sukses di-export
+          setUnits(prev => {
+              const newUnits = prev.map(u => u.id === targetUnit.id ? { ...u, isExported: true } : u);
+              
+              // PAKSA SIMPAN DRAFT DETIK INI JUGA!
+              const draft = {
+                userEmail: user?.email,
+                maintenanceName,
+                maintenanceTime,
+                companyType,
+                units: newUnits
+                  .filter(u => !u.isExported)
+                  .map(u => ({
+                    ...u,
+                    cards: u.cards.map(c => ({
+                      id: c.id,
+                      description: c.description,
+                      photoBase64: c.photoBase64
+                    }))
+                  })),
+                timestamp: new Date().getTime()
+              };
+              draftStorage.set('report_form_draft_v2', draft).catch(console.error);
+              
+              return newUnits;
+          });
+          
+          toast.success("Laporan berhasil diekspor & disimpan!", { id: toastId });
+        } else {
+          toast.error("Gagal menyimpan data ke database. PDF tidak diunduh.", { id: toastId });
+        }
       }
+    } catch (err) {
+      console.error("Export error:", err);
+      toast.error("Terjadi kesalahan saat export PDF", { id: toastId });
+    } finally {
+      setIsExporting(false);
     }
   };
 
