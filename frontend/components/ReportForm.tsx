@@ -16,6 +16,7 @@ import logoBRILeft from '@/assets/bri_left_logo.png';
 import {
   REPORT_TEMPLATES,
   VRV_TEMPLATE,
+  AHHU_TEMPLATE,
   LV_ATS_TRAFO_TEMPLATE
 } from '@/config/templates';
 import { generateReportPDF, loadLogoBase64 } from '@/utils/ReportPdfExport';
@@ -55,6 +56,7 @@ export interface ReportUnit {
   tabName: string;
   specificDetail: string;
   vrvUnitDetail: string;
+  templateMode?: 'indoor' | 'outdoor';
   cards: PhotoCard[];
   isExported?: boolean;
 }
@@ -152,6 +154,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       
       if (lowerEmail === 'vrv@gmail.com') {
         template = VRV_TEMPLATE.indoor;
+      } else if (lowerEmail === 'ahhu@utt.com') {
+        template = AHHU_TEMPLATE.indoor;
       } else if (['lv@gmail.com', 'ats@gmail.com', 'trafo@gmail.com'].includes(lowerEmail)) {
         template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
       } else {
@@ -180,6 +184,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       tabName: name || `Unit ${units.length + 1}`,
       specificDetail: '',
       vrvUnitDetail: '',
+      templateMode: 'indoor',
       cards: initialCards.length > 0 ? initialCards : createDefaultCards(11)
     };
     
@@ -360,20 +365,32 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     return () => window.removeEventListener('paste', handlePaste);
   }, [focusedCardId]);
 
-  useEffect(() => {
-    if (editingData || user?.email?.toLowerCase() !== 'vrv@gmail.com' || isDraftLoading) return;
+  const setTemplateMode = (mode: 'indoor' | 'outdoor') => {
+    if (!activeUnitId) return;
+    setUnits(prev => prev.map(u => u.id === activeUnitId ? { ...u, templateMode: mode } : u));
+  };
 
+  useEffect(() => {
+    const lowerEmail = user?.email?.toLowerCase() || '';
+    if (editingData || (lowerEmail !== 'vrv@gmail.com' && lowerEmail !== 'ahhu@utt.com') || isDraftLoading) return;
 
     const hasExistingPhotos = cards.some(c => c.photoBase64);
     if (hasExistingPhotos) return;
 
-    const isOutdoor = specificDetail.toLowerCase() === 'outdoor';
-    const template = isOutdoor ? VRV_TEMPLATE.outdoor : VRV_TEMPLATE.indoor;
+    const currentMode = activeUnit?.templateMode || 'indoor';
+    const isOutdoor = currentMode === 'outdoor';
+    let template: string[] | null = null;
+
+    if (lowerEmail === 'vrv@gmail.com') {
+      template = isOutdoor ? VRV_TEMPLATE.outdoor : VRV_TEMPLATE.indoor;
+    } else if (lowerEmail === 'ahhu@utt.com') {
+      template = isOutdoor ? AHHU_TEMPLATE.outdoor : AHHU_TEMPLATE.indoor;
+    }
 
     if (template) {
       setCards(template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc })));
     }
-  }, [specificDetail, user?.email, editingData, isDraftLoading]);
+  }, [activeUnit?.templateMode, user?.email, editingData, isDraftLoading]);
 
   useEffect(() => {
     if (editingData) {
@@ -951,12 +968,29 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
             {activeUnit && (
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 px-2 gap-4">
-                <div className="flex-1">
-                  <h2 className="text-base sm:text-lg md:text-xl font-black text-white tracking-tight flex items-wrap items-center gap-2 sm:gap-3">
+                <div className="flex-1 flex flex-wrap items-center gap-3 sm:gap-4">
+                  <h2 className="text-base sm:text-lg md:text-xl font-black text-white tracking-tight flex items-center gap-2 sm:gap-3">
                     <span className="px-1.5 py-0.5 bg-blue-600 text-[9px] rounded flex items-center justify-center font-mono">#{units.findIndex(u => u.id === activeUnitId) + 1}</span>
                     <span className="whitespace-nowrap">DOKUMENTASI:</span> 
                     <span className="text-blue-500 truncate max-w-[150px] sm:max-w-none ml-1">{activeUnit.specificDetail || '(Tanpa Nama Unit)'}</span>
                   </h2>
+
+                  {(user?.email?.toLowerCase() === 'ahhu@utt.com' || user?.email?.toLowerCase() === 'vrv@gmail.com') && (
+                    <div className="flex gap-1 bg-slate-950/50 p-1 rounded-lg border border-slate-800/50">
+                      <button 
+                        onClick={() => setTemplateMode('indoor')}
+                        className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${activeUnit?.templateMode === 'indoor' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+                      >
+                        INDOOR
+                      </button>
+                      <button 
+                        onClick={() => setTemplateMode('outdoor')}
+                        className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${activeUnit?.templateMode === 'outdoor' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+                      >
+                        OUTDOOR
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-3 self-start sm:self-auto">
                   <div className="px-3 py-1.5 bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-full flex items-center gap-2">
