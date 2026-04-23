@@ -838,7 +838,60 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
   const handleManualSave = async () => {
     if (!activeUnit) return;
-    await saveReportToFirestore(activeUnit);
+    const result = await saveReportToFirestore(activeUnit);
+    if (result) {
+      let freshCards = createDefaultCards(11);
+      if (user?.email) {
+        const lowerEmail = user.email.toLowerCase();
+        let template: string[] | null = null;
+        if (lowerEmail === 'vrv@gmail.com') {
+          template = VRV_TEMPLATE.indoor;
+        } else if (lowerEmail === 'ahhu@utt.com') {
+          template = AHHU_TEMPLATE.indoor;
+        } else if (['lv@gmail.com', 'ats@gmail.com', 'trafo@gmail.com'].includes(lowerEmail)) {
+          template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
+        } else {
+          template = REPORT_TEMPLATES[lowerEmail];
+          if (!template && (lowerEmail.includes('dock') || lowerEmail.includes('leveler'))) {
+            template = REPORT_TEMPLATES['dock'];
+          }
+        }
+        if (template) {
+          if (lowerEmail === 'wld@gmail.com' || lowerEmail === 'fld@gmail.com') {
+            freshCards = await Promise.all(template.map(async (desc, idx) => {
+              let defaultUrl = WLD_DEFAULT_PHOTOS[desc];
+              if (lowerEmail === 'fld@gmail.com' && desc === 'Test Ping') defaultUrl = imgTesPingFld;
+              let b64 = defaultUrl ? await loadLogoBase64(defaultUrl) : undefined;
+              return { id: `${idx + 1}`, photo: null, photoBase64: b64, description: desc };
+            }));
+          } else {
+            freshCards = template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc }));
+          }
+        }
+      }
+
+      const newUnitId = Math.random().toString(36).substr(2, 9);
+      setUnits(prev => prev.map(u => {
+        if (u.id === activeUnit.id) {
+          return {
+            ...u,
+            id: newUnitId,
+            archiveId: undefined,
+            archiveType: undefined,
+            specificDetail: '',
+            vrvUnitDetail: '',
+            tabName: `Unit ${prev.indexOf(u) + 1}`,
+            templateMode: 'indoor',
+            isExported: false,
+            cards: freshCards
+          };
+        }
+        return u;
+      }));
+      setActiveUnitId(newUnitId);
+
+      toast.success('Form direset untuk report baru!', { icon: '🔄', duration: 3000 });
+    }
   };
 
   const uploadedCount = cards.filter(c => c.photoBase64).length;
