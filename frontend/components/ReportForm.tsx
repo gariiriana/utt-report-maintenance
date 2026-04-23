@@ -333,7 +333,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusedCardId, cardClipboard, cards]);
+  }, [focusedCardId, cardClipboard, cards, activeUnitId]);
 
 
   useEffect(() => {
@@ -366,7 +366,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
-  }, [focusedCardId]);
+  }, [focusedCardId, activeUnitId]);
 
   const setTemplateMode = (mode: 'indoor' | 'outdoor') => {
     if (!activeUnitId) return;
