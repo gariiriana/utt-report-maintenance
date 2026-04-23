@@ -57,6 +57,8 @@ export interface ReportUnit {
   specificDetail: string;
   vrvUnitDetail: string;
   templateMode?: 'indoor' | 'outdoor';
+  archiveId?: string;
+  archiveType?: 'pdf' | 'excel' | 'hse';
   cards: PhotoCard[];
   isExported?: boolean;
 }
@@ -93,6 +95,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [focusedCardId, setFocusedCardId] = useState<string | null>(null);
   const [cardClipboard, setCardClipboard] = useState<{ photoBase64?: string, description: string } | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
 
   const activeUnit = units.find(u => u.id === activeUnitId) || null;
@@ -421,6 +424,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         tabName: (finalSpec || 'Edit').toUpperCase(),
         specificDetail: finalSpec,
         vrvUnitDetail: finalVrv,
+        archiveId: editingData.id,
+        archiveType: editingData.documentType,
         cards: photos
       };
 
@@ -676,6 +681,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     if (!cardsToSave.length) return toast.error(`Unit ${unit.specificDetail || 'Untitled'} minimal 1 card filled`), null;
 
     const toastId = toast.loading(`Saving unit ${unit.specificDetail || '#'}...`);
+    setIsSaving(true);
     try {
       const photosWithImage = cardsToSave.filter(c => c.photoBase64).length;
       const fileName = pdfData?.fileName || `${maintenanceName}${finalSpecificDetail ? ` (${finalSpecificDetail})` : ''}`.trim().replace(/\s+/g, ' ') + '.pdf';
@@ -696,11 +702,14 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         reportData.createdAt = serverTimestamp();
       }
 
-      const collectionName = editingData?.documentType === 'excel' ? 'excel_documents' : 'pdf_documents';
+      const effectiveDocId = unit.archiveId || (editingData ? editingData.id : null);
+      const effectiveDocType = unit.archiveType || (editingData ? editingData.documentType : 'pdf');
+      const collectionName = effectiveDocType === 'excel' ? 'excel_documents' : (effectiveDocType === 'hse' ? 'hse' : 'pdf_documents');
+
       const apiUrl = import.meta.env.VITE_API_URL;
       const isOnline = navigator.onLine;
 
-      if (isOnline && apiUrl && !editingData) {
+      if (isOnline && apiUrl && !effectiveDocId) {
         const photos = cardsToSave.map((card, i) => ({
           index: i + 1,
           photoBase64: card.photoBase64 || '',
@@ -710,14 +719,15 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
         const docIdFromAPI = await saveReportViaAPI(apiUrl, collectionName, reportData, photos);
         if (docIdFromAPI) {
+          setUnits(prev => prev.map(u => u.id === unit.id ? { ...u, archiveId: docIdFromAPI, archiveType: 'pdf' } : u));
           toast.success(`Unit ${unit.specificDetail} disimpan (via API)`, { id: toastId });
           return docIdFromAPI;
         }
       }
 
       let docId = '';
-      if (editingData) {
-        docId = editingData.id;
+      if (effectiveDocId) {
+        docId = effectiveDocId;
         await updateDoc(doc(db, collectionName, docId), reportData);
         const photosRef = collection(db, `${collectionName}/${docId}/photos`);
         const existingPhotos = await getDocs(photosRef);
@@ -729,6 +739,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       } else {
         const docRef = await addDoc(collection(db, 'pdf_documents'), reportData);
         docId = docRef.id;
+        setUnits(prev => prev.map(u => u.id === unit.id ? { ...u, archiveId: docId, archiveType: 'pdf' } : u));
       }
 
       if (cardsToSave.length > 0) {
@@ -746,7 +757,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             }
           }
           
-          await addDoc(collection(db, `${editingData ? collectionName : 'pdf_documents'}/${docId}/photos`), {
+          await addDoc(collection(db, `${effectiveDocId ? collectionName : 'pdf_documents'}/${docId}/photos`), {
             index: i + 1,
             photoBase64: b64,
             description: card.description || '',
@@ -761,6 +772,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       console.error('Firestore save error:', error);
       toast.error('Gagal simpan', { id: toastId });
       return null;
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1073,15 +1086,21 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 mt-12 bg-slate-900/40 p-6 sm:p-8 rounded-[2rem] border border-slate-700/30 backdrop-blur-xl">
               <button 
                 onClick={handleManualSave} 
-                className="w-full sm:w-auto px-6 py-4 sm:px-10 bg-blue-600/20 text-blue-400 rounded-xl font-black flex items-center justify-center gap-3 border border-blue-500/30 hover:bg-blue-600/30 transition shadow-xl active:scale-95 text-xs sm:text-sm lg:text-base group"
+                disabled={isSaving || isExporting}
+                className={`w-full sm:w-auto px-6 py-4 sm:px-10 bg-blue-600/20 text-blue-400 rounded-xl font-black flex items-center justify-center gap-3 border border-blue-500/30 transition shadow-xl active:scale-95 text-xs sm:text-sm lg:text-base group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600/30'}`}
               >
-                <Save className="w-5 h-5 sm:w-6 sm:h-6 group-active:scale-90 transition-transform" /> 
-                <span className="whitespace-nowrap">SIMPAN KE ARSIP DOKUMEN!</span>
+                {isSaving ? (
+                  <RefreshCw className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
+                ) : (
+                  <Save className="w-5 h-5 sm:w-6 sm:h-6 group-active:scale-90 transition-transform" /> 
+                )}
+                <span className="whitespace-nowrap">{isSaving ? 'SEDANG MENYIMPAN...' : 'SIMPAN KE ARSIP DOKUMEN!'}</span>
               </button>
 
               <button 
                 onClick={() => setShowPreview(true)} 
-                className="w-full sm:w-auto px-6 py-4 sm:px-10 bg-emerald-600/20 text-emerald-400 rounded-xl font-black flex items-center justify-center gap-3 border border-emerald-500/30 hover:bg-emerald-600/30 transition shadow-xl active:scale-95 text-xs sm:text-sm lg:text-base group"
+                disabled={isSaving || isExporting}
+                className={`w-full sm:w-auto px-6 py-4 sm:px-10 bg-emerald-600/20 text-emerald-400 rounded-xl font-black flex items-center justify-center gap-3 border border-emerald-500/30 transition shadow-xl active:scale-95 text-xs sm:text-sm lg:text-base group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-emerald-600/30'}`}
               >
                 <Eye className="w-5 h-5 sm:w-6 sm:h-6 group-active:scale-90 transition-transform" />
                 <span className="whitespace-nowrap">PREVIEW REPORT</span>
@@ -1089,11 +1108,16 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
               <button 
                 onClick={() => handleExportPDF()} 
-                className="w-full sm:w-auto px-6 py-4 sm:px-12 sm:py-5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl font-black flex items-center justify-center gap-3 shadow-2xl shadow-red-600/30 hover:from-red-700 hover:to-rose-700 transition active:scale-95 text-sm sm:text-base lg:text-lg border-b-4 border-red-900 active:border-b-0 group"
+                disabled={isSaving || isExporting}
+                className={`w-full sm:w-auto px-6 py-4 sm:px-12 sm:py-5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl font-black flex items-center justify-center gap-3 shadow-2xl shadow-red-600/30 transition active:scale-95 text-sm sm:text-base lg:text-lg border-b-4 border-red-900 active:border-b-0 group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:from-red-700 hover:to-rose-700'}`}
               >
-                <FileType className="w-6 h-6 sm:w-8 sm:h-8 group-active:scale-90 transition-transform" />
+                {isExporting ? (
+                  <RefreshCw className="w-6 h-6 sm:w-8 sm:h-8 animate-spin" />
+                ) : (
+                  <FileType className="w-6 h-6 sm:w-8 sm:h-8 group-active:scale-90 transition-transform" />
+                )}
                 <span className="uppercase text-center">
-                  EXPORT PDF <span className="hidden sm:inline">(SUB-REPORT {activeUnit?.specificDetail})</span>
+                  {isExporting ? 'EXPORTING...' : `EXPORT PDF (SUB-REPORT ${activeUnit?.specificDetail || ''})`}
                 </span>
               </button>
             </div>
