@@ -29,7 +29,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
     address: string;
     loading: boolean;
   } | null>(null);
-  const [permissionStatus, setPermissionStatus] = useState<'prompt' | 'granted' | 'denied' | 'loading'>('loading');
+  const [permissionStatus, setPermissionStatus] = useState<'prompt' | 'granted' | 'denied' | 'loading'>('prompt');
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -278,7 +278,11 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
       navigator.permissions.query({ name: 'geolocation' } as any).then((status) => {
         setPermissionStatus(status.state as any);
         status.onchange = () => setPermissionStatus(status.state as any);
+      }).catch(() => {
+        setPermissionStatus('prompt');
       });
+    } else {
+      setPermissionStatus('prompt');
     }
 
     startCamera();
@@ -578,20 +582,17 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                     <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-white/40 -mb-0.5 -mr-0.5 rounded-br-lg" />
                   </div>
 
-                  {permissionStatus !== 'granted' && (
-                    <div className="absolute inset-0 z-[60] bg-black/70 flex flex-col items-center justify-center p-8 text-center backdrop-blur-sm">
-                      <div className="w-14 h-14 bg-blue-500/20 rounded-full flex items-center justify-center mb-4">
-                        <MapPin className="w-7 h-7 text-blue-400" />
-                      </div>
-                      <h4 className="text-white font-bold mb-2 text-sm">Izin Lokasi Diperlukan</h4>
-                      <p className="text-slate-300 text-[10px] leading-relaxed mb-6 max-w-[240px]">
-                        Untuk menambahkan watermark koordinat dan alamat di foto, kami memerlukan izin akses lokasi perangkat Anda.
+                  {permissionStatus === 'denied' && (
+                    <div className="absolute bottom-4 left-4 right-4 z-[60] bg-black/70 backdrop-blur-sm rounded-xl px-4 py-2.5 flex items-center gap-3 border border-amber-500/20">
+                      <MapPin className="w-4 h-4 text-amber-400 shrink-0" />
+                      <p className="text-[10px] text-amber-300 leading-tight flex-1">
+                        GPS ditolak, foto tanpa koordinat
                       </p>
                       <button
                         onClick={() => fetchLocation(true)}
-                        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-xl shadow-blue-600/20 active:scale-95"
+                        className="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg text-[9px] font-bold transition shrink-0"
                       >
-                        Izinkan Akses Lokasi
+                        Izinkan
                       </button>
                     </div>
                   )}
