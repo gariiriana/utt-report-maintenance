@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore, enableMultiTabIndexedDbPersistence } from "firebase/firestore";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getDatabase } from "firebase/database";
 import { getAnalytics, isSupported } from "firebase/analytics";
@@ -45,20 +45,12 @@ if (import.meta.env.DEV) {
 }
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
-
-
-if (typeof window !== 'undefined') {
-  enableMultiTabIndexedDbPersistence(db).catch((err) => {
-    if (err.code === 'failed-precondition') {
-
-      console.warn('Persistence failed-precondition');
-    } else if (err.code === 'unimplemented') {
-
-      console.warn('Persistence unimplemented');
-    }
-  });
-}
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager()
+  })
+});
 
 export const storage = getStorage(app);
 export const rtdb = getDatabase(app);
+

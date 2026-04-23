@@ -69,20 +69,29 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
   }
 
   const optimizedCards: PhotoCard[] = [];
-  for (let i = 0; i < filled.length; i++) {
-    const c = filled[i];
-    if (c.photoBase64) {
-      toast.loading(`Optimizing photo ${i + 1}/${filled.length}...`, { id: 'export' });
+  const SKIP_THRESHOLD = 200 * 1024; // 200KB — sudah cukup kecil, skip kompresi
+  const BATCH_SIZE = 4;
+
+  for (let batchStart = 0; batchStart < filled.length; batchStart += BATCH_SIZE) {
+    const batch = filled.slice(batchStart, batchStart + BATCH_SIZE);
+    toast.loading(`Optimizing photo ${batchStart + 1}-${Math.min(batchStart + BATCH_SIZE, filled.length)}/${filled.length}...`, { id: 'export' });
+
+    const batchResults = await Promise.all(batch.map(async (c) => {
+      if (!c.photoBase64) return c;
+
+      const sizeInBytes = (c.photoBase64.length * 3) / 4;
+      if (sizeInBytes <= SKIP_THRESHOLD) return c;
+
       try {
         const compressed = await compressBase64Image(c.photoBase64, { maxWidth: 800, quality: 0.5 });
-        optimizedCards.push({ ...c, photoBase64: compressed });
+        return { ...c, photoBase64: compressed };
       } catch (err) {
-        console.error(`Fail at photo ${i}`, err);
-        optimizedCards.push(c);
+        console.error('Compression failed, using original', err);
+        return c;
       }
-    } else {
-      optimizedCards.push(c);
-    }
+    }));
+
+    optimizedCards.push(...batchResults);
   }
 
   toast.dismiss('export');

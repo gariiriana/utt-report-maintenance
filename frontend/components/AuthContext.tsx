@@ -50,10 +50,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (user) {
+        const userDocRef = doc(db, 'users', user.uid);
+
         try {
-
-          const userDocRef = doc(db, 'users', user.uid);
-
           const userDoc = await getDoc(userDocRef);
 
           if (!userDoc.exists()) {
@@ -68,12 +67,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUserRole(isAdminEmail ? 'admin' : 'engineer');
           }
         } catch (error) {
-          console.warn('Error creating/fetching user document:', error);
-
-          setLoading(false);
+          console.warn('Error creating/fetching user document (offline?):', error);
         }
 
-        const userDocRef = doc(db, 'users', user.uid);
         unsubscribeDoc = onSnapshot(
           userDocRef,
           (docSnap) => {

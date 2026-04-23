@@ -53,6 +53,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
   const [documents, setDocuments] = useState<ExcelDocument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [filterDate, setFilterDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
@@ -81,7 +82,17 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
     try {
       setLoading(true);
+      setFetchError(null);
 
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('TIMEOUT')), 15000)
+      );
+
+      const fetchAll = async () => {
+      const excelDocs: ExcelDocument[] = [];
+      const pdfDocs: ExcelDocument[] = [];
+
+      if (filterOverride !== 'hse_utt') {
       const excelQuery = isPrivileged
         ? query(collection(db, 'excel_documents'))
         : query(
@@ -89,7 +100,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           where('createdBy', '==', user.email)
         );
       const excelSnapshot = await getDocs(excelQuery);
-      const excelDocs: ExcelDocument[] = [];
       excelSnapshot.forEach((doc) => {
         const data = doc.data();
         excelDocs.push({
@@ -114,7 +124,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           where('createdBy', '==', user.email)
         );
       const pdfSnapshot = await getDocs(pdfQuery);
-      const pdfDocs: ExcelDocument[] = [];
       pdfSnapshot.forEach((doc) => {
         const data = doc.data();
         pdfDocs.push({
@@ -132,6 +141,8 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           documentType: 'pdf',
         });
       });
+      }
+
       const hseDocs: ExcelDocument[] = [];
       const showHSE = isAdmin || userRole === 'hse' || filterOverride === 'hse_utt';
 
@@ -181,20 +192,28 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       });
 
       setDocuments(allDocs);
+      }; // end fetchAll
+
+      await Promise.race([fetchAll(), timeoutPromise]);
     } catch (error: any) {
       console.error('Error fetching documents:', error);
 
-      if (error?.code === 'failed-precondition' && error?.message?.includes('index')) {
+      if (error?.message === 'TIMEOUT') {
+        setFetchError('Koneksi ke server terlalu lama. Pastikan internet stabil dan tidak ada VPN/firewall yang memblokir.');
+        toast.error('Timeout: gagal memuat dokumen', { duration: 5000 });
+      } else if (error?.code === 'failed-precondition' && error?.message?.includes('index')) {
+        setFetchError('Database index diperlukan. Klik link di console browser untuk buat index.');
         toast.error('Database index diperlukan. Klik link di console browser untuk buat index.', {
           duration: 8000,
         });
       } else {
+        setFetchError('Gagal memuat dokumen. Periksa koneksi internet Anda.');
         toast.error('Gagal memuat dokumen');
       }
     } finally {
       setLoading(false);
     }
-  }, [user, sortBy, userRole]);
+  }, [user, sortBy, userRole, filterOverride]);
 
   useEffect(() => {
     fetchDocuments();
@@ -1083,6 +1102,20 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
             <div className="w-12 h-12 sm:w-16 sm:h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" />
             <p className="text-slate-400 text-sm sm:text-base">Memuat dokumen...</p>
           </div>
+        </div>
+      ) : fetchError ? (
+        <div className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-8 sm:p-12 border border-red-500/30 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 bg-red-500/10 rounded-full flex items-center justify-center border border-red-500/20">
+            <FileSpreadsheet className="w-8 h-8 text-red-400" />
+          </div>
+          <h3 className="text-lg sm:text-xl font-semibold text-red-300 mb-2">Gagal Memuat Data</h3>
+          <p className="text-sm text-slate-400 mb-6 max-w-md mx-auto">{fetchError}</p>
+          <button
+            onClick={() => fetchDocuments()}
+            className="px-6 py-2.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-xl font-bold text-sm transition-all hover:scale-105"
+          >
+            Coba Lagi
+          </button>
         </div>
       ) : filteredDocuments.length === 0 ? (
         <div className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-8 sm:p-12 border border-slate-700/50 text-center">
