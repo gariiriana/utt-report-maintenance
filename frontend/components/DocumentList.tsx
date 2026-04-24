@@ -462,6 +462,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
       const cards = finalPhotosData.map((p, i) => ({
         id: `archive_${i}`,
+        photo: null as File | null,
         photoBase64: p.photoBase64 || '',
         description: p.description || '',
       }));

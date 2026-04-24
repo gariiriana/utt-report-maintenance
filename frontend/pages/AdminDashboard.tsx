@@ -357,6 +357,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
 
         const cards = photosData.map((p: any, i: number) => ({
           id: `admin_${i}`,
+          photo: null as File | null,
           photoBase64: p.photoBase64 || '',
           description: p.description || '',
         }));
