@@ -6,13 +6,12 @@ import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
-import { jsPDF } from 'jspdf';
+import { generateReportPDF, loadLogoBase64 } from '@/utils/ReportPdfExport';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
-import { compressBase64Image } from '@/utils/imageCompression';
 import { generateHSEPdf } from '@/utils/HSEPdfExport';
 import { getDoc } from 'firebase/firestore';
 
@@ -443,171 +442,54 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   const handleDownloadPDF = async (docData: ExcelDocument) => {
     try {
       toast.loading('Menghasilkan PDF dari database...', { id: 'download-pdf' });
-      const formattedDate = new Date(docData.maintenanceTime).toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-      const doc = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const marginTop = 15;
-      const marginLeft = 10;
-      const marginRight = 10;
-      const usableWidth = pageWidth - marginLeft - marginRight;
 
-      let currentY = marginTop;
-      try {
-        const processLogo = (url: string) => {
-          return new Promise<string>((resolve) => {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => {
-              const canvas = document.createElement('canvas');
-              canvas.width = img.width; canvas.height = img.height;
-              const ctx = canvas.getContext('2d');
-              if (ctx) {
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(img, 0, 0);
-              }
-              resolve(canvas.toDataURL('image/jpeg', 0.8));
-            };
-            img.onerror = () => resolve('');
-            img.src = url;
-          });
-        };
+      let finalPhotosData = docData.photosData || [];
 
-        const processedLogoLeft = await processLogo(companyType === 'bri' ? logoBRILeft : logoDwimitra);
-        const processedLogoRight = await processLogo(companyType === 'bri' ? logoBRI : logoNeutraDC);
-
-        const addPageHeader = () => {
-          const isPDU = user?.email === 'pdu@gmail.com' || docData.createdBy === 'pdu@gmail.com';
-          const isDwimitra = companyType !== 'bri';
-
-          let headerY = 8;
-          const leftW = isPDU ? 22 : (isDwimitra ? 28 : 36);
-          const leftH = isPDU ? 9 : (isDwimitra ? 18 : 14);
-          const rightW = isPDU ? 22 : (isDwimitra ? 36 : 35);
-          const rightH = isPDU ? 9 : (isDwimitra ? 14 : 14);
-          if (processedLogoLeft) {
-            doc.addImage(processedLogoLeft, 'JPEG', marginLeft, headerY, leftW, leftH, 'logo_left', 'FAST');
+      if (finalPhotosData.length === 0) {
+        try {
+          const photosSnap = await getDocs(
+            collection(db, `pdf_documents/${docData.id}/photos`)
+          );
+          if (!photosSnap.empty) {
+            finalPhotosData = photosSnap.docs
+              .map(d => d.data() as PhotoData)
+              .sort((a, b) => a.index - b.index);
           }
-          if (processedLogoRight) {
-            const rightY = headerY + (leftH - rightH) / 2;
-            doc.addImage(processedLogoRight, 'JPEG', pageWidth - marginRight - rightW, rightY, rightW, rightH, 'logo_right', 'FAST');
-          }
-
-          headerY += Math.max(leftH, rightH) + (isPDU ? 4 : 5);
-          doc.setFontSize(isPDU ? 10 : 14);
-          doc.setFont('helvetica', 'bold');
-          const titleText = `Dokumentasi PM ${docData.maintenanceName} (${formattedDate})`;
-          const titleWidth = doc.getTextWidth(titleText);
-          doc.text(titleText, (pageWidth - titleWidth) / 2, headerY);
-
-          headerY += (isPDU ? 6 : 8);
-          if (docData.specificDetail) {
-            doc.setFontSize(isPDU ? 9 : 12);
-            doc.setFont('helvetica', 'bold');
-            const equipmentText = docData.specificDetail;
-            const equipmentWidth = doc.getTextWidth(equipmentText);
-            doc.text(equipmentText, (pageWidth - equipmentWidth) / 2, headerY);
-            headerY += (isPDU ? 8 : 10);
-          } else {
-            headerY += (isPDU ? 3 : 5);
-          }
-
-          return headerY;
-        };
-
-        currentY = addPageHeader();
-        const isPDU = user?.email === 'pdu@gmail.com' || docData.createdBy === 'pdu@gmail.com';
-        const columns = isPDU ? 4 : 3;
-        const photosPerPage = isPDU ? 20 : 9;
-        const spacing = isPDU ? 3 : 4;
-
-        const photoWidth = (usableWidth - (columns - 1) * spacing) / columns;
-        const photoHeight = isPDU ? 38 : 55;
-        const captionHeight = isPDU ? 10 : 12;
-
-        let finalPhotosData = docData.photosData || [];
-
-        if (finalPhotosData.length === 0) {
-          try {
-            const photosSnap = await getDocs(
-              collection(db, `pdf_documents/${docData.id}/photos`)
-            );
-            if (!photosSnap.empty) {
-              finalPhotosData = photosSnap.docs
-                .map(d => d.data() as PhotoData)
-                .sort((a, b) => a.index - b.index);
-            }
-          } catch (err) {
-            console.error('Failed to fetch subcollection photos (PDF):', err);
-          }
+        } catch (err) {
+          console.error('Failed to fetch subcollection photos (PDF):', err);
         }
-
-        const photosData = finalPhotosData;
-        let photoCount = 0;
-
-        for (let i = 0; i < photosData.length; i += columns) {
-          if (photoCount > 0 && photoCount % photosPerPage === 0) {
-            doc.addPage();
-            currentY = addPageHeader();
-          }
-
-          const rowCards = photosData.slice(i, i + columns);
-
-          for (let j = 0; j < rowCards.length; j++) {
-            const card = rowCards[j];
-            const xPos = marginLeft + j * (photoWidth + spacing);
-            doc.setDrawColor(0);
-            doc.setLineWidth(0.3);
-            doc.rect(xPos, currentY, photoWidth, photoHeight);
-            if (card.photoBase64) {
-              try {
-                let b64 = card.photoBase64;
-                const sizeKB = (b64.length * 3) / 4 / 1024;
-                if (sizeKB > 800) {
-                  try {
-                    b64 = await compressBase64Image(b64, { maxWidth: 800, quality: 0.5 });
-                  } catch (e) {
-                    console.error("Archive export compression failed", e);
-                  }
-                }
-
-                doc.addImage(
-                  b64,
-                  'JPEG',
-                  xPos + 0.5,
-                  currentY + 0.5,
-                  photoWidth - 1,
-                  photoHeight - 1,
-                  `p_${photoCount}`,
-                  'FAST'
-                );
-              } catch (imgError) {
-                console.error('Failed to add image:', imgError);
-              }
-            }
-            doc.rect(xPos, currentY + photoHeight, photoWidth, captionHeight);
-            if (card.description) {
-              doc.setFontSize(isPDU ? 7 : 8);
-              doc.setFont('helvetica', 'normal');
-              const lines = doc.splitTextToSize(card.description, photoWidth - 4);
-              const textY = currentY + photoHeight + 5;
-              doc.text(lines, xPos + photoWidth / 2, textY, { align: 'center', maxWidth: photoWidth - 4 });
-            }
-
-            photoCount++;
-          }
-
-          currentY += photoHeight + captionHeight + (isPDU ? 3 : 5);
-        }
-
-      } catch (error) {
-        console.error('Failed to load logos:', error);
       }
-      const pdfBlob = doc.output('blob');
+
+      const cards = finalPhotosData.map((p, i) => ({
+        id: `archive_${i}`,
+        photoBase64: p.photoBase64 || '',
+        description: p.description || '',
+      }));
+
+      const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
+      const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
+      const [logoLeftB64, logoRightB64] = await Promise.all([
+        loadLogoBase64(leftLogo),
+        loadLogoBase64(rightLogo),
+      ]);
+
+      const result = await generateReportPDF({
+        maintenanceName: docData.maintenanceName,
+        maintenanceTime: docData.maintenanceTime,
+        specificDetail: docData.specificDetail || '',
+        vrvUnitDetail: '',
+        cards,
+        companyType: companyType as 'neutra' | 'bri',
+        userEmail: docData.createdBy,
+        logos: { left: logoLeftB64, right: logoRightB64 },
+      });
+
+      if (!result) {
+        toast.error('Gagal membuat PDF', { id: 'download-pdf' });
+        return;
+      }
+
+      const pdfBlob = result.doc.output('blob');
       const url = URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
       link.href = url;

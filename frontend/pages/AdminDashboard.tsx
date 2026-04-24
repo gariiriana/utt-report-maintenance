@@ -7,7 +7,7 @@ import { db } from '@/api/firebase';
 import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
-import jsPDF from 'jspdf';
+import { generateReportPDF, loadLogoBase64 } from '@/utils/ReportPdfExport';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoBRI from '@/assets/bri_logo.png';
@@ -348,150 +348,36 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         URL.revokeObjectURL(url);
 
       } else {
-        const pdfDoc = new jsPDF('p', 'mm', 'a4');
-        const pageWidth = pdfDoc.internal.pageSize.getWidth();
-        const marginTop = 15;
-        const marginLeft = 10;
-        const marginRight = 10;
-        const usableWidth = pageWidth - marginLeft - marginRight;
+        const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
+        const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
+        const [logoLeftB64, logoRightB64] = await Promise.all([
+          loadLogoBase64(leftLogo),
+          loadLogoBase64(rightLogo),
+        ]);
 
-        let currentY = marginTop;
-        let logoLeftBase64 = '';
-        let logoRightBase64 = '';
+        const cards = photosData.map((p: any, i: number) => ({
+          id: `admin_${i}`,
+          photoBase64: p.photoBase64 || '',
+          description: p.description || '',
+        }));
 
-        try {
-          const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
-          const logoLeftResponse = await fetch(leftLogo);
-          const logoLeftBlob = await logoLeftResponse.blob();
-          const logoLeftArrayBuffer = await logoLeftBlob.arrayBuffer();
-          logoLeftBase64 = btoa(
-            new Uint8Array(logoLeftArrayBuffer).reduce(
-              (data, byte) => data + String.fromCharCode(byte), ''
-            )
-          );
-          const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
-          const logoRightResponse = await fetch(rightLogo);
-          const logoRightBlob = await logoRightResponse.blob();
-          const logoRightArrayBuffer = await logoRightBlob.arrayBuffer();
-          logoRightBase64 = btoa(
-            new Uint8Array(logoRightArrayBuffer).reduce(
-              (data, byte) => data + String.fromCharCode(byte), ''
-            )
-          );
-        } catch (error) {
-          console.error('Failed to load logos:', error);
-          toast.error('Failed to load logos', { id: 'regen' });
+        const result = await generateReportPDF({
+          maintenanceName: doc.maintenanceName,
+          maintenanceTime: doc.maintenanceTime,
+          specificDetail: doc.specificDetail || '',
+          vrvUnitDetail: '',
+          cards,
+          companyType: companyType as 'neutra' | 'bri',
+          userEmail: doc.createdBy,
+          logos: { left: logoLeftB64, right: logoRightB64 },
+        });
+
+        if (!result) {
+          toast.error('Gagal membuat PDF', { id: 'regen' });
           return;
         }
 
-        const addPageHeader = () => {
-          const isPDU = doc.createdBy === 'pdu@gmail.com';
-          let headerY = marginTop;
-          const logoWidth = isPDU ? 25 : 35;
-          const logoHeight = isPDU ? 10 : 14;
-
-          pdfDoc.addImage(
-            `data:image/png;base64,${logoLeftBase64}`,
-            'PNG',
-            marginLeft,
-            headerY,
-            logoWidth,
-            logoHeight
-          );
-
-          pdfDoc.addImage(
-            `data:image/png;base64,${logoRightBase64}`,
-            'PNG',
-            pageWidth - marginRight - logoWidth,
-            headerY,
-            logoWidth,
-            logoHeight
-          );
-
-          headerY += logoHeight + (isPDU ? 3 : 5);
-
-          pdfDoc.setFontSize(isPDU ? 10 : 14);
-          pdfDoc.setFont('helvetica', 'bold');
-          const titleText = `Dokumentasi PM ${doc.maintenanceName} (${formattedDate})`;
-          const titleWidth = pdfDoc.getTextWidth(titleText);
-          pdfDoc.text(titleText, (pageWidth - titleWidth) / 2, headerY);
-
-          headerY += (isPDU ? 6 : 8);
-
-          if (doc.specificDetail) {
-            pdfDoc.setFontSize(isPDU ? 9 : 12);
-            pdfDoc.setFont('helvetica', 'bold');
-            const equipmentText = doc.specificDetail;
-            const equipmentWidth = pdfDoc.getTextWidth(equipmentText);
-            pdfDoc.text(equipmentText, (pageWidth - equipmentWidth) / 2, headerY);
-            headerY += (isPDU ? 8 : 10);
-          } else {
-            headerY += (isPDU ? 3 : 5);
-          }
-
-          return headerY;
-        };
-
-        currentY = addPageHeader();
-
-        const isPDU = doc.createdBy === 'pdu@gmail.com';
-        const columns = isPDU ? 4 : 3;
-        const photosPerPage = isPDU ? 20 : 9;
-        const spacing = isPDU ? 3 : 4;
-
-        const photoWidth = (usableWidth - (columns - 1) * spacing) / columns;
-        const photoHeight = isPDU ? 38 : 55;
-        const captionHeight = isPDU ? 10 : 12;
-        let photoCount = 0;
-
-        for (let i = 0; i < photosData.length; i += columns) {
-          if (photoCount > 0 && photoCount % photosPerPage === 0) {
-            pdfDoc.addPage();
-            currentY = addPageHeader();
-          }
-
-          const rowCards = photosData.slice(i, i + columns);
-
-          for (let j = 0; j < rowCards.length; j++) {
-            const card = rowCards[j];
-            const xPos = marginLeft + j * (photoWidth + spacing);
-
-            pdfDoc.setDrawColor(0);
-            pdfDoc.setLineWidth(isPDU ? 0.3 : 0.5);
-            pdfDoc.rect(xPos, currentY, photoWidth, photoHeight);
-
-            if (card.photoBase64) {
-              try {
-                pdfDoc.addImage(
-                  card.photoBase64,
-                  'JPEG',
-                  xPos + 0.5,
-                  currentY + 0.5,
-                  photoWidth - 1,
-                  photoHeight - 1
-                );
-              } catch (imgError) {
-                console.error('Failed to add image:', imgError);
-              }
-            }
-
-            pdfDoc.rect(xPos, currentY + photoHeight, photoWidth, captionHeight);
-
-            if (card.description) {
-              pdfDoc.setFontSize(isPDU ? 7 : 8);
-              pdfDoc.setFont('helvetica', 'normal');
-              const lines = pdfDoc.splitTextToSize(card.description, photoWidth - 4);
-              const textY = currentY + photoHeight + 5;
-              pdfDoc.text(lines, xPos + photoWidth / 2, textY, { align: 'center', maxWidth: photoWidth - 4 });
-            }
-
-            photoCount++;
-          }
-
-          currentY += photoHeight + captionHeight + (isPDU ? 3 : 5);
-        }
-
-        const pdfBlob = pdfDoc.output('blob');
+        const pdfBlob = result.doc.output('blob');
         const url = URL.createObjectURL(pdfBlob);
         const link = document.createElement('a');
         link.href = url;
