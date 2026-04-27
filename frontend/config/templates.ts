@@ -102,6 +102,28 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Measurement Noise',
     'Gap rollingdoor ke lantai dan atap mesin',
     'Test fungsi push button'
+  ],
+  'exaustfan@utt.com': [
+    'Cleaning Fan',
+    'Tightening Cable / frame',
+    'Check Fan Blade',
+    'Cleaning Ducting',
+    'Cleaning Motor',
+    'Measurement air flow',
+    'Measurement Voltage',
+    'Measurement Ampere',
+    'Measurement Vibration'
+  ],
+  'exausttan@utt.com': [
+    'Cleaning Fan',
+    'Tightening Cable / frame',
+    'Check Fan Blade',
+    'Cleaning Ducting',
+    'Cleaning Motor',
+    'Measurement air flow',
+    'Measurement Voltage',
+    'Measurement Ampere',
+    'Measurement Vibration'
   ]
 };
 

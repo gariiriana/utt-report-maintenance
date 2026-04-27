@@ -260,14 +260,24 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
               setUnits(draft.units.map((u: any) => {
                 let unitCards = u.cards.map((c: any) => ({ ...c, photo: null }));
-                if (template && unitCards.length < template.length) {
-                  const missing = template.slice(unitCards.length);
-                  const appended = missing.map((desc, i) => ({
-                    id: `${unitCards.length + i + 1}`,
-                    photo: null,
-                    description: desc
-                  }));
-                  unitCards = [...unitCards, ...appended];
+                if (template) {
+                  const allEmpty = unitCards.every((c: any) => !c.description && !c.photoBase64);
+                  if (allEmpty) {
+                    // Draft kartu semua kosong, paksa pakai template
+                    unitCards = template.map((desc, idx) => ({
+                      id: `${idx + 1}`,
+                      photo: null,
+                      description: desc
+                    }));
+                  } else if (unitCards.length < template.length) {
+                    const missing = template.slice(unitCards.length);
+                    const appended = missing.map((desc, i) => ({
+                      id: `${unitCards.length + i + 1}`,
+                      photo: null,
+                      description: desc
+                    }));
+                    unitCards = [...unitCards, ...appended];
+                  }
                 }
                 return { ...u, cards: unitCards };
               }));
