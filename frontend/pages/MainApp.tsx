@@ -23,6 +23,18 @@ export function MainApp() {
   const isAdmin = userRole === 'admin';
   const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
 
+  // Navigation Config
+  const navItems = [
+    { id: 'admin', label: 'Dashboard Admin', icon: Shield, color: 'from-purple-600 to-pink-600', show: isAdmin },
+    { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: true },
+    { id: 'corrective', label: 'Corrective Maint.', icon: PenTool, color: 'from-red-600 to-red-700', show: true },
+    { id: 'inventory', label: 'Peminjaman Alat', icon: Shield, color: 'from-indigo-600 to-indigo-700', show: true },
+    { id: 'findings', label: 'Temuan', icon: Search, color: 'from-amber-500 to-orange-600', show: userRole === 'engineer' || userRole === 'standby_engineer' || isAdmin },
+    { id: 'finding_archive', label: 'Arsip Temuan', icon: FolderOpen, color: 'from-teal-600 to-teal-700', show: true },
+    { id: 'report', label: 'Buat Laporan', icon: FileText, color: 'from-blue-600 to-blue-700', show: true },
+    { id: 'documents', label: 'Arsip Dokumen', icon: FolderOpen, color: 'from-emerald-600 to-emerald-700', show: !isAdmin },
+  ] as const;
+
   const getDefaultTab = (): Tab => {
     if (isAdmin) return 'admin';
     return 'report';
@@ -30,9 +42,7 @@ export function MainApp() {
 
   const [activeTab, setActiveTab] = useState<Tab>(getDefaultTab());
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
-
   const [editingData, setEditingData] = useState<ExcelDocument | null>(null);
 
   const handleEditReport = (doc: ExcelDocument) => {
@@ -44,222 +54,175 @@ export function MainApp() {
     setEditingData(null);
   };
 
-  return (
-    <div className="min-h-screen flex flex-col">
+  const currentNavItem = navItems.find(item => item.id === activeTab);
 
-      <div className="bg-slate-900/60 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-950">
+      {/* Top Header */}
+      <div className="bg-slate-900/60 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+            <div className="flex items-center gap-3 min-w-0">
               <img
                 src={logoUTT}
-                alt="PT United Transworld Trading"
-                className="w-14 h-14 sm:w-20 sm:h-20 flex-shrink-0 object-contain"
+                alt="PT UTT"
+                className="w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0 object-contain"
               />
               <div className="min-w-0">
-                <h1 className="text-sm sm:text-lg font-semibold text-white truncate">
+                <h1 className="text-sm sm:text-lg font-bold text-white truncate">
                   PT United Transworld Trading
                 </h1>
-                <p className="text-xs text-slate-400 hidden sm:block">Sistem Pemeliharaan Data Center</p>
+                <p className="text-[10px] sm:text-xs text-slate-400">Sistem Pemeliharaan Data Center</p>
               </div>
             </div>
 
-            <div className="hidden md:flex items-center gap-3">
+            {/* Desktop User Info & Logout */}
+            <div className="hidden md:flex items-center gap-4">
               <div className="text-right">
-                <p className="text-xs text-slate-500">Logged as</p>
-                <p className="text-sm font-medium text-slate-300 truncate max-w-[200px]">{user?.email}</p>
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Logged as</p>
+                <p className="text-sm font-medium text-slate-300 truncate max-w-[180px]">{user?.email}</p>
               </div>
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => setLogoutModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 rounded-lg border border-slate-700/50 transition"
+                className="p-2.5 bg-slate-800 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-xl border border-slate-700/50 transition-all"
               >
-                <LogOut className="w-4 h-4" />
-                <span>Keluar</span>
+                <LogOut className="w-5 h-5" />
               </motion.button>
             </div>
 
+            {/* Mobile Menu Toggle */}
             <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 bg-slate-800/50 text-slate-300 rounded-lg border border-slate-700/50"
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setMobileMenuOpen(true)}
+              className="md:hidden p-2.5 bg-slate-800 text-slate-300 rounded-xl border border-slate-700/50"
             >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              <Menu className="w-6 h-6" />
             </motion.button>
           </div>
+        </div>
+      </div>
 
-          <AnimatePresence>
-            {mobileMenuOpen && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="md:hidden overflow-hidden"
+      {/* Desktop Horizontal Navbar */}
+      <div className="hidden md:block bg-slate-900/30 backdrop-blur-xl border-b border-slate-800/50 sticky top-[73px] z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {navItems.filter(i => i.show).map((item) => (
+              <motion.button
+                key={item.id}
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setActiveTab(item.id as Tab)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold transition-all whitespace-nowrap border ${activeTab === item.id
+                  ? `bg-gradient-to-r ${item.color} text-white border-transparent shadow-lg shadow-black/20`
+                  : 'bg-slate-800/20 text-slate-400 border-slate-700/30 hover:bg-slate-800/50 hover:text-slate-200'
+                  }`}
               >
-                <div className="pt-4 pb-2 space-y-3 border-t border-slate-700/50 mt-3">
-                  <div className="px-3 py-2 bg-slate-800/30 rounded-lg">
-                    <p className="text-xs text-slate-500">Logged as</p>
-                    <p className="text-sm font-medium text-slate-300 truncate">{user?.email}</p>
-                  </div>
-                  <motion.button
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setLogoutModalOpen(true)}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600/10 hover:bg-red-600/20 text-red-400 rounded-lg border border-red-500/20 transition"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>Keluar</span>
-                  </motion.button>
+                <item.icon className="w-4 h-4" />
+                <span>{item.label}</span>
+              </motion.button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileMenuOpen(false)}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] md:hidden"
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 bottom-0 w-[280px] bg-slate-900 border-l border-slate-800 z-[70] md:hidden flex flex-col shadow-2xl"
+            >
+              <div className="p-6 flex items-center justify-between border-b border-slate-800">
+                <span className="font-bold text-white">Menu Navigasi</span>
+                <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-slate-400 hover:text-white">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                <div className="mb-6 p-4 bg-slate-800/30 rounded-2xl border border-white/5">
+                  <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Terhubung sebagai</p>
+                  <p className="text-sm font-medium text-slate-300 truncate">{user?.email}</p>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
 
-      <div className="bg-slate-900/40 backdrop-blur-xl border-b border-slate-700/30 sticky top-[65px] sm:top-[73px] z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
-          <div className="flex gap-2 overflow-x-auto">
-            {isAdmin && (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setActiveTab('admin')}
-                className={`flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'admin'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/25'
-                  : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
-                  }`}
-              >
-                <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">Dashboard Admin</span>
-                <span className="sm:hidden">Admin</span>
-              </motion.button>
-            )}
+                {navItems.filter(i => i.show).map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setActiveTab(item.id as Tab);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl font-bold transition-all border ${activeTab === item.id
+                      ? `bg-gradient-to-r ${item.color} text-white border-transparent shadow-lg shadow-black/20`
+                      : 'bg-slate-800/30 text-slate-400 border-slate-800/50 hover:bg-slate-800/60'
+                      }`}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
 
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setActiveTab('files')}
-              className={`flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'files'
-                ? 'bg-gradient-to-r from-orange-600 to-orange-700 text-white shadow-lg shadow-orange-500/25'
-                : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
-                }`}
-            >
-              <Files className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">Manajemen File</span>
-              <span className="sm:hidden">File</span>
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setActiveTab('corrective')}
-              className={`flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'corrective'
-                ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-500/25'
-                : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
-                }`}
-            >
-              <PenTool className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">Corrective Maint.</span>
-              <span className="sm:hidden">CM</span>
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setActiveTab('inventory')}
-              className={`flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'inventory'
-                ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-500/25'
-                : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
-                }`}
-            >
-              <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">Peminjaman Alat</span>
-              <span className="sm:hidden">Pinjam</span>
-            </motion.button>
-
-            {(userRole === 'engineer' || userRole === 'standby_engineer' || userRole === 'admin') && (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setActiveTab('findings')}
-                className={`flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'findings'
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/25'
-                  : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
-                  }`}
-              >
-                <Search className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">Temuan</span>
-                <span className="sm:hidden">Temuan</span>
-              </motion.button>
-            )}
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setActiveTab('finding_archive')}
-              className={`flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'finding_archive'
-                ? 'bg-gradient-to-r from-teal-600 to-teal-700 text-white shadow-lg shadow-teal-500/25'
-                : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
-                }`}
-            >
-              <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">Arsip Temuan</span>
-              <span className="sm:hidden">Arsip</span>
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setActiveTab('report')}
-              className={`flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'report'
-                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/25'
-                : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
-                }`}
-            >
-              <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">Buat Laporan</span>
-              <span className="sm:hidden">Buat</span>
-            </motion.button>
-
-            {!isAdmin && (
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setActiveTab('documents')}
-                className={`flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'documents'
-                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-500/25'
-                  : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
-                  }`}
-              >
-                <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">Arsip Dokumen</span>
-                <span className="sm:hidden">Arsip</span>
-              </motion.button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="relative z-10">
-        {activeTab === 'admin' ? (
-          <AdminDashboard onEdit={handleEditReport} />
-        ) : activeTab === 'files' ? (
-          <FileManagement />
-        ) : activeTab === 'report' ? (
-          <ReportForm editingData={editingData} onClearEdit={clearEditingData} />
-        ) : activeTab === 'corrective' ? (
-          <CorrectiveMaintenance readOnly={isTDEorCBRE} />
-        ) : activeTab === 'inventory' ? (
-          <InventoryBorrowing />
-        ) : activeTab === 'findings' ? (
-          <FindingManagement />
-        ) : activeTab === 'finding_archive' ? (
-          <FindingArchive />
-        ) : (
-          <DocumentList onEdit={handleEditReport} />
+              <div className="p-4 border-t border-slate-800">
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setLogoutModalOpen(true);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl border border-red-500/20 font-bold transition-all"
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Keluar Sesi</span>
+                </button>
+              </div>
+            </motion.div>
+          </>
         )}
-      </div>
+      </AnimatePresence>
+
+      {/* Main Content Area */}
+      <main className="flex-1 relative">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            {activeTab === 'admin' ? (
+              <AdminDashboard onEdit={handleEditReport} />
+            ) : activeTab === 'files' ? (
+              <FileManagement />
+            ) : activeTab === 'report' ? (
+              <ReportForm editingData={editingData} onClearEdit={clearEditingData} />
+            ) : activeTab === 'corrective' ? (
+              <CorrectiveMaintenance readOnly={isTDEorCBRE} />
+            ) : activeTab === 'inventory' ? (
+              <InventoryBorrowing />
+            ) : activeTab === 'findings' ? (
+              <FindingManagement />
+            ) : activeTab === 'finding_archive' ? (
+              <FindingArchive />
+            ) : (
+              <DocumentList onEdit={handleEditReport} />
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </main>
 
       <Footer />
 

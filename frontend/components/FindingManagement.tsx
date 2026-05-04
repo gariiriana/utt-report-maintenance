@@ -155,15 +155,15 @@ export function FindingManagement() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-10"
       >
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-amber-500/10 rounded-lg">
-            <Plus className="w-8 h-8 text-amber-500" />
+        <div className="flex items-center gap-2 sm:gap-3 mb-2">
+          <div className="p-1.5 sm:p-2 bg-amber-500/10 rounded-lg">
+            <Plus className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500" />
           </div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">
+          <h1 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight">
             Input Temuan Maintenance
           </h1>
         </div>
-        <p className="text-slate-400 text-lg ml-13">
+        <p className="text-slate-400 text-sm sm:text-lg ml-0 sm:ml-12 lg:ml-14">
           Dokumentasikan temuan trouble maintenance dengan detail untuk arsip dan pelaporan.
         </p>
       </motion.div>
@@ -172,9 +172,9 @@ export function FindingManagement() {
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.1 }}
-        className="bg-slate-900/40 backdrop-blur-2xl rounded-3xl border border-white/5 shadow-2xl overflow-hidden"
+        className="bg-slate-900/40 backdrop-blur-2xl rounded-2xl sm:rounded-3xl border border-white/5 shadow-2xl overflow-hidden"
       >
-        <form onSubmit={handleSubmit} className="p-8 sm:p-10">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-10">
           <div className="flex flex-col lg:flex-row gap-12">
             
             {/* Left Column: Form Details */}
@@ -344,8 +344,8 @@ export function FindingManagement() {
             </div>
           </div>
 
-          <div className="mt-12 flex justify-end items-center gap-6 pt-8 border-t border-white/5">
-            <p className="text-sm text-slate-500 italic hidden sm:block">
+          <div className="mt-12 flex flex-col sm:flex-row justify-end items-center gap-4 sm:gap-6 pt-8 border-t border-white/5">
+            <p className="text-sm text-slate-500 italic hidden lg:block">
               Pastikan semua data yang diinput sudah benar sebelum menyimpan.
             </p>
             <motion.button
@@ -353,10 +353,10 @@ export function FindingManagement() {
               whileTap={{ scale: 0.98 }}
               type="submit"
               disabled={submitting}
-              className="px-10 py-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-2xl font-bold text-lg shadow-xl shadow-amber-500/20 transition-all flex items-center gap-3 disabled:opacity-50"
+              className="w-full sm:w-auto px-8 sm:px-10 py-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-2xl font-bold text-base sm:text-lg shadow-xl shadow-amber-500/20 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
             >
               {submitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <CheckCircle2 className="w-6 h-6" />}
-              Simpan Temuan Maintenance
+              Simpan Temuan
             </motion.button>
           </div>
         </form>
