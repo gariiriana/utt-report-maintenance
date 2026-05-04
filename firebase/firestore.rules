@@ -358,6 +358,30 @@ service cloud.firestore {
     }
 
     // ============================================================
+    // FINDINGS COLLECTION — Temuan Maintenance Trouble
+    // ============================================================
+    match /findings/{findingId} {
+      // ✅ Engineer, Standby Engineer, dan Admin bisa create temuan
+      allow create: if request.auth != null 
+                    && (isAdminSafe() || isEngineer())
+                    && hasAcceptableFieldCount(request.resource.data, 20)
+                    && request.resource.data.keys().hasAll(['partName', 'partNumber', 'quantity', 'findingDate', 'photos', 'createdBy', 'createdByEmail', 'createdAt'])
+                    && request.resource.data.createdBy == request.auth.uid
+                    && request.resource.data.createdByEmail == request.auth.token.email
+                    && isValidString(request.resource.data.partName, 500)
+                    && isValidString(request.resource.data.partNumber, 200);
+      
+      // ✅ Semua user yang login bisa read (transparansi)
+      allow read: if request.auth != null;
+      
+      // ✅ Admin bisa delete, creator bisa delete, atau engineer bisa delete data dummy
+      allow delete: if request.auth != null 
+                    && (isAdminSafe() 
+                        || resource.data.createdBy == request.auth.uid
+                        || (isEngineer() && resource.data.remark.size() > 20 && resource.data.remark.matches(".*Perlu dilakukan pengecekan lebih lanjut.*")));
+    }
+
+    // ============================================================
     // MAINTENANCE PROGRESS COLLECTION
     // ============================================================
     match /maintenance_progress/{docId} {

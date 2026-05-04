@@ -98,6 +98,16 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 	case strings.HasPrefix(path, "/api/maintenance-progress/") && r.Method == http.MethodPatch:
 		heavy(deps.MaintenanceProgressCtrl.UpdateProgress)(w, r)
 
+	// --- Findings ---
+	case path == "/api/findings" && r.Method == http.MethodPost:
+		heavy(deps.FindingCtrl.CreateFinding)(w, r)
+
+	case path == "/api/findings" && r.Method == http.MethodGet:
+		standard(deps.FindingCtrl.ListFindings)(w, r)
+
+	case strings.HasPrefix(path, "/api/findings/") && r.Method == http.MethodDelete:
+		heavy(deps.FindingCtrl.DeleteFinding)(w, r)
+
 	default:
 		helpers.SendError(w, "route not found", http.StatusNotFound)
 	}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool } from 'lucide-react';
+import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search } from 'lucide-react';
 import { useAuth } from '@/components/AuthContext';
 import { ReportForm } from '@/components/ReportForm';
 import { DocumentList } from '@/components/DocumentList';
@@ -8,12 +8,14 @@ import { AdminDashboard } from '@/pages/AdminDashboard';
 import { ExcelDocument } from '@/components/DocumentList';
 import { FileManagement } from '@/components/FileManagement';
 import { CorrectiveMaintenance } from '@/components/CorrectiveMaintenance';
+import { FindingManagement } from '../components/FindingManagement';
+import { FindingArchive } from '../components/FindingArchive';
 import { Footer } from '@/components/Footer';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import { InventoryBorrowing } from '@/components/InventoryBorrowing';
 import logoUTT from '@/assets/logo_utt.png';
 
-type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'inventory';
+type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'inventory' | 'findings' | 'finding_archive';
 
 export function MainApp() {
   const { user, userRole, logout } = useAuth();
@@ -176,6 +178,36 @@ export function MainApp() {
               <span className="sm:hidden">Pinjam</span>
             </motion.button>
 
+            {(userRole === 'engineer' || userRole === 'standby_engineer' || userRole === 'admin') && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setActiveTab('findings')}
+                className={`flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'findings'
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/25'
+                  : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
+                  }`}
+              >
+                <Search className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="hidden sm:inline">Temuan</span>
+                <span className="sm:hidden">Temuan</span>
+              </motion.button>
+            )}
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setActiveTab('finding_archive')}
+              className={`flex-initial flex items-center justify-center gap-2 px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-all text-xs sm:text-base whitespace-nowrap ${activeTab === 'finding_archive'
+                ? 'bg-gradient-to-r from-teal-600 to-teal-700 text-white shadow-lg shadow-teal-500/25'
+                : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/50 hover:text-slate-300'
+                }`}
+            >
+              <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="hidden sm:inline">Arsip Temuan</span>
+              <span className="sm:hidden">Arsip</span>
+            </motion.button>
+
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -220,6 +252,10 @@ export function MainApp() {
           <CorrectiveMaintenance readOnly={isTDEorCBRE} />
         ) : activeTab === 'inventory' ? (
           <InventoryBorrowing />
+        ) : activeTab === 'findings' ? (
+          <FindingManagement />
+        ) : activeTab === 'finding_archive' ? (
+          <FindingArchive />
         ) : (
           <DocumentList onEdit={handleEditReport} />
         )}

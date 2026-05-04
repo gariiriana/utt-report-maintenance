@@ -20,6 +20,7 @@ type AppDeps struct {
 	ArchiveCtrl *controllers.ArchiveController
 	AuditCtrl   *controllers.AuditController
 	MaintenanceProgressCtrl *controllers.MaintenanceProgressController
+	FindingCtrl *controllers.FindingController
 	RateLimiter      *middlewares.RateLimiter // global catch-all
 	ThrottleHeavy    *middlewares.RateLimiter // POST/DELETE — 5 rps, burst 10
 	ThrottleStandard *middlewares.RateLimiter // GET lists   — 20 rps, burst 40
@@ -39,12 +40,14 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 	auditRepo  := repositories.NewAuditRepository(firestoreClient)
 	archiveRepo := repositories.NewArchiveRepository(firestoreClient)
 	maintenanceRepo := repositories.NewMaintenanceProgressRepository(firestoreClient)
+	findingRepo := repositories.NewFindingRepository(firestoreClient)
 	authSvc    := services.NewAuthService(authClient)
 	auditSvc   := services.NewAuditService(auditRepo)
 	userSvc    := services.NewUserService(userRepo, authSvc)
 	reportSvc  := services.NewReportService(reportRepo)
 	archiveSvc := services.NewArchiveService(archiveRepo)
 	maintenanceSvc := services.NewMaintenanceProgressService(maintenanceRepo)
+	findingSvc := services.NewFindingService(findingRepo)
 	notifSvc   := services.NewNotificationService("")
 	reportCtrl  := controllers.NewReportController(reportSvc, auditSvc, notifSvc)
 	authCtrl    := controllers.NewAuthController(authSvc, userSvc, auditSvc)
@@ -53,6 +56,7 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 	archiveCtrl := controllers.NewArchiveController(archiveSvc)
 	auditCtrl   := controllers.NewAuditController(auditSvc)
 	maintenanceCtrl := controllers.NewMaintenanceProgressController(maintenanceSvc)
+	findingCtrl := controllers.NewFindingController(findingSvc)
 
 	rateLimiter     := middlewares.NewRateLimiter(20, 40)
 	throttleHeavy    := middlewares.NewThrottle(5, 10)   // expensive write/delete ops
@@ -66,6 +70,7 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 		ArchiveCtrl: archiveCtrl,
 		AuditCtrl:   auditCtrl,
 		MaintenanceProgressCtrl: maintenanceCtrl,
+		FindingCtrl: findingCtrl,
 		RateLimiter:      rateLimiter,
 		ThrottleHeavy:    throttleHeavy,
 		ThrottleStandard: throttleStandard,
