@@ -235,13 +235,16 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
   };
 
   const handleExcelSync = async (isAuto = false) => {
-    if (!isAuto && !window.confirm('Ingin melakukan reset penuh database dengan data Excel 31 Mar 2026? Semua data lama untuk periode ini akan dihapus dan dibuat ulang.')) return;
+    const isQ1 = selectedQuarter === 'Q1';
+    const confirmMsg = isQ1 
+      ? 'Ingin melakukan reset penuh database dengan data Excel 31 Mar 2026? Semua data lama untuk periode ini akan dihapus dan dibuat ulang.'
+      : `Ingin inisialisasi data ${selectedQuarter} menggunakan list perangkat Q1 dengan progress 0%? Semua data lama ${selectedQuarter} akan dihapus.`;
+
+    if (!isAuto && !window.confirm(confirmMsg)) return;
 
     setLoading(true);
     try {
-
       const officialData = [
-
         { cat: "A. ELECTRICAL SYSTEM", name: "TRANSFORMATOR",                   plan: 8,    yes: 8,      today: 8    },
         { cat: "A. ELECTRICAL SYSTEM", name: "AUTOMATIC TRANSFER SWITCH (ATS)", plan: 15,   yes: 15,     today: 15   },
         { cat: "A. ELECTRICAL SYSTEM", name: "MV & RMU PANEL",                  plan: 20,   yes: 0,      today: 0    },
@@ -309,8 +312,8 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
           category:       item.cat,
           equipment_name: item.name,
           plan_qty:       item.plan,
-          yesterday_qty:  item.yes,
-          actual_qty:     item.today,
+          yesterday_qty:  isQ1 ? item.yes : 0,
+          actual_qty:     isQ1 ? item.today : 0,
           year:           selectedYear,
           quarter:        selectedQuarter,
           remark:         '',
@@ -319,10 +322,14 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
       });
       await insertBatch.commit();
 
-      toast.success('✅ Database direset & disinkronkan sempurna! Total: 5110 unit | 89.80%');
+      if (isQ1) {
+        toast.success('✅ Database Q1 direset & disinkronkan sempurna! Progress: 89.80%');
+      } else {
+        toast.success(`✅ Database ${selectedQuarter} berhasil diinisialisasi dengan progress 0%!`);
+      }
     } catch (err) {
       console.error(err);
-      toast.error('Gagal sinkronisasi excel');
+      toast.error('Gagal sinkronisasi data');
     } finally {
       setLoading(false);
     }

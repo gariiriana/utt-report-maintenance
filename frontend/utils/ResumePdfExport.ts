@@ -74,7 +74,7 @@ export async function generateResumePdf(summary: MaintenanceSummary, maintenance
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 116, 139);
-    doc.text(projectName ? `Situs: ${projectName}` : 'Reporting & Monitoring System - Q1 2026', pageW / 2, 23, { align: 'center' });
+    doc.text(projectName ? projectName : 'Reporting & Monitoring System - PT United Transworld Trading', pageW / 2, 23, { align: 'center' });
 
     doc.setDrawColor(226, 232, 240);
     doc.line(margin, 30, pageW - margin, 30);
