@@ -98,7 +98,7 @@ service cloud.firestore {
                     && request.resource.data.uid == userId
                     && request.resource.data.keys().hasAll(['email', 'uid', 'role', 'companyType', 'createdAt'])
                     && hasAcceptableFieldCount(request.resource.data, 8)
-                    && (request.resource.data.role == 'admin' || request.resource.data.role == 'engineer' || request.resource.data.role == 'standby_engineer' || request.resource.data.role == 'tde' || request.resource.data.role == 'cbre' || request.resource.data.role == 'hse' || request.resource.data.role == 'pmo' || request.resource.data.role == 'sales' || request.resource.data.role == 'presales' || request.resource.data.role == 'purchasing' || request.resource.data.role == 'dirut' || request.resource.data.role == 'direksiSDM' || request.resource.data.role == 'DireksiKeuangan')
+                    && (request.resource.data.role in ['admin', 'engineer', 'standby_engineer', 'tde', 'cbre', 'hse', 'pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan', 'site_manager', 'manager', 'inventory'])
                     && (request.resource.data.companyType == 'neutra' || request.resource.data.companyType == 'bri')
                     && isValidString(request.resource.data.email, 200)
                     && isValidString(request.resource.data.uid, 128);
@@ -374,11 +374,10 @@ service cloud.firestore {
       // ✅ Semua user yang login bisa read (transparansi)
       allow read: if request.auth != null;
       
-      // ✅ Admin bisa delete, creator bisa delete, atau engineer bisa delete data dummy
+      // ✅ Admin bisa delete, creator bisa delete, atau engineer bisa delete data
       allow delete: if request.auth != null 
                     && (isAdminSafe() 
-                        || resource.data.createdBy == request.auth.uid
-                        || (isEngineer() && resource.data.remark.size() > 20 && resource.data.remark.matches(".*Perlu dilakukan pengecekan lebih lanjut.*")));
+                        || resource.data.createdBy == request.auth.uid);
     }
 
     // ============================================================

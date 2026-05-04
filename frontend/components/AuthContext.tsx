@@ -111,21 +111,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
-    if (userCredential.user) {
-      const userDocRef = doc(db, 'users', userCredential.user.uid);
-      const userDoc = await getDoc(userDocRef);
+    try {
+      if (userCredential.user) {
+        const userDocRef = doc(db, 'users', userCredential.user.uid);
+        const userDoc = await getDoc(userDocRef);
 
-      if (!userDoc.exists()) {
-        const isAdminEmail = userCredential.user.email === 'Adminreportlampiranutt@gmail.com';
+        if (!userDoc.exists()) {
+          const isAdminEmail = userCredential.user.email === 'Adminreportlampiranutt@gmail.com';
 
-        await setDoc(userDocRef, {
-          email: userCredential.user.email,
-          uid: userCredential.user.uid,
-          role: isAdminEmail ? 'admin' : 'engineer',
-          companyType: 'neutra',
-          createdAt: serverTimestamp(),
-        });
+          await setDoc(userDocRef, {
+            email: userCredential.user.email,
+            uid: userCredential.user.uid,
+            role: isAdminEmail ? 'admin' : 'engineer',
+            companyType: 'neutra',
+            createdAt: serverTimestamp(),
+          });
+        }
       }
+    } catch (error) {
+      console.warn('Error during background user doc sync:', error);
+      // Don't throw, auth succeeded already
     }
   };
 
