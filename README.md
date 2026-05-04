@@ -58,6 +58,16 @@ Dirancang untuk menangani beban kerja operasional yang tinggi dengan efisiensi m
 - **Professional Export**: Konversi laporan ke format Excel (.xlsx) dan PDF (A4) siap cetak secara simultan.
 - **Auto-pagination**: Pengaturan tata letak otomatis yang rapi (9 foto per halaman) untuk laporan PDF.
 
+### 🔍 Manajemen Temuan & Arsip (Findings Management)
+
+Modul terintegrasi untuk mendokumentasikan temuan kerusakan/trouble secara detail dengan alur kerja yang terorganisir:
+
+- **Dual-Module Architecture**: Pemisahan modul antara **Input Temuan** (data entry fokus) dan **Arsip Temuan** (manajemen history).
+- **Premium Input Interface**: Form input yang didesain secara luas dan modern untuk kemudahan pengisian detail part, brand, dan quantity.
+- **Advanced Archival System**: Sistem pencarian dan filter arsip berdasarkan **Bulan** dan **Tahun** untuk manajemen laporan periodik.
+- **Multi-Format Export findings**: Kemampuan untuk mengekspor kumpulan temuan hasil filter ke format **PDF** dan **Microsoft Word (.docx)** secara instan.
+- **Interactive Photo Gallery**: Visualisasi temuan dengan gallery foto yang mendukung fitur *cropping* dan pengeditan deskripsi foto.
+
 ---
 
 ## 🚀 Panduan Instalasi
