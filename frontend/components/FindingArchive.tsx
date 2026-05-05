@@ -18,10 +18,10 @@ import { db } from '@/api/firebase';
 import {
   collection,
   query,
-  orderBy,
   onSnapshot,
   deleteDoc,
   doc,
+  where,
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { exportFindingsToPDF } from '../utils/FindingPdfExport';
@@ -61,7 +61,24 @@ export function FindingArchive() {
 
   // ── Load findings from Firestore ─────────────────────────────────────────
   useEffect(() => {
-    const q = query(collection(db, 'findings'), orderBy('createdAt', 'desc'));
+    if (!user) return;
+
+    // Define roles that can see everything (matches isPrivilegedRole in firestore.rules)
+    const privilegedRoles = ['admin', 'manager', 'site_manager', 'hse', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
+    const isPrivileged = userRole && privilegedRoles.includes(userRole);
+
+    let q;
+    if (isPrivileged) {
+      // Privileged roles see everything
+      q = query(collection(db, 'findings'));
+    } else {
+      // Regular users only see their own findings
+      q = query(
+        collection(db, 'findings'),
+        where('createdBy', '==', user.uid)
+      );
+    }
+
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
@@ -69,7 +86,15 @@ export function FindingArchive() {
           id: d.id,
           ...d.data(),
         })) as FindingRecord[];
-        setFindings(data);
+
+        // Sort on client side to avoid "Missing Index" error for composite queries
+        const sortedData = [...data].sort((a, b) => {
+          const timeA = a.createdAt?.toDate?.()?.getTime() || 0;
+          const timeB = b.createdAt?.toDate?.()?.getTime() || 0;
+          return timeB - timeA; // Descending
+        });
+
+        setFindings(sortedData);
         setLoading(false);
       },
       (error) => {
@@ -79,7 +104,7 @@ export function FindingArchive() {
       }
     );
     return () => unsubscribe();
-  }, []);
+  }, [user, userRole]);
 
   // ── Delete ───────────────────────────────────────────────────────────────
   const confirmDelete = async () => {

@@ -371,8 +371,10 @@ service cloud.firestore {
                     && isValidString(request.resource.data.partName, 500)
                     && isValidString(request.resource.data.partNumber, 200);
       
-      // ✅ Semua user yang login bisa read (transparansi)
-      allow read: if request.auth != null;
+      // ✅ Hanya pencipta atau role istimewa yang bisa baca
+      allow read: if request.auth != null 
+                  && (resource.data.createdBy == request.auth.uid 
+                      || isPrivilegedRole());
       
       // ✅ Admin bisa delete, creator bisa delete, atau engineer bisa delete data
       allow delete: if request.auth != null 

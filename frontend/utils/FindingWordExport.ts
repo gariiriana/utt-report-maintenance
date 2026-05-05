@@ -21,6 +21,16 @@ import {
 import { saveAs } from 'file-saver';
 import { FindingRecord } from '../types/finding';
 
+/** Helper to get image dimensions from base64 */
+function getImageDimensions(base64: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.width, height: img.height });
+    img.onerror = () => resolve({ width: 0, height: 0 });
+    img.src = base64;
+  });
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 /** Convert a base64 data URL to a Uint8Array for docx ImageRun. */
@@ -310,6 +320,17 @@ export async function exportFindingsToWord(findings: FindingRecord[]): Promise<v
         if (photo.base64) {
           const photoBytes = base64ToUint8Array(photo.base64);
           if (photoBytes.length > 0) {
+            const dims = await getImageDimensions(photo.base64);
+            const maxWidth = 450;
+            const maxHeight = 350;
+            let drawW = maxWidth;
+            let drawH = (dims.height / dims.width) * maxWidth;
+
+            if (drawH > maxHeight) {
+              drawH = maxHeight;
+              drawW = (dims.width / dims.height) * maxHeight;
+            }
+
             photoSections.push(
               new Paragraph({
                 alignment: AlignmentType.CENTER,
@@ -317,7 +338,7 @@ export async function exportFindingsToWord(findings: FindingRecord[]): Promise<v
                 children: [
                   new ImageRun({
                     data: photoBytes,
-                    transformation: { width: 400, height: 280 },
+                    transformation: { width: drawW, height: drawH },
                     type: 'jpg',
                   }),
                 ],

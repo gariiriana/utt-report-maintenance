@@ -5,6 +5,16 @@ import { loadLogoBase64 } from './ReportPdfExport';
 import logoNeutra from '@/assets/logo_neutradc.png';
 import logoDME from '@/assets/logo_dwimitra_v2.png';
 
+/** Helper to get image dimensions from base64 */
+function getImageDimensions(base64: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.width, height: img.height });
+    img.onerror = () => resolve({ width: 0, height: 0 });
+    img.src = base64;
+  });
+}
+
 /**
  * Export findings to a premium professional PDF report
  * with Neutra DC + DME branding and international standard layout.
@@ -185,7 +195,7 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
       // Photos grid (2 columns)
       const photoCols = 2;
       const photoW = (contentW - 4) / photoCols;
-      const photoH = 50;
+      const photoH = 60; // Increased from 50 for better aspect ratio compatibility
       const captionH = 8;
 
       for (let pIdx = 0; pIdx < finding.photos.length; pIdx += photoCols) {
@@ -207,8 +217,39 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
 
           if (photo.base64) {
             try {
-              doc.addImage(photo.base64, 'JPEG', x + 1, curY + 1, photoW - 2, photoH - 2, `fp_${fIdx}_${pIdx + j}`, 'FAST');
-            } catch {
+              const dims = await getImageDimensions(photo.base64);
+              let drawW = photoW - 2;
+              let drawH = photoH - 2;
+
+              if (dims.width > 0 && dims.height > 0) {
+                const containerRatio = drawW / drawH;
+                const imgRatio = dims.width / dims.height;
+
+                if (imgRatio > containerRatio) {
+                  // Image is wider than container ratio
+                  drawH = drawW / imgRatio;
+                } else {
+                  // Image is taller than container ratio
+                  drawW = drawH * imgRatio;
+                }
+              }
+
+              // Center the image in the card
+              const offsetX = (photoW - drawW) / 2;
+              const offsetY = (photoH - drawH) / 2;
+
+              doc.addImage(
+                photo.base64,
+                'JPEG',
+                x + offsetX,
+                curY + offsetY,
+                drawW,
+                drawH,
+                `fp_${fIdx}_${pIdx + j}`,
+                'FAST'
+              );
+            } catch (err) {
+              console.error('Error adding image to PDF:', err);
               doc.setFontSize(7).setTextColor(GRAY);
               doc.text('Image Error', x + photoW / 2, curY + photoH / 2, { align: 'center' });
             }
