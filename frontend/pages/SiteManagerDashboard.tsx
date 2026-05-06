@@ -381,7 +381,7 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
           <p className="text-slate-400 animate-pulse">Memuat dashboard Manajer Situs...</p>

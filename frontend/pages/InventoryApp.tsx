@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DataCenterBackground } from '@/components/DataCenterBackground';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import logoUTT from '@/assets/logo_utt.png';
 import { useScreenshot } from '@/hooks/useScreenshot';
@@ -90,7 +89,6 @@ export function InventoryApp() {
 
   return (
     <div className="min-h-screen relative overflow-hidden flex flex-col">
-      <DataCenterBackground />
 
       {}
       <header className="bg-slate-900/60 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-50">

@@ -53,42 +53,37 @@ function AppContent() {
   }
 
   return (
-    <div className="relative min-h-screen bg-slate-950 overflow-x-hidden">
-      {}
-      <DataCenterBackground />
-
-      <div className="relative z-10 w-full min-h-screen">
-        <AnimatePresence mode="wait">
-          {user ? (
-            <motion.div
-              key={`private-${userRole}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.4 }}
-            >
-              {(() => {
-                if (userRole === 'hse') return <HSEApp />;
-                const isoRoles = ['pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
-                if (isoRoles.includes(userRole || '')) return <DivisionApp />;
-                if (userRole === 'site_manager' || userRole === 'manager') return <SiteManagerDashboard />;
-                if (userRole === 'inventory') return <InventoryApp />;
-                return <MainApp />;
-              })()}
-            </motion.div>
-          ) : (
-            <motion.div
-              key="login"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.4 }}
-            >
-              <Login />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+    <div className="relative z-10 w-full min-h-screen">
+      <AnimatePresence mode="wait">
+        {user ? (
+          <motion.div
+            key={`private-${userRole}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            {(() => {
+              if (userRole === 'hse') return <HSEApp />;
+              const isoRoles = ['pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
+              if (isoRoles.includes(userRole || '')) return <DivisionApp />;
+              if (userRole === 'site_manager' || userRole === 'manager') return <SiteManagerDashboard />;
+              if (userRole === 'inventory') return <InventoryApp />;
+              return <MainApp />;
+            })()}
+          </motion.div>
+        ) : (
+          <motion.div
+            key="login"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.4 }}
+          >
+            <Login />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -101,24 +96,21 @@ export default function App() {
     });
   }, []);
 
-  if (PUBLIC_HSE_REPORT_ID) {
-    return (
-      <div className="relative min-h-screen bg-slate-950">
-        <DataCenterBackground />
+  return (
+    <div className="relative min-h-screen bg-slate-950 overflow-x-hidden">
+      <DataCenterBackground />
+      
+      {PUBLIC_HSE_REPORT_ID ? (
         <div className="relative z-10">
           <HSEReportViewer reportId={PUBLIC_HSE_REPORT_ID} />
-          <Toaster position="top-center" richColors />
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      ) : (
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      )}
+      
       <Toaster position="top-center" richColors />
-    </>
+    </div>
   );
 }

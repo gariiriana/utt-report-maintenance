@@ -1,11 +1,9 @@
 import { motion } from 'motion/react';
-import { DataCenterBackground } from './DataCenterBackground';
 import logoUTT from '@/assets/logo_utt.png';
 
 export function ServerLoadingIndicator() {
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-      <DataCenterBackground />
 
       <div className="relative z-10 text-center">
         <motion.div
