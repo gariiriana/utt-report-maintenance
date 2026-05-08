@@ -333,7 +333,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
                 photos: photos.map(p => p.dataUrl.substring(0, 50) + '...'),
                 authorEmail: user?.email || '',
                 updatedAt: serverTimestamp(),
-                reportType: reportType || (editingData?.documentType === 'hse' ? (editingData as any).reportType : 'neutradc')
+                reportType: reportType || (editingData?.documentType === 'hse' ? (editingData as any).reportType : 'utt')
             };
 
             let docId = '';
