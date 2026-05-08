@@ -7,7 +7,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-007ACC?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?style=flat-square&logo=vite)](https://vitejs.dev/)
 [![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Security](https://img.shields.io/badge/Security-Hardened-brightgreen?style=flat-square&logo=shield)](#security)
+[![Security](https://img.shields.io/badge/Security-Hardened-brightgreen?style=flat-square&logo=shield)](#-security)
 
 **UTT Report Maintenance** adalah sistem dokumentasi infrastruktur kritikal profesional yang dirancang khusus untuk memfasilitasi pelaporan pemeliharaan data center bagi **PT United Transworld Trading (UTT)**.
 
@@ -244,7 +244,6 @@ All API endpoints (except health checks) require authentication via one of:
 
 - **Firebase Auth Token**: `Authorization: Bearer <firebase_id_token>` (recommended)
 - **API Secret**: `X-API-Secret: <secret>` (legacy, backward-compatible)
-
 
 ### Endpoints
 
@@ -491,7 +490,7 @@ docker-compose up -d
 ## 🔑 Role System
 
 | Role | Access Level | Description |
-|------|-------------|-------------|
+| :--- | :--- | :--- |
 | `admin` | 🔴 Full | Semua akses + user management |
 | `site_manager` | 🟠 High | Dashboard + maintenance progress |
 | `manager` | 🟠 High | Dashboard + maintenance progress |
