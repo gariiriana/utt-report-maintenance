@@ -4,7 +4,8 @@ import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
 import { Lock, Mail, Eye, EyeOff, LogIn } from 'lucide-react';
 
-import logoUTT from '@/assets/logo_utt.png';
+// Hapus import dari assets karena kita akan menggunakan path statis dari /public
+// import logoUTT from '@/assets/logo_utt.png';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -65,7 +66,7 @@ export function Login() {
                 className="inline-flex items-center justify-center mb-2 sm:mb-3"
               >
                 <img
-                  src={logoUTT}
+                  src="/logo_utt.png"
                   alt="PT United Transworld Trading"
                   className="w-40 h-40 sm:w-56 sm:h-56 object-contain"
                   fetchPriority="high"
