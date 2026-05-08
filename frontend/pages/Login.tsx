@@ -68,6 +68,7 @@ export function Login() {
                   src={logoUTT}
                   alt="PT United Transworld Trading"
                   className="w-40 h-40 sm:w-56 sm:h-56 object-contain"
+                  fetchPriority="high"
                 />
               </motion.div>
 
