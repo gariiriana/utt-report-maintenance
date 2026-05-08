@@ -1,4 +1,4 @@
-<![CDATA[# 🏢 UTT Report Maintenance
+# 🏢 UTT Report Maintenance
 
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://reactjs.org/)
 [![Go](https://img.shields.io/badge/Go-1.24-00ADD8?style=flat-square&logo=go)](https://go.dev/)
@@ -7,7 +7,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-007ACC?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?style=flat-square&logo=vite)](https://vitejs.dev/)
 [![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000?style=flat-square&logo=vercel)](https://vercel.com/)
-[![Security](https://img.shields.io/badge/Security-Hardened-brightgreen?style=flat-square&logo=shield)](##-security)
+[![Security](https://img.shields.io/badge/Security-Hardened-brightgreen?style=flat-square&logo=shield)](#security)
 
 **UTT Report Maintenance** adalah sistem dokumentasi infrastruktur kritikal profesional yang dirancang khusus untuk memfasilitasi pelaporan pemeliharaan data center bagi **PT United Transworld Trading (UTT)**.
 
@@ -31,7 +31,7 @@
 
 ## 🏗 Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                     Frontend (React + Vite)                   │
 │                                                               │
@@ -89,7 +89,7 @@
 ### Frontend
 
 | Technology | Purpose |
-|-----------|---------|
+| :--- | :--- |
 | **React 18** + **TypeScript** | Antarmuka reaktif dengan type-safety |
 | **Vite 6** | Build tool generasi terbaru |
 | **Tailwind CSS v4** | Utility-first styling |
@@ -102,7 +102,7 @@
 ### Backend
 
 | Technology | Purpose |
-|-----------|---------|
+| :--- | :--- |
 | **Go 1.24 (Golang)** | High-performance API server |
 | **Firebase Admin SDK** | Server-side auth & Firestore access |
 | **Vercel Serverless** | Deployment & edge functions |
@@ -110,7 +110,7 @@
 ### Cloud & Infrastructure
 
 | Technology | Purpose |
-|-----------|---------|
+| :--- | :--- |
 | **Firebase Authentication** | User auth & session management |
 | **Cloud Firestore** | NoSQL real-time database |
 | **Firebase Security Rules** | Database-level access control |
@@ -174,7 +174,7 @@ Modul pelaporan K3 terintegrasi dengan photo editor dan export PDF profesional.
 
 ## 📁 Project Structure
 
-```
+```text
 utt-report-maintenance/
 ├── api/                          # Vercel serverless entry point
 │   └── index.go                  # Main handler (init + routing)
@@ -241,23 +241,25 @@ Base URL: `https://utt-report-maintenance.vercel.app/api`
 ### Authentication
 
 All API endpoints (except health checks) require authentication via one of:
+
 - **Firebase Auth Token**: `Authorization: Bearer <firebase_id_token>` (recommended)
 - **API Secret**: `X-API-Secret: <secret>` (legacy, backward-compatible)
+
 
 ### Endpoints
 
 #### Health & Monitoring
 
 | Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
+| :--- | :--- | :--- | :--- |
 | `GET` | `/api/health` | Liveness check | ❌ |
 | `GET` | `/api/ready` | Readiness check | ❌ |
 | `GET` | `/api/metrics` | System metrics | ❌ |
 
-#### Authentication
+#### Auth Endpoints
 
 | Method | Endpoint | Description | Throttle |
-|--------|----------|-------------|----------|
+| :--- | :--- | :--- | :--- |
 | `POST` | `/api/auth/login` | User login | Global |
 | `POST` | `/api/auth/logout` | User logout | Global |
 | `GET` | `/api/auth/me` | Get current user | Global |
@@ -265,7 +267,7 @@ All API endpoints (except health checks) require authentication via one of:
 #### Reports
 
 | Method | Endpoint | Description | Throttle |
-|--------|----------|-------------|----------|
+| :--- | :--- | :--- | :--- |
 | `POST` | `/api/report` | Create report with photos | 🔴 Heavy (5 rps) |
 | `GET` | `/api/reports` | List all reports | 🟢 Standard (20 rps) |
 | `GET` | `/api/report/:id` | Get single report | 🟢 Standard |
@@ -274,7 +276,7 @@ All API endpoints (except health checks) require authentication via one of:
 #### Users
 
 | Method | Endpoint | Description | Throttle |
-|--------|----------|-------------|----------|
+| :--- | :--- | :--- | :--- |
 | `GET` | `/api/users` | List all users | 🟢 Standard |
 | `GET` | `/api/users/:id` | Get user profile | 🟢 Standard |
 | `PATCH` | `/api/users/:id/role` | Update user role | 🔴 Heavy |
@@ -283,7 +285,7 @@ All API endpoints (except health checks) require authentication via one of:
 #### Archive
 
 | Method | Endpoint | Description | Throttle |
-|--------|----------|-------------|----------|
+| :--- | :--- | :--- | :--- |
 | `GET` | `/api/archive` | List archives | 🟢 Standard |
 | `GET` | `/api/archive/:id` | Get archive detail | 🟢 Standard |
 | `DELETE` | `/api/archive/:id` | Permanent delete | 🔴 Heavy |
@@ -291,14 +293,14 @@ All API endpoints (except health checks) require authentication via one of:
 #### Audit Logs
 
 | Method | Endpoint | Description | Throttle |
-|--------|----------|-------------|----------|
+| :--- | :--- | :--- | :--- |
 | `GET` | `/api/audit` | All audit logs | 🟢 Standard |
 | `GET` | `/api/audit/me` | My audit logs | 🟢 Standard |
 
 #### Maintenance Progress
 
 | Method | Endpoint | Description | Throttle |
-|--------|----------|-------------|----------|
+| :--- | :--- | :--- | :--- |
 | `GET` | `/api/maintenance-progress` | List all progress | 🟢 Standard |
 | `POST` | `/api/maintenance-progress` | Create progress entry | 🔴 Heavy |
 | `GET` | `/api/maintenance-progress/summary` | Get summary | 🟢 Standard |
@@ -309,7 +311,7 @@ All API endpoints (except health checks) require authentication via one of:
 #### Findings
 
 | Method | Endpoint | Description | Throttle |
-|--------|----------|-------------|----------|
+| :--- | :--- | :--- | :--- |
 | `POST` | `/api/findings` | Create finding | 🔴 Heavy |
 | `GET` | `/api/findings` | List findings | 🟢 Standard |
 | `DELETE` | `/api/findings/:id` | Delete finding | 🔴 Heavy |
@@ -317,7 +319,7 @@ All API endpoints (except health checks) require authentication via one of:
 ### Rate Limiting
 
 | Tier | Limit | Burst | Applied To |
-|------|-------|-------|-----------|
+| :--- | :--- | :--- | :--- |
 | 🌐 **Global** | 20 rps | 40 | All requests |
 | 🟢 **Standard** | 20 rps | 40 | GET (read operations) |
 | 🔴 **Heavy** | 5 rps | 10 | POST/DELETE/PATCH (write operations) |
@@ -337,7 +339,7 @@ All API endpoints (except health checks) require authentication via one of:
 ### Security Headers
 
 | Header | Value |
-|--------|-------|
+| :--- | :--- |
 | `X-Frame-Options` | `DENY` |
 | `X-Content-Type-Options` | `nosniff` |
 | `X-XSS-Protection` | `1; mode=block` |
@@ -364,7 +366,7 @@ All API endpoints (except health checks) require authentication via one of:
 
 ### Middleware Pipeline
 
-```
+```text
 Request → RequestID → Logger → PanicRecovery → SecurityHeaders → CORS → RateLimiter → Auth → Route
 ```
 
@@ -424,6 +426,7 @@ npm run dev
 ```
 
 This runs:
+
 - **Frontend**: Vite dev server at `http://localhost:5173`
 - **Backend**: Go API server at `http://localhost:8080`
 
@@ -475,7 +478,7 @@ docker-compose up -d
 ## 📂 Available Scripts
 
 | Command | Description |
-|---------|-------------|
+| :--- | :--- |
 | `npm run dev` | Start frontend + backend dev servers |
 | `npm run build` | Build frontend for production |
 | `npm run build:prod` | Build with production env |
@@ -514,5 +517,4 @@ Sistem ini bersifat **privat** dan dikembangkan eksklusif untuk kebutuhan operas
 
 ---
 
-*Built with ❤️ by [Gari Iriana](https://github.com/gariiriana)*
-]]>
+*Built with ❤️ by [Gari Iriana](https://github.com/gariiriana*)
