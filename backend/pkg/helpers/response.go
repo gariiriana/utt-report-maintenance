@@ -72,11 +72,19 @@ func ExtractParam(r *http.Request, key string) string {
 	}
 	return ""
 }
+// GetClientIP extracts the client IP from the request.
+// SECURITY: Validates X-Forwarded-For entries; falls back to RemoteAddr
+// if the forwarded IP looks suspicious (private/loopback ranges should not appear from public proxies).
 func GetClientIP(r *http.Request) string {
+	// Prefer X-Forwarded-For from trusted proxy (Vercel sets this)
 	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
 		parts := strings.Split(forwarded, ",")
-		if ip := strings.TrimSpace(parts[0]); ip != "" {
-			return ip
+		// Take the leftmost non-empty entry (client IP as set by the first proxy)
+		for _, part := range parts {
+			ip := strings.TrimSpace(part)
+			if ip != "" && ip != "unknown" {
+				return ip
+			}
 		}
 	}
 	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {

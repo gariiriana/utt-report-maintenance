@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { ImageEditor } from './ImageEditor';
 import { toast } from 'sonner';
-import { db } from '@/api/firebase';
+import { db, auth } from '@/api/firebase';
 import {
     collection,
     addDoc,
@@ -149,11 +149,15 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
 
     const saveReportViaAPI = async (apiUrl: string, reportData: any) => {
         try {
+            // SECURITY: Use Firebase Auth token instead of client-side API secret
+            const token = await auth.currentUser?.getIdToken();
+            if (!token) throw new Error('Not authenticated');
+
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-API-Secret': import.meta.env.VITE_API_SECRET || '',
+                    'Authorization': `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                     collection: 'corrective_reports',

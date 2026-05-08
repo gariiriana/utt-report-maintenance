@@ -7,7 +7,7 @@ import { ImageEditor } from '@/components/ImageEditor';
 import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, getDocs } from 'firebase/firestore';
-import { db } from '@/api/firebase';
+import { db, auth } from '@/api/firebase';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoBRI from '@/assets/bri_logo.png';
@@ -654,11 +654,15 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
   const saveReportViaAPI = async (apiUrl: string, collectionName: string, reportData: any, photos: any[]) => {
     try {
+      // SECURITY: Use Firebase Auth token instead of client-side API secret
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Not authenticated');
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Secret': import.meta.env.VITE_API_SECRET || '',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           collection: collectionName,

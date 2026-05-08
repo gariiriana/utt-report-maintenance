@@ -46,7 +46,9 @@ func DefaultSecurityPolicy(cfg *AppConfig) SecurityPolicy {
 			"frame-ancestors 'none'",
 		}, "; "),
 		HSTSMaxAge:     31536000,
-		TrustedProxies: []string{"0.0.0.0/0"},
+		// SECURITY: Empty list — Vercel handles proxy trust internally.
+		// Do NOT trust all IPs (0.0.0.0/0 was insecure).
+		TrustedProxies: []string{},
 	}
 }
 func (p *SecurityPolicy) IsOriginAllowed(origin string) bool {

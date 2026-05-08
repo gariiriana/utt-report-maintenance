@@ -8,7 +8,7 @@ import {
 import { toast } from 'sonner';
 import { HSEPhotoEditor } from '@/components/HSEPhotoEditor';
 import { generateHSEPdf, type HSEFormData } from '@/utils/HSEPdfExport';
-import { db } from '@/api/firebase';
+import { db, auth } from '@/api/firebase';
 import { collection, addDoc, serverTimestamp, updateDoc, doc, getDoc, getDocs, deleteDoc, QueryDocumentSnapshot } from 'firebase/firestore';
 import { useAuth } from '@/components/AuthContext';
 import { ExcelDocument } from '@/components/DocumentList';
@@ -289,11 +289,15 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             createdAt: extraData.createdAt
         }));
 
+        // SECURITY: Use Firebase Auth token instead of client-side API secret
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) throw new Error('Not authenticated');
+
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-API-Secret': import.meta.env.VITE_API_SECRET || '',
+                'Authorization': `Bearer ${token}`,
             },
             body: JSON.stringify({
                 collection: 'hse',

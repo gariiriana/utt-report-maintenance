@@ -33,10 +33,10 @@ func CORSMiddleware(next http.Handler) http.Handler {
 func EnableCORS(w http.ResponseWriter, r *http.Request) bool {
 	origin := r.Header.Get("Origin")
 
+	// SECURITY: Only set ACAO for explicitly allowed origins.
+	// If origin is empty or not in the allowlist, do NOT set ACAO header.
 	if origin != "" && isAllowedOrigin(origin) {
 		w.Header().Set("Access-Control-Allow-Origin", origin)
-	} else if origin == "" {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 	}
 
 	w.Header().Set("Vary", "Origin")

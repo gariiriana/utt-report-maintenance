@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"context"
+	"crypto/subtle"
 	"net/http"
 	"os"
 	"strings"
@@ -18,21 +19,18 @@ const (
 	userEmailKey contextKey = "user_email"
 	userRoleKey  contextKey = "user_role"
 )
+
+// VerifySecret checks the client-provided API secret against the server secret.
+// SECURITY: fail-closed — returns false if BACKEND_API_SECRET is not set.
+// Uses crypto/subtle.ConstantTimeCompare to prevent timing side-channel attacks.
 func VerifySecret(clientSecret string) bool {
 	serverSecret := os.Getenv("BACKEND_API_SECRET")
 	if serverSecret == "" {
-		return true
-	}
-	if len(clientSecret) != len(serverSecret) {
+		// Fail-closed: if secret is not configured, reject all requests
+		logger.LogSecurityEvent("api_secret_not_configured", "", "", "BACKEND_API_SECRET env var is empty — all requests rejected")
 		return false
 	}
-	match := true
-	for i := range serverSecret {
-		if clientSecret[i] != serverSecret[i] {
-			match = false
-		}
-	}
-	return match
+	return subtle.ConstantTimeCompare([]byte(clientSecret), []byte(serverSecret)) == 1
 }
 func RequireAPISecret(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

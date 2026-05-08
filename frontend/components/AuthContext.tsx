@@ -56,15 +56,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const userDoc = await getDoc(userDocRef);
 
           if (!userDoc.exists()) {
-            const isAdminEmail = user.email === 'Adminreportlampiranutt@gmail.com';
+            // SECURITY: Always assign default 'engineer' role.
+            // Admin role must be assigned by an existing admin via backend.
             await setDoc(userDocRef, {
               email: user.email,
               uid: user.uid,
-              role: isAdminEmail ? 'admin' : 'engineer',
+              role: 'engineer',
               companyType: 'neutra',
               createdAt: serverTimestamp(),
             });
-            setUserRole(isAdminEmail ? 'admin' : 'engineer');
+            setUserRole('engineer');
           }
         } catch (error) {
           console.warn('Error creating/fetching user document (offline?):', error);
@@ -117,12 +118,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userDoc = await getDoc(userDocRef);
 
         if (!userDoc.exists()) {
-          const isAdminEmail = userCredential.user.email === 'Adminreportlampiranutt@gmail.com';
-
+          // SECURITY: Always assign default 'engineer' role.
+          // Admin role must be assigned by an existing admin via backend.
           await setDoc(userDocRef, {
             email: userCredential.user.email,
             uid: userCredential.user.uid,
-            role: isAdminEmail ? 'admin' : 'engineer',
+            role: 'engineer',
             companyType: 'neutra',
             createdAt: serverTimestamp(),
           });

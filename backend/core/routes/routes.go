@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	firebaseAuth "firebase.google.com/go/v4/auth"
 	"github.com/gariiriana/utt-report-maintenance/backend/core/config"
 	"github.com/gariiriana/utt-report-maintenance/backend/core/controllers"
 	"github.com/gariiriana/utt-report-maintenance/backend/core/middlewares"
@@ -12,19 +13,22 @@ import (
 	"github.com/gariiriana/utt-report-maintenance/backend/core/services"
 	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
 )
+
 type AppDeps struct {
-	ReportCtrl  *controllers.ReportController
-	AuthCtrl    *controllers.AuthController
-	HealthCtrl  *controllers.HealthController
-	UserCtrl    *controllers.UserController
-	ArchiveCtrl *controllers.ArchiveController
-	AuditCtrl   *controllers.AuditController
+	ReportCtrl              *controllers.ReportController
+	AuthCtrl                *controllers.AuthController
+	HealthCtrl              *controllers.HealthController
+	UserCtrl                *controllers.UserController
+	ArchiveCtrl             *controllers.ArchiveController
+	AuditCtrl               *controllers.AuditController
 	MaintenanceProgressCtrl *controllers.MaintenanceProgressController
-	FindingCtrl *controllers.FindingController
-	RateLimiter      *middlewares.RateLimiter // global catch-all
-	ThrottleHeavy    *middlewares.RateLimiter // POST/DELETE — 5 rps, burst 10
-	ThrottleStandard *middlewares.RateLimiter // GET lists   — 20 rps, burst 40
+	FindingCtrl             *controllers.FindingController
+	RateLimiter             *middlewares.RateLimiter // global catch-all
+	ThrottleHeavy           *middlewares.RateLimiter // POST/DELETE — 5 rps, burst 10
+	ThrottleStandard        *middlewares.RateLimiter // GET lists   — 20 rps, burst 40
+	AuthClient              *firebaseAuth.Client    // Firebase Auth client for token verification
 }
+
 func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 	firestoreClient, err := config.InitFirestore(ctx)
 	if err != nil {
@@ -36,50 +40,59 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 		return nil, fmt.Errorf("NewAppDeps (auth): %w", err)
 	}
 	reportRepo := repositories.NewReportRepository(firestoreClient)
-	userRepo   := repositories.NewUserRepository(firestoreClient)
-	auditRepo  := repositories.NewAuditRepository(firestoreClient)
+	userRepo := repositories.NewUserRepository(firestoreClient)
+	auditRepo := repositories.NewAuditRepository(firestoreClient)
 	archiveRepo := repositories.NewArchiveRepository(firestoreClient)
 	maintenanceRepo := repositories.NewMaintenanceProgressRepository(firestoreClient)
 	findingRepo := repositories.NewFindingRepository(firestoreClient)
-	authSvc    := services.NewAuthService(authClient)
-	auditSvc   := services.NewAuditService(auditRepo)
-	userSvc    := services.NewUserService(userRepo, authSvc)
-	reportSvc  := services.NewReportService(reportRepo)
+	authSvc := services.NewAuthService(authClient)
+	auditSvc := services.NewAuditService(auditRepo)
+	userSvc := services.NewUserService(userRepo, authSvc)
+	reportSvc := services.NewReportService(reportRepo)
 	archiveSvc := services.NewArchiveService(archiveRepo)
 	maintenanceSvc := services.NewMaintenanceProgressService(maintenanceRepo)
 	findingSvc := services.NewFindingService(findingRepo)
-	notifSvc   := services.NewNotificationService("")
-	reportCtrl  := controllers.NewReportController(reportSvc, auditSvc, notifSvc)
-	authCtrl    := controllers.NewAuthController(authSvc, userSvc, auditSvc)
-	healthCtrl  := controllers.NewHealthController()
-	userCtrl    := controllers.NewUserController(userSvc, auditSvc, notifSvc)
+	notifSvc := services.NewNotificationService("")
+	reportCtrl := controllers.NewReportController(reportSvc, auditSvc, notifSvc)
+	authCtrl := controllers.NewAuthController(authSvc, userSvc, auditSvc)
+	healthCtrl := controllers.NewHealthController()
+	userCtrl := controllers.NewUserController(userSvc, auditSvc, notifSvc)
 	archiveCtrl := controllers.NewArchiveController(archiveSvc)
-	auditCtrl   := controllers.NewAuditController(auditSvc)
+	auditCtrl := controllers.NewAuditController(auditSvc)
 	maintenanceCtrl := controllers.NewMaintenanceProgressController(maintenanceSvc)
 	findingCtrl := controllers.NewFindingController(findingSvc)
 
-	rateLimiter     := middlewares.NewRateLimiter(20, 40)
-	throttleHeavy    := middlewares.NewThrottle(5, 10)   // expensive write/delete ops
-	throttleStandard := middlewares.NewThrottle(20, 40)  // normal read ops
+	rateLimiter := middlewares.NewRateLimiter(20, 40)
+	throttleHeavy := middlewares.NewThrottle(5, 10)   // expensive write/delete ops
+	throttleStandard := middlewares.NewThrottle(20, 40) // normal read ops
 
 	return &AppDeps{
-		ReportCtrl:  reportCtrl,
-		AuthCtrl:    authCtrl,
-		HealthCtrl:  healthCtrl,
-		UserCtrl:    userCtrl,
-		ArchiveCtrl: archiveCtrl,
-		AuditCtrl:   auditCtrl,
+		ReportCtrl:              reportCtrl,
+		AuthCtrl:                authCtrl,
+		HealthCtrl:              healthCtrl,
+		UserCtrl:                userCtrl,
+		ArchiveCtrl:             archiveCtrl,
+		AuditCtrl:               auditCtrl,
 		MaintenanceProgressCtrl: maintenanceCtrl,
-		FindingCtrl: findingCtrl,
-		RateLimiter:      rateLimiter,
-		ThrottleHeavy:    throttleHeavy,
-		ThrottleStandard: throttleStandard,
+		FindingCtrl:             findingCtrl,
+		RateLimiter:             rateLimiter,
+		ThrottleHeavy:           throttleHeavy,
+		ThrottleStandard:        throttleStandard,
+		AuthClient:              authClient,
 	}, nil
 }
+
 func SetupRouter(deps *AppDeps) http.HandlerFunc {
 	return buildHandler(deps)
 }
+
+// buildHandler creates the main HTTP handler with dual-auth support.
+// SECURITY: Accepts either Firebase Auth token (Authorization: Bearer <token>)
+// OR the legacy X-API-Secret header. Firebase Auth is preferred.
+// Health/ready/metrics endpoints are unauthenticated.
 func buildHandler(deps *AppDeps) http.HandlerFunc {
+	firebaseAuthMw := middlewares.RequireFirebaseAuth(deps.AuthClient)
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		chain := BuildMiddlewareChain(
 			middlewares.RequestID,
@@ -91,11 +104,35 @@ func buildHandler(deps *AppDeps) http.HandlerFunc {
 		)
 
 		chain(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if !middlewares.VerifySecret(r.Header.Get("X-API-Secret")) {
-				helpers.SendError(w, "Unauthorized: Invalid API Secret", http.StatusUnauthorized)
+			path := r.URL.Path
+
+			// Health/ready/metrics: no auth required
+			if path == "/health" || path == "/api/health" ||
+				path == "/ready" || path == "/api/ready" ||
+				path == "/metrics" || path == "/api/metrics" {
+				RouteRequest(w, r, deps)
 				return
 			}
-			RouteRequest(w, r, deps)
+
+			// DUAL-AUTH: try Firebase Auth token first, fall back to API Secret
+			authHeader := r.Header.Get("Authorization")
+			apiSecret := r.Header.Get("X-API-Secret")
+
+			if authHeader != "" {
+				// Firebase Auth token path — verify and inject claims into context
+				firebaseAuthMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					RouteRequest(w, r, deps)
+				})).ServeHTTP(w, r)
+				return
+			}
+
+			if apiSecret != "" && middlewares.VerifySecret(apiSecret) {
+				// Legacy API Secret path — still accepted for backward compat
+				RouteRequest(w, r, deps)
+				return
+			}
+
+			helpers.SendError(w, "Unauthorized: provide a valid Authorization Bearer token or X-API-Secret", http.StatusUnauthorized)
 		})).ServeHTTP(w, r)
 	}
 }
