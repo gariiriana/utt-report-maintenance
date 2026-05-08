@@ -276,7 +276,7 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             base64: p.dataUrl,
             description: p.description
         })),
-        date: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }),
+        date: new Date().toISOString().split('T')[0],
     });
 
     const saveReportViaAPI = async (formData: HSEFormData, extraData: any) => {
@@ -390,7 +390,9 @@ export function HSEReportForm({ editingData, onClearEdit }: HSEReportFormProps) 
             }
 
             if (!silent && toastId) {
-                toast.success(editingData ? 'Laporan HSE diperbarui!' : 'Laporan HSE tersimpan!', { id: toastId });
+                const message = editingData ? 'Laporan HSE diperbarui!' : 'Laporan HSE tersimpan & masuk ke ISO!';
+                toast.success(message, { id: toastId });
+                console.log("HSE Report saved successfully with ID:", docId);
             }
             return docId;
         } catch (err) {

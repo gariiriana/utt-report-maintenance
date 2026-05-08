@@ -744,11 +744,12 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
             <div className="flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span>
-                {new Date(document.maintenanceTime).toLocaleDateString('id-ID', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric'
-                })}
+                {(() => {
+                  const d = new Date(document.maintenanceTime);
+                  return isNaN(d.getTime()) 
+                    ? document.maintenanceTime 
+                    : d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                })()}
               </span>
             </div>
             <div className="flex items-center gap-1.5 min-w-0">

@@ -123,7 +123,10 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         doc.setTextColor(GRAY);
         doc.text('Safety, Health & Equipment Documentation System', pageW / 2, titleY + 5.5, { align: 'center' });
 
-        const dateStr = data.date || new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+        const dateObj = data.date ? new Date(data.date) : new Date();
+        const dateStr = isNaN(dateObj.getTime())
+            ? (data.date || '-')
+            : dateObj.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
         doc.setFontSize(9);
         doc.setTextColor(PRIMARY_BLUE);
         doc.setFont('helvetica', 'bold');
@@ -407,7 +410,10 @@ export async function generateHSEPdf(data: HSEFormData) {
 
     const doc = createHSEDpdDoc(processedData, logoDmeB64, logoSecondaryB64);
     const safeAktivitas = (data.aktivitas || 'Inspection').replace(/[/\\?%*:|"<>]/g, '-');
-    const dateStr = new Date().toLocaleDateString('id-ID').replace(/\//g, '-');
+    const dateObj = data.date ? new Date(data.date) : new Date();
+    const dateStr = isNaN(dateObj.getTime()) 
+        ? new Date().toISOString().split('T')[0] 
+        : dateObj.toISOString().split('T')[0];
     const fileName = `HSE_Report_${safeAktivitas}_${dateStr}.pdf`;
 
     const pdfBlob = doc.output('blob');
