@@ -530,7 +530,6 @@ export async function generateHSEPdf(data: HSEFormData) {
                 siloBuffer = await (data.siloFile as Blob).arrayBuffer();
             }
         } else if (data.siloPdfUrl) {
-            // Priority 2: Remote URL (Slower)
             try {
                 const resp = await fetch(data.siloPdfUrl);
                 siloBuffer = await resp.arrayBuffer();
@@ -567,4 +566,72 @@ export async function generateHSEPdf(data: HSEFormData) {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+}
+
+/**
+ * Generate HSE PDF and return as a Blob (no auto-download).
+ * Used by HSEReportViewer for preview/iframe display.
+ */
+export async function generateHSEPdfBlob(data: HSEFormData): Promise<Blob> {
+    const secondaryImg = data.reportType === 'neutradc' ? logoNeutradc : logoUtt;
+    let logoDmeB64 = '';
+    let logoSecondaryB64 = '';
+    try {
+        logoDmeB64 = await loadImageAsBase64(logoDme);
+        logoSecondaryB64 = await loadImageAsBase64(secondaryImg);
+    } catch (_) { }
+
+    // Inline photo processing (same as generateHSEPdf)
+    const processedData = { ...data, photos: [] as HSEPhoto[] };
+    if (data.photos && data.photos.length > 0) {
+        for (const photo of data.photos) {
+            const sizeInBytes = (photo.base64.length * 3) / 4;
+            if (sizeInBytes > 500 * 1024) {
+                try {
+                    const imgData = await compressBase64Image(photo.base64, { maxWidth: 800, quality: 0.5 });
+                    processedData.photos.push({ ...photo, base64: imgData });
+                } catch (e) {
+                    processedData.photos.push(photo);
+                }
+            } else {
+                processedData.photos.push(photo);
+            }
+        }
+    }
+
+    const jspdfDoc = createHSEDpdDoc(processedData, logoDmeB64, logoSecondaryB64);
+
+    let finalPdfBytes: Uint8Array;
+    try {
+        const jspdfBlob = jspdfDoc.output('blob');
+        const jspdfBuffer = await jspdfBlob.arrayBuffer();
+        const mainPdfDoc = await PDFDocument.load(jspdfBuffer);
+
+        let siloBuffer: ArrayBuffer | null = null;
+        if (data.siloFile) {
+            siloBuffer = data.siloFile instanceof ArrayBuffer
+                ? data.siloFile
+                : await (data.siloFile as Blob).arrayBuffer();
+        } else if (data.siloPdfUrl) {
+            try {
+                const resp = await fetch(data.siloPdfUrl);
+                siloBuffer = await resp.arrayBuffer();
+            } catch (e) {
+                console.error("Failed to fetch SILO PDF from URL:", e);
+            }
+        }
+
+        if (siloBuffer) {
+            const siloPdfDoc = await PDFDocument.load(siloBuffer);
+            const copiedPages = await mainPdfDoc.copyPages(siloPdfDoc, siloPdfDoc.getPageIndices());
+            copiedPages.forEach((page) => mainPdfDoc.addPage(page));
+        }
+
+        finalPdfBytes = await mainPdfDoc.save();
+    } catch (err) {
+        console.error("PDF Merging failed, falling back to original:", err);
+        finalPdfBytes = new Uint8Array(await jspdfDoc.output('arraybuffer'));
+    }
+
+    return new Blob([finalPdfBytes as any], { type: 'application/pdf' });
 }
