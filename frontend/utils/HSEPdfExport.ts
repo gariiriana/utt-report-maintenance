@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { PDFDocument } from 'pdf-lib';
 import { compressBase64Image } from '@/utils/imageCompression';
 import logoDme from '@/assets/logo_dwimitra_v2.png';
 import logoUtt from '@/assets/logo_utt.png';
@@ -37,6 +38,14 @@ export interface HSEChecklist {
 export interface HSEPhoto {
     base64: string;
     description: string;
+    label?: string;
+}
+
+export interface SIOData {
+    operatorName: string;
+    sioNumber: string;
+    expiryDate: string;
+    photos?: HSEPhoto[];
 }
 
 export interface HSEFormData {
@@ -50,6 +59,12 @@ export interface HSEFormData {
     photos: HSEPhoto[];
     date?: string;
     reportType?: 'utt' | 'neutradc';
+    hseType?: 'inspection' | 'sio' | 'silo';
+    maintenanceType?: string;
+    // New fields for integrated report
+    sioData?: SIOData;
+    siloPdfUrl?: string;
+    siloFile?: File | Blob | ArrayBuffer; 
 }
 
 function loadImageAsBase64(url: string): Promise<string> {
@@ -89,7 +104,16 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
 
     const HEADER_H = 34;
     let headerDrawCount = 0;
-    const drawPageHeader = () => {
+    
+    const getReportTitle = () => {
+        switch (data.hseType) {
+            case 'sio': return 'SURAT IZIN OPERATOR (SIO)';
+            case 'silo': return 'SURAT IZIN LAYAK OPERASI (SILO)';
+            default: return 'HSE INSPECTION REPORT';
+        }
+    };
+
+    const drawPageHeader = (titleOverride?: string) => {
         headerDrawCount++;
         const pg = headerDrawCount;
         doc.setFillColor(PRIMARY_BLUE);
@@ -116,7 +140,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(DARK);
-        doc.text('HSE INSPECTION REPORT', pageW / 2, titleY, { align: 'center' });
+        doc.text(titleOverride || getReportTitle(), pageW / 2, titleY, { align: 'center' });
 
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
@@ -138,17 +162,25 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
 
     drawPageHeader();
     let curY = HEADER_H;
+    
+    // INFO SECTION
     doc.setFillColor(LIGHT_GRAY);
     doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(marginL, curY, contentW, 54, 2, 2, 'FD');
+    const infoH = data.hseType === 'inspection' ? 54 : 38;
+    doc.roundedRect(marginL, curY, contentW, infoH, 2, 2, 'FD');
 
-    const infoRows = [
+    const infoRows = data.hseType === 'inspection' ? [
         { label: 'Inspector K3', value: data.inspectorK3 || '-' },
         { label: 'Aktivitas', value: data.aktivitas || '-' },
         { label: 'Lokasi', value: data.lokasi || '-' },
         { label: 'Personil', value: data.personil || '-' },
         { label: 'PIC', value: data.pic || '-' },
         { label: 'Anggota', value: data.anggota || '-' },
+    ] : [
+        { label: 'Inspector HSE', value: data.inspectorK3 || '-' },
+        { label: 'Jenis Maintenance', value: data.maintenanceType || '-' },
+        { label: 'Nama Unit/Alat', value: data.aktivitas || '-' },
+        { label: 'Lokasi', value: data.lokasi || '-' },
     ];
 
     infoRows.forEach((row, i) => {
@@ -159,146 +191,149 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         doc.text(row.label, marginL + 5, rowY);
 
         doc.setTextColor(DARK);
-        const lines = doc.splitTextToSize(row.value, contentW - 40);
-        doc.text(`:  ${lines[0]}`, marginL + 32, rowY);
+        const lines = doc.splitTextToSize(row.value, contentW - 45);
+        doc.text(`:  ${lines[0]}`, marginL + 36, rowY);
     });
 
-    curY += 51;
-    doc.setFillColor(PRIMARY_BLUE);
-    doc.rect(marginL, curY, contentW, 8.5, 'F');
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor('#ffffff');
-    doc.text('I. CHECKLIST KESELAMATAN KERJA (REQUIRED)', marginL + 4, curY + 5.5);
+    curY += infoH - 3;
 
-    curY += 12;
+    // CHECKLIST SECTION (Only for Inspection)
+    if (data.hseType === 'inspection') {
+        curY += 6;
+        doc.setFillColor(PRIMARY_BLUE);
+        doc.rect(marginL, curY, contentW, 8.5, 'F');
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor('#ffffff');
+        doc.text('I. CHECKLIST KESELAMATAN KERJA (REQUIRED)', marginL + 4, curY + 5.5);
 
-    const checklistDefinition = [
-        { key: 'mop', label: 'MOP' },
-        { key: 'jsa', label: 'JSA' },
-        { key: 'ptw', label: 'PTW' },
-        { key: 'ppe', label: 'PPE Mandatory' },
-        {
-            key: 'ppeKhusus',
-            label: 'PPE Khusus',
-            subItems: [
-                { key: 'bodyHarness', label: 'Body Harness' },
-                { key: 'sarungTanganKulit', label: 'Sarung Tangan Kulit' },
-                { key: 'apron', label: 'Apron' },
-                { key: 'kedokLas', label: 'Kedok Las' },
-                { key: 'coverShoes', label: 'Cover Shoes' },
-                { key: 'respirator', label: 'Respirator' },
-                { key: 'sarungTanganCutResistance', label: 'Sarung Tangan Cut Resistance' },
-                { key: 'pelindungMata', label: 'Pelindung Mata' },
-            ]
-        },
-        {
-            key: 'dokumen',
-            label: 'Dokumen',
-            subItems: [
-                { key: 'msds', label: 'MSDS' },
-            ]
-        },
-        { key: 'toolsBertagging', label: 'Tools Bertagging & sdh di-checklist' },
-        { key: 'logMaintenance', label: 'Log Maintenance' },
-        { key: 'housekeeping', label: 'Housekeeping Area Kerja' },
-        {
-            key: 'safetySign',
-            label: 'Safety Sign',
-            subItems: [
-                { key: 'pitaBaricade', label: 'Pita Baricade' },
-                { key: 'safetyCone', label: 'Safety Cone' },
-                { key: 'stikBariket', label: 'Stik Bariket' },
-                { key: 'underMaintenance', label: 'Under Maintenance' },
-            ]
-        },
-    ];
+        curY += 12;
 
-    const regularItems: { label: string; value: boolean; isSub?: boolean }[] = [];
-    checklistDefinition.forEach(item => {
-        const val = !!(data.checklist as any)[item.key];
+        const checklistDefinition = [
+            { key: 'mop', label: 'MOP' },
+            { key: 'jsa', label: 'JSA' },
+            { key: 'ptw', label: 'PTW' },
+            { key: 'ppe', label: 'PPE Mandatory' },
+            {
+                key: 'ppeKhusus',
+                label: 'PPE Khusus',
+                subItems: [
+                    { key: 'bodyHarness', label: 'Body Harness' },
+                    { key: 'sarungTanganKulit', label: 'Sarung Tangan Kulit' },
+                    { key: 'apron', label: 'Apron' },
+                    { key: 'kedokLas', label: 'Kedok Las' },
+                    { key: 'coverShoes', label: 'Cover Shoes' },
+                    { key: 'respirator', label: 'Respirator' },
+                    { key: 'sarungTanganCutResistance', label: 'Sarung Tangan Cut Resistance' },
+                    { key: 'pelindungMata', label: 'Pelindung Mata' },
+                ]
+            },
+            {
+                key: 'dokumen',
+                label: 'Dokumen',
+                subItems: [
+                    { key: 'msds', label: 'MSDS' },
+                ]
+            },
+            { key: 'toolsBertagging', label: 'Tools Bertagging & sdh di-checklist' },
+            { key: 'logMaintenance', label: 'Log Maintenance' },
+            { key: 'housekeeping', label: 'Housekeeping Area Kerja' },
+            {
+                key: 'safetySign',
+                label: 'Safety Sign',
+                subItems: [
+                    { key: 'pitaBaricade', label: 'Pita Baricade' },
+                    { key: 'safetyCone', label: 'Safety Cone' },
+                    { key: 'stikBariket', label: 'Stik Bariket' },
+                    { key: 'underMaintenance', label: 'Under Maintenance' },
+                ]
+            },
+        ];
 
-        if (item.key === 'dokumen' && !val) return;
+        const regularItems: { label: string; value: boolean; isSub?: boolean }[] = [];
+        checklistDefinition.forEach(item => {
+            const val = !!(data.checklist as any)[item.key];
+            if (item.key === 'dokumen' && !val) return;
+            regularItems.push({ label: item.label, value: val });
+            if (val && item.subItems) {
+                item.subItems.forEach(sub => {
+                    const subVal = !!(data.checklist as any)[sub.key];
+                    if (subVal) regularItems.push({ label: sub.label, value: true, isSub: true });
+                });
+            }
+        });
 
-        regularItems.push({ label: item.label, value: val });
+        const conclusionItems = [
+            { label: 'Safe Condition', value: data.checklist.safeCondition },
+            { label: 'Safe Action', value: data.checklist.safeAction },
+        ];
 
-        if (val && item.subItems) {
-            item.subItems.forEach(sub => {
-                const subVal = !!(data.checklist as any)[sub.key];
-                if (subVal) {
-                    regularItems.push({ label: sub.label, value: true, isSub: true });
-                }
-            });
-        }
-    });
+        const colW = (contentW - 6) / 2;
+        const rowH = 7.5;
+        const itemsPerCol = Math.ceil(regularItems.length / 2);
+        const col1Items = regularItems.slice(0, itemsPerCol);
+        const col2Items = regularItems.slice(itemsPerCol);
 
-    const conclusionItems = [
-        { label: 'Safe Condition', value: data.checklist.safeCondition },
-        { label: 'Safe Action', value: data.checklist.safeAction },
-    ];
+        const drawChecklistItem = (item: { label: string, value: boolean, isSub?: boolean }, x: number, y: number, width: number, isConclusion = false) => {
+            const bgColor = isConclusion ? '#f0f7ff' : (Math.floor(y / rowH) % 2 === 0 ? '#f8fafc' : '#ffffff');
+            doc.setFillColor(bgColor);
+            doc.rect(x, y, width, rowH, 'F');
 
-    const colW = (contentW - 6) / 2;
-    const rowH = 7.5;
-    const itemsPerCol = Math.ceil(regularItems.length / 2);
-    const col1Items = regularItems.slice(0, itemsPerCol);
-    const col2Items = regularItems.slice(itemsPerCol);
+            const indent = item.isSub ? 6 : 0;
+            const centerX = x + 5 + indent;
+            const centerY = y + rowH / 2;
+            const checked = item.value;
 
-    const drawChecklistItem = (item: { label: string, value: boolean, isSub?: boolean }, x: number, y: number, width: number, isConclusion = false) => {
-        const bgColor = isConclusion ? '#f0f7ff' : (Math.floor(y / rowH) % 2 === 0 ? '#f8fafc' : '#ffffff');
-        doc.setFillColor(bgColor);
-        doc.rect(x, y, width, rowH, 'F');
+            if (checked) {
+                doc.setFillColor('#10b981');
+                doc.circle(centerX, centerY, 2.7, 'F');
+                doc.setDrawColor(255, 255, 255);
+                doc.setLineWidth(0.4);
+                doc.line(centerX - 1.1, centerY, centerX - 0.2, centerY + 0.8);
+                doc.line(centerX - 0.2, centerY + 0.8, centerX + 1.1, centerY - 0.9);
+            } else {
+                doc.setFillColor('#ef4444');
+                doc.circle(centerX, centerY, 2.7, 'F');
+                doc.setDrawColor(255, 255, 255);
+                doc.setLineWidth(0.4);
+                doc.line(centerX - 0.9, centerY - 0.9, centerX + 0.9, centerY + 0.9);
+                doc.line(centerX + 0.9, centerY - 0.9, centerX - 0.9, centerY + 0.9);
+            }
 
-        const indent = item.isSub ? 6 : 0;
-        const centerX = x + 5 + indent;
-        const centerY = y + rowH / 2;
-        const checked = item.value;
+            doc.setFontSize(item.isSub ? 7.5 : 8.5);
+            doc.setFont('helvetica', isConclusion ? 'bold' : 'normal');
+            doc.setTextColor(item.isSub ? GRAY : DARK);
+            doc.text(item.label, x + 10 + indent, y + rowH / 2 + 1.2);
+        };
 
-        if (checked) {
-            doc.setFillColor('#10b981');
-            doc.circle(centerX, centerY, 2.7, 'F');
-            doc.setDrawColor(255, 255, 255);
-            doc.setLineWidth(0.4);
-            doc.line(centerX - 1.1, centerY, centerX - 0.2, centerY + 0.8);
-            doc.line(centerX - 0.2, centerY + 0.8, centerX + 1.1, centerY - 0.9);
-        } else {
-            doc.setFillColor('#ef4444');
-            doc.circle(centerX, centerY, 2.7, 'F');
-            doc.setDrawColor(255, 255, 255);
-            doc.setLineWidth(0.4);
-            doc.line(centerX - 0.9, centerY - 0.9, centerX + 0.9, centerY + 0.9);
-            doc.line(centerX + 0.9, centerY - 0.9, centerX - 0.9, centerY + 0.9);
-        }
+        col1Items.forEach((item, i) => drawChecklistItem(item, marginL, curY + i * rowH, colW));
+        col2Items.forEach((item, i) => drawChecklistItem(item, marginL + colW + 6, curY + i * rowH, colW));
 
-        doc.setFontSize(item.isSub ? 7.5 : 8.5);
-        doc.setFont('helvetica', isConclusion ? 'bold' : 'normal');
-        doc.setTextColor(item.isSub ? GRAY : DARK);
-        doc.text(item.label, x + 10 + indent, y + rowH / 2 + 1.2);
-    };
+        curY += itemsPerCol * rowH + 6;
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.2);
+        doc.line(marginL, curY, marginL + contentW, curY);
 
-    col1Items.forEach((item, i) => drawChecklistItem(item, marginL, curY + i * rowH, colW));
-    col2Items.forEach((item, i) => drawChecklistItem(item, marginL + colW + 6, curY + i * rowH, colW));
+        curY += 4;
+        conclusionItems.forEach((item, i) => {
+            const x = i === 0 ? marginL : marginL + colW + 6;
+            drawChecklistItem(item, x, curY, colW, true);
+        });
 
-    curY += itemsPerCol * rowH + 6;
+        curY += rowH + 8;
+    } else {
+        curY += 12;
+    }
 
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.2);
-    doc.line(marginL, curY, marginL + contentW, curY);
-
-    curY += 4;
-    conclusionItems.forEach((item, i) => {
-        const x = i === 0 ? marginL : marginL + colW + 6;
-        drawChecklistItem(item, x, curY, colW, true);
-    });
-
-    curY += rowH + 8;
-
+    // PHOTOS SECTION
     if (data.photos && data.photos.length > 0) {
         doc.setFillColor(PRIMARY_BLUE);
         doc.rect(marginL, curY, contentW, 8.5, 'F');
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor('#ffffff');
-        doc.text('II. FOTO DOKUMENTASI & EVIDENCE', marginL + 4, curY + 5.5);
+        const sectionTitle = data.hseType === 'inspection' ? 'II. FOTO DOKUMENTASI & EVIDENCE' : 'DOKUMEN EVIDENCE';
+        doc.text(sectionTitle, marginL + 4, curY + 5.5);
         curY += 12;
 
         const photosPerRow = 2;
@@ -331,6 +366,13 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
                 doc.setFontSize(7).setTextColor(GRAY).text('Foto Error', x + photoW / 2, y + photoH / 2, { align: 'center' });
             }
 
+            if (photo.label) {
+                doc.setFillColor(PRIMARY_BLUE);
+                doc.rect(x + 1, y + 1, 35, 5, 'F');
+                doc.setFontSize(6.5).setFont('helvetica', 'bold').setTextColor('#ffffff');
+                doc.text(photo.label, x + 2.5, y + 4.2);
+            }
+
             if (photo.description) {
                 doc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(DARK);
                 const descLines = doc.splitTextToSize(photo.description, photoW - 6);
@@ -343,47 +385,81 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         }
     }
 
+    // INTEGRATED SIO SECTION
+    if (data.sioData && (data.sioData.operatorName?.trim() || (data.sioData.photos && data.sioData.photos.length > 0))) {
+        doc.addPage();
+        drawPageHeader('DATA SURAT IZIN OPERATOR (SIO)');
+        curY = HEADER_H + 5;
+
+        doc.setFillColor(LIGHT_GRAY);
+        doc.setDrawColor(226, 232, 240);
+        doc.roundedRect(marginL, curY, contentW, 30, 2, 2, 'FD');
+
+        const sioRows = [
+            { label: 'Nama Operator', value: data.sioData.operatorName || '-' },
+            { label: 'No SIO / Lisensi', value: data.sioData.sioNumber || '-' },
+            { label: 'Masa Berlaku', value: data.sioData.expiryDate || '-' },
+        ];
+
+        sioRows.forEach((row, i) => {
+            const rowY = curY + 8 + i * 8;
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(GRAY);
+            doc.text(row.label, marginL + 5, rowY);
+            doc.setTextColor(DARK);
+            doc.text(`:  ${row.value}`, marginL + 40, rowY);
+        });
+
+        curY += 40;
+
+        if (data.sioData.photos && data.sioData.photos.length > 0) {
+            doc.setFillColor(PRIMARY_BLUE);
+            doc.rect(marginL, curY, contentW, 8.5, 'F');
+            doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor('#ffffff');
+            doc.text('DOKUMEN PENDUKUNG SIO', marginL + 4, curY + 5.5);
+            curY += 12;
+
+            const photoW = (contentW - 5) / 2;
+            const photoH = photoW * 0.65;
+
+            data.sioData.photos.forEach((photo, i) => {
+                const col = i % 2;
+                const x = marginL + col * (photoW + 5);
+                if (curY + photoH > pageH - 20) {
+                    doc.addPage();
+                    drawPageHeader('DATA SURAT IZIN OPERATOR (SIO)');
+                    curY = HEADER_H + 5;
+                }
+                const y = curY;
+                doc.setDrawColor(226, 232, 240);
+                doc.roundedRect(x, y, photoW, photoH + 8, 1, 1, 'D');
+                try {
+                    doc.addImage(photo.base64, 'JPEG', x + 1, y + 1, photoW - 2, photoH - 2, `sio_photo_${i}`, 'FAST');
+                } catch (_) {}
+                doc.setFontSize(7).setFont('helvetica', 'bold').setTextColor(PRIMARY_BLUE);
+                doc.text(photo.label || 'Lampiran', x + photoW / 2, y + photoH + 5, { align: 'center' });
+                
+                if (col === 1 || i === data.sioData!.photos!.length - 1) {
+                    curY += photoH + 12;
+                }
+            });
+        }
+    }
+
     const totalPages = (doc.internal as any).getNumberOfPages();
     for (let pg = 1; pg <= totalPages; pg++) {
         doc.setPage(pg);
-
         doc.setFillColor(PRIMARY_BLUE).rect(0, pageH - 2.5, pageW, 2.5, 'F');
-
         doc.setFontSize(7.5);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(GRAY);
         const footerCompany = data.reportType === 'utt' ? 'PT United Transworld Trading' : 'PT Dwimitra Ekatama Mandiri';
-        doc.text(`${footerCompany} — HSE Report`, marginL, pageH - 6);
+        doc.text(`${footerCompany} — HSE PORTAL`, marginL, pageH - 6);
         doc.text(`Halaman ${pg} dari ${totalPages}`, pageW - marginR, pageH - 6, { align: 'right' });
     }
 
     return doc;
-}
-
-export async function generateHSEPdfBlob(data: HSEFormData): Promise<Blob> {
-    const dmeImg = logoDme;
-    const secondaryImg = data.reportType === 'utt' ? logoUtt : logoNeutradc;
-
-    let logoDmeB64 = '';
-    let logoSecondaryB64 = '';
-    try {
-        logoDmeB64 = await loadImageAsBase64(dmeImg);
-        logoSecondaryB64 = await loadImageAsBase64(secondaryImg);
-    } catch (_) { }
-    const processedData = { ...data, photos: [] as HSEPhoto[] };
-    if (data.photos && data.photos.length > 0) {
-        for (const photo of data.photos) {
-            try {
-                const imgData = await compressBase64Image(photo.base64, { maxWidth: 800, quality: 0.5 });
-                processedData.photos.push({ ...photo, base64: imgData });
-            } catch (e) {
-                processedData.photos.push(photo);
-            }
-        }
-    }
-
-    const doc = createHSEDpdDoc(processedData, logoDmeB64, logoSecondaryB64);
-    return doc.output('blob');
 }
 
 export async function generateHSEPdf(data: HSEFormData) {
@@ -396,28 +472,94 @@ export async function generateHSEPdf(data: HSEFormData) {
         logoDmeB64 = await loadImageAsBase64(dmeImg);
         logoSecondaryB64 = await loadImageAsBase64(secondaryImg);
     } catch (_) { }
+
     const processedData = { ...data, photos: [] as HSEPhoto[] };
+    
+    // Optimize photo processing
     if (data.photos && data.photos.length > 0) {
         for (const photo of data.photos) {
-            try {
-                const imgData = await compressBase64Image(photo.base64, { maxWidth: 800, quality: 0.5 });
-                processedData.photos.push({ ...photo, base64: imgData });
-            } catch (e) {
+            const sizeInBytes = (photo.base64.length * 3) / 4;
+            // Only compress if photo is large (> 500KB)
+            if (sizeInBytes > 500 * 1024) {
+                try {
+                    const imgData = await compressBase64Image(photo.base64, { maxWidth: 800, quality: 0.5 });
+                    processedData.photos.push({ ...photo, base64: imgData });
+                } catch (e) {
+                    processedData.photos.push(photo);
+                }
+            } else {
                 processedData.photos.push(photo);
             }
         }
     }
 
-    const doc = createHSEDpdDoc(processedData, logoDmeB64, logoSecondaryB64);
+    // Process SIO Photos if any with optimization
+    if (processedData.sioData && processedData.sioData.photos) {
+        const compressedSioPhotos = [];
+        for (const photo of processedData.sioData.photos) {
+            const sizeInBytes = (photo.base64.length * 3) / 4;
+            if (sizeInBytes > 500 * 1024) {
+                try {
+                    const imgData = await compressBase64Image(photo.base64, { maxWidth: 800, quality: 0.5 });
+                    compressedSioPhotos.push({ ...photo, base64: imgData });
+                } catch (e) {
+                    compressedSioPhotos.push(photo);
+                }
+            } else {
+                compressedSioPhotos.push(photo);
+            }
+        }
+        processedData.sioData.photos = compressedSioPhotos;
+    }
+
+    const jspdfDoc = createHSEDpdDoc(processedData, logoDmeB64, logoSecondaryB64);
+    
+    // MERGE WITH SILO PDF IF EXISTS
+    let finalPdfBytes: Uint8Array;
+    
+    try {
+        const jspdfBlob = jspdfDoc.output('blob');
+        const jspdfBuffer = await jspdfBlob.arrayBuffer();
+        const mainPdfDoc = await PDFDocument.load(jspdfBuffer);
+
+        let siloBuffer: ArrayBuffer | null = null;
+        if (data.siloFile) {
+            if (data.siloFile instanceof ArrayBuffer) {
+                siloBuffer = data.siloFile;
+            } else {
+                siloBuffer = await (data.siloFile as Blob).arrayBuffer();
+            }
+        } else if (data.siloPdfUrl) {
+            // Priority 2: Remote URL (Slower)
+            try {
+                const resp = await fetch(data.siloPdfUrl);
+                siloBuffer = await resp.arrayBuffer();
+            } catch (e) {
+                console.error("Failed to fetch SILO PDF from URL:", e);
+            }
+        }
+
+        if (siloBuffer) {
+            const siloPdfDoc = await PDFDocument.load(siloBuffer);
+            const copiedPages = await mainPdfDoc.copyPages(siloPdfDoc, siloPdfDoc.getPageIndices());
+            copiedPages.forEach((page) => mainPdfDoc.addPage(page));
+        }
+
+        finalPdfBytes = await mainPdfDoc.save();
+    } catch (err) {
+        console.error("PDF Merging failed, falling back to original:", err);
+        finalPdfBytes = new Uint8Array(await jspdfDoc.output('arraybuffer'));
+    }
+
     const safeAktivitas = (data.aktivitas || 'Inspection').replace(/[/\\?%*:|"<>]/g, '-');
     const dateObj = data.date ? new Date(data.date) : new Date();
     const dateStr = isNaN(dateObj.getTime()) 
         ? new Date().toISOString().split('T')[0] 
         : dateObj.toISOString().split('T')[0];
-    const fileName = `HSE_Report_${safeAktivitas}_${dateStr}.pdf`;
+    const fileName = `HSE_Integrated_${safeAktivitas}_${dateStr}.pdf`;
 
-    const pdfBlob = doc.output('blob');
-    const url = URL.createObjectURL(pdfBlob);
+    const finalBlob = new Blob([finalPdfBytes as any], { type: 'application/pdf' });
+    const url = URL.createObjectURL(finalBlob);
     const link = document.createElement('a');
     link.href = url;
     link.download = fileName;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, User, FileDown, FileType, Pencil, Box, Folder, ChevronLeft } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, User, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ClipboardList } from 'lucide-react';
 import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
@@ -35,6 +35,8 @@ export interface ExcelDocument {
   photosWithImage: number;
   photosData: PhotoData[];
   documentType: 'excel' | 'pdf' | 'hse';
+  hseType?: 'inspection' | 'sio' | 'silo';
+  maintenanceType?: string;
 }
 
 interface DocumentListProps {
@@ -62,7 +64,11 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   const [documentToDelete, setDocumentToDelete] = useState<ExcelDocument | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkDeleting, setBulkDeleting] = useState(false);
-  const [currentLevel, setCurrentLevel] = useState<'root' | 'month' | 'week'>('root');
+  
+  // HSE Specific State
+  const [currentLevel, setCurrentLevel] = useState<'root' | 'category' | 'maintenance' | 'month' | 'week'>('root');
+  const [selectedCategory, setSelectedCategory] = useState<'inspection' | 'sio' | 'silo' | null>(null);
+  const [selectedMaintenance, setSelectedMaintenance] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
 
@@ -177,6 +183,8 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
             photosWithImage: data.photos?.length || 0,
             photosData: [],
             documentType: 'hse',
+            hseType: data.hseType || 'inspection',
+            maintenanceType: data.maintenanceType || 'OTHER'
           });
         });
       }
@@ -523,7 +531,8 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           const data = d.data();
           return {
             base64: data.dataUrl,
-            description: data.description || ''
+            description: data.description || '',
+            label: data.label || ''
           };
         });
       const formData = {
@@ -536,7 +545,9 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         checklist: hseData.checklist,
         photos: photos,
         date: hseData.date,
-        reportType: hseData.reportType
+        reportType: hseData.reportType,
+        hseType: hseData.hseType || 'inspection',
+        maintenanceType: hseData.maintenanceType || 'OTHER'
       };
 
       await generateHSEPdf(formData);
@@ -546,6 +557,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       toast.error('Gagal mengunduh PDF HSE', { id: 'download-hse' });
     }
   };
+
   const filteredDocuments = documents.filter(doc => {
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
@@ -576,76 +588,168 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
     if (filterOverride !== 'hse_utt') return filteredDocuments;
     if (currentLevel === 'week') {
       return filteredDocuments.filter(d =>
+        d.hseType === 'inspection' &&
         getMonthYearString(d.createdAt) === selectedMonth &&
         getWeekOfMonth(d.createdAt) === selectedWeek
       );
     }
+    if (currentLevel === 'maintenance') {
+      return filteredDocuments.filter(d =>
+        d.hseType === selectedCategory &&
+        d.maintenanceType === selectedMaintenance
+      );
+    }
     return [];
   })();
+
   const renderContent = () => {
     if (filterOverride !== 'hse_utt') {
       return filteredDocuments.map((document, index) => renderDocumentCard(document, index));
     }
 
+    // LEVEL: ROOT (Main HSE Folders)
     if (currentLevel === 'root') {
-      const monthGroups = new Set<string>();
-      filteredDocuments.forEach(doc => monthGroups.add(getMonthYearString(doc.createdAt)));
-      const monthMap: { [key: string]: number } = {
-        'Januari': 0, 'Februari': 1, 'Maret': 2, 'April': 3, 'Mei': 4, 'Juni': 5,
-        'Juli': 6, 'Agustus': 7, 'September': 8, 'Oktober': 9, 'November': 10, 'Desember': 11
-      };
-
-      const sortedMonths = Array.from(monthGroups).sort((a, b) => {
-        const [monthA, yearA] = a.split(' ');
-        const [monthB, yearB] = b.split(' ');
-        if (yearA !== yearB) return parseInt(yearB) - parseInt(yearA);
-        return monthMap[monthB] - monthMap[monthA];
-      });
+      const categories = [
+        { id: 'inspection', name: 'HSE Inspection Report', icon: ClipboardList, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+      ];
 
       return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {sortedMonths.map((month) => (
-            <motion.button
-              key={month}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                setSelectedMonth(month);
-                setCurrentLevel('month');
-              }}
-              className="flex items-center gap-4 p-6 bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl hover:border-blue-500/30 transition-all group text-left"
-            >
-              <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20 group-hover:bg-blue-500/20 transition-colors">
-                <Folder className="w-8 h-8 text-blue-400" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-white">{month}</h3>
-                <p className="text-sm text-slate-400">
-                  {filteredDocuments.filter(d => getMonthYearString(d.createdAt) === month).length} Laporan
-                </p>
-              </div>
-            </motion.button>
-          ))}
+          {categories.map((cat) => {
+            const count = filteredDocuments.filter(d => d.hseType === cat.id).length;
+            return (
+              <motion.button
+                key={cat.id}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  setSelectedCategory(cat.id as any);
+                  setCurrentLevel('category');
+                }}
+                className="flex items-center gap-4 p-6 bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl hover:border-blue-500/30 transition-all group text-left"
+              >
+                <div className={`p-3 ${cat.bg} rounded-xl border border-blue-500/20 group-hover:scale-110 transition-transform`}>
+                  <cat.icon className={`w-8 h-8 ${cat.color}`} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">{cat.name}</h3>
+                  <p className="text-sm text-slate-400">{count} Dokumen</p>
+                </div>
+              </motion.button>
+            );
+          })}
         </div>
       );
     }
 
+    // LEVEL: CATEGORY (Month/Year for Inspection, Maintenance Type for SIO/SILO)
+    if (currentLevel === 'category') {
+      const backBtn = (
+        <button
+          onClick={() => setCurrentLevel('root')}
+          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium mb-4"
+        >
+          <ChevronLeft className="w-4 h-4" /> Kembali ke Root HSE
+        </button>
+      );
+
+      if (selectedCategory === 'inspection') {
+        const monthGroups = new Set<string>();
+        filteredDocuments
+          .filter(d => d.hseType === 'inspection')
+          .forEach(doc => monthGroups.add(getMonthYearString(doc.createdAt)));
+        
+        const sortedMonths = Array.from(monthGroups).sort((a, b) => {
+          const [, yearA] = a.split(' ');
+          const [, yearB] = b.split(' ');
+          if (yearA !== yearB) return parseInt(yearB) - parseInt(yearA);
+          return 0;
+        });
+
+        return (
+          <div className="space-y-4">
+            {backBtn}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {sortedMonths.map((month) => (
+                <motion.button
+                  key={month}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setSelectedMonth(month);
+                    setCurrentLevel('month');
+                  }}
+                  className="flex items-center gap-4 p-6 bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl hover:border-blue-500/30 transition-all group text-left"
+                >
+                  <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
+                    <Folder className="w-8 h-8 text-blue-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">{month}</h3>
+                    <p className="text-sm text-slate-400">
+                      {filteredDocuments.filter(d => d.hseType === 'inspection' && getMonthYearString(d.createdAt) === month).length} Laporan
+                    </p>
+                  </div>
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        );
+      } else {
+        // SIO or SILO -> Group by Maintenance Type
+        const maintenanceTypes = new Set<string>();
+        filteredDocuments
+          .filter(d => d.hseType === selectedCategory)
+          .forEach(doc => maintenanceTypes.add(doc.maintenanceType || 'OTHER'));
+
+        return (
+          <div className="space-y-4">
+            {backBtn}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Array.from(maintenanceTypes).map((type) => (
+                <motion.button
+                  key={type}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setSelectedMaintenance(type);
+                    setCurrentLevel('maintenance');
+                  }}
+                  className="flex items-center gap-4 p-6 bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl hover:border-blue-500/30 transition-all group text-left"
+                >
+                  <div className="p-3 bg-indigo-500/10 rounded-xl border border-indigo-500/20">
+                    <Folder className="w-8 h-8 text-indigo-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white uppercase">{type}</h3>
+                    <p className="text-sm text-slate-400">
+                      {filteredDocuments.filter(d => d.hseType === selectedCategory && d.maintenanceType === type).length} Dokumen
+                    </p>
+                  </div>
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        );
+      }
+    }
+
+    // LEVEL: MONTH (For Inspection only)
     if (currentLevel === 'month') {
-      const monthDocs = filteredDocuments.filter(d => getMonthYearString(d.createdAt) === selectedMonth);
+      const monthDocs = filteredDocuments.filter(d => d.hseType === 'inspection' && getMonthYearString(d.createdAt) === selectedMonth);
       const weeks = new Set<number>();
       monthDocs.forEach(doc => weeks.add(getWeekOfMonth(doc.createdAt)));
-      const sortedWeeks = Array.from(weeks).sort((a, b) => b - a);
 
       return (
         <div className="space-y-4">
           <button
-            onClick={() => setCurrentLevel('root')}
+            onClick={() => setCurrentLevel('category')}
             className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium mb-2"
           >
             <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Bulan
           </button>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sortedWeeks.map((week) => (
+            {Array.from(weeks).sort((a, b) => b - a).map((week) => (
               <motion.button
                 key={week}
                 whileHover={{ scale: 1.02 }}
@@ -656,7 +760,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
                 }}
                 className="flex items-center gap-4 p-6 bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl hover:border-blue-500/30 transition-all group text-left"
               >
-                <div className="p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
+                <div className="p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
                   <Folder className="w-8 h-8 text-emerald-400" />
                 </div>
                 <div>
@@ -672,21 +776,21 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       );
     }
 
-    const weekDocs = filteredDocuments.filter(d =>
-      getMonthYearString(d.createdAt) === selectedMonth &&
-      getWeekOfMonth(d.createdAt) === selectedWeek
-    );
+    // LEVEL: WEEK or MAINTENANCE (Show final documents)
+    const displayDocs = currentLevel === 'week' 
+      ? filteredDocuments.filter(d => d.hseType === 'inspection' && getMonthYearString(d.createdAt) === selectedMonth && getWeekOfMonth(d.createdAt) === selectedWeek)
+      : filteredDocuments.filter(d => d.hseType === selectedCategory && d.maintenanceType === selectedMaintenance);
 
     return (
       <div className="space-y-4">
         <button
-          onClick={() => setCurrentLevel('month')}
+          onClick={() => setCurrentLevel(selectedCategory === 'inspection' ? 'month' : 'category')}
           className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium mb-2"
         >
-          <ChevronLeft className="w-4 h-4" /> Kembali ke {selectedMonth}
+          <ChevronLeft className="w-4 h-4" /> Kembali
         </button>
         <div className="grid grid-cols-1 gap-4">
-          {weekDocs.map((document, index) => renderDocumentCard(document, index))}
+          {displayDocs.map((document, index) => renderDocumentCard(document, index))}
         </div>
       </div>
     );
@@ -703,7 +807,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-4 sm:p-5 border border-slate-700/50 hover:border-blue-500/30 transition group"
     >
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-
         {canDelete && (
           <div className="flex-shrink-0 mr-1">
             <input
@@ -718,7 +821,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           </div>
         )}
 
-
         <div className="p-2.5 sm:p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20 flex-shrink-0">
           {document.documentType === 'pdf' ? (
             <FileType className="w-5 h-5 sm:w-6 sm:h-6 text-red-400" />
@@ -726,7 +828,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
             <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
           )}
         </div>
-
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -739,6 +840,11 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
               }`}>
               {document.documentType.toUpperCase()}
             </span>
+            {document.hseType && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase">
+                {document.hseType}
+              </span>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-1 text-xs sm:text-sm text-slate-400">
             <div className="flex items-center gap-1.5">
@@ -756,14 +862,22 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
               <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
               <span className="truncate">{document.createdBy}</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <FileDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span>{(document.fileSize / 1024).toFixed(0)} KB</span>
-            </div>
+            {document.documentType !== 'hse' && (
+              <div className="flex items-center gap-1.5">
+                <FileDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>{(document.fileSize / 1024).toFixed(0)} KB</span>
+              </div>
+            )}
             {document.specificDetail && (
               <div className="flex items-center gap-1.5 min-w-0">
                 <Box className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 text-blue-400" />
                 <span className="truncate text-blue-300 font-medium">{document.specificDetail}</span>
+              </div>
+            )}
+            {document.maintenanceType && (
+              <div className="flex items-center gap-1.5">
+                <FileType className="w-3.5 h-3.5 text-orange-400" />
+                <span className="text-orange-300 font-bold">{document.maintenanceType}</span>
               </div>
             )}
           </div>
@@ -771,7 +885,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
             Dibuat: {document.createdAt.toLocaleString('id-ID')}
           </p>
         </div>
-
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
           {onEdit && (

@@ -13,9 +13,21 @@ service firebase.storage {
       // ✅ Write hanya untuk authenticated user
       // - Max 10MB (dikurangi dari 20MB untuk efisiensi)
       // - Hanya file PDF
-      // - Nama file harus string valid (sudah dihandle oleh path matching)
       allow write: if request.auth != null
                    && request.resource.size <= 10 * 1024 * 1024
+                   && request.resource.contentType == 'application/pdf';
+    }
+
+    // ============================================================
+    // SILO Documents — Upload PDF dokumen Surat Izin Layak Operasi
+    // ============================================================
+    match /silo/{fileName} {
+      // ✅ Public read untuk sharing
+      allow read: if true;
+      
+      // ✅ Write hanya untuk authenticated user, max 20MB
+      allow write: if request.auth != null
+                   && request.resource.size <= 20 * 1024 * 1024
                    && request.resource.contentType == 'application/pdf';
     }
 

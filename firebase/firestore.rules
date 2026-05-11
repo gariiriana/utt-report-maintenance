@@ -295,10 +295,10 @@ service cloud.firestore {
     match /hse/{reportId} {
       // ✅ HSE user bisa create laporan mereka sendiri
       allow create: if request.auth != null 
-                    && (isHSE() || isAdminSafe())
+                    && (isHSE() || isAdminSafe() || isPrivilegedRole())
                     && request.resource.data.keys().hasAll(['aktivitas', 'lokasi', 'createdAt', 'authorEmail'])
                     && request.resource.data.authorEmail == request.auth.token.email
-                    && hasAcceptableFieldCount(request.resource.data, 15)
+                    && hasAcceptableFieldCount(request.resource.data, 30)
                     && isValidString(request.resource.data.aktivitas, 500)
                     && isValidString(request.resource.data.lokasi, 500)
                     && isValidString(request.resource.data.authorEmail, 200);
@@ -309,8 +309,9 @@ service cloud.firestore {
       // ✅ HSE user bisa update laporan mereka sendiri
       allow update: if request.auth != null 
                     && (isAdminSafe() 
-                        || (isHSE() && resource.data.authorEmail == request.auth.token.email))
-                    && hasAcceptableFieldCount(request.resource.data, 15);
+                        || (isHSE() && resource.data.authorEmail == request.auth.token.email)
+                        || (isPrivilegedRole() && resource.data.authorEmail == request.auth.token.email))
+                    && hasAcceptableFieldCount(request.resource.data, 30);
       
       // ✅ Admin bisa delete, HSE user bisa delete milik mereka sendiri
       allow delete: if request.auth != null 
@@ -321,10 +322,10 @@ service cloud.firestore {
       match /photos/{photoId} {
         allow read: if true;
         allow create: if request.auth != null
-                      && hasAcceptableFieldCount(request.resource.data, 6)
+                      && hasAcceptableFieldCount(request.resource.data, 8)
                       && (!request.resource.data.keys().hasAny(['dataUrl']) || isValidPhotoData(request.resource.data.dataUrl));
         allow update, delete: if request.auth != null 
-                              && (get(/databases/$(database)/documents/hse/$(reportId)).data.authorEmail == request.auth.token.email || isAdminSafe());
+                              && (get(/databases/$(database)/documents/hse/$(reportId)).data.authorEmail == request.auth.token.email || isAdminSafe() || isPrivilegedRole());
       }
     }
 

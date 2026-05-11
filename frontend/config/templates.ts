@@ -311,3 +311,23 @@ export const HSE_CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string; sub
   { key: 'safeCondition', label: 'Safe Condition' },
   { key: 'safeAction', label: 'Safe Action' },
 ];
+
+export const HSE_REPORT_TYPES = {
+    INSPECTION: 'inspection',
+    SIO: 'sio',
+    SILO: 'silo'
+} as const;
+
+export type HSEReportType = typeof HSE_REPORT_TYPES[keyof typeof HSE_REPORT_TYPES];
+
+export const MAINTENANCE_CATEGORIES = [
+    'LIFT',
+    'FIRE ALARM',
+    'FIRE HYDRANT',
+    'GENSET',
+    'TRAFO',
+    'PUMP',
+    'HVAC',
+    'ELECTRICAL',
+    'OTHER'
+];
