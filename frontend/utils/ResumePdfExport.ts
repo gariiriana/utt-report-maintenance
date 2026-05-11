@@ -211,3 +211,4 @@ export async function generateResumePdf(summary: MaintenanceSummary, maintenance
         : `Maintenance_Resume_${dateStr.replace(/ /g, '_')}.pdf`;
     doc.save(fileName);
 }
+

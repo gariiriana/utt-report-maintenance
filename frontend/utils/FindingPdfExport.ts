@@ -5,7 +5,7 @@ import { loadLogoBase64 } from './ReportPdfExport';
 import logoNeutra from '@/assets/logo_neutradc.png';
 import logoDME from '@/assets/logo_dwimitra_v2.png';
 
-/** Helper to get image dimensions from base64 */
+
 function getImageDimensions(base64: string): Promise<{ width: number; height: number }> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -15,10 +15,7 @@ function getImageDimensions(base64: string): Promise<{ width: number; height: nu
   });
 }
 
-/**
- * Export findings to a premium professional PDF report
- * with Neutra DC + DME branding and international standard layout.
- */
+
 export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<void> {
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -26,50 +23,41 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
   const margin = 14;
   const contentW = pageWidth - 2 * margin;
 
-  // ── Theme Colors ─────────────────────────────────────────────────────────
   const THEME_BLUE = '#00599c';
   const DARK = '#1e293b';
   const GRAY = '#64748b';
   const SLATE_200 = '#e2e8f0';
   const AMBER = '#f59e0b';
 
-  // ── Load logos ───────────────────────────────────────────────────────────
   const [leftLogo, rightLogo] = await Promise.all([
     loadLogoBase64(logoNeutra),
     loadLogoBase64(logoDME),
   ]);
 
-  // ── Header function ──────────────────────────────────────────────────────
   const drawHeader = (currentDoc: jsPDF): number => {
-    // Top accent bar
     currentDoc.setFillColor(THEME_BLUE);
     currentDoc.rect(0, 0, pageWidth, 2.5, 'F');
 
     const headerH = 24;
     const headerY = 6;
 
-    // Header box
     currentDoc.setDrawColor(SLATE_200);
     currentDoc.setLineWidth(0.15);
     currentDoc.roundedRect(margin, headerY, contentW, headerH, 1, 1, 'D');
 
-    // Dividers
     const col1W = 35;
     const col3W = 35;
     currentDoc.line(margin + col1W, headerY, margin + col1W, headerY + headerH);
     currentDoc.line(pageWidth - margin - col3W, headerY, pageWidth - margin - col3W, headerY + headerH);
 
-    // Left logo (Neutra DC)
     if (leftLogo) {
       currentDoc.addImage(leftLogo, 'JPEG', margin + 3, headerY + 4, col1W - 6, 16, 'logo_neutra', 'FAST');
     }
 
-    // Right logo (DME)
     if (rightLogo) {
       currentDoc.addImage(rightLogo, 'JPEG', pageWidth - margin - col3W + 5, headerY + 5, col3W - 10, 14, 'logo_dme', 'FAST');
     }
 
-    // Center text
     const centerX = margin + col1W + (contentW - col1W - col3W) / 2;
     currentDoc.setFontSize(12).setFont('helvetica', 'bold').setTextColor(THEME_BLUE);
     currentDoc.text('LAPORAN TEMUAN MAINTENANCE', centerX, headerY + 8, { align: 'center' });
@@ -83,14 +71,12 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
     currentDoc.setFontSize(7).setFont('helvetica', 'normal').setTextColor(GRAY);
     currentDoc.text(`Generated: ${now}`, centerX, headerY + 17.5, { align: 'center' });
 
-    // Summary badge
     currentDoc.setFontSize(6.5).setFont('helvetica', 'bold').setTextColor(AMBER);
     currentDoc.text(`Total Temuan: ${findings.length} item`, centerX, headerY + 21.5, { align: 'center' });
 
     return headerY + headerH + 6;
   };
 
-  // ── Footer function ──────────────────────────────────────────────────────
   const drawFooter = (currentDoc: jsPDF, pg: number, totalPages: number) => {
     currentDoc.setFillColor(THEME_BLUE);
     currentDoc.rect(0, pageHeight - 2.5, pageWidth, 2.5, 'F');
@@ -100,10 +86,8 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
     currentDoc.text(`Halaman ${pg} dari ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
   };
 
-  // ── Draw summary table ───────────────────────────────────────────────────
   let curY = drawHeader(doc);
 
-  // Summary Table Header
   const tableData = findings.map((f, idx) => [
     String(idx + 1),
     f.partName || '-',
@@ -149,21 +133,18 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
       6: { cellWidth: 22, halign: 'center' },
     },
     didDrawPage: (data: any) => {
-      // Redraw header on new pages
       if (data.pageNumber > 1) {
         drawHeader(doc);
       }
     },
   });
 
-  // ── Photo documentation pages ────────────────────────────────────────────
   const findingsWithPhotos = findings.filter((f) => f.photos && f.photos.length > 0);
 
   if (findingsWithPhotos.length > 0) {
     doc.addPage();
     curY = drawHeader(doc);
 
-    // Section title
     doc.setFontSize(10).setFont('helvetica', 'bold').setTextColor(THEME_BLUE);
     doc.text('DOKUMENTASI FOTO TEMUAN', pageWidth / 2, curY, { align: 'center' });
     curY += 6;
@@ -171,13 +152,11 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
     for (let fIdx = 0; fIdx < findingsWithPhotos.length; fIdx++) {
       const finding = findingsWithPhotos[fIdx];
 
-      // Check if we need a new page
       if (curY > pageHeight - 80) {
         doc.addPage();
         curY = drawHeader(doc);
       }
 
-      // Part info banner
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(SLATE_200);
       doc.setLineWidth(0.15);
@@ -192,10 +171,9 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
       doc.text(`P/N: ${finding.partNumber} | Brand: ${finding.brandName || '-'} | Qty: ${finding.quantity}`, margin + 6, curY + 8);
       curY += 14;
 
-      // Photos grid (2 columns)
       const photoCols = 2;
       const photoW = (contentW - 4) / photoCols;
-      const photoH = 60; // Increased from 50 for better aspect ratio compatibility
+      const photoH = 60; 
       const captionH = 8;
 
       for (let pIdx = 0; pIdx < finding.photos.length; pIdx += photoCols) {
@@ -209,7 +187,6 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
           const photo = row[j];
           const x = margin + j * (photoW + 4);
 
-          // Photo card
           doc.setFillColor(255, 255, 255);
           doc.setDrawColor(SLATE_200);
           doc.setLineWidth(0.2);
@@ -226,15 +203,12 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
                 const imgRatio = dims.width / dims.height;
 
                 if (imgRatio > containerRatio) {
-                  // Image is wider than container ratio
                   drawH = drawW / imgRatio;
                 } else {
-                  // Image is taller than container ratio
                   drawW = drawH * imgRatio;
                 }
               }
 
-              // Center the image in the card
               const offsetX = (photoW - drawW) / 2;
               const offsetY = (photoH - drawH) / 2;
 
@@ -255,7 +229,6 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
             }
           }
 
-          // Caption
           doc.setDrawColor(SLATE_200);
           doc.line(x, curY + photoH, x + photoW, curY + photoH);
 
@@ -276,15 +249,14 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
     }
   }
 
-  // ── Apply footers ────────────────────────────────────────────────────────
   const totalPages = (doc.internal as any).getNumberOfPages();
   for (let pg = 1; pg <= totalPages; pg++) {
     doc.setPage(pg);
     drawFooter(doc, pg, totalPages);
   }
 
-  // ── Save ─────────────────────────────────────────────────────────────────
   const now = new Date();
   const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   doc.save(`Laporan_Temuan_Maintenance_${dateStr}.pdf`);
 }
+

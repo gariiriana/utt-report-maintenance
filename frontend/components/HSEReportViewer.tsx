@@ -419,3 +419,4 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
         </div>
     );
 }
+

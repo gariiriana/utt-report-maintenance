@@ -108,3 +108,4 @@ export function LogoutConfirmModal({ isOpen, onClose, onConfirm, userEmail }: Lo
     </AnimatePresence>
   );
 }
+

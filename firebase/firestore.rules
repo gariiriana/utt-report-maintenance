@@ -2,11 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // ============================================================
-    // HELPER FUNCTIONS
-    // ============================================================
-    
-    // ✅ Check if user is admin (safe - returns false if doc doesn't exist)
     function isAdminSafe() {
       return request.auth != null 
              && request.auth.uid != null
@@ -14,7 +9,6 @@ service cloud.firestore {
              && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // ✅ Standby Engineer check
     function isStandbyEngineer() {
       return request.auth != null 
              && request.auth.uid != null
@@ -22,7 +16,6 @@ service cloud.firestore {
              && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'standby_engineer';
     }
 
-    // ✅ HSE Officer check
     function isHSE() {
       return request.auth != null 
              && request.auth.uid != null
@@ -30,7 +23,6 @@ service cloud.firestore {
              && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hse';
     }
 
-    // ✅ Director check
     function isDirector() {
       return request.auth != null 
              && request.auth.uid != null
@@ -40,7 +32,6 @@ service cloud.firestore {
                  get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'DireksiKeuangan');
     }
 
-    // ✅ Multi-role Engineer check (matches frontend logic)
     function isEngineer() {
       return request.auth != null 
              && request.auth.uid != null
@@ -51,7 +42,6 @@ service cloud.firestore {
                  get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'cbre');
     }
 
-    // ✅ Privileged roles that can see all archived documents
     function isPrivilegedRole() {
        return request.auth != null 
              && request.auth.uid != null
@@ -59,7 +49,6 @@ service cloud.firestore {
              && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'manager', 'site_manager', 'hse', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
     }
 
-    // ✅ Division specific check
     function isDivision(div) {
       return request.auth != null 
              && request.auth.uid != null
@@ -67,33 +56,19 @@ service cloud.firestore {
              && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == div;
     }
 
-    // ============================================================
-    // 🛡️ SECURITY HELPER FUNCTIONS
-    // ============================================================
-    
-    // ✅ Validasi bahwa string tidak lebih dari maxLen karakter
-    // Mencegah penyimpanan data sangat besar yang membebani database
     function isValidString(val, maxLen) {
       return val is string && val.size() <= maxLen;
     }
 
-    // ✅ Validasi foto dataUrl — panjang max 2MB base64 (~2.7MB actual)
-    // Satu karakter base64 = ~0.75 byte, jadi 2MB ≈ 2,800,000 chars
     function isValidPhotoData(data) {
       return data is string && data.size() <= 2800000;
     }
     
-    // ✅ Validasi bahwa jumlah field tidak berlebihan (anti data flooding)
     function hasAcceptableFieldCount(data, maxFields) {
       return data.keys().size() <= maxFields;
     }
 
-    // ============================================================
-    // USERS COLLECTION
-    // ============================================================
     match /users/{userId} {
-      // SECURITY: Force default role on creation to prevent privilege escalation.
-      // Users cannot self-assign admin or other privileged roles.
       allow create: if request.auth != null 
                     && request.auth.uid == userId
                     && request.resource.data.email == request.auth.token.email
@@ -118,9 +93,6 @@ service cloud.firestore {
       allow delete: if request.auth != null && isAdminSafe();
     }
     
-    // ============================================================
-    // EXCEL_DOCUMENTS COLLECTION
-    // ============================================================
     match /excel_documents/{docId} {
       allow create: if request.auth != null 
                     && request.resource.data.createdBy == request.auth.token.email
@@ -149,7 +121,6 @@ service cloud.firestore {
                     && (resource.data.createdBy == request.auth.token.email || isPrivilegedRole())
                     && hasAcceptableFieldCount(request.resource.data, 15);
 
-      // ✅ Subcollection foto
       match /photos/{photoId} {
         allow read: if request.auth != null;
         allow create: if request.auth != null
@@ -160,9 +131,6 @@ service cloud.firestore {
       }
     }
     
-    // ============================================================
-    // PDF_DOCUMENTS COLLECTION
-    // ============================================================
     match /pdf_documents/{docId} {
       allow create: if request.auth != null 
                     && request.resource.data.createdBy == request.auth.token.email
@@ -191,20 +159,16 @@ service cloud.firestore {
                     && (resource.data.createdBy == request.auth.token.email || isPrivilegedRole())
                     && hasAcceptableFieldCount(request.resource.data, 15);
 
-      // ✅ Subcollection foto
       match /photos/{photoId} {
         allow read: if request.auth != null;
         allow create: if request.auth != null
                       && hasAcceptableFieldCount(request.resource.data, 6)
                       && (!request.resource.data.keys().hasAny(['dataUrl']) || isValidPhotoData(request.resource.data.dataUrl));
         allow update, delete: if request.auth != null 
-                              && (get(/databases/$(database)/documents/pdf_documents/$(docId)).data.createdBy == request.auth.token.email || isPrivilegedRole());
+                              && (get(/databases/$(database)/documents/pdf_documents/$(docId)).data.authorEmail == request.auth.token.email || isPrivilegedRole());
       }
     }
     
-    // ============================================================
-    // FILES COLLECTION
-    // ============================================================
     match /files/{fileId} {
       allow create: if request.auth != null && (isAdminSafe() || isEngineer())
                     && request.resource.data.keys().hasAll([
@@ -230,7 +194,6 @@ service cloud.firestore {
       
       allow delete: if request.auth != null && isAdminSafe();
 
-      // ✅ CHUNKS SUB-COLLECTION
       match /chunks/{chunkId} {
         allow create: if request.auth != null 
                       && (isAdminSafe() || isEngineer())
@@ -242,9 +205,6 @@ service cloud.firestore {
       }
     }
 
-    // ============================================================
-    // SERVICE REPORTS COLLECTION
-    // ============================================================
     match /service_reports/{reportId} {
       allow create: if request.auth != null && isAdminSafe()
                     && hasAcceptableFieldCount(request.resource.data, 20);
@@ -265,9 +225,6 @@ service cloud.firestore {
       }
     }
 
-    // ============================================================
-    // CORRECTIVE MAINTENANCE REPORTS
-    // ============================================================
     match /corrective_reports/{reportId} {
       allow create: if request.auth != null && isStandbyEngineer()
                     && hasAcceptableFieldCount(request.resource.data, 20);
@@ -278,9 +235,6 @@ service cloud.firestore {
                     && (isAdminSafe() || (isStandbyEngineer() && resource.data.reportedBy == request.auth.uid));
     }
     
-    // ============================================================
-    // SERVICE REPORT TEMPLATES
-    // ============================================================
     match /service_report_templates/{templateId} {
       allow write: if request.auth != null && isAdminSafe()
                    && hasAcceptableFieldCount(request.resource.data, 30);
@@ -288,12 +242,7 @@ service cloud.firestore {
       allow read: if request.auth != null;
     }
     
-    // ============================================================
-    // HSE COLLECTION — Laporan HSE oleh HSE Officer
-    // PUBLIC READ dipertahankan untuk WA link sharing (by design)
-    // ============================================================
     match /hse/{reportId} {
-      // ✅ HSE user bisa create laporan mereka sendiri
       allow create: if request.auth != null 
                     && (isHSE() || isAdminSafe() || isPrivilegedRole())
                     && request.resource.data.keys().hasAll(['aktivitas', 'lokasi', 'createdAt', 'authorEmail'])
@@ -303,22 +252,18 @@ service cloud.firestore {
                     && isValidString(request.resource.data.lokasi, 500)
                     && isValidString(request.resource.data.authorEmail, 200);
       
-      // ✅ PUBLIC READ — siapapun dengan link bisa lihat (untuk WA sharing)
       allow read: if true;
       
-      // ✅ HSE user bisa update laporan mereka sendiri
       allow update: if request.auth != null 
                     && (isAdminSafe() 
                         || (isHSE() && resource.data.authorEmail == request.auth.token.email)
                         || (isPrivilegedRole() && resource.data.authorEmail == request.auth.token.email))
                     && hasAcceptableFieldCount(request.resource.data, 30);
       
-      // ✅ Admin bisa delete, HSE user bisa delete milik mereka sendiri
       allow delete: if request.auth != null 
                     && (isAdminSafe() 
                         || (isHSE() && resource.data.authorEmail == request.auth.token.email));
 
-      // ✅ Subcollection foto HSE — PUBLIC READ for WA viewer link
       match /photos/{photoId} {
         allow read: if true;
         allow create: if request.auth != null
@@ -329,9 +274,6 @@ service cloud.firestore {
       }
     }
 
-    // ============================================================
-    // ISO DIVISION COLLECTIONS (PMO, SALES, PRESALES, PURCHASING)
-    // ============================================================
     match /{division}/{fileId} {
       allow create: if request.auth != null 
                     && division in ['pmo', 'sales', 'presales', 'purchasing']
@@ -345,7 +287,6 @@ service cloud.firestore {
       
       allow delete: if request.auth != null && isAdminSafe();
 
-      // ✅ ISO CHUNKS
       match /chunks/{chunkId} {
         allow create: if request.auth != null 
                       && division in ['pmo', 'sales', 'presales', 'purchasing']
@@ -360,11 +301,7 @@ service cloud.firestore {
       }
     }
 
-    // ============================================================
-    // FINDINGS COLLECTION — Temuan Maintenance Trouble
-    // ============================================================
     match /findings/{findingId} {
-      // ✅ Engineer, Standby Engineer, dan Admin bisa create temuan
       allow create: if request.auth != null 
                     && (isAdminSafe() || isEngineer())
                     && hasAcceptableFieldCount(request.resource.data, 20)
@@ -374,22 +311,16 @@ service cloud.firestore {
                     && isValidString(request.resource.data.partName, 500)
                     && isValidString(request.resource.data.partNumber, 200);
       
-      // ✅ Hanya pencipta atau role istimewa yang bisa baca
       allow read: if request.auth != null 
                   && (resource.data.createdBy == request.auth.uid 
                       || isPrivilegedRole());
       
-      // ✅ Admin bisa delete, creator bisa delete, atau engineer bisa delete data
       allow delete: if request.auth != null 
                     && (isAdminSafe() 
                         || resource.data.createdBy == request.auth.uid);
     }
 
-    // ============================================================
-    // MAINTENANCE PROGRESS COLLECTION
-    // ============================================================
     match /maintenance_progress/{docId} {
-      // SECURITY: Changed from public read to auth-required
       allow read: if request.auth != null;
       allow write: if request.auth != null 
                     && (isAdminSafe() 
@@ -397,31 +328,21 @@ service cloud.firestore {
                         || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'site_manager');
     }
 
-    // ============================================================
-    // INVENTORY BORROWINGS COLLECTION
-    // ============================================================
     match /inventory_borrowings/{docId} {
-      // ✅ Pengajuan baru oleh Standby Engineer atau Admin
       allow create: if request.auth != null 
                     && (isStandbyEngineer() || isAdminSafe())
                     && hasAcceptableFieldCount(request.resource.data, 15)
                     && request.resource.data.engineerEmail == request.auth.token.email;
       
-      // ✅ User yang login bisa baca status (transparansi pimpinan & tim)
       allow read: if request.auth != null;
       
-      // ✅ Engineer bisa update (untuk proses pengembalian), Admin akses penuh
       allow update: if request.auth != null 
                     && (isAdminSafe() || (isStandbyEngineer() && resource.data.engineerEmail == request.auth.token.email))
                     && hasAcceptableFieldCount(request.resource.data, 20);
       
-      // ✅ Hanya Admin yang bisa hapus riwayat
       allow delete: if request.auth != null && isAdminSafe();
     }
 
-    // ============================================================
-    // DEFAULT — Block semua akses ke collection lain
-    // ============================================================
     match /{document=**} {
       allow read, write: if false;
     }

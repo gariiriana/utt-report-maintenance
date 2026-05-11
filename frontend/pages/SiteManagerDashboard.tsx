@@ -983,3 +983,4 @@ function ActivityRow({ activity, onUpdate, onDelete, isSaving }: {
     </tr>
   );
 }
+

@@ -16,3 +16,4 @@ export interface FindingRecord {
   createdAt: any;
   findingDate?: string;
 }
+

@@ -131,3 +131,4 @@ export function SignaturePad({ onSave, onClear, className = '', placeholder = 'S
     </div>
   );
 }
+

@@ -69,7 +69,7 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
   }
 
   const optimizedCards: PhotoCard[] = [];
-  const SKIP_THRESHOLD = 200 * 1024; // 200KB — sudah cukup kecil, skip kompresi
+  const SKIP_THRESHOLD = 200 * 1024; 
   const BATCH_SIZE = 4;
 
   for (let batchStart = 0; batchStart < filled.length; batchStart += BATCH_SIZE) {
@@ -273,3 +273,4 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
 
   return { doc, fileName: `${safeName}${safeDetail}.pdf`, filled: optimizedCards };
 };
+

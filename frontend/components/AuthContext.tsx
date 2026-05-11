@@ -56,8 +56,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const userDoc = await getDoc(userDocRef);
 
           if (!userDoc.exists()) {
-            // SECURITY: Always assign default 'engineer' role.
-            // Admin role must be assigned by an existing admin via backend.
             await setDoc(userDocRef, {
               email: user.email,
               uid: user.uid,
@@ -118,8 +116,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userDoc = await getDoc(userDocRef);
 
         if (!userDoc.exists()) {
-          // SECURITY: Always assign default 'engineer' role.
-          // Admin role must be assigned by an existing admin via backend.
           await setDoc(userDocRef, {
             email: userCredential.user.email,
             uid: userCredential.user.uid,
@@ -131,7 +127,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error) {
       console.warn('Error during background user doc sync:', error);
-      // Don't throw, auth succeeded already
     }
   };
 

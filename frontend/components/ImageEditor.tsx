@@ -353,3 +353,4 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
         </motion.div>
     );
 }
+

@@ -26,12 +26,10 @@ import { useAuth } from './AuthContext';
 import { ImageEditor } from '@/components/ImageEditor';
 import { FindingPhoto } from '../types/finding';
 
-// ── Component ────────────────────────────────────────────────────────────────
 export function FindingManagement() {
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
-  // Form state
   const [formData, setFormData] = useState({
     partName: '',
     partNumber: '',
@@ -42,10 +40,8 @@ export function FindingManagement() {
   });
   const [photos, setPhotos] = useState<FindingPhoto[]>([]);
 
-  // Delete confirmation
   const [editingPhotoIdx, setEditingPhotoIdx] = useState<number | null>(null);
 
-  // ── Submit form ──────────────────────────────────────────────────────────
   const handleAddPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -74,7 +70,6 @@ export function FindingManagement() {
         setPhotos((prev) => [...prev, { base64: compressed, description: '' }]);
       };
     };
-    // Reset input
     e.target.value = '';
   };
 
@@ -100,7 +95,6 @@ export function FindingManagement() {
     setEditingPhotoIdx(null);
   };
 
-  // ── Submit form ──────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -146,10 +140,9 @@ export function FindingManagement() {
     }
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 relative">
-      {/* Header Section */}
+      {}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -177,7 +170,7 @@ export function FindingManagement() {
         <form onSubmit={handleSubmit} className="p-5 sm:p-10">
           <div className="flex flex-col lg:flex-row gap-12">
             
-            {/* Left Column: Form Details */}
+            {}
             <div className="flex-1 space-y-8">
               <div className="flex items-center gap-2 pb-4 border-b border-white/5">
                 <Package className="w-5 h-5 text-amber-500" />
@@ -266,7 +259,7 @@ export function FindingManagement() {
               </div>
             </div>
 
-            {/* Right Column: Photo Uploads */}
+            {}
             <div className="w-full lg:w-[400px] space-y-8">
               <div className="flex items-center gap-2 pb-4 border-b border-white/5">
                 <Camera className="w-5 h-5 text-amber-500" />
@@ -274,7 +267,7 @@ export function FindingManagement() {
               </div>
 
               <div className="grid grid-cols-1 gap-4">
-                {/* Photo List */}
+                {}
                 <div className="grid grid-cols-2 gap-4">
                   {photos.map((photo, idx) => (
                     <motion.div 
@@ -290,7 +283,7 @@ export function FindingManagement() {
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                       />
                       
-                      {/* Overlay Controls */}
+                      {}
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                         <button
                           type="button"
@@ -320,7 +313,7 @@ export function FindingManagement() {
                     </motion.div>
                   ))}
 
-                  {/* Add Photo Button */}
+                  {}
                   <div className="relative border-2 border-dashed border-white/10 rounded-2xl aspect-square flex flex-col items-center justify-center hover:border-amber-500/50 hover:bg-amber-500/5 transition-all cursor-pointer group">
                     <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                       <ImagePlus className="w-6 h-6 text-amber-500" />
@@ -328,41 +321,7 @@ export function FindingManagement() {
                     <span className="text-sm font-medium text-slate-400 group-hover:text-amber-500">Tambah Foto</span>
                     <input
                       type="file"
-                      accept="image/*"
-                      onChange={handleAddPhoto}
-                      className="absolute inset-0 opacity-0 cursor-pointer"
-                    />
-                  </div>
-                </div>
-
-                <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl">
-                  <p className="text-xs text-amber-500/80 leading-relaxed italic">
-                    * Minimal upload 1 foto temuan. Foto akan otomatis dikompresi untuk performa optimal.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-12 flex flex-col sm:flex-row justify-end items-center gap-4 sm:gap-6 pt-8 border-t border-white/5">
-            <p className="text-sm text-slate-500 italic hidden lg:block">
-              Pastikan semua data yang diinput sudah benar sebelum menyimpan.
-            </p>
-            <motion.button
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              disabled={submitting}
-              className="w-full sm:w-auto px-8 sm:px-10 py-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-2xl font-bold text-base sm:text-lg shadow-xl shadow-amber-500/20 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-            >
-              {submitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <CheckCircle2 className="w-6 h-6" />}
-              Simpan Temuan
-            </motion.button>
-          </div>
-        </form>
-      </motion.div>
-
-      {/* ── Image Editor Modal ──────────────────────────────────────────────── */}
+                      accept="image}
       <AnimatePresence>
         {editingPhotoIdx !== null && (
           <ImageEditor
@@ -378,3 +337,4 @@ export function FindingManagement() {
     </div>
   );
 }
+

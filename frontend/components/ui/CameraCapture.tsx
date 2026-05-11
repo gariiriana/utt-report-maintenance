@@ -188,3 +188,4 @@ export function CameraCapture({ onCapture, placeholder = "Ambil Foto Wajah" }: C
     </div>
   );
 }
+

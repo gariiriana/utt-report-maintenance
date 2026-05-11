@@ -149,7 +149,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
 
     const saveReportViaAPI = async (apiUrl: string, reportData: any) => {
         try {
-            // SECURITY: Use Firebase Auth token instead of client-side API secret
             const token = await auth.currentUser?.getIdToken();
             if (!token) throw new Error('Not authenticated');
 
@@ -619,3 +618,4 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
         </div>
     );
 }
+

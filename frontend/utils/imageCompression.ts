@@ -130,3 +130,4 @@ export function getBase64SizeKB(base64String: string): number {
     const sizeInBytes = (base64Length * 3) / 4;
     return Math.round(sizeInBytes / 1024);
 }
+

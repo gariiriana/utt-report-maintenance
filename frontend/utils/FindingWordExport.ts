@@ -21,7 +21,7 @@ import {
 import { saveAs } from 'file-saver';
 import { FindingRecord } from '../types/finding';
 
-/** Helper to get image dimensions from base64 */
+
 function getImageDimensions(base64: string): Promise<{ width: number; height: number }> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -31,9 +31,8 @@ function getImageDimensions(base64: string): Promise<{ width: number; height: nu
   });
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
 
-/** Convert a base64 data URL to a Uint8Array for docx ImageRun. */
+
 function base64ToUint8Array(base64: string): Uint8Array {
   const raw = base64.includes(',') ? base64.split(',')[1] : base64;
   const binary = atob(raw);
@@ -44,7 +43,7 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
-/** Load an image from a URL and return its base64 data. */
+
 async function loadImageAsBase64(src: string): Promise<Uint8Array> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -67,7 +66,6 @@ async function loadImageAsBase64(src: string): Promise<Uint8Array> {
   });
 }
 
-// ── Constants ──────────────────────────────────────────────────────────────
 const THEME_BLUE = '00599C';
 const DARK = '1E293B';
 const LIGHT_GRAY = 'F1F5F9';
@@ -81,10 +79,8 @@ const thinBorder = {
   right: { style: BorderStyle.SINGLE, size: 1, color: 'CBD5E1' },
 } as const;
 
-// ── Main Export Function ───────────────────────────────────────────────────
 
 export async function exportFindingsToWord(findings: FindingRecord[]): Promise<void> {
-  // Load logos
   const [neutraLogo, dmeLogo] = await Promise.all([
     loadImageAsBase64((await import('@/assets/logo_neutradc.png')).default),
     loadImageAsBase64((await import('@/assets/logo_dwimitra_v2.png')).default),
@@ -97,14 +93,12 @@ export async function exportFindingsToWord(findings: FindingRecord[]): Promise<v
     year: 'numeric',
   });
 
-  // ── Build header table ─────────────────────────────────────────────────
   const headerTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: thinBorder,
     rows: [
       new TableRow({
         children: [
-          // Left logo cell
           new TableCell({
             width: { size: 18, type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.CENTER,
@@ -118,7 +112,6 @@ export async function exportFindingsToWord(findings: FindingRecord[]): Promise<v
               }),
             ],
           }),
-          // Center text cell
           new TableCell({
             width: { size: 64, type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.CENTER,
@@ -164,7 +157,6 @@ export async function exportFindingsToWord(findings: FindingRecord[]): Promise<v
               }),
             ],
           }),
-          // Right logo cell
           new TableCell({
             width: { size: 18, type: WidthType.PERCENTAGE },
             verticalAlign: VerticalAlign.CENTER,
@@ -183,7 +175,6 @@ export async function exportFindingsToWord(findings: FindingRecord[]): Promise<v
     ],
   });
 
-  // ── Build summary table ────────────────────────────────────────────────
   const tableHeaderRow = new TableRow({
     tableHeader: true,
     children: ['No.', 'Nama Part', 'No. Part', 'Brand', 'Qty', 'Remark', 'Tanggal'].map(
@@ -263,7 +254,6 @@ export async function exportFindingsToWord(findings: FindingRecord[]): Promise<v
     rows: [tableHeaderRow, ...tableDataRows],
   });
 
-  // ── Build photo documentation sections ─────────────────────────────────
   const photoSections: Paragraph[] = [];
   const findingsWithPhotos = findings.filter((f) => f.photos && f.photos.length > 0);
 
@@ -288,7 +278,6 @@ export async function exportFindingsToWord(findings: FindingRecord[]): Promise<v
     for (let fIdx = 0; fIdx < findingsWithPhotos.length; fIdx++) {
       const finding = findingsWithPhotos[fIdx];
 
-      // Part info heading
       photoSections.push(
         new Paragraph({
           spacing: { before: 200, after: 80 },
@@ -315,7 +304,6 @@ export async function exportFindingsToWord(findings: FindingRecord[]): Promise<v
         })
       );
 
-      // Photos
       for (const photo of finding.photos) {
         if (photo.base64) {
           const photoBytes = base64ToUint8Array(photo.base64);
@@ -368,7 +356,6 @@ export async function exportFindingsToWord(findings: FindingRecord[]): Promise<v
     }
   }
 
-  // ── Create document ────────────────────────────────────────────────────
   const document = new Document({
     styles: {
       default: {
@@ -394,9 +381,9 @@ export async function exportFindingsToWord(findings: FindingRecord[]): Promise<v
         properties: {
           page: {
             margin: {
-              top: 720,   // 0.5 inch
+              top: 720,   
               bottom: 720,
-              left: 1008,  // 0.7 inch
+              left: 1008,  
               right: 1008,
             },
             pageNumbers: {
@@ -447,13 +434,10 @@ export async function exportFindingsToWord(findings: FindingRecord[]): Promise<v
           }),
         },
         children: [
-          // Header table
           headerTable,
 
-          // Spacing
           new Paragraph({ spacing: { before: 200 } }),
 
-          // Summary table heading
           new Paragraph({
             heading: HeadingLevel.HEADING_1,
             spacing: { before: 200, after: 100 },
@@ -468,13 +452,10 @@ export async function exportFindingsToWord(findings: FindingRecord[]): Promise<v
             ],
           }),
 
-          // Summary table
           summaryTable,
 
-          // Photo documentation
           ...photoSections,
 
-          // Sign-off area
           new Paragraph({ spacing: { before: 400 } }),
           new Paragraph({
             alignment: AlignmentType.LEFT,
@@ -513,8 +494,8 @@ export async function exportFindingsToWord(findings: FindingRecord[]): Promise<v
     ],
   });
 
-  // ── Export ──────────────────────────────────────────────────────────────
   const blob = await Packer.toBlob(document);
   const dateFileName = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   saveAs(blob, `Laporan_Temuan_Maintenance_${dateFileName}.docx`);
 }
+

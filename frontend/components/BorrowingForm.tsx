@@ -412,3 +412,4 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
     </motion.div>
   );
 }
+

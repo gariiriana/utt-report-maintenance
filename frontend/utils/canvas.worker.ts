@@ -1,5 +1,3 @@
-// === Network Topology Web Worker ===
-// Memindahkan beban kalkulasi dan rendering ke background thread
 
 let ctx: OffscreenCanvasRenderingContext2D | null = null;
 let canvasWidth = 0;
@@ -11,7 +9,6 @@ const OPACITY_STEPS = 20;
 let cachedStrokeStyles: string[] = [];
 const NODE_FILL_STYLE = 'rgba(96, 165, 250, 0.9)';
 
-// Pre-cache styles (sama seperti sebelumnya, tapi sekarang di worker)
 for (let i = 0; i <= OPACITY_STEPS; i++) {
   const opacity = (i / OPACITY_STEPS) * 0.3;
   cachedStrokeStyles.push(`rgba(59, 130, 246, ${opacity.toFixed(3)})`);
@@ -27,7 +24,6 @@ self.onmessage = function (e) {
     ctx = canvas.getContext('2d', { alpha: true });
 
     if (ctx) {
-      // Inisialisasi nodes
       nodes = [];
       for (let i = 0; i < nodeCount; i++) {
         nodes.push({
@@ -43,7 +39,6 @@ self.onmessage = function (e) {
   } else if (type === 'resize') {
     canvasWidth = payload.width;
     canvasHeight = payload.height;
-    // Context offscreen canvas biasanya handle resize internal lewat canvas.width/height
   }
 };
 
@@ -62,7 +57,6 @@ function animate(currentTime: number) {
 
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-  // 1. Update positions
   for (let i = 0; i < nodeCount; i++) {
     const node = nodes[i];
     node.x += node.vx;
@@ -74,7 +68,6 @@ function animate(currentTime: number) {
     node.pulse += 0.02;
   }
 
-  // 2. Draw connections (Batching)
   ctx.lineWidth = 1;
   for (let i = 0; i < nodeCount; i++) {
     const node = nodes[i];
@@ -96,7 +89,6 @@ function animate(currentTime: number) {
     }
   }
 
-  // 3. Draw nodes
   for (let i = 0; i < nodeCount; i++) {
     const node = nodes[i];
     const pulseSize = 2 + Math.sin(node.pulse) * 0.5;
@@ -118,3 +110,4 @@ function animate(currentTime: number) {
     ctx.fill();
   }
 }
+

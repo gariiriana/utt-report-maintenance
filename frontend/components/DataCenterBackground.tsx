@@ -49,19 +49,15 @@ function NetworkTopology() {
       return;
     }
 
-    // === 1. Inisialisasi Web Worker ===
-    // Vite akan otomatis handle bundling file .ts worker ini
     const worker = new Worker(
       new URL('../utils/canvas.worker.ts', import.meta.url),
       { type: 'module' }
     );
 
-    // === 2. Transfer Kontrol ke Offscreen ===
     const offscreen = canvas.transferControlToOffscreen();
     const width = window.innerWidth;
     const height = window.innerHeight;
 
-    // Kirim canvas dan dimensi ke worker
     worker.postMessage(
       {
         type: 'init',
@@ -71,10 +67,9 @@ function NetworkTopology() {
           height,
         }
       },
-      [offscreen] // Transferable object, bukan copy
+      [offscreen] 
     );
 
-    // === 3. Handle Resize via Worker ===
     const handleResize = () => {
       worker.postMessage({
         type: 'resize',

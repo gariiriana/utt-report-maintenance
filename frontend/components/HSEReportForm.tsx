@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-    Camera, Upload, Edit2, FileDown, Plus,
+    Camera, Upload, Edit2, FileDown,
     CheckSquare, Square, User, MapPin, Users, Briefcase,
     Save, Loader2, ChevronDown, ChevronUp, ClipboardList, Trash2, ShieldCheck
 } from 'lucide-react';
@@ -13,7 +13,6 @@ import { collection, addDoc, serverTimestamp, updateDoc, doc, getDoc, getDocs, d
 import { useAuth } from '@/components/AuthContext';
 import { ExcelDocument } from '@/components/DocumentList';
 import { compressImage, compressBase64Image } from '@/utils/imageCompression';
-// Firebase Storage tidak digunakan — hanya Firestore
 
 import {
     INITIAL_HSE_CHECKLIST,
@@ -26,7 +25,7 @@ interface PhotoItem {
     id: string;
     dataUrl: string;
     description: string;
-    label?: string; // New: for SIO labels like "KTP", "SIM"
+    label?: string;
 }
 
 interface HSEReportFormProps {
@@ -49,7 +48,6 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
     const [photos, setPhotos] = useState<PhotoItem[]>([]);
     const [checklistOpen, setChecklistOpen] = useState(true);
 
-    // Integrated SIO/SILO states
     const [sioOperatorName, setSioOperatorName] = useState('');
     const [sioNumber, setSioNumber] = useState('');
     const [sioExpiryDate, setSioExpiryDate] = useState('');
@@ -210,7 +208,6 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
         setChecklist(prev => {
             const next = { ...prev, [key]: !prev[key] };
 
-            // Logic for Parent -> Children
             if (key === 'ppeKhusus' && !next.ppeKhusus) {
                 next.bodyHarness = next.sarungTanganKulit = next.apron = next.kedokLas = next.coverShoes = next.respirator = next.sarungTanganCutResistance = next.pelindungMata = false;
             }
@@ -221,7 +218,6 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                 next.msds = false;
             }
 
-            // Logic for Children -> Parent
             const ppeChildren = ['bodyHarness', 'sarungTanganKulit', 'apron', 'kedokLas', 'coverShoes', 'respirator', 'sarungTanganCutResistance', 'pelindungMata'];
             if (ppeChildren.includes(key as string) && next[key as keyof HSEChecklist]) {
                 next.ppeKhusus = true;
@@ -353,11 +349,9 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
 
             let finalDocId = '';
             
-            // Optimization: Compress SIO photos even more for Firestore document
             const optimizedSioPhotos = await Promise.all(sioPhotos.map(async (p) => {
                 let dataUrl = p.dataUrl;
                 try {
-                    // SIO photos are just for documentation, keep them small in the main doc
                     dataUrl = await compressBase64Image(p.dataUrl, { maxWidth: 600, quality: 0.4 });
                 } catch (e) { console.error("SIO Compression failed", e); }
                 return {
@@ -369,7 +363,6 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
 
             const resolvedReportType: 'utt' | 'neutradc' = reportType || (editingData?.documentType === 'hse' ? (editingData as any).reportType as 'utt' | 'neutradc' : 'utt');
             const reportData = {
-                // Core identification fields
                 aktivitas: aktivitas || '',
                 lokasi: lokasi || '',
                 personil: personil || '',
@@ -377,17 +370,13 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                 anggota: anggota || '',
                 inspectorK3: inspectorK3 || user?.email || '',
                 date: formData.date,
-                // Metadata
                 authorEmail: user?.email || '',
                 updatedAt: serverTimestamp(),
                 reportType: resolvedReportType,
                 hseType: mode,
                 maintenanceType: maintenanceCategory || 'OTHER',
-                // Checklist (stored as flat object in Firestore, not counted per-key)
                 checklist,
-                // Photos stored as tiny previews in main doc; full photos in sub-collection
                 photos: [],
-                // Integrated SIO data
                 sioData: {
                     operatorName: sioOperatorName || '',
                     sioNumber: sioNumber || '',
@@ -398,15 +387,12 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
 
             if (editingData && editingData.documentType === 'hse') {
                 finalDocId = editingData.id;
-                // Use updateDoc for existing records
                 await updateDoc(doc(db, 'hse', finalDocId), reportData);
                 
-                // Safe deletion of old photos
                 try {
                     const photosRef = collection(db, `hse/${finalDocId}/photos`);
                     const oldPhotos = await getDocs(photosRef);
                     if (!oldPhotos.empty) {
-                        // Delete sequentially or in small chunks to avoid permission/rate limits
                         for (const pDoc of oldPhotos.docs) {
                             await deleteDoc(doc(db, `hse/${finalDocId}/photos`, pDoc.id)).catch(e => console.warn("Photo delete failed", e));
                         }
@@ -423,7 +409,6 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
             }
 
             if (photos.length > 0) {
-                // Save full photos to sub-collection
                 await Promise.all(photos.map(async (photo, index) => {
                     let dataUrl = photo.dataUrl;
                     const sizeInBytes = (dataUrl.length * 3) / 4;
@@ -471,20 +456,14 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
         setIsGeneratingPdf(true);
         const toastId = toast.loading(`Membuat PDF ${reportMode.toUpperCase()}...`);
         try {
-            // Build form data locally FIRST (no async needed)
             const formData = buildFormData();
             formData.reportType = reportMode;
 
-            // Run PDF generation & Firestore save IN PARALLEL
-            // PDF uses local data → no need to wait for save
-            // Save uploads SILO to Storage → can run concurrently
             const [, savedDocId] = await Promise.all([
-                // Task 1: Generate & download PDF (local, fast)
                 generateHSEPdf(formData).catch((pdfErr) => {
                     console.error('PDF generation failed:', pdfErr);
                     throw new Error(`Gagal membuat PDF: ${(pdfErr as Error)?.message || 'Terjadi kesalahan'}`);
                 }),
-                // Task 2: Save to Firestore + upload SILO to Storage (may be slow)
                 handleSave(true, reportMode).catch((saveErr: any) => {
                     console.error('Save failed:', saveErr);
                     throw new Error(`Gagal menyimpan laporan: ${saveErr?.message || 'Permission ditolak. Pastikan akun Anda memiliki akses HSE.'}`);
@@ -507,7 +486,6 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
             setIsExporting(false);
         }
     };
-
 
     return (
         <>
@@ -684,7 +662,6 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                                     </div>
                                                 </button>
 
-                                                {/* Sub Items Rendering - Dropdown style */}
                                                 <AnimatePresence>
                                                     {item.subItems && checklist[item.key] && (
                                                         <motion.div 
@@ -712,7 +689,6 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                         ))}
                                     </div>
 
-                                    {/* KESIMPULAN PEKERJAAN */}
                                     <div className="mt-8 pt-6 border-t border-slate-800/60">
                                         <div className="flex items-center justify-center gap-3 mb-6">
                                             <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-700/50 to-transparent" />
@@ -798,178 +774,180 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                                     </div>
                                                 )}
                                                 <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                                                    <button onClick={() => setEditingPhoto(photo)} className="p-1.5 bg-blue-600 text-white rounded-md"><Edit2 className="w-3 h-3" /></button>
-                                                    <button onClick={() => removePhoto(photo.id)} className="p-1.5 bg-red-600 text-white rounded-md"><Trash2 className="w-3 h-3" /></button>
+                                                    <button onClick={() => setEditingPhoto(photo)} className="p-2 bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg shadow-xl backdrop-blur-sm"><Edit2 className="w-3.5 h-3.5" /></button>
+                                                    <button onClick={() => removePhoto(photo.id)} className="p-2 bg-red-600/80 hover:bg-red-600 text-white rounded-lg shadow-xl backdrop-blur-sm"><Trash2 className="w-3.5 h-3.5" /></button>
                                                 </div>
                                             </div>
-                                            <input
-                                                type="text"
-                                                value={photo.description}
-                                                onChange={e => setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, description: e.target.value } : p))}
-                                                placeholder="Keterangan..."
-                                                className="w-full px-3 py-2 bg-slate-900/40 border border-slate-700/50 rounded-lg text-white text-[10px] outline-none"
-                                            />
+                                            <input type="text" value={photo.description} onChange={e => setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, description: e.target.value } : p))} placeholder="Keterangan foto..." className="w-full px-3 py-2 bg-slate-900/40 border border-slate-800/60 rounded-lg text-white text-[11px] outline-none" />
                                         </motion.div>
                                     ))}
                                 </AnimatePresence>
-                                <button onClick={() => fileInputRef.current?.click()} className="aspect-[4/3] rounded-xl border-2 border-dashed border-slate-700/50 flex flex-col items-center justify-center text-slate-500 hover:text-green-400 hover:border-green-500/40 transition">
-                                    <Plus className="w-6 h-6" /><span className="text-[10px]">Tambah</span>
-                                </button>
                             </div>
-                        ) : mode === 'inspection' && (
-                            <button onClick={() => fileInputRef.current?.click()} className="w-full p-10 border-2 border-dashed border-slate-700/50 rounded-xl flex flex-col items-center gap-2 text-slate-500 hover:text-blue-400 transition">
-                                <Upload className="w-8 h-8" /><span className="text-sm">Pilih Foto Dokumentasi</span>
-                            </button>
+                        ) : (
+                            <div onClick={() => fileInputRef.current?.click()} className="group border-2 border-dashed border-slate-800 hover:border-blue-500/50 rounded-2xl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all bg-slate-900/20">
+                                <div className="p-4 bg-slate-800/40 rounded-2xl group-hover:scale-110 group-hover:bg-blue-500/10 transition-all"><Camera className="w-8 h-8 text-slate-500 group-hover:text-blue-400" /></div>
+                                <div className="text-center">
+                                    <p className="text-sm font-bold text-slate-300">Ambil Foto Evidence</p>
+                                    <p className="text-xs text-slate-500 mt-1">Klik untuk kamera atau upload file</p>
+                                </div>
+                            </div>
                         )}
                     </div>
                 </motion.div>
 
-                {/* SIO & SILO INTEGRATION SECTION */}
-                {mode === 'inspection' && (
+                {(mode === 'sio' || mode === 'inspection') && (
                     <motion.div
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden shadow-2xl space-y-6 p-6"
+                        className="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden shadow-2xl"
                     >
-                        <div className="flex items-center gap-3 border-b border-slate-800/60 pb-4">
+                        <div className="px-5 py-4 border-b border-slate-800/60 flex items-center gap-3">
                             <div className="p-2 bg-blue-500/15 rounded-lg"><ShieldCheck className="w-4 h-4 text-blue-400" /></div>
-                            <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Integrasi Data SIO & SILO</h3>
+                            <h3 className="text-sm font-semibold text-white">Integrasi Data SIO & SILO</h3>
                         </div>
-
-                        {/* SIO DATA SECTION */}
-                        <div className="space-y-4">
-                            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">I. DATA SURAT IZIN OPERATOR (SIO)</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Nama Operator</label>
-                                    <input
-                                        type="text"
-                                        value={sioOperatorName}
-                                        onChange={e => setSioOperatorName(e.target.value)}
-                                        placeholder="Nama Lengkap"
-                                        className="w-full px-4 py-3 bg-slate-900/40 border border-slate-700/50 rounded-xl text-white text-sm outline-none focus:border-blue-500/40 transition"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">No SIO / Lisensi</label>
-                                    <input
-                                        type="text"
-                                        value={sioNumber}
-                                        onChange={e => setSioNumber(e.target.value)}
-                                        placeholder="No Registrasi"
-                                        className="w-full px-4 py-3 bg-slate-900/40 border border-slate-700/50 rounded-xl text-white text-sm outline-none focus:border-blue-500/40 transition"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-slate-400 uppercase mb-2">Masa Berlaku</label>
-                                    <input
-                                        type="date"
-                                        value={sioExpiryDate}
-                                        onChange={e => setSioExpiryDate(e.target.value)}
-                                        className="w-full px-4 py-3 bg-slate-900/40 border border-slate-700/50 rounded-xl text-white text-sm outline-none focus:border-blue-500/40 transition"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* SIO PHOTOS */}
-                            <div className="pt-2">
-                                <label className="block text-xs font-semibold text-slate-400 uppercase mb-3">Foto Pendukung SIO (KTP/SIM/SIO)</label>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                    {['KTP', 'SIM', 'KARTU SIO', 'LAINNYA'].map(label => {
-                                        const photo = sioPhotos.find(p => p.label === label);
-                                        return (
-                                            <div key={label} className="relative group aspect-square rounded-xl overflow-hidden border border-slate-700/50 bg-slate-800/30">
-                                                {photo ? (
-                                                    <>
-                                                        <img src={photo.dataUrl} className="w-full h-full object-cover" />
-                                                        <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
-                                                            <button onClick={() => setSioPhotos(prev => prev.filter(p => p.label !== label))} className="p-2 bg-red-500/20 text-red-400 rounded-lg"><Trash2 className="w-4 h-4" /></button>
-                                                        </div>
-                                                        <div className="absolute top-2 left-2 px-2 py-0.5 bg-blue-600 text-[8px] font-bold text-white rounded uppercase">{label}</div>
-                                                    </>
-                                                ) : (
-                                                    <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-slate-700/20 transition gap-2">
-                                                        <Camera className="w-5 h-5 text-slate-500" />
-                                                        <span className="text-[9px] font-bold text-slate-500 uppercase">{label}</span>
-                                                        <input
-                                                            type="file"
-                                                            accept="image/*"
-                                                            className="hidden"
-                                                            onChange={async (e) => {
-                                                                const file = e.target.files?.[0];
-                                                                if (file) {
-                                                                    const compressed = await compressImage(file, { maxWidth: 800, quality: 0.6 });
-                                                                    setSioPhotos(prev => [...prev.filter(p => p.label !== label), { id: Math.random().toString(), dataUrl: compressed, description: '', label }]);
-                                                                }
-                                                            }}
-                                                        />
-                                                    </label>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* SILO DATA SECTION */}
-                        <div className="space-y-4 pt-4 border-t border-slate-800/60">
-                            <p className="text-[10px] font-bold text-orange-400 uppercase tracking-widest">II. DOKUMEN SURAT IZIN LAYAK OPERASI (SILO)</p>
-                            <div className="bg-slate-950/40 border border-slate-700/30 rounded-2xl p-6 flex flex-col items-center justify-center gap-4 text-center">
-                                {siloFile || siloPdfUrl ? (
-                                    <div className="flex flex-col items-center gap-3">
-                                        <div className="p-4 bg-orange-500/10 rounded-full border border-orange-500/20">
-                                            <FileDown className="w-8 h-8 text-orange-400" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-white truncate max-w-[250px]">
-                                                {siloFile?.name || 'Dokumen SILO Tersimpan'}
-                                            </p>
-                                            <button onClick={() => { setSiloFile(null); setSiloPdfUrl(''); }} className="text-xs text-red-400 hover:underline mt-1 font-bold">Hapus & Ganti File</button>
-                                        </div>
+                        <div className="p-5 space-y-6">
+                            <div className="space-y-4">
+                                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em]">I. DATA SURAT IZIN OPERATOR (SIO)</h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Nama Operator</label>
+                                        <input type="text" value={sioOperatorName} onChange={e => setSioOperatorName(e.target.value.toUpperCase())} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-lg text-white text-xs outline-none" placeholder="ZAINAL" />
                                     </div>
-                                ) : (
-                                    <label className="w-full flex flex-col items-center gap-3 cursor-pointer group">
-                                        <div className="p-4 bg-slate-800/50 rounded-full border border-slate-700/50 group-hover:bg-orange-500/10 group-hover:border-orange-500/30 transition">
-                                            <Upload className="w-8 h-8 text-slate-500 group-hover:text-orange-400 transition" />
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">No SIO / Lisensi</label>
+                                        <input type="text" value={sioNumber} onChange={e => setSioNumber(e.target.value.toUpperCase())} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-lg text-white text-xs outline-none" placeholder="1234RTYU-BN" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Masa Berlaku</label>
+                                        <input type="date" value={sioExpiryDate} onChange={e => setSioExpiryDate(e.target.value)} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-lg text-white text-xs outline-none" />
+                                    </div>
+                                </div>
+
+                                <div className="mt-4">
+                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Foto Pendukung SIO (KTP/SIM/SIO)</label>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                        {['KTP', 'SIM', 'KARTU SIO', 'LAINNYA'].map(label => {
+                                            const photo = sioPhotos.find(p => p.label === label);
+                                            return (
+                                                <div key={label} className="relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-950 border border-slate-800 group">
+                                                    {photo ? (
+                                                        <>
+                                                            <img src={photo.dataUrl} className="w-full h-full object-cover" alt={label} />
+                                                            <div className="absolute top-1 left-1 bg-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded text-white">{label}</div>
+                                                            <button onClick={() => setSioPhotos(prev => prev.filter(p => p.label !== label))} className="absolute top-1 right-1 p-1 bg-red-600 rounded text-white opacity-0 group-hover:opacity-100 transition"><Trash2 className="w-3 h-3" /></button>
+                                                        </>
+                                                    ) : (
+                                                        <button 
+                                                            onClick={() => {
+                                                                const input = document.createElement('input');
+                                                                input.type = 'file';
+                                                                input.accept = 'image/*';
+                                                                input.onchange = async (e: any) => {
+                                                                    const file = e.target.files?.[0];
+                                                                    if (file) {
+                                                                        const dataUrl = await compressImage(file);
+                                                                        setSioPhotos(prev => [...prev.filter(p => p.label !== label), { id: Date.now().toString(), dataUrl, label, description: '' }]);
+                                                                    }
+                                                                };
+                                                                input.click();
+                                                            }}
+                                                            className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-600 hover:text-blue-400 hover:bg-blue-500/5 transition-all"
+                                                        >
+                                                            <Camera className="w-5 h-5" />
+                                                            <span className="text-[8px] font-black uppercase tracking-tighter">{label}</span>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="pt-6 border-t border-slate-800/40 space-y-4">
+                                <h4 className="text-[10px] font-black text-orange-400 uppercase tracking-[0.2em]">II. DOKUMEN SURAT IZIN LAYAK OPERASI (SILO)</h4>
+                                <div className="relative group">
+                                    {siloFile || siloPdfUrl ? (
+                                        <div className="p-6 bg-orange-500/5 border border-orange-500/20 rounded-2xl flex flex-col items-center gap-3">
+                                            <div className="p-3 bg-orange-500/10 rounded-xl"><FileDown className="w-6 h-6 text-orange-400" /></div>
+                                            <div className="text-center">
+                                                <p className="text-xs font-black text-white uppercase">{siloFile ? siloFile.name : 'DOKUMEN SILO TERSEDIA'}</p>
+                                                <button onClick={() => { setSiloFile(null); setSiloPdfUrl(''); }} className="text-[10px] font-bold text-red-500 hover:underline mt-1">Hapus & Ganti File</button>
+                                            </div>
                                         </div>
-                                        <div className="space-y-1">
-                                            <p className="text-sm font-bold text-white">Upload Dokumen SILO (PDF)</p>
-                                            <p className="text-[10px] text-slate-500">Klik untuk memilih file dari perangkat Anda</p>
+                                    ) : (
+                                        <div 
+                                            onClick={() => {
+                                                const input = document.createElement('input');
+                                                input.type = 'file';
+                                                input.accept = 'application/pdf';
+                                                input.onchange = (e: any) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) setSiloFile(file);
+                                                };
+                                                input.click();
+                                            }}
+                                            className="p-8 border-2 border-dashed border-slate-800 hover:border-orange-500/40 rounded-2xl flex flex-col items-center gap-3 cursor-pointer bg-slate-950/30 transition-all"
+                                        >
+                                            <Upload className="w-6 h-6 text-slate-600" />
+                                            <div className="text-center">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Unggah Dokumen SILO (PDF)</p>
+                                                <p className="text-[9px] text-slate-600 mt-1">Lampiran ini akan digabung ke laporan HSE</p>
+                                            </div>
                                         </div>
-                                        <input
-                                            type="file"
-                                            accept="application/pdf"
-                                            className="hidden"
-                                            onChange={(e) => setSiloFile(e.target.files?.[0] || null)}
-                                        />
-                                    </label>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </motion.div>
                 )}
 
-                <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <button onClick={() => handleGeneratePdf('utt')} disabled={isGeneratingPdf} className="flex items-center justify-center gap-2 py-4 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition disabled:opacity-50">
-                            <FileDown className="w-4 h-4" /> Ekspor PDF (Logo DME & UTT)
-                        </button>
-                        <button onClick={() => handleGeneratePdf('neutradc')} disabled={isGeneratingPdf} className="flex items-center justify-center gap-2 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition disabled:opacity-50">
-                            <FileDown className="w-4 h-4" /> Ekspor PDF (Logo DME & NEUTRADC)
-                        </button>
-                    </div>
-                    <button onClick={() => handleSave()} disabled={isSaving} className="w-full flex items-center justify-center gap-2 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition text-xs">
-                        {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                        {editingData ? 'Perbarui di Database' : 'Simpan Draft'}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <button
+                        onClick={() => handleGeneratePdf('utt')}
+                        disabled={isSaving || isGeneratingPdf || isExporting}
+                        className="group relative overflow-hidden px-8 py-4 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 rounded-2xl border-b-4 border-emerald-800 disabled:border-slate-900 transition-all active:translate-y-1 active:border-b-0"
+                    >
+                        <div className="flex items-center justify-center gap-3 text-white">
+                            {isGeneratingPdf && isExporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileDown className="w-5 h-5" />}
+                            <span className="text-sm font-black uppercase tracking-wider">Ekspor PDF (Logo DME & UTT)</span>
+                        </div>
+                    </button>
+
+                    <button
+                        onClick={() => handleGeneratePdf('neutradc')}
+                        disabled={isSaving || isGeneratingPdf || isExporting}
+                        className="group relative overflow-hidden px-8 py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 rounded-2xl border-b-4 border-blue-800 disabled:border-slate-900 transition-all active:translate-y-1 active:border-b-0"
+                    >
+                        <div className="flex items-center justify-center gap-3 text-white">
+                            {isGeneratingPdf && isExporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileDown className="w-5 h-5" />}
+                            <span className="text-sm font-black uppercase tracking-wider">Ekspor PDF (Logo DME & NEUTRADC)</span>
+                        </div>
                     </button>
                 </div>
 
-                <p className="text-center text-[10px] text-slate-600 pb-4 mt-4 tracking-[0.2em] uppercase">🛡️ HSE Safety System 🛡️</p>
+                <div className="flex justify-center">
+                    <button
+                        onClick={() => handleSave()}
+                        disabled={isSaving || isGeneratingPdf}
+                        className="flex items-center gap-2 px-6 py-2 text-slate-500 hover:text-white transition text-xs font-bold uppercase tracking-widest"
+                    >
+                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                        Simpan Draft
+                    </button>
+                </div>
             </div>
+
             <AnimatePresence>
-                {editingPhoto && <HSEPhotoEditor imageUrl={editingPhoto.dataUrl} onSave={handleSaveEdit} onCancel={() => setEditingPhoto(null)} />}
+                {editingPhoto && (
+                    <HSEPhotoEditor
+                        imageUrl={editingPhoto.dataUrl}
+                        onSave={handleSaveEdit}
+                        onCancel={() => setEditingPhoto(null)}
+                    />
+                )}
             </AnimatePresence>
         </>
     );
 }
+

@@ -65,7 +65,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   
-  // HSE Specific State
   const [currentLevel, setCurrentLevel] = useState<'root' | 'category' | 'maintenance' | 'month' | 'week'>('root');
   const [selectedCategory, setSelectedCategory] = useState<'inspection' | 'sio' | 'silo' | null>(null);
   const [selectedMaintenance, setSelectedMaintenance] = useState<string | null>(null);
@@ -199,7 +198,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       });
 
       setDocuments(allDocs);
-      }; // end fetchAll
+      }; 
 
       await Promise.race([fetchAll(), timeoutPromise]);
     } catch (error: any) {
@@ -607,7 +606,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       return filteredDocuments.map((document, index) => renderDocumentCard(document, index));
     }
 
-    // LEVEL: ROOT (Main HSE Folders)
     if (currentLevel === 'root') {
       const categories = [
         { id: 'inspection', name: 'HSE Inspection Report', icon: ClipboardList, color: 'text-blue-400', bg: 'bg-blue-500/10' },
@@ -642,7 +640,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       );
     }
 
-    // LEVEL: CATEGORY (Month/Year for Inspection, Maintenance Type for SIO/SILO)
     if (currentLevel === 'category') {
       const backBtn = (
         <button
@@ -696,7 +693,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           </div>
         );
       } else {
-        // SIO or SILO -> Group by Maintenance Type
         const maintenanceTypes = new Set<string>();
         filteredDocuments
           .filter(d => d.hseType === selectedCategory)
@@ -734,7 +730,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       }
     }
 
-    // LEVEL: MONTH (For Inspection only)
     if (currentLevel === 'month') {
       const monthDocs = filteredDocuments.filter(d => d.hseType === 'inspection' && getMonthYearString(d.createdAt) === selectedMonth);
       const weeks = new Set<number>();
@@ -776,7 +771,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       );
     }
 
-    // LEVEL: WEEK or MAINTENANCE (Show final documents)
     const displayDocs = currentLevel === 'week' 
       ? filteredDocuments.filter(d => d.hseType === 'inspection' && getMonthYearString(d.createdAt) === selectedMonth && getWeekOfMonth(d.createdAt) === selectedWeek)
       : filteredDocuments.filter(d => d.hseType === selectedCategory && d.maintenanceType === selectedMaintenance);

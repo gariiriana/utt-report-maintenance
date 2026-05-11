@@ -410,3 +410,4 @@ export function InventoryApp() {
     </div>
   );
 }
+

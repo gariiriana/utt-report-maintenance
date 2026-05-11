@@ -23,7 +23,6 @@ export function MainApp() {
   const isAdmin = userRole === 'admin';
   const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
 
-  // Navigation Config
   const navItems = [
     { id: 'admin', label: 'Dashboard Admin', icon: Shield, color: 'from-purple-600 to-pink-600', show: isAdmin },
     { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: true },
@@ -57,7 +56,7 @@ export function MainApp() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Top Header */}
+      {}
       <div className="bg-slate-900/60 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
@@ -75,7 +74,7 @@ export function MainApp() {
               </div>
             </div>
 
-            {/* Desktop User Info & Logout */}
+            {}
             <div className="hidden md:flex items-center gap-4">
               <div className="text-right">
                 <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Logged as</p>
@@ -91,7 +90,7 @@ export function MainApp() {
               </motion.button>
             </div>
 
-            {/* Mobile Menu Toggle */}
+            {}
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => setMobileMenuOpen(true)}
@@ -103,7 +102,7 @@ export function MainApp() {
         </div>
       </div>
 
-      {/* Desktop Horizontal Navbar */}
+      {}
       <div className="hidden md:block bg-slate-900/30 backdrop-blur-xl border-b border-slate-800/50 sticky top-[73px] z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
@@ -126,7 +125,7 @@ export function MainApp() {
         </div>
       </div>
 
-      {/* Mobile Sidebar Overlay */}
+      {}
       <AnimatePresence>
         {mobileMenuOpen && (
           <>
@@ -192,7 +191,7 @@ export function MainApp() {
         )}
       </AnimatePresence>
 
-      {/* Main Content Area */}
+      {}
       <main className="flex-1 relative">
         <AnimatePresence mode="wait">
           <motion.div

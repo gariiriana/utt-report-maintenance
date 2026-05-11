@@ -18,8 +18,6 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// === Defer Analytics: tidak memblokir LCP ===
-// Analytics diinisialisasi SETELAH halaman selesai dimuat
 let analyticsPromise: Promise<any> | null = null;
 let analyticsInitialized = false;
 
@@ -36,21 +34,17 @@ function initAnalytics(): Promise<any> {
   return analyticsPromise;
 }
 
-// Lazy init: muat analytics setelah halaman selesai load (bukan saat startup)
 if (typeof window !== 'undefined') {
   if (document.readyState === 'complete') {
-    // Halaman sudah selesai load
     setTimeout(initAnalytics, 100);
   } else {
     window.addEventListener('load', () => {
-      // Tunggu 100ms setelah load agar tidak mengganggu rendering
       setTimeout(initAnalytics, 100);
     }, { once: true });
   }
 }
 
 export const logFirebaseEvent = async (eventName: string, params?: Record<string, any>) => {
-  // Auto-init jika belum diinisialisasi saat event pertama dikirim
   if (!analyticsInitialized) {
     initAnalytics();
   }

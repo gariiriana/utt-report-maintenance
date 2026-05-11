@@ -17,7 +17,7 @@ export function HSEApp() {
 
     const handleEditReport = (data: any) => {
         setEditingData(data);
-        setActiveTab('inspection'); // Always go to inspection for editing integrated reports
+        setActiveTab('inspection'); 
     };
 
     const handleClearEdit = () => {
@@ -39,7 +39,7 @@ export function HSEApp() {
 
     return (
         <div className="min-h-screen font-geist text-slate-200">
-            {/* MOBILE SIDEBAR OVERLAY */}
+            {}
             <AnimatePresence>
                 {sidebarOpen && (
                     <>
@@ -142,7 +142,7 @@ export function HSEApp() {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            {/* MOBILE MENU TOGGLE - MOVED TO RIGHT */}
+                            {}
                             <button 
                                 onClick={() => setSidebarOpen(true)}
                                 className="lg:hidden p-2 bg-slate-800/50 rounded-lg border border-slate-700/50 text-slate-300"
@@ -231,3 +231,4 @@ export function HSEApp() {
         </div>
     );
 }
+

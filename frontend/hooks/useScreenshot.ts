@@ -39,3 +39,4 @@ export function useScreenshot() {
 
   return { takeScreenshot };
 }
+

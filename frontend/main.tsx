@@ -7,3 +7,4 @@ import { createRoot } from "react-dom/client";
   registerSW({ immediate: true });
 
   createRoot(document.getElementById("root")!).render(<App />);
+

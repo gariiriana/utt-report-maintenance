@@ -180,3 +180,4 @@ export function NotificationCenter({ onNotificationClick }: NotificationCenterPr
         </div>
     );
 }
+

@@ -263,7 +263,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 if (template) {
                   const allEmpty = unitCards.every((c: any) => !c.description && !c.photoBase64);
                   if (allEmpty) {
-                    // Draft kartu semua kosong, paksa pakai template
                     unitCards = template.map((desc, idx) => ({
                       id: `${idx + 1}`,
                       photo: null,
@@ -454,7 +453,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         maintenanceTime,
         companyType,
         units: units
-          .filter(u => !u.isExported) // Cuma simpan yang belum di-export
+          .filter(u => !u.isExported) 
           .map(u => ({
             ...u,
             cards: u.cards.map(c => ({
@@ -654,7 +653,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
   const saveReportViaAPI = async (apiUrl: string, collectionName: string, reportData: any, photos: any[]) => {
     try {
-      // SECURITY: Use Firebase Auth token instead of client-side API secret
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error('Not authenticated');
 
@@ -808,11 +806,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         if (saveResult) {
           doc.save(fileName);
           
-          // Tandai unit ini sudah sukses di-export
           setUnits(prev => {
               const newUnits = prev.map(u => u.id === targetUnit.id ? { ...u, isExported: true } : u);
               
-              // PAKSA SIMPAN DRAFT DETIK INI JUGA!
               const draft = {
                 userEmail: user?.email,
                 maintenanceName,

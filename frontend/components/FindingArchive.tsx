@@ -38,8 +38,7 @@ export function FindingArchive() {
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-  // Filter state
-  const [filterMonth, setFilterMonth] = useState<string>(''); // empty means all
+  const [filterMonth, setFilterMonth] = useState<string>(''); 
   const [filterYear, setFilterYear] = useState<string>(new Date().getFullYear().toString());
 
   const months = [
@@ -59,20 +58,16 @@ export function FindingArchive() {
 
   const years = Array.from({ length: 5 }, (_, i) => (new Date().getFullYear() - i).toString());
 
-  // ── Load findings from Firestore ─────────────────────────────────────────
   useEffect(() => {
     if (!user) return;
 
-    // Define roles that can see everything (matches isPrivilegedRole in firestore.rules)
     const privilegedRoles = ['admin', 'manager', 'site_manager', 'hse', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
     const isPrivileged = userRole && privilegedRoles.includes(userRole);
 
     let q;
     if (isPrivileged) {
-      // Privileged roles see everything
       q = query(collection(db, 'findings'));
     } else {
-      // Regular users only see their own findings
       q = query(
         collection(db, 'findings'),
         where('createdBy', '==', user.uid)
@@ -87,11 +82,10 @@ export function FindingArchive() {
           ...d.data(),
         })) as FindingRecord[];
 
-        // Sort on client side to avoid "Missing Index" error for composite queries
         const sortedData = [...data].sort((a, b) => {
           const timeA = a.createdAt?.toDate?.()?.getTime() || 0;
           const timeB = b.createdAt?.toDate?.()?.getTime() || 0;
-          return timeB - timeA; // Descending
+          return timeB - timeA; 
         });
 
         setFindings(sortedData);
@@ -106,7 +100,6 @@ export function FindingArchive() {
     return () => unsubscribe();
   }, [user, userRole]);
 
-  // ── Delete ───────────────────────────────────────────────────────────────
   const confirmDelete = async () => {
     if (!deleteId) return;
     try {
@@ -119,17 +112,14 @@ export function FindingArchive() {
     }
   };
 
-  // ── Filtered list ────────────────────────────────────────────────────────
   const filtered = findings.filter((f) => {
-    // 1. Search Query Filter
     const matchesSearch = !searchQuery || [
       f.partName, f.partNumber, f.brandName, f.remark
     ].some(val => val?.toLowerCase().includes(searchQuery.toLowerCase()));
 
     if (!matchesSearch) return false;
 
-    // 2. Date Filter
-    if (!f.createdAt) return true; // Keep items without timestamp or handle as needed
+    if (!f.createdAt) return true; 
     const date = f.createdAt.toDate ? f.createdAt.toDate() : new Date(f.createdAt as any);
     
     const matchesMonth = filterMonth === '' || date.getMonth().toString() === filterMonth;
@@ -138,7 +128,6 @@ export function FindingArchive() {
     return matchesMonth && matchesYear;
   });
 
-  // ── Export handlers ──────────────────────────────────────────────────────
   const handleExportPDF = async () => {
     if (filtered.length === 0) {
       toast.error('Tidak ada data untuk di-export');
@@ -175,7 +164,7 @@ export function FindingArchive() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
-      {/* Header */}
+      {}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -215,7 +204,7 @@ export function FindingArchive() {
         </div>
       </div>
 
-      {/* Search & Filter Bar */}
+      {}
       <div className="flex flex-col lg:flex-row gap-4 mb-8">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-3 w-5 h-5 text-slate-500" />
@@ -258,7 +247,7 @@ export function FindingArchive() {
         </div>
       </div>
 
-      {/* ── Findings List ───────────────────────────────────────────────────── */}
+      {}
       {loading ? (
         <div className="flex justify-center py-12">
           <Loader2 className="w-10 h-10 animate-spin text-teal-500" />
@@ -290,7 +279,7 @@ export function FindingArchive() {
               >
                 <div className="p-4 sm:p-5">
                   <div className="flex flex-col md:flex-row gap-5">
-                    {/* Photo preview */}
+                    {}
                     {finding.photos && finding.photos.length > 0 && (
                       <div className="flex gap-2 flex-shrink-0 overflow-x-auto">
                         {finding.photos.slice(0, 3).map((photo, pIdx) => (
@@ -315,7 +304,7 @@ export function FindingArchive() {
                       </div>
                     )}
 
-                    {/* Content */}
+                    {}
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap justify-between items-start gap-3 mb-3">
                         <div>
@@ -376,7 +365,7 @@ export function FindingArchive() {
         </>
       )}
 
-      {/* ── Delete Confirmation Modal ───────────────────────────────────────── */}
+      {}
       <AnimatePresence>
         {deleteId && (
           <motion.div
@@ -421,3 +410,4 @@ export function FindingArchive() {
     </div>
   );
 }
+

@@ -90,3 +90,4 @@ export function calculateMaintenanceSummary(activities: MaintenanceProgress[]): 
 
   return result;
 }
+

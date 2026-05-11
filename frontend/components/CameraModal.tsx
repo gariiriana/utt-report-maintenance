@@ -682,3 +682,4 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
   return createPortal(modalContent, document.body);
 }
+

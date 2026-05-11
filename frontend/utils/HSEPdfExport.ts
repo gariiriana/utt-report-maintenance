@@ -61,7 +61,6 @@ export interface HSEFormData {
     reportType?: 'utt' | 'neutradc';
     hseType?: 'inspection' | 'sio' | 'silo';
     maintenanceType?: string;
-    // New fields for integrated report
     sioData?: SIOData;
     siloPdfUrl?: string;
     siloFile?: File | Blob | ArrayBuffer; 
@@ -163,7 +162,6 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     drawPageHeader();
     let curY = HEADER_H;
     
-    // INFO SECTION
     doc.setFillColor(LIGHT_GRAY);
     doc.setDrawColor(226, 232, 240);
     const infoH = data.hseType === 'inspection' ? 54 : 38;
@@ -197,7 +195,6 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
 
     curY += infoH - 3;
 
-    // CHECKLIST SECTION (Only for Inspection)
     if (data.hseType === 'inspection') {
         curY += 6;
         doc.setFillColor(PRIMARY_BLUE);
@@ -325,7 +322,6 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         curY += 12;
     }
 
-    // PHOTOS SECTION
     if (data.photos && data.photos.length > 0) {
         doc.setFillColor(PRIMARY_BLUE);
         doc.rect(marginL, curY, contentW, 8.5, 'F');
@@ -385,7 +381,6 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         }
     }
 
-    // INTEGRATED SIO SECTION
     if (data.sioData && (data.sioData.operatorName?.trim() || (data.sioData.photos && data.sioData.photos.length > 0))) {
         doc.addPage();
         drawPageHeader('DATA SURAT IZIN OPERATOR (SIO)');
@@ -475,11 +470,9 @@ export async function generateHSEPdf(data: HSEFormData) {
 
     const processedData = { ...data, photos: [] as HSEPhoto[] };
     
-    // Optimize photo processing
     if (data.photos && data.photos.length > 0) {
         for (const photo of data.photos) {
             const sizeInBytes = (photo.base64.length * 3) / 4;
-            // Only compress if photo is large (> 500KB)
             if (sizeInBytes > 500 * 1024) {
                 try {
                     const imgData = await compressBase64Image(photo.base64, { maxWidth: 800, quality: 0.5 });
@@ -493,7 +486,6 @@ export async function generateHSEPdf(data: HSEFormData) {
         }
     }
 
-    // Process SIO Photos if any with optimization
     if (processedData.sioData && processedData.sioData.photos) {
         const compressedSioPhotos = [];
         for (const photo of processedData.sioData.photos) {
@@ -514,7 +506,6 @@ export async function generateHSEPdf(data: HSEFormData) {
 
     const jspdfDoc = createHSEDpdDoc(processedData, logoDmeB64, logoSecondaryB64);
     
-    // MERGE WITH SILO PDF IF EXISTS
     let finalPdfBytes: Uint8Array;
     
     try {
@@ -568,10 +559,6 @@ export async function generateHSEPdf(data: HSEFormData) {
     URL.revokeObjectURL(url);
 }
 
-/**
- * Generate HSE PDF and return as a Blob (no auto-download).
- * Used by HSEReportViewer for preview/iframe display.
- */
 export async function generateHSEPdfBlob(data: HSEFormData): Promise<Blob> {
     const secondaryImg = data.reportType === 'neutradc' ? logoNeutradc : logoUtt;
     let logoDmeB64 = '';
@@ -581,7 +568,6 @@ export async function generateHSEPdfBlob(data: HSEFormData): Promise<Blob> {
         logoSecondaryB64 = await loadImageAsBase64(secondaryImg);
     } catch (_) { }
 
-    // Inline photo processing (same as generateHSEPdf)
     const processedData = { ...data, photos: [] as HSEPhoto[] };
     if (data.photos && data.photos.length > 0) {
         for (const photo of data.photos) {
@@ -635,3 +621,4 @@ export async function generateHSEPdfBlob(data: HSEFormData): Promise<Blob> {
 
     return new Blob([finalPdfBytes as any], { type: 'application/pdf' });
 }
+
