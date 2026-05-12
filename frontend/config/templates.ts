@@ -105,25 +105,43 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
   ],
   'exaustfan@utt.com': [
     'Cleaning Fan',
-    'Tightening Cable / frame',
     'Check Fan Blade',
-    'Cleaning Ducting',
-    'Cleaning Motor',
     'Measurement air flow',
     'Measurement Voltage',
     'Measurement Ampere',
-    'Measurement Vibration'
+    'Measurement Vibration',
+    'RS',
+    'ST',
+    'TR',
+    'RN',
+    'SN',
+    'TN',
+    'NG',
+    'R',
+    'Ampere R',
+    'Ampere S',
+    'Ampere T',
+    'Ampere N'
   ],
   'exausttan@utt.com': [
     'Cleaning Fan',
-    'Tightening Cable / frame',
     'Check Fan Blade',
-    'Cleaning Ducting',
-    'Cleaning Motor',
     'Measurement air flow',
     'Measurement Voltage',
     'Measurement Ampere',
-    'Measurement Vibration'
+    'Measurement Vibration',
+    'RS',
+    'ST',
+    'TR',
+    'RN',
+    'SN',
+    'TN',
+    'NG',
+    'R',
+    'Ampere R',
+    'Ampere S',
+    'Ampere T',
+    'Ampere N'
   ]
 };
 
