@@ -761,37 +761,44 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
 
                         <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={(e) => handleFileUpload(e)} className="hidden" />
                         
-                        {photos.length > 0 ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                <AnimatePresence>
-                                    {photos.map((photo) => (
-                                        <motion.div key={photo.id} className="flex flex-col gap-2">
-                                            <div className="relative group rounded-xl overflow-hidden border border-slate-700/40 aspect-[4/3] bg-slate-950">
-                                                <img src={photo.dataUrl} alt="" className="w-full h-full object-cover" />
-                                                {photo.label && (
-                                                    <div className="absolute top-2 left-2 bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-lg">
-                                                        {photo.label}
+                        <div className="space-y-4">
+                            {photos.length > 0 && (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    <AnimatePresence>
+                                        {photos.map((photo) => (
+                                            <motion.div key={photo.id} className="flex flex-col gap-2">
+                                                <div className="relative group rounded-xl overflow-hidden border border-slate-700/40 aspect-[4/3] bg-slate-950">
+                                                    <img src={photo.dataUrl} alt="" className="w-full h-full object-cover" />
+                                                    {photo.label && (
+                                                        <div className="absolute top-2 left-2 bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-lg">
+                                                            {photo.label}
+                                                        </div>
+                                                    )}
+                                                    <div className="absolute top-2 right-2 flex gap-1 transition">
+                                                        <button onClick={() => setEditingPhoto(photo)} className="p-2 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg shadow-xl backdrop-blur-sm"><Edit2 className="w-3.5 h-3.5" /></button>
+                                                        <button onClick={() => removePhoto(photo.id)} className="p-2 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-xl backdrop-blur-sm"><Trash2 className="w-3.5 h-3.5" /></button>
                                                     </div>
-                                                )}
-                                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                                                    <button onClick={() => setEditingPhoto(photo)} className="p-2 bg-blue-600/80 hover:bg-blue-600 text-white rounded-lg shadow-xl backdrop-blur-sm"><Edit2 className="w-3.5 h-3.5" /></button>
-                                                    <button onClick={() => removePhoto(photo.id)} className="p-2 bg-red-600/80 hover:bg-red-600 text-white rounded-lg shadow-xl backdrop-blur-sm"><Trash2 className="w-3.5 h-3.5" /></button>
                                                 </div>
-                                            </div>
-                                            <input type="text" value={photo.description} onChange={e => setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, description: e.target.value } : p))} placeholder="Keterangan foto..." className="w-full px-3 py-2 bg-slate-900/40 border border-slate-800/60 rounded-lg text-white text-[11px] outline-none" />
-                                        </motion.div>
-                                    ))}
-                                </AnimatePresence>
-                            </div>
-                        ) : (
-                            <div onClick={() => fileInputRef.current?.click()} className="group border-2 border-dashed border-slate-800 hover:border-blue-500/50 rounded-2xl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all bg-slate-900/20">
-                                <div className="p-4 bg-slate-800/40 rounded-2xl group-hover:scale-110 group-hover:bg-blue-500/10 transition-all"><Camera className="w-8 h-8 text-slate-500 group-hover:text-blue-400" /></div>
+                                                <input type="text" value={photo.description} onChange={e => setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, description: e.target.value } : p))} placeholder="Keterangan foto..." className="w-full px-3 py-2 bg-slate-900/40 border border-slate-800/60 rounded-lg text-white text-[11px] outline-none" />
+                                            </motion.div>
+                                        ))}
+                                    </AnimatePresence>
+                                </div>
+                            )}
+
+                            <div 
+                                onClick={() => fileInputRef.current?.click()} 
+                                className="group mt-4 border-2 border-dashed border-slate-800 hover:border-blue-500/50 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all bg-slate-900/20"
+                            >
+                                <div className="p-3 bg-slate-800/40 rounded-xl group-hover:scale-110 group-hover:bg-blue-500/10 transition-all">
+                                    <Camera className="w-6 h-6 text-slate-500 group-hover:text-blue-400" />
+                                </div>
                                 <div className="text-center">
-                                    <p className="text-sm font-bold text-slate-300">Ambil Foto Evidence</p>
-                                    <p className="text-xs text-slate-500 mt-1">Klik untuk kamera atau upload file</p>
+                                    <p className="text-xs font-bold text-slate-300">Tambah Foto Evidence</p>
+                                    <p className="text-[10px] text-slate-500 mt-1">Klik untuk upload file</p>
                                 </div>
                             </div>
-                        )}
+                        </div>
                     </div>
                 </motion.div>
 
@@ -834,7 +841,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                                         <>
                                                             <img src={photo.dataUrl} className="w-full h-full object-cover" alt={label} />
                                                             <div className="absolute top-1 left-1 bg-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded text-white">{label}</div>
-                                                            <button onClick={() => setSioPhotos(prev => prev.filter(p => p.label !== label))} className="absolute top-1 right-1 p-1 bg-red-600 rounded text-white opacity-0 group-hover:opacity-100 transition"><Trash2 className="w-3 h-3" /></button>
+                                                            <button onClick={() => setSioPhotos(prev => prev.filter(p => p.label !== label))} className="absolute top-1 right-1 p-1 bg-red-600 rounded text-white transition shadow-lg"><Trash2 className="w-3 h-3" /></button>
                                                         </>
                                                     ) : (
                                                         <button 
