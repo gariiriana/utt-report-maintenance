@@ -299,7 +299,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
   const capturedTimestampRef = useRef<string>('');
 
-  const WatermarkOverlay = ({ className = "bottom-12 left-12" }: { className?: string }) => {
+  const WatermarkOverlay = ({ className = "bottom-6 left-6" }: { className?: string }) => {
     const displayTime = capturedTimestampRef.current ||
       new Date().toLocaleString('id-ID', {
         day: '2-digit', month: '2-digit', year: 'numeric',
@@ -313,6 +313,11 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
             <span className="text-white font-black text-[13px] uppercase tracking-widest leading-none">
               NEUTRADC
             </span>
+            {specificDetail && (
+              <span className="text-blue-400 font-bold text-[11px] uppercase tracking-wide">
+                {specificDetail}
+              </span>
+            )}
             <span className="text-white/90 text-[10px] font-bold">
               {displayTime}
             </span>
@@ -375,9 +380,9 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
         ctx.drawImage(img, 0, 0);
 
 
-        const pad = Math.round(canvas.width * 0.06);
-        const fBase = Math.max(16, canvas.width * 0.034);
-        const lineH = fBase * 1.45;
+        const pad = Math.round(canvas.width * 0.04);
+        const fBase = Math.max(12, canvas.width * 0.028);
+        const lineH = fBase * 1.2;
 
         const hasAddress = locationData?.address &&
           !locationData.address.includes('Mengambil') &&
@@ -385,14 +390,15 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
         const textLines = [
           { text: 'NEUTRADC', size: fBase * 1.25, weight: '900', alpha: 1.0 },
+          ...(specificDetail ? [{ text: specificDetail.toUpperCase(), size: fBase * 1.05, weight: '800', alpha: 1.0, color: '#60a5fa' }] : []),
           { text: capturedTimestampRef.current, size: fBase * 0.90, weight: '600', alpha: 0.92 },
-          ...(locationData?.coords ? [{ text: locationData.coords, size: fBase * 0.85, weight: '500', alpha: 0.85 }] : []),
+          ...(locationData?.coords ? [{ text: locationData.coords, size: fBase * 0.85, weight: '500', alpha: 0.85, isCoords: true }] : []),
           ...(hasAddress ? [{ text: locationData!.address, size: fBase * 0.78, weight: '400', alpha: 0.75, italic: true }] : []),
         ];
 
-        const blockH = textLines.length * lineH + pad * 0.6;
-        const blockY = canvas.height - blockH - pad * 0.4;
-        const textX = pad + 12;
+        const blockH = textLines.length * lineH + pad * 0.4;
+        const blockY = canvas.height - blockH - pad * 0.6;
+        const textX = pad + 10;
 
         ctx.fillStyle = '#3b82f6';
         ctx.fillRect(pad, blockY + 4, 4, blockH - 8);
@@ -400,9 +406,9 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
 
-        textLines.forEach((line, i) => {
+        textLines.forEach((line: any, i) => {
           const y = blockY + pad * 0.4 + i * lineH;
-          if (i === 2 && locationData?.coords) {
+          if (line.isCoords) {
             const r = line.size * 0.45;
             const cx = textX - 4;
             const cy = y + line.size * 0.5;
@@ -415,7 +421,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
             ctx.fillText(line.text, textX + r * 2 + 2, y);
           } else {
             ctx.font = `${line.italic ? 'italic ' : ''}${line.weight} ${line.size}px 'Inter', sans-serif`;
-            ctx.fillStyle = `rgba(255,255,255,${line.alpha})`;
+            ctx.fillStyle = line.color || `rgba(255,255,255,${line.alpha})`;
             ctx.fillText(line.text, textX, y);
           }
         });
@@ -635,40 +641,40 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
         </div>
 
 
-        <div className="p-8 bg-slate-900/50">
-          <div className="flex items-center justify-center gap-6">
+        <div className="p-4 sm:p-8 bg-slate-900/50">
+          <div className="flex items-center justify-center">
             {!capturedImage ? (
               <button
                 onClick={takePhoto}
                 disabled={!isReady || !!error}
-                className="w-20 h-20 bg-white rounded-full p-1 border-4 border-slate-700 hover:scale-105 active:scale-95 transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed group"
+                className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full p-1 border-4 border-slate-700 hover:scale-105 active:scale-95 transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed group"
               >
                 <div className="w-full h-full bg-slate-100 rounded-full flex items-center justify-center group-hover:bg-white transition">
-                  <div className="w-8 h-8 border-4 border-slate-900 rounded-full" />
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 border-4 border-slate-900 rounded-full" />
                 </div>
               </button>
             ) : (
-              <div className="flex gap-4 w-full">
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 w-full">
                 <button
                   onClick={retake}
-                  className="flex-1 flex items-center justify-center gap-2 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold transition shadow-xl"
+                  className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-3 sm:py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl sm:rounded-2xl font-bold transition shadow-xl"
                 >
                   <RefreshCw className="w-4 h-4" />
-                  Ulangi
+                  <span className="text-[10px] sm:text-sm">Ulangi</span>
                 </button>
                 <button
                   onClick={downloadCapturedImage}
-                  className="flex-1 flex items-center justify-center gap-2 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-bold transition shadow-xl"
+                  className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-3 sm:py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl sm:rounded-2xl font-bold transition shadow-xl"
                 >
                   <Download className="w-4 h-4" />
-                  Download
+                  <span className="text-[10px] sm:text-sm">Download</span>
                 </button>
                 <button
                   onClick={handleApply}
-                  className="flex-1 flex items-center justify-center gap-2 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold transition shadow-xl shadow-blue-600/20"
+                  className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-3 sm:py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl sm:rounded-2xl font-bold transition shadow-xl shadow-blue-600/20"
                 >
                   <Check className="w-4 h-4" />
-                  Pakai Foto
+                  <span className="text-[10px] sm:text-sm text-center leading-tight">Pakai Foto</span>
                 </button>
               </div>
             )}
