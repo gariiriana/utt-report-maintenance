@@ -1,7 +1,7 @@
 {
   "version": 2,
   "functions": {
-    "api/index.go": {
+    "backend/api/index.go": {
       "maxDuration": 10
     }
   },
@@ -17,6 +17,6 @@
     }
   ],
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.go" }
+    { "source": "/api/(.*)", "destination": "/backend/api/index.go" }
   ]
 }
