@@ -166,7 +166,7 @@ service cloud.firestore {
                       && hasAcceptableFieldCount(request.resource.data, 6)
                       && (!request.resource.data.keys().hasAny(['dataUrl']) || isValidPhotoData(request.resource.data.dataUrl));
         allow update, delete: if request.auth != null 
-                              && (get(/databases/$(database)/documents/pdf_documents/$(docId)).data.authorEmail == request.auth.token.email || isPrivilegedRole());
+                              && (get(/databases/$(database)/documents/pdf_documents/$(docId)).data.createdBy == request.auth.token.email || isPrivilegedRole());
       }
     }
     

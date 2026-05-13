@@ -694,6 +694,26 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
     const toastId = toast.loading(`Saving unit ${unit.specificDetail || '#'}...`);
     setIsSaving(true);
+
+    // Helpers
+    const withRetry = async <T,>(fn: () => Promise<T>, retries = 2, delay = 1000): Promise<T> => {
+      try {
+        return await fn();
+      } catch (error) {
+        if (retries <= 0) throw error;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return withRetry(fn, retries - 1, delay * 2);
+      }
+    };
+
+    const chunkArray = <T,>(array: T[], size: number): T[][] => {
+      const chunked: T[][] = [];
+      for (let i = 0; i < array.length; i += size) {
+        chunked.push(array.slice(i, i + size));
+      }
+      return chunked;
+    };
+
     try {
       const photosWithImage = cardsToSave.filter(c => c.photoBase64).length;
       const fileName = pdfData?.fileName || `${maintenanceName}${finalSpecificDetail ? ` (${finalSpecificDetail})` : ''}`.trim().replace(/\s+/g, ' ') + '.pdf';
@@ -740,7 +760,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       let docId = '';
       if (effectiveDocId) {
         docId = effectiveDocId;
-        await updateDoc(doc(db, collectionName, docId), reportData);
+        await withRetry(() => updateDoc(doc(db, collectionName, docId), reportData));
         const photosRef = collection(db, `${collectionName}/${docId}/photos`);
         const existingPhotos = await getDocs(photosRef);
         if (!existingPhotos.empty) {
@@ -749,40 +769,69 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           ));
         }
       } else {
-        const docRef = await addDoc(collection(db, 'pdf_documents'), reportData);
+        const docRef = await withRetry(() => addDoc(collection(db, 'pdf_documents'), reportData));
         docId = docRef.id;
         setUnits(prev => prev.map(u => u.id === unit.id ? { ...u, archiveId: docId, archiveType: 'pdf' } : u));
       }
 
       if (cardsToSave.length > 0) {
-        if (toastId) toast.loading(`Saving ${cardsToSave.length} photos...`, { id: toastId });
+        const photosRef = collection(db, `${effectiveDocId ? collectionName : 'pdf_documents'}/${docId}/photos`);
+        const chunks = chunkArray(cardsToSave, 3);
         
-        await Promise.all(cardsToSave.map(async (card, i) => {
-          let b64 = card.photoBase64 || '';
+        for (let batchIdx = 0; batchIdx < chunks.length; batchIdx++) {
+          const batch = chunks[batchIdx];
+          const startIdx = batchIdx * 3 + 1;
+          const endIdx = startIdx + batch.length - 1;
           
-          if (b64) {
-            const sizeInBytes = (b64.length * 3) / 4;
-            if (sizeInBytes > 800 * 1024) {
-              try {
-                b64 = await compressBase64Image(b64, { maxWidth: 800, quality: 0.5 });
-              } catch (err) { console.error("Compression failure", err); }
-            }
+          if (toastId) {
+            toast.loading(`Menyimpan foto ${startIdx}-${endIdx} dari ${cardsToSave.length}...`, { id: toastId });
           }
-          
-          await addDoc(collection(db, `${effectiveDocId ? collectionName : 'pdf_documents'}/${docId}/photos`), {
-            index: i + 1,
-            photoBase64: b64,
-            description: card.description || '',
-            hasPhoto: !!b64
-          });
-        }));
+
+          await Promise.all(batch.map(async (card, i) => {
+            const currentIdx = startIdx + i;
+            try {
+              let b64 = card.photoBase64 || '';
+              
+              if (b64) {
+                const sizeInKB = (b64.length * 3) / 4 / 1024;
+                // Aggressive compression: if > 600KB or if it fails once, we compress more
+                if (sizeInKB > 600) {
+                  try {
+                    b64 = await compressBase64Image(b64, { maxWidth: 800, quality: 0.5 });
+                  } catch (err) {
+                    console.error(`Compression failure for photo ${currentIdx}`, err);
+                  }
+                }
+              }
+
+              await withRetry(async () => {
+                await addDoc(photosRef, {
+                  index: currentIdx,
+                  photoBase64: b64,
+                  description: card.description || '',
+                  hasPhoto: !!b64,
+                  savedAt: serverTimestamp()
+                });
+              });
+            } catch (err: any) {
+              console.error(`Failed to save photo ${currentIdx}:`, err);
+              // Warn but don't stop the whole process
+              toast.error(`Foto #${currentIdx} gagal disimpan: ${err.message || 'Limit size/Network'}`, { duration: 4000 });
+            }
+          }));
+        }
       }
 
       toast.success(`Unit ${unit.specificDetail} berhasil disimpan`, { id: toastId });
       return docId;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Firestore save error:', error);
-      toast.error('Gagal simpan', { id: toastId });
+      let errorMsg = 'Gagal simpan';
+      if (error.code === 'permission-denied') errorMsg = 'Gagal simpan: Akses ditolak (Cek Login)';
+      else if (error.code === 'resource-exhausted') errorMsg = 'Gagal simpan: File terlalu besar (Limit Firestore)';
+      else if (error.message?.includes('too large')) errorMsg = 'Gagal simpan: Ukuran dokumen melebihi 1MB';
+      
+      toast.error(errorMsg, { id: toastId });
       return null;
     } finally {
       setIsSaving(false);
