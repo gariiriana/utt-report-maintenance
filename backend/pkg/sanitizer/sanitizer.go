@@ -1,7 +1,6 @@
 package sanitizer
 
 import (
-	"html"
 	"net/url"
 	"regexp"
 	"strings"
@@ -21,7 +20,6 @@ func String(input string) string {
 	s = controlCharPattern.ReplaceAllString(s, "")
 	s = scriptTagPattern.ReplaceAllString(s, "")
 	s = htmlTagPattern.ReplaceAllString(s, "")
-	s = html.EscapeString(s)
 	s = strings.TrimSpace(s)
 
 	if utf8.RuneCountInString(s) > MaxStringLength {

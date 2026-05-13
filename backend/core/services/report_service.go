@@ -45,10 +45,20 @@ func (s *ReportService) ProcessReport(ctx context.Context, req *models.CreateRep
 	}
 	if len(req.Photos) > 0 {
 		var wg sync.WaitGroup
+		// Wave 6: Implement worker pool (semaphore) to prevent unbounded fan-out
+		// Limit to 5 concurrent Firestore writes per report request
+		const maxWorkers = 5
+		sem := make(chan struct{}, maxWorkers)
+
 		for i, photo := range req.Photos {
 			wg.Add(1)
 			go func(idx int, p models.Photo) {
 				defer wg.Done()
+
+				// Acquire worker slot
+				sem <- struct{}{}
+				defer func() { <-sem }() // Release worker slot
+
 				photoData := map[string]interface{}{
 					"url":          p.URL,
 					"caption":      sanitizer.String(p.Caption),

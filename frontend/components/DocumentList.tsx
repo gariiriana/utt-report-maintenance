@@ -89,116 +89,122 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       setFetchError(null);
 
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('TIMEOUT')), 15000)
+        setTimeout(() => reject(new Error('TIMEOUT')), 30000)
       );
 
       const fetchAll = async () => {
-      const excelDocs: ExcelDocument[] = [];
-      const pdfDocs: ExcelDocument[] = [];
+        const fetchPromises: Promise<any>[] = [];
 
-      if (filterOverride !== 'hse_utt') {
-      const excelQuery = isPrivileged
-        ? query(collection(db, 'excel_documents'))
-        : query(
-          collection(db, 'excel_documents'),
-          where('createdBy', '==', user.email)
-        );
-      const excelSnapshot = await getDocs(excelQuery);
-      excelSnapshot.forEach((doc) => {
-        const data = doc.data();
-        excelDocs.push({
-          id: doc.id,
-          fileName: data.fileName,
-          maintenanceName: data.maintenanceName,
-          maintenanceTime: data.maintenanceTime,
-          specificDetail: data.specificDetail,
-          createdAt: data.createdAt.toDate(),
-          createdBy: data.createdBy,
-          fileSize: data.fileSize || 0,
-          totalPhotos: data.totalPhotos || 0,
-          photosWithImage: data.photosWithImage || 0,
-          photosData: data.photosData || [],
-          documentType: 'excel',
-        });
-      });
-      const pdfQuery = isPrivileged
-        ? query(collection(db, 'pdf_documents'))
-        : query(
-          collection(db, 'pdf_documents'),
-          where('createdBy', '==', user.email)
-        );
-      const pdfSnapshot = await getDocs(pdfQuery);
-      pdfSnapshot.forEach((doc) => {
-        const data = doc.data();
-        pdfDocs.push({
-          id: doc.id,
-          fileName: data.fileName,
-          maintenanceName: data.maintenanceName,
-          maintenanceTime: data.maintenanceTime,
-          specificDetail: data.specificDetail,
-          createdAt: data.createdAt.toDate(),
-          createdBy: data.createdBy,
-          fileSize: data.fileSize || 0,
-          totalPhotos: data.totalPhotos || 0,
-          photosWithImage: data.photosWithImage || 0,
-          photosData: data.photosData || [],
-          documentType: 'pdf',
-        });
-      });
-      }
+        if (filterOverride !== 'hse_utt') {
+          const excelQuery = isPrivileged
+            ? query(collection(db, 'excel_documents'))
+            : query(collection(db, 'excel_documents'), where('createdBy', '==', user.email));
+          fetchPromises.push(getDocs(excelQuery));
 
-      const hseDocs: ExcelDocument[] = [];
-      const showHSE = isAdmin || userRole === 'hse' || filterOverride === 'hse_utt';
-
-      if (showHSE) {
-        let hseQuery;
-        if (filterOverride === 'hse_utt') {
-          hseQuery = query(
-            collection(db, 'hse'),
-            where('reportType', '==', 'utt')
-          );
-        } else if (isAdmin) {
-          hseQuery = query(collection(db, 'hse'));
+          const pdfQuery = isPrivileged
+            ? query(collection(db, 'pdf_documents'))
+            : query(collection(db, 'pdf_documents'), where('createdBy', '==', user.email));
+          fetchPromises.push(getDocs(pdfQuery));
         } else {
-          hseQuery = query(
-            collection(db, 'hse'),
-            where('authorEmail', '==', user.email)
-          );
+          fetchPromises.push(Promise.resolve(null));
+          fetchPromises.push(Promise.resolve(null));
         }
 
-        const hseSnapshot = await getDocs(hseQuery);
-        hseSnapshot.forEach((doc) => {
-          const data = doc.data();
-          hseDocs.push({
-            id: doc.id,
-            fileName: `HSE_${data.aktivitas}_${data.date}.pdf`,
-            maintenanceName: data.aktivitas,
-            maintenanceTime: data.date,
-            specificDetail: data.lokasi,
-            createdAt: data.createdAt?.toDate() || new Date(),
-            createdBy: data.authorEmail,
-            fileSize: 0,
-            totalPhotos: data.photos?.length || 0,
-            photosWithImage: data.photos?.length || 0,
-            photosData: [],
-            documentType: 'hse',
-            hseType: data.hseType || 'inspection',
-            maintenanceType: data.maintenanceType || 'OTHER'
+        const showHSE = isAdmin || userRole === 'hse' || filterOverride === 'hse_utt';
+        if (showHSE) {
+          let hseQuery;
+          if (filterOverride === 'hse_utt') {
+            hseQuery = query(collection(db, 'hse'), where('reportType', '==', 'utt'));
+          } else if (isAdmin) {
+            hseQuery = query(collection(db, 'hse'));
+          } else {
+            hseQuery = query(collection(db, 'hse'), where('authorEmail', '==', user.email));
+          }
+          fetchPromises.push(getDocs(hseQuery));
+        } else {
+          fetchPromises.push(Promise.resolve(null));
+        }
+
+        const [excelSnapshot, pdfSnapshot, hseSnapshot] = await Promise.all(fetchPromises);
+
+        const excelDocs: ExcelDocument[] = [];
+        const pdfDocs: ExcelDocument[] = [];
+        const hseDocs: ExcelDocument[] = [];
+
+        if (excelSnapshot) {
+          excelSnapshot.forEach((doc: any) => {
+            const data = doc.data();
+            excelDocs.push({
+              id: doc.id,
+              fileName: data.fileName,
+              maintenanceName: data.maintenanceName,
+              maintenanceTime: data.maintenanceTime,
+              specificDetail: data.specificDetail,
+              createdAt: data.createdAt.toDate(),
+              createdBy: data.createdBy,
+              fileSize: data.fileSize || 0,
+              totalPhotos: data.totalPhotos || 0,
+              photosWithImage: data.photosWithImage || 0,
+              photosData: [], // Optimized: photosData is lazily loaded on edit
+              documentType: 'excel',
+            });
           });
+        }
+
+        if (pdfSnapshot) {
+          pdfSnapshot.forEach((doc: any) => {
+            const data = doc.data();
+            pdfDocs.push({
+              id: doc.id,
+              fileName: data.fileName,
+              maintenanceName: data.maintenanceName,
+              maintenanceTime: data.maintenanceTime,
+              specificDetail: data.specificDetail,
+              createdAt: data.createdAt.toDate(),
+              createdBy: data.createdBy,
+              fileSize: data.fileSize || 0,
+              totalPhotos: data.totalPhotos || 0,
+              photosWithImage: data.photosWithImage || 0,
+              photosData: [], // Optimized: photosData is lazily loaded on edit
+              documentType: 'pdf',
+            });
+          });
+        }
+
+        if (hseSnapshot) {
+          hseSnapshot.forEach((doc: any) => {
+            const data = doc.data();
+            hseDocs.push({
+              id: doc.id,
+              fileName: `HSE_${data.aktivitas}_${data.date}.pdf`,
+              maintenanceName: data.aktivitas,
+              maintenanceTime: data.date,
+              specificDetail: data.lokasi,
+              createdAt: data.createdAt?.toDate() || new Date(),
+              createdBy: data.authorEmail,
+              fileSize: 0,
+              totalPhotos: data.photos?.length || 0,
+              photosWithImage: data.photos?.length || 0,
+              photosData: [],
+              documentType: 'hse',
+              hseType: data.hseType || 'inspection',
+              maintenanceType: data.maintenanceType || 'OTHER'
+            });
+          });
+        }
+
+        const allDocs = filterOverride === 'hse_utt'
+          ? hseDocs
+          : [...excelDocs, ...pdfDocs, ...hseDocs];
+
+        allDocs.sort((a, b) => {
+          const timeA = a.createdAt.getTime();
+          const timeB = b.createdAt.getTime();
+          return sortBy === 'newest' ? timeB - timeA : timeA - timeB;
         });
-      }
-      const allDocs = filterOverride === 'hse_utt'
-        ? hseDocs
-        : [...excelDocs, ...pdfDocs, ...hseDocs];
 
-      allDocs.sort((a, b) => {
-        const timeA = a.createdAt.getTime();
-        const timeB = b.createdAt.getTime();
-        return sortBy === 'newest' ? timeB - timeA : timeA - timeB;
-      });
-
-      setDocuments(allDocs);
-      }; 
+        setDocuments(allDocs);
+      };
 
       await Promise.race([fetchAll(), timeoutPromise]);
     } catch (error: any) {

@@ -35,7 +35,9 @@ function getHSEReportIdFromUri(): string | null {
       id = id.trim().replace(/[.,!?;:]+$/, '');
     }
 
-    console.log('[HSE DEBUG] Detected ID:', id, { path: window.location.pathname, hash: window.location.hash });
+    if (id) {
+        console.log('[HSE DEBUG] Detected ID:', id, { path: window.location.pathname, hash: window.location.hash });
+    }
 
     return id;
   } catch {

@@ -101,23 +101,51 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         collection(db, 'excel_documents'),
         orderBy('createdAt', 'desc')
       );
-      const excelSnapshot = await getDocs(excelQuery);
-      const excelDocs = excelSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        type: 'excel' as const
-      })) as DocumentData[];
-
       const pdfQuery = query(
         collection(db, 'pdf_documents'),
         orderBy('createdAt', 'desc')
       );
-      const pdfSnapshot = await getDocs(pdfQuery);
-      const pdfDocs = pdfSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        type: 'pdf' as const
-      })) as DocumentData[];
+
+      const [excelSnapshot, pdfSnapshot] = await Promise.all([
+        getDocs(excelQuery),
+        getDocs(pdfQuery)
+      ]);
+
+      const excelDocs = excelSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          fileName: data.fileName,
+          maintenanceName: data.maintenanceName,
+          maintenanceTime: data.maintenanceTime,
+          specificDetail: data.specificDetail,
+          createdAt: data.createdAt,
+          createdBy: data.createdBy,
+          fileSize: data.fileSize || 0,
+          totalPhotos: data.totalPhotos || 0,
+          photosWithImage: data.photosWithImage || 0,
+          photosData: [], // Optimized: photosData is lazily loaded on edit/regen
+          type: 'excel' as const
+        };
+      }) as DocumentData[];
+
+      const pdfDocs = pdfSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          fileName: data.fileName,
+          maintenanceName: data.maintenanceName,
+          maintenanceTime: data.maintenanceTime,
+          specificDetail: data.specificDetail,
+          createdAt: data.createdAt,
+          createdBy: data.createdBy,
+          fileSize: data.fileSize || 0,
+          totalPhotos: data.totalPhotos || 0,
+          photosWithImage: data.photosWithImage || 0,
+          photosData: [], // Optimized: photosData is lazily loaded on edit/regen
+          type: 'pdf' as const
+        };
+      }) as DocumentData[];
 
       const allDocs = [...excelDocs, ...pdfDocs].sort((a, b) => {
         return b.createdAt.toMillis() - a.createdAt.toMillis();

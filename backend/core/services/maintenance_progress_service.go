@@ -7,6 +7,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gariiriana/utt-report-maintenance/backend/core/models"
 	"github.com/gariiriana/utt-report-maintenance/backend/core/repositories"
 )
@@ -151,7 +152,8 @@ func (s *maintenanceProgressService) GetSummary(ctx context.Context, year int, q
 }
 
 func (s *maintenanceProgressService) CreateProgress(ctx context.Context, p models.MaintenanceProgress) (string, error) {
-	id := fmt.Sprintf("%s_%s_%d", p.Category, p.EquipmentName, time.Now().Unix())
+	// Wave 5/6: Use UUID to prevent enumeration and collision
+	id := uuid.New().String()
 	p.UpdatedAt = time.Now()
 	if p.PlanQty > 0 {
 		p.ActualPercent = (p.ActualQty / p.PlanQty) * 100

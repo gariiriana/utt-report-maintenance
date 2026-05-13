@@ -115,7 +115,8 @@
 | **Cloud Firestore** | NoSQL real-time database |
 | **Firebase Security Rules** | Database-level access control |
 | **Vercel** | CI/CD & hosting |
-| **Firebase App Check** | Request verification |
+| **Firebase App Check** | Request verification & anti-abuse |
+| **PWA Cache Strategy** | Network-First strategy for reliable API data |
 
 ---
 
@@ -242,8 +243,7 @@ Base URL: `https://utt-report-maintenance.vercel.app/api`
 
 All API endpoints (except health checks) require authentication via one of:
 
-- **Firebase Auth Token**: `Authorization: Bearer <firebase_id_token>` (recommended)
-- **API Secret**: `X-API-Secret: <secret>` (legacy, backward-compatible)
+- **Firebase Auth Token**: `Authorization: Bearer <firebase_id_token>` (Strict Enforcement)
 
 ### Endpoints
 
@@ -329,11 +329,11 @@ All API endpoints (except health checks) require authentication via one of:
 
 ### Authentication & Authorization
 
-- **Dual-Auth System** — Supports Firebase Auth tokens (primary) and API Secret (legacy)
-- **Firebase ID Token Verification** — Server-side token validation via Firebase Admin SDK
-- **Role-Based Access Control (RBAC)** — 16+ roles with granular Firestore security rules
-- **Fail-Closed Auth** — `VerifySecret()` rejects all requests if secret is not configured
-- **Constant-Time Comparison** — `crypto/subtle.ConstantTimeCompare` prevents timing attacks
+- **Strict Authentication** — Mandatory Firebase ID Token validation for all sensitive operations.
+- **Role-Based Access Control (RBAC)** — 16+ roles with granular Firestore & Storage security rules.
+- **Infrastructure Hardening** — Deprecated legacy `X-API-Secret` bypass to prevent unauthorized API access.
+- **Anti-Enumeration** — Transitioned to high-entropy UUIDs for critical maintenance records.
+- **Resource Protection** — Semaphore-based Worker Pools (Concurrent Limit: 5) to prevent Vercel function timeouts and database exhaustion.
 
 ### Security Headers
 
@@ -344,8 +344,9 @@ All API endpoints (except health checks) require authentication via one of:
 | `X-XSS-Protection` | `1; mode=block` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
 | `Strict-Transport-Security` | `max-age=31536000; includeSubDomains; preload` |
-| `Content-Security-Policy` | Strict whitelist (no `unsafe-eval`) |
+| `Content-Security-Policy` | Strict whitelist (No `unsafe-inline` / `unsafe-eval`) |
 | `Permissions-Policy` | Camera, microphone, geolocation restricted |
+| `Cache-Control` | PWA-optimized NetworkFirst for `/api` |
 
 ### Data Protection
 

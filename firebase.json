@@ -42,7 +42,7 @@
           },
           {
             "key": "Content-Security-Policy",
-            "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.google.com https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://*.firebase.com https://www.googletagmanager.com https://www.youtube.com https://s.ytimg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.firebasestorage.app https://firebasestorage.googleapis.com https://i.ytimg.com; connect-src 'self' https://utt-report-maintenance.vercel.app https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.google.com https://www.recaptcha.net https://www.google-analytics.com https://region1.google-analytics.com https://nominatim.openstreetmap.org https://api.bigdatacloud.net; frame-src 'self' blob: https://www.google.com https://recaptcha.google.com https://*.firebaseapp.com https://www.youtube.com https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
+            "value": "default-src 'self'; script-src 'self' https://www.google.com https://www.gstatic.com https://apis.google.com https://*.firebaseapp.com https://*.firebase.com https://www.googletagmanager.com https://www.youtube.com https://s.ytimg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.firebasestorage.app https://firebasestorage.googleapis.com https://i.ytimg.com; connect-src 'self' https://utt-report-maintenance.vercel.app https://*.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasestorage.googleapis.com https://www.google.com https://www.recaptcha.net https://www.google-analytics.com https://region1.google-analytics.com https://nominatim.openstreetmap.org https://api.bigdatacloud.net; frame-src 'self' blob: https://www.google.com https://recaptcha.google.com https://*.firebaseapp.com https://www.youtube.com https://www.youtube-nocookie.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;"
           }
         ]
       }
@@ -51,5 +51,8 @@
   "firestore": {
     "rules": "firebase/firestore.rules",
     "indexes": "firebase/firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "firebase/storage.rules"
   }
 }

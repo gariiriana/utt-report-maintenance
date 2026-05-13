@@ -41,3 +41,4 @@ wasm-pack-init.exe
 wasm-pack-init.stamp
 wasm-pack.tar.gz
 node_modules
+scratch/

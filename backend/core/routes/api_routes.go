@@ -80,20 +80,22 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 		standard(deps.AuditCtrl.GetMyAuditLogs)(w, r)
 
 	// --- Maintenance Progress ---
+	// Static routes FIRST to avoid prefix collision
+	case path == "/api/maintenance-progress/summary" && r.Method == http.MethodGet:
+		standard(deps.MaintenanceProgressCtrl.GetSummary)(w, r)
+
+	case path == "/api/maintenance-progress/end-day" && r.Method == http.MethodPost:
+		heavy(deps.MaintenanceProgressCtrl.EndDay)(w, r)
+
 	case path == "/api/maintenance-progress" && r.Method == http.MethodGet:
 		standard(deps.MaintenanceProgressCtrl.ListAll)(w, r)
 
 	case path == "/api/maintenance-progress" && r.Method == http.MethodPost:
 		heavy(deps.MaintenanceProgressCtrl.CreateProgress)(w, r)
 
+	// Parameterized routes (prefix matches) LAST
 	case strings.HasPrefix(path, "/api/maintenance-progress/") && r.Method == http.MethodDelete:
 		heavy(deps.MaintenanceProgressCtrl.DeleteProgress)(w, r)
-
-	case path == "/api/maintenance-progress/summary" && r.Method == http.MethodGet:
-		standard(deps.MaintenanceProgressCtrl.GetSummary)(w, r)
-
-	case path == "/api/maintenance-progress/end-day" && r.Method == http.MethodPost:
-		heavy(deps.MaintenanceProgressCtrl.EndDay)(w, r)
 
 	case strings.HasPrefix(path, "/api/maintenance-progress/") && r.Method == http.MethodPatch:
 		heavy(deps.MaintenanceProgressCtrl.UpdateProgress)(w, r)

@@ -11,7 +11,6 @@ import (
 	"github.com/gariiriana/utt-report-maintenance/backend/core/middlewares"
 	"github.com/gariiriana/utt-report-maintenance/backend/core/repositories"
 	"github.com/gariiriana/utt-report-maintenance/backend/core/services"
-	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
 )
 
 type AppDeps struct {
@@ -114,25 +113,12 @@ func buildHandler(deps *AppDeps) http.HandlerFunc {
 				return
 			}
 
-			// DUAL-AUTH: try Firebase Auth token first, fall back to API Secret
-			authHeader := r.Header.Get("Authorization")
-			apiSecret := r.Header.Get("X-API-Secret")
-
-			if authHeader != "" {
-				// Firebase Auth token path — verify and inject claims into context
-				firebaseAuthMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					RouteRequest(w, r, deps)
-				})).ServeHTTP(w, r)
-				return
-			}
-
-			if apiSecret != "" && middlewares.VerifySecret(apiSecret) {
-				// Legacy API Secret path — still accepted for backward compat
+			// AUTHENTICATION: Enforce Firebase ID Token verification
+			// All protected routes MUST provide a valid Bearer token.
+			// Legacy X-API-Secret is no longer supported for security consistency.
+			firebaseAuthMw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				RouteRequest(w, r, deps)
-				return
-			}
-
-			helpers.SendError(w, "Unauthorized: provide a valid Authorization Bearer token or X-API-Secret", http.StatusUnauthorized)
+			})).ServeHTTP(w, r)
 		})).ServeHTTP(w, r)
 	}
 }

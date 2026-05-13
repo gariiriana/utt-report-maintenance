@@ -71,6 +71,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow create: if request.auth != null 
                     && request.auth.uid == userId
+                    && request.auth.token.email_verified == true
                     && request.resource.data.email == request.auth.token.email
                     && request.resource.data.uid == userId
                     && request.resource.data.keys().hasAll(['email', 'uid', 'role', 'companyType', 'createdAt'])
@@ -252,7 +253,8 @@ service cloud.firestore {
                     && isValidString(request.resource.data.lokasi, 500)
                     && isValidString(request.resource.data.authorEmail, 200);
       
-      allow read: if true;
+      allow get: if true;
+      allow list: if request.auth != null;
       
       allow update: if request.auth != null 
                     && (isAdminSafe() 
@@ -265,7 +267,8 @@ service cloud.firestore {
                         || (isHSE() && resource.data.authorEmail == request.auth.token.email));
 
       match /photos/{photoId} {
-        allow read: if true;
+        allow get: if true;
+        allow list: if request.auth != null;
         allow create: if request.auth != null
                       && hasAcceptableFieldCount(request.resource.data, 8)
                       && (!request.resource.data.keys().hasAny(['dataUrl']) || isValidPhotoData(request.resource.data.dataUrl));
