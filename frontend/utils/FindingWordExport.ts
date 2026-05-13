@@ -70,7 +70,6 @@ const THEME_BLUE = '00599C';
 const DARK = '1E293B';
 const LIGHT_GRAY = 'F1F5F9';
 const WHITE = 'FFFFFF';
-const AMBER = 'F59E0B';
 
 const thinBorder = {
   top: { style: BorderStyle.SINGLE, size: 1, color: 'CBD5E1' },
