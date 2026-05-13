@@ -549,7 +549,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         maintenanceType: hseData.maintenanceType || 'OTHER'
       };
 
-      await generateHSEPdf(formData);
+      await generateHSEPdf(formData, userRole === 'hse');
       toast.success('PDF HSE berhasil diunduh!', { id: 'download-hse' });
     } catch (error) {
       console.error('Download HSE error:', error);

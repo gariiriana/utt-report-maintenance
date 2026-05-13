@@ -9,6 +9,7 @@ import {
 import logoUTT from '@/assets/logo_utt.png';
 import logoDME from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
+import { useAuth } from '@/components/AuthContext';
 
 const CHECKLIST_LABELS = [
     { key: 'mop', label: 'MOP' },
@@ -45,6 +46,7 @@ interface ReportData {
 }
 
 export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
+    const { userRole } = useAuth();
     const [report, setReport] = useState<ReportData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -121,7 +123,7 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                 date: report.date,
                 reportType: report.reportType,
             };
-            await generateHSEPdf(formData);
+            await generateHSEPdf(formData, userRole === 'hse');
         } catch (err) {
             console.error(err);
         } finally {

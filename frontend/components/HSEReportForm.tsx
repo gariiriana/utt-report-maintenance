@@ -35,7 +35,7 @@ interface HSEReportFormProps {
 }
 
 export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }: HSEReportFormProps) {
-    const { user } = useAuth();
+    const { user, userRole } = useAuth();
 
     const [aktivitas, setAktivitas] = useState('');
     const [lokasi, setLokasi] = useState('');
@@ -460,7 +460,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
             formData.reportType = reportMode;
 
             const [, savedDocId] = await Promise.all([
-                generateHSEPdf(formData).catch((pdfErr) => {
+                generateHSEPdf(formData, userRole === 'hse').catch((pdfErr) => {
                     console.error('PDF generation failed:', pdfErr);
                     throw new Error(`Gagal membuat PDF: ${(pdfErr as Error)?.message || 'Terjadi kesalahan'}`);
                 }),
@@ -762,6 +762,19 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                         <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={(e) => handleFileUpload(e)} className="hidden" />
                         
                         <div className="space-y-4">
+                            <div 
+                                onClick={() => fileInputRef.current?.click()} 
+                                className="group border-2 border-dashed border-slate-800 hover:border-blue-500/50 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all bg-slate-900/20"
+                            >
+                                <div className="p-3 bg-slate-800/40 rounded-xl group-hover:scale-110 group-hover:bg-blue-500/10 transition-all">
+                                    <Camera className="w-6 h-6 text-slate-500 group-hover:text-blue-400" />
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-xs font-bold text-slate-300">Tambah Foto Evidence</p>
+                                    <p className="text-[10px] text-slate-500 mt-1">Klik untuk upload file</p>
+                                </div>
+                            </div>
+
                             {photos.length > 0 && (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                     <AnimatePresence>
@@ -785,19 +798,6 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                     </AnimatePresence>
                                 </div>
                             )}
-
-                            <div 
-                                onClick={() => fileInputRef.current?.click()} 
-                                className="group mt-4 border-2 border-dashed border-slate-800 hover:border-blue-500/50 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all bg-slate-900/20"
-                            >
-                                <div className="p-3 bg-slate-800/40 rounded-xl group-hover:scale-110 group-hover:bg-blue-500/10 transition-all">
-                                    <Camera className="w-6 h-6 text-slate-500 group-hover:text-blue-400" />
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-xs font-bold text-slate-300">Tambah Foto Evidence</p>
-                                    <p className="text-[10px] text-slate-500 mt-1">Klik untuk upload file</p>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </motion.div>

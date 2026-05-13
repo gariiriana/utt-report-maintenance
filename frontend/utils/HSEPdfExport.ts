@@ -457,7 +457,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     return doc;
 }
 
-export async function generateHSEPdf(data: HSEFormData) {
+export async function generateHSEPdf(data: HSEFormData, autoOpen = false) {
     const dmeImg = logoDme;
     const secondaryImg = data.reportType === 'utt' ? logoUtt : logoNeutradc;
 
@@ -535,9 +535,26 @@ export async function generateHSEPdf(data: HSEFormData) {
             copiedPages.forEach((page) => mainPdfDoc.addPage(page));
         }
 
+        // Set Metadata Title so browser tab shows the filename instead of blob ID
+        const safeAktivitas = (data.aktivitas || 'Inspection').replace(/[/\\?%*:|"<>]/g, '-');
+        const dateObj = data.date ? new Date(data.date) : new Date();
+        const dateStr = isNaN(dateObj.getTime()) 
+            ? new Date().toISOString().split('T')[0] 
+            : dateObj.toISOString().split('T')[0];
+        const fileNameMeta = `HSE_Integrated_${safeAktivitas}_${dateStr}.pdf`;
+        
+        mainPdfDoc.setTitle(fileNameMeta);
+
         finalPdfBytes = await mainPdfDoc.save();
     } catch (err) {
         console.error("PDF Merging failed, falling back to original:", err);
+        const safeAktivitas = (data.aktivitas || 'Inspection').replace(/[/\\?%*:|"<>]/g, '-');
+        const dateObj = data.date ? new Date(data.date) : new Date();
+        const dateStr = isNaN(dateObj.getTime()) 
+            ? new Date().toISOString().split('T')[0] 
+            : dateObj.toISOString().split('T')[0];
+        const fileNameMeta = `HSE_Integrated_${safeAktivitas}_${dateStr}.pdf`;
+        jspdfDoc.setProperties({ title: fileNameMeta });
         finalPdfBytes = new Uint8Array(await jspdfDoc.output('arraybuffer'));
     }
 
@@ -550,13 +567,22 @@ export async function generateHSEPdf(data: HSEFormData) {
 
     const finalBlob = new Blob([finalPdfBytes as any], { type: 'application/pdf' });
     const url = URL.createObjectURL(finalBlob);
+
+    // Always trigger download
     const link = document.createElement('a');
     link.href = url;
     link.download = fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+
+    // If autoOpen is true (for HSE role), also open in new tab
+    if (autoOpen) {
+        window.open(url, '_blank');
+    }
+
+    // Delay revocation to ensure the browser has time to handle both actions
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export async function generateHSEPdfBlob(data: HSEFormData): Promise<Blob> {
@@ -613,9 +639,24 @@ export async function generateHSEPdfBlob(data: HSEFormData): Promise<Blob> {
             copiedPages.forEach((page) => mainPdfDoc.addPage(page));
         }
 
+        const safeAktivitas = (data.aktivitas || 'Inspection').replace(/[/\\?%*:|"<>]/g, '-');
+        const dateObj = data.date ? new Date(data.date) : new Date();
+        const dateStr = isNaN(dateObj.getTime()) 
+            ? new Date().toISOString().split('T')[0] 
+            : dateObj.toISOString().split('T')[0];
+        const fileNameMeta = `HSE_Integrated_${safeAktivitas}_${dateStr}.pdf`;
+        mainPdfDoc.setTitle(fileNameMeta);
+
         finalPdfBytes = await mainPdfDoc.save();
     } catch (err) {
         console.error("PDF Merging failed, falling back to original:", err);
+        const safeAktivitas = (data.aktivitas || 'Inspection').replace(/[/\\?%*:|"<>]/g, '-');
+        const dateObj = data.date ? new Date(data.date) : new Date();
+        const dateStr = isNaN(dateObj.getTime()) 
+            ? new Date().toISOString().split('T')[0] 
+            : dateObj.toISOString().split('T')[0];
+        const fileNameMeta = `HSE_Integrated_${safeAktivitas}_${dateStr}.pdf`;
+        jspdfDoc.setProperties({ title: fileNameMeta });
         finalPdfBytes = new Uint8Array(await jspdfDoc.output('arraybuffer'));
     }
 
