@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Clipboard as ClipboardIcon, Plus, Search, Trash2, Edit2,
   X, CheckCircle2, Loader2, Calendar, Hash, Package,
-  AlertCircle, Download, FileUp, File
+  AlertCircle, Download, FileUp, File, ChevronDown
 } from 'lucide-react';
 import {
   collection, onSnapshot, addDoc, updateDoc,
@@ -22,7 +22,8 @@ interface PTWRecord {
   sequenceNumber: number;
   equipmentCode: string;
   quarter: string;
-  permitDate: string;
+  startDate: string;
+  endDate: string;
   notes?: string;
   fileName?: string;
   totalChunks?: number;
@@ -47,7 +48,8 @@ export function PTWManagement() {
     sequenceNumber: '',
     equipmentCode: '',
     quarter: '',
-    permitDate: new Date().toISOString().split('T')[0],
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
     notes: ''
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -163,8 +165,8 @@ export function PTWManagement() {
           sequenceNumber: parseInt(formData.sequenceNumber),
           ptwNumber: ptwNum,
           equipmentCode: formData.equipmentCode,
-          quarter: formData.quarter,
-          permitDate: formData.permitDate,
+          startDate: formData.startDate,
+          endDate: formData.endDate,
           notes: formData.notes,
           updatedAt: serverTimestamp()
         };
@@ -210,7 +212,8 @@ export function PTWManagement() {
           ptwNumber: ptwNum,
           equipmentCode: formData.equipmentCode,
           quarter: formData.quarter,
-          permitDate: formData.permitDate,
+          startDate: formData.startDate,
+          endDate: formData.endDate,
           notes: formData.notes,
           ...(selectedFile && { fileName: selectedFile.name, totalChunks }),
           createdBy: user.email,
@@ -276,7 +279,8 @@ export function PTWManagement() {
       sequenceNumber: record.sequenceNumber.toString(),
       equipmentCode: record.equipmentCode,
       quarter: record.quarter,
-      permitDate: record.permitDate,
+      startDate: record.startDate || '',
+      endDate: record.endDate || '',
       notes: record.notes || ''
     });
     setIsEditModalOpen(true);
@@ -287,7 +291,8 @@ export function PTWManagement() {
       sequenceNumber: '',
       equipmentCode: '',
       quarter: '',
-      permitDate: new Date().toISOString().split('T')[0],
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0],
       notes: ''
     });
     setSelectedRecord(null);
@@ -341,7 +346,7 @@ export function PTWManagement() {
           <div>
             <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Update Terbaru</p>
             <p className="text-lg font-bold text-white">
-              {records.length > 0 ? new Date(records[0].permitDate).toLocaleDateString('id-ID') : '-'}
+              {records.length > 0 ? new Date(records[0].startDate).toLocaleDateString('id-ID') : '-'}
             </p>
           </div>
         </div>
@@ -378,7 +383,7 @@ export function PTWManagement() {
                   <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Nomor PTW</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Alat / Equipment</th>
                   <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Quarter</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Tanggal</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Masa Berlaku</th>
                   <th className="px-6 py-4 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Aksi</th>
                 </tr>
               </thead>
@@ -402,7 +407,12 @@ export function PTWManagement() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-400">
-                      {new Date(record.permitDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
+                      <div className="flex flex-col">
+                        <span className="text-xs text-slate-500 font-bold uppercase tracking-tighter">Masa Berlaku</span>
+                        <span className="text-white font-medium">
+                          {new Date(record.startDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} - {new Date(record.endDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-center gap-2">
@@ -457,7 +467,7 @@ export function PTWManagement() {
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-slate-500 flex-shrink-0" />
                     <span className="text-sm text-slate-400">
-                      {new Date(record.permitDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
+                      {new Date(record.startDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} - {new Date(record.endDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </span>
                   </div>
                 </div>
@@ -538,18 +548,21 @@ export function PTWManagement() {
 
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase ml-1">Quarter</label>
-                    <select
-                      required
-                      value={formData.quarter}
-                      onChange={(e) => setFormData({ ...formData, quarter: e.target.value })}
-                      className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition appearance-none"
-                    >
-                      <option value="" className="bg-slate-900">Pilih Quarter</option>
-                      <option value="1" className="bg-slate-900">Q1</option>
-                      <option value="2" className="bg-slate-900">Q2</option>
-                      <option value="3" className="bg-slate-900">Q3</option>
-                      <option value="4" className="bg-slate-900">Q4</option>
-                    </select>
+                    <div className="relative group">
+                      <select
+                        required
+                        value={formData.quarter}
+                        onChange={(e) => setFormData({ ...formData, quarter: e.target.value })}
+                        className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition appearance-none cursor-pointer"
+                      >
+                        <option value="" className="bg-slate-900">Pilih Quarter</option>
+                        <option value="1" className="bg-slate-900">Q1</option>
+                        <option value="2" className="bg-slate-900">Q2</option>
+                        <option value="3" className="bg-slate-900">Q3</option>
+                        <option value="4" className="bg-slate-900">Q4</option>
+                      </select>
+                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none group-focus-within:text-indigo-400 transition" />
+                    </div>
                   </div>
                 </div>
 
@@ -568,17 +581,33 @@ export function PTWManagement() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase ml-1">Tanggal Izin</label>
-                  <div className="relative group">
-                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition" />
-                    <input
-                      type="date"
-                      required
-                      value={formData.permitDate}
-                      onChange={(e) => setFormData({ ...formData, permitDate: e.target.value })}
-                      className="w-full pl-11 pr-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
-                    />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 uppercase ml-1">Masa Berlaku (Dari)</label>
+                    <div className="relative group">
+                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition" />
+                      <input
+                        type="date"
+                        required
+                        value={formData.startDate}
+                        onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                        className="w-full pl-11 pr-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 uppercase ml-1">Sampai Dengan</label>
+                    <div className="relative group">
+                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition" />
+                      <input
+                        type="date"
+                        required
+                        value={formData.endDate}
+                        onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                        className="w-full pl-11 pr-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -592,8 +621,15 @@ export function PTWManagement() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase ml-1">File Lampiran (Opsional, Max 10MB)</label>
+                <div className="space-y-3">
+                  <label className="text-xs font-bold text-slate-500 uppercase ml-1">File Lampiran (Max 10MB)</label>
+                  
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                    <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                    <p className="text-[11px] font-bold text-amber-400 leading-tight">
+                      FILE PTW YANG DIUPLOAD HARUS YANG SUDAH TTD TDE
+                    </p>
+                  </div>
                   {isEditModalOpen && selectedRecord?.totalChunks && selectedRecord?.fileName && !selectedFile && (
                     <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl mb-2">
                       <File className="w-4 h-4 text-emerald-400 flex-shrink-0" />
@@ -702,6 +738,8 @@ export function PTWManagement() {
               </motion.div>
             </div>
           )}
+
+
         </AnimatePresence>,
         document.body
       )}
