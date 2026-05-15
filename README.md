@@ -6,7 +6,7 @@
 [![Tailwind](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-007ACC?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?style=flat-square&logo=vite)](https://vitejs.dev/)
-[![Vercel](https://img.shields.io/badge/Deployed_on-Vercel-000?style=flat-square&logo=vercel)](https://vercel.com/)
+[![Firebase](https://img.shields.io/badge/Deployed_on-Firebase-FFCA28?style=flat-square&logo=firebase)](https://firebase.google.com/)
 [![Security](https://img.shields.io/badge/Security-Hardened-brightgreen?style=flat-square&logo=shield)](#-security)
 
 **UTT Report Maintenance** adalah sistem dokumentasi infrastruktur kritikal profesional yang dirancang khusus untuk memfasilitasi pelaporan pemeliharaan data center bagi **PT United Transworld Trading (UTT)**.
@@ -44,7 +44,7 @@
 ├─────────────────┼────────────────────────────────────────────┤
 │                 ▼                                             │
 │         ┌──────────────┐                                     │
-│         │  Vercel Edge  │  Serverless Functions               │
+│         │ Firebase Edge │  Cloud Functions / Hosting           │
 │         └──────┬───────┘                                     │
 │                │                                             │
 │  ┌─────────────┼────────────────────────────────────────┐    │
@@ -105,7 +105,7 @@
 | :--- | :--- |
 | **Go 1.23 (Golang)** | High-performance API server |
 | **Firebase Admin SDK** | Server-side auth & Firestore access |
-| **Vercel Serverless** | Deployment & edge functions |
+| **Firebase Functions** | Deployment & serverless backend |
 
 ### Cloud & Infrastructure
 
@@ -114,7 +114,7 @@
 | **Firebase Authentication** | User auth & session management |
 | **Cloud Firestore** | NoSQL real-time database |
 | **Firebase Security Rules** | Database-level access control |
-| **Vercel** | CI/CD & hosting |
+| **Firebase Hosting** | CI/CD, SSL, & hosting |
 | **Firebase App Check** | Request verification & anti-abuse |
 | **PWA Cache Strategy** | Network-First strategy for reliable API data |
 
@@ -237,7 +237,7 @@ utt-report-maintenance/
 
 ## 📡 API Reference
 
-Base URL: `https://utt-report-maintenance.vercel.app/api`
+Base URL: `https://report-utt.web.app/api`
 
 ### Authentication
 
@@ -333,7 +333,7 @@ All API endpoints (except health checks) require authentication via one of:
 - **Role-Based Access Control (RBAC)** — 16+ roles with granular Firestore & Storage security rules.
 - **Infrastructure Hardening** — Deprecated legacy `X-API-Secret` bypass to prevent unauthorized API access.
 - **Anti-Enumeration** — Transitioned to high-entropy UUIDs for critical maintenance records.
-- **Resource Protection** — Semaphore-based Worker Pools (Concurrent Limit: 5) to prevent Vercel function timeouts and database exhaustion.
+- **Resource Protection** — Semaphore-based Worker Pools (Concurrent Limit: 5) to prevent function timeouts and database exhaustion.
 
 ### Security Headers
 
@@ -351,7 +351,7 @@ All API endpoints (except health checks) require authentication via one of:
 ### Data Protection
 
 - **Input Sanitization** — DOMPurify-based sanitizer for XSS/injection prevention
-- **CORS Whitelisting** — Only `utt-report-maintenance.vercel.app` allowed
+- **CORS Whitelisting** — Only `report-utt.web.app` allowed
 - **Firestore Security Rules** — Document-level access control with field validation
 - **Default Role Enforcement** — New users forced to `engineer` role (prevents privilege escalation)
 - **No Client-Side Secrets** — API secrets never exposed in frontend bundles
@@ -444,17 +444,20 @@ npm run backend:build
 
 ## 🌐 Deployment
 
-### Vercel (Production)
+### Firebase (Production)
 
-The project is deployed on **Vercel** with the following setup:
+The project is deployed on **Firebase** with the following setup:
 
-1. **Frontend** — Static build served via Vercel CDN
-2. **Backend** — Go serverless function via `api/index.go`
-3. **Environment Variables** — Configured in Vercel Dashboard
+1. **Frontend** — Static build served via Firebase Hosting
+2. **Backend** — Go serverless functions / Cloud Functions
+3. **SSL & Domain** — Managed automatically by Firebase
 
 ```bash
-# Deploy via Vercel CLI
-vercel --prod
+# Build frontend
+npm run build
+
+# Deploy to Firebase
+firebase deploy
 ```
 
 ### Firebase (Firestore Rules)
