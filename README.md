@@ -1,7 +1,7 @@
 # 🏢 UTT Report Maintenance
 
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://reactjs.org/)
-[![Go](https://img.shields.io/badge/Go-1.24-00ADD8?style=flat-square&logo=go)](https://go.dev/)
+[![Go](https://img.shields.io/badge/Go-1.23-00ADD8?style=flat-square&logo=go)](https://go.dev/)
 [![Firebase](https://img.shields.io/badge/Firebase-Cloud-FFCA28?style=flat-square&logo=firebase)](https://firebase.google.com/)
 [![Tailwind](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-007ACC?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
@@ -103,7 +103,7 @@
 
 | Technology | Purpose |
 | :--- | :--- |
-| **Go 1.24 (Golang)** | High-performance API server |
+| **Go 1.23 (Golang)** | High-performance API server |
 | **Firebase Admin SDK** | Server-side auth & Firestore access |
 | **Vercel Serverless** | Deployment & edge functions |
 
@@ -377,7 +377,7 @@ Request → RequestID → Logger → PanicRecovery → SecurityHeaders → CORS 
 ### Prerequisites
 
 - **Node.js** v18+
-- **Go** v1.24+
+- **Go** v1.23+
 - **Firebase CLI** (`npm install -g firebase-tools`)
 - **npm** or **pnpm**
 
