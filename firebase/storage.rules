@@ -31,6 +31,15 @@ service firebase.storage {
                    && request.resource.size <= 10 * 1024 * 1024
                    && request.resource.contentType == 'application/pdf';
     }
+    // ============================================================
+    // PTW Files — Lampiran dokumen Permit to Work
+    // ============================================================
+    match /ptw_files/{ptwNumber}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.resource.size <= 10 * 1024 * 1024;
+      allow delete: if request.auth != null;
+    }
 
     // ============================================================
     // DEFAULT — Blokir semua akses ke path lain

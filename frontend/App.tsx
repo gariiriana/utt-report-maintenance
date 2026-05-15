@@ -56,14 +56,14 @@ function AppContent() {
 
   return (
     <div className="relative z-10 w-full min-h-screen">
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" initial={false}>
         {user ? (
           <motion.div
             key={`private-${userRole}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.4 }}
+            transition={{ duration: 0.3 }}
           >
             {(() => {
               if (userRole === 'hse') return <HSEApp />;
@@ -77,10 +77,10 @@ function AppContent() {
         ) : (
           <motion.div
             key="login"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.4 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
           >
             <Login />
           </motion.div>

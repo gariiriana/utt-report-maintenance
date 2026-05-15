@@ -346,6 +346,25 @@ service cloud.firestore {
       allow delete: if request.auth != null && isAdminSafe();
     }
 
+    match /ptw_records/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+                    && (isAdminSafe() || isEngineer())
+                    && hasAcceptableFieldCount(request.resource.data, 15);
+      allow update: if request.auth != null
+                    && (isAdminSafe() || isEngineer())
+                    && hasAcceptableFieldCount(request.resource.data, 15);
+      allow delete: if request.auth != null && (isAdminSafe() || isEngineer());
+
+      match /chunks/{chunkId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null
+                      && (isAdminSafe() || isEngineer())
+                      && hasAcceptableFieldCount(request.resource.data, 10);
+        allow delete: if request.auth != null && (isAdminSafe() || isEngineer());
+      }
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
