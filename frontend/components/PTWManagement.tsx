@@ -43,6 +43,8 @@ export function PTWManagement() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedRecord, setSelectedRecord] = useState<PTWRecord | null>(null);
   const [recordToDelete, setRecordToDelete] = useState<PTWRecord | null>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showScrollBottom, setShowScrollBottom] = useState(true);
 
   const [formData, setFormData] = useState({
     sequenceNumber: '',
@@ -131,8 +133,30 @@ export function PTWManagement() {
   }, [isAddModalOpen, isEditModalOpen, isDeleteModalOpen]);
 
   useEffect(() => {
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      const windowHeight = window.innerHeight;
+      const documentHeight = document.documentElement.scrollHeight;
+
+      setShowScrollTop(scrollY > 400);
+      setShowScrollBottom(scrollY + windowHeight < documentHeight - 400);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const scrollToBottom = () => {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
     setLoading(true);
-    const q = query(collection(db, 'ptw_records'), orderBy('createdAt', 'desc'));
+    const q = query(collection(db, 'ptw_records'), orderBy('sequenceNumber', 'asc'));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({
@@ -743,6 +767,40 @@ export function PTWManagement() {
         </AnimatePresence>,
         document.body
       )}
+
+      {/* Floating Scroll Buttons */}
+      <div className="fixed bottom-8 right-8 flex flex-col gap-3 z-[99]">
+        <AnimatePresence>
+          {showScrollTop && (
+            <motion.button
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={scrollToTop}
+              className="p-4 bg-indigo-600/40 backdrop-blur-xl border border-indigo-400/30 rounded-2xl shadow-2xl text-white hover:bg-indigo-600 transition-colors group"
+              title="Scroll ke Atas"
+            >
+              <ChevronDown className="w-6 h-6 rotate-180 group-hover:-translate-y-1 transition-transform" />
+            </motion.button>
+          )}
+          {showScrollBottom && (
+            <motion.button
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={scrollToBottom}
+              className="p-4 bg-slate-800/40 backdrop-blur-xl border border-slate-600/30 rounded-2xl shadow-2xl text-white hover:bg-slate-700 transition-colors group"
+              title="Scroll ke Bawah"
+            >
+              <ChevronDown className="w-6 h-6 group-hover:translate-y-1 transition-transform" />
+            </motion.button>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
