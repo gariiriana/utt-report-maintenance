@@ -139,6 +139,17 @@ Sistem pengambilan foto dokumentasi pintar yang menyematkan metadata teknis seca
 - **Auto-pagination** — 9 foto per halaman untuk laporan PDF
 - **Draft System** — Simpan draft laporan yang belum selesai
 
+### 📜 PTW (Permit to Work) Management
+
+Sistem manajemen izin kerja terintegrasi untuk kontrol operasional yang aman:
+
+- **Strict Validation** — Kewajiban upload file PTW yang sudah ditandatangani oleh TDE.
+- **Smart Sorting** — Pengurutan otomatis berdasarkan nomor urut (Sequence Number) untuk kemudahan pelacakan.
+- **Large Data Handling** — Optimalisasi untuk menangani ratusan data PTW dengan performa tinggi.
+- **Secure Attachments** — Sistem penyimpanan lampiran file (PDF/Image) berbasis Firebase Storage dengan integrasi Firestore.
+- **Smooth Navigation** — Fitur *Quick Scroll* (Top & Bottom) untuk navigasi cepat pada daftar data yang panjang.
+- **Data Integrity** — Proteksi penghapusan data dengan sistem konfirmasi ganda.
+
 ### 🔧 Corrective Maintenance
 
 Modul khusus untuk mendokumentasikan perbaikan dan pemeliharaan korektif dengan workflow terstruktur.
@@ -177,8 +188,8 @@ Modul pelaporan K3 terintegrasi dengan photo editor dan export PDF profesional.
 
 ```text
 utt-report-maintenance/
-├── api/                          # Vercel serverless entry point
-│   └── index.go                  # Main handler (init + routing)
+├── api/                          # Cloud API entry point
+│   └── index.go                  # Main serverless handler (Go runtime)
 │
 ├── backend/
 │   ├── cmd/api/                  # Local development server entry
@@ -202,6 +213,7 @@ utt-report-maintenance/
 │   │   ├── AuthContext.tsx        # Authentication provider
 │   │   ├── ReportForm.tsx         # Main report form
 │   │   ├── HSEReportForm.tsx      # HSE report module
+│   │   ├── PTWManagement.tsx      # PTW Management module (New)
 │   │   ├── CorrectiveMaintenance.tsx  # Corrective maintenance module
 │   │   ├── CameraModal.tsx        # Smart camera with watermarking
 │   │   ├── FindingManagement.tsx  # Findings input
@@ -334,6 +346,7 @@ All API endpoints (except health checks) require authentication via one of:
 - **Infrastructure Hardening** — Deprecated legacy `X-API-Secret` bypass to prevent unauthorized API access.
 - **Anti-Enumeration** — Transitioned to high-entropy UUIDs for critical maintenance records.
 - **Resource Protection** — Semaphore-based Worker Pools (Concurrent Limit: 5) to prevent function timeouts and database exhaustion.
+- **Scoped Data Deletion** — Pengamanan proses penghapusan data massal (Batch Operations) untuk menjaga integritas database.
 
 ### Security Headers
 
