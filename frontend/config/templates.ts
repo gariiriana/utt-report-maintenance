@@ -31,7 +31,7 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Cleaning Panel PJU dan Batrai', 'Tightening', 'Cleaning Solar Cell',
     'Check Tegangan Batrai 1', 'Check Tegangan Batrai 2', 'Check Tegangan 2 Batrai',
     'Check Tegangan Solar Cell', 'Tightening Sambungan Kabel', 'Check Visual Lampu LED',
-    'Cleaning LED Lampu Box LED'
+    'Cleaning LED Lampu Box LED', 'Measurement lux lamp'
   ],
   'grounding@gmail.com': [
     'Measurement', 'Before', 'After', 'Tightening'
