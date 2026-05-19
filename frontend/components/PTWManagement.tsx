@@ -4,11 +4,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Clipboard as ClipboardIcon, Plus, Search, Trash2, Edit2,
   X, CheckCircle2, Loader2, Calendar, Hash, Package,
-  AlertCircle, Download, FileUp, File, ChevronDown
+  AlertCircle, Download, FileUp, File, ChevronDown, Eye
 } from 'lucide-react';
 import {
   collection, onSnapshot, addDoc, updateDoc,
-  doc, query, orderBy, serverTimestamp, Timestamp, getDocs, writeBatch
+  doc, query, orderBy, serverTimestamp, Timestamp, getDocs, writeBatch, deleteField
 } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
@@ -32,8 +32,23 @@ interface PTWRecord {
 }
 
 export function PTWManagement() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
+  const isAdmin = userRole === 'admin';
   const [records, setRecords] = useState<PTWRecord[]>([]);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [isDeleteCategoryModalOpen, setIsDeleteCategoryModalOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<{ name: string; records: PTWRecord[] } | null>(null);
+  const [shouldDeleteFile, setShouldDeleteFile] = useState(false);
+  const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
+
+  const toggleGroup = (code: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [code]: !prev[code]
+    }));
+  };
+
+
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -120,9 +135,50 @@ export function PTWManagement() {
     }
   };
 
+  const handlePreview = async (record: PTWRecord) => {
+    if (!record.fileName || !record.totalChunks) return;
+    const toastId = toast.loading('Menyiapkan pratinjau...');
+    try {
+      const chunksSnap = await getDocs(
+        query(collection(db, 'ptw_records', record.id, 'chunks'), orderBy('index'))
+      );
+      if (chunksSnap.empty) { toast.error('File tidak ditemukan', { id: toastId }); return; }
+
+      const byteArrays: Uint8Array[] = [];
+      let mimeString = 'application/octet-stream';
+      chunksSnap.docs.forEach((d) => {
+        const chunkData = d.data().data as string;
+        let base64Part = chunkData;
+        if (chunkData.includes(';base64,')) {
+          const parts = chunkData.split(';base64,');
+          mimeString = parts[0].split(':')[1] || mimeString;
+          base64Part = parts[1];
+        }
+        const byteStr = atob(base64Part);
+        const bytes = new Uint8Array(byteStr.length);
+        for (let i = 0; i < byteStr.length; i++) bytes[i] = byteStr.charCodeAt(i);
+        byteArrays.push(bytes);
+      });
+
+      const blob = new Blob(byteArrays as any[], { type: mimeString });
+      const url = URL.createObjectURL(blob);
+      
+      const previewWindow = window.open(url, '_blank');
+      if (!previewWindow) {
+        toast.error('Gagal membuka pratinjau. Silakan periksa blocker pop-up Anda.', { id: toastId });
+        return;
+      }
+      
+      toast.success('Pratinjau berhasil dibuka!', { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal memuat pratinjau', { id: toastId });
+    }
+  };
+
   // Prevent background scrolling when modal is open
   useEffect(() => {
-    if (isAddModalOpen || isEditModalOpen || isDeleteModalOpen) {
+    if (isAddModalOpen || isEditModalOpen || isDeleteModalOpen || isDeleteCategoryModalOpen || isDeleteAllModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -130,7 +186,8 @@ export function PTWManagement() {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isAddModalOpen, isEditModalOpen, isDeleteModalOpen]);
+  }, [isAddModalOpen, isEditModalOpen, isDeleteModalOpen, isDeleteCategoryModalOpen, isDeleteAllModalOpen]);
+
 
   useEffect(() => {
     const handleScroll = () => {
@@ -155,6 +212,8 @@ export function PTWManagement() {
   };
 
   useEffect(() => {
+    if (!user) return;
+
     setLoading(true);
     const q = query(collection(db, 'ptw_records'), orderBy('sequenceNumber', 'asc'));
     
@@ -166,13 +225,17 @@ export function PTWManagement() {
       setRecords(data);
       setLoading(false);
     }, (error) => {
+      if (error.code === 'permission-denied') {
+        console.warn('PTW subscription cancelled due to logout/insufficient permissions.');
+        return;
+      }
       console.error('Error loading PTW:', error);
       toast.error('Gagal memuat data PTW');
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -219,6 +282,17 @@ export function PTWManagement() {
 
           updateData.fileName = selectedFile.name;
           updateData.totalChunks = totalChunks;
+        } else if (shouldDeleteFile) {
+          // Delete old chunks
+          if (selectedRecord.totalChunks) {
+            const oldChunks = await getDocs(collection(db, 'ptw_records', selectedRecord.id, 'chunks'));
+            const delBatch = writeBatch(db);
+            oldChunks.docs.forEach(d => delBatch.delete(d.ref));
+            await delBatch.commit();
+          }
+          // Remove fields from document
+          updateData.fileName = deleteField();
+          updateData.totalChunks = deleteField();
         }
 
         await updateDoc(doc(db, 'ptw_records', selectedRecord.id), updateData);
@@ -297,7 +371,83 @@ export function PTWManagement() {
     setIsDeleteModalOpen(true);
   };
 
+  const handleDeleteCategory = (categoryName: string, categoryRecords: PTWRecord[]) => {
+    setCategoryToDelete({ name: categoryName, records: categoryRecords });
+    setIsDeleteCategoryModalOpen(true);
+  };
+
+  const confirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+    setSubmitting(true);
+    try {
+      const batch = writeBatch(db);
+      for (const rec of categoryToDelete.records) {
+        // Delete chunk subcollections
+        const chunksSnap = await getDocs(collection(db, 'ptw_records', rec.id, 'chunks'));
+        chunksSnap.docs.forEach(d => batch.delete(d.ref));
+        // Delete the main record doc
+        batch.delete(doc(db, 'ptw_records', rec.id));
+      }
+      await batch.commit();
+      toast.success(`Seluruh data PTW kategori ${categoryToDelete.name} berhasil dihapus`);
+      setIsDeleteCategoryModalOpen(false);
+      setCategoryToDelete(null);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const confirmDeleteAll = async () => {
+    setSubmitting(true);
+    const toastId = toast.loading('Menghapus seluruh data PTW...');
+    try {
+      const allRecordsSnap = await getDocs(collection(db, 'ptw_records'));
+      if (allRecordsSnap.empty) {
+        toast.success('Tidak ada data PTW untuk dihapus', { id: toastId });
+        setIsDeleteAllModalOpen(false);
+        return;
+      }
+
+      let batch = writeBatch(db);
+      let opCount = 0;
+
+      for (const rec of allRecordsSnap.docs) {
+        const chunksSnap = await getDocs(collection(db, 'ptw_records', rec.id, 'chunks'));
+        for (const chunkDoc of chunksSnap.docs) {
+          batch.delete(chunkDoc.ref);
+          opCount++;
+          if (opCount >= 400) {
+            await batch.commit();
+            batch = writeBatch(db);
+            opCount = 0;
+          }
+        }
+
+        batch.delete(rec.ref);
+        opCount++;
+        if (opCount >= 400) {
+          await batch.commit();
+          batch = writeBatch(db);
+          opCount = 0;
+        }
+      }
+
+      if (opCount > 0) {
+        await batch.commit();
+      }
+
+      toast.success('Seluruh data PTW berhasil dihapus!', { id: toastId });
+      setIsDeleteAllModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      toast.error('Gagal menghapus data', { id: toastId });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const openEditModal = (record: PTWRecord) => {
+
     setSelectedRecord(record);
     setFormData({
       sequenceNumber: record.sequenceNumber.toString(),
@@ -307,6 +457,7 @@ export function PTWManagement() {
       endDate: record.endDate || '',
       notes: record.notes || ''
     });
+    setShouldDeleteFile(false);
     setIsEditModalOpen(true);
   };
 
@@ -321,12 +472,32 @@ export function PTWManagement() {
     });
     setSelectedRecord(null);
     setSelectedFile(null);
+    setShouldDeleteFile(false);
   };
 
   const filteredRecords = records.filter(r =>
     r.ptwNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.equipmentCode.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const groupedRecords = filteredRecords.reduce((acc, record) => {
+    const code = record.equipmentCode.toUpperCase() || 'LAINNYA';
+    if (!acc[code]) acc[code] = [];
+    acc[code].push(record);
+    return acc;
+  }, {} as Record<string, PTWRecord[]>);
+
+  useEffect(() => {
+    if (searchTerm) {
+      const activeGroups = [...new Set(filteredRecords.map(r => r.equipmentCode.toUpperCase()))];
+      const newExpanded: Record<string, boolean> = {};
+      activeGroups.forEach(g => {
+        newExpanded[g] = true;
+      });
+      setExpandedGroups(newExpanded);
+    }
+  }, [searchTerm, filteredRecords]);
+
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
@@ -341,15 +512,28 @@ export function PTWManagement() {
               <p className="text-indigo-300 text-sm">Kelola data Permit to Work secara terorganisir</p>
             </div>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => { resetForm(); setIsAddModalOpen(true); }}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-600/20 transition-all border border-indigo-400/30"
-          >
-            <Plus className="w-5 h-5" />
-            Tambah PTW Baru
-          </motion.button>
+          {isAdmin && (
+            <div className="flex flex-wrap items-center gap-3">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setIsDeleteAllModalOpen(true)}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-red-600/10 hover:bg-red-600/20 text-red-400 rounded-xl font-bold transition-all border border-red-500/20 shadow-lg shadow-red-500/5"
+              >
+                <Trash2 className="w-5 h-5" />
+                Hapus Semua PTW
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => { resetForm(); setIsAddModalOpen(true); }}
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-600/20 transition-all border border-indigo-400/30"
+              >
+                <Plus className="w-5 h-5" />
+                Tambah PTW Baru
+              </motion.button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -398,138 +582,212 @@ export function PTWManagement() {
           <p className="text-slate-400">Belum ada data PTW ditemukan</p>
         </div>
       ) : (
-        <>
-          {/* Desktop Table */}
-          <div className="hidden md:block bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-slate-700/50 overflow-hidden shadow-2xl">
-            <table className="w-full">
-              <thead className="bg-slate-800/50 border-b border-slate-700/50">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Nomor PTW</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Alat / Equipment</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Quarter</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Masa Berlaku</th>
-                  <th className="px-6 py-4 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-700/30">
-                {filteredRecords.map((record) => (
-                  <tr key={record.id} className="hover:bg-slate-800/30 transition group">
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-bold text-white bg-indigo-500/10 px-3 py-1 rounded-lg border border-indigo-500/20">
-                        {record.ptwNumber}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Package className="w-4 h-4 text-slate-500" />
-                        <span className="text-sm text-slate-200 font-medium">{record.equipmentCode}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-slate-300 bg-slate-700/30 px-2.5 py-0.5 rounded border border-slate-600/30">
-                        Q{parseInt(record.quarter)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-400">
-                      <div className="flex flex-col">
-                        <span className="text-xs text-slate-500 font-bold uppercase tracking-tighter">Masa Berlaku</span>
-                        <span className="text-white font-medium">
-                          {new Date(record.startDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} - {new Date(record.endDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-center gap-2">
-                        {record.fileName && record.totalChunks && (
-                          <button
-                            onClick={() => handleDownload(record)}
-                            className="p-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition border border-emerald-500/20"
-                            title="Download Lampiran"
-                          >
-                            <Download className="w-4 h-4" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => openEditModal(record)}
-                          className="p-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 rounded-lg transition border border-blue-500/20"
-                          title="Edit"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                         <button
-                          onClick={() => handleDelete(record)}
-                          className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition border border-red-500/20"
-                          title="Hapus"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="space-y-6">
+          {Object.keys(groupedRecords).sort().map((code) => {
+            const groupRecords = groupedRecords[code];
+            const isExpanded = !!expandedGroups[code];
+            
+            return (
+              <div key={code} className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-slate-700/50 overflow-hidden shadow-2xl transition-all duration-300">
+                {/* Collapsible Header */}
+                <div
+                  onClick={() => toggleGroup(code)}
+                  className="w-full flex items-center justify-between p-5 hover:bg-slate-800/20 transition-colors cursor-pointer text-left"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 shadow-md">
+                      <Package className="w-5 h-5 text-indigo-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white tracking-tight uppercase">{code}</h3>
+                      <p className="text-slate-400 text-xs font-semibold">{groupRecords.length} Dokumen PTW</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {isAdmin && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteCategory(code, groupRecords);
+                        }}
+                        className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition border border-red-500/20 flex items-center gap-1.5 relative z-10 cursor-pointer"
+                        title={`Hapus Seluruh Kategori ${code}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span className="hidden sm:inline text-xs font-bold">Hapus Kategori</span>
+                      </button>
+                    )}
+                    <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-indigo-400' : ''}`} />
+                  </div>
+                </div>
 
-          {/* Mobile Cards */}
-          <div className="md:hidden space-y-3">
-            {filteredRecords.map((record) => (
-              <div key={record.id} className="bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-4 shadow-lg">
-                <div className="flex items-start justify-between mb-3">
-                  <span className="text-sm font-bold text-white bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20">
-                    {record.ptwNumber}
-                  </span>
-                  <span className="text-xs text-slate-300 bg-slate-700/40 px-2.5 py-1 rounded-lg border border-slate-600/30 font-bold">
-                    Q{parseInt(record.quarter)}
-                  </span>
-                </div>
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center gap-2">
-                    <Package className="w-4 h-4 text-indigo-400 flex-shrink-0" />
-                    <span className="text-sm text-slate-200 font-medium">{record.equipmentCode}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-slate-500 flex-shrink-0" />
-                    <span className="text-sm text-slate-400">
-                      {new Date(record.startDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} - {new Date(record.endDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 pt-3 border-t border-slate-700/30">
-                  {record.fileName && record.totalChunks && (
-                    <button
-                      onClick={() => handleDownload(record)}
-                      className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-xl transition border border-emerald-500/20 text-sm font-medium"
+                {/* Collapsible Content */}
+                <AnimatePresence initial={false}>
+                  {isExpanded && (
+                    <motion.div
+                      key={`accordion-content-${code}`}
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.25, ease: 'easeInOut' }}
+                      className="border-t border-slate-850 overflow-hidden"
                     >
-                      <Download className="w-4 h-4" />
-                      File
-                    </button>
+                      <div className="p-4 sm:p-6 space-y-4">
+                        {/* Desktop Table inside group */}
+                        <div className="hidden md:block overflow-hidden rounded-xl border border-slate-800 bg-slate-950/20">
+                          <table className="w-full">
+                            <thead className="bg-slate-800/30 border-b border-slate-800/80">
+                              <tr>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Nomor PTW</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Quarter</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Masa Berlaku</th>
+                                <th className="px-6 py-4 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Aksi</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/50">
+                              {groupRecords.map((record) => (
+                                <tr key={record.id} className="hover:bg-slate-800/10 transition group">
+                                  <td className="px-6 py-4">
+                                    <span className="text-sm font-bold text-white bg-indigo-500/10 px-3 py-1 rounded-lg border border-indigo-500/20">
+                                      {record.ptwNumber}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <span className="text-sm text-slate-300 bg-slate-700/30 px-2.5 py-0.5 rounded border border-slate-600/30">
+                                      Q{parseInt(record.quarter)}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-slate-400">
+                                    <div className="flex flex-col">
+                                      <span className="text-xs text-slate-500 font-bold uppercase tracking-tighter">Masa Berlaku</span>
+                                      <span className="text-white font-medium">
+                                        {new Date(record.startDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} - {new Date(record.endDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <div className="flex items-center justify-center gap-2">
+                                      {record.fileName && record.totalChunks && (
+                                        <>
+                                          <button
+                                            onClick={() => handlePreview(record)}
+                                            className="p-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 rounded-lg transition border border-indigo-500/20"
+                                            title="Pratinjau PTW"
+                                          >
+                                            <Eye className="w-4 h-4" />
+                                          </button>
+                                          <button
+                                            onClick={() => handleDownload(record)}
+                                            className="p-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition border border-emerald-500/20"
+                                            title="Download Lampiran"
+                                          >
+                                            <Download className="w-4 h-4" />
+                                          </button>
+                                        </>
+                                      )}
+                                      {isAdmin && (
+                                        <>
+                                          <button
+                                            onClick={() => openEditModal(record)}
+                                            className="p-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 rounded-lg transition border border-blue-500/20"
+                                            title="Edit"
+                                          >
+                                            <Edit2 className="w-4 h-4" />
+                                          </button>
+                                          <button
+                                            onClick={() => handleDelete(record)}
+                                            className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition border border-red-500/20"
+                                            title="Hapus"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </button>
+                                        </>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Mobile Cards inside group */}
+                        <div className="md:hidden space-y-3">
+                          {groupRecords.map((record) => (
+                            <div key={record.id} className="bg-slate-950/20 rounded-xl border border-slate-800 p-4 shadow-sm">
+                              <div className="flex items-start justify-between mb-3">
+                                <span className="text-sm font-bold text-white bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20">
+                                  {record.ptwNumber}
+                                </span>
+                                <span className="text-xs text-slate-300 bg-slate-700/40 px-2.5 py-1 rounded-lg border border-slate-600/30 font-bold">
+                                  Q{parseInt(record.quarter)}
+                                </span>
+                              </div>
+                              <div className="space-y-2 mb-4">
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                                  <span className="text-sm text-slate-400">
+                                    {new Date(record.startDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} - {new Date(record.endDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                  </span>
+                                </div>
+                              </div>
+                              {((record.fileName && record.totalChunks) || isAdmin) && (
+                                <div className="flex items-center gap-2 pt-3 border-t border-slate-800">
+                                  {record.fileName && record.totalChunks && (
+                                    <>
+                                      <button
+                                        onClick={() => handlePreview(record)}
+                                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 rounded-lg transition border border-indigo-500/20 text-sm font-medium"
+                                      >
+                                        <Eye className="w-4 h-4" />
+                                        Preview
+                                      </button>
+                                      <button
+                                        onClick={() => handleDownload(record)}
+                                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition border border-emerald-500/20 text-sm font-medium"
+                                      >
+                                        <Download className="w-4 h-4" />
+                                        File
+                                      </button>
+                                    </>
+                                  )}
+                                  {isAdmin && (
+                                    <>
+                                      <button
+                                        onClick={() => openEditModal(record)}
+                                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 rounded-lg transition border border-blue-500/20 text-sm font-medium"
+                                      >
+                                        <Edit2 className="w-4 h-4" />
+                                        Edit
+                                      </button>
+                                      <button
+                                        onClick={() => handleDelete(record)}
+                                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition border border-red-500/20 text-sm font-medium"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                        Hapus
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
                   )}
-                  <button
-                    onClick={() => openEditModal(record)}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 rounded-xl transition border border-blue-500/20 text-sm font-medium"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                    Edit
-                  </button>
-                   <button
-                    onClick={() => handleDelete(record)}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-xl transition border border-red-500/20 text-sm font-medium"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Hapus
-                  </button>
-                </div>
+                </AnimatePresence>
               </div>
-            ))}
-          </div>
-        </>
+            );
+          })}
+        </div>
       )}
 
       {createPortal(
         <AnimatePresence>
           {(isAddModalOpen || isEditModalOpen) && (
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4 py-10 overflow-y-auto">
+            <div key="add-edit-modal-wrapper" className="fixed inset-0 z-[9999] flex items-center justify-center px-4 py-10 overflow-y-auto">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -654,13 +912,23 @@ export function PTWManagement() {
                       FILE PTW YANG DIUPLOAD HARUS YANG SUDAH TTD TDE
                     </p>
                   </div>
-                  {isEditModalOpen && selectedRecord?.totalChunks && selectedRecord?.fileName && !selectedFile && (
+                  {isEditModalOpen && selectedRecord?.totalChunks && selectedRecord?.fileName && !selectedFile && !shouldDeleteFile && (
                     <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl mb-2">
                       <File className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                       <span className="text-sm text-emerald-300 truncate flex-1">{selectedRecord.fileName}</span>
-                      <button type="button" onClick={() => handleDownload(selectedRecord)} className="text-emerald-400 hover:text-emerald-300">
-                        <Download className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button type="button" onClick={() => handleDownload(selectedRecord)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition" title="Unduh">
+                          <Download className="w-4 h-4" />
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => setShouldDeleteFile(true)} 
+                          className="p-1.5 hover:bg-red-500/20 text-red-400 rounded-lg transition" 
+                          title="Hapus Lampiran"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   )}
                   <label className="flex items-center gap-3 px-5 py-3.5 bg-white/5 border border-white/10 border-dashed rounded-2xl text-slate-400 hover:border-indigo-500/50 hover:text-indigo-400 transition cursor-pointer">
@@ -718,7 +986,7 @@ export function PTWManagement() {
           )}
 
           {isDeleteModalOpen && (
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
+            <div key="delete-modal-wrapper" className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -756,6 +1024,98 @@ export function PTWManagement() {
                       <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
                       'Ya, Hapus'
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {isDeleteCategoryModalOpen && (
+            <div key="delete-category-modal-wrapper" className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsDeleteCategoryModalOpen(false)}
+                className="fixed inset-0 bg-black/90 backdrop-blur-md"
+              />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="relative w-full max-w-md bg-slate-900 rounded-3xl border border-white/10 shadow-2xl p-8 text-center"
+              >
+                <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/20">
+                  <Trash2 className="w-10 h-10 text-red-500" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-2">Hapus Kategori PTW?</h3>
+                <p className="text-slate-400 mb-8">
+                  Apakah Anda yakin ingin menghapus kategori <span className="text-white font-bold">{categoryToDelete?.name}</span> beserta seluruh <span className="text-white font-bold">{categoryToDelete?.records.length}</span> dokumen PTW di dalamnya?
+                  Tindakan ini tidak dapat dibatalkan.
+                </p>
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setIsDeleteCategoryModalOpen(false)}
+                    className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold transition"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={confirmDeleteCategory}
+                    disabled={submitting}
+                    className="flex-1 py-4 bg-red-600 hover:bg-red-500 disabled:bg-red-800 text-white rounded-2xl font-bold shadow-xl shadow-red-900/20 transition flex items-center justify-center gap-2"
+                  >
+                    {submitting ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      'Ya, Hapus Semua'
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {isDeleteAllModalOpen && (
+            <div key="delete-all-modal-wrapper" className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsDeleteAllModalOpen(false)}
+                className="fixed inset-0 bg-black/90 backdrop-blur-md"
+              />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="relative w-full max-w-md bg-slate-900 rounded-3xl border border-white/10 shadow-2xl p-8 text-center"
+              >
+                <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/20">
+                  <Trash2 className="w-10 h-10 text-red-500" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-2">Hapus SELURUH PTW?</h3>
+                <p className="text-slate-400 mb-8">
+                  Apakah Anda yakin ingin menghapus <span className="text-white font-bold">SELURUH ({records.length})</span> data dokumen PTW beserta file lampirannya dari database?
+                  Tindakan ini permanen dan tidak dapat dibatalkan!
+                </p>
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setIsDeleteAllModalOpen(false)}
+                    className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold transition"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={confirmDeleteAll}
+                    disabled={submitting}
+                    className="flex-1 py-4 bg-red-600 hover:bg-red-500 disabled:bg-red-800 text-white rounded-2xl font-bold shadow-xl shadow-red-900/20 transition flex items-center justify-center gap-2"
+                  >
+                    {submitting ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      'Ya, Hapus Semua'
                     )}
                   </button>
                 </div>

@@ -26,7 +26,7 @@ export function MainApp() {
 
   const navItems = [
     { id: 'admin', label: 'Dashboard Admin', icon: Shield, color: 'from-purple-600 to-pink-600', show: isAdmin },
-    { id: 'ptw', label: 'PTW', icon: Clipboard, color: 'from-indigo-600 to-blue-600', show: isAdmin },
+    { id: 'ptw', label: 'PTW', icon: Clipboard, color: 'from-indigo-600 to-blue-600', show: isAdmin || userRole === 'engineer' || userRole === 'standby_engineer' },
     { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: true },
     { id: 'corrective', label: 'Corrective Maint.', icon: PenTool, color: 'from-red-600 to-red-700', show: true },
     { id: 'inventory', label: 'Peminjaman Alat', icon: Shield, color: 'from-indigo-600 to-indigo-700', show: true },

@@ -62,6 +62,17 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
     const [isDraftLoading, setIsDraftLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
     const [isExported, setIsExported] = useState(false);
+    const [exportedUtt, setExportedUtt] = useState(false);
+    const [exportedNeutra, setExportedNeutra] = useState(false);
+
+    const isInitialMount = useRef(true);
+
+    useEffect(() => {
+        if (user?.email) {
+            setExportedUtt(localStorage.getItem(`exportedUtt_${mode}_${user.email}`) === 'true');
+            setExportedNeutra(localStorage.getItem(`exportedNeutra_${mode}_${user.email}`) === 'true');
+        }
+    }, [user?.email, mode]);
 
     useEffect(() => {
         if (editingData && editingData.documentType === 'hse') {
@@ -155,6 +166,11 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                     if (saved.photos && saved.photos.length > 0) {
                         setPhotos(saved.photos);
                     }
+                    if (saved.sioOperatorName) setSioOperatorName(saved.sioOperatorName);
+                    if (saved.sioNumber) setSioNumber(saved.sioNumber);
+                    if (saved.sioExpiryDate) setSioExpiryDate(saved.sioExpiryDate);
+                    if (saved.sioPhotos) setSioPhotos(saved.sioPhotos);
+                    if (saved.siloPdfUrl) setSiloPdfUrl(saved.siloPdfUrl);
                 } catch (err) {
                     console.error('Failed to load HSE draft:', err);
                 }
@@ -188,6 +204,16 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                     description: p.description,
                     label: p.label
                 })),
+                sioOperatorName,
+                sioNumber,
+                sioExpiryDate,
+                sioPhotos: sioPhotos.map(p => ({
+                    id: p.id,
+                    dataUrl: p.dataUrl,
+                    description: p.description,
+                    label: p.label
+                })),
+                siloPdfUrl,
                 timestamp: new Date().getTime()
             };
             try {
@@ -199,7 +225,29 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
 
         const timeoutId = setTimeout(saveDraft, 2000);
         return () => clearTimeout(timeoutId);
-    }, [aktivitas, lokasi, personil, pic, anggota, inspectorK3, maintenanceCategory, checklist, photos, user?.email, editingData, isDraftLoading, isExporting, mode]);
+    }, [
+        aktivitas, lokasi, personil, pic, anggota, inspectorK3, maintenanceCategory, checklist, photos,
+        sioOperatorName, sioNumber, sioExpiryDate, sioPhotos, siloPdfUrl,
+        user?.email, editingData, isDraftLoading, isExporting, mode
+    ]);
+
+    useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+        }
+        // Reset export flags when user modifies any input field
+        setIsExported(false);
+        setExportedUtt(false);
+        setExportedNeutra(false);
+        if (user?.email) {
+            localStorage.removeItem(`exportedUtt_${mode}_${user.email}`);
+            localStorage.removeItem(`exportedNeutra_${mode}_${user.email}`);
+        }
+    }, [
+        aktivitas, lokasi, personil, pic, anggota, inspectorK3, maintenanceCategory, checklist, photos,
+        sioOperatorName, sioNumber, sioExpiryDate, sioPhotos, siloFile
+    ]);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const sioLabelRef = useRef<string>('');
@@ -472,9 +520,51 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
 
             if (!savedDocId) throw new Error('Gagal mendapatkan ID laporan setelah disimpan');
 
-            setIsExported(true);
-            if (user?.email && !editingData) {
-                draftStorage.remove(`hse_draft_${mode}_${user.email}`).catch(console.error);
+            // Track which report types have been exported
+            const storedUttKey = `exportedUtt_${mode}_${user?.email}`;
+            const storedNeutraKey = `exportedNeutra_${mode}_${user?.email}`;
+
+            if (reportMode === 'utt') {
+                if (user?.email) localStorage.setItem(storedUttKey, 'true');
+                setExportedUtt(true);
+            } else if (reportMode === 'neutradc') {
+                if (user?.email) localStorage.setItem(storedNeutraKey, 'true');
+                setExportedNeutra(true);
+            }
+
+            const isUttExported = (user?.email && localStorage.getItem(storedUttKey) === 'true') || exportedUtt;
+            const isNeutraExported = (user?.email && localStorage.getItem(storedNeutraKey) === 'true') || exportedNeutra;
+
+            const bothExported = isUttExported && isNeutraExported;
+
+            if (bothExported) {
+                setIsExported(true);
+                if (user?.email && !editingData) {
+                    await draftStorage.remove(`hse_draft_${mode}_${user.email}`).catch(console.error);
+                    localStorage.removeItem(storedUttKey);
+                    localStorage.removeItem(storedNeutraKey);
+                    
+                    // Reset all form state variables to empty/initial values
+                    setAktivitas('');
+                    setLokasi('');
+                    setPersonil('');
+                    setPic('');
+                    setAnggota('');
+                    setInspectorK3('');
+                    setMaintenanceCategory('');
+                    setChecklist({ ...INITIAL_HSE_CHECKLIST });
+                    setPhotos([]);
+                    setSioOperatorName('');
+                    setSioNumber('');
+                    setSioExpiryDate('');
+                    setSioPhotos([]);
+                    setSiloFile(null);
+                    setSiloPdfUrl('');
+                    
+                    setExportedUtt(false);
+                    setExportedNeutra(false);
+                    setIsExported(false);
+                }
             }
 
             toast.success(`✅ PDF ${reportMode.toUpperCase()} berhasil dibuat & disimpan ke ISO!`, { id: toastId, duration: 4000 });
@@ -484,6 +574,34 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
         } finally {
             setIsGeneratingPdf(false);
             setIsExporting(false);
+        }
+    };
+
+    const handleResetForm = () => {
+        if (window.confirm("Apakah Anda yakin ingin mengosongkan semua data input laporan ini?")) {
+            setAktivitas('');
+            setLokasi('');
+            setPersonil('');
+            setPic('');
+            setAnggota('');
+            setInspectorK3('');
+            setMaintenanceCategory('');
+            setChecklist({ ...INITIAL_HSE_CHECKLIST });
+            setPhotos([]);
+            setSioOperatorName('');
+            setSioNumber('');
+            setSioExpiryDate('');
+            setSioPhotos([]);
+            setSiloFile(null);
+            setSiloPdfUrl('');
+            
+            if (user?.email) {
+                draftStorage.remove(`hse_draft_${mode}_${user.email}`).catch(console.error);
+            }
+            setIsExported(false);
+            setExportedUtt(false);
+            setExportedNeutra(false);
+            toast.success("Formulir berhasil dikosongkan");
         }
     };
 
@@ -810,7 +928,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                     >
                         <div className="px-5 py-4 border-b border-slate-800/60 flex items-center gap-3">
                             <div className="p-2 bg-blue-500/15 rounded-lg"><ShieldCheck className="w-4 h-4 text-blue-400" /></div>
-                            <h3 className="text-sm font-semibold text-white">Integrasi Data SIO & SILO</h3>
+                            <h3 className="text-sm font-semibold text-white">Data SIO & SILO</h3>
                         </div>
                         <div className="p-5 space-y-6">
                             <div className="space-y-4">
@@ -836,33 +954,44 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                         {['KTP', 'SIM', 'KARTU SIO', 'LAINNYA'].map(label => {
                                             const photo = sioPhotos.find(p => p.label === label);
                                             return (
-                                                <div key={label} className="relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-950 border border-slate-800 group">
-                                                    {photo ? (
-                                                        <>
-                                                            <img src={photo.dataUrl} className="w-full h-full object-cover" alt={label} />
-                                                            <div className="absolute top-1 left-1 bg-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded text-white">{label}</div>
-                                                            <button onClick={() => setSioPhotos(prev => prev.filter(p => p.label !== label))} className="absolute top-1 right-1 p-1 bg-red-600 rounded text-white transition shadow-lg"><Trash2 className="w-3 h-3" /></button>
-                                                        </>
-                                                    ) : (
-                                                        <button 
-                                                            onClick={() => {
-                                                                const input = document.createElement('input');
-                                                                input.type = 'file';
-                                                                input.accept = 'image/*';
-                                                                input.onchange = async (e: any) => {
-                                                                    const file = e.target.files?.[0];
-                                                                    if (file) {
-                                                                        const dataUrl = await compressImage(file);
-                                                                        setSioPhotos(prev => [...prev.filter(p => p.label !== label), { id: Date.now().toString(), dataUrl, label, description: '' }]);
-                                                                    }
-                                                                };
-                                                                input.click();
-                                                            }}
-                                                            className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-600 hover:text-blue-400 hover:bg-blue-500/5 transition-all"
-                                                        >
-                                                            <Camera className="w-5 h-5" />
-                                                            <span className="text-[8px] font-black uppercase tracking-tighter">{label}</span>
-                                                        </button>
+                                                <div key={label} className="flex flex-col gap-2">
+                                                    <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-950 border border-slate-800 group">
+                                                        {photo ? (
+                                                            <>
+                                                                <img src={photo.dataUrl} className="w-full h-full object-cover" alt={label} />
+                                                                <div className="absolute top-1 left-1 bg-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded text-white">{label}</div>
+                                                                <button onClick={() => setSioPhotos(prev => prev.filter(p => p.label !== label))} className="absolute top-1 right-1 p-1 bg-red-600 rounded text-white transition shadow-lg"><Trash2 className="w-3 h-3" /></button>
+                                                            </>
+                                                        ) : (
+                                                            <button 
+                                                                onClick={() => {
+                                                                    const input = document.createElement('input');
+                                                                    input.type = 'file';
+                                                                    input.accept = 'image/*';
+                                                                    input.onchange = async (e: any) => {
+                                                                        const file = e.target.files?.[0];
+                                                                        if (file) {
+                                                                            const dataUrl = await compressImage(file);
+                                                                            setSioPhotos(prev => [...prev.filter(p => p.label !== label), { id: Date.now().toString(), dataUrl, label, description: '' }]);
+                                                                        }
+                                                                    };
+                                                                    input.click();
+                                                                }}
+                                                                className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-600 hover:text-blue-400 hover:bg-blue-500/5 transition-all"
+                                                            >
+                                                                <Camera className="w-5 h-5" />
+                                                                <span className="text-[8px] font-black uppercase tracking-tighter">{label}</span>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                    {label === 'LAINNYA' && photo && (
+                                                        <input 
+                                                            type="text" 
+                                                            value={photo.description || ''} 
+                                                            onChange={e => setSioPhotos(prev => prev.map(p => p.label === 'LAINNYA' ? { ...p, description: e.target.value } : p))} 
+                                                            placeholder="Keterangan..." 
+                                                            className="w-full px-3 py-1.5 bg-slate-900/40 border border-slate-800/60 rounded-lg text-white text-[11px] outline-none placeholder-slate-600 focus:border-blue-500/30 transition-all"
+                                                        />
                                                     )}
                                                 </div>
                                             );
@@ -933,7 +1062,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                     </button>
                 </div>
 
-                <div className="flex justify-center">
+                <div className="flex justify-center gap-6">
                     <button
                         onClick={() => handleSave()}
                         disabled={isSaving || isGeneratingPdf}
@@ -942,6 +1071,16 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                         {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                         Simpan Draft
                     </button>
+                    {!editingData && (
+                        <button
+                            onClick={handleResetForm}
+                            disabled={isSaving || isGeneratingPdf}
+                            className="flex items-center gap-2 px-6 py-2 text-slate-500 hover:text-red-400 hover:bg-red-400/5 rounded-lg border border-transparent hover:border-red-500/10 transition text-xs font-bold uppercase tracking-widest"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            Kosongkan Form
+                        </button>
+                    )}
                 </div>
             </div>
 

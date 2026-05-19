@@ -135,6 +135,14 @@ export function FileManagement({
         ? propAllowUpload
         : (userRole === 'admin' || userRole === collectionName || (collectionName === 'files' && (userRole === 'engineer' || userRole === 'standby_engineer')));
     const canDelete = isAdmin || isTDEorCBRE || isHSE || userRole === 'engineer' || userRole === 'standby_engineer';
+    const isEngineer = userRole === 'engineer' || userRole === 'standby_engineer';
+
+    useEffect(() => {
+        if (isEngineer && !simpleMode) {
+            setSelectedCategory('MOP');
+        }
+    }, [isEngineer, simpleMode]);
+
 
     const [files, setFiles] = useState<FileData[]>([]);
     const [loading, setLoading] = useState(true);
@@ -431,6 +439,9 @@ export function FileManagement({
     };
 
     const filteredFiles = files.filter((file) => {
+        if (isEngineer && file.category && !['MOP', 'PTW'].includes(file.category)) {
+            return false;
+        }
         const matchesSearch = file.fileName
             .toLowerCase()
             .includes(searchQuery.toLowerCase());
@@ -534,7 +545,7 @@ export function FileManagement({
                                         disabled={uploading}
                                         className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                                     >
-                                        {FILE_CATEGORIES.map((cat) => (
+                                        {(isEngineer ? ['MOP', 'PTW'] : FILE_CATEGORIES).map((cat) => (
                                             <option key={cat} value={cat}>
                                                 {cat}
                                             </option>
@@ -698,7 +709,7 @@ export function FileManagement({
                                 className="w-full pl-9 pr-4 py-2 sm:py-2.5 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm sm:text-base focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none cursor-pointer outline-none transition"
                             >
                                 <option value="All">Semua Kategori</option>
-                                {FILE_CATEGORIES.filter((cat) => cat !== 'Custom').map((cat) => (
+                                {((isEngineer ? ['MOP', 'PTW'] : FILE_CATEGORIES).filter((cat) => cat !== 'Custom')).map((cat) => (
                                     <option key={cat} value={cat}>
                                         {cat}
                                     </option>
