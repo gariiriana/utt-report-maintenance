@@ -36,4 +36,5 @@ type IMaintenanceProgressRepository interface {
 	List(ctx context.Context) ([]*firestore.DocumentSnapshot, error)
 	Update(ctx context.Context, id string, data map[string]interface{}) error
 	Delete(ctx context.Context, id string) error
+	BatchUpdate(ctx context.Context, updates map[string]map[string]interface{}) error
 }

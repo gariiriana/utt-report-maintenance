@@ -15,6 +15,15 @@ interface CameraModalProps {
   specificDetail?: string;
 }
 
+interface LocationCache {
+  latitude: number;
+  longitude: number;
+  coordsString: string;
+  address: string;
+  timestamp: number;
+}
+let lastLocationCache: LocationCache | null = null;
+
 export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentasi', description, maintenanceName, specificDetail }: CameraModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -67,6 +76,21 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
           const { latitude, longitude } = pos.coords;
           const coordsString = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
 
+          // Check Geocoding Cache Suitability
+          if (
+            lastLocationCache &&
+            !retry &&
+            Date.now() - lastLocationCache.timestamp < 120000 &&
+            Math.abs(latitude - lastLocationCache.latitude) < 0.00012 &&
+            Math.abs(longitude - lastLocationCache.longitude) < 0.00012
+          ) {
+            console.log('🌍 [GPS Cache] CACHE HIT: Menggunakan alamat cache instan untuk mencegah rate limit OSM.', lastLocationCache);
+            setLocationData({ coords: coordsString, address: lastLocationCache.address, loading: false });
+            return;
+          }
+
+          console.log('🌍 [GPS Cache] CACHE MISS: Melakukan request reverse geocode segar ke Nominatim OSM API (forced refresh:', retry, ')');
+
           try {
 
             if (!navigator.onLine) {
@@ -101,6 +125,15 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
             const fullAddressParts = [pCode, desa, kecamatan, provinsi, kodepos].filter(Boolean);
             const detailAddress = fullAddressParts.length >= 3 ? fullAddressParts.join(', ') : '';
+
+            // Update Cache
+            lastLocationCache = {
+              latitude,
+              longitude,
+              coordsString,
+              address: detailAddress,
+              timestamp: Date.now()
+            };
 
             setLocationData({ coords: coordsString, address: detailAddress, loading: false });
           } catch (err: unknown) {

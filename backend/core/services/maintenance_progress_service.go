@@ -191,15 +191,21 @@ func (s *maintenanceProgressService) EndDay(ctx context.Context) error {
 		return err
 	}
 
+	if len(progressList) == 0 {
+		return nil
+	}
+
+	updates := make(map[string]map[string]interface{})
 	for _, p := range progressList {
-		data := map[string]interface{}{
+		updates[p.ID] = map[string]interface{}{
 			"yesterday_qty":     p.ActualQty,
 			"yesterday_percent": p.ActualPercent,
 			"updated_at":        time.Now(),
 		}
-		if err := s.repo.Update(ctx, p.ID, data); err != nil {
-			return fmt.Errorf("failed to update record %s: %w", p.ID, err)
-		}
+	}
+
+	if err := s.repo.BatchUpdate(ctx, updates); err != nil {
+		return fmt.Errorf("failed to batch update records: %w", err)
 	}
 	return nil
 }

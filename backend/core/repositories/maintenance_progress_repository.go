@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"fmt"
 
 	"cloud.google.com/go/firestore"
 	"google.golang.org/api/iterator"
@@ -52,4 +53,37 @@ func (r *maintenanceProgressRepository) Update(ctx context.Context, id string, d
 func (r *maintenanceProgressRepository) Delete(ctx context.Context, id string) error {
 	_, err := r.client.Collection(r.CollectionName()).Doc(id).Delete(ctx)
 	return err
+}
+
+func (r *maintenanceProgressRepository) BatchUpdate(ctx context.Context, updates map[string]map[string]interface{}) error {
+	const maxBatchSize = 400
+
+	type updateItem struct {
+		id   string
+		data map[string]interface{}
+	}
+	items := make([]updateItem, 0, len(updates))
+	for id, data := range updates {
+		items = append(items, updateItem{id: id, data: data})
+	}
+
+	for i := 0; i < len(items); i += maxBatchSize {
+		end := i + maxBatchSize
+		if end > len(items) {
+			end = len(items)
+		}
+
+		batch := r.client.Batch()
+		coll := r.client.Collection(r.CollectionName())
+		for _, item := range items[i:end] {
+			docRef := coll.Doc(item.id)
+			batch.Set(docRef, item.data, firestore.MergeAll)
+		}
+
+		_, err := batch.Commit(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to commit batch chunk %d-%d: %w", i, end, err)
+		}
+	}
+	return nil
 }
