@@ -507,8 +507,9 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
             const formData = buildFormData();
             formData.reportType = reportMode;
 
+            const shouldAutoOpen = userRole === 'hse' && user?.email?.toLowerCase() !== 'hsemamik@gmail.com';
             const [, savedDocId] = await Promise.all([
-                generateHSEPdf(formData, userRole === 'hse').catch((pdfErr) => {
+                generateHSEPdf(formData, shouldAutoOpen).catch((pdfErr) => {
                     console.error('PDF generation failed:', pdfErr);
                     throw new Error(`Gagal membuat PDF: ${(pdfErr as Error)?.message || 'Terjadi kesalahan'}`);
                 }),
@@ -532,8 +533,8 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                 setExportedNeutra(true);
             }
 
-            const isUttExported = (user?.email && localStorage.getItem(storedUttKey) === 'true') || exportedUtt;
-            const isNeutraExported = (user?.email && localStorage.getItem(storedNeutraKey) === 'true') || exportedNeutra;
+            const isUttExported = reportMode === 'utt' || (user?.email ? localStorage.getItem(storedUttKey) === 'true' : false);
+            const isNeutraExported = reportMode === 'neutradc' || (user?.email ? localStorage.getItem(storedNeutraKey) === 'true' : false);
 
             const bothExported = isUttExported && isNeutraExported;
 

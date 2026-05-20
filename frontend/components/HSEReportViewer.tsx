@@ -46,7 +46,7 @@ interface ReportData {
 }
 
 export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
-    const { userRole } = useAuth();
+    const { user, userRole } = useAuth();
     const [report, setReport] = useState<ReportData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -123,7 +123,8 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                 date: report.date,
                 reportType: report.reportType,
             };
-            await generateHSEPdf(formData, userRole === 'hse');
+            const shouldAutoOpen = userRole === 'hse' && user?.email?.toLowerCase() !== 'hsemamik@gmail.com';
+            await generateHSEPdf(formData, shouldAutoOpen);
         } catch (err) {
             console.error(err);
         } finally {

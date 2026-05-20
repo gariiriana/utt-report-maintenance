@@ -555,7 +555,8 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         maintenanceType: hseData.maintenanceType || 'OTHER'
       };
 
-      await generateHSEPdf(formData, userRole === 'hse');
+      const shouldAutoOpen = userRole === 'hse' && user?.email?.toLowerCase() !== 'hsemamik@gmail.com';
+      await generateHSEPdf(formData, shouldAutoOpen);
       toast.success('PDF HSE berhasil diunduh!', { id: 'download-hse' });
     } catch (error) {
       console.error('Download HSE error:', error);
