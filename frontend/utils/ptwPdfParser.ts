@@ -293,7 +293,10 @@ function parsePTWFromText(text: string): Partial<PTWExtractedData> {
  */
 export function parsePTWFromFilename(filename: string): Partial<PTWExtractedData> {
   const result: Partial<PTWExtractedData> = {};
-  const cleanName = filename.replace(/\.[^/.]+$/, ""); // Remove extension
+  let cleanName = filename.replace(/\.[^/.]+$/, ""); // Remove extension
+
+  // Normalize en-dashes, em-dashes, and alternative dashes to standard hyphens
+  cleanName = cleanName.replace(/[\u2013\u2014\u2212]/g, "-");
 
   // 1. Try to find equipment code (common codes like WLD, AC, etc.)
   const cleanForEq = cleanName.replace(/\b(PTW|PM|HSE|TDE|PDF)\b/gi, '').trim();
@@ -303,16 +306,30 @@ export function parsePTWFromFilename(filename: string): Partial<PTWExtractedData
     result.equipmentCode = eqMatch[1].toUpperCase();
   }
 
-  // 2. Try to find dates like "4 - 10 Mei 2026"
-  const rangeMatch = cleanName.match(/(\d{1,2})\s*[\-\s]+(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/i);
-  if (rangeMatch) {
-    const startDay = rangeMatch[1];
-    const endDay = rangeMatch[2];
-    const monthName = rangeMatch[3];
-    const year = rangeMatch[4];
+  // 2. Try to find date ranges
+  const multiMonthMatch = cleanName.match(/(\d{1,2})\s+([A-Za-z]+)\s*[\-\s]+\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/i);
+  const singleMonthMatch = cleanName.match(/(\d{1,2})\s*[\-\s]+\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/i);
+
+  let rangeIndex = -1;
+  if (multiMonthMatch) {
+    const startDay = multiMonthMatch[1];
+    const startMonth = multiMonthMatch[2];
+    const endDay = multiMonthMatch[3];
+    const endMonth = multiMonthMatch[4];
+    const year = multiMonthMatch[5];
+
+    result.startDate = parseIndonesianDate(`${startDay} ${startMonth} ${year}`);
+    result.endDate = parseIndonesianDate(`${endDay} ${endMonth} ${year}`);
+    rangeIndex = multiMonthMatch.index !== undefined ? multiMonthMatch.index : -1;
+  } else if (singleMonthMatch) {
+    const startDay = singleMonthMatch[1];
+    const endDay = singleMonthMatch[2];
+    const monthName = singleMonthMatch[3];
+    const year = singleMonthMatch[4];
 
     result.startDate = parseIndonesianDate(`${startDay} ${monthName} ${year}`);
     result.endDate = parseIndonesianDate(`${endDay} ${monthName} ${year}`);
+    rangeIndex = singleMonthMatch.index !== undefined ? singleMonthMatch.index : -1;
   }
 
   // 3. Try to guess sequence number if present in filename
@@ -324,8 +341,8 @@ export function parsePTWFromFilename(filename: string): Partial<PTWExtractedData
 
   // 4. Try to guess maintenance name (part before the date range, cleaned from "PTW" prefix)
   let maintenanceName = '';
-  if (rangeMatch && rangeMatch.index !== undefined) {
-    const beforeDate = cleanName.substring(0, rangeMatch.index).trim();
+  if (rangeIndex !== -1) {
+    const beforeDate = cleanName.substring(0, rangeIndex).trim();
     maintenanceName = beforeDate.replace(/^\bPTW\b/gi, '').trim();
   } else {
     const pmMatch = cleanName.match(/(PM\s+[A-Z0-9\s\-]+|Maintenance\s+[A-Z0-9\s\-]+)/i);
