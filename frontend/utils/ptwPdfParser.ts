@@ -295,8 +295,17 @@ export function parsePTWFromFilename(filename: string): Partial<PTWExtractedData
   const result: Partial<PTWExtractedData> = {};
   let cleanName = filename.replace(/\.[^/.]+$/, ""); // Remove extension
 
+  // Normalize underscores to spaces for word boundary matching
+  cleanName = cleanName.replace(/_/g, " ");
+
   // Normalize en-dashes, em-dashes, and alternative dashes to standard hyphens
-  cleanName = cleanName.replace(/[\u2013\u2014\u2212]/g, "-");
+  cleanName = cleanName.replace(/[\u2010\u2011\u2012\u2013\u2014\u2015\u2212\u00ad]/g, "-");
+
+  // Normalize all common space-like/invisible characters to standard ASCII space
+  cleanName = cleanName.replace(/[\u00a0\u2000-\u200b\u202f\u205f\u3000]/g, " ");
+
+  // Clean consecutive spaces
+  cleanName = cleanName.replace(/\s+/g, " ").trim();
 
   // 1. Try to find equipment code (common codes like WLD, AC, etc.)
   const cleanForEq = cleanName.replace(/\b(PTW|PM|HSE|TDE|PDF)\b/gi, '').trim();
@@ -343,15 +352,23 @@ export function parsePTWFromFilename(filename: string): Partial<PTWExtractedData
   let maintenanceName = '';
   if (rangeIndex !== -1) {
     const beforeDate = cleanName.substring(0, rangeIndex).trim();
-    maintenanceName = beforeDate.replace(/^\bPTW\b/gi, '').trim();
+    maintenanceName = beforeDate.replace(/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i, '').trim();
   } else {
     const pmMatch = cleanName.match(/(PM\s+[A-Z0-9\s\-]+|Maintenance\s+[A-Z0-9\s\-]+)/i);
     if (pmMatch) {
       maintenanceName = pmMatch[1].trim();
+    } else if (seqMatch && seqMatch.index !== undefined && seqMatch.index > 0) {
+      const beforeSeq = cleanName.substring(0, seqMatch.index).trim();
+      maintenanceName = beforeSeq.replace(/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i, '').trim();
     }
   }
   if (maintenanceName) {
     result.maintenanceName = maintenanceName;
+    // If no specific equipment code was found, use maintenanceName as the equipment code
+    // e.g. "PTW Chiller 19-25 Sep 2025 0224" → equipmentCode = "Chiller"
+    if (!result.equipmentCode) {
+      result.equipmentCode = maintenanceName.toUpperCase();
+    }
   }
 
   if (result.startDate) {
