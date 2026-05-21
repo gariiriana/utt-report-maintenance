@@ -983,8 +983,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Nama Maintenance</label>
+                  <label htmlFor="maintenance-name" className="block text-sm font-medium text-slate-400 mb-2">Nama Maintenance</label>
                   <input
+                    id="maintenance-name"
+                    title="Nama Maintenance"
                     type="text"
                     value={maintenanceName}
                     onChange={e => setMaintenanceName(e.target.value)}
@@ -993,8 +995,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Detail Unit Maintenance</label>
+                  <label htmlFor="specific-detail" className="block text-sm font-medium text-slate-400 mb-2">Detail Unit Maintenance</label>
                   <input
+                    id="specific-detail"
+                    title="Detail Unit Maintenance"
                     type="text"
                     value={specificDetail}
                     onChange={(e) => setSpecificDetail(e.target.value)}
@@ -1003,12 +1007,22 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Waktu Maintenance</label>
-                  <input type="date" value={maintenanceTime} onChange={(e) => setMaintenanceTime(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500" />
+                  <label htmlFor="maintenance-time" className="block text-sm font-medium text-slate-400 mb-2">Waktu Maintenance</label>
+                  <input
+                    id="maintenance-time"
+                    title="Waktu Maintenance"
+                    placeholder="Pilih tanggal"
+                    type="date"
+                    value={maintenanceTime}
+                    onChange={(e) => setMaintenanceTime(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-2">Situs / Proyek</label>
+                  <label htmlFor="company-type" className="block text-sm font-medium text-slate-400 mb-2">Situs / Proyek</label>
                   <select
+                    id="company-type"
+                    title="Situs / Proyek"
                     value={companyType}
                     onChange={e => setCompanyType(e.target.value as 'neutra' | 'bri')}
                     className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer pr-10"
@@ -1023,8 +1037,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               <div className="mt-8 select-none">
                 <div className="flex items-center bg-slate-950/50 backdrop-blur-md border border-slate-800/50 rounded-t-xl overflow-hidden h-10 shadow-2xl">
                   <div className="flex items-center px-2 border-r border-slate-800/50 gap-1 shrink-0">
-                    <button onClick={() => scrollTabs('left')} className="p-1.5 hover:bg-white/5 transition-colors rounded-lg text-slate-500 hover:text-blue-400"><ChevronLeft className="w-4 h-4" /></button>
-                    <button onClick={() => scrollTabs('right')} className="p-1.5 hover:bg-white/5 transition-colors rounded-lg text-slate-500 hover:text-blue-400"><ChevronRight className="w-4 h-4" /></button>
+                    <button onClick={() => scrollTabs('left')} title="Geser Tab Kiri" aria-label="Geser tab ke kiri" className="p-1.5 hover:bg-white/5 transition-colors rounded-lg text-slate-500 hover:text-blue-400"><ChevronLeft className="w-4 h-4" /></button>
+                    <button onClick={() => scrollTabs('right')} title="Geser Tab Kanan" aria-label="Geser tab ke kanan" className="p-1.5 hover:bg-white/5 transition-colors rounded-lg text-slate-500 hover:text-blue-400"><ChevronRight className="w-4 h-4" /></button>
                   </div>
                   
                   <div ref={tabContainerRef} className="flex-1 flex items-end overflow-x-auto no-scrollbar h-full scroll-smooth">
@@ -1042,6 +1056,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                           <div className="flex items-center gap-2 sm:gap-3 w-full">
                              <input
                               autoFocus
+                              title="Nama Unit"
                               value={tabName}
                               onChange={(e) => setTabName(e.target.value)}
                               className="bg-transparent border-none outline-none text-blue-400 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider w-full"
@@ -1055,6 +1070,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                                   if (activeUnitId === unit.id) setActiveUnitId(units[idx === 0 ? 1 : idx - 1].id);
                                 }
                               }}
+                              title="Hapus Unit"
+                              aria-label="Hapus unit ini"
                               className="p-1 text-slate-600 hover:text-red-400 transition-colors shrink-0"
                             >
                               <X className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
@@ -1131,35 +1148,35 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               <button onClick={() => document.getElementById('bulk')?.click()} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20">
                 <Upload className="w-5 h-5" /> Unggah Banyak Foto Sekaligus
               </button>
-              <input id="bulk" type="file" multiple accept="image/*" className="hidden" onChange={handleBulkPhotoUpload} />
+              <input id="bulk" title="Unggah banyak foto" type="file" multiple accept="image/*" className="hidden" onChange={handleBulkPhotoUpload} />
               <button onClick={() => setAddCardModalOpen(true)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20">
                 <Plus className="w-5 h-5" /> Tambah Kartu Manual
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
               {cards.map((card, idx) => (
                 <div 
                   key={card.id} 
                   onClick={() => setFocusedCardId(card.id)}
-                  className={`bg-slate-800/50 p-4 rounded-xl border relative group transition-all duration-300 ${
+                  className={`bg-slate-800/50 p-2.5 sm:p-4 rounded-xl border relative group transition-all duration-300 ${
                     focusedCardId === card.id 
                     ? 'border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.2)] ring-1 ring-blue-500/50' 
                     : 'border-slate-700/50 hover:border-blue-500/30'
                   }`}
                 >
-                  <div className="flex justify-between items-center mb-3">
-                    <span className="text-xs font-bold text-slate-500 tracking-wider uppercase">Doc #{idx + 1}</span>
-                    <button onClick={() => removeCard(card.id)} className="text-slate-500 hover:text-red-400 transition" title="Hapus Card"><Trash2 className="w-4 h-4" /></button>
+                  <div className="flex justify-between items-center mb-2 sm:mb-3">
+                    <span className="text-[10px] sm:text-xs font-bold text-slate-500 tracking-wider uppercase">Doc #{idx + 1}</span>
+                    <button onClick={() => removeCard(card.id)} className="text-slate-500 hover:text-red-400 transition" title="Hapus Card"><Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
                   </div>
-                  <div className="aspect-video bg-slate-900 rounded-lg mb-4 overflow-hidden relative border border-slate-700/50">
+                  <div className="aspect-video bg-slate-900 rounded-lg mb-2 sm:mb-4 overflow-hidden relative border border-slate-700/50">
                     {card.photoBase64 ? (
                       <>
-                        <img src={card.photoBase64} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => handleDownloadPhoto(card.photoBase64!, card.description, idx)} className="p-2.5 bg-emerald-600/20 backdrop-blur-md rounded-lg hover:bg-emerald-600/30 transition shadow-xl" title="Download Foto"><Download className="w-4 h-4 text-emerald-400" /></button>
-                          <button onClick={() => setEditingCardId(card.id)} className="p-2.5 bg-white/20 backdrop-blur-md rounded-lg hover:bg-white/30 transition shadow-xl" title="Edit/Crop"><Scissors className="w-4 h-4 text-white" /></button>
-                          <button onClick={() => handlePhotoChange(card.id, null)} className="p-2.5 bg-red-600/20 backdrop-blur-md rounded-lg hover:bg-red-600/30 transition shadow-xl" title="Hapus Foto"><Trash2 className="w-4 h-4 text-red-400" /></button>
+                        <img src={card.photoBase64} alt={card.description || `Foto dokumentasi ${idx + 1}`} title={card.description || `Foto dokumentasi ${idx + 1}`} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center gap-1.5 sm:gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => handleDownloadPhoto(card.photoBase64!, card.description, idx)} className="p-1.5 sm:p-2.5 bg-emerald-600/20 backdrop-blur-md rounded-lg hover:bg-emerald-600/30 transition shadow-xl" title="Download Foto"><Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" /></button>
+                          <button onClick={() => setEditingCardId(card.id)} className="p-1.5 sm:p-2.5 bg-white/20 backdrop-blur-md rounded-lg hover:bg-white/30 transition shadow-xl" title="Edit/Crop"><Scissors className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" /></button>
+                          <button onClick={() => handlePhotoChange(card.id, null)} className="p-1.5 sm:p-2.5 bg-red-600/20 backdrop-blur-md rounded-lg hover:bg-red-600/30 transition shadow-xl" title="Hapus Foto"><Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" /></button>
                         </div>
                       </>
                     ) : (
@@ -1168,29 +1185,29 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                           <>
                             <button 
                               onClick={() => setActiveCameraCardId(card.id)}
-                              className="flex-1 flex flex-col items-center justify-center gap-2 hover:bg-blue-600/10 transition-colors group/camera border-r border-slate-800/50"
+                              className="flex-1 flex flex-col items-center justify-center gap-1 sm:gap-2 hover:bg-blue-600/10 transition-colors group/camera border-r border-slate-800/50"
                             >
-                              <Camera className="w-7 h-7 text-slate-600 group-hover/camera:text-blue-400 transition-colors" />
-                              <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tight group-hover/camera:text-slate-300">Ambil Foto</span>
+                              <Camera className="w-5.5 h-5.5 sm:w-7 sm:h-7 text-slate-600 group-hover/camera:text-blue-400 transition-colors" />
+                              <span className="text-[8px] sm:text-[9px] text-slate-500 font-bold uppercase tracking-tight group-hover/camera:text-slate-300">Ambil Foto</span>
                             </button>
                             
-                            <label className="flex-1 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-emerald-600/10 transition-colors group/upload">
-                              <Upload className="w-7 h-7 text-slate-600 group-hover/upload:text-emerald-400 transition-colors" />
-                              <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tight group-hover/upload:text-slate-300">Unggah Foto</span>
+                            <label className="flex-1 flex flex-col items-center justify-center gap-1 sm:gap-2 cursor-pointer hover:bg-emerald-600/10 transition-colors group/upload">
+                              <Upload className="w-5.5 h-5.5 sm:w-7 sm:h-7 text-slate-600 group-hover/upload:text-emerald-400 transition-colors" />
+                              <span className="text-[8px] sm:text-[9px] text-slate-500 font-bold uppercase tracking-tight group-hover/upload:text-slate-300 font-medium">Unggah Foto</span>
                               <input type="file" className="hidden" accept="image/*" onChange={e => handlePhotoChange(card.id, e.target.files?.[0] || null)} />
                             </label>
                           </>
                         ) : (
-                          <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer hover:bg-slate-800/80 transition-colors group/upload">
-                            <Upload className="w-8 h-8 text-slate-700 group-hover/upload:text-blue-500 transition-colors" />
-                            <span className="text-[10px] text-slate-600 font-bold uppercase mt-2 group-hover/upload:text-slate-400">Unggah Foto</span>
+                          <label className="w-full h-full flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-slate-800/80 transition-colors group/upload">
+                            <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-slate-700 group-hover/upload:text-blue-500 transition-colors" />
+                            <span className="text-[8px] sm:text-[10px] text-slate-600 font-bold uppercase mt-1 group-hover/upload:text-slate-400">Unggah Foto</span>
                             <input type="file" className="hidden" accept="image/*" onChange={e => handlePhotoChange(card.id, e.target.files?.[0] || null)} />
                           </label>
                         )}
                       </div>
                     )}
                   </div>
-                  <textarea value={card.description} onChange={e => handleDescriptionChange(card.id, e.target.value)} className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg p-3 text-sm text-white outline-none focus:ring-1 focus:ring-blue-500 transition placeholder:text-slate-700" rows={2} placeholder="Masukkan deskripsi dokumentasi..." />
+                  <textarea title="Deskripsi Foto" value={card.description} onChange={e => handleDescriptionChange(card.id, e.target.value)} className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg p-2 sm:p-3 text-xs sm:text-sm text-white outline-none focus:ring-1 focus:ring-blue-500 transition placeholder:text-slate-700" rows={2} placeholder="Masukkan deskripsi dokumentasi..." />
                 </div>
               ))}
             </div>
@@ -1257,7 +1274,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} onClick={e => e.stopPropagation()} className="bg-slate-900 p-8 rounded-3xl border border-slate-700 w-full max-w-sm shadow-2xl">
               <h3 className="text-xl font-bold text-white mb-2 text-center">Add Multiple Cards</h3>
               <p className="text-xs text-slate-500 text-center mb-6">How many documentation slots to add?</p>
-              <input type="number" value={numberOfCardsToAdd} onChange={e => setNumberOfCardsToAdd(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-2xl p-4 text-white text-center text-4xl font-bold mb-6 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner" min="1" max="50" autoFocus />
+              <input type="number" title="Jumlah kartu yang ingin ditambahkan" placeholder="Masukkan angka" value={numberOfCardsToAdd} onChange={e => setNumberOfCardsToAdd(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-2xl p-4 text-white text-center text-4xl font-bold mb-6 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner" min="1" max="50" autoFocus />
               <div className="flex gap-4">
                 <button onClick={() => setAddCardModalOpen(false)} className="flex-1 bg-slate-800 text-slate-400 p-3 rounded-xl font-bold hover:bg-slate-700 transition">Cancel</button>
                 <button onClick={confirmAddCards} className="flex-1 bg-blue-600 text-white p-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-600/20">Add Slots</button>
