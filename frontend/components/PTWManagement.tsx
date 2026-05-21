@@ -86,6 +86,7 @@ export function PTWManagement() {
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [queuedItems, setQueuedItems] = useState<QueuedPTWItem[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
   const toggleQueueItemExpanded = (id: string) => {
@@ -205,6 +206,82 @@ export function PTWManagement() {
       reader.readAsDataURL(blob);
     });
 
+  const processUploadedFiles = (files: FileList | File[]) => {
+    const newItems: QueuedPTWItem[] = [];
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!(file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))) {
+        toast.error(`File ${file.name} bukan file PDF.`);
+        continue;
+      }
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error(`File ${file.name} terlalu besar. Maksimal 10MB.`);
+        continue;
+      }
+      
+      const itemId = Math.random().toString(36).substring(2, 9);
+      const filenameData = parsePTWFromFilename(file.name);
+      
+      const item: QueuedPTWItem = {
+        id: itemId,
+        file: file,
+        sequenceNumber: filenameData.sequenceNumber || '',
+        equipmentCode: filenameData.equipmentCode || '',
+        quarter: filenameData.quarter || '',
+        startDate: filenameData.startDate || new Date().toISOString().split('T')[0],
+        endDate: filenameData.endDate || new Date().toISOString().split('T')[0],
+        notes: filenameData.maintenanceName || '',
+        isScanning: false,
+        scanStatus: '',
+        scanSource: filenameData.sequenceNumber ? 'filename' : 'none',
+        isExpanded: false
+      };
+      
+      newItems.push(item);
+    }
+    
+    if (newItems.length === 0) return;
+    
+    setQueuedItems(prev => [...prev, ...newItems]);
+    
+    newItems.forEach(item => {
+      if (!item.sequenceNumber && item.file) {
+        runOcrOnItem(item.id, item.file);
+      } else if (item.sequenceNumber) {
+        toast.success(`⚡ Semua data berhasil diisi instan dari nama file: ${item.file?.name}`);
+      }
+    });
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      processUploadedFiles(e.dataTransfer.files);
+    }
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -310,49 +387,8 @@ export function PTWManagement() {
         }
       }
     } else {
-      const newItems: QueuedPTWItem[] = [];
-      
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (file.size > MAX_FILE_SIZE) {
-          toast.error(`File ${file.name} terlalu besar. Maksimal 10MB.`);
-          continue;
-        }
-        
-        const itemId = Math.random().toString(36).substring(2, 9);
-        const filenameData = parsePTWFromFilename(file.name);
-        
-        const item: QueuedPTWItem = {
-          id: itemId,
-          file: file,
-          sequenceNumber: filenameData.sequenceNumber || '',
-          equipmentCode: filenameData.equipmentCode || '',
-          quarter: filenameData.quarter || '',
-          startDate: filenameData.startDate || new Date().toISOString().split('T')[0],
-          endDate: filenameData.endDate || new Date().toISOString().split('T')[0],
-          notes: filenameData.maintenanceName || '',
-          isScanning: false,
-          scanStatus: '',
-          scanSource: filenameData.sequenceNumber ? 'filename' : 'none',
-          isExpanded: false
-        };
-        
-        newItems.push(item);
-      }
-      
+      processUploadedFiles(files);
       e.target.value = '';
-      
-      if (newItems.length === 0) return;
-      
-      setQueuedItems(prev => [...prev, ...newItems]);
-      
-      newItems.forEach(item => {
-        if (!item.sequenceNumber && item.file) {
-          runOcrOnItem(item.id, item.file);
-        } else if (item.sequenceNumber) {
-          toast.success(`⚡ Semua data berhasil diisi instan dari nama file: ${item.file?.name}`);
-        }
-      });
     }
   };
 
@@ -1041,8 +1077,34 @@ export function PTWManagement() {
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                onDragEnter={isAddModalOpen ? handleDragEnter : undefined}
                 className={`relative w-full ${isAddModalOpen ? 'max-w-2xl' : 'max-w-lg'} bg-slate-900 rounded-3xl border border-white/10 shadow-2xl overflow-hidden my-auto`}
               >
+                <AnimatePresence>
+                  {isAddModalOpen && isDragging && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      className="absolute inset-0 bg-slate-950/85 backdrop-blur-md border-2 border-dashed border-indigo-500 rounded-3xl z-50 flex flex-col items-center justify-center gap-4 transition-all duration-300 pointer-events-auto"
+                    >
+                      <motion.div 
+                        animate={{ y: [0, -10, 0] }}
+                        transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                        className="p-5 bg-indigo-500/20 rounded-full border border-indigo-500/30 shadow-lg shadow-indigo-500/10"
+                      >
+                        <FileUp className="w-10 h-10 text-indigo-400" />
+                      </motion.div>
+                      <div className="text-center px-6">
+                        <p className="text-lg font-bold text-white mb-1">Lepaskan PDF PTW Anda di Sini</p>
+                        <p className="text-sm text-indigo-300">Sistem akan otomatis memindai dan mengekstrak datanya</p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-indigo-600/10 to-transparent">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <ClipboardIcon className="w-6 h-6 text-indigo-400" />
