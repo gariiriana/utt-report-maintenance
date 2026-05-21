@@ -348,20 +348,28 @@ export function parsePTWFromFilename(filename: string): Partial<PTWExtractedData
     result.sequenceNumber = seqMatch[1];
   }
 
-  // 4. Try to guess maintenance name (part before the date range, cleaned from "PTW" prefix)
+  // 4. Try to guess maintenance name (part before the date range, cleaned from prefixes)
   let maintenanceName = '';
   if (rangeIndex !== -1) {
-    const beforeDate = cleanName.substring(0, rangeIndex).trim();
-    maintenanceName = beforeDate.replace(/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i, '').trim();
+    maintenanceName = cleanName.substring(0, rangeIndex).trim();
   } else {
     const pmMatch = cleanName.match(/(PM\s+[A-Z0-9\s\-]+|Maintenance\s+[A-Z0-9\s\-]+)/i);
     if (pmMatch) {
       maintenanceName = pmMatch[1].trim();
     } else if (seqMatch && seqMatch.index !== undefined && seqMatch.index > 0) {
-      const beforeSeq = cleanName.substring(0, seqMatch.index).trim();
-      maintenanceName = beforeSeq.replace(/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i, '').trim();
+      maintenanceName = cleanName.substring(0, seqMatch.index).trim();
     }
   }
+
+  // Strip prefixes like PTW, PM, TDE, HSE repeatedly from the start of maintenanceName
+  if (maintenanceName) {
+    let cleaned = maintenanceName;
+    while (/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i.test(cleaned)) {
+      cleaned = cleaned.replace(/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i, '').trim();
+    }
+    maintenanceName = cleaned;
+  }
+
   if (maintenanceName) {
     result.maintenanceName = maintenanceName;
     // If no specific equipment code was found, use maintenanceName as the equipment code
