@@ -818,6 +818,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
                 else setSelectedIds(prev => prev.filter(id => id !== document.id));
               }}
               className="w-4 h-4 sm:w-5 sm:h-5 rounded border-slate-700 bg-slate-800/50 text-blue-500 focus:ring-blue-500/20 transition-all cursor-pointer"
+              title="Pilih dokumen ini"
             />
           </div>
         )}
@@ -996,6 +997,8 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
               value={filterDate}
               onChange={(e) => setFilterDate(e.target.value)}
               className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white text-sm sm:text-base"
+              title="Filter berdasarkan tanggal"
+              placeholder="Pilih tanggal"
             />
           </div>
 
@@ -1006,6 +1009,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest')}
               className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white appearance-none cursor-pointer text-sm sm:text-base"
+              title="Urutkan dokumen"
             >
               <option value="newest">Terbaru</option>
               <option value="oldest">Terlama</option>
@@ -1019,6 +1023,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
               value={filterType}
               onChange={(e) => setFilterType(e.target.value as 'all' | 'excel' | 'pdf')}
               className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white appearance-none cursor-pointer text-sm sm:text-base"
+              title="Filter tipe dokumen"
             >
               <option value="all">Semua</option>
               <option value="excel">Excel</option>
@@ -1066,6 +1071,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
                   }
                 }}
                 className="w-4 h-4 sm:w-5 sm:h-5 rounded border-slate-700 bg-slate-800/50 text-blue-500 focus:ring-blue-500/20 transition-all cursor-pointer"
+                title="Pilih semua dokumen"
               />
               <span className="text-sm font-medium text-slate-300">Pilih Semua Dokumen</span>
             </div>

@@ -62,17 +62,11 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
     const [isDraftLoading, setIsDraftLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
     const [isExported, setIsExported] = useState(false);
-    const [exportedUtt, setExportedUtt] = useState(false);
-    const [exportedNeutra, setExportedNeutra] = useState(false);
+
 
     const isInitialMount = useRef(true);
 
-    useEffect(() => {
-        if (user?.email) {
-            setExportedUtt(localStorage.getItem(`exportedUtt_${mode}_${user.email}`) === 'true');
-            setExportedNeutra(localStorage.getItem(`exportedNeutra_${mode}_${user.email}`) === 'true');
-        }
-    }, [user?.email, mode]);
+
 
     useEffect(() => {
         if (editingData && editingData.documentType === 'hse') {
@@ -238,8 +232,6 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
         }
         // Reset export flags when user modifies any input field
         setIsExported(false);
-        setExportedUtt(false);
-        setExportedNeutra(false);
         if (user?.email) {
             localStorage.removeItem(`exportedUtt_${mode}_${user.email}`);
             localStorage.removeItem(`exportedNeutra_${mode}_${user.email}`);
@@ -527,10 +519,8 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
 
             if (reportMode === 'utt') {
                 if (user?.email) localStorage.setItem(storedUttKey, 'true');
-                setExportedUtt(true);
             } else if (reportMode === 'neutradc') {
                 if (user?.email) localStorage.setItem(storedNeutraKey, 'true');
-                setExportedNeutra(true);
             }
 
             const isUttExported = reportMode === 'utt' || (user?.email ? localStorage.getItem(storedUttKey) === 'true' : false);
@@ -562,8 +552,6 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                     setSiloFile(null);
                     setSiloPdfUrl('');
                     
-                    setExportedUtt(false);
-                    setExportedNeutra(false);
                     setIsExported(false);
                 }
             }
@@ -600,8 +588,6 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                 draftStorage.remove(`hse_draft_${mode}_${user.email}`).catch(console.error);
             }
             setIsExported(false);
-            setExportedUtt(false);
-            setExportedNeutra(false);
             toast.success("Formulir berhasil dikosongkan");
         }
     };
@@ -878,7 +864,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                             </button>
                         )}
 
-                        <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={(e) => handleFileUpload(e)} className="hidden" />
+                        <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={(e) => handleFileUpload(e)} className="hidden" title="Unggah Foto Evidence" placeholder="Unggah Foto Evidence" />
                         
                         <div className="space-y-4">
                             <div 
@@ -907,8 +893,8 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                                         </div>
                                                     )}
                                                     <div className="absolute top-2 right-2 flex gap-1 transition">
-                                                        <button onClick={() => setEditingPhoto(photo)} className="p-2 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg shadow-xl backdrop-blur-sm"><Edit2 className="w-3.5 h-3.5" /></button>
-                                                        <button onClick={() => removePhoto(photo.id)} className="p-2 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-xl backdrop-blur-sm"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                        <button onClick={() => setEditingPhoto(photo)} className="p-2 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg shadow-xl backdrop-blur-sm" title="Edit Foto"><Edit2 className="w-3.5 h-3.5" /></button>
+                                                        <button onClick={() => removePhoto(photo.id)} className="p-2 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-xl backdrop-blur-sm" title="Hapus Foto"><Trash2 className="w-3.5 h-3.5" /></button>
                                                     </div>
                                                 </div>
                                                 <input type="text" value={photo.description} onChange={e => setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, description: e.target.value } : p))} placeholder="Keterangan foto..." className="w-full px-3 py-2 bg-slate-900/40 border border-slate-800/60 rounded-lg text-white text-[11px] outline-none" />
@@ -936,16 +922,16 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                 <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em]">I. DATA SURAT IZIN OPERATOR (SIO)</h4>
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div>
-                                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Nama Operator</label>
-                                        <input type="text" value={sioOperatorName} onChange={e => setSioOperatorName(e.target.value.toUpperCase())} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-lg text-white text-xs outline-none" placeholder="ZAINAL" />
+                                        <label htmlFor="sioOperatorName" className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Nama Operator</label>
+                                        <input id="sioOperatorName" type="text" value={sioOperatorName} onChange={e => setSioOperatorName(e.target.value.toUpperCase())} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-lg text-white text-xs outline-none" placeholder="ZAINAL" title="Nama Operator SIO" />
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">No SIO / Lisensi</label>
-                                        <input type="text" value={sioNumber} onChange={e => setSioNumber(e.target.value.toUpperCase())} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-lg text-white text-xs outline-none" placeholder="1234RTYU-BN" />
+                                        <label htmlFor="sioNumber" className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">No SIO / Lisensi</label>
+                                        <input id="sioNumber" type="text" value={sioNumber} onChange={e => setSioNumber(e.target.value.toUpperCase())} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-lg text-white text-xs outline-none" placeholder="1234RTYU-BN" title="No SIO / Lisensi" />
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Masa Berlaku</label>
-                                        <input type="date" value={sioExpiryDate} onChange={e => setSioExpiryDate(e.target.value)} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-lg text-white text-xs outline-none" />
+                                        <label htmlFor="sioExpiryDate" className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Masa Berlaku</label>
+                                        <input id="sioExpiryDate" type="date" value={sioExpiryDate} onChange={e => setSioExpiryDate(e.target.value)} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-lg text-white text-xs outline-none" title="Masa Berlaku SIO" placeholder="Pilih tanggal masa berlaku" />
                                     </div>
                                 </div>
 
@@ -961,7 +947,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                                             <>
                                                                 <img src={photo.dataUrl} className="w-full h-full object-cover" alt={label} />
                                                                 <div className="absolute top-1 left-1 bg-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded text-white">{label}</div>
-                                                                <button onClick={() => setSioPhotos(prev => prev.filter(p => p.label !== label))} className="absolute top-1 right-1 p-1 bg-red-600 rounded text-white transition shadow-lg"><Trash2 className="w-3 h-3" /></button>
+                                                                <button onClick={() => setSioPhotos(prev => prev.filter(p => p.label !== label))} className="absolute top-1 right-1 p-1 bg-red-600 rounded text-white transition shadow-lg" title="Hapus Foto SIO"><Trash2 className="w-3.5 h-3.5" /></button>
                                                             </>
                                                         ) : (
                                                             <button 

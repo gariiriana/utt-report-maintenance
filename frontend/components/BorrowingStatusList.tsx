@@ -217,10 +217,11 @@ export function BorrowingStatusList() {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Jam Pengembalian</label>
+                  <label htmlFor="returnTimeInput" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-1">Jam Pengembalian</label>
                   <div className="relative group">
                     <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-500 group-focus-within:text-emerald-500 transition-colors" />
                     <input
+                      id="returnTimeInput"
                       type="time"
                       lang="id-ID"
                       step="60"
@@ -228,6 +229,8 @@ export function BorrowingStatusList() {
                       onChange={e => setReturnTime(e.target.value)}
                       onClick={(e) => e.currentTarget.showPicker()}
                       className="w-full pl-11 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-white outline-none focus:border-emerald-500/40 focus:ring-2 focus:ring-emerald-500/5 transition cursor-pointer"
+                      title="Jam Pengembalian"
+                      placeholder="Pilih jam pengembalian"
                     />
                   </div>
                 </div>
