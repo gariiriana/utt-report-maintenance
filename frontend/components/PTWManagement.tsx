@@ -6,6 +6,7 @@ import {
   X, CheckCircle2, Loader2, Calendar, Hash, Package,
   AlertCircle, Download, FileUp, File, ChevronDown, Eye
 } from 'lucide-react';
+import { parsePTWPdf, parsePTWFromFilename } from '@/utils/ptwPdfParser';
 import {
   collection, onSnapshot, addDoc, updateDoc,
   doc, query, orderBy, serverTimestamp, Timestamp, getDocs, writeBatch, deleteField
@@ -31,6 +32,21 @@ interface PTWRecord {
   createdAt: Timestamp;
 }
 
+interface QueuedPTWItem {
+  id: string;
+  file: File | null;
+  sequenceNumber: string;
+  equipmentCode: string;
+  quarter: string;
+  startDate: string;
+  endDate: string;
+  notes: string;
+  isScanning: boolean;
+  scanStatus: string;
+  scanSource: 'filename' | 'ocr' | 'none';
+  isExpanded: boolean;
+}
+
 export function PTWManagement() {
   const { user, userRole } = useAuth();
   const isAdmin = userRole === 'admin';
@@ -39,7 +55,6 @@ export function PTWManagement() {
   const [isDeleteCategoryModalOpen, setIsDeleteCategoryModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<{ name: string; records: PTWRecord[] } | null>(null);
   const [shouldDeleteFile, setShouldDeleteFile] = useState(false);
-  const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
 
   const toggleGroup = (code: string) => {
     setExpandedGroups(prev => ({
@@ -70,7 +85,114 @@ export function PTWManagement() {
     notes: ''
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [queuedItems, setQueuedItems] = useState<QueuedPTWItem[]>([]);
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+  const toggleQueueItemExpanded = (id: string) => {
+    setQueuedItems(prev => prev.map(item => 
+      item.id === id ? { ...item, isExpanded: !item.isExpanded } : item
+    ));
+  };
+
+  const handleRemoveQueueItem = (id: string) => {
+    setQueuedItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  const updateQueueItemField = (id: string, field: keyof QueuedPTWItem, value: any) => {
+    setQueuedItems(prev => prev.map(item => {
+      if (item.id !== id) return item;
+      
+      const updated = { ...item, [field]: value };
+      
+      if (field === 'startDate' && value) {
+        try {
+          const month = parseInt(value.split('-')[1]);
+          if (month <= 3) updated.quarter = '1';
+          else if (month <= 6) updated.quarter = '2';
+          else if (month <= 9) updated.quarter = '3';
+          else updated.quarter = '4';
+        } catch (e) {}
+      }
+      
+      return updated;
+    }));
+  };
+
+  const handleAddManualQueueItem = () => {
+    const itemId = Math.random().toString(36).substring(2, 9);
+    const newItem: QueuedPTWItem = {
+      id: itemId,
+      file: null,
+      sequenceNumber: '',
+      equipmentCode: '',
+      quarter: '',
+      startDate: new Date().toISOString().split('T')[0],
+      endDate: new Date().toISOString().split('T')[0],
+      notes: '',
+      isScanning: false,
+      scanStatus: '',
+      scanSource: 'none',
+      isExpanded: true
+    };
+    setQueuedItems(prev => [...prev, newItem]);
+  };
+
+  const runOcrOnItem = async (itemId: string, file: File) => {
+    setQueuedItems(prev => prev.map(item => 
+      item.id === itemId 
+        ? { ...item, isScanning: true, scanStatus: 'Memulai pemindaian...' }
+        : item
+    ));
+    
+    try {
+      const extracted = await parsePTWPdf(file, (msg) => {
+        setQueuedItems(prev => prev.map(item => 
+          item.id === itemId 
+            ? { ...item, scanStatus: msg }
+            : item
+        ));
+      });
+      
+      setQueuedItems(prev => prev.map(item => {
+        if (item.id !== itemId) return item;
+        
+        const updated = { ...item };
+        updated.scanSource = 'ocr';
+        
+        if (extracted.sequenceNumber) {
+          updated.sequenceNumber = extracted.sequenceNumber;
+        }
+        if (extracted.equipmentCode && (!item.equipmentCode || item.equipmentCode.toUpperCase() === 'PTW')) {
+          updated.equipmentCode = extracted.equipmentCode;
+        }
+        if (extracted.quarter) {
+          updated.quarter = extracted.quarter;
+        }
+        if (extracted.startDate) {
+          updated.startDate = extracted.startDate;
+        }
+        if (extracted.endDate) {
+          updated.endDate = extracted.endDate;
+        }
+        if (extracted.maintenanceName) {
+          updated.notes = extracted.maintenanceName;
+        }
+        
+        return updated;
+      }));
+      
+      toast.success(`✅ Pemindaian selesai: ${file.name}`);
+    } catch (err) {
+      console.error('PDF scan error for item', itemId, err);
+      toast.error(`⚠️ Gagal memindai isi PDF ${file.name} secara mendalam.`);
+    } finally {
+      setQueuedItems(prev => prev.map(item => 
+        item.id === itemId 
+          ? { ...item, isScanning: false, scanStatus: '' }
+          : item
+      ));
+    }
+  };
 
   const chunkToBase64 = (blob: Blob): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -83,15 +205,155 @@ export function PTWManagement() {
       reader.readAsDataURL(blob);
     });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error('File terlalu besar. Maksimal 10MB.');
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (isEditModalOpen) {
+      const file = files[0];
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error('File terlalu besar. Maksimal 10MB.');
+        e.target.value = '';
+        return;
+      }
+      setSelectedFile(file);
+
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        const filenameData = parsePTWFromFilename(file.name);
+        const initialFields: string[] = [];
+        
+        setFormData(prev => {
+          const updated = { ...prev };
+          if (filenameData.sequenceNumber) {
+            updated.sequenceNumber = filenameData.sequenceNumber;
+            initialFields.push('No. Urut');
+          }
+          if (filenameData.equipmentCode) {
+            updated.equipmentCode = filenameData.equipmentCode;
+            initialFields.push('Equipment Code');
+          }
+          if (filenameData.quarter) {
+            updated.quarter = filenameData.quarter;
+            initialFields.push('Quarter');
+          }
+          if (filenameData.startDate) {
+            updated.startDate = filenameData.startDate;
+            initialFields.push('Tanggal Mulai');
+          }
+          if (filenameData.endDate) {
+            updated.endDate = filenameData.endDate;
+            initialFields.push('Tanggal Selesai');
+          }
+          if (filenameData.maintenanceName) {
+            updated.notes = filenameData.maintenanceName;
+            initialFields.push('Nama Maintenance');
+          }
+          return updated;
+        });
+
+        if (filenameData.sequenceNumber) {
+          toast.success(`⚡ Semua data berhasil diisi instan dari nama file!`, { duration: 4000 });
+        } else {
+          if (initialFields.length > 0) {
+            toast.success(`⚡ Mengisi awal data dari nama file: ${initialFields.join(', ')}`, { duration: 3000 });
+          }
+
+          const scanToast = toast.loading('🔍 Memindai isi berkas PDF...');
+          try {
+            const extracted = await parsePTWPdf(file, (msg) => {
+              toast.loading(`🔍 ${msg}`, { id: scanToast });
+            });
+            const filledFields: string[] = [];
+
+            setFormData(prev => {
+              const updated = { ...prev };
+              if (extracted.sequenceNumber) {
+                updated.sequenceNumber = extracted.sequenceNumber;
+                if (!initialFields.includes('No. Urut')) filledFields.push('No. Urut');
+              }
+              if (extracted.equipmentCode && (!filenameData.equipmentCode || filenameData.equipmentCode.toUpperCase() === 'PTW')) {
+                updated.equipmentCode = extracted.equipmentCode;
+                if (!initialFields.includes('Equipment Code')) filledFields.push('Equipment Code');
+              }
+              if (extracted.quarter) {
+                updated.quarter = extracted.quarter;
+                if (!initialFields.includes('Quarter')) filledFields.push('Quarter');
+              }
+              if (extracted.startDate) {
+                updated.startDate = extracted.startDate;
+                if (!initialFields.includes('Tanggal Mulai')) filledFields.push('Tanggal Mulai');
+              }
+              if (extracted.endDate) {
+                updated.endDate = extracted.endDate;
+                if (!initialFields.includes('Tanggal Selesai')) filledFields.push('Tanggal Selesai');
+              }
+              if (extracted.maintenanceName) {
+                updated.notes = extracted.maintenanceName;
+                if (!initialFields.includes('Nama Maintenance')) filledFields.push('Nama Maintenance');
+              }
+              return updated;
+            });
+
+            const totalFilled = initialFields.length + filledFields.length;
+            if (totalFilled > 0) {
+              toast.success(
+                `✅ Pemindaian selesai! Berhasil mengisi data PTW.`,
+                { id: scanToast, duration: 4000 }
+              );
+            } else {
+              toast.warning('⚠️ Tidak dapat mengekstrak data tambahan dari isi berkas.', { id: scanToast, duration: 4000 });
+            }
+          } catch (err) {
+            console.error('PDF scan error:', err);
+            toast.error('Gagal memindai isi PDF secara mendalam. Data dari nama file tetap digunakan.', { id: scanToast });
+          }
+        }
+      }
+    } else {
+      const newItems: QueuedPTWItem[] = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.size > MAX_FILE_SIZE) {
+          toast.error(`File ${file.name} terlalu besar. Maksimal 10MB.`);
+          continue;
+        }
+        
+        const itemId = Math.random().toString(36).substring(2, 9);
+        const filenameData = parsePTWFromFilename(file.name);
+        
+        const item: QueuedPTWItem = {
+          id: itemId,
+          file: file,
+          sequenceNumber: filenameData.sequenceNumber || '',
+          equipmentCode: filenameData.equipmentCode || '',
+          quarter: filenameData.quarter || '',
+          startDate: filenameData.startDate || new Date().toISOString().split('T')[0],
+          endDate: filenameData.endDate || new Date().toISOString().split('T')[0],
+          notes: filenameData.maintenanceName || '',
+          isScanning: false,
+          scanStatus: '',
+          scanSource: filenameData.sequenceNumber ? 'filename' : 'none',
+          isExpanded: false
+        };
+        
+        newItems.push(item);
+      }
+      
       e.target.value = '';
-      return;
+      
+      if (newItems.length === 0) return;
+      
+      setQueuedItems(prev => [...prev, ...newItems]);
+      
+      newItems.forEach(item => {
+        if (!item.sequenceNumber && item.file) {
+          runOcrOnItem(item.id, item.file);
+        } else if (item.sequenceNumber) {
+          toast.success(`⚡ Semua data berhasil diisi instan dari nama file: ${item.file?.name}`);
+        }
+      });
     }
-    setSelectedFile(file);
   };
 
   const handleDownload = async (record: PTWRecord) => {
@@ -178,7 +440,7 @@ export function PTWManagement() {
 
   // Prevent background scrolling when modal is open
   useEffect(() => {
-    if (isAddModalOpen || isEditModalOpen || isDeleteModalOpen || isDeleteCategoryModalOpen || isDeleteAllModalOpen) {
+    if (isAddModalOpen || isEditModalOpen || isDeleteModalOpen || isDeleteCategoryModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -186,7 +448,7 @@ export function PTWManagement() {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isAddModalOpen, isEditModalOpen, isDeleteModalOpen, isDeleteCategoryModalOpen, isDeleteAllModalOpen]);
+  }, [isAddModalOpen, isEditModalOpen, isDeleteModalOpen, isDeleteCategoryModalOpen]);
 
 
   useEffect(() => {
@@ -243,11 +505,11 @@ export function PTWManagement() {
     setSubmitting(true);
 
     try {
-      const ptwNum = `TDE/PTW/${formData.sequenceNumber.padStart(4, '0')}`;
-      let totalChunks = 0;
-
       if (isEditModalOpen && selectedRecord) {
         // ===== EDIT FLOW =====
+        const ptwNum = `TDE/PTW/${formData.sequenceNumber.padStart(4, '0')}`;
+        let totalChunks = 0;
+
         const updateData: Record<string, any> = {
           sequenceNumber: parseInt(formData.sequenceNumber),
           ptwNumber: ptwNum,
@@ -299,38 +561,75 @@ export function PTWManagement() {
         toast.success('PTW berhasil diperbarui');
 
       } else {
-        // ===== ADD FLOW =====
-        if (selectedFile) {
-          totalChunks = Math.ceil(selectedFile.size / CHUNK_SIZE);
+        // ===== ADD FLOW (MULTI-FILE) =====
+        if (queuedItems.length === 0) {
+          toast.error('Belum ada file atau data PTW yang ditambahkan.');
+          setSubmitting(false);
+          return;
         }
 
-        // Create doc first to get ID
-        const newDocRef = await addDoc(collection(db, 'ptw_records'), {
-          sequenceNumber: parseInt(formData.sequenceNumber),
-          ptwNumber: ptwNum,
-          equipmentCode: formData.equipmentCode,
-          quarter: formData.quarter,
-          startDate: formData.startDate,
-          endDate: formData.endDate,
-          notes: formData.notes,
-          ...(selectedFile && { fileName: selectedFile.name, totalChunks }),
-          createdBy: user.email,
-          createdAt: serverTimestamp()
-        });
+        // Validate all queued items have required fields
+        const invalidItems = queuedItems.filter(item => 
+          !item.sequenceNumber || !item.equipmentCode || !item.quarter || !item.startDate || !item.endDate
+        );
+        if (invalidItems.length > 0) {
+          toast.error('Ada berkas dalam antrean yang datanya belum lengkap. Silakan lengkapi data terlebih dahulu.');
+          setSubmitting(false);
+          return;
+        }
 
-        // Upload chunks to new doc
-        if (selectedFile) {
-          for (let i = 0; i < totalChunks; i++) {
-            const start = i * CHUNK_SIZE;
-            const end = Math.min(start + CHUNK_SIZE, selectedFile.size);
-            let chunkBase64 = await chunkToBase64(selectedFile.slice(start, end));
-            if (i === 0) chunkBase64 = `data:${selectedFile.type};base64,${chunkBase64}`;
-            await addDoc(collection(db, 'ptw_records', newDocRef.id, 'chunks'), { index: i, data: chunkBase64 });
-            setUploadProgress(((i + 1) / totalChunks) * 90);
-            await new Promise(r => setTimeout(r, 30));
+        const totalItems = queuedItems.length;
+        
+        for (let idx = 0; idx < totalItems; idx++) {
+          const item = queuedItems[idx];
+          const ptwNum = `TDE/PTW/${item.sequenceNumber.padStart(4, '0')}`;
+          let itemChunks = 0;
+          
+          if (item.file) {
+            itemChunks = Math.ceil(item.file.size / CHUNK_SIZE);
+          }
+          
+          // Show toast status for the current uploading file
+          toast.loading(`Mengunggah PTW ${idx + 1} dari ${totalItems}: ${item.file ? item.file.name : 'Data Manual'}...`, { id: 'multi-upload-toast' });
+          
+          // Create doc first to get ID
+          const newDocRef = await addDoc(collection(db, 'ptw_records'), {
+            sequenceNumber: parseInt(item.sequenceNumber),
+            ptwNumber: ptwNum,
+            equipmentCode: item.equipmentCode,
+            quarter: item.quarter,
+            startDate: item.startDate,
+            endDate: item.endDate,
+            notes: item.notes,
+            ...(item.file && { fileName: item.file.name, totalChunks: itemChunks }),
+            createdBy: user.email,
+            createdAt: serverTimestamp()
+          });
+          
+          // Upload chunks to new doc
+          if (item.file) {
+            for (let i = 0; i < itemChunks; i++) {
+              const start = i * CHUNK_SIZE;
+              const end = Math.min(start + CHUNK_SIZE, item.file.size);
+              let chunkBase64 = await chunkToBase64(item.file.slice(start, end));
+              if (i === 0) chunkBase64 = `data:${item.file.type};base64,${chunkBase64}`;
+              await addDoc(collection(db, 'ptw_records', newDocRef.id, 'chunks'), { index: i, data: chunkBase64 });
+              
+              // Calculate global progress
+              const baseProgress = (idx / totalItems) * 100;
+              const fileProgress = (((i + 1) / itemChunks) * (100 / totalItems));
+              setUploadProgress(baseProgress + fileProgress);
+              
+              await new Promise(r => setTimeout(r, 20));
+            }
+          } else {
+            // Advancing progress for manual entry without file
+            const baseProgress = ((idx + 1) / totalItems) * 100;
+            setUploadProgress(baseProgress);
           }
         }
-        toast.success('PTW baru berhasil ditambahkan');
+        
+        toast.success(`Berhasil menambahkan ${totalItems} data PTW baru!`, { id: 'multi-upload-toast' });
       }
 
       setUploadProgress(100);
@@ -397,55 +696,6 @@ export function PTWManagement() {
     }
   };
 
-  const confirmDeleteAll = async () => {
-    setSubmitting(true);
-    const toastId = toast.loading('Menghapus seluruh data PTW...');
-    try {
-      const allRecordsSnap = await getDocs(collection(db, 'ptw_records'));
-      if (allRecordsSnap.empty) {
-        toast.success('Tidak ada data PTW untuk dihapus', { id: toastId });
-        setIsDeleteAllModalOpen(false);
-        return;
-      }
-
-      let batch = writeBatch(db);
-      let opCount = 0;
-
-      for (const rec of allRecordsSnap.docs) {
-        const chunksSnap = await getDocs(collection(db, 'ptw_records', rec.id, 'chunks'));
-        for (const chunkDoc of chunksSnap.docs) {
-          batch.delete(chunkDoc.ref);
-          opCount++;
-          if (opCount >= 400) {
-            await batch.commit();
-            batch = writeBatch(db);
-            opCount = 0;
-          }
-        }
-
-        batch.delete(rec.ref);
-        opCount++;
-        if (opCount >= 400) {
-          await batch.commit();
-          batch = writeBatch(db);
-          opCount = 0;
-        }
-      }
-
-      if (opCount > 0) {
-        await batch.commit();
-      }
-
-      toast.success('Seluruh data PTW berhasil dihapus!', { id: toastId });
-      setIsDeleteAllModalOpen(false);
-    } catch (error) {
-      console.error(error);
-      toast.error('Gagal menghapus data', { id: toastId });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const openEditModal = (record: PTWRecord) => {
 
     setSelectedRecord(record);
@@ -473,6 +723,7 @@ export function PTWManagement() {
     setSelectedRecord(null);
     setSelectedFile(null);
     setShouldDeleteFile(false);
+    setQueuedItems([]);
   };
 
   const filteredRecords = records.filter(r =>
@@ -514,15 +765,6 @@ export function PTWManagement() {
           </div>
           {isAdmin && (
             <div className="flex flex-wrap items-center gap-3">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setIsDeleteAllModalOpen(true)}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-red-600/10 hover:bg-red-600/20 text-red-400 rounded-xl font-bold transition-all border border-red-500/20 shadow-lg shadow-red-500/5"
-              >
-                <Trash2 className="w-5 h-5" />
-                Hapus Semua PTW
-              </motion.button>
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -799,188 +1041,509 @@ export function PTWManagement() {
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="relative w-full max-w-lg bg-slate-900 rounded-3xl border border-white/10 shadow-2xl overflow-hidden my-auto"
+                className={`relative w-full ${isAddModalOpen ? 'max-w-2xl' : 'max-w-lg'} bg-slate-900 rounded-3xl border border-white/10 shadow-2xl overflow-hidden my-auto`}
               >
               <div className="p-6 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-indigo-600/10 to-transparent">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <ClipboardIcon className="w-6 h-6 text-indigo-400" />
-                  {isEditModalOpen ? 'Edit Data PTW' : 'Tambah PTW Baru'}
+                  {isEditModalOpen ? 'Edit Data PTW' : 'Tambah PTW Baru (Multi-File)'}
                 </h2>
-                <button onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); }} className="p-2 text-slate-400 hover:text-white transition">
+                <button 
+                  onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); }} 
+                  className="p-2 text-slate-400 hover:text-white transition"
+                  title="Tutup"
+                >
                   <X className="w-6 h-6" />
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                <div className="grid grid-cols-2 gap-4">
+              {isEditModalOpen ? (
+                // ===== EDIT FORM =====
+                <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="ptw-sequence" className="text-xs font-bold text-slate-500 uppercase ml-1">Sequence Number</label>
+                      <div className="relative group">
+                        <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition" />
+                        <input
+                          id="ptw-sequence"
+                          title="Sequence Number"
+                          type="number"
+                          required
+                          value={formData.sequenceNumber}
+                          onChange={(e) => setFormData({ ...formData, sequenceNumber: e.target.value })}
+                          className="w-full pl-11 pr-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+                          placeholder="Contoh: 21"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="ptw-quarter" className="text-xs font-bold text-slate-500 uppercase ml-1">Quarter</label>
+                      <div className="relative group">
+                        <select
+                          id="ptw-quarter"
+                          title="Quarter"
+                          required
+                          value={formData.quarter}
+                          onChange={(e) => setFormData({ ...formData, quarter: e.target.value })}
+                          className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition appearance-none cursor-pointer"
+                        >
+                          <option value="" className="bg-slate-900">Pilih Quarter</option>
+                          <option value="1" className="bg-slate-900">Q1</option>
+                          <option value="2" className="bg-slate-900">Q2</option>
+                          <option value="3" className="bg-slate-900">Q3</option>
+                          <option value="4" className="bg-slate-900">Q4</option>
+                        </select>
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none group-focus-within:text-indigo-400 transition" />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase ml-1">Sequence Number</label>
+                    <label htmlFor="ptw-equipment" className="text-xs font-bold text-slate-500 uppercase ml-1">Equipment Code</label>
                     <div className="relative group">
-                      <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition" />
+                      <Package className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition" />
                       <input
-                        type="number"
+                        id="ptw-equipment"
+                        title="Equipment Code"
+                        type="text"
                         required
-                        value={formData.sequenceNumber}
-                        onChange={(e) => setFormData({ ...formData, sequenceNumber: e.target.value })}
+                        value={formData.equipmentCode}
+                        onChange={(e) => setFormData({ ...formData, equipmentCode: e.target.value.toUpperCase() })}
                         className="w-full pl-11 pr-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
-                        placeholder="Contoh: 21"
+                        placeholder="Contoh: GATE, AC, etc."
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase ml-1">Quarter</label>
-                    <div className="relative group">
-                      <select
-                        required
-                        value={formData.quarter}
-                        onChange={(e) => setFormData({ ...formData, quarter: e.target.value })}
-                        className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition appearance-none cursor-pointer"
-                      >
-                        <option value="" className="bg-slate-900">Pilih Quarter</option>
-                        <option value="1" className="bg-slate-900">Q1</option>
-                        <option value="2" className="bg-slate-900">Q2</option>
-                        <option value="3" className="bg-slate-900">Q3</option>
-                        <option value="4" className="bg-slate-900">Q4</option>
-                      </select>
-                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none group-focus-within:text-indigo-400 transition" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="ptw-start-date" className="text-xs font-bold text-slate-500 uppercase ml-1">Masa Berlaku (Dari)</label>
+                      <div className="relative group">
+                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition" />
+                        <input
+                          id="ptw-start-date"
+                          title="Tanggal Mulai Masa Berlaku"
+                          type="date"
+                          required
+                          value={formData.startDate}
+                          onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                          className="w-full pl-11 pr-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="ptw-end-date" className="text-xs font-bold text-slate-500 uppercase ml-1">Sampai Dengan</label>
+                      <div className="relative group">
+                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition" />
+                        <input
+                          id="ptw-end-date"
+                          title="Tanggal Akhir Masa Berlaku"
+                          type="date"
+                          required
+                          value={formData.endDate}
+                          onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                          className="w-full pl-11 pr-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase ml-1">Equipment Code</label>
-                  <div className="relative group">
-                    <Package className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition" />
-                    <input
-                      type="text"
-                      required
-                      value={formData.equipmentCode}
-                      onChange={(e) => setFormData({ ...formData, equipmentCode: e.target.value.toUpperCase() })}
-                      className="w-full pl-11 pr-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
-                      placeholder="Contoh: GATE, AC, etc."
+                  <div className="space-y-2">
+                    <label htmlFor="ptw-notes" className="text-xs font-bold text-slate-500 uppercase ml-1">Catatan (Opsional)</label>
+                    <textarea
+                      id="ptw-notes"
+                      title="Catatan Tambahan"
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition h-24 resize-none"
+                      placeholder="Masukkan catatan tambahan..."
                     />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase ml-1">Masa Berlaku (Dari)</label>
-                    <div className="relative group">
-                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition" />
-                      <input
-                        type="date"
-                        required
-                        value={formData.startDate}
-                        onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                        className="w-full pl-11 pr-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
-                      />
+                  <div className="space-y-3">
+                    <label htmlFor="ptw-file-input" className="text-xs font-bold text-slate-500 uppercase ml-1">File Lampiran (Max 10MB)</label>
+                    
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                      <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                      <p className="text-[11px] font-bold text-amber-400 leading-tight">
+                        FILE PTW YANG DIUPLOAD HARUS YANG SUDAH TTD TDE
+                      </p>
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase ml-1">Sampai Dengan</label>
-                    <div className="relative group">
-                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition" />
+                    {selectedRecord?.totalChunks && selectedRecord?.fileName && !selectedFile && !shouldDeleteFile && (
+                      <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl mb-2">
+                        <File className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                        <span className="text-sm text-emerald-300 truncate flex-1">{selectedRecord.fileName}</span>
+                        <div className="flex items-center gap-1.5">
+                          <button type="button" onClick={() => handleDownload(selectedRecord)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition" title="Unduh">
+                            <Download className="w-4 h-4" />
+                          </button>
+                          <button 
+                            type="button" 
+                            onClick={() => setShouldDeleteFile(true)} 
+                            className="p-1.5 hover:bg-red-500/20 text-red-400 rounded-lg transition" 
+                            title="Hapus Lampiran"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <label htmlFor="ptw-file-input" className="flex items-center gap-3 px-5 py-3.5 bg-white/5 border border-white/10 border-dashed rounded-2xl text-slate-400 hover:border-indigo-500/50 hover:text-indigo-400 transition cursor-pointer">
+                      <FileUp className="w-5 h-5 flex-shrink-0" />
+                      <span className="text-sm truncate">
+                        {selectedFile ? selectedFile.name : 'Pilih file PDF PTW untuk diunggah...'}
+                      </span>
                       <input
-                        type="date"
-                        required
-                        value={formData.endDate}
-                        onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                        className="w-full pl-11 pr-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+                        id="ptw-file-input"
+                        title="Pilih File Lampiran"
+                        type="file"
+                        onChange={handleFileChange}
+                        className="hidden"
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
                       />
-                    </div>
+                    </label>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase ml-1">Catatan (Opsional)</label>
-                  <textarea
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition h-24 resize-none"
-                    placeholder="Masukkan catatan tambahan..."
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <label className="text-xs font-bold text-slate-500 uppercase ml-1">File Lampiran (Max 10MB)</label>
-                  
-                  <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                    <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                    <p className="text-[11px] font-bold text-amber-400 leading-tight">
-                      FILE PTW YANG DIUPLOAD HARUS YANG SUDAH TTD TDE
-                    </p>
-                  </div>
-                  {isEditModalOpen && selectedRecord?.totalChunks && selectedRecord?.fileName && !selectedFile && !shouldDeleteFile && (
-                    <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl mb-2">
-                      <File className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                      <span className="text-sm text-emerald-300 truncate flex-1">{selectedRecord.fileName}</span>
-                      <div className="flex items-center gap-1.5">
-                        <button type="button" onClick={() => handleDownload(selectedRecord)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition" title="Unduh">
-                          <Download className="w-4 h-4" />
-                        </button>
-                        <button 
-                          type="button" 
-                          onClick={() => setShouldDeleteFile(true)} 
-                          className="p-1.5 hover:bg-red-500/20 text-red-400 rounded-lg transition" 
-                          title="Hapus Lampiran"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                  {submitting && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-500 uppercase px-1">
+                        <span>{uploadProgress < 100 ? 'Mengunggah File...' : 'Menyimpan Data...'}</span>
+                        <span>{Math.round(uploadProgress)}%</span>
+                      </div>
+                      <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden border border-white/5">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${uploadProgress}%` }}
+                          className="bg-indigo-500 h-full shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+                        />
                       </div>
                     </div>
                   )}
-                  <label className="flex items-center gap-3 px-5 py-3.5 bg-white/5 border border-white/10 border-dashed rounded-2xl text-slate-400 hover:border-indigo-500/50 hover:text-indigo-400 transition cursor-pointer">
-                    <FileUp className="w-5 h-5 flex-shrink-0" />
-                    <span className="text-sm truncate">
-                      {selectedFile ? selectedFile.name : 'Pilih file untuk dilampirkan...'}
-                    </span>
-                    <input
-                      type="file"
-                      onChange={handleFileChange}
-                      className="hidden"
-                      accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                    />
-                  </label>
-                </div>
 
-                {submitting && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-500 uppercase px-1">
-                      <span>{uploadProgress < 100 ? 'Mengunggah File...' : 'Menyimpan Data...'}</span>
-                      <span>{Math.round(uploadProgress)}%</span>
-                    </div>
-                    <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden border border-white/5">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${uploadProgress}%` }}
-                        className="bg-indigo-500 h-full shadow-[0_0_10px_rgba(99,102,241,0.5)]"
-                      />
-                    </div>
+                  <div className="pt-4">
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white rounded-2xl font-bold text-lg shadow-xl shadow-indigo-900/20 transition-all flex items-center justify-center gap-3"
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="w-6 h-6 animate-spin" />
+                          Menyimpan...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="w-6 h-6" />
+                          Perbarui PTW
+                        </>
+                      )}
+                    </button>
                   </div>
-                )}
+                </form>
+              ) : (
+                // ===== ADD MULTI-FILE QUEUE MANAGER =====
+                <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                    <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                    <p className="text-[11px] font-bold text-amber-400 leading-tight">
+                      FILE PTW YANG DIUPLOAD HARUS YANG SUDAH TTD TDE. SISTEM AKAN MELAKUKAN AUTO-SCAN UNTUK SETIAP FILE PDF.
+                    </p>
+                  </div>
 
-                <div className="pt-4">
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white rounded-2xl font-bold text-lg shadow-xl shadow-indigo-900/20 transition-all flex items-center justify-center gap-3"
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                        Menyimpan...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="w-6 h-6" />
-                        {isEditModalOpen ? 'Perbarui PTW' : 'Simpan Data PTW'}
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
+                  {queuedItems.length === 0 ? (
+                    /* Dropzone when queue is empty */
+                    <div className="space-y-4">
+                      <label 
+                        htmlFor="ptw-multi-file-input" 
+                        className="flex flex-col items-center justify-center gap-4 px-6 py-12 bg-white/5 border-2 border-white/10 border-dashed rounded-3xl text-slate-400 hover:border-indigo-500/50 hover:text-indigo-400 transition cursor-pointer group"
+                      >
+                        <div className="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20 group-hover:scale-110 transition-transform">
+                          <FileUp className="w-8 h-8 text-indigo-400" />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-bold text-white mb-1">Pilih beberapa file PDF PTW Anda</p>
+                          <p className="text-xs text-slate-500">Seret berkas ke sini atau klik untuk menelusuri (Maks. 10MB per berkas)</p>
+                        </div>
+                        <input
+                          id="ptw-multi-file-input"
+                          title="Pilih Beberapa File Lampiran"
+                          type="file"
+                          multiple
+                          onChange={handleFileChange}
+                          className="hidden"
+                          accept=".pdf"
+                        />
+                      </label>
+                      
+                      <div className="text-center">
+                        <span className="text-xs text-slate-600 font-bold uppercase tracking-wider">Atau</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleAddManualQueueItem}
+                        className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-sm border border-white/10 transition flex items-center justify-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Input Data PTW Secara Manual
+                      </button>
+                    </div>
+                  ) : (
+                    /* Queue Manager List */
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between px-1">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                          Daftar Berkas Antrean ({queuedItems.length})
+                        </span>
+                        
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleAddManualQueueItem}
+                            className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold border border-white/10 transition flex items-center gap-1.5"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            Manual
+                          </button>
+                          
+                          <label 
+                            htmlFor="ptw-multi-file-input-more" 
+                            className="px-3.5 py-1.5 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 rounded-xl text-xs font-bold border border-indigo-500/20 transition flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <FileUp className="w-3.5 h-3.5" />
+                            Tambah Berkas
+                            <input
+                              id="ptw-multi-file-input-more"
+                              title="Pilih Berkas Tambahan"
+                              type="file"
+                              multiple
+                              onChange={handleFileChange}
+                              className="hidden"
+                              accept=".pdf"
+                            />
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Scrollable Queue Card List */}
+                      <div className="max-h-[380px] overflow-y-auto pr-1 space-y-3 scrollbar-thin scrollbar-thumb-white/10">
+                        {queuedItems.map((item, idx) => {
+                          const isComplete = item.sequenceNumber && item.equipmentCode && item.quarter && item.startDate && item.endDate;
+                          return (
+                            <div key={item.id} className="bg-white/5 rounded-2xl border border-white/5 overflow-hidden shadow-xl transition hover:border-white/10">
+                              {/* Card Header */}
+                              <div 
+                                onClick={() => toggleQueueItemExpanded(item.id)}
+                                className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition cursor-pointer text-left"
+                              >
+                                <div className="flex items-center gap-3 overflow-hidden flex-1 mr-2">
+                                  <div className={`p-2 rounded-xl flex-shrink-0 ${item.file ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+                                    <File className="w-5 h-5" />
+                                  </div>
+                                  <div className="overflow-hidden flex-1">
+                                    <h4 className="text-sm font-bold text-white truncate">
+                                      {item.file ? item.file.name : `Data PTW Manual #${idx + 1}`}
+                                    </h4>
+                                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                                      {item.isScanning ? (
+                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-400 animate-pulse bg-indigo-500/5 px-2 py-0.5 rounded-full border border-indigo-500/10">
+                                          <Loader2 className="w-3 h-3 animate-spin" />
+                                          <span>{item.scanStatus || 'Memindai PDF...'}</span>
+                                        </div>
+                                      ) : item.scanSource === 'filename' ? (
+                                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded-full border border-emerald-500/10 flex items-center gap-1">
+                                          ⚡ Instan (Nama File)
+                                        </span>
+                                      ) : item.scanSource === 'ocr' ? (
+                                        <span className="text-[10px] font-bold text-blue-400 bg-blue-500/5 px-2 py-0.5 rounded-full border border-blue-500/10 flex items-center gap-1">
+                                          🔍 Scan Selesai (OCR)
+                                        </span>
+                                      ) : (
+                                        <span className="text-[10px] font-bold text-slate-400 bg-slate-500/5 px-2 py-0.5 rounded-full border border-slate-500/10 flex items-center gap-1">
+                                          ✍️ Input Manual
+                                        </span>
+                                      )}
+
+                                      {/* Completeness Badge */}
+                                      {isComplete ? (
+                                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                          ✓ Lengkap
+                                        </span>
+                                      ) : (
+                                        <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                          ⚠️ Belum Lengkap
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveQueueItem(item.id)}
+                                    className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-xl transition border border-red-500/20 cursor-pointer"
+                                    title="Hapus dari antrean"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleQueueItemExpanded(item.id)}
+                                    className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition border border-white/10 text-slate-400 hover:text-white cursor-pointer"
+                                    title="Tampilkan detail"
+                                  >
+                                    <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${item.isExpanded ? 'rotate-180 text-indigo-400' : ''}`} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Accordion Content */}
+                              <AnimatePresence initial={false}>
+                                {item.isExpanded && (
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.2, ease: 'easeInOut' }}
+                                    className="border-t border-white/5 bg-slate-900/50 p-4 space-y-4"
+                                  >
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">No. Urut</label>
+                                        <input
+                                          type="number"
+                                          required
+                                          value={item.sequenceNumber}
+                                          onChange={(e) => updateQueueItemField(item.id, 'sequenceNumber', e.target.value)}
+                                          className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+                                          placeholder="Contoh: 0518"
+                                        />
+                                      </div>
+
+                                      <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Quarter</label>
+                                        <div className="relative group">
+                                          <select
+                                            title="Pilih Quarter"
+                                            required
+                                            value={item.quarter}
+                                            onChange={(e) => updateQueueItemField(item.id, 'quarter', e.target.value)}
+                                            className="w-full px-3.5 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-white text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition appearance-none cursor-pointer"
+                                          >
+                                            <option value="">Pilih Quarter</option>
+                                            <option value="1">Q1</option>
+                                            <option value="2">Q2</option>
+                                            <option value="3">Q3</option>
+                                            <option value="4">Q4</option>
+                                          </select>
+                                          <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                      <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Equipment Code</label>
+                                      <input
+                                        type="text"
+                                        required
+                                        value={item.equipmentCode}
+                                        onChange={(e) => updateQueueItemField(item.id, 'equipmentCode', e.target.value.toUpperCase())}
+                                        className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+                                        placeholder="Contoh: AHU"
+                                      />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Masa Berlaku (Mulai)</label>
+                                        <input
+                                          type="date"
+                                          required
+                                          title="Masa Berlaku Mulai"
+                                          placeholder="YYYY-MM-DD"
+                                          value={item.startDate}
+                                          onChange={(e) => updateQueueItemField(item.id, 'startDate', e.target.value)}
+                                          className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+                                        />
+                                      </div>
+
+                                      <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Sampai Dengan</label>
+                                        <input
+                                          type="date"
+                                          required
+                                          title="Masa Berlaku Selesai"
+                                          placeholder="YYYY-MM-DD"
+                                          value={item.endDate}
+                                          onChange={(e) => updateQueueItemField(item.id, 'endDate', e.target.value)}
+                                          className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div className="space-y-1.5">
+                                      <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Catatan / Nama Maintenance</label>
+                                      <textarea
+                                        value={item.notes}
+                                        onChange={(e) => updateQueueItemField(item.id, 'notes', e.target.value)}
+                                        className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition h-20 resize-none"
+                                        placeholder="Contoh: PM AHU 4"
+                                      />
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {submitting && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-500 uppercase px-1">
+                        <span>Mengunggah Berkas Antrean...</span>
+                        <span>{Math.round(uploadProgress)}%</span>
+                      </div>
+                      <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden border border-white/5">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${uploadProgress}%` }}
+                          className="bg-indigo-500 h-full shadow-[0_0_10px_rgba(99,102,241,0.5)]"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {queuedItems.length > 0 && (
+                    <div className="pt-4">
+                      <button
+                        type="submit"
+                        disabled={submitting}
+                        className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 text-white rounded-2xl font-bold text-lg shadow-xl shadow-indigo-900/20 transition-all flex items-center justify-center gap-3 cursor-pointer"
+                      >
+                        {submitting ? (
+                          <>
+                            <Loader2 className="w-6 h-6 animate-spin" />
+                            Menyimpan {queuedItems.length} Data PTW...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-6 h-6" />
+                            Simpan Semua ({queuedItems.length}) Data PTW
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </form>
+              )}
               </motion.div>
             </div>
           )}
@@ -1063,52 +1626,6 @@ export function PTWManagement() {
                   </button>
                   <button
                     onClick={confirmDeleteCategory}
-                    disabled={submitting}
-                    className="flex-1 py-4 bg-red-600 hover:bg-red-500 disabled:bg-red-800 text-white rounded-2xl font-bold shadow-xl shadow-red-900/20 transition flex items-center justify-center gap-2"
-                  >
-                    {submitting ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      'Ya, Hapus Semua'
-                    )}
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-
-          {isDeleteAllModalOpen && (
-            <div key="delete-all-modal-wrapper" className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setIsDeleteAllModalOpen(false)}
-                className="fixed inset-0 bg-black/90 backdrop-blur-md"
-              />
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="relative w-full max-w-md bg-slate-900 rounded-3xl border border-white/10 shadow-2xl p-8 text-center"
-              >
-                <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/20">
-                  <Trash2 className="w-10 h-10 text-red-500" />
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-2">Hapus SELURUH PTW?</h3>
-                <p className="text-slate-400 mb-8">
-                  Apakah Anda yakin ingin menghapus <span className="text-white font-bold">SELURUH ({records.length})</span> data dokumen PTW beserta file lampirannya dari database?
-                  Tindakan ini permanen dan tidak dapat dibatalkan!
-                </p>
-                <div className="flex gap-4">
-                  <button
-                    onClick={() => setIsDeleteAllModalOpen(false)}
-                    className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold transition"
-                  >
-                    Batal
-                  </button>
-                  <button
-                    onClick={confirmDeleteAll}
                     disabled={submitting}
                     className="flex-1 py-4 bg-red-600 hover:bg-red-500 disabled:bg-red-800 text-white rounded-2xl font-bold shadow-xl shadow-red-900/20 transition flex items-center justify-center gap-2"
                   >
