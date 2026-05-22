@@ -8,7 +8,7 @@ import {
   browserLocalPersistence
 } from 'firebase/auth';
 import { auth, db } from '@/api/firebase';
-import { doc, setDoc, serverTimestamp, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 
 interface UserData {
   email: string;
@@ -17,6 +17,25 @@ interface UserData {
   companyType?: 'neutra' | 'bri';
   createdAt: any;
 }
+
+const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'inventory' => {
+  if (!email) return 'engineer';
+  const lowerEmail = email.toLowerCase();
+  if (lowerEmail.includes('admin')) return 'admin';
+  if (lowerEmail.includes('hse')) return 'hse';
+  if (lowerEmail.includes('tde')) return 'tde';
+  if (lowerEmail.includes('cbre')) return 'cbre';
+  if (lowerEmail.includes('site_manager') || lowerEmail.includes('sitemanager')) return 'site_manager';
+  if (lowerEmail.includes('manager')) return 'manager';
+  if (lowerEmail.includes('inventory')) return 'inventory';
+  if (lowerEmail.includes('pmo')) return 'pmo';
+  if (lowerEmail.includes('sales')) return 'sales';
+  if (lowerEmail.includes('presales')) return 'presales';
+  if (lowerEmail.includes('purchasing')) return 'purchasing';
+  if (lowerEmail.includes('dirut')) return 'dirut';
+  if (lowerEmail.includes('standby')) return 'standby_engineer';
+  return 'engineer';
+};
 
 interface AuthContextType {
   user: User | null;
@@ -56,14 +75,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const userDoc = await getDoc(userDocRef);
 
           if (!userDoc.exists()) {
+            const initialRole = getRoleFromEmail(user.email);
             await setDoc(userDocRef, {
               email: user.email,
               uid: user.uid,
-              role: 'engineer',
+              role: initialRole,
               companyType: 'neutra',
               createdAt: serverTimestamp(),
             });
-            setUserRole('engineer');
+            setUserRole(initialRole);
           }
         } catch (error) {
           console.warn('Error creating/fetching user document (offline?):', error);
@@ -74,17 +94,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           (docSnap) => {
             if (docSnap.exists()) {
               const userData = docSnap.data() as UserData;
-              setUserRole(userData.role || 'engineer');
+              let finalRole = userData.role || 'engineer';
+
+              if (user.email) {
+                const expectedRole = getRoleFromEmail(user.email);
+                if (expectedRole !== finalRole) {
+                  finalRole = expectedRole;
+                  updateDoc(userDocRef, { role: expectedRole }).catch(err => 
+                    console.warn("Failed to auto-correct role in Firestore:", err)
+                  );
+                }
+              }
+
+              setUserRole(finalRole);
               setCompanyType(userData.companyType || 'neutra');
             } else {
-              setUserRole('engineer');
+              const defaultRole = getRoleFromEmail(user.email);
+              setUserRole(defaultRole);
               setCompanyType('neutra');
             }
             setLoading(false);
           },
           (error) => {
             console.warn('Error listening to user document:', error.message);
-            setUserRole('engineer');
+            const defaultRole = getRoleFromEmail(user.email);
+            setUserRole(defaultRole);
             setCompanyType('neutra');
             setLoading(false);
           }
@@ -116,10 +150,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userDoc = await getDoc(userDocRef);
 
         if (!userDoc.exists()) {
+          const initialRole = getRoleFromEmail(userCredential.user.email);
           await setDoc(userDocRef, {
             email: userCredential.user.email,
             uid: userCredential.user.uid,
-            role: 'engineer',
+            role: initialRole,
             companyType: 'neutra',
             createdAt: serverTimestamp(),
           });
