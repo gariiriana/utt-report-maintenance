@@ -260,10 +260,10 @@ export function InventoryApp() {
                            <div className="flex items-center justify-end gap-2">
                               {item.status === 'pending' && (
                                 <>
-                                   <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(item.id, 'borrowed'); }} className="p-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white rounded-lg transition-all border border-emerald-500/20 shadow-lg shadow-emerald-900/5">
+                                   <button title="Setujui Peminjaman" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(item.id, 'borrowed'); }} className="p-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white rounded-lg transition-all border border-emerald-500/20 shadow-lg shadow-emerald-900/5">
                                       <Check className="w-4 h-4" />
                                    </button>
-                                   <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(item.id, 'rejected'); }} className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-all border border-red-500/20 shadow-lg shadow-red-900/5">
+                                   <button title="Tolak Peminjaman" onClick={(e) => { e.stopPropagation(); handleUpdateStatus(item.id, 'rejected'); }} className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-lg transition-all border border-red-500/20 shadow-lg shadow-red-900/5">
                                       <X className="w-4 h-4" />
                                    </button>
                                 </>
@@ -312,7 +312,7 @@ export function InventoryApp() {
                                {getStatusInfo(selectedItem.status).label}
                             </Badge>
                          </div>
-                        <button onClick={() => setSelectedItem(null)} className="p-3 hover:bg-slate-800 rounded-2xl transition-colors text-slate-500">
+                        <button onClick={() => setSelectedItem(null)} className="p-3 hover:bg-slate-800 rounded-2xl transition-colors text-slate-500" title="Tutup Detail">
                            <X className="w-6 h-6" />
                         </button>
                      </div>

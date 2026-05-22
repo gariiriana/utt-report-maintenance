@@ -62,7 +62,7 @@ export function HSEApp() {
                                     <img src={logoUTT} alt="UTT" className="w-10 h-10 object-contain" />
                                     <span className="font-bold text-white text-sm uppercase tracking-wider">HSE System</span>
                                 </div>
-                                <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400">
+                                <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400" title="Tutup Menu">
                                     <X className="w-6 h-6" />
                                 </button>
                             </div>
@@ -146,6 +146,7 @@ export function HSEApp() {
                             <button 
                                 onClick={() => setSidebarOpen(true)}
                                 className="lg:hidden p-2 bg-slate-800/50 rounded-lg border border-slate-700/50 text-slate-300"
+                                title="Buka Menu"
                             >
                                 <Menu className="w-6 h-6" />
                             </button>

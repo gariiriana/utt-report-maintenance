@@ -934,9 +934,8 @@ export function PTWManagement() {
                       className="border-t border-slate-850 overflow-hidden"
                     >
                       <div className="p-4 sm:p-6 space-y-4">
-                        {/* Desktop Table inside group */}
-                        <div className="hidden md:block overflow-hidden rounded-xl border border-slate-800 bg-slate-950/20">
-                          <table className="w-full">
+                        <div className="hidden md:block overflow-x-auto scrollbar-thin rounded-xl border border-slate-800 bg-slate-950/20 w-full">
+                          <table className="w-full min-w-[800px]">
                             <thead className="bg-slate-800/30 border-b border-slate-800/80">
                               <tr>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Nomor PTW</th>

@@ -1134,12 +1134,14 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-3 self-start sm:self-auto">
-                  <div className="px-3 py-1.5 bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-full flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">SEDANG DIEDIT</span>
+                {userRole !== 'engineer' && userRole !== 'standby_engineer' && (
+                  <div className="flex items-center gap-3 self-start sm:self-auto">
+                    <div className="px-3 py-1.5 bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-full flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">SEDANG DIEDIT</span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
             </div>

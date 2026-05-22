@@ -454,6 +454,7 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                 <select
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  title="Pilih Tahun"
                   className="bg-transparent text-slate-300 text-[10px] sm:text-xs font-bold px-2 py-1 outline-none cursor-pointer uppercase"
                 >
                   <option value={2026} className="bg-slate-900">2026</option>
@@ -463,6 +464,7 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                 <select
                   value={selectedQuarter}
                   onChange={(e) => setSelectedQuarter(e.target.value)}
+                  title="Pilih Kuartal"
                   className="bg-transparent text-slate-300 text-[10px] sm:text-xs font-bold px-2 py-1 outline-none cursor-pointer uppercase"
                 >
                   <option value="Q1" className="bg-slate-900">Q1</option>
@@ -700,7 +702,7 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                   <Database className="w-5 h-5 text-indigo-400" />
                   Tambah Perangkat Baru
                 </h3>
-                <button onClick={() => setShowAddModal(false)} className="text-slate-500 hover:text-white transition-colors">
+                <button onClick={() => setShowAddModal(false)} className="text-slate-500 hover:text-white transition-colors" title="Tutup Modal">
                   <Plus className="w-6 h-6 rotate-45" />
                 </button>
               </div>
@@ -742,6 +744,8 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                       type="number"
                       value={newProgress.plan_qty}
                       onChange={(e) => setNewProgress({ ...newProgress, plan_qty: parseFloat(e.target.value) || 0 })}
+                      placeholder="0"
+                      title="Plan Qty"
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 md:p-3.5 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
                     />
                   </div>
@@ -751,6 +755,8 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                       type="number"
                       value={newProgress.actual_qty}
                       onChange={(e) => setNewProgress({ ...newProgress, actual_qty: parseFloat(e.target.value) || 0 })}
+                      placeholder="0"
+                      title="Actual Qty"
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 md:p-3.5 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
                     />
                   </div>
@@ -909,6 +915,8 @@ function ActivityRow({ activity, onUpdate, onDelete, isSaving }: {
               setQty(e.target.value);
               setHasChanges(true);
             }}
+            placeholder="0"
+            title="Actual Qty"
             className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-center text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
           />
         </div>
@@ -922,7 +930,11 @@ function ActivityRow({ activity, onUpdate, onDelete, isSaving }: {
                 className={`h-full transition-all duration-500 ${
                   progressPercent >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'
                 }`}
-                style={{ width: `${Math.min(100, progressPercent)}%` }}
+                ref={(el) => {
+                  if (el) {
+                    el.style.width = `${Math.min(100, progressPercent)}%`;
+                  }
+                }}
               />
             </div>
             <span className={`text-xs font-mono font-bold ${

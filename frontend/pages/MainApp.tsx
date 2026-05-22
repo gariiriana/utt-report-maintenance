@@ -146,7 +146,7 @@ export function MainApp() {
             >
               <div className="p-6 flex items-center justify-between border-b border-slate-800">
                 <span className="font-bold text-white">Menu Navigasi</span>
-                <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-slate-400 hover:text-white">
+                <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-slate-400 hover:text-white" title="Tutup Menu">
                   <X className="w-6 h-6" />
                 </button>
               </div>
@@ -193,7 +193,7 @@ export function MainApp() {
       </AnimatePresence>
 
       {}
-      <main className="flex-1 relative">
+      <main className="flex-1 relative w-full min-w-0 overflow-x-hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
