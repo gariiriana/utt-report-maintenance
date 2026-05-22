@@ -153,6 +153,8 @@ export function CameraCapture({ onCapture, placeholder = "Ambil Foto Wajah" }: C
                   type="button"
                   onClick={capturePhoto}
                   className="p-4 bg-blue-600 hover:bg-blue-500 text-white rounded-full shadow-xl shadow-blue-900/40 transition-all active:scale-95 group/cap"
+                  title="Ambil Foto"
+                  aria-label="Ambil Foto"
                >
                   <Camera className="w-6 h-6 group-hover/cap:scale-110 transition-transform" />
                </button>
