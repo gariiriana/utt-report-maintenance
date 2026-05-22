@@ -564,7 +564,11 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                 </button>
               </>
             )}
-            <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-xl transition text-slate-400">
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-slate-800 rounded-xl transition text-slate-400"
+              title="Tutup"
+            >
               <X className="w-6 h-6" />
             </button>
           </div>
@@ -644,6 +648,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                       <button
                         onClick={() => handleZoomChange([Math.min(zoomRange.max, zoom + 0.5)])}
                         className="p-1.5 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition"
+                        title="Perbesar Zoom"
                       >
                         <ZoomIn className="w-4 h-4" />
                       </button>
@@ -662,6 +667,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                       <button
                         onClick={() => handleZoomChange([Math.max(zoomRange.min, zoom - 0.5)])}
                         className="p-1.5 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition"
+                        title="Perkecil Zoom"
                       >
                         <ZoomOut className="w-4 h-4" />
                       </button>
@@ -681,6 +687,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                 onClick={takePhoto}
                 disabled={!isReady || !!error}
                 className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full p-1 border-4 border-slate-700 hover:scale-105 active:scale-95 transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed group"
+                title="Ambil Foto"
               >
                 <div className="w-full h-full bg-slate-100 rounded-full flex items-center justify-center group-hover:bg-white transition">
                   <div className="w-6 h-6 sm:w-8 sm:h-8 border-4 border-slate-900 rounded-full" />

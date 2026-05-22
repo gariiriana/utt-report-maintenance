@@ -124,7 +124,7 @@ export function PreviewReport({
             </div>
 
             <div className="w-full overflow-x-auto mt-6 pb-12 px-4 custom-scrollbar">
-                <div className="bg-white shadow-[0_30px_60px_rgba(0,0,0,0.6)] p-8 sm:p-14 text-slate-900 min-h-[1162px] font-sans border border-slate-200 rounded-sm mx-auto" style={{ width: '900px' }}>
+                <div className="bg-white shadow-[0_30px_60px_rgba(0,0,0,0.6)] p-8 sm:p-14 text-slate-900 min-h-[1162px] font-sans border border-slate-200 rounded-sm mx-auto w-[900px]">
                     <div className="flex items-center justify-between pb-6 mb-8 mt-2">
                         <div className="w-[110px] flex-shrink-0">
                             <img src={leftLogo} alt="Logo Left" className={isPDU ? "h-10 w-auto" : "h-20 w-auto object-contain"} />
@@ -153,14 +153,11 @@ export function PreviewReport({
                     <div className="h-px w-full bg-slate-100 mb-8" />
 
                     <div
-                        className="grid gap-3"
-                        style={{
-                            gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`
-                        }}
+                        className={`grid gap-3 ${columns === 4 ? 'grid-cols-4' : 'grid-cols-3'}`}
                     >
                         {filledCards.map((card, index) => (
                             <div key={card.id || index} className="flex flex-col border-2 border-slate-900 overflow-hidden shadow-sm">
-                                <div className="relative overflow-hidden bg-slate-100 flex items-center justify-center shrink-0 border-b-2 border-slate-900" style={{ height: (isVRV || isWLD || isFLD) ? '200px' : isSmallGrid ? '150px' : '210px' }}>
+                                <div className={`relative overflow-hidden bg-slate-100 flex items-center justify-center shrink-0 border-b-2 border-slate-900 ${(isVRV || isWLD || isFLD) ? 'h-[200px]' : isSmallGrid ? 'h-[150px]' : 'h-[210px]'}`}>
                                     {card.photoBase64 ? (
                                         <img src={card.photoBase64} alt={`Doc ${index + 1}`} className="w-full h-full object-cover" />
                                     ) : (

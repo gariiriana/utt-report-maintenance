@@ -83,6 +83,7 @@
 
 .glass-effect {
   background: rgba(255, 255, 255, 0.05);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -103,4 +104,34 @@ input[type='number']::-webkit-outer-spin-button {
 input[type='number'] {
   -moz-appearance: textfield;
   appearance: textfield;
+}
+
+.red-grid-bg {
+  background-image:
+    linear-gradient(rgba(239, 68, 68, 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(239, 68, 68, 0.5) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.orange-grid-bg {
+  background-image:
+    linear-gradient(rgba(251, 146, 60, 0.5) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(251, 146, 60, 0.5) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.blue-grid-bg {
+  background-image:
+    linear-gradient(rgba(59, 130, 246, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.15) 1px, transparent 1px);
+  background-size: 80px 80px;
+}
+
+.checkerboard-bg {
+  background-image:
+    linear-gradient(45deg, #666 25%, transparent 25%, transparent 75%, #666 75%),
+    linear-gradient(45deg, #666 25%, transparent 25%, transparent 75%, #666 75%);
+  background-size: 6px 6px;
+  background-position: 0 0, 3px 3px;
+  background-color: transparent;
 }

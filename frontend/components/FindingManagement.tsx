@@ -227,6 +227,8 @@ export function FindingManagement() {
                       value={formData.quantity}
                       onChange={(e) => setFormData({ ...formData, quantity: e.target.value === '' ? '' : parseInt(e.target.value) })}
                       className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 outline-none transition-all"
+                      title="Quantity"
+                      placeholder="0"
                     />
                   </div>
                   <div className="space-y-2">
@@ -238,6 +240,7 @@ export function FindingManagement() {
                       value={formData.findingDate}
                       onChange={(e) => setFormData({ ...formData, findingDate: e.target.value })}
                       className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 outline-none transition-all [color-scheme:dark]"
+                      title="Tanggal temuan"
                     />
                   </div>
                 </div>
@@ -283,6 +286,7 @@ export function FindingManagement() {
                           type="button"
                           onClick={() => setEditingPhotoIdx(idx)}
                           className="p-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition shadow-lg"
+                          title="Crop foto"
                         >
                           <Scissors className="w-5 h-5" />
                         </button>
@@ -290,6 +294,7 @@ export function FindingManagement() {
                           type="button"
                           onClick={() => removePhoto(idx)}
                           className="p-2.5 bg-red-500 text-white rounded-xl hover:bg-red-600 transition shadow-lg"
+                          title="Hapus foto"
                         >
                           <X className="w-5 h-5" />
                         </button>
@@ -317,6 +322,7 @@ export function FindingManagement() {
                       accept="image/*"
                       onChange={handleAddPhoto}
                       className="absolute inset-0 opacity-0 cursor-pointer"
+                      title="Tambah foto"
                     />
                   </div>
                 </div>

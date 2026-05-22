@@ -122,6 +122,7 @@ export function NotificationCenter({ onNotificationClick }: NotificationCenterPr
                             <button
                                 onClick={() => setIsOpen(false)}
                                 className="p-1 hover:bg-slate-700 rounded-lg text-slate-500 transition-colors"
+                                title="Tutup notifikasi"
                             >
                                 <X className="w-4 h-4" />
                             </button>

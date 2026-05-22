@@ -33,6 +33,7 @@ export function DeleteConfirmModal({ isOpen, onClose, onConfirm, documentName, l
               <button
                 onClick={onClose}
                 className="absolute top-4 right-4 p-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white transition"
+                title="Tutup"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -99,13 +100,7 @@ export function DeleteConfirmModal({ isOpen, onClose, onConfirm, documentName, l
               </div>
 
               <div className="absolute inset-0 pointer-events-none opacity-5">
-                <div className="absolute inset-0" style={{
-                  backgroundImage: `
-                    linear-gradient(rgba(239, 68, 68, 0.5) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(239, 68, 68, 0.5) 1px, transparent 1px)
-                  `,
-                  backgroundSize: '20px 20px'
-                }} />
+                <div className="absolute inset-0 red-grid-bg" />
               </div>
             </motion.div>
           </motion.div>

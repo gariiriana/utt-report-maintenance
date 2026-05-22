@@ -355,6 +355,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                             value={formData.status}
                                             onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
                                             className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-orange-500 outline-none"
+                                            title="Status"
                                         >
                                             <option value="Open">Open</option>
                                             <option value="InProgress">In Progress</option>
@@ -381,6 +382,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                             value={formData.quarter}
                                             onChange={(e) => setFormData({ ...formData, quarter: e.target.value })}
                                             className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-orange-500 outline-none"
+                                            title="Quarter"
                                         >
                                             <option value="Q1">Q1</option>
                                             <option value="Q2">Q2</option>
@@ -395,6 +397,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                             value={formData.year}
                                             onChange={(e) => setFormData({ ...formData, year: e.target.value })}
                                             className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-orange-500 outline-none"
+                                            title="Year"
                                         >
                                             <option value="2025">2025</option>
                                             <option value="2026">2026</option>
@@ -444,6 +447,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                                     accept="image/*"
                                                     onChange={handlePhotoChange}
                                                     className="absolute inset-0 opacity-0 cursor-pointer"
+                                                    title="Upload foto evidence"
                                                 />
                                             </>
                                         )}

@@ -51,6 +51,72 @@ const BG_COLORS = [
     { value: '#000000', label: 'Hitam' },
 ];
 
+function getPresetBgClass(bgColor: string): string {
+    switch (bgColor) {
+        case '#16a34a': return 'bg-green-600';
+        case '#2563eb': return 'bg-blue-600';
+        case '#d97706': return 'bg-amber-600';
+        case '#7c3aed': return 'bg-purple-600';
+        case '#dc2626': return 'bg-red-600';
+        default: return 'bg-slate-700';
+    }
+}
+
+function getPresetTextClass(color: string): string {
+    switch (color) {
+        case '#ffffff': return 'text-white';
+        case '#000000': return 'text-black';
+        default: return 'text-white';
+    }
+}
+
+function getTextColorClass(color: string): string {
+    switch (color) {
+        case '#ffffff': return 'bg-white';
+        case '#ff0000': return 'bg-[#ff0000]';
+        case '#00ff00': return 'bg-[#00ff00]';
+        case '#ffff00': return 'bg-[#ffff00]';
+        case '#000000': return 'bg-black';
+        case '#ff6600': return 'bg-[#ff6600]';
+        default: return 'bg-transparent';
+    }
+}
+
+function getBgColorClass(color: string | null): string {
+    if (color === null) return 'checkerboard-bg';
+    switch (color) {
+        case '#16a34a': return 'bg-green-600';
+        case '#2563eb': return 'bg-blue-600';
+        case '#dc2626': return 'bg-red-600';
+        case '#d97706': return 'bg-amber-600';
+        case '#7c3aed': return 'bg-purple-600';
+        case '#000000': return 'bg-black';
+        default: return 'bg-transparent';
+    }
+}
+
+function getTextColorPreviewClass(color: string): string {
+    switch (color) {
+        case '#ffffff': return 'text-white';
+        case '#ff0000': return 'text-[#ff0000]';
+        case '#00ff00': return 'text-[#00ff00]';
+        case '#ffff00': return 'text-[#ffff00]';
+        case '#000000': return 'text-black';
+        case '#ff6600': return 'text-[#ff6600]';
+        default: return 'text-white';
+    }
+}
+
+function getFontSizePreviewClass(size: number): string {
+    const clamped = Math.min(24, size);
+    if (clamped <= 12) return 'text-xs';
+    if (clamped <= 14) return 'text-sm';
+    if (clamped <= 16) return 'text-base';
+    if (clamped <= 18) return 'text-lg';
+    if (clamped <= 20) return 'text-xl';
+    return 'text-2xl';
+}
+
 export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const imgRef = useRef<HTMLImageElement | null>(null);
@@ -199,6 +265,7 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                     <button
                         onClick={onCancel}
                         className="p-2 hover:bg-slate-800 rounded-lg transition text-slate-400 hover:text-white"
+                        title="Tutup"
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -213,8 +280,7 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                                 width={canvasSize.w}
                                 height={canvasSize.h}
                                 onClick={handleCanvasClick}
-                                className="cursor-crosshair rounded-lg shadow-2xl max-w-full"
-                                style={{ maxHeight: '60vh', objectFit: 'contain' }}
+                                className="cursor-crosshair rounded-lg shadow-2xl max-w-full max-h-[60vh] object-contain"
                             />
                         ) : (
                             <div className="flex items-center justify-center h-64 text-slate-500">
@@ -237,8 +303,7 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                                         <button
                                             key={p.label}
                                             onClick={() => applyPreset(p)}
-                                            className="px-2 py-1.5 rounded-lg text-xs font-bold transition hover:opacity-80 active:scale-95"
-                                            style={{ backgroundColor: p.bgColor, color: p.color }}
+                                            className={`px-2 py-1.5 rounded-lg text-xs font-bold transition hover:opacity-80 active:scale-95 ${getPresetBgClass(p.bgColor)} ${getPresetTextClass(p.color)}`}
                                         >
                                             {p.label}
                                         </button>
@@ -270,6 +335,7 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                                     <button
                                         onClick={() => setFontSize(s => Math.max(12, s - 4))}
                                         className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg transition text-slate-300"
+                                        title="Perkecil ukuran teks"
                                     >
                                         <Minus className="w-3.5 h-3.5" />
                                     </button>
@@ -281,10 +347,12 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                                         value={fontSize}
                                         onChange={(e) => setFontSize(Number(e.target.value))}
                                         className="flex-1 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-green-500"
+                                        title="Ukuran font"
                                     />
                                     <button
                                         onClick={() => setFontSize(s => Math.min(96, s + 4))}
                                         className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg transition text-slate-300"
+                                        title="Perbesar ukuran teks"
                                     >
                                         <Plus className="w-3.5 h-3.5" />
                                     </button>
@@ -300,8 +368,7 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                                             key={c.value}
                                             title={c.label}
                                             onClick={() => setTextColor(c.value)}
-                                            className={`w-7 h-7 rounded-full border-2 transition hover:scale-110 ${textColor === c.value ? 'border-white scale-110' : 'border-slate-600'}`}
-                                            style={{ backgroundColor: c.value }}
+                                            className={`w-7 h-7 rounded-full border-2 transition hover:scale-110 ${textColor === c.value ? 'border-white scale-110' : 'border-slate-600'} ${getTextColorClass(c.value)}`}
                                         />
                                     ))}
                                 </div>
@@ -316,13 +383,7 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                                             key={c.label}
                                             title={c.label}
                                             onClick={() => setBgColor(c.value)}
-                                            className={`w-7 h-7 rounded-full border-2 transition hover:scale-110 ${bgColor === c.value ? 'border-white scale-110' : 'border-slate-600'}`}
-                                            style={{
-                                                backgroundColor: c.value ?? 'transparent',
-                                                backgroundImage: c.value === null ? 'linear-gradient(45deg, #666 25%, transparent 25%, transparent 75%, #666 75%), linear-gradient(45deg, #666 25%, transparent 25%, transparent 75%, #666 75%)' : undefined,
-                                                backgroundSize: c.value === null ? '6px 6px' : undefined,
-                                                backgroundPosition: c.value === null ? '0 0, 3px 3px' : undefined,
-                                            }}
+                                            className={`w-7 h-7 rounded-full border-2 transition hover:scale-110 ${bgColor === c.value ? 'border-white scale-110' : 'border-slate-600'} ${getBgColorClass(c.value)}`}
                                         />
                                     ))}
                                 </div>
@@ -336,12 +397,7 @@ export function HSEPhotoEditor({ imageUrl, onSave, onCancel }: HSEPhotoEditorPro
                                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Preview Teks</p>
                                 <div className="flex items-center justify-center p-3 bg-slate-800/50 rounded-lg min-h-[50px]">
                                     <span
-                                        className="font-bold px-2 py-1 rounded-md text-sm"
-                                        style={{
-                                            color: textColor,
-                                            backgroundColor: bgColor ?? 'transparent',
-                                            fontSize: Math.min(24, fontSize) + 'px',
-                                        }}
+                                        className={`font-bold px-2 py-1 rounded-md ${getTextColorPreviewClass(textColor)} ${getBgColorClass(bgColor)} ${getFontSizePreviewClass(fontSize)}`}
                                     >
                                         {currentText || 'Preview...'}
                                     </span>

@@ -203,6 +203,7 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
                     <button
                         onClick={onCancel}
                         className="p-2 hover:bg-slate-800 rounded-lg transition text-slate-400 hover:text-white"
+                        title="Tutup"
                     >
                         <X className="w-6 h-6" />
                     </button>
@@ -242,13 +243,13 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
                         .ReactCrop__drag-handle::after {
                             display: none !important;
                         }
+                        .dynamic-img-transform {
+                            transform: scale(${zoom}) rotate(${rotation}deg);
+                        }
                     `}</style>
 
                     <div 
-                        className="relative transition-transform duration-200 ease-out"
-                        style={{ 
-                            transform: `scale(${zoom}) rotate(${rotation}deg)`,
-                        }}
+                        className="relative transition-transform duration-200 ease-out dynamic-img-transform"
                     >
                         <ReactCrop
                             crop={crop}
@@ -261,8 +262,7 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
                                 src={image}
                                 alt="Crop me"
                                 onLoad={onImageLoad}
-                                className="max-w-full max-h-[60vh] object-contain select-none shadow-2xl rounded-lg"
-                                style={{ transformOrigin: 'center' }}
+                                className="max-w-full max-h-[60vh] object-contain select-none shadow-2xl rounded-lg origin-center"
                             />
                         </ReactCrop>
                     </div>
@@ -296,7 +296,8 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
                                 min={1}
                                 max={3}
                                 step={0.1}
-                                aria-labelledby="Zoom"
+                                title="Zoom"
+                                aria-label="Zoom"
                                 onChange={(e) => setZoom(Number(e.target.value))}
                                 className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
                             />
@@ -318,7 +319,8 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
                                 min={0}
                                 max={360}
                                 step={1}
-                                aria-labelledby="Rotation"
+                                title="Rotation"
+                                aria-label="Rotation"
                                 onChange={(e) => setRotation(Number(e.target.value))}
                                 className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
                             />

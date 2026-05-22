@@ -22,13 +22,7 @@ export function DataCenterBackground() {
       </div>
 
       <div className="absolute inset-0 z-10 opacity-20 pointer-events-none">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `
-            linear-gradient(rgba(59, 130, 246, 0.15) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(59, 130, 246, 0.15) 1px, transparent 1px)
-          `,
-          backgroundSize: '80px 80px',
-        }} />
+        <div className="absolute inset-0 blue-grid-bg" />
       </div>
 
       <div className="relative z-20 pointer-events-none">
@@ -96,17 +90,24 @@ function NetworkTopology() {
   );
 }
 
+const LEFT_CLASSES = [
+  'left-0',
+  'left-[12.5%]',
+  'left-[25%]',
+  'left-[37.5%]',
+  'left-[50%]',
+  'left-[62.5%]',
+  'left-[75%]',
+  'left-[87.5%]',
+];
+
 function DataFlowParticles() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {[...Array(8)].map((_, i) => (
         <motion.div
           key={i}
-          className="absolute w-1 h-1 bg-blue-400 rounded-full shadow-lg shadow-blue-400/50"
-          style={{
-            left: `${(i * 12.5)}%`,
-            top: 0,
-          }}
+          className={`absolute w-1 h-1 bg-blue-400 rounded-full shadow-lg shadow-blue-400/50 top-0 ${LEFT_CLASSES[i]}`}
           animate={{
             y: ['0vh', '100vh'],
             opacity: [0, 1, 1, 0],
