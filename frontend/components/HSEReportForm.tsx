@@ -882,9 +882,9 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
 
                             {photos.length > 0 && (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                    <AnimatePresence>
+                                    <AnimatePresence mode="popLayout">
                                         {photos.map((photo) => (
-                                            <motion.div key={photo.id} className="flex flex-col gap-2">
+                                            <motion.div key={photo.id} layout className="flex flex-col gap-2">
                                                 <div className="relative group rounded-xl overflow-hidden border border-slate-700/40 aspect-[4/3] bg-slate-950">
                                                     <img src={photo.dataUrl} alt="" className="w-full h-full object-cover" />
                                                     {photo.label && (
@@ -900,6 +900,31 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                                 <input type="text" value={photo.description} onChange={e => setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, description: e.target.value } : p))} placeholder="Keterangan foto..." className="w-full px-3 py-2 bg-slate-900/40 border border-slate-800/60 rounded-lg text-white text-[11px] outline-none" />
                                             </motion.div>
                                         ))}
+
+                                        {/* Special Inline Upload Card for hse@gmail.com */}
+                                        {user?.email?.toLowerCase() === 'hse@gmail.com' && (
+                                            <motion.div
+                                                key="inline-upload-card"
+                                                layout
+                                                initial={{ opacity: 0, scale: 0.95 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                exit={{ opacity: 0, scale: 0.95 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="flex flex-col gap-2"
+                                            >
+                                                <div 
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                    className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-800 hover:border-blue-500/50 rounded-xl aspect-[4/3] cursor-pointer transition-all bg-slate-900/20 hover:bg-blue-500/[0.02] group/inline"
+                                                >
+                                                    <div className="p-2 bg-slate-800/40 rounded-lg group-hover/inline:scale-105 group-hover/inline:bg-blue-500/10 transition-all">
+                                                        <Upload className="w-5 h-5 text-slate-500 group-hover/inline:text-blue-400" />
+                                                    </div>
+                                                    <span className="text-[10px] font-bold text-slate-400 group-hover/inline:text-slate-200 uppercase tracking-wider">Tambah Foto</span>
+                                                </div>
+                                                {/* Placeholder matching the height of photo description input to align grid items */}
+                                                <div className="h-[34px] invisible" aria-hidden="true" />
+                                            </motion.div>
+                                        )}
                                     </AnimatePresence>
                                 </div>
                             )}
