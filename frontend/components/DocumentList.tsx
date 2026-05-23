@@ -62,7 +62,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<ExcelDocument | null>(null);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   
   const [currentLevel, setCurrentLevel] = useState<'root' | 'category' | 'maintenance' | 'month' | 'week'>('root');
@@ -237,27 +236,15 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   };
 
   const confirmDelete = async () => {
-    if (!documentToDelete && selectedIds.length === 0) return;
+    if (!documentToDelete) return;
 
     try {
       setBulkDeleting(true);
-      const toastId = toast.loading(selectedIds.length > 0 ? `Menghapus ${selectedIds.length} dokumen...` : 'Menghapus dokumen...');
+      const toastId = toast.loading('Menghapus dokumen...');
 
-      if (selectedIds.length > 0) {
-        for (const id of selectedIds) {
-          const docData = documents.find(d => d.id === id);
-          if (docData) {
-            const collectionName = docData.documentType === 'hse' ? 'hse' : docData.documentType + '_documents';
-            await deleteDoc(doc(db, collectionName, id));
-          }
-        }
-        toast.success(`${selectedIds.length} dokumen berhasil dihapus`, { id: toastId });
-        setSelectedIds([]);
-      } else if (documentToDelete) {
-        const collectionName = documentToDelete.documentType === 'hse' ? 'hse' : documentToDelete.documentType + '_documents';
-        await deleteDoc(doc(db, collectionName, documentToDelete.id));
-        toast.success('Dokumen berhasil dihapus', { id: toastId });
-      }
+      const collectionName = documentToDelete.documentType === 'hse' ? 'hse' : documentToDelete.documentType + '_documents';
+      await deleteDoc(doc(db, collectionName, documentToDelete.id));
+      toast.success('Dokumen berhasil dihapus', { id: toastId });
 
       setDeleteModalOpen(false);
       setDocumentToDelete(null);
@@ -590,24 +577,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
     return true;
   });
 
-  const docsInView = (() => {
-    if (filterOverride !== 'hse_utt') return filteredDocuments;
-    if (currentLevel === 'week') {
-      return filteredDocuments.filter(d =>
-        d.hseType === 'inspection' &&
-        getMonthYearString(d.createdAt) === selectedMonth &&
-        getWeekOfMonth(d.createdAt) === selectedWeek
-      );
-    }
-    if (currentLevel === 'maintenance') {
-      return filteredDocuments.filter(d =>
-        d.hseType === selectedCategory &&
-        d.maintenanceType === selectedMaintenance
-      );
-    }
-    return [];
-  })();
-
   const renderContent = () => {
     if (filterOverride !== 'hse_utt') {
       return filteredDocuments.map((document, index) => renderDocumentCard(document, index));
@@ -808,21 +777,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-4 sm:p-5 border border-slate-700/50 hover:border-blue-500/30 transition group"
     >
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-        {canDelete && (
-          <div className="flex-shrink-0 mr-1">
-            <input
-              type="checkbox"
-              checked={selectedIds.includes(document.id)}
-              onChange={(e) => {
-                if (e.target.checked) setSelectedIds(prev => [...prev, document.id]);
-                else setSelectedIds(prev => prev.filter(id => id !== document.id));
-              }}
-              className="w-4 h-4 sm:w-5 sm:h-5 rounded border-slate-700 bg-slate-800/50 text-blue-500 focus:ring-blue-500/20 transition-all cursor-pointer"
-              title="Pilih dokumen ini"
-            />
-          </div>
-        )}
-
         <div className="p-2.5 sm:p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20 flex-shrink-0">
           {document.documentType === 'pdf' ? (
             <FileType className="w-5 h-5 sm:w-6 sm:h-6 text-red-400" />
@@ -1057,47 +1011,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         </div>
 
 
-        {canDelete && docsInView.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-slate-700/30 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={docsInView.length > 0 && docsInView.every(d => selectedIds.includes(d.id))}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setSelectedIds(docsInView.map(d => d.id));
-                  } else {
-                    setSelectedIds([]);
-                  }
-                }}
-                className="w-4 h-4 sm:w-5 sm:h-5 rounded border-slate-700 bg-slate-800/50 text-blue-500 focus:ring-blue-500/20 transition-all cursor-pointer"
-                title="Pilih semua dokumen"
-              />
-              <span className="text-sm font-medium text-slate-300">Pilih Semua Dokumen</span>
-            </div>
-
-            <AnimatePresence>
-              {selectedIds.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                >
-                  <button
-                    onClick={() => {
-                      setDocumentToDelete(null);
-                      setDeleteModalOpen(true);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-lg transition-all text-sm font-bold shadow-lg shadow-red-500/10"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Hapus Terpilih ({selectedIds.length})
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
       </div>
 
       {loading ? (
@@ -1145,7 +1058,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         isOpen={deleteModalOpen}
         onClose={() => !bulkDeleting && setDeleteModalOpen(false)}
         onConfirm={confirmDelete}
-        documentName={selectedIds.length > 0 ? `${selectedIds.length} dokumen terpilih` : (documentToDelete?.fileName || '')}
+        documentName={documentToDelete?.fileName || ''}
         loading={bulkDeleting}
       />
     </div>
