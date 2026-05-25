@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-    Plus,
     Camera,
     MapPin,
     PenTool,
     AlertCircle,
     CheckCircle2,
     Trash2,
-    X,
     Loader2,
     FileText,
     Scissors,
@@ -97,14 +95,14 @@ const INDO_MONTHS = [
 
 export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanceProps) {
     const { user, userRole } = useAuth();
-    const canCreate = !readOnly && (userRole === 'engineer' || userRole === 'standby_engineer' || userRole === 'admin');
-    const canDelete = !readOnly && (userRole === 'admin' || userRole === 'engineer' || userRole === 'standby_engineer');
+    const isAuthorizedRole = userRole === 'admin' || userRole === 'engineer' || userRole === 'standby_engineer';
 
     const [reports, setReports] = useState<CorrectiveReport[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [reportFormType, setReportFormType] = useState<'standard' | 'sla' | null>(null);
+    const [formKey, setFormKey] = useState(0);
 
     const [formData, setFormData] = useState({
         issue: '',
@@ -260,6 +258,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                 await updateDoc(doc(db, 'corrective_reports', editingReportId), reportData);
                 toast.success('Corrective report updated!');
                 setEditingReportId(null);
+                setReportFormType(null);
             } else {
                 const apiUrl = import.meta.env.VITE_API_URL;
                 if (apiUrl) {
@@ -536,102 +535,61 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
         }
     };
 
+    if (!readOnly) {
+        return (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
+                <div className="flex justify-between items-center mb-8 border-b border-slate-800 pb-5">
+                    <div>
+                        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                            <PenTool className="w-6 h-6 text-orange-500" />
+                            Corrective Maintenance
+                        </h1>
+                        <p className="text-slate-400 text-sm mt-1">Form Input SLA / SLG (5-Step)</p>
+                    </div>
+                </div>
+
+                <div className="bg-slate-800/20 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+                    <SLAForm
+                        key={formKey}
+                        onSuccess={() => {
+                            setFormKey(prev => prev + 1);
+                        }}
+                        onCancel={() => {
+                            setFormKey(prev => prev + 1);
+                        }}
+                    />
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex justify-between items-center mb-8 border-b border-slate-800/50 pb-5">
                 <div>
                     <h1 className="text-2xl font-bold text-white flex items-center gap-2">
                         <PenTool className="w-6 h-6 text-orange-500" />
-                        Corrective Maintenance
+                        Arsip Corrective Maintenance
                     </h1>
-                    <p className="text-slate-400 text-sm mt-1">Issue tracking and conflict resolution</p>
+                    <p className="text-slate-400 text-sm mt-1">Daftar laporan pemeliharaan corrective</p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    {!readOnly && (
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={seedDummyData}
-                            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg flex items-center gap-2 shadow-lg cursor-pointer border border-slate-700/50 text-sm font-semibold"
-                        >
-                            <FileText className="w-4 h-4 text-orange-400" />
-                            Isi Data Dummy
-                        </motion.button>
-                    )}
-
-                    {canCreate && (
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => {
-                                if (showForm) {
-                                    setShowForm(false);
-                                    setReportFormType(null);
-                                } else {
-                                    setShowForm(true);
-                                    if (userRole === 'standby_engineer') {
-                                        setReportFormType('sla');
-                                    } else {
-                                        setReportFormType(null); // Show selection screen
-                                    }
-                                }
-                            }}
-                            className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg flex items-center gap-2 shadow-lg shadow-orange-500/20 cursor-pointer text-sm font-semibold animate-pulse hover:animate-none"
-                        >
-                            {showForm ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-                            {showForm ? 'Cancel' : 'New Report'}
-                        </motion.button>
-                    )}
-                </div>
+                {isAuthorizedRole && !showForm && (
+                    <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={seedDummyData}
+                        className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg flex items-center gap-2 shadow-lg cursor-pointer border border-slate-700/50 text-sm font-semibold"
+                    >
+                        <FileText className="w-4 h-4 text-orange-400" />
+                        Isi Data Dummy
+                    </motion.button>
+                )}
             </div>
 
             <AnimatePresence>
-                {showForm && canCreate && (
+                {showForm && (
                     <div className="mb-8">
-                        {reportFormType === null && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="bg-slate-800/40 backdrop-blur-xl rounded-2xl p-8 border border-slate-700/50 text-center"
-                            >
-                                <h2 className="text-xl font-bold text-white mb-6">Pilih Jenis Laporan Corrective Maintenance</h2>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
-                                    <motion.button
-                                        whileHover={{ scale: 1.02, y: -2 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        type="button"
-                                        onClick={() => setReportFormType('standard')}
-                                        className="p-6 bg-slate-900/60 border border-slate-700/60 rounded-2xl hover:border-orange-500/50 hover:bg-slate-900 transition text-left flex flex-col items-center sm:items-start cursor-pointer"
-                                    >
-                                        <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center mb-4 text-orange-500">
-                                            <PenTool className="w-6 h-6" />
-                                        </div>
-                                        <h3 className="text-lg font-bold text-white mb-2">Laporan Standar</h3>
-                                        <p className="text-slate-400 text-sm text-center sm:text-left">Format laporan maintenance standar dengan satu bukti foto dokumentasi cepat.</p>
-                                    </motion.button>
-
-                                    <motion.button
-                                        whileHover={{ scale: 1.02, y: -2 }}
-                                        whileTap={{ scale: 0.98 }}
-                                        type="button"
-                                        onClick={() => setReportFormType('sla')}
-                                        className="p-6 bg-slate-900/60 border border-slate-700/60 rounded-2xl hover:border-red-500/50 hover:bg-slate-900 transition text-left flex flex-col items-center sm:items-start cursor-pointer relative overflow-hidden"
-                                    >
-                                        <div className="absolute top-3 right-3 bg-red-500/20 text-red-400 border border-red-500/30 text-[9px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
-                                            Rekomendasi
-                                        </div>
-                                        <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center mb-4 text-red-500">
-                                            <FileText className="w-6 h-6" />
-                                        </div>
-                                        <h3 className="text-lg font-bold text-white mb-2">Laporan SLA / SLG (5-Step)</h3>
-                                        <p className="text-slate-400 text-sm text-center sm:text-left">Wizard multi-step interaktif dengan kalkulasi otomatis durasi respon, kedatangan, restore, resolusi &amp; multi-bukti foto.</p>
-                                    </motion.button>
-                                </div>
-                            </motion.div>
-                        )}
-
                         {reportFormType === 'standard' && (
                             <motion.form
                                 initial={{ opacity: 0, height: 0 }}
@@ -642,17 +600,8 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                             >
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-lg font-semibold text-white">
-                                        {editingReportId ? 'Edit Laporan Corrective (Standard)' : 'New Corrective Report (Standard)'}
+                                        Edit Laporan Corrective (Standard)
                                     </h2>
-                                    {!editingReportId && (
-                                        <button 
-                                            type="button" 
-                                            onClick={() => setReportFormType(null)} 
-                                            className="text-xs font-bold text-orange-500 hover:text-orange-400 transition cursor-pointer"
-                                        >
-                                            &larr; Pilih Jenis Lapor Lain
-                                        </button>
-                                    )}
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -816,26 +765,24 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                 </div>
 
                                 <div className="mt-6 flex justify-end gap-3">
-                                    {editingReportId && (
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setShowForm(false);
-                                                setReportFormType(null);
-                                                setEditingReportId(null);
-                                            }}
-                                            className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition cursor-pointer"
-                                        >
-                                            Cancel
-                                        </button>
-                                    )}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setShowForm(false);
+                                            setReportFormType(null);
+                                            setEditingReportId(null);
+                                        }}
+                                        className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition cursor-pointer"
+                                    >
+                                        Cancel
+                                    </button>
                                     <button
                                         type="submit"
                                         disabled={submitting}
                                         className="px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium transition flex items-center gap-2 disabled:opacity-50 cursor-pointer"
                                     >
                                         {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
-                                        {editingReportId ? 'Simpan Laporan' : 'Submit Report'}
+                                        Simpan Laporan
                                     </button>
                                 </div>
                             </motion.form>
@@ -866,382 +813,384 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                 )}
             </AnimatePresence>
 
-            {!loading && (
-                /* Glassmorphic Archive Filter & PDF Export Bar */
-                <div className="mb-6 bg-slate-800/20 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
-                    <div className="flex flex-wrap gap-3 items-center w-full md:w-auto">
-                        {/* Live Search Input */}
-                        <div className="relative flex-1 sm:flex-initial min-w-[240px]">
-                            <input
-                                type="text"
-                                placeholder="Cari lokasi, masalah, PIC..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                title="Cari Laporan"
-                                className="w-full pl-4 pr-4 py-2.5 bg-slate-900/40 border border-slate-700/80 rounded-xl text-white text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition placeholder-slate-500"
-                            />
-                        </div>
-
-                        {/* Month Filter Dropdown */}
-                        <select
-                            value={selectedMonth}
-                            onChange={(e) => setSelectedMonth(e.target.value)}
-                            title="Filter Bulan"
-                            aria-label="Filter Bulan"
-                            className="px-3.5 py-2.5 bg-slate-900/40 border border-slate-700/80 rounded-xl text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition cursor-pointer"
-                        >
-                            <option value="all">Semua Bulan</option>
-                            {INDO_MONTHS.map((m) => (
-                                <option key={m.value} value={m.value}>{m.label}</option>
-                            ))}
-                        </select>
-
-                        {/* Year Filter Dropdown */}
-                        <select
-                            value={selectedYear}
-                            onChange={(e) => setSelectedYear(e.target.value)}
-                            title="Filter Tahun"
-                            aria-label="Filter Tahun"
-                            className="px-3.5 py-2.5 bg-slate-900/40 border border-slate-700/80 rounded-xl text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition cursor-pointer"
-                        >
-                            <option value="all">Semua Tahun</option>
-                            <option value="2025">2025</option>
-                            <option value="2026">2026</option>
-                            <option value="2027">2027</option>
-                            <option value="2028">2028</option>
-                            <option value="2029">2029</option>
-                            <option value="2030">2030</option>
-                        </select>
-                    </div>
-
-                    {/* Monthly PDF Export Trigger */}
-                    {readOnly && (
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={handleExportMonthlyPDF}
-                            disabled={filteredReports.length === 0}
-                            className="w-full md:w-auto px-4.5 py-2.5 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 disabled:from-slate-800 disabled:to-slate-900 text-white text-xs font-extrabold uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-rose-500/5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition border border-rose-500/20"
-                        >
-                            <FileText className="w-4 h-4" />
-                            Export PDF Bulanan ({filteredReports.length})
-                        </motion.button>
-                    )}
-                </div>
-            )}
-
-            {loading ? (
-                <div className="flex justify-center py-12">
-                    <Loader2 className="w-10 h-10 animate-spin text-orange-500" />
-                </div>
-            ) : filteredReports.length === 0 ? (
-                <div className="text-center py-16 bg-slate-800/20 rounded-2xl border border-slate-700/50">
-                    <FileText className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                    <h3 className="text-xl font-medium text-white">Laporan Tidak Ditemukan</h3>
-                    <p className="text-slate-400 mt-2">Tidak ada data laporan corrective yang cocok dengan kriteria filter pencarian Anda.</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 gap-4">
-                    {filteredReports.map((report) => (
-                        <motion.div
-                            key={report.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className={`bg-slate-800/20 backdrop-blur-sm rounded-2xl border overflow-hidden hover:border-slate-600 transition shadow-xl relative ${
-                                report.reportType === 'SLA' ? 'border-red-500/30' : 'border-slate-700/50'
-                            }`}
-                        >
-                            {report.reportType === 'SLA' ? (
-                                /* SLA REPORT CARD LAYOUT */
-                                <div className="p-5 sm:p-6">
-                                    {/* Card Header */}
-                                    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-700/50 pb-4 mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="px-2.5 py-1 bg-red-500/10 border border-red-500/30 rounded-lg text-xs font-bold text-red-400 uppercase tracking-wider">
-                                                SLA / SLG
-                                            </div>
-                                            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                                                <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                                                <span>{report.reportedAt?.toDate?.()?.toLocaleDateString()}</span>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                                                <User className="w-3.5 h-3.5 text-slate-500" />
-                                                <span>PIC: {report.picDME || 'On Duty DME'}</span>
-                                            </div>
-                                            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                                                <span className="text-[10px] px-2 py-0.5 bg-slate-700/40 border border-slate-600/30 rounded-md text-slate-300 font-semibold">
-                                                    Dibuat: {report.reportedByEmail || '-'}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={async () => {
-                                                    const toastId = toast.loading('Mengunduh Laporan Excel...');
-                                                    try {
-                                                        await exportSLAReportToExcel(report);
-                                                        toast.success('Berhasil mengunduh Laporan Excel!', { id: toastId });
-                                                    } catch (err: any) {
-                                                        console.error('Failed to export Excel:', err);
-                                                        toast.error(`Gagal mengunduh Excel: ${err.message || err}`, { id: toastId });
-                                                    }
-                                                }}
-                                                className="px-3.5 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-xl flex items-center gap-2 text-xs font-bold transition shadow-lg shadow-emerald-500/5 cursor-pointer"
-                                                title="Export to Excel"
-                                            >
-                                                <FileText className="w-4 h-4" />
-                                                Export Excel
-                                            </button>
-                                            {canCreate && (report.reportedBy === user?.uid || userRole === 'admin') && (
-                                                <button
-                                                    onClick={() => {
-                                                        setEditingReportId(report.id);
-                                                        setReportFormType('sla');
-                                                        setShowForm(true);
-                                                    }}
-                                                    className="p-2 bg-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-500/20 border border-blue-500/20 transition cursor-pointer"
-                                                    title="Edit Laporan"
-                                                >
-                                                    <PenTool className="w-4 h-4" />
-                                                </button>
-                                            )}
-                                            {canDelete && (report.reportedBy === user?.uid || userRole === 'admin') && (
-                                                <button
-                                                    onClick={() => handleDeleteClick(report.id)}
-                                                    className="p-2 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500/20 border border-red-500/20 transition cursor-pointer"
-                                                    title="Hapus Laporan"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Main Grid Info */}
-                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                                        <div className="lg:col-span-2 space-y-4">
-                                            <div>
-                                                <h3 className="text-lg font-bold text-white mb-1">{report.ticketName}</h3>
-                                                <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
-                                                    <MapPin className="w-3.5 h-3.5 text-slate-500" />
-                                                    <span>{report.location}</span>
-                                                    <span className="text-slate-600">•</span>
-                                                    <span className="text-slate-500">Prioritas:</span>
-                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                                                        report.priority === 'High' ? 'bg-rose-500/20 text-rose-400' :
-                                                        report.priority === 'Medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700/30 text-slate-400'
-                                                    }`}>{report.priority}</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-900/40 border border-slate-700/30 rounded-xl p-4">
-                                                <div>
-                                                    <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">Tindakan Perbaikan (Action)</span>
-                                                    <p className="text-slate-300 text-sm leading-relaxed">{report.actionTaken}</p>
-                                                </div>
-                                                <div>
-                                                    <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">Keterangan / Remarks</span>
-                                                    <p className="text-slate-300 text-sm leading-relaxed">{report.remark || '-'}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* SLA Compliance Grid */}
-                                        <div className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-4 flex flex-col justify-between">
-                                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 pb-2 mb-3">SLA Metrics Summary</h4>
-                                            
-                                            <div className="space-y-2.5 flex-1 flex flex-col justify-center">
-                                                <div className="flex items-center justify-between text-xs">
-                                                    <span className="text-slate-400">1. Response Time</span>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-slate-300">{report.actualResponseTimeMin} Min</span>
-                                                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                                                            report.responseComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                                                        }`}>{report.responseComply ? 'Comply' : 'No Comply'}</span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center justify-between text-xs">
-                                                    <span className="text-slate-400">2. Engineer Onsite</span>
-                                                    <span className="font-bold text-slate-300">Evidence Ok</span>
-                                                </div>
-
-                                                <div className="flex items-center justify-between text-xs">
-                                                    <span className="text-slate-400">3. Principle Onsite</span>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-slate-300">{report.actualOnsiteTimeMin} Min</span>
-                                                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                                                            report.onsiteComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                                                        }`}>{report.onsiteComply ? 'Comply' : 'No Comply'}</span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center justify-between text-xs">
-                                                    <span className="text-slate-400">4. Restore Service</span>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-slate-300">{report.actualRestoreTimeMin} Min</span>
-                                                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                                                            report.restoreComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                                                        }`}>{report.restoreComply ? 'Comply' : 'No Comply'}</span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center justify-between text-xs">
-                                                    <span className="text-slate-400">5. Resolution Time</span>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-slate-300">{report.actualResolutionTimeMin} Min</span>
-                                                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                                                            report.resolutionComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                                                        }`}>{report.resolutionComply ? 'Comply' : 'No Comply'}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Multi-Screenshot Evidence Grid */}
-                                    <div>
-                                        <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-2">Bukti Dokumentasi SLA (5-Step)</span>
-                                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                                            {report.photoResponse && (
-                                                <div className="relative group border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/20">
-                                                    <img src={report.photoResponse} alt="Response Time Evidence" className="w-full h-24 object-cover" />
-                                                    <div className="absolute inset-0 bg-slate-950/60 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
-                                                        <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">1. Response</span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {report.photoEngineerOnsite && (
-                                                <div className="relative group border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/20">
-                                                    <img src={report.photoEngineerOnsite} alt="Engineer Onsite Evidence" className="w-full h-24 object-cover" />
-                                                    <div className="absolute inset-0 bg-slate-950/60 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
-                                                        <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">2. Eng Onsite</span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {report.photoOnsite && (
-                                                <div className="relative group border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/20">
-                                                    <img src={report.photoOnsite} alt="Principle Onsite Evidence" className="w-full h-24 object-cover" />
-                                                    <div className="absolute inset-0 bg-slate-950/60 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
-                                                        <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">3. Princ Onsite</span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {report.photoRestore && (
-                                                <div className="relative group border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/20">
-                                                    <img src={report.photoRestore} alt="Restore Time Evidence" className="w-full h-24 object-cover" />
-                                                    <div className="absolute inset-0 bg-slate-950/60 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
-                                                        <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">4. Restore</span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {report.photoResolution && (
-                                                <div className="relative group border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/20">
-                                                    <img src={report.photoResolution} alt="Resolution Time Evidence" className="w-full h-24 object-cover" />
-                                                    <div className="absolute inset-0 bg-slate-950/60 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
-                                                        <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">5. Resolusi</span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
+            {!showForm && (
+                <>
+                    {!loading && (
+                        /* Glassmorphic Archive Filter & PDF Export Bar */
+                        <div className="mb-6 bg-slate-800/20 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
+                            <div className="flex flex-wrap gap-3 items-center w-full md:w-auto">
+                                {/* Live Search Input */}
+                                <div className="relative flex-1 sm:flex-initial min-w-[240px]">
+                                    <input
+                                        type="text"
+                                        placeholder="Cari lokasi, masalah, PIC..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        title="Cari Laporan"
+                                        className="w-full pl-4 pr-4 py-2.5 bg-slate-900/40 border border-slate-700/80 rounded-xl text-white text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition placeholder-slate-500"
+                                    />
                                 </div>
-                            ) : (
-                                /* STANDARD REPORT CARD LAYOUT */
-                                <div className="p-4 sm:p-6 flex flex-col md:flex-row gap-6">
-                                    {report.photoBase64 && (
-                                        <div className="w-full md:w-64 flex-shrink-0">
-                                            <img
-                                                src={report.photoBase64}
-                                                alt={report.photoDescription || 'Issue evidence'}
-                                                className="w-full h-48 object-cover rounded-lg border border-slate-700"
-                                            />
-                                            {report.photoDescription && (
-                                                <p className="text-xs text-slate-500 mt-2 text-center italic">{report.photoDescription}</p>
+
+                                {/* Month Filter Dropdown */}
+                                <select
+                                    value={selectedMonth}
+                                    onChange={(e) => setSelectedMonth(e.target.value)}
+                                    title="Filter Bulan"
+                                    aria-label="Filter Bulan"
+                                    className="px-3.5 py-2.5 bg-slate-900/40 border border-slate-700/80 rounded-xl text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition cursor-pointer"
+                                >
+                                    <option value="all">Semua Bulan</option>
+                                    {INDO_MONTHS.map((m) => (
+                                        <option key={m.value} value={m.value}>{m.label}</option>
+                                    ))}
+                                </select>
+
+                                {/* Year Filter Dropdown */}
+                                <select
+                                    value={selectedYear}
+                                    onChange={(e) => setSelectedYear(e.target.value)}
+                                    title="Filter Tahun"
+                                    aria-label="Filter Tahun"
+                                    className="px-3.5 py-2.5 bg-slate-900/40 border border-slate-700/80 rounded-xl text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition cursor-pointer"
+                                >
+                                    <option value="all">Semua Tahun</option>
+                                    <option value="2025">2025</option>
+                                    <option value="2026">2026</option>
+                                    <option value="2027">2027</option>
+                                    <option value="2028">2028</option>
+                                    <option value="2029">2029</option>
+                                    <option value="2030">2030</option>
+                                </select>
+                            </div>
+
+                            {/* Monthly PDF Export Trigger */}
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={handleExportMonthlyPDF}
+                                disabled={filteredReports.length === 0}
+                                className="w-full md:w-auto px-4.5 py-2.5 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 disabled:from-slate-800 disabled:to-slate-900 text-white text-xs font-extrabold uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-rose-500/5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition border border-rose-500/20"
+                            >
+                                <FileText className="w-4 h-4" />
+                                Export PDF Bulanan ({filteredReports.length})
+                            </motion.button>
+                        </div>
+                    )}
+
+                    {loading ? (
+                        <div className="flex justify-center py-12">
+                            <Loader2 className="w-10 h-10 animate-spin text-orange-500" />
+                        </div>
+                    ) : filteredReports.length === 0 ? (
+                        <div className="text-center py-16 bg-slate-800/20 rounded-2xl border border-slate-700/50">
+                            <FileText className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                            <h3 className="text-xl font-medium text-white">Laporan Tidak Ditemukan</h3>
+                            <p className="text-slate-400 mt-2">Tidak ada data laporan corrective yang cocok dengan kriteria filter pencarian Anda.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 gap-4">
+                            {filteredReports.map((report) => (
+                                <motion.div
+                                    key={report.id}
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className={`bg-slate-800/20 backdrop-blur-sm rounded-2xl border overflow-hidden hover:border-slate-600 transition shadow-xl relative ${
+                                        report.reportType === 'SLA' ? 'border-red-500/30' : 'border-slate-700/50'
+                                    }`}
+                                >
+                                    {report.reportType === 'SLA' ? (
+                                        /* SLA REPORT CARD LAYOUT */
+                                        <div className="p-5 sm:p-6">
+                                            {/* Card Header */}
+                                            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-700/50 pb-4 mb-4">
+                                                <div className="flex flex-wrap items-center gap-3">
+                                                    <div className="px-2.5 py-1 bg-red-500/10 border border-red-500/30 rounded-lg text-xs font-bold text-red-400 uppercase tracking-wider">
+                                                        SLA / SLG
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                                                        <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                                                        <span>{report.reportedAt?.toDate?.()?.toLocaleDateString()}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                                                        <User className="w-3.5 h-3.5 text-slate-500" />
+                                                        <span>PIC: {report.picDME || 'On Duty DME'}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                                                        <span className="text-[10px] px-2 py-0.5 bg-slate-700/40 border border-slate-600/30 rounded-md text-slate-300 font-semibold">
+                                                            Dibuat: {report.reportedByEmail || '-'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={async () => {
+                                                            const toastId = toast.loading('Mengunduh Laporan Excel...');
+                                                            try {
+                                                                await exportSLAReportToExcel(report);
+                                                                toast.success('Berhasil mengunduh Laporan Excel!', { id: toastId });
+                                                            } catch (err: any) {
+                                                                console.error('Failed to export Excel:', err);
+                                                                toast.error(`Gagal mengunduh Excel: ${err.message || err}`, { id: toastId });
+                                                            }
+                                                        }}
+                                                        className="px-3.5 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-xl flex items-center gap-2 text-xs font-bold transition shadow-lg shadow-emerald-500/5 cursor-pointer"
+                                                        title="Export to Excel"
+                                                    >
+                                                        <FileText className="w-4 h-4" />
+                                                        Export Excel
+                                                    </button>
+                                                    {isAuthorizedRole && (report.reportedBy === user?.uid || userRole === 'admin') && (
+                                                        <button
+                                                            onClick={() => {
+                                                                setEditingReportId(report.id);
+                                                                setReportFormType('sla');
+                                                                setShowForm(true);
+                                                            }}
+                                                            className="p-2 bg-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-500/20 border border-blue-500/20 transition cursor-pointer"
+                                                            title="Edit Laporan"
+                                                        >
+                                                            <PenTool className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                    {isAuthorizedRole && (report.reportedBy === user?.uid || userRole === 'admin') && (
+                                                        <button
+                                                            onClick={() => handleDeleteClick(report.id)}
+                                                            className="p-2 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500/20 border border-red-500/20 transition cursor-pointer"
+                                                            title="Hapus Laporan"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Main Grid Info */}
+                                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                                                <div className="lg:col-span-2 space-y-4">
+                                                    <div>
+                                                        <h3 className="text-lg font-bold text-white mb-1">{report.ticketName}</h3>
+                                                        <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
+                                                            <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                                                            <span>{report.location}</span>
+                                                            <span className="text-slate-600">•</span>
+                                                            <span className="text-slate-500">Prioritas:</span>
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                                                report.priority === 'High' ? 'bg-rose-500/20 text-rose-400' :
+                                                                report.priority === 'Medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700/30 text-slate-400'
+                                                            }`}>{report.priority}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-900/40 border border-slate-700/30 rounded-xl p-4">
+                                                        <div>
+                                                            <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">Tindakan Perbaikan (Action)</span>
+                                                            <p className="text-slate-300 text-sm leading-relaxed">{report.actionTaken}</p>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">Keterangan / Remarks</span>
+                                                            <p className="text-slate-300 text-sm leading-relaxed">{report.remark || '-'}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* SLA Compliance Grid */}
+                                                <div className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-4 flex flex-col justify-between">
+                                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 pb-2 mb-3">SLA Metrics Summary</h4>
+                                                    
+                                                    <div className="space-y-2.5 flex-1 flex flex-col justify-center">
+                                                        <div className="flex items-center justify-between text-xs">
+                                                            <span className="text-slate-400">1. Response Time</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-bold text-slate-300">{report.actualResponseTimeMin} Min</span>
+                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                                                    report.responseComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                                                }`}>{report.responseComply ? 'Comply' : 'No Comply'}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center justify-between text-xs">
+                                                            <span className="text-slate-400">2. Engineer Onsite</span>
+                                                            <span className="font-bold text-slate-300">Evidence Ok</span>
+                                                        </div>
+
+                                                        <div className="flex items-center justify-between text-xs">
+                                                            <span className="text-slate-400">3. Principle Onsite</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-bold text-slate-300">{report.actualOnsiteTimeMin} Min</span>
+                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                                                    report.onsiteComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                                                }`}>{report.onsiteComply ? 'Comply' : 'No Comply'}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center justify-between text-xs">
+                                                            <span className="text-slate-400">4. Restore Service</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-bold text-slate-300">{report.actualRestoreTimeMin} Min</span>
+                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                                                    report.restoreComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                                                }`}>{report.restoreComply ? 'Comply' : 'No Comply'}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center justify-between text-xs">
+                                                            <span className="text-slate-400">5. Resolution Time</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-bold text-slate-300">{report.actualResolutionTimeMin} Min</span>
+                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                                                    report.resolutionComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                                                }`}>{report.resolutionComply ? 'Comply' : 'No Comply'}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Multi-Screenshot Evidence Grid */}
+                                            <div>
+                                                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-2">Bukti Dokumentasi SLA (5-Step)</span>
+                                                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                                                    {report.photoResponse && (
+                                                        <div className="relative group border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/20">
+                                                            <img src={report.photoResponse} alt="Response Time Evidence" className="w-full h-24 object-cover" />
+                                                            <div className="absolute inset-0 bg-slate-950/60 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
+                                                                <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">1. Response</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {report.photoEngineerOnsite && (
+                                                        <div className="relative group border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/20">
+                                                            <img src={report.photoEngineerOnsite} alt="Engineer Onsite Evidence" className="w-full h-24 object-cover" />
+                                                            <div className="absolute inset-0 bg-slate-950/60 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
+                                                                <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">2. Eng Onsite</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {report.photoOnsite && (
+                                                        <div className="relative group border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/20">
+                                                            <img src={report.photoOnsite} alt="Principle Onsite Evidence" className="w-full h-24 object-cover" />
+                                                            <div className="absolute inset-0 bg-slate-950/60 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
+                                                                <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">3. Princ Onsite</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {report.photoRestore && (
+                                                        <div className="relative group border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/20">
+                                                            <img src={report.photoRestore} alt="Restore Time Evidence" className="w-full h-24 object-cover" />
+                                                            <div className="absolute inset-0 bg-slate-950/60 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
+                                                                <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">4. Restore</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {report.photoResolution && (
+                                                        <div className="relative group border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/20">
+                                                            <img src={report.photoResolution} alt="Resolution Time Evidence" className="w-full h-24 object-cover" />
+                                                            <div className="absolute inset-0 bg-slate-950/60 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
+                                                                <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">5. Resolusi</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        /* STANDARD REPORT CARD LAYOUT */
+                                        <div className="p-4 sm:p-6 flex flex-col md:flex-row gap-6">
+                                            {report.photoBase64 && (
+                                                <div className="w-full md:w-64 flex-shrink-0">
+                                                    <img
+                                                        src={report.photoBase64}
+                                                        alt={report.photoDescription || 'Issue evidence'}
+                                                        className="w-full h-48 object-cover rounded-lg border border-slate-700"
+                                                    />
+                                                    {report.photoDescription && (
+                                                        <p className="text-xs text-slate-500 mt-2 text-center italic">{report.photoDescription}</p>
+                                                    )}
+                                                </div>
                                             )}
+
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
+                                                    <div>
+                                                        <div className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(report.status)} mb-2`}>
+                                                            {report.status}
+                                                        </div>
+                                                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                                            <MapPin className="w-4 h-4 text-slate-400" />
+                                                            {report.location}
+                                                        </h3>
+                                                        <p className="text-xs text-slate-500 mt-1">
+                                                            Reported by <span className="text-slate-300">{report.reportedByEmail}</span> • {report.reportedAt?.toDate?.()?.toLocaleDateString()}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2">
+                                                        {isAuthorizedRole && (report.reportedBy === user?.uid || userRole === 'admin') && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEditingReportId(report.id);
+                                                                    setFormData({
+                                                                        issue: report.issue || '',
+                                                                        actionTaken: report.actionTaken || '',
+                                                                        spareParts: report.spareParts || '',
+                                                                        status: report.status || 'Open',
+                                                                        location: report.location || '',
+                                                                        photoBase64: report.photoBase64 || '',
+                                                                        photoDescription: report.photoDescription || '',
+                                                                        quarter: report.quarter || 'Q1',
+                                                                        year: report.year || new Date().getFullYear().toString(),
+                                                                    });
+                                                                    setReportFormType('standard');
+                                                                    setShowForm(true);
+                                                                }}
+                                                                className="p-2 bg-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-500/20 border border-blue-500/20 transition cursor-pointer"
+                                                                title="Edit Laporan"
+                                                            >
+                                                                <PenTool className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                        {isAuthorizedRole && (report.reportedBy === user?.uid || userRole === 'admin') && (
+                                                            <button
+                                                                onClick={() => handleDeleteClick(report.id)}
+                                                                className="p-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 border border-red-500/20 transition cursor-pointer"
+                                                                title="Hapus Laporan"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div>
+                                                        <h4 className="text-sm font-semibold text-orange-400 mb-1 flex items-center gap-2">
+                                                            <AlertCircle className="w-3 h-3" /> Issue
+                                                        </h4>
+                                                        <p className="text-slate-300 text-sm leading-relaxed">{report.issue}</p>
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-sm font-semibold text-emerald-400 mb-1 flex items-center gap-2">
+                                                            <CheckCircle2 className="w-3 h-3" /> Action Taken
+                                                        </h4>
+                                                        <p className="text-slate-300 text-sm leading-relaxed">{report.actionTaken}</p>
+                                                    </div>
+                                                </div>
+
+                                                {report.spareParts && (
+                                                    <div className="mt-4 pt-4 border-t border-slate-700/50">
+                                                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Spare Parts Used:</span>
+                                                        <span className="ml-2 text-sm text-slate-300">{report.spareParts}</span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
-
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
-                                            <div>
-                                                <div className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(report.status)} mb-2`}>
-                                                    {report.status}
-                                                </div>
-                                                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                                    <MapPin className="w-4 h-4 text-slate-400" />
-                                                    {report.location}
-                                                </h3>
-                                                <p className="text-xs text-slate-500 mt-1">
-                                                    Reported by <span className="text-slate-300">{report.reportedByEmail}</span> • {report.reportedAt?.toDate?.()?.toLocaleDateString()}
-                                                </p>
-                                            </div>
-
-                                            <div className="flex items-center gap-2">
-                                                {canCreate && (report.reportedBy === user?.uid || userRole === 'admin') && (
-                                                    <button
-                                                        onClick={() => {
-                                                            setEditingReportId(report.id);
-                                                            setFormData({
-                                                                issue: report.issue || '',
-                                                                actionTaken: report.actionTaken || '',
-                                                                spareParts: report.spareParts || '',
-                                                                status: report.status || 'Open',
-                                                                location: report.location || '',
-                                                                photoBase64: report.photoBase64 || '',
-                                                                photoDescription: report.photoDescription || '',
-                                                                quarter: report.quarter || 'Q1',
-                                                                year: report.year || new Date().getFullYear().toString(),
-                                                            });
-                                                            setReportFormType('standard');
-                                                            setShowForm(true);
-                                                        }}
-                                                        className="p-2 bg-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-500/20 border border-blue-500/20 transition cursor-pointer"
-                                                        title="Edit Laporan"
-                                                    >
-                                                        <PenTool className="w-4 h-4" />
-                                                    </button>
-                                                )}
-                                                {canDelete && (report.reportedBy === user?.uid || userRole === 'admin') && (
-                                                    <button
-                                                        onClick={() => handleDeleteClick(report.id)}
-                                                        className="p-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 border border-red-500/20 transition cursor-pointer"
-                                                        title="Hapus Laporan"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div>
-                                                <h4 className="text-sm font-semibold text-orange-400 mb-1 flex items-center gap-2">
-                                                    <AlertCircle className="w-3 h-3" /> Issue
-                                                </h4>
-                                                <p className="text-slate-300 text-sm leading-relaxed">{report.issue}</p>
-                                            </div>
-                                            <div>
-                                                <h4 className="text-sm font-semibold text-emerald-400 mb-1 flex items-center gap-2">
-                                                    <CheckCircle2 className="w-3 h-3" /> Action Taken
-                                                </h4>
-                                                <p className="text-slate-300 text-sm leading-relaxed">{report.actionTaken}</p>
-                                            </div>
-                                        </div>
-
-                                        {report.spareParts && (
-                                            <div className="mt-4 pt-4 border-t border-slate-700/50">
-                                                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Spare Parts Used:</span>
-                                                <span className="ml-2 text-sm text-slate-300">{report.spareParts}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-                        </motion.div>
-                    ))}
-                </div>
+                                </motion.div>
+                            ))}
+                        </div>
+                    )}
+                </>
             )}
 
             <AnimatePresence>
