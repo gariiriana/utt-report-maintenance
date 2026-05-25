@@ -16,28 +16,31 @@ import { InventoryBorrowing } from '@/components/InventoryBorrowing';
 import { PTWManagement } from '@/components/PTWManagement';
 import logoUTT from '@/assets/logo_utt.png';
 
-type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'inventory' | 'findings' | 'finding_archive' | 'ptw';
+type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'inventory' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive';
 
 export function MainApp() {
   const { user, userRole, logout } = useAuth();
 
   const isAdmin = userRole === 'admin';
   const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
+  const isStandby = userRole === 'standby_engineer';
 
   const navItems = [
     { id: 'admin', label: 'Dashboard Admin', icon: Shield, color: 'from-purple-600 to-pink-600', show: isAdmin },
-    { id: 'ptw', label: 'PTW', icon: Clipboard, color: 'from-indigo-600 to-blue-600', show: isAdmin || userRole === 'engineer' || userRole === 'standby_engineer' },
-    { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: true },
+    { id: 'ptw', label: 'PTW', icon: Clipboard, color: 'from-indigo-600 to-blue-600', show: (isAdmin || userRole === 'engineer') && !isStandby },
+    { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: !isStandby },
     { id: 'corrective', label: 'Corrective Maint.', icon: PenTool, color: 'from-red-600 to-red-700', show: true },
-    { id: 'inventory', label: 'Peminjaman Alat', icon: Shield, color: 'from-indigo-600 to-indigo-700', show: true },
-    { id: 'findings', label: 'Temuan', icon: Search, color: 'from-amber-500 to-orange-600', show: userRole === 'engineer' || userRole === 'standby_engineer' || isAdmin },
+    { id: 'corrective_archive', label: 'Arsip CM', icon: FolderOpen, color: 'from-rose-600 to-rose-700', show: true },
+    { id: 'inventory', label: 'Peminjaman Alat', icon: Shield, color: 'from-indigo-600 to-indigo-700', show: !isStandby },
+    { id: 'findings', label: 'Temuan', icon: Search, color: 'from-amber-500 to-orange-600', show: userRole === 'engineer' || isStandby || isAdmin },
     { id: 'finding_archive', label: 'Arsip Temuan', icon: FolderOpen, color: 'from-teal-600 to-teal-700', show: true },
-    { id: 'report', label: 'Buat Laporan', icon: FileText, color: 'from-blue-600 to-blue-700', show: true },
-    { id: 'documents', label: 'Arsip Dokumen', icon: FolderOpen, color: 'from-emerald-600 to-emerald-700', show: !isAdmin },
+    { id: 'report', label: 'Buat Laporan', icon: FileText, color: 'from-blue-600 to-blue-700', show: !isStandby },
+    { id: 'documents', label: 'Arsip Dokumen', icon: FolderOpen, color: 'from-emerald-600 to-emerald-700', show: !isAdmin && !isStandby },
   ] as const;
 
   const getDefaultTab = (): Tab => {
     if (isAdmin) return 'admin';
+    if (isStandby) return 'corrective';
     return 'report';
   };
 
@@ -103,16 +106,16 @@ export function MainApp() {
           </div>
         </div>
         {/* Desktop Secondary Navigation (Tabs) */}
-      <div className="hidden md:block bg-slate-900/30 backdrop-blur-md border-b border-slate-800/50 sticky top-[73px] z-40">
+      <div className="hidden md:block bg-slate-900/30 border-t border-slate-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-          <div className="flex flex-wrap items-center justify-center gap-1.5">
+          <div className="flex flex-wrap items-center justify-center gap-1">
             {navItems.filter(i => i.show).map((item) => (
               <motion.button
                 key={item.id}
                 whileHover={{ y: -1, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setActiveTab(item.id as Tab)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs lg:text-sm font-bold transition-all whitespace-nowrap border ${activeTab === item.id
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap border ${activeTab === item.id
                   ? `bg-gradient-to-r ${item.color} text-white border-transparent shadow-lg shadow-black/20`
                   : 'bg-slate-800/40 text-slate-400 border-slate-700/30 hover:bg-slate-800/60 hover:text-slate-200'
                   }`}
@@ -212,6 +215,8 @@ export function MainApp() {
               <ReportForm editingData={editingData} onClearEdit={clearEditingData} />
             ) : activeTab === 'corrective' ? (
               <CorrectiveMaintenance readOnly={isTDEorCBRE} />
+            ) : activeTab === 'corrective_archive' ? (
+              <CorrectiveMaintenance readOnly={true} />
             ) : activeTab === 'inventory' ? (
               <InventoryBorrowing />
             ) : activeTab === 'findings' ? (

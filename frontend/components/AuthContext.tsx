@@ -33,7 +33,7 @@ const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby
   if (lowerEmail.includes('presales')) return 'presales';
   if (lowerEmail.includes('purchasing')) return 'purchasing';
   if (lowerEmail.includes('dirut')) return 'dirut';
-  if (lowerEmail.includes('standby')) return 'standby_engineer';
+  if (lowerEmail === 'agil@utt.com' || lowerEmail === 'krishna@utt.com' || lowerEmail === 'asep@utt.com' || lowerEmail === 'salman@utt.com' || lowerEmail === 'gilang@utt.com' || lowerEmail === 'dison@utt.com' || lowerEmail.includes('standby')) return 'standby_engineer';
   return 'engineer';
 };
 

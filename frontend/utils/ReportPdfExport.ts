@@ -117,14 +117,15 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
   const isCRAC = userEmail === 'crac@gmail.com';
   const isWLD = userEmail === 'wld@gmail.com';
   const isFLD = userEmail === 'fld@gmail.com';
-  const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV || isATS || isLightingSystem || isACSplit || isCRAC || isWLD || isFLD;
+  const isPJU = userEmail === 'pju@gmail.com';
+  const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV || isATS || isLightingSystem || isACSplit || isCRAC || isWLD || isFLD || isPJU;
   const isLVlike = isLV || isLDBRDB || isLightingSystem;
 
-  const cols = (isVRV || isATS || isACSplit || isCRAC || isWLD || isFLD) ? 3 : isSmallGrid ? 4 : 3;
-  const perPage = (isATS || isACSplit || isCRAC) ? 12 : isPDU ? 20 : isLVlike ? 12 : isVRV ? 15 : 9;
-  const photoH = (isATS || isACSplit || isCRAC) ? 45 : isVRV ? 40 : (isWLD || isFLD) ? 56 : isSmallGrid ? 38 : 55;
-  const capH = (isATS || isACSplit || isCRAC) ? 7.5 : isVRV ? 6.5 : (isWLD || isFLD) ? 10 : isSmallGrid ? 8 : 10;
-  const rowGap = (isVRV || isATS || isACSplit || isCRAC || isWLD || isFLD) ? ((isWLD || isFLD) ? 8 : 2.5) : 4;
+  const cols = (isVRV || isATS || isACSplit || isCRAC || isWLD || isFLD || isPJU) ? 3 : isSmallGrid ? 4 : 3;
+  const perPage = (isATS || isACSplit || isCRAC || isPJU) ? 12 : isPDU ? 20 : isLVlike ? 12 : isVRV ? 15 : 9;
+  const photoH = (isATS || isACSplit || isCRAC || isPJU) ? 45 : isVRV ? 40 : (isWLD || isFLD) ? 56 : isSmallGrid ? 38 : 55;
+  const capH = (isATS || isACSplit || isCRAC || isPJU) ? 7.5 : isVRV ? 6.5 : (isWLD || isFLD) ? 10 : isSmallGrid ? 8 : 10;
+  const rowGap = (isVRV || isATS || isACSplit || isCRAC || isWLD || isFLD || isPJU) ? ((isWLD || isFLD) ? 8 : 2.5) : 4;
 
   const finalSpecificDetail = (userEmail === 'vrv@gmail.com' && vrvUnitDetail)
     ? `${specificDetail.toUpperCase()} - ${vrvUnitDetail.toUpperCase()}`
