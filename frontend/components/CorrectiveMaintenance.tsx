@@ -818,9 +818,9 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                     {!loading && (
                         /* Glassmorphic Archive Filter & PDF Export Bar */
                         <div className="mb-6 bg-slate-800/20 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
-                            <div className="flex flex-wrap gap-3 items-center w-full md:w-auto">
+                            <div className="flex flex-col sm:flex-row gap-3 items-center w-full md:w-auto">
                                 {/* Live Search Input */}
-                                <div className="relative flex-1 sm:flex-initial min-w-[240px]">
+                                <div className="relative w-full sm:w-auto sm:min-w-[240px]">
                                     <input
                                         type="text"
                                         placeholder="Cari lokasi, masalah, PIC..."
@@ -837,7 +837,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                     onChange={(e) => setSelectedMonth(e.target.value)}
                                     title="Filter Bulan"
                                     aria-label="Filter Bulan"
-                                    className="px-3.5 py-2.5 bg-slate-900/40 border border-slate-700/80 rounded-xl text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition cursor-pointer"
+                                    className="w-full sm:w-auto px-3.5 py-2.5 bg-slate-900/40 border border-slate-700/80 rounded-xl text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition cursor-pointer"
                                 >
                                     <option value="all">Semua Bulan</option>
                                     {INDO_MONTHS.map((m) => (
@@ -851,7 +851,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                     onChange={(e) => setSelectedYear(e.target.value)}
                                     title="Filter Tahun"
                                     aria-label="Filter Tahun"
-                                    className="px-3.5 py-2.5 bg-slate-900/40 border border-slate-700/80 rounded-xl text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition cursor-pointer"
+                                    className="w-full sm:w-auto px-3.5 py-2.5 bg-slate-900/40 border border-slate-700/80 rounded-xl text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition cursor-pointer"
                                 >
                                     <option value="all">Semua Tahun</option>
                                     <option value="2025">2025</option>
@@ -902,7 +902,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                         /* SLA REPORT CARD LAYOUT */
                                         <div className="p-5 sm:p-6">
                                             {/* Card Header */}
-                                            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-700/50 pb-4 mb-4">
+                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-700/50 pb-4 mb-4">
                                                 <div className="flex flex-wrap items-center gap-3">
                                                     <div className="px-2.5 py-1 bg-red-500/10 border border-red-500/30 rounded-lg text-xs font-bold text-red-400 uppercase tracking-wider">
                                                         SLA / SLG
@@ -922,7 +922,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
                                                     <button
                                                         onClick={async () => {
                                                             const toastId = toast.loading('Mengunduh Laporan Excel...');
@@ -1111,7 +1111,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                             )}
 
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex flex-wrap justify-between items-start gap-4 mb-4">
+                                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                                                     <div>
                                                         <div className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(report.status)} mb-2`}>
                                                             {report.status}
@@ -1125,7 +1125,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                                         </p>
                                                     </div>
 
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
                                                         {isAuthorizedRole && (report.reportedBy === user?.uid || userRole === 'admin') && (
                                                             <button
                                                                 onClick={() => {

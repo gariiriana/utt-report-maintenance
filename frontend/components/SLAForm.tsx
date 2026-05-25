@@ -387,7 +387,12 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
         </div>
       </div>
 
-      <div className="h-4 sm:hidden" /> {/* Spacer for Mobile labels spacing */}
+      {/* Mobile-only Step Description */}
+      <div className="mt-4 sm:hidden text-center bg-slate-900/40 border border-slate-700/30 rounded-2xl p-3">
+        <span className="text-[10px] text-red-400 uppercase font-extrabold tracking-wider block">Langkah {currentStep} dari 5</span>
+        <span className="text-sm font-bold text-white block mt-0.5">{steps[currentStep - 1].title}</span>
+        <span className="text-xs text-slate-400 block mt-0.5">{steps[currentStep - 1].desc}</span>
+      </div>
 
       {/* Main Wizard Form Container */}
       <form onSubmit={handleSubmit} className="mt-8">
