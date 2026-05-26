@@ -28,9 +28,12 @@ interface PTWRecord {
   notes?: string;
   fileName?: string;
   totalChunks?: number;
+  closingFileName?: string;
+  closingTotalChunks?: number;
   createdBy: string;
   createdAt: Timestamp;
 }
+
 
 interface QueuedPTWItem {
   id: string;
@@ -85,6 +88,8 @@ export function PTWManagement() {
     notes: ''
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedClosingFile, setSelectedClosingFile] = useState<File | null>(null);
+  const [shouldDeleteClosingFile, setShouldDeleteClosingFile] = useState(false);
   const [queuedItems, setQueuedItems] = useState<QueuedPTWItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -397,13 +402,20 @@ export function PTWManagement() {
     const toastId = toast.loading('Menyiapkan unduhan...');
     try {
       const chunksSnap = await getDocs(
-        query(collection(db, 'ptw_records', record.id, 'chunks'), orderBy('index'))
+        collection(db, 'ptw_records', record.id, 'chunks')
       );
       if (chunksSnap.empty) { toast.error('File tidak ditemukan', { id: toastId }); return; }
 
+      // Filter in memory for main chunks and sort by index
+      const mainDocs = chunksSnap.docs
+        .filter(d => !d.data().isClosing)
+        .sort((a, b) => (a.data().index || 0) - (b.data().index || 0));
+
+      if (mainDocs.length === 0) { toast.error('File tidak ditemukan', { id: toastId }); return; }
+
       const byteArrays: Uint8Array[] = [];
       let mimeString = 'application/octet-stream';
-      chunksSnap.docs.forEach((d) => {
+      mainDocs.forEach((d) => {
         const chunkData = d.data().data as string;
         let base64Part = chunkData;
         if (chunkData.includes(';base64,')) {
@@ -433,18 +445,73 @@ export function PTWManagement() {
     }
   };
 
+  const handleDownloadClosing = async (record: PTWRecord) => {
+    if (!record.closingFileName || !record.closingTotalChunks) return;
+    const toastId = toast.loading('Menyiapkan unduhan file closing...');
+    try {
+      const chunksSnap = await getDocs(
+        collection(db, 'ptw_records', record.id, 'chunks')
+      );
+      if (chunksSnap.empty) { toast.error('File closing tidak ditemukan', { id: toastId }); return; }
+
+      // Filter in memory for closing chunks and sort by index
+      const closingDocs = chunksSnap.docs
+        .filter(d => d.data().isClosing === true)
+        .sort((a, b) => (a.data().index || 0) - (b.data().index || 0));
+
+      if (closingDocs.length === 0) { toast.error('File closing tidak ditemukan', { id: toastId }); return; }
+
+      const byteArrays: Uint8Array[] = [];
+      let mimeString = 'application/octet-stream';
+      closingDocs.forEach((d) => {
+        const chunkData = d.data().data as string;
+        let base64Part = chunkData;
+        if (chunkData.includes(';base64,')) {
+          const parts = chunkData.split(';base64,');
+          mimeString = parts[0].split(':')[1] || mimeString;
+          base64Part = parts[1];
+        }
+        const byteStr = atob(base64Part);
+        const bytes = new Uint8Array(byteStr.length);
+        for (let i = 0; i < byteStr.length; i++) bytes[i] = byteStr.charCodeAt(i);
+        byteArrays.push(bytes);
+      });
+
+      const blob = new Blob(byteArrays as any[], { type: mimeString });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = record.closingFileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success('File closing berhasil diunduh!', { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal mengunduh file closing', { id: toastId });
+    }
+  };
+
   const handlePreview = async (record: PTWRecord) => {
     if (!record.fileName || !record.totalChunks) return;
     const toastId = toast.loading('Menyiapkan pratinjau...');
     try {
       const chunksSnap = await getDocs(
-        query(collection(db, 'ptw_records', record.id, 'chunks'), orderBy('index'))
+        collection(db, 'ptw_records', record.id, 'chunks')
       );
       if (chunksSnap.empty) { toast.error('File tidak ditemukan', { id: toastId }); return; }
 
+      // Filter in memory for main chunks and sort by index
+      const mainDocs = chunksSnap.docs
+        .filter(d => !d.data().isClosing)
+        .sort((a, b) => (a.data().index || 0) - (b.data().index || 0));
+
+      if (mainDocs.length === 0) { toast.error('File tidak ditemukan', { id: toastId }); return; }
+
       const byteArrays: Uint8Array[] = [];
       let mimeString = 'application/octet-stream';
-      chunksSnap.docs.forEach((d) => {
+      mainDocs.forEach((d) => {
         const chunkData = d.data().data as string;
         let base64Part = chunkData;
         if (chunkData.includes(';base64,')) {
@@ -471,6 +538,54 @@ export function PTWManagement() {
     } catch (err) {
       console.error(err);
       toast.error('Gagal memuat pratinjau', { id: toastId });
+    }
+  };
+
+  const handlePreviewClosing = async (record: PTWRecord) => {
+    if (!record.closingFileName || !record.closingTotalChunks) return;
+    const toastId = toast.loading('Menyiapkan pratinjau file closing...');
+    try {
+      const chunksSnap = await getDocs(
+        collection(db, 'ptw_records', record.id, 'chunks')
+      );
+      if (chunksSnap.empty) { toast.error('File closing tidak ditemukan', { id: toastId }); return; }
+
+      // Filter in memory for closing chunks and sort by index
+      const closingDocs = chunksSnap.docs
+        .filter(d => d.data().isClosing === true)
+        .sort((a, b) => (a.data().index || 0) - (b.data().index || 0));
+
+      if (closingDocs.length === 0) { toast.error('File closing tidak ditemukan', { id: toastId }); return; }
+
+      const byteArrays: Uint8Array[] = [];
+      let mimeString = 'application/octet-stream';
+      closingDocs.forEach((d) => {
+        const chunkData = d.data().data as string;
+        let base64Part = chunkData;
+        if (chunkData.includes(';base64,')) {
+          const parts = chunkData.split(';base64,');
+          mimeString = parts[0].split(':')[1] || mimeString;
+          base64Part = parts[1];
+        }
+        const byteStr = atob(base64Part);
+        const bytes = new Uint8Array(byteStr.length);
+        for (let i = 0; i < byteStr.length; i++) bytes[i] = byteStr.charCodeAt(i);
+        byteArrays.push(bytes);
+      });
+
+      const blob = new Blob(byteArrays as any[], { type: mimeString });
+      const url = URL.createObjectURL(blob);
+      
+      const previewWindow = window.open(url, '_blank');
+      if (!previewWindow) {
+        toast.error('Gagal membuka pratinjau. Silakan periksa blocker pop-up Anda.', { id: toastId });
+        return;
+      }
+      
+      toast.success('Pratinjau file closing berhasil dibuka!', { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal memuat pratinjau file closing', { id: toastId });
     }
   };
 
@@ -564,11 +679,15 @@ export function PTWManagement() {
         if (selectedFile) {
           totalChunks = Math.ceil(selectedFile.size / CHUNK_SIZE);
 
-          // Delete old chunks
+          // Delete old main chunks
           if (selectedRecord.totalChunks) {
             const oldChunks = await getDocs(collection(db, 'ptw_records', selectedRecord.id, 'chunks'));
             const delBatch = writeBatch(db);
-            oldChunks.docs.forEach(d => delBatch.delete(d.ref));
+            oldChunks.docs.forEach(d => {
+              if (!d.data().isClosing) {
+                delBatch.delete(d.ref);
+              }
+            });
             await delBatch.commit();
           }
 
@@ -578,24 +697,83 @@ export function PTWManagement() {
             const end = Math.min(start + CHUNK_SIZE, selectedFile.size);
             let chunkBase64 = await chunkToBase64(selectedFile.slice(start, end));
             if (i === 0) chunkBase64 = `data:${selectedFile.type};base64,${chunkBase64}`;
-            await addDoc(collection(db, 'ptw_records', selectedRecord.id, 'chunks'), { index: i, data: chunkBase64 });
-            setUploadProgress(((i + 1) / totalChunks) * 90);
+            await addDoc(collection(db, 'ptw_records', selectedRecord.id, 'chunks'), { 
+              index: i, 
+              data: chunkBase64,
+              isClosing: false
+            });
+            setUploadProgress(((i + 1) / totalChunks) * 45);
             await new Promise(r => setTimeout(r, 30));
           }
 
           updateData.fileName = selectedFile.name;
           updateData.totalChunks = totalChunks;
         } else if (shouldDeleteFile) {
-          // Delete old chunks
+          // Delete old main chunks
           if (selectedRecord.totalChunks) {
             const oldChunks = await getDocs(collection(db, 'ptw_records', selectedRecord.id, 'chunks'));
             const delBatch = writeBatch(db);
-            oldChunks.docs.forEach(d => delBatch.delete(d.ref));
+            oldChunks.docs.forEach(d => {
+              if (!d.data().isClosing) {
+                delBatch.delete(d.ref);
+              }
+            });
             await delBatch.commit();
           }
           // Remove fields from document
           updateData.fileName = deleteField();
           updateData.totalChunks = deleteField();
+        }
+
+        // ===== CLOSING PTW UPLOAD / DELETE =====
+        let closingTotalChunks = 0;
+        if (selectedClosingFile) {
+          closingTotalChunks = Math.ceil(selectedClosingFile.size / CHUNK_SIZE);
+
+          // Delete old closing chunks
+          if (selectedRecord.closingTotalChunks) {
+            const oldChunks = await getDocs(collection(db, 'ptw_records', selectedRecord.id, 'chunks'));
+            const delBatch = writeBatch(db);
+            oldChunks.docs.forEach(d => {
+              if (d.data().isClosing === true) {
+                delBatch.delete(d.ref);
+              }
+            });
+            await delBatch.commit();
+          }
+
+          // Upload new closing chunks
+          for (let i = 0; i < closingTotalChunks; i++) {
+            const start = i * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE, selectedClosingFile.size);
+            let chunkBase64 = await chunkToBase64(selectedClosingFile.slice(start, end));
+            if (i === 0) chunkBase64 = `data:${selectedClosingFile.type};base64,${chunkBase64}`;
+            await addDoc(collection(db, 'ptw_records', selectedRecord.id, 'chunks'), { 
+              index: i, 
+              data: chunkBase64,
+              isClosing: true
+            });
+            setUploadProgress(45 + (((i + 1) / closingTotalChunks) * 45));
+            await new Promise(r => setTimeout(r, 30));
+          }
+
+          updateData.closingFileName = selectedClosingFile.name;
+          updateData.closingTotalChunks = closingTotalChunks;
+        } else if (shouldDeleteClosingFile) {
+          // Delete old closing chunks
+          if (selectedRecord.closingTotalChunks) {
+            const oldChunks = await getDocs(collection(db, 'ptw_records', selectedRecord.id, 'chunks'));
+            const delBatch = writeBatch(db);
+            oldChunks.docs.forEach(d => {
+              if (d.data().isClosing === true) {
+                delBatch.delete(d.ref);
+              }
+            });
+            await delBatch.commit();
+          }
+          // Remove fields from document
+          updateData.closingFileName = deleteField();
+          updateData.closingTotalChunks = deleteField();
         }
 
         await updateDoc(doc(db, 'ptw_records', selectedRecord.id), updateData);
@@ -659,7 +837,11 @@ export function PTWManagement() {
               const end = Math.min(start + CHUNK_SIZE, item.file.size);
               let chunkBase64 = await chunkToBase64(item.file.slice(start, end));
               if (i === 0) chunkBase64 = `data:${item.file.type};base64,${chunkBase64}`;
-              await addDoc(collection(db, 'ptw_records', newDocRef.id, 'chunks'), { index: i, data: chunkBase64 });
+              await addDoc(collection(db, 'ptw_records', newDocRef.id, 'chunks'), { 
+                index: i, 
+                data: chunkBase64,
+                isClosing: false
+              });
               
               // Calculate global progress
               const baseProgress = (idx / totalItems) * 100;
@@ -754,6 +936,8 @@ export function PTWManagement() {
       notes: record.notes || ''
     });
     setShouldDeleteFile(false);
+    setSelectedClosingFile(null);
+    setShouldDeleteClosingFile(false);
     setIsEditModalOpen(true);
   };
 
@@ -768,7 +952,9 @@ export function PTWManagement() {
     });
     setSelectedRecord(null);
     setSelectedFile(null);
+    setSelectedClosingFile(null);
     setShouldDeleteFile(false);
+    setShouldDeleteClosingFile(false);
     setQueuedItems([]);
   };
 
@@ -948,9 +1134,16 @@ export function PTWManagement() {
                               {groupRecords.map((record) => (
                                 <tr key={record.id} className="hover:bg-slate-800/10 transition group">
                                   <td className="px-6 py-4">
-                                    <span className="text-sm font-bold text-white bg-indigo-500/10 px-3 py-1 rounded-lg border border-indigo-500/20">
-                                      {record.ptwNumber}
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-bold text-white bg-indigo-500/10 px-3 py-1 rounded-lg border border-indigo-500/20">
+                                        {record.ptwNumber}
+                                      </span>
+                                      {record.closingFileName && (
+                                        <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2.5 py-0.5 rounded-full border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)] animate-pulse">
+                                          CLOSED
+                                        </span>
+                                      )}
+                                    </div>
                                   </td>
                                   <td className="px-6 py-4">
                                     <span className="text-sm text-slate-300 bg-slate-700/30 px-2.5 py-0.5 rounded border border-slate-600/30">
@@ -985,6 +1178,24 @@ export function PTWManagement() {
                                           </button>
                                         </>
                                       )}
+                                      {record.closingFileName && record.closingTotalChunks && (
+                                        <>
+                                          <button
+                                            onClick={() => handlePreviewClosing(record)}
+                                            className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition border border-red-500/20"
+                                            title="Pratinjau Closing PTW"
+                                          >
+                                            <Eye className="w-4 h-4 text-red-400" />
+                                          </button>
+                                          <button
+                                            onClick={() => handleDownloadClosing(record)}
+                                            className="p-2 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 rounded-lg transition border border-rose-500/20"
+                                            title="Download Closing PTW"
+                                          >
+                                            <Download className="w-4 h-4 text-rose-400" />
+                                          </button>
+                                        </>
+                                      )}
                                       {isAdmin && (
                                         <>
                                           <button
@@ -1016,9 +1227,16 @@ export function PTWManagement() {
                           {groupRecords.map((record) => (
                             <div key={record.id} className="bg-slate-950/20 rounded-xl border border-slate-800 p-4 shadow-sm">
                               <div className="flex items-start justify-between mb-3">
-                                <span className="text-sm font-bold text-white bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20">
-                                  {record.ptwNumber}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-bold text-white bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20">
+                                    {record.ptwNumber}
+                                  </span>
+                                  {record.closingFileName && (
+                                    <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+                                      CLOSED
+                                    </span>
+                                  )}
+                                </div>
                                 <span className="text-xs text-slate-300 bg-slate-700/40 px-2.5 py-1 rounded-lg border border-slate-600/30 font-bold">
                                   Q{parseInt(record.quarter)}
                                 </span>
@@ -1031,10 +1249,10 @@ export function PTWManagement() {
                                   </span>
                                 </div>
                               </div>
-                              {((record.fileName && record.totalChunks) || isAdmin) && (
-                                <div className="flex items-center gap-2 pt-3 border-t border-slate-800">
+                              {((record.fileName && record.totalChunks) || (record.closingFileName && record.closingTotalChunks) || isAdmin) && (
+                                <div className="flex flex-col gap-2 pt-3 border-t border-slate-800">
                                   {record.fileName && record.totalChunks && (
-                                    <>
+                                    <div className="flex items-center gap-2 w-full">
                                       <button
                                         onClick={() => handlePreview(record)}
                                         className="flex-1 flex items-center justify-center gap-2 py-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 rounded-lg transition border border-indigo-500/20 text-sm font-medium"
@@ -1049,10 +1267,28 @@ export function PTWManagement() {
                                         <Download className="w-4 h-4" />
                                         File
                                       </button>
-                                    </>
+                                    </div>
+                                  )}
+                                  {record.closingFileName && record.closingTotalChunks && (
+                                    <div className="flex items-center gap-2 w-full">
+                                      <button
+                                        onClick={() => handlePreviewClosing(record)}
+                                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition border border-red-500/20 text-sm font-medium"
+                                      >
+                                        <Eye className="w-4 h-4" />
+                                        Preview Closing
+                                      </button>
+                                      <button
+                                        onClick={() => handleDownloadClosing(record)}
+                                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 rounded-lg transition border border-rose-500/20 text-sm font-medium"
+                                      >
+                                        <Download className="w-4 h-4" />
+                                        File Closing
+                                      </button>
+                                    </div>
                                   )}
                                   {isAdmin && (
-                                    <>
+                                    <div className="flex items-center gap-2 w-full">
                                       <button
                                         onClick={() => openEditModal(record)}
                                         className="flex-1 flex items-center justify-center gap-2 py-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 rounded-lg transition border border-blue-500/20 text-sm font-medium"
@@ -1067,7 +1303,7 @@ export function PTWManagement() {
                                         <Trash2 className="w-4 h-4" />
                                         Hapus
                                       </button>
-                                    </>
+                                    </div>
                                   )}
                                 </div>
                               )}
@@ -1287,7 +1523,56 @@ export function PTWManagement() {
                         type="file"
                         onChange={handleFileChange}
                         className="hidden"
-                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                        accept=".pdf"
+                      />
+                    </label>
+                  </div>
+
+                  {/* File Closing PTW Section */}
+                  <div className="space-y-3">
+                    <label htmlFor="ptw-closing-file-input" className="text-xs font-bold text-slate-500 uppercase ml-1">File Closing PTW (Opsional) (Max 10MB)</label>
+                    
+                    {selectedRecord?.closingTotalChunks && selectedRecord?.closingFileName && !selectedClosingFile && !shouldDeleteClosingFile && (
+                      <div className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 border border-red-500/20 rounded-xl mb-2">
+                        <File className="w-4 h-4 text-red-400 flex-shrink-0" />
+                        <span className="text-sm text-red-300 truncate flex-1">{selectedRecord.closingFileName}</span>
+                        <div className="flex items-center gap-1.5">
+                          <button type="button" onClick={() => handleDownloadClosing(selectedRecord)} className="p-1.5 hover:bg-red-500/20 text-red-400 rounded-lg transition" title="Unduh Closing">
+                            <Download className="w-4 h-4" />
+                          </button>
+                          <button 
+                            type="button" 
+                            onClick={() => setShouldDeleteClosingFile(true)} 
+                            className="p-1.5 hover:bg-red-500/20 text-red-400 rounded-lg transition" 
+                            title="Hapus Closing"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <label htmlFor="ptw-closing-file-input" className="flex items-center gap-3 px-5 py-3.5 bg-white/5 border border-white/10 border-dashed rounded-2xl text-slate-400 hover:border-red-500/50 hover:text-red-400 transition cursor-pointer">
+                      <FileUp className="w-5 h-5 flex-shrink-0" />
+                      <span className="text-sm truncate">
+                        {selectedClosingFile ? selectedClosingFile.name : 'Pilih file PDF Closing PTW...'}
+                      </span>
+                      <input
+                        id="ptw-closing-file-input"
+                        title="Pilih File Closing"
+                        type="file"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > MAX_FILE_SIZE) {
+                              toast.error('File terlalu besar. Maksimal 10MB.');
+                              return;
+                            }
+                            setSelectedClosingFile(file);
+                            setShouldDeleteClosingFile(false);
+                          }
+                        }}
+                        className="hidden"
+                        accept=".pdf"
                       />
                     </label>
                   </div>
