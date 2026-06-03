@@ -244,8 +244,8 @@ export interface HSEChecklist {
   safetySign: boolean;
   ppeKhusus: boolean;
   bodyHarness: boolean;
-  sarungTanganKulit: boolean;
-  sarungTanganKulitHighVoltage: boolean;
+  sarungTanganKaretHighVoltage: boolean;
+  sarungTanganKaretChemical: boolean;
   apron: boolean;
   kedokLas: boolean;
   coverShoes: boolean;
@@ -273,8 +273,8 @@ export const INITIAL_HSE_CHECKLIST: HSEChecklist = {
   safetySign: false,
   ppeKhusus: false,
   bodyHarness: false,
-  sarungTanganKulit: false,
-  sarungTanganKulitHighVoltage: false,
+  sarungTanganKaretHighVoltage: false,
+  sarungTanganKaretChemical: false,
   apron: false,
   kedokLas: false,
   coverShoes: false,
@@ -299,8 +299,8 @@ export const HSE_CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string; sub
       label: 'PPE Khusus',
       subItems: [
           { key: 'bodyHarness', label: 'Body Harness' },
-          { key: 'sarungTanganKulit', label: 'Sarung Tangan Kulit' },
-          { key: 'sarungTanganKulitHighVoltage', label: 'Sarung Tangan Kulit High Voltage' },
+          { key: 'sarungTanganKaretHighVoltage', label: 'Sarung Tangan Karet High Voltage Resistance' },
+          { key: 'sarungTanganKaretChemical', label: 'Sarung Tangan Karet Chemical Resistance' },
           { key: 'apron', label: 'Apron' },
           { key: 'kedokLas', label: 'Kedok Las' },
           { key: 'coverShoes', label: 'Cover Shoes' },

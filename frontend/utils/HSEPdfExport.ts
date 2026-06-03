@@ -19,8 +19,8 @@ export interface HSEChecklist {
     safetySign: boolean;
     ppeKhusus?: boolean;
     bodyHarness?: boolean;
-    sarungTanganKulit?: boolean;
-    sarungTanganKulitHighVoltage?: boolean;
+    sarungTanganKaretHighVoltage?: boolean;
+    sarungTanganKaretChemical?: boolean;
     apron?: boolean;
     kedokLas?: boolean;
     coverShoes?: boolean;
@@ -217,8 +217,8 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
                 label: 'PPE Khusus',
                 subItems: [
                     { key: 'bodyHarness', label: 'Body Harness' },
-                    { key: 'sarungTanganKulit', label: 'Sarung Tangan Kulit' },
-                    { key: 'sarungTanganKulitHighVoltage', label: 'Sarung Tangan Kulit High Voltage' },
+                    { key: 'sarungTanganKaretHighVoltage', label: 'Sarung Tangan Karet High Voltage Resistance' },
+                    { key: 'sarungTanganKaretChemical', label: 'Sarung Tangan Karet Chemical Resistance' },
                     { key: 'apron', label: 'Apron' },
                     { key: 'kedokLas', label: 'Kedok Las' },
                     { key: 'coverShoes', label: 'Cover Shoes' },
@@ -339,7 +339,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         const photoW = (contentW - photoGap) / photosPerRow;
         const photoH = photoW * 0.75;
         const isHseRole = userRole === 'hse';
-        const descriptionH = isHseRole ? 16 : 10;
+        const descriptionH = isHseRole ? 20 : 10;
 
         for (let i = 0; i < data.photos.length; i++) {
             const col = i % photosPerRow;
@@ -374,12 +374,12 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
 
             if (photo.description) {
                 if (isHseRole) {
-                    doc.setFontSize(11.5).setFont('helvetica', 'bold').setTextColor(DARK);
+                    doc.setFontSize(14).setFont('helvetica', 'bold').setTextColor(DARK);
                 } else {
                     doc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(DARK);
                 }
                 const descLines = doc.splitTextToSize(photo.description, photoW - 6);
-                doc.text(descLines, x + photoW / 2, y + photoH + (isHseRole ? 8.5 : 5), { align: 'center' });
+                doc.text(descLines, x + photoW / 2, y + photoH + (isHseRole ? 11 : 5), { align: 'center' });
             }
 
             if (col === photosPerRow - 1 || i === data.photos.length - 1) {

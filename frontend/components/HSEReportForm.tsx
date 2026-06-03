@@ -249,7 +249,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
             const next = { ...prev, [key]: !prev[key] };
 
             if (key === 'ppeKhusus' && !next.ppeKhusus) {
-                next.bodyHarness = next.sarungTanganKulit = next.sarungTanganKulitHighVoltage = next.apron = next.kedokLas = next.coverShoes = next.respirator = next.sarungTanganCutResistance = next.pelindungMata = false;
+                next.bodyHarness = next.sarungTanganKaretHighVoltage = next.sarungTanganKaretChemical = next.apron = next.kedokLas = next.coverShoes = next.respirator = next.sarungTanganCutResistance = next.pelindungMata = false;
             }
             if (key === 'safetySign' && !next.safetySign) {
                 next.pitaBaricade = next.safetyCone = next.stikBariket = next.underMaintenance = false;
@@ -258,7 +258,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                 next.msds = false;
             }
 
-            const ppeChildren = ['bodyHarness', 'sarungTanganKulit', 'sarungTanganKulitHighVoltage', 'apron', 'kedokLas', 'coverShoes', 'respirator', 'sarungTanganCutResistance', 'pelindungMata'];
+            const ppeChildren = ['bodyHarness', 'sarungTanganKaretHighVoltage', 'sarungTanganKaretChemical', 'apron', 'kedokLas', 'coverShoes', 'respirator', 'sarungTanganCutResistance', 'pelindungMata'];
             if (ppeChildren.includes(key as string) && next[key as keyof HSEChecklist]) {
                 next.ppeKhusus = true;
             }
@@ -528,35 +528,39 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
 
             const bothExported = isUttExported && isNeutraExported;
 
-            if (bothExported) {
-                setIsExported(true);
-                if (user?.email && !editingData) {
-                    await draftStorage.remove(`hse_draft_${mode}_${user.email}`).catch(console.error);
-                    localStorage.removeItem(storedUttKey);
-                    localStorage.removeItem(storedNeutraKey);
-                    
-                    // Reset all form state variables to empty/initial values
-                    setAktivitas('');
-                    setLokasi('');
-                    setPersonil('');
-                    setPic('');
-                    setAnggota('');
-                    setInspectorK3('');
-                    setMaintenanceCategory('');
-                    setChecklist({ ...INITIAL_HSE_CHECKLIST });
-                    setPhotos([]);
-                    setSioOperatorName('');
-                    setSioNumber('');
-                    setSioExpiryDate('');
-                    setSioPhotos([]);
-                    setSiloFile(null);
-                    setSiloPdfUrl('');
-                    
-                    setIsExported(false);
-                }
-            }
+            if (bothExported && user?.email && !editingData) {
+                // Clean up storage first
+                await draftStorage.remove(`hse_draft_${mode}_${user.email}`).catch(console.error);
+                localStorage.removeItem(storedUttKey);
+                localStorage.removeItem(storedNeutraKey);
+                
+                // Use isInitialMount ref to prevent the input-change useEffect
+                // from clearing export flags during the programmatic reset
+                isInitialMount.current = true;
+                
+                // Reset all form state variables to empty/initial values
+                setAktivitas('');
+                setLokasi('');
+                setPersonil('');
+                setPic('');
+                setAnggota('');
+                setInspectorK3('');
+                setMaintenanceCategory('');
+                setChecklist({ ...INITIAL_HSE_CHECKLIST });
+                setPhotos([]);
+                setSioOperatorName('');
+                setSioNumber('');
+                setSioExpiryDate('');
+                setSioPhotos([]);
+                setSiloFile(null);
+                setSiloPdfUrl('');
+                
+                setIsExported(false);
 
-            toast.success(`✅ PDF ${reportMode.toUpperCase()} berhasil dibuat & disimpan ke ISO!`, { id: toastId, duration: 4000 });
+                toast.success(`✅ Kedua PDF berhasil dibuat! Form siap untuk laporan baru.`, { id: toastId, duration: 4000 });
+            } else {
+                toast.success(`✅ PDF ${reportMode.toUpperCase()} berhasil dibuat & disimpan ke ISO!`, { id: toastId, duration: 4000 });
+            }
         } catch (err) {
             console.error('Export Error:', err);
             toast.error((err as Error)?.message || 'Terjadi kesalahan saat export', { id: toastId, duration: 6000 });
