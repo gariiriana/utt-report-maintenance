@@ -23,6 +23,7 @@ const CHECKLIST_LABELS = [
     { key: 'fullBodyHarness', label: 'Full Body Harness (Optional)' },
     { key: 'coverShoes', label: 'Cover Shoes (Optional)' },
     { key: 'kedokLas', label: 'Kedok Las (Optional)' },
+    { key: 'sarungTanganKulitHighVoltage', label: 'Sarung Tangan Kulit High Voltage (Optional)' },
     { key: 'safeCondition', label: 'Safe Condition' },
     { key: 'safeAction', label: 'Safe Action' },
 ];
@@ -90,7 +91,7 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                     date: fullReport.date,
                     reportType: fullReport.reportType,
                 };
-                const blob = await generateHSEPdfBlob(formData);
+                const blob = await generateHSEPdfBlob(formData, userRole || undefined);
                 const url = URL.createObjectURL(blob);
                 setPdfUrl(url);
             } catch (err) {
@@ -124,7 +125,7 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
                 reportType: report.reportType,
             };
             const shouldAutoOpen = userRole === 'hse' && user?.email?.toLowerCase() !== 'hsemamik@gmail.com';
-            await generateHSEPdf(formData, shouldAutoOpen);
+            await generateHSEPdf(formData, shouldAutoOpen, userRole || undefined);
         } catch (err) {
             console.error(err);
         } finally {

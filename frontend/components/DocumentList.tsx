@@ -543,7 +543,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       };
 
       const shouldAutoOpen = userRole === 'hse' && user?.email?.toLowerCase() !== 'hsemamik@gmail.com';
-      await generateHSEPdf(formData, shouldAutoOpen);
+      await generateHSEPdf(formData, shouldAutoOpen, userRole || undefined);
       toast.success('PDF HSE berhasil diunduh!', { id: 'download-hse' });
     } catch (error) {
       console.error('Download HSE error:', error);

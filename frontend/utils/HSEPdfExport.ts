@@ -20,6 +20,7 @@ export interface HSEChecklist {
     ppeKhusus?: boolean;
     bodyHarness?: boolean;
     sarungTanganKulit?: boolean;
+    sarungTanganKulitHighVoltage?: boolean;
     apron?: boolean;
     kedokLas?: boolean;
     coverShoes?: boolean;
@@ -87,7 +88,7 @@ function loadImageAsBase64(url: string): Promise<string> {
     });
 }
 
-function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64: string): jsPDF {
+function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64: string, userRole?: string): jsPDF {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
     const pageW = doc.internal.pageSize.getWidth();
@@ -217,6 +218,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
                 subItems: [
                     { key: 'bodyHarness', label: 'Body Harness' },
                     { key: 'sarungTanganKulit', label: 'Sarung Tangan Kulit' },
+                    { key: 'sarungTanganKulitHighVoltage', label: 'Sarung Tangan Kulit High Voltage' },
                     { key: 'apron', label: 'Apron' },
                     { key: 'kedokLas', label: 'Kedok Las' },
                     { key: 'coverShoes', label: 'Cover Shoes' },
@@ -336,7 +338,8 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         const photoGap = 5;
         const photoW = (contentW - photoGap) / photosPerRow;
         const photoH = photoW * 0.75;
-        const descriptionH = 10;
+        const isHseRole = userRole === 'hse';
+        const descriptionH = isHseRole ? 16 : 10;
 
         for (let i = 0; i < data.photos.length; i++) {
             const col = i % photosPerRow;
@@ -370,9 +373,13 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
             }
 
             if (photo.description) {
-                doc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(DARK);
+                if (isHseRole) {
+                    doc.setFontSize(11.5).setFont('helvetica', 'bold').setTextColor(DARK);
+                } else {
+                    doc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(DARK);
+                }
                 const descLines = doc.splitTextToSize(photo.description, photoW - 6);
-                doc.text(descLines, x + photoW / 2, y + photoH + 5, { align: 'center' });
+                doc.text(descLines, x + photoW / 2, y + photoH + (isHseRole ? 8.5 : 5), { align: 'center' });
             }
 
             if (col === photosPerRow - 1 || i === data.photos.length - 1) {
@@ -457,7 +464,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     return doc;
 }
 
-export async function generateHSEPdf(data: HSEFormData, autoOpen = false) {
+export async function generateHSEPdf(data: HSEFormData, autoOpen = false, userRole?: string) {
     const dmeImg = logoDme;
     const secondaryImg = data.reportType === 'utt' ? logoUtt : logoNeutradc;
 
@@ -504,7 +511,7 @@ export async function generateHSEPdf(data: HSEFormData, autoOpen = false) {
         processedData.sioData.photos = compressedSioPhotos;
     }
 
-    const jspdfDoc = createHSEDpdDoc(processedData, logoDmeB64, logoSecondaryB64);
+    const jspdfDoc = createHSEDpdDoc(processedData, logoDmeB64, logoSecondaryB64, userRole);
     
     let finalPdfBytes: Uint8Array;
     
@@ -585,7 +592,7 @@ export async function generateHSEPdf(data: HSEFormData, autoOpen = false) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export async function generateHSEPdfBlob(data: HSEFormData): Promise<Blob> {
+export async function generateHSEPdfBlob(data: HSEFormData, userRole?: string): Promise<Blob> {
     const secondaryImg = data.reportType === 'neutradc' ? logoNeutradc : logoUtt;
     let logoDmeB64 = '';
     let logoSecondaryB64 = '';
@@ -611,7 +618,7 @@ export async function generateHSEPdfBlob(data: HSEFormData): Promise<Blob> {
         }
     }
 
-    const jspdfDoc = createHSEDpdDoc(processedData, logoDmeB64, logoSecondaryB64);
+    const jspdfDoc = createHSEDpdDoc(processedData, logoDmeB64, logoSecondaryB64, userRole);
 
     let finalPdfBytes: Uint8Array;
     try {

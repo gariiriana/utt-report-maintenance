@@ -249,7 +249,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
             const next = { ...prev, [key]: !prev[key] };
 
             if (key === 'ppeKhusus' && !next.ppeKhusus) {
-                next.bodyHarness = next.sarungTanganKulit = next.apron = next.kedokLas = next.coverShoes = next.respirator = next.sarungTanganCutResistance = next.pelindungMata = false;
+                next.bodyHarness = next.sarungTanganKulit = next.sarungTanganKulitHighVoltage = next.apron = next.kedokLas = next.coverShoes = next.respirator = next.sarungTanganCutResistance = next.pelindungMata = false;
             }
             if (key === 'safetySign' && !next.safetySign) {
                 next.pitaBaricade = next.safetyCone = next.stikBariket = next.underMaintenance = false;
@@ -258,7 +258,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                 next.msds = false;
             }
 
-            const ppeChildren = ['bodyHarness', 'sarungTanganKulit', 'apron', 'kedokLas', 'coverShoes', 'respirator', 'sarungTanganCutResistance', 'pelindungMata'];
+            const ppeChildren = ['bodyHarness', 'sarungTanganKulit', 'sarungTanganKulitHighVoltage', 'apron', 'kedokLas', 'coverShoes', 'respirator', 'sarungTanganCutResistance', 'pelindungMata'];
             if (ppeChildren.includes(key as string) && next[key as keyof HSEChecklist]) {
                 next.ppeKhusus = true;
             }
@@ -501,7 +501,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
 
             const shouldAutoOpen = userRole === 'hse' && user?.email?.toLowerCase() !== 'hsemamik@gmail.com';
             const [, savedDocId] = await Promise.all([
-                generateHSEPdf(formData, shouldAutoOpen).catch((pdfErr) => {
+                generateHSEPdf(formData, shouldAutoOpen, userRole || undefined).catch((pdfErr) => {
                     console.error('PDF generation failed:', pdfErr);
                     throw new Error(`Gagal membuat PDF: ${(pdfErr as Error)?.message || 'Terjadi kesalahan'}`);
                 }),

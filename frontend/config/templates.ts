@@ -245,6 +245,7 @@ export interface HSEChecklist {
   ppeKhusus: boolean;
   bodyHarness: boolean;
   sarungTanganKulit: boolean;
+  sarungTanganKulitHighVoltage: boolean;
   apron: boolean;
   kedokLas: boolean;
   coverShoes: boolean;
@@ -273,6 +274,7 @@ export const INITIAL_HSE_CHECKLIST: HSEChecklist = {
   ppeKhusus: false,
   bodyHarness: false,
   sarungTanganKulit: false,
+  sarungTanganKulitHighVoltage: false,
   apron: false,
   kedokLas: false,
   coverShoes: false,
@@ -298,6 +300,7 @@ export const HSE_CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string; sub
       subItems: [
           { key: 'bodyHarness', label: 'Body Harness' },
           { key: 'sarungTanganKulit', label: 'Sarung Tangan Kulit' },
+          { key: 'sarungTanganKulitHighVoltage', label: 'Sarung Tangan Kulit High Voltage' },
           { key: 'apron', label: 'Apron' },
           { key: 'kedokLas', label: 'Kedok Las' },
           { key: 'coverShoes', label: 'Cover Shoes' },
