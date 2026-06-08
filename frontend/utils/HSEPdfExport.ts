@@ -338,8 +338,8 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         const photoGap = 5;
         const photoW = (contentW - photoGap) / photosPerRow;
         const photoH = photoW * 0.75;
-        const isHseRole = userRole === 'hse';
-        const descriptionH = isHseRole ? 20 : 10;
+        const isHseRole = userRole === 'hse' && false; // Match engineer role exactly
+        const descriptionH = 10;
 
         for (let i = 0; i < data.photos.length; i++) {
             const col = i % photosPerRow;
@@ -373,13 +373,42 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
             }
 
             if (photo.description) {
-                if (isHseRole) {
-                    doc.setFontSize(14).setFont('helvetica', 'bold').setTextColor(DARK);
-                } else {
-                    doc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(DARK);
+                const cleanDescription = photo.description.trim();
+                if (cleanDescription) {
+                    let fontSize = isHseRole ? 14 : 7.5;
+                    const fontStyle = isHseRole ? 'bold' : 'normal';
+                    doc.setFont('helvetica', fontStyle).setTextColor(DARK);
+
+                    const maxW = photoW - 6;
+                    const maxH = descriptionH - 2; // vertical bounds (18mm for HSE, 8mm for others)
+                    let descLines: string[] = [];
+                    let lineHeight = 0;
+                    let totalTextH = 0;
+
+                    // Dynamically scale down font size if text block is too large for the box
+                    while (fontSize > 6.5) {
+                        doc.setFontSize(fontSize);
+                        descLines = doc.splitTextToSize(cleanDescription, maxW);
+                        lineHeight = fontSize * 0.3528 * 1.15;
+                        totalTextH = descLines.length * lineHeight;
+
+                        if (totalTextH <= maxH) {
+                            break;
+                        }
+                        fontSize -= 0.5;
+                    }
+
+                    // Vertical centering calculation
+                    const textStartY = y + photoH + (descriptionH - totalTextH) / 2 + (lineHeight * 0.7);
+
+                    // Draw each line individually using manual centering to prevent character-spacing bugs on PDF viewers
+                    descLines.forEach((line: string, index: number) => {
+                        const cleanLine = line.trim();
+                        const textWidth = doc.getTextWidth(cleanLine);
+                        const lineX = (x + photoW / 2) - (textWidth / 2);
+                        doc.text(cleanLine, lineX, textStartY + index * lineHeight);
+                    });
                 }
-                const descLines = doc.splitTextToSize(photo.description, photoW - 6);
-                doc.text(descLines, x + photoW / 2, y + photoH + (isHseRole ? 11 : 5), { align: 'center' });
             }
 
             if (col === photosPerRow - 1 || i === data.photos.length - 1) {
