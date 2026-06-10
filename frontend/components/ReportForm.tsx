@@ -1035,7 +1035,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
 
               <div className="mt-8 select-none">
-                <div className="flex items-center bg-slate-950/50 backdrop-blur-md border border-slate-800/50 rounded-t-xl overflow-hidden h-10 shadow-2xl">
+                {/* Desktop Tab Bar */}
+                <div className="hidden md:flex items-center bg-slate-950/50 backdrop-blur-md border border-slate-800/50 rounded-t-xl overflow-hidden h-10 shadow-2xl">
                   <div className="flex items-center px-2 border-r border-slate-800/50 gap-1 shrink-0">
                     <button onClick={() => scrollTabs('left')} title="Geser Tab Kiri" aria-label="Geser tab ke kiri" className="p-1.5 hover:bg-white/5 transition-colors rounded-lg text-slate-500 hover:text-blue-400"><ChevronLeft className="w-4 h-4" /></button>
                     <button onClick={() => scrollTabs('right')} title="Geser Tab Kanan" aria-label="Geser tab ke kanan" className="p-1.5 hover:bg-white/5 transition-colors rounded-lg text-slate-500 hover:text-blue-400"><ChevronRight className="w-4 h-4" /></button>
@@ -1102,7 +1103,69 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     </button>
                   </div>
                 </div>
-                
+
+                {/* Mobile Dropdown & Edit Block */}
+                <div className="block md:hidden space-y-4 bg-slate-950/40 backdrop-blur-md p-4 rounded-xl border border-slate-800/50 shadow-2xl">
+                  <div>
+                    <label htmlFor="mobile-unit-select" className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                      Pilih Unit Maintenance
+                    </label>
+                    <select
+                      id="mobile-unit-select"
+                      value={activeUnitId || ''}
+                      onChange={(e) => setActiveUnitId(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-700 text-white font-bold rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer text-xs"
+                    >
+                      {units.map((unit, idx) => (
+                        <option key={unit.id} value={unit.id} className="bg-slate-900">
+                          {unit.tabName || `Unit ${idx + 1}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => addNewUnit(`Unit ${units.length + 1}`)}
+                      className="flex-1 py-2.5 px-4 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-xl font-bold transition flex items-center justify-center gap-1.5 text-xs shadow-md"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Tambah Unit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (units.length > 1) {
+                          const idx = units.findIndex(u => u.id === activeUnitId);
+                          setUnits(prev => prev.filter(u => u.id !== activeUnitId));
+                          setActiveUnitId(units[idx === 0 ? 1 : idx - 1].id);
+                          toast.success('Unit berhasil dihapus');
+                        } else {
+                          toast.error('Minimal harus ada 1 unit');
+                        }
+                      }}
+                      className="flex-1 py-2.5 px-4 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-xl font-bold transition flex items-center justify-center gap-1.5 text-xs shadow-md"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Hapus Unit
+                    </button>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-800/50">
+                    <label htmlFor="mobile-unit-rename" className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                      Ubah Nama Unit Aktif
+                    </label>
+                    <input
+                      id="mobile-unit-rename"
+                      type="text"
+                      value={tabName}
+                      onChange={(e) => setTabName(e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-700 text-blue-400 font-bold rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 text-xs"
+                      placeholder="Masukkan nama unit..."
+                    />
+                  </div>
+                </div>
 
                 <div className="h-1 bg-slate-900/40 border-b border-slate-800/50 mb-10 shadow-sm" />
               </div>
