@@ -1,14 +1,11 @@
-**Add your own guidelines here**
-<!--
-
-System Guidelines
+# System Guidelines
 
 Use this file to provide the AI with rules and guidelines you want it to follow.
 This template outlines a few examples of things you can add. You can add your own sections and format it to suit your needs
 
 TIP: More context isn't always better. It can confuse the LLM. Try and add the most important rules you need
 
-# General guidelines
+## General guidelines
 
 Any general rules you want the AI to follow.
 For example:
@@ -17,10 +14,9 @@ For example:
 * Refactor code as you go to keep code clean
 * Keep file sizes small and put helper functions and components in their own files.
 
---------------
+## Design system guidelines
 
-# Design system guidelines
-Rules for how the AI should make generations look like your company's design system
+Rules for how the AI should make generations look like your company's design system.
 
 Additionally, if you select a design system to use in the prompt box, you can reference
 your design system's components, tokens, variables and components.
@@ -35,7 +31,6 @@ For example:
 
 You can also create sub sections and add more specific details
 For example:
-
 
 ## Button
 The Button component is a fundamental interactive element in our design system, designed to trigger actions or navigate
