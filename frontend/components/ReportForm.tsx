@@ -1067,8 +1067,13 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (units.length > 1) {
-                                  setUnits(prev => prev.filter(u => u.id !== unit.id));
-                                  if (activeUnitId === unit.id) setActiveUnitId(units[idx === 0 ? 1 : idx - 1].id);
+                                  const targetUnit = units.find(u => u.id === unit.id);
+                                  const unitName = targetUnit?.tabName || `Unit ${idx + 1}`;
+                                  if (window.confirm(`Yakin ingin menghapus "${unitName}" beserta seluruh fotonya?`)) {
+                                    setUnits(prev => prev.filter(u => u.id !== unit.id));
+                                    if (activeUnitId === unit.id) setActiveUnitId(units[idx === 0 ? 1 : idx - 1].id);
+                                    toast.success('Unit berhasil dihapus');
+                                  }
                                 }
                               }}
                               title="Hapus Unit"
@@ -1137,10 +1142,14 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       type="button"
                       onClick={() => {
                         if (units.length > 1) {
-                          const idx = units.findIndex(u => u.id === activeUnitId);
-                          setUnits(prev => prev.filter(u => u.id !== activeUnitId));
-                          setActiveUnitId(units[idx === 0 ? 1 : idx - 1].id);
-                          toast.success('Unit berhasil dihapus');
+                          const currentUnit = units.find(u => u.id === activeUnitId);
+                          const unitLabel = currentUnit?.tabName || 'Unit ini';
+                          if (window.confirm(`Yakin ingin menghapus "${unitLabel}" beserta seluruh fotonya?`)) {
+                            const idx = units.findIndex(u => u.id === activeUnitId);
+                            setUnits(prev => prev.filter(u => u.id !== activeUnitId));
+                            setActiveUnitId(units[idx === 0 ? 1 : idx - 1].id);
+                            toast.success('Unit berhasil dihapus');
+                          }
                         } else {
                           toast.error('Minimal harus ada 1 unit');
                         }
