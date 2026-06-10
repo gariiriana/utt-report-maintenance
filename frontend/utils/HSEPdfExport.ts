@@ -338,82 +338,86 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         const photoGap = 5;
         const photoW = (contentW - photoGap) / photosPerRow;
         const photoH = photoW * 0.75;
-        const isHseRole = userRole === 'hse' && false; // Match engineer role exactly
-        const descriptionH = 10;
+        const DESC_FONT_SIZE = 7;
+        const DESC_LINE_HEIGHT = DESC_FONT_SIZE * 0.3528 * 1.25; // ~3.1mm per line
+        const DESC_PAD_TOP = 2;
+        const DESC_PAD_BOTTOM = 2;
+        const MIN_DESC_H = 8; // minimum description area height
 
-        for (let i = 0; i < data.photos.length; i++) {
-            const col = i % photosPerRow;
-            const x = marginL + col * (photoW + photoGap);
+        // Pre-calculate description heights for each photo so paired photos use the same height
+        const descHeights: number[] = data.photos.map((photo) => {
+            const cleanDesc = (photo.description || '').trim();
+            if (!cleanDesc) return MIN_DESC_H;
+            const maxW = photoW - 6;
+            doc.setFontSize(DESC_FONT_SIZE);
+            doc.setFont('helvetica', 'normal');
+            const lines = doc.splitTextToSize(cleanDesc, maxW);
+            const textH = lines.length * DESC_LINE_HEIGHT + DESC_PAD_TOP + DESC_PAD_BOTTOM;
+            return Math.max(MIN_DESC_H, textH);
+        });
 
-            if (curY + photoH + descriptionH > pageH - 22) {
+        for (let i = 0; i < data.photos.length; i += photosPerRow) {
+            // Determine the max description height for this row so both cards align
+            let rowDescH = MIN_DESC_H;
+            for (let c = 0; c < photosPerRow && i + c < data.photos.length; c++) {
+                rowDescH = Math.max(rowDescH, descHeights[i + c]);
+            }
+
+            const totalCardH = photoH + rowDescH;
+
+            // Page break check — if row doesn't fit, start a new page
+            if (curY + totalCardH > pageH - 22) {
                 doc.addPage();
                 drawPageHeader();
                 curY = HEADER_H;
             }
 
             const y = curY;
-            const photo = data.photos[i];
-            doc.setFillColor(255, 255, 255);
-            doc.setDrawColor(226, 232, 240);
-            doc.roundedRect(x, y, photoW, photoH + descriptionH, 1, 1, 'FD');
 
-            try {
-                doc.addImage(photo.base64, 'JPEG', x + 1, y + 1, photoW - 2, photoH - 2, `photo_${i}`, 'FAST');
-            } catch (_) {
-                doc.setFillColor(241, 245, 249);
-                doc.rect(x + 1, y + 1, photoW - 2, photoH - 2, 'F');
-                doc.setFontSize(7).setTextColor(GRAY).text('Foto Error', x + photoW / 2, y + photoH / 2, { align: 'center' });
-            }
+            for (let c = 0; c < photosPerRow && i + c < data.photos.length; c++) {
+                const idx = i + c;
+                const photo = data.photos[idx];
+                const x = marginL + c * (photoW + photoGap);
 
-            if (photo.label) {
-                doc.setFillColor(PRIMARY_BLUE);
-                doc.rect(x + 1, y + 1, 35, 5, 'F');
-                doc.setFontSize(6.5).setFont('helvetica', 'bold').setTextColor('#ffffff');
-                doc.text(photo.label, x + 2.5, y + 4.2);
-            }
+                // Draw card background
+                doc.setFillColor(255, 255, 255);
+                doc.setDrawColor(226, 232, 240);
+                doc.roundedRect(x, y, photoW, totalCardH, 1, 1, 'FD');
 
-            if (photo.description) {
-                const cleanDescription = photo.description.trim();
+                // Draw photo
+                try {
+                    doc.addImage(photo.base64, 'JPEG', x + 1, y + 1, photoW - 2, photoH - 2, `photo_${idx}`, 'FAST');
+                } catch (_) {
+                    doc.setFillColor(241, 245, 249);
+                    doc.rect(x + 1, y + 1, photoW - 2, photoH - 2, 'F');
+                    doc.setFontSize(7).setTextColor(GRAY).text('Foto Error', x + photoW / 2, y + photoH / 2, { align: 'center' });
+                }
+
+                // Draw label badge
+                if (photo.label) {
+                    doc.setFillColor(PRIMARY_BLUE);
+                    doc.rect(x + 1, y + 1, 35, 5, 'F');
+                    doc.setFontSize(6.5).setFont('helvetica', 'bold').setTextColor('#ffffff');
+                    doc.text(photo.label, x + 2.5, y + 4.2);
+                }
+
+                // Draw description text — wraps neatly across multiple lines
+                const cleanDescription = (photo.description || '').trim();
                 if (cleanDescription) {
-                    let fontSize = isHseRole ? 14 : 7.5;
-                    const fontStyle = isHseRole ? 'bold' : 'normal';
-                    doc.setFont('helvetica', fontStyle).setTextColor(DARK);
-
                     const maxW = photoW - 6;
-                    const maxH = descriptionH - 2; // vertical bounds (18mm for HSE, 8mm for others)
-                    let descLines: string[] = [];
-                    let lineHeight = 0;
-                    let totalTextH = 0;
+                    doc.setFontSize(DESC_FONT_SIZE);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(DARK);
+                    const descLines: string[] = doc.splitTextToSize(cleanDescription, maxW);
+                    const textStartY = y + photoH + DESC_PAD_TOP + DESC_LINE_HEIGHT * 0.8;
 
-                    // Dynamically scale down font size if text block is too large for the box
-                    while (fontSize > 6.5) {
-                        doc.setFontSize(fontSize);
-                        descLines = doc.splitTextToSize(cleanDescription, maxW);
-                        lineHeight = fontSize * 0.3528 * 1.15;
-                        totalTextH = descLines.length * lineHeight;
-
-                        if (totalTextH <= maxH) {
-                            break;
-                        }
-                        fontSize -= 0.5;
-                    }
-
-                    // Vertical centering calculation
-                    const textStartY = y + photoH + (descriptionH - totalTextH) / 2 + (lineHeight * 0.7);
-
-                    // Draw each line individually using manual centering to prevent character-spacing bugs on PDF viewers
-                    descLines.forEach((line: string, index: number) => {
-                        const cleanLine = line.trim();
-                        const textWidth = doc.getTextWidth(cleanLine);
-                        const lineX = (x + photoW / 2) - (textWidth / 2);
-                        doc.text(cleanLine, lineX, textStartY + index * lineHeight);
+                    descLines.forEach((line: string, lineIdx: number) => {
+                        doc.text(line.trim(), x + 3, textStartY + lineIdx * DESC_LINE_HEIGHT);
                     });
                 }
             }
 
-            if (col === photosPerRow - 1 || i === data.photos.length - 1) {
-                curY += photoH + descriptionH + photoGap;
-            }
+            curY += totalCardH + photoGap;
         }
     }
 
@@ -604,7 +608,7 @@ export async function generateHSEPdf(data: HSEFormData, autoOpen = false, userRo
     const finalBlob = new Blob([finalPdfBytes as any], { type: 'application/pdf' });
     const url = URL.createObjectURL(finalBlob);
 
-    // Always trigger download
+    // Always trigger download with the correct filename
     const link = document.createElement('a');
     link.href = url;
     link.download = fileName;
@@ -612,12 +616,11 @@ export async function generateHSEPdf(data: HSEFormData, autoOpen = false, userRo
     link.click();
     document.body.removeChild(link);
 
-    // If autoOpen is true (for HSE role), also open in new tab
-    if (autoOpen) {
-        window.open(url, '_blank');
-    }
+    // NOTE: window.open(url) was removed because blob URLs generate UUID filenames
+    // (e.g. 04cba595-9c22-4250-b32e-d62402832d7c.pdf) when shared from the new tab.
+    // The download via link.download already provides the correct filename.
 
-    // Delay revocation to ensure the browser has time to handle both actions
+    // Delay revocation to ensure the browser has time to handle the download
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
