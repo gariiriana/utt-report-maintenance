@@ -1,4 +1,18 @@
 export const REPORT_TEMPLATES: Record<string, string[]> = {
+  'pump@gmail.com': [
+    'Condition Pump',
+    'Cleaning Pump',
+    'Check seal gasket',
+    'Check condition Valve',
+    'Measurement Vibration',
+    'Measurement Temperature',
+    'Measurement Grounding',
+    'Measurement Voltage Fasa to Fasa',
+    'Measurement Fasa to Netral',
+    'Measurement Ampere R',
+    'Measurement Ampere S',
+    'Measurement Ampere T'
+  ],
   'fcu@gmail.com': [
     'R-S', 'R-T', 'S-T', 'R-N', 'S-N', 'T-N',
     'Current R', 'Current S', 'Current T',

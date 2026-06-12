@@ -44,11 +44,13 @@ export function PreviewReport({
     const isCRAC = userEmail === 'crac@gmail.com';
     const isWLD = userEmail === 'wld@gmail.com';
     const isFLD = userEmail === 'fld@gmail.com';
-    const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV || isATS || isLightingSystem || isACSplit || isCRAC || isWLD || isFLD;
+    const isPJU = userEmail === 'pju@gmail.com';
+    const isPump = userEmail === 'pump@gmail.com';
+    const isSmallGrid = isPDU || isLV || isLDBRDB || isVRV || isATS || isLightingSystem || isACSplit || isCRAC || isWLD || isFLD || isPJU || isPump;
     const isLVlike = isLV || isLDBRDB || isLightingSystem;
 
-    const columns = (isVRV || isATS || isACSplit || isCRAC || isWLD || isFLD) ? 3 : isSmallGrid ? 4 : 3;
-    const perPage = (isATS || isACSplit || isCRAC) ? 12 : isPDU ? 20 : isLVlike ? 12 : isVRV ? 15 : 9;
+    const columns = (isVRV || isATS || isACSplit || isCRAC || isWLD || isFLD || isPJU || isPump) ? 3 : isSmallGrid ? 4 : 3;
+    const perPage = (isATS || isACSplit || isCRAC || isPJU || isPump) ? 12 : isPDU ? 20 : isLVlike ? 12 : isVRV ? 15 : 9;
     const filledCards = cards.filter(card => card.photoBase64 || card.description);
     const [acknowledged, setAcknowledged] = useState(false);
 
