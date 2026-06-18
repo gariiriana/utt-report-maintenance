@@ -13,6 +13,20 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Measurement Ampere S',
     'Measurement Ampere T'
   ],
+  'mv@gmail.com': [
+    'NAMEPLAT',
+    'MEASUREMENT SUMMARY ON DPM',
+    'MEASUREMENT LINE LINE VOLTAGE ON DPM',
+    'MEASUREMENT CURRENT ON DPM',
+    'MEASUREMENT LINE NEUTRAL VOLTAGE ON DPM',
+    'MEASUREMENT FREQUENCY ON DPM',
+    'MEASUREMENT TEMPERATURE USING THERMAL IMAGER',
+    'MEASUREMENT VOLTAGE PHASE TO NETRAL',
+    'MEASUREMENT GROUNDING',
+    'CLEANING PANEL USING VACCUM CLEANER',
+    'CLEANING PANEL',
+    'CLEANING PANEL'
+  ],
   'fcu@gmail.com': [
     'R-S', 'R-T', 'S-T', 'R-N', 'S-N', 'T-N',
     'Current R', 'Current S', 'Current T',
