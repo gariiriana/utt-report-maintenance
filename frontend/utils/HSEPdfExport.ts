@@ -88,7 +88,7 @@ function loadImageAsBase64(url: string): Promise<string> {
     });
 }
 
-function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64: string, userRole?: string): jsPDF {
+function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64: string, _userRole?: string): jsPDF {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
     const pageW = doc.internal.pageSize.getWidth();
@@ -497,7 +497,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
     return doc;
 }
 
-export async function generateHSEPdf(data: HSEFormData, autoOpen = false, userRole?: string) {
+export async function generateHSEPdf(data: HSEFormData, _autoOpen = false, userRole?: string) {
     const dmeImg = logoDme;
     const secondaryImg = data.reportType === 'utt' ? logoUtt : logoNeutradc;
 
