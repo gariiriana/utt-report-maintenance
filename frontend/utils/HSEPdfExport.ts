@@ -428,7 +428,6 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         const photoW = (contentW - photoGap) / photosPerRow;
         const photoH = photoW * 0.75;
         const DESC_FONT_SIZE = 7;
-        const DESC_LINE_HEIGHT = DESC_FONT_SIZE * 0.3528 * 1.25; // ~3.1mm per line
         const DESC_PAD_TOP = 2;
         const DESC_PAD_BOTTOM = 2;
         const MIN_DESC_H = 8; // minimum description area height
