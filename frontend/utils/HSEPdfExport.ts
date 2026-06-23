@@ -5,6 +5,95 @@ import logoDme from '@/assets/logo_dwimitra_v2.png';
 import logoUtt from '@/assets/logo_utt.png';
 import logoNeutradc from '@/assets/logo_neutradc.png';
 
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+    const paragraphs = text.split('\n');
+    const lines: string[] = [];
+
+    paragraphs.forEach(paragraph => {
+        const words = paragraph.split(' ');
+        let currentLine = '';
+
+        for (let i = 0; i < words.length; i++) {
+            const word = words[i];
+            const testLine = currentLine ? currentLine + ' ' + word : word;
+            const metrics = ctx.measureText(testLine);
+            if (metrics.width > maxWidth && currentLine) {
+                lines.push(currentLine);
+                currentLine = word;
+            } else {
+                currentLine = testLine;
+            }
+        }
+        if (currentLine) {
+            lines.push(currentLine);
+        } else if (paragraph === '') {
+            lines.push('');
+        }
+    });
+
+    return lines;
+}
+
+interface RenderTextResult {
+    base64: string;
+    heightMm: number;
+}
+
+function renderTextWithEmojisToImage(
+    text: string,
+    widthMm: number,
+    fontSizePt: number,
+    textColor: string = '#1e293b',
+    fontStyle: string = 'normal'
+): RenderTextResult {
+    const pxPerMm = 96 / 25.4;
+    const widthPx = widthMm * pxPerMm;
+
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    if (!tempCtx) {
+        return { base64: '', heightMm: 0 };
+    }
+
+    const fontSizePx = fontSizePt * (96 / 72);
+    const fontStr = `${fontStyle} ${fontSizePx}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"`;
+    tempCtx.font = fontStr;
+
+    const lines = wrapText(tempCtx, text, widthPx);
+    const lineHeightPx = fontSizePx * 1.35;
+    const paddingPx = 1;
+    const heightPx = lines.length * lineHeightPx + paddingPx * 2;
+    const heightMm = heightPx / pxPerMm;
+
+    const scale = 4;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(widthPx * scale);
+    canvas.height = Math.ceil(heightPx * scale);
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+        return { base64: '', heightMm: heightMm };
+    }
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.scale(scale, scale);
+
+    ctx.clearRect(0, 0, widthPx, heightPx);
+    ctx.font = fontStr;
+    ctx.fillStyle = textColor;
+    ctx.textBaseline = 'top';
+
+    lines.forEach((line, index) => {
+        ctx.fillText(line, 0, paddingPx + index * lineHeightPx);
+    });
+
+    return {
+        base64: canvas.toDataURL('image/png'),
+        heightMm
+    };
+}
+
 export interface HSEChecklist {
     mop: boolean;
     jsa: boolean;
@@ -344,15 +433,18 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         const DESC_PAD_BOTTOM = 2;
         const MIN_DESC_H = 8; // minimum description area height
 
-        // Pre-calculate description heights for each photo so paired photos use the same height
-        const descHeights: number[] = data.photos.map((photo) => {
+        // Pre-calculate description images and heights using Canvas for emoji support
+        const descImages = data.photos.map((photo) => {
             const cleanDesc = (photo.description || '').trim();
-            if (!cleanDesc) return MIN_DESC_H;
+            if (!cleanDesc) return null;
             const maxW = photoW - 6;
-            doc.setFontSize(DESC_FONT_SIZE);
-            doc.setFont('helvetica', 'normal');
-            const lines = doc.splitTextToSize(cleanDesc, maxW);
-            const textH = lines.length * DESC_LINE_HEIGHT + DESC_PAD_TOP + DESC_PAD_BOTTOM;
+            return renderTextWithEmojisToImage(cleanDesc, maxW, DESC_FONT_SIZE, DARK);
+        });
+
+        const descHeights: number[] = data.photos.map((_, idx) => {
+            const imgInfo = descImages[idx];
+            if (!imgInfo) return MIN_DESC_H;
+            const textH = imgInfo.heightMm + DESC_PAD_TOP + DESC_PAD_BOTTOM;
             return Math.max(MIN_DESC_H, textH);
         });
 
@@ -401,19 +493,14 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
                     doc.text(photo.label, x + 2.5, y + 4.2);
                 }
 
-                // Draw description text — wraps neatly across multiple lines
-                const cleanDescription = (photo.description || '').trim();
-                if (cleanDescription) {
-                    const maxW = photoW - 6;
-                    doc.setFontSize(DESC_FONT_SIZE);
-                    doc.setFont('helvetica', 'normal');
-                    doc.setTextColor(DARK);
-                    const descLines: string[] = doc.splitTextToSize(cleanDescription, maxW);
-                    const textStartY = y + photoH + DESC_PAD_TOP + DESC_LINE_HEIGHT * 0.8;
-
-                    descLines.forEach((line: string, lineIdx: number) => {
-                        doc.text(line.trim(), x + 3, textStartY + lineIdx * DESC_LINE_HEIGHT);
-                    });
+                // Draw description text/image containing emojis
+                const imgInfo = descImages[idx];
+                if (imgInfo && imgInfo.base64) {
+                    const imgW = photoW - 6;
+                    const imgH = imgInfo.heightMm;
+                    const imgX = x + 3;
+                    const imgY = y + photoH + DESC_PAD_TOP;
+                    doc.addImage(imgInfo.base64, 'PNG', imgX, imgY, imgW, imgH, `desc_img_${idx}`, 'FAST');
                 }
             }
 
