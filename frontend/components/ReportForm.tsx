@@ -96,6 +96,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [cardClipboard, setCardClipboard] = useState<{ photoBase64?: string, description: string } | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [previewImage, setPreviewImage] = useState<{ src: string; title: string } | null>(null);
 
 
   const activeUnit = units.find(u => u.id === activeUnitId) || null;
@@ -1247,10 +1248,40 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     {card.photoBase64 ? (
                       <>
                         <img src={card.photoBase64} alt={card.description || `Foto dokumentasi ${idx + 1}`} title={card.description || `Foto dokumentasi ${idx + 1}`} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center gap-1.5 sm:gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => handleDownloadPhoto(card.photoBase64!, card.description, idx)} className="p-1.5 sm:p-2.5 bg-emerald-600/20 backdrop-blur-md rounded-lg hover:bg-emerald-600/30 transition shadow-xl" title="Download Foto"><Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" /></button>
-                          <button onClick={() => setEditingCardId(card.id)} className="p-1.5 sm:p-2.5 bg-white/20 backdrop-blur-md rounded-lg hover:bg-white/30 transition shadow-xl" title="Edit/Crop"><Scissors className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" /></button>
-                          <button onClick={() => handlePhotoChange(card.id, null)} className="p-1.5 sm:p-2.5 bg-red-600/20 backdrop-blur-md rounded-lg hover:bg-red-600/30 transition shadow-xl" title="Hapus Foto"><Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" /></button>
+                        <div 
+                          onClick={() => setPreviewImage({ src: card.photoBase64!, title: card.description || `Doc #${idx + 1}` })}
+                          className="absolute inset-0 bg-black/20 flex items-center justify-center gap-1.5 sm:gap-3 opacity-100 transition-opacity cursor-zoom-in"
+                        >
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownloadPhoto(card.photoBase64!, card.description, idx);
+                            }} 
+                            className="p-1.5 sm:p-2.5 bg-emerald-600/20 backdrop-blur-md rounded-lg hover:bg-emerald-600/30 transition shadow-xl" 
+                            title="Download Foto"
+                          >
+                            <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingCardId(card.id);
+                            }} 
+                            className="p-1.5 sm:p-2.5 bg-white/20 backdrop-blur-md rounded-lg hover:bg-white/30 transition shadow-xl" 
+                            title="Edit/Crop"
+                          >
+                            <Scissors className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePhotoChange(card.id, null);
+                            }} 
+                            className="p-1.5 sm:p-2.5 bg-red-600/20 backdrop-blur-md rounded-lg hover:bg-red-600/30 transition shadow-xl" 
+                            title="Hapus Foto"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" />
+                          </button>
                         </div>
                       </>
                     ) : (
@@ -1380,6 +1411,47 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             maintenanceName={maintenanceName}
             specificDetail={specificDetail}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {previewImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setPreviewImage(null)}
+            className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4 md:p-8 cursor-zoom-out"
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute top-4 right-4 p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors z-50 cursor-pointer"
+              title="Tutup Preview"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            {/* Image Wrapper */}
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-5xl max-h-[85vh] w-full flex flex-col items-center justify-center"
+            >
+              <img
+                src={previewImage.src}
+                alt={previewImage.title}
+                className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl border border-white/10"
+              />
+              {previewImage.title && (
+                <div className="mt-4 px-4 py-2 bg-slate-900/80 backdrop-blur-sm rounded-lg border border-slate-800 text-center max-w-md">
+                  <p className="text-white text-sm font-semibold">{previewImage.title}</p>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 

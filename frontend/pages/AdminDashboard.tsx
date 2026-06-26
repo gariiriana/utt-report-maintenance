@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Shield, FileText, FileSpreadsheet, Download, Search, Filter, Calendar, User, Database, Activity, TrendingUp, Pencil, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { FileText, FileSpreadsheet, Download, Search, Filter, Calendar, User, Database, Activity, TrendingUp, Pencil, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { collection, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
 import { ExcelDocument } from '@/components/DocumentList';
 import { db } from '@/api/firebase';
@@ -494,42 +494,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 relative z-10">
-      <div className="bg-gradient-to-r from-purple-900/40 to-pink-900/40 backdrop-blur-xl rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 border border-purple-500/30">
-        <div className="flex items-center gap-2 sm:gap-3 mb-2">
-          <div className="p-1.5 sm:p-2 bg-purple-500/20 rounded-lg border border-purple-500/30">
-            <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white">Dashboard Admin</h1>
-            <div className="flex items-center gap-2">
-              <p className="text-xs sm:text-sm text-purple-300">Kelola semua dokumen dan pantau aktivitas sistem</p>
-              {onlineUsers.length > 0 && (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  <span className="text-[10px] sm:text-xs font-medium text-emerald-400">
-                    {onlineUsers.length} Admin{onlineUsers.length > 1 ? 's' : ''} Online
-                  </span>
-                  <div className="hidden sm:flex -space-x-2 ml-1">
-                    {onlineUsers.slice(0, 3).map((u) => (
-                      <div key={u.uid} className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[8px] text-white font-bold uppercase" title={u.email}>
-                        {u.email?.[0] || 'A'}
-                      </div>
-                    ))}
-                    {onlineUsers.length > 3 && (
-                      <div className="w-5 h-5 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-[8px] text-white font-bold">
-                        +{onlineUsers.length - 3}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
         <motion.div

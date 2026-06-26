@@ -12,8 +12,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['logo_utt.png', 'logo-neutradc.png'],
       manifest: {
-        name: 'UTT Report Maintenance',
-        short_name: 'UTT',
+        name: 'Report UTT',
+        short_name: 'Report UTT',
         description: 'Multi-unit maintenance reporting system',
         theme_color: '#0f172a',
         background_color: '#0f172a',
