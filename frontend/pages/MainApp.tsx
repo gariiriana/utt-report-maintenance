@@ -25,29 +25,31 @@ export function MainApp() {
   const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
   const isStandby = userRole === 'standby_engineer';
 
+  const [editingData, setEditingData] = useState<ExcelDocument | null>(null);
+
   const navItems = [
     { id: 'admin', label: 'Dashboard Admin', icon: Shield, color: 'from-purple-600 to-pink-600', show: isAdmin },
     { id: 'ptw', label: 'PTW', icon: Clipboard, color: 'from-indigo-600 to-blue-600', show: (isAdmin || userRole === 'engineer') && !isStandby },
-    { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: !isStandby },
-    { id: 'corrective', label: 'Corrective Maint.', icon: PenTool, color: 'from-red-600 to-red-700', show: true },
-    { id: 'corrective_archive', label: 'Arsip CM', icon: FolderOpen, color: 'from-rose-600 to-rose-700', show: true },
-    { id: 'inventory', label: 'Peminjaman Alat', icon: Shield, color: 'from-indigo-600 to-indigo-700', show: !isStandby },
+    { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: !isStandby && userRole !== 'DME' },
+    { id: 'corrective', label: 'Corrective Maint.', icon: PenTool, color: 'from-red-600 to-red-700', show: userRole !== 'DME' },
+    { id: 'corrective_archive', label: 'Arsip CM', icon: FolderOpen, color: 'from-rose-600 to-rose-700', show: userRole !== 'DME' },
+    { id: 'inventory', label: 'Peminjaman Alat', icon: Shield, color: 'from-indigo-600 to-indigo-700', show: !isStandby && userRole !== 'DME' },
     { id: 'findings', label: 'Temuan', icon: Search, color: 'from-amber-500 to-orange-600', show: userRole === 'engineer' || isStandby || isAdmin },
-    { id: 'finding_archive', label: 'Arsip Temuan', icon: FolderOpen, color: 'from-teal-600 to-teal-700', show: true },
-    { id: 'report', label: 'Buat Laporan', icon: FileText, color: 'from-blue-600 to-blue-700', show: !isStandby },
+    { id: 'finding_archive', label: 'Arsip Temuan', icon: FolderOpen, color: 'from-teal-600 to-teal-700', show: userRole !== 'DME' },
+    { id: 'report', label: userRole === 'DME' ? 'Detail Laporan' : 'Buat Laporan', icon: FileText, color: 'from-blue-600 to-blue-700', show: !isStandby && (userRole !== 'DME' || !!editingData) },
     { id: 'documents', label: 'Arsip Dokumen', icon: FolderOpen, color: 'from-emerald-600 to-emerald-700', show: !isAdmin && !isStandby },
   ] as const;
 
   const getDefaultTab = (): Tab => {
     if (isAdmin) return 'admin';
     if (isStandby) return 'corrective';
+    if (userRole === 'DME') return 'documents';
     return 'report';
   };
 
   const [activeTab, setActiveTab] = useState<Tab>(getDefaultTab());
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
-  const [editingData, setEditingData] = useState<ExcelDocument | null>(null);
 
   const handleEditReport = (doc: ExcelDocument) => {
     setEditingData(doc);
@@ -56,6 +58,9 @@ export function MainApp() {
 
   const clearEditingData = () => {
     setEditingData(null);
+    if (userRole === 'DME') {
+      setActiveTab('documents');
+    }
   };
 
 

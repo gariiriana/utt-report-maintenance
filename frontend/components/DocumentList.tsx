@@ -55,7 +55,8 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   const [documents, setDocuments] = useState<ExcelDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [filterDate, setFilterDate] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
   const [filterType, setFilterType] = useState<'all' | 'excel' | 'pdf' | 'hse'>('all');
@@ -69,6 +70,11 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   const [selectedMaintenance, setSelectedMaintenance] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
+
+  const [dmeLevel, setDmeLevel] = useState<'account' | 'month' | 'date' | 'documents'>('account');
+  const [dmeSelectedAccount, setDmeSelectedAccount] = useState<string | null>(null);
+  const [dmeSelectedMonth, setDmeSelectedMonth] = useState<string | null>(null);
+  const [dmeSelectedDate, setDmeSelectedDate] = useState<string | null>(null);
 
   const getMonthYearString = (date: Date) => {
     return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
@@ -95,12 +101,16 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         const fetchPromises: Promise<any>[] = [];
 
         if (filterOverride !== 'hse_utt') {
-          const excelQuery = isPrivileged
-            ? query(collection(db, 'excel_documents'))
-            : query(collection(db, 'excel_documents'), where('createdBy', '==', user.email));
-          fetchPromises.push(getDocs(excelQuery));
+          if (userRole !== 'DME') {
+            const excelQuery = isPrivileged
+              ? query(collection(db, 'excel_documents'))
+              : query(collection(db, 'excel_documents'), where('createdBy', '==', user.email));
+            fetchPromises.push(getDocs(excelQuery));
+          } else {
+            fetchPromises.push(Promise.resolve(null));
+          }
 
-          const pdfQuery = isPrivileged
+          const pdfQuery = (isPrivileged || userRole === 'DME')
             ? query(collection(db, 'pdf_documents'))
             : query(collection(db, 'pdf_documents'), where('createdBy', '==', user.email));
           fetchPromises.push(getDocs(pdfQuery));
@@ -109,7 +119,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           fetchPromises.push(Promise.resolve(null));
         }
 
-        const showHSE = isAdmin || userRole === 'hse' || filterOverride === 'hse_utt';
+        const showHSE = (isAdmin || userRole === 'hse' || filterOverride === 'hse_utt') && userRole !== 'DME';
         if (showHSE) {
           let hseQuery;
           if (filterOverride === 'hse_utt') {
@@ -563,9 +573,12 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       }
     }
 
-    if (filterDate) {
+    if (startDate || endDate) {
       const docDate = new Date(doc.maintenanceTime).toISOString().split('T')[0];
-      if (docDate !== filterDate) {
+      if (startDate && docDate < startDate) {
+        return false;
+      }
+      if (endDate && docDate > endDate) {
         return false;
       }
     }
@@ -577,7 +590,192 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
     return true;
   });
 
+  const renderDmeContent = () => {
+    if (dmeLevel === 'account') {
+      const uniqueAccounts = Array.from(new Set(filteredDocuments.map(d => d.createdBy))).sort();
+      return (
+        <div className="bg-slate-950/20 p-4 rounded-2xl border border-slate-800/40 w-full max-w-6xl">
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-2 mb-3">Daftar Akun Maintenance</div>
+          {uniqueAccounts.length === 0 ? (
+            <div className="text-center py-8 text-sm text-slate-500">Tidak ada dokumen ditemukan</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1">
+              {uniqueAccounts.map((account) => {
+                const count = filteredDocuments.filter(d => d.createdBy === account).length;
+                return (
+                  <motion.button
+                    key={account}
+                    whileHover={{ x: 3 }}
+                    onClick={() => {
+                      setDmeSelectedAccount(account);
+                      setDmeLevel('month');
+                    }}
+                    className="flex items-center gap-3 py-2 px-3 hover:bg-slate-800/30 rounded-lg transition text-left group border border-transparent"
+                  >
+                    <Folder className="w-4 h-4 text-amber-500 group-hover:scale-105 transition-transform flex-shrink-0" />
+                    <span className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors truncate">
+                      {account}
+                    </span>
+                    <span className="ml-auto text-xs text-slate-500 font-medium whitespace-nowrap pl-2">
+                      {count} Laporan
+                    </span>
+                  </motion.button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (dmeLevel === 'month') {
+      const accountDocs = filteredDocuments.filter(d => d.createdBy === dmeSelectedAccount);
+      const uniqueMonths = Array.from(new Set(accountDocs.map(d => getMonthYearString(d.createdAt))));
+      const sortedMonths = uniqueMonths.sort((a, b) => {
+        const docA = accountDocs.find(d => getMonthYearString(d.createdAt) === a);
+        const docB = accountDocs.find(d => getMonthYearString(d.createdAt) === b);
+        return (docB?.createdAt.getTime() || 0) - (docA?.createdAt.getTime() || 0);
+      });
+
+      return (
+        <div className="space-y-4 bg-slate-950/20 p-4 rounded-2xl border border-slate-800/40 w-full max-w-6xl">
+          <button
+            onClick={() => {
+              setDmeSelectedAccount(null);
+              setDmeLevel('account');
+            }}
+            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium px-1"
+          >
+            <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Akun
+          </button>
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-2">
+            Folder: {dmeSelectedAccount}
+          </div>
+          {sortedMonths.length === 0 ? (
+            <div className="text-center py-8 text-sm text-slate-500">Tidak ada folder bulan</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1">
+              {sortedMonths.map((month) => {
+                const count = accountDocs.filter(d => getMonthYearString(d.createdAt) === month).length;
+                return (
+                  <motion.button
+                    key={month}
+                    whileHover={{ x: 3 }}
+                    onClick={() => {
+                      setDmeSelectedMonth(month);
+                      setDmeLevel('date');
+                    }}
+                    className="flex items-center gap-3 py-2 px-3 hover:bg-slate-800/30 rounded-lg transition text-left group border border-transparent"
+                  >
+                    <Folder className="w-4 h-4 text-amber-500 group-hover:scale-105 transition-transform flex-shrink-0" />
+                    <span className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">
+                      {month}
+                    </span>
+                    <span className="ml-auto text-xs text-slate-500 font-medium whitespace-nowrap pl-2">
+                      {count} Laporan
+                    </span>
+                  </motion.button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    if (dmeLevel === 'date') {
+      const accountDocs = filteredDocuments.filter(d => d.createdBy === dmeSelectedAccount);
+      const monthDocs = accountDocs.filter(d => getMonthYearString(d.createdAt) === dmeSelectedMonth);
+      const getFullDateString = (date: Date) => {
+        return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+      };
+      const uniqueDates = Array.from(new Set(monthDocs.map(d => getFullDateString(d.createdAt))));
+      const sortedDates = uniqueDates.sort((a, b) => {
+        const docA = monthDocs.find(d => getFullDateString(d.createdAt) === a);
+        const docB = monthDocs.find(d => getFullDateString(d.createdAt) === b);
+        return (docB?.createdAt.getTime() || 0) - (docA?.createdAt.getTime() || 0);
+      });
+
+      return (
+        <div className="space-y-4 bg-slate-950/20 p-4 rounded-2xl border border-slate-800/40 w-full max-w-6xl">
+          <button
+            onClick={() => {
+              setDmeSelectedMonth(null);
+              setDmeLevel('month');
+            }}
+            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium px-1"
+          >
+            <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Bulan
+          </button>
+          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-2">
+            Folder: {dmeSelectedAccount} / {dmeSelectedMonth}
+          </div>
+          {sortedDates.length === 0 ? (
+            <div className="text-center py-8 text-sm text-slate-500">Tidak ada folder tanggal</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1">
+              {sortedDates.map((dateStr) => {
+                const count = monthDocs.filter(d => getFullDateString(d.createdAt) === dateStr).length;
+                return (
+                  <motion.button
+                    key={dateStr}
+                    whileHover={{ x: 3 }}
+                    onClick={() => {
+                      setDmeSelectedDate(dateStr);
+                      setDmeLevel('documents');
+                    }}
+                    className="flex items-center gap-3 py-2 px-3 hover:bg-slate-800/30 rounded-lg transition text-left group border border-transparent"
+                  >
+                    <Folder className="w-4 h-4 text-amber-500 group-hover:scale-105 transition-transform flex-shrink-0" />
+                    <span className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">
+                      {dateStr}
+                    </span>
+                    <span className="ml-auto text-xs text-slate-500 font-medium whitespace-nowrap pl-2">
+                      {count} Laporan
+                    </span>
+                  </motion.button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // dmeLevel === 'documents'
+    const accountDocs = filteredDocuments.filter(d => d.createdBy === dmeSelectedAccount);
+    const monthDocs = accountDocs.filter(d => getMonthYearString(d.createdAt) === dmeSelectedMonth);
+    const getFullDateString = (date: Date) => {
+      return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+    };
+    const dateDocs = monthDocs.filter(d => getFullDateString(d.createdAt) === dmeSelectedDate);
+
+    return (
+      <div className="space-y-4 w-full max-w-4xl bg-slate-950/10 p-4 rounded-2xl border border-slate-800/20">
+        <button
+          onClick={() => {
+            setDmeSelectedDate(null);
+            setDmeLevel('date');
+          }}
+          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium px-1"
+        >
+          <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Tanggal
+        </button>
+        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-2">
+          Folder: {dmeSelectedAccount} / {dmeSelectedMonth} / {dmeSelectedDate}
+        </div>
+        <div className="grid grid-cols-1 gap-4">
+          {dateDocs.map((document, index) => renderDocumentCard(document, index))}
+        </div>
+      </div>
+    );
+  };
+
   const renderContent = () => {
+    if (userRole === 'DME') {
+      return renderDmeContent();
+    }
+
     if (filterOverride !== 'hse_utt') {
       return filteredDocuments.map((document, index) => renderDocumentCard(document, index));
     }
@@ -849,9 +1047,13 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
               whileTap={{ scale: 0.95 }}
               onClick={() => handleEditClick(document)}
               className="flex-1 sm:flex-initial p-2.5 sm:p-3 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-lg transition border border-blue-500/20"
-              title="Edit Report"
+              title={userRole === 'DME' ? "View Report" : "Edit Report"}
             >
-              <Pencil className="w-4 h-4 sm:w-5 sm:h-5 mx-auto" />
+              {userRole === 'DME' ? (
+                <Search className="w-4 h-4 sm:w-5 sm:h-5 mx-auto" />
+              ) : (
+                <Pencil className="w-4 h-4 sm:w-5 sm:h-5 mx-auto" />
+              )}
             </motion.button>
           )}
           <motion.button
@@ -944,16 +1146,28 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           </div>
 
   
-          <div className="relative">
-            <Calendar className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
-            <input
-              type="date"
-              value={filterDate}
-              onChange={(e) => setFilterDate(e.target.value)}
-              className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white text-sm sm:text-base"
-              title="Filter berdasarkan tanggal"
-              placeholder="Pilih tanggal"
-            />
+          <div className="flex gap-2 items-center">
+            <div className="relative flex-1">
+              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full pl-8 pr-1 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white text-xs sm:text-sm"
+                title="Dari tanggal"
+              />
+            </div>
+            <span className="text-slate-500 text-xs font-semibold">s/d</span>
+            <div className="relative flex-1">
+              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full pl-8 pr-1 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white text-xs sm:text-sm"
+                title="Sampai tanggal"
+              />
+            </div>
           </div>
 
   
@@ -1005,7 +1219,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           <div className="bg-slate-800/30 rounded-lg p-3 border border-slate-700/30">
             <p className="text-xs text-slate-500">Filter Aktif</p>
             <p className="text-lg sm:text-xl font-bold text-purple-400">
-              {(searchQuery || filterDate || filterType !== 'all') ? 'Yes' : 'No'}
+              {(searchQuery || startDate || endDate || filterType !== 'all') ? 'Yes' : 'No'}
             </p>
           </div>
         </div>

@@ -49,6 +49,13 @@ service cloud.firestore {
              && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'manager', 'site_manager', 'hse', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
     }
 
+    function isDME() {
+      return request.auth != null 
+             && request.auth.uid != null
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['DME', 'dme'];
+    }
+
     function isDivision(div) {
       return request.auth != null 
              && request.auth.uid != null
@@ -75,7 +82,7 @@ service cloud.firestore {
                     && request.resource.data.uid == userId
                     && request.resource.data.keys().hasAll(['email', 'uid', 'role', 'companyType', 'createdAt'])
                     && hasAcceptableFieldCount(request.resource.data, 8)
-                    && request.resource.data.role in ['admin', 'engineer', 'standby_engineer', 'tde', 'cbre', 'hse', 'pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan', 'site_manager', 'manager', 'inventory']
+                    && request.resource.data.role in ['admin', 'engineer', 'standby_engineer', 'tde', 'cbre', 'hse', 'pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan', 'site_manager', 'manager', 'inventory', 'DME', 'dme']
                     && (request.resource.data.companyType == 'neutra' || request.resource.data.companyType == 'bri')
                     && isValidString(request.resource.data.email, 200)
                     && isValidString(request.resource.data.uid, 128);
@@ -89,7 +96,7 @@ service cloud.firestore {
                       || isAdminSafe()
                     )
                     && hasAcceptableFieldCount(request.resource.data, 10)
-                    && request.resource.data.role in ['admin', 'engineer', 'standby_engineer', 'tde', 'cbre', 'hse', 'pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan', 'site_manager', 'manager', 'inventory'];
+                    && request.resource.data.role in ['admin', 'engineer', 'standby_engineer', 'tde', 'cbre', 'hse', 'pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan', 'site_manager', 'manager', 'inventory', 'DME', 'dme'];
       
       allow delete: if request.auth != null && isAdminSafe();
     }
@@ -151,7 +158,13 @@ service cloud.firestore {
                     && isValidString(request.resource.data.createdBy, 200)
                     && (!request.resource.data.keys().hasAny(['specificDetail']) || request.resource.data.specificDetail is string);
       
-      allow read, delete: if request.auth != null 
+      allow read: if request.auth != null 
+                  && (resource.data.createdBy == request.auth.token.email 
+                      || resource.data.createdBy == request.auth.token.get('email', '')
+                      || isPrivilegedRole()
+                      || isDME());
+      
+      allow delete: if request.auth != null 
                   && (resource.data.createdBy == request.auth.token.email 
                       || resource.data.createdBy == request.auth.token.get('email', '')
                       || isPrivilegedRole());

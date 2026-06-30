@@ -5,6 +5,7 @@ import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
+import { useAuth } from '@/components/AuthContext';
 
 interface PhotoCard {
     id: string;
@@ -34,6 +35,8 @@ export function PreviewReport({
     onBack,
     onExport
 }: PreviewReportProps) {
+    const { userRole } = useAuth();
+    const isDME = userRole === 'DME';
     const isATS = userEmail === 'ats@gmail.com';
     const isPDU = userEmail === 'pdu@gmail.com';
     const isLV = userEmail === 'lv@gmail.com';
@@ -105,7 +108,7 @@ export function PreviewReport({
                             className="flex-1 flex items-center justify-center gap-2 px-5 py-3.5 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl border border-slate-700/50 transition-all font-bold text-sm active:scale-95"
                         >
                             <ArrowLeft className="w-5 h-5" />
-                            <span>Kembali & Edit</span>
+                            <span>{isDME ? 'Kembali' : 'Kembali & Edit'}</span>
                         </button>
 
                         <button
@@ -113,7 +116,7 @@ export function PreviewReport({
                             className="flex-1 flex items-center justify-center gap-3 px-8 py-3.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-xl shadow-red-500/20 transition-all text-sm active:scale-95"
                         >
                             <FileDown className="w-5 h-5" />
-                            <span>Export & Simpan</span>
+                            <span>{isDME ? 'Export PDF' : 'Export & Simpan'}</span>
                         </button>
                     </div>
                 </div>

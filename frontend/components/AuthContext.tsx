@@ -8,17 +8,17 @@ import {
   browserLocalPersistence
 } from 'firebase/auth';
 import { auth, db } from '@/api/firebase';
-import { doc, setDoc, serverTimestamp, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc, onSnapshot } from 'firebase/firestore';
 
 interface UserData {
   email: string;
   uid: string;
-  role: 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'inventory';
+  role: 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'inventory' | 'DME';
   companyType?: 'neutra' | 'bri';
   createdAt: any;
 }
 
-const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'inventory' => {
+const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'inventory' | 'DME' => {
   if (!email) return 'engineer';
   const lowerEmail = email.toLowerCase();
   if (lowerEmail.includes('admin')) return 'admin';
@@ -33,13 +33,14 @@ const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby
   if (lowerEmail.includes('presales')) return 'presales';
   if (lowerEmail.includes('purchasing')) return 'purchasing';
   if (lowerEmail.includes('dirut')) return 'dirut';
+  if (lowerEmail.includes('dme')) return 'DME';
   if (lowerEmail === 'agil@utt.com' || lowerEmail === 'krishna@utt.com' || lowerEmail === 'asep@utt.com' || lowerEmail === 'salman@utt.com' || lowerEmail === 'gilang@utt.com' || lowerEmail === 'dison@utt.com' || lowerEmail.includes('standby')) return 'standby_engineer';
   return 'engineer';
 };
 
 interface AuthContextType {
   user: User | null;
-  userRole: 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'inventory' | null;
+  userRole: 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'inventory' | 'DME' | null;
   companyType: 'neutra' | 'bri' | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -50,7 +51,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'inventory' | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'inventory' | 'DME' | null>(null);
   const [companyType, setCompanyType] = useState<'neutra' | 'bri' | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -95,15 +96,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (docSnap.exists()) {
               const userData = docSnap.data() as UserData;
               let finalRole = userData.role || 'engineer';
-
-              if (user.email) {
-                const expectedRole = getRoleFromEmail(user.email);
-                if (expectedRole !== finalRole) {
-                  finalRole = expectedRole;
-                  updateDoc(userDocRef, { role: expectedRole }).catch(err => 
-                    console.warn("Failed to auto-correct role in Firestore:", err)
-                  );
-                }
+              if ((finalRole as string) === 'dme') {
+                finalRole = 'DME';
               }
 
               setUserRole(finalRole);

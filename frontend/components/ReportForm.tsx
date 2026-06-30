@@ -70,6 +70,7 @@ interface ReportFormProps {
 
 export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const { user, userRole, companyType: authCompanyType } = useAuth();
+  const isDME = userRole === 'DME';
   const [companyType, setCompanyType] = useState<'neutra' | 'bri'>('neutra');
   const [maintenanceName, setMaintenanceName] = useState('');
   const [maintenanceTime, setMaintenanceTime] = useState('');
@@ -298,7 +299,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      
+      if (isDME) return;
       if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) {
         return;
       }
@@ -343,12 +344,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusedCardId, cardClipboard, cards, activeUnitId]);
+  }, [focusedCardId, cardClipboard, cards, activeUnitId, isDME]);
 
 
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
-      
+      if (isDME) return;
       if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) {
         return;
       }
@@ -376,7 +377,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
     window.addEventListener('paste', handlePaste);
     return () => window.removeEventListener('paste', handlePaste);
-  }, [focusedCardId, activeUnitId]);
+  }, [focusedCardId, activeUnitId, isDME]);
 
   const setTemplateMode = (mode: 'indoor' | 'outdoor') => {
     if (!activeUnitId) return;
@@ -846,44 +847,49 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     if (!targetUnit) return toast.error('Unit tidak terpilih');
     
     setIsExporting(true);
-    const toastId = toast.loading('Memproses export PDF & Menyimpan data...');
+    const toastId = toast.loading(isDME ? 'Memproses export PDF...' : 'Memproses export PDF & Menyimpan data...');
     try {
       const result = await generatePDFDocument(targetUnit);
       if (result) {
         const { doc, fileName } = result;
         
-        const saveResult = await saveReportToFirestore(targetUnit, result);
-        if (saveResult) {
+        if (isDME) {
           doc.save(fileName);
-          
-          setUnits(prev => {
-              const newUnits = prev.map(u => u.id === targetUnit.id ? { ...u, isExported: true } : u);
-              
-              const draft = {
-                userEmail: user?.email,
-                maintenanceName,
-                maintenanceTime,
-                companyType,
-                units: newUnits
-                  .filter(u => !u.isExported)
-                  .map(u => ({
-                    ...u,
-                    cards: u.cards.map(c => ({
-                      id: c.id,
-                      description: c.description,
-                      photoBase64: c.photoBase64
-                    }))
-                  })),
-                timestamp: new Date().getTime()
-              };
-              draftStorage.set('report_form_draft_v2', draft).catch(console.error);
-              
-              return newUnits;
-          });
-          
-          toast.success("Laporan berhasil diekspor & disimpan!", { id: toastId });
+          toast.success("Laporan berhasil diekspor!", { id: toastId });
         } else {
-          toast.error("Gagal menyimpan data ke database. PDF tidak diunduh.", { id: toastId });
+          const saveResult = await saveReportToFirestore(targetUnit, result);
+          if (saveResult) {
+            doc.save(fileName);
+            
+            setUnits(prev => {
+                const newUnits = prev.map(u => u.id === targetUnit.id ? { ...u, isExported: true } : u);
+                
+                const draft = {
+                  userEmail: user?.email,
+                  maintenanceName,
+                  maintenanceTime,
+                  companyType,
+                  units: newUnits
+                    .filter(u => !u.isExported)
+                    .map(u => ({
+                      ...u,
+                      cards: u.cards.map(c => ({
+                        id: c.id,
+                        description: c.description,
+                        photoBase64: c.photoBase64
+                      }))
+                    })),
+                  timestamp: new Date().getTime()
+                };
+                draftStorage.set('report_form_draft_v2', draft).catch(console.error);
+                
+                return newUnits;
+            });
+            
+            toast.success("Laporan berhasil diekspor & disimpan!", { id: toastId });
+          } else {
+            toast.error("Gagal menyimpan data ke database. PDF tidak diunduh.", { id: toastId });
+          }
         }
       }
     } catch (err) {
@@ -991,7 +997,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     type="text"
                     value={maintenanceName}
                     onChange={e => setMaintenanceName(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={isDME}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed"
                     placeholder="cth. Maintenance Bulanan"
                   />
                 </div>
@@ -1003,7 +1010,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     type="text"
                     value={specificDetail}
                     onChange={(e) => setSpecificDetail(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-blue-400 font-bold outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={isDME}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-blue-400 font-bold outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed"
                     placeholder="cth. FCU-01 / VRV-02"
                   />
                 </div>
@@ -1016,7 +1024,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     type="date"
                     value={maintenanceTime}
                     onChange={(e) => setMaintenanceTime(e.target.value)}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={isDME}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -1026,7 +1035,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     title="Situs / Proyek"
                     value={companyType}
                     onChange={e => setCompanyType(e.target.value as 'neutra' | 'bri')}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer pr-10"
+                    disabled={isDME}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer pr-10 disabled:opacity-70 disabled:cursor-not-allowed"
                   >
                     <option value="neutra">NeutraDC</option>
                     <option value="bri">Bank BRI</option>
@@ -1061,28 +1071,31 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                               title="Nama Unit"
                               value={tabName}
                               onChange={(e) => setTabName(e.target.value)}
-                              className="bg-transparent border-none outline-none text-blue-400 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider w-full"
+                              disabled={isDME}
+                              className="bg-transparent border-none outline-none text-blue-400 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider w-full disabled:cursor-not-allowed"
                               placeholder="NAMA UNIT..."
                             />
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (units.length > 1) {
-                                  const targetUnit = units.find(u => u.id === unit.id);
-                                  const unitName = targetUnit?.tabName || `Unit ${idx + 1}`;
-                                  if (window.confirm(`Yakin ingin menghapus "${unitName}" beserta seluruh fotonya?`)) {
-                                    setUnits(prev => prev.filter(u => u.id !== unit.id));
-                                    if (activeUnitId === unit.id) setActiveUnitId(units[idx === 0 ? 1 : idx - 1].id);
-                                    toast.success('Unit berhasil dihapus');
+                            {!isDME && units.length > 1 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (units.length > 1) {
+                                    const targetUnit = units.find(u => u.id === unit.id);
+                                    const unitName = targetUnit?.tabName || `Unit ${idx + 1}`;
+                                    if (window.confirm(`Yakin ingin menghapus "${unitName}" beserta seluruh fotonya?`)) {
+                                      setUnits(prev => prev.filter(u => u.id !== unit.id));
+                                      if (activeUnitId === unit.id) setActiveUnitId(units[idx === 0 ? 1 : idx - 1].id);
+                                      toast.success('Unit berhasil dihapus');
+                                    }
                                   }
-                                }
-                              }}
-                              title="Hapus Unit"
-                              aria-label="Hapus unit ini"
-                              className="p-1 text-slate-600 hover:text-red-400 transition-colors shrink-0"
-                            >
-                              <X className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
-                            </button>
+                                }}
+                                title="Hapus Unit"
+                                aria-label="Hapus unit ini"
+                                className="p-1 text-slate-600 hover:text-red-400 transition-colors shrink-0"
+                              >
+                                <X className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 w-full">
@@ -1099,15 +1112,17 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     ))}
                   </div>
 
-                  <div className="flex items-center px-1 border-l border-slate-800/50 shrink-0 bg-slate-900/40">
-                    <button
-                      onClick={() => addNewUnit(`Unit ${units.length + 1}`)}
-                      className="p-2 hover:bg-blue-600/10 text-blue-500/60 hover:text-blue-400 flex items-center justify-center transition-all rounded-lg"
-                      title="Tambah Unit Baru"
-                    >
-                      <Plus className="w-5 h-5" />
-                    </button>
-                  </div>
+                  {!isDME && (
+                    <div className="flex items-center px-1 border-l border-slate-800/50 shrink-0 bg-slate-900/40">
+                      <button
+                        onClick={() => addNewUnit(`Unit ${units.length + 1}`)}
+                        className="p-2 hover:bg-blue-600/10 text-blue-500/60 hover:text-blue-400 flex items-center justify-center transition-all rounded-lg"
+                        title="Tambah Unit Baru"
+                      >
+                        <Plus className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Mobile Dropdown & Edit Block */}
@@ -1130,51 +1145,55 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     </select>
                   </div>
 
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => addNewUnit(`Unit ${units.length + 1}`)}
-                      className="flex-1 py-2.5 px-4 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-xl font-bold transition flex items-center justify-center gap-1.5 text-xs shadow-md"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Tambah Unit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (units.length > 1) {
-                          const currentUnit = units.find(u => u.id === activeUnitId);
-                          const unitLabel = currentUnit?.tabName || 'Unit ini';
-                          if (window.confirm(`Yakin ingin menghapus "${unitLabel}" beserta seluruh fotonya?`)) {
-                            const idx = units.findIndex(u => u.id === activeUnitId);
-                            setUnits(prev => prev.filter(u => u.id !== activeUnitId));
-                            setActiveUnitId(units[idx === 0 ? 1 : idx - 1].id);
-                            toast.success('Unit berhasil dihapus');
+                  {!isDME && (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => addNewUnit(`Unit ${units.length + 1}`)}
+                        className="flex-1 py-2.5 px-4 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-xl font-bold transition flex items-center justify-center gap-1.5 text-xs shadow-md"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Tambah Unit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (units.length > 1) {
+                            const currentUnit = units.find(u => u.id === activeUnitId);
+                            const unitLabel = currentUnit?.tabName || 'Unit ini';
+                            if (window.confirm(`Yakin ingin menghapus "${unitLabel}" beserta seluruh fotonya?`)) {
+                              const idx = units.findIndex(u => u.id === activeUnitId);
+                              setUnits(prev => prev.filter(u => u.id !== activeUnitId));
+                              setActiveUnitId(units[idx === 0 ? 1 : idx - 1].id);
+                              toast.success('Unit berhasil dihapus');
+                            }
+                          } else {
+                            toast.error('Minimal harus ada 1 unit');
                           }
-                        } else {
-                          toast.error('Minimal harus ada 1 unit');
-                        }
-                      }}
-                      className="flex-1 py-2.5 px-4 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-xl font-bold transition flex items-center justify-center gap-1.5 text-xs shadow-md"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Hapus Unit
-                    </button>
-                  </div>
+                        }}
+                        className="flex-1 py-2.5 px-4 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-xl font-bold transition flex items-center justify-center gap-1.5 text-xs shadow-md"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Hapus Unit
+                      </button>
+                    </div>
+                  )}
 
-                  <div className="pt-3 border-t border-slate-800/50">
-                    <label htmlFor="mobile-unit-rename" className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
-                      Ubah Nama Unit Aktif
-                    </label>
-                    <input
-                      id="mobile-unit-rename"
-                      type="text"
-                      value={tabName}
-                      onChange={(e) => setTabName(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 text-blue-400 font-bold rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 text-xs"
-                      placeholder="Masukkan nama unit..."
-                    />
-                  </div>
+                  {!isDME && (
+                    <div className="pt-3 border-t border-slate-800/50">
+                      <label htmlFor="mobile-unit-rename" className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                        Ubah Nama Unit Aktif
+                      </label>
+                      <input
+                        id="mobile-unit-rename"
+                        type="text"
+                        value={tabName}
+                        onChange={(e) => setTabName(e.target.value)}
+                        className="w-full bg-slate-800 border border-slate-700 text-blue-400 font-bold rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 text-xs"
+                        placeholder="Masukkan nama unit..."
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="h-1 bg-slate-900/40 border-b border-slate-800/50 mb-10 shadow-sm" />
@@ -1219,15 +1238,17 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             )}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <button onClick={() => document.getElementById('bulk')?.click()} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20">
-                <Upload className="w-5 h-5" /> Unggah Banyak Foto Sekaligus
-              </button>
-              <input id="bulk" title="Unggah banyak foto" type="file" multiple accept="image/*" className="hidden" onChange={handleBulkPhotoUpload} />
-              <button onClick={() => setAddCardModalOpen(true)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20">
-                <Plus className="w-5 h-5" /> Tambah Kartu Manual
-              </button>
-            </div>
+            {!isDME && (
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <button onClick={() => document.getElementById('bulk')?.click()} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20">
+                  <Upload className="w-5 h-5" /> Unggah Banyak Foto Sekaligus
+                </button>
+                <input id="bulk" title="Unggah banyak foto" type="file" multiple accept="image/*" className="hidden" onChange={handleBulkPhotoUpload} />
+                <button onClick={() => setAddCardModalOpen(true)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20">
+                  <Plus className="w-5 h-5" /> Tambah Kartu Manual
+                </button>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
               {cards.map((card, idx) => (
@@ -1242,7 +1263,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 >
                   <div className="flex justify-between items-center mb-2 sm:mb-3">
                     <span className="text-[10px] sm:text-xs font-bold text-slate-500 tracking-wider uppercase">Doc #{idx + 1}</span>
-                    <button onClick={() => removeCard(card.id)} className="text-slate-500 hover:text-red-400 transition" title="Hapus Card"><Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
+                    {!isDME && (
+                      <button onClick={() => removeCard(card.id)} className="text-slate-500 hover:text-red-400 transition" title="Hapus Card"><Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
+                    )}
                   </div>
                   <div className="aspect-video bg-slate-900 rounded-lg mb-2 sm:mb-4 overflow-hidden relative border border-slate-700/50">
                     {card.photoBase64 ? (
@@ -1262,31 +1285,39 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                           >
                             <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
                           </button>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingCardId(card.id);
-                            }} 
-                            className="p-1.5 sm:p-2.5 bg-white/20 backdrop-blur-md rounded-lg hover:bg-white/30 transition shadow-xl" 
-                            title="Edit/Crop"
-                          >
-                            <Scissors className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
-                          </button>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handlePhotoChange(card.id, null);
-                            }} 
-                            className="p-1.5 sm:p-2.5 bg-red-600/20 backdrop-blur-md rounded-lg hover:bg-red-600/30 transition shadow-xl" 
-                            title="Hapus Foto"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" />
-                          </button>
+                          {!isDME && (
+                            <>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingCardId(card.id);
+                                }} 
+                                className="p-1.5 sm:p-2.5 bg-white/20 backdrop-blur-md rounded-lg hover:bg-white/30 transition shadow-xl" 
+                                title="Edit/Crop"
+                              >
+                                <Scissors className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                              </button>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePhotoChange(card.id, null);
+                                }} 
+                                className="p-1.5 sm:p-2.5 bg-red-600/20 backdrop-blur-md rounded-lg hover:bg-red-600/30 transition shadow-xl" 
+                                title="Hapus Foto"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </>
                     ) : (
                       <div className="w-full h-full bg-slate-950 flex transition-all">
-                        {(!userRole || userRole === 'engineer' || userRole === 'standby_engineer') ? (
+                        {isDME ? (
+                          <div className="w-full h-full flex flex-col items-center justify-center gap-1">
+                            <span className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-tight">Tidak ada foto</span>
+                          </div>
+                        ) : (!userRole || userRole === 'engineer' || userRole === 'standby_engineer') ? (
                           <>
                             <button 
                               onClick={() => setActiveCameraCardId(card.id)}
@@ -1312,24 +1343,26 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       </div>
                     )}
                   </div>
-                  <textarea title="Deskripsi Foto" value={card.description} onChange={e => handleDescriptionChange(card.id, e.target.value)} className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg p-2 sm:p-3 text-xs sm:text-sm text-white outline-none focus:ring-1 focus:ring-blue-500 transition placeholder:text-slate-700" rows={2} placeholder="Masukkan deskripsi dokumentasi..." />
+                  <textarea title="Deskripsi Foto" value={card.description} onChange={e => handleDescriptionChange(card.id, e.target.value)} disabled={isDME} className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg p-2 sm:p-3 text-xs sm:text-sm text-white outline-none focus:ring-1 focus:ring-blue-500 transition placeholder:text-slate-700 disabled:opacity-75 disabled:cursor-not-allowed" rows={2} placeholder="Masukkan deskripsi dokumentasi..." />
                 </div>
               ))}
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 mt-12 bg-slate-900/40 p-6 sm:p-8 rounded-[2rem] border border-slate-700/30 backdrop-blur-xl">
-              <button 
-                onClick={handleManualSave} 
-                disabled={isSaving || isExporting}
-                className={`w-full sm:w-auto px-6 py-4 sm:px-10 bg-blue-600/20 text-blue-400 rounded-xl font-black flex items-center justify-center gap-3 border border-blue-500/30 transition shadow-xl active:scale-95 text-xs sm:text-sm lg:text-base group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600/30'}`}
-              >
-                {isSaving ? (
-                  <RefreshCw className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
-                ) : (
-                  <Save className="w-5 h-5 sm:w-6 sm:h-6 group-active:scale-90 transition-transform" /> 
-                )}
-                <span className="whitespace-nowrap">{isSaving ? 'SEDANG MENYIMPAN...' : 'SIMPAN KE ARSIP DOKUMEN!'}</span>
-              </button>
+              {!isDME && (
+                <button 
+                  onClick={handleManualSave} 
+                  disabled={isSaving || isExporting}
+                  className={`w-full sm:w-auto px-6 py-4 sm:px-10 bg-blue-600/20 text-blue-400 rounded-xl font-black flex items-center justify-center gap-3 border border-blue-500/30 transition shadow-xl active:scale-95 text-xs sm:text-sm lg:text-base group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600/30'}`}
+                >
+                  {isSaving ? (
+                    <RefreshCw className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
+                  ) : (
+                    <Save className="w-5 h-5 sm:w-6 sm:h-6 group-active:scale-90 transition-transform" /> 
+                  )}
+                  <span className="whitespace-nowrap">{isSaving ? 'SEDANG MENYIMPAN...' : 'SIMPAN KE ARSIP DOKUMEN!'}</span>
+                </button>
+              )}
 
               <button 
                 onClick={() => setShowPreview(true)} 
