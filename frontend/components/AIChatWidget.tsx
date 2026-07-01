@@ -51,7 +51,11 @@ export function AIChatWidget() {
       if (!token) throw new Error('Not authenticated');
 
       const apiBaseUrl = import.meta.env.VITE_API_URL || '';
-      const response = await fetch(`${apiBaseUrl}/api/ai/chat`, {
+      const chatUrl = apiBaseUrl.endsWith('/api') 
+        ? `${apiBaseUrl}/ai/chat` 
+        : `${apiBaseUrl}/api/ai/chat`;
+
+      const response = await fetch(chatUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

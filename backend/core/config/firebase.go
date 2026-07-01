@@ -34,6 +34,7 @@ func getCredentialsJSON() ([]byte, error) {
 		"firebase-service-account.json",
 		"../firebase-service-account.json",
 		"backend/firebase-service-account.json",
+		"api/firebase-service-account.json",
 		"/var/task/firebase-service-account.json",
 	}
 	for _, p := range paths {
