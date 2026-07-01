@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Sparkles, Upload, X, Loader2,
+  Sparkles, Upload, X,
   ChevronDown, ChevronUp, Download, Eye, AlertTriangle, Edit2
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -216,9 +216,6 @@ export function ATSServiceReport({ prefillData, onClearPrefill }: ATSServiceRepo
   const [timeSpent, setTimeSpent] = useState<ATSTimeSpent>({ ...DEFAULT_TIME_SPENT });
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
   const [originalReportCards, setOriginalReportCards] = useState<Array<{ photoBase64?: string; description: string; parameter?: string }>>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisProgress, setAnalysisProgress] = useState<string>('');
-  const [aiGenerated, setAiGenerated] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [photoToDelete, setPhotoToDelete] = useState<string | null>(null);
@@ -321,65 +318,6 @@ export function ATSServiceReport({ prefillData, onClearPrefill }: ATSServiceRepo
     }
   };
 
-  // ─── AI Analysis ─────────────────────────────────────────────────────
-  const handleAIGenerate = async (photosToAnalyze?: UploadedPhoto[]) => {
-    const targetPhotos = photosToAnalyze || photos;
-    
-    setIsAnalyzing(true);
-    setAnalysisProgress('Mengirim parameter & data ke Go backend...');
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) throw new Error('Not authenticated');
-
-      const payload = {
-        photos: targetPhotos.map(p => ({
-          base64: p.base64 || '',
-          category: p.category,
-          label: p.label,
-          parameter: p.parameter || '',
-        })),
-        report_data: reportData,
-      };
-
-      setAnalysisProgress('AI sedang menganalisis data & membuat remark...');
-      const response = await fetch('/api/ai/ats-report', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({ message: 'Unknown error' }));
-        throw new Error(err.message || `Server error: ${response.status}`);
-      }
-
-      const result: ATSReportData = await response.json();
-      setReportData(result);
-      setAiGenerated(true);
-
-      // Auto-expand sections
-      setExpandedSections(prev => ({
-        ...prev,
-        visual: true, power: true, voltage: true,
-        thermal: true, grounding: true, operation: true,
-      }));
-
-      toast.success('🤖 Generate Remark AI berhasil! Periksa & edit di bawah.');
-    } catch (error: any) {
-      console.error('AI analysis error:', error);
-      toast.error(`AI analysis gagal: ${error.message}`);
-    } finally {
-      setIsAnalyzing(false);
-      setAnalysisProgress('');
-    }
-  };
-
-  // Use ref to hold AI generate function for useEffect
-  const handleAIGenerateRef = useRef<any>(null);
-  handleAIGenerateRef.current = handleAIGenerate;
 
   // Prefill side-effect
   useEffect(() => {
@@ -436,12 +374,6 @@ export function ATSServiceReport({ prefillData, onClearPrefill }: ATSServiceRepo
       if (onClearPrefill) {
         onClearPrefill();
       }
-
-      if (prefillData.autoTrigger) {
-        setTimeout(() => {
-          handleAIGenerateRef.current?.(mappedPhotos);
-        }, 100);
-      }
     }
   }, [prefillData, onClearPrefill]);
 
@@ -483,12 +415,12 @@ export function ATSServiceReport({ prefillData, onClearPrefill }: ATSServiceRepo
             <Sparkles className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">AI Service Report — ATS</h1>
+            <h1 className="text-xl font-bold text-white">Service Report — ATS</h1>
             <p className="text-sm text-slate-400">Automatic Transfer Switch • Neutra DC Cikarang</p>
           </div>
         </div>
         <p className="text-xs text-slate-500 mt-2">
-          Upload foto panel ATS, power meter, thermal imager & grounding → AI akan menganalisis & mengisi semua field otomatis.
+          Laporan pemeliharaan rutin Automatic Transfer Switch (ATS) di Neutra DC Cikarang.
         </p>
       </motion.div>
 
@@ -570,34 +502,10 @@ export function ATSServiceReport({ prefillData, onClearPrefill }: ATSServiceRepo
           })}
         </div>
 
-        {/* AI Generate Button */}
-        <motion.button
-          whileHover={{ scale: 1.01 }}
-          whileTap={{ scale: 0.99 }}
-          onClick={() => handleAIGenerate()}
-          disabled={isAnalyzing}
-          className={`w-full mt-4 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-3 transition-all ${
-            isAnalyzing
-              ? 'bg-slate-700 text-slate-400 cursor-wait'
-              : 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40'
-          }`}
-        >
-          {isAnalyzing ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>{analysisProgress || 'AI sedang membuat remark...'}</span>
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-5 h-5" />
-              <span>🤖 Generate Remark (AI)</span>
-            </>
-          )}
-        </motion.button>
       </CollapsibleSection>
 
       {/* ─── Section: Visual Inspection ──────────────────────────── */}
-      <CollapsibleSection title="Visual Inspection & Check" sectionKey="visual" expanded={expandedSections.visual} toggle={toggleSection} icon="🔍" badge={aiGenerated ? '✅ AI' : '—'}>
+      <CollapsibleSection title="Visual Inspection & Check" sectionKey="visual" expanded={expandedSections.visual} toggle={toggleSection} icon="🔍" badge="—">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[700px] text-xs">
             <thead>
@@ -656,7 +564,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill }: ATSServiceRepo
       </CollapsibleSection>
 
       {/* ─── Section: Digital Power Meter Recording ──────────────── */}
-      <CollapsibleSection title="Digital Power Meter Recording" sectionKey="power" expanded={expandedSections.power} toggle={toggleSection} icon="⚡" badge={aiGenerated ? '✅ AI' : '—'}>
+      <CollapsibleSection title="Digital Power Meter Recording" sectionKey="power" expanded={expandedSections.power} toggle={toggleSection} icon="⚡" badge="—">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {(['rs', 'st', 'tr', 'rn', 'sn', 'tn', 'n'] as const).map(wire => (
             <div key={wire} className="space-y-1">
@@ -683,7 +591,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill }: ATSServiceRepo
       </CollapsibleSection>
 
       {/* ─── Section: Voltage & Current Measurement ──────────────── */}
-      <CollapsibleSection title="Voltage & Current Measurement" sectionKey="voltage" expanded={expandedSections.voltage} toggle={toggleSection} icon="🔌" badge={aiGenerated ? '✅ AI' : '—'}>
+      <CollapsibleSection title="Voltage & Current Measurement" sectionKey="voltage" expanded={expandedSections.voltage} toggle={toggleSection} icon="🔌" badge="—">
         <p className="text-[10px] text-slate-500 mb-3">Standard: +5% - 10% from 380V & 220V load deviation 10%</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MeasurementInput label="Voltage R-S" value={reportData.voltage_current.voltage_rs} onChange={v => setReportData(p => ({ ...p, voltage_current: { ...p.voltage_current, voltage_rs: v } }))} />
@@ -702,7 +610,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill }: ATSServiceRepo
       </CollapsibleSection>
 
       {/* ─── Section: Thermal Measurement ────────────────────────── */}
-      <CollapsibleSection title="Thermal Measurement" sectionKey="thermal" expanded={expandedSections.thermal} toggle={toggleSection} icon="🌡️" badge={aiGenerated ? '✅ AI' : '—'}>
+      <CollapsibleSection title="Thermal Measurement" sectionKey="thermal" expanded={expandedSections.thermal} toggle={toggleSection} icon="🌡️" badge="—">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <MeasurementInput label="Result Temperature (°C)" value={reportData.thermal_measurement.result_temperature} onChange={v => setReportData(p => ({ ...p, thermal_measurement: { ...p.thermal_measurement, result_temperature: v } }))} />
           <div className="space-y-1">
@@ -714,7 +622,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill }: ATSServiceRepo
       </CollapsibleSection>
 
       {/* ─── Section: Grounding Resistance ────────────────────────── */}
-      <CollapsibleSection title="Grounding Resistance Measurement" sectionKey="grounding" expanded={expandedSections.grounding} toggle={toggleSection} icon="⏚" badge={aiGenerated ? '✅ AI' : '—'}>
+      <CollapsibleSection title="Grounding Resistance Measurement" sectionKey="grounding" expanded={expandedSections.grounding} toggle={toggleSection} icon="⏚" badge="—">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <MeasurementInput label="Result (Ω)" value={reportData.grounding_resistance.result_ohm} onChange={v => setReportData(p => ({ ...p, grounding_resistance: { ...p.grounding_resistance, result_ohm: v } }))} />
           <div className="space-y-1">
@@ -726,7 +634,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill }: ATSServiceRepo
       </CollapsibleSection>
 
       {/* ─── Section: Operation Status ────────────────────────────── */}
-      <CollapsibleSection title="Operation Status" sectionKey="operation" expanded={expandedSections.operation} toggle={toggleSection} icon="⚙️" badge={aiGenerated ? '✅ AI' : '—'}>
+      <CollapsibleSection title="Operation Status" sectionKey="operation" expanded={expandedSections.operation} toggle={toggleSection} icon="⚙️" badge="—">
         <div className="space-y-4">
           <div className="flex gap-4">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -764,29 +672,6 @@ export function ATSServiceReport({ prefillData, onClearPrefill }: ATSServiceRepo
 
       {/* ─── Action Buttons ──────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row gap-3 pb-8">
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => handleAIGenerate()}
-          disabled={isAnalyzing}
-          className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-            isAnalyzing
-              ? 'bg-slate-700 text-slate-400 cursor-wait border border-slate-600'
-              : 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30'
-          }`}
-        >
-          {isAnalyzing ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Membuat Remark ({analysisProgress || 'AI sedang bekerja...'})</span>
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-4 h-4" />
-              <span>Generate Remark (AI)</span>
-            </>
-          )}
-        </motion.button>
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
