@@ -111,16 +111,28 @@ export function AIChatWidget() {
       rec.continuous = false;
       rec.interimResults = false;
       rec.lang = 'id-ID';
+      
+      rec.onstart = () => {
+        setIsRecording(true);
+      };
+      
       rec.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
         setInput(prev => prev + (prev ? ' ' : '') + transcript);
+      };
+      
+      rec.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          toast.error('Gagal mengenali suara.');
+        }
         setIsRecording(false);
       };
-      rec.onerror = () => {
-        toast.error('Gagal mengenali suara.');
+      
+      rec.onend = () => {
         setIsRecording(false);
       };
-      rec.onend = () => setIsRecording(false);
+      
       recognitionRef.current = rec;
     }
   }, []);
@@ -130,11 +142,26 @@ export function AIChatWidget() {
       toast.error('Browser Anda tidak mendukung Voice-to-Text.');
       return;
     }
-    if (isRecording) {
-      recognitionRef.current?.stop();
-    } else {
-      setIsRecording(true);
-      recognitionRef.current?.start();
+    
+    const rec = recognitionRef.current;
+    if (!rec) return;
+
+    try {
+      if (isRecording) {
+        rec.stop();
+        // Fallback to force reset state if browser delayed
+        setTimeout(() => {
+          setIsRecording(false);
+        }, 150);
+      } else {
+        rec.start();
+      }
+    } catch (err) {
+      console.error('Speech recognition toggle error:', err);
+      try {
+        rec.abort();
+      } catch {}
+      setIsRecording(false);
     }
   };
 
@@ -308,7 +335,7 @@ export function AIChatWidget() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="w-[88vw] sm:w-[500px] h-[460px] sm:h-[480px] bg-slate-950/95 backdrop-blur-lg border border-slate-800/80 rounded-3xl shadow-2xl shadow-blue-500/5 flex overflow-hidden mb-4 relative"
+              className="w-[88vw] sm:w-[500px] h-[78vh] sm:h-[480px] bg-slate-950/95 backdrop-blur-lg border border-slate-800/80 rounded-3xl shadow-2xl shadow-blue-500/5 flex overflow-hidden mb-4 relative"
             >
               {/* ═══ Backdrop Overlay for Mobile Sidebar ═══ */}
               {isMobileSidebarOpen && (
