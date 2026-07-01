@@ -112,8 +112,7 @@ func buildHandler(deps *AppDeps) http.HandlerFunc {
 			// Health/ready/metrics: no auth required
 			if path == "/health" || path == "/api/health" ||
 				path == "/ready" || path == "/api/ready" ||
-				path == "/metrics" || path == "/api/metrics" ||
-				path == "/api/ai/test-chat" {
+				path == "/metrics" || path == "/api/metrics" {
 				RouteRequest(w, r, deps)
 				return
 			}
