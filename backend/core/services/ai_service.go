@@ -19,6 +19,7 @@ import (
 // IAIService defines the contract for AI analysis operations.
 type IAIService interface {
 	AnalyzeATSPhotos(ctx context.Context, photos []models.ATSPhotoInput, existingData *models.ATSReportData) (*models.ATSReportData, error)
+	Chat(ctx context.Context, messages []models.ChatMessage) (string, error)
 }
 
 // ─── AI AGENT SERVICE ────────────────────────────────────────────────────────
@@ -683,4 +684,45 @@ func (s *aiService) parseJSONResponse(content string) (*models.ATSReportData, er
 	}
 
 	return &result, nil
+}
+
+// Chat handles conversation logic for Data Center M/E/Cooling assistant.
+func (s *aiService) Chat(ctx context.Context, messages []models.ChatMessage) (string, error) {
+	if len(s.apiKeys) == 0 {
+		return "", fmt.Errorf("no NVIDIA NIM API keys configured")
+	}
+
+	systemInstruction := `You are an expert Data Center AI Assistant specializing strictly in:
+1. Data center infrastructure and operations.
+2. Mechanical and electrical equipment (e.g. ATS, Transformers, UPS, Generators, Distribution Panels, Breakers).
+3. Cooling systems (e.g. Precision Air Conditioning (PAC), Chillers, Cooling Towers, airflow management).
+
+RULES:
+- Answer ONLY technical questions related to these topics.
+- Write your answers in a professional, polite, and helpful tone, preferably in Indonesian unless asked in another language.
+- Keep your answers concise, practical, and focused on troubleshooting, operation, or safety guidelines.
+- CRITICAL: If the user asks about ANY topic outside of data centers, mechanical/electrical systems, or cooling (for example: cooking recipes, general pop culture, programming unrelated to equipment, history, personal advice), you must refuse politely and guide them back to the allowed topics.`
+
+	// Reformat messages to meet NVIDIA API request requirements
+	formattedMessages := make([]map[string]interface{}, 0, len(messages)+1)
+	formattedMessages = append(formattedMessages, map[string]interface{}{
+		"role":    "system",
+		"content": systemInstruction,
+	})
+
+	for _, msg := range messages {
+		formattedMessages = append(formattedMessages, map[string]interface{}{
+			"role":    msg.Role,
+			"content": msg.Content,
+		})
+	}
+
+	apiKey := s.getNextAPIKey()
+	// Use reasoningModel (GLM-5.1) for chat reasoning
+	reply, err := s.callNVIDIA(ctx, apiKey, s.reasoningModel, formattedMessages, 0.7, 4096, 90*time.Second, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return reply, nil
 }

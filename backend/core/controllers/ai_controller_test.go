@@ -27,6 +27,10 @@ func (m *mockAIService) AnalyzeATSPhotos(_ context.Context, _ []models.ATSPhotoI
 	return m.result, m.err
 }
 
+func (m *mockAIService) Chat(_ context.Context, _ []models.ChatMessage) (string, error) {
+	return "mock reply", nil
+}
+
 // Ensure mockAIService implements IAIService
 var _ services.IAIService = (*mockAIService)(nil)
 
@@ -236,6 +240,49 @@ func TestAnalyzeATSReport_ErrorMessages(t *testing.T) {
 		ctrl.AnalyzeATSReport(w, req)
 		if !strings.Contains(w.Body.String(), "30") {
 			t.Errorf("Error should mention limit 30: %s", w.Body.String())
+		}
+	})
+}
+
+func TestAIChat(t *testing.T) {
+	t.Run("POST_successful_chat", func(t *testing.T) {
+		ctrl := newTestController(nil, nil)
+		body, _ := json.Marshal(models.AIChatRequest{
+			Messages: []models.ChatMessage{
+				{Role: "user", Content: "Hello PAC"},
+			},
+		})
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/chat", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		ctrl.Chat(w, req)
+		if w.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", w.Code)
+		}
+		var resp map[string]string
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if resp["reply"] != "mock reply" {
+			t.Errorf("expected reply 'mock reply', got '%s'", resp["reply"])
+		}
+	})
+
+	t.Run("GET_returns_405", func(t *testing.T) {
+		ctrl := newTestController(nil, nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/ai/chat", nil)
+		w := httptest.NewRecorder()
+		ctrl.Chat(w, req)
+		if w.Code != http.StatusMethodNotAllowed {
+			t.Errorf("expected 405, got %d", w.Code)
+		}
+	})
+
+	t.Run("empty_messages_returns_400", func(t *testing.T) {
+		ctrl := newTestController(nil, nil)
+		body, _ := json.Marshal(models.AIChatRequest{Messages: []models.ChatMessage{}})
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/chat", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		ctrl.Chat(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", w.Code)
 		}
 	})
 }

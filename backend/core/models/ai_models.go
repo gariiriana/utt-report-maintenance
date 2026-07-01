@@ -99,3 +99,14 @@ type OperationStatusData struct {
 	FaultPartSN   string `json:"fault_part_sn"`
 	FaultPartName string `json:"fault_part_name"`
 }
+
+// ChatMessage represents a single message in a chat history.
+type ChatMessage struct {
+	Role    string `json:"role"`    // "system", "user", "assistant"
+	Content string `json:"content"`
+}
+
+// AIChatRequest represents the body of the AI chat room API request.
+type AIChatRequest struct {
+	Messages []ChatMessage `json:"messages"`
+}

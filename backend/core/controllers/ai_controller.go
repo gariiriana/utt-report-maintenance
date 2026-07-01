@@ -68,3 +68,38 @@ func (c *AIController) AnalyzeATSReport(w http.ResponseWriter, r *http.Request) 
 
 	helpers.SendJSON(w, http.StatusOK, result)
 }
+
+// Chat handles POST /api/ai/chat
+func (c *AIController) Chat(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse request body
+	var req models.AIChatRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.SendError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.Messages) == 0 {
+		helpers.SendError(w, "Messages cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	// Call AI service
+	reply, err := c.service.Chat(r.Context(), req.Messages)
+	if err != nil {
+		logger.Error("ai_chat_error",
+			"request_id", helpers.ExtractRequestID(r),
+			"error", err.Error(),
+		)
+		helpers.SendError(w, "AI chat failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	helpers.SendJSON(w, http.StatusOK, map[string]string{
+		"reply": reply,
+	})
+}

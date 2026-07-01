@@ -15,6 +15,7 @@ import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import { InventoryBorrowing } from '@/components/InventoryBorrowing';
 import { PTWManagement } from '@/components/PTWManagement';
 import { AbsenTBM } from '@/components/AbsenTBM';
+import { AIChatWidget } from '@/components/AIChatWidget';
 import logoUTT from '@/assets/logo_utt.png';
 
 type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'inventory' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm';
@@ -250,6 +251,8 @@ export function MainApp() {
         onConfirm={logout}
         userEmail={user?.email || ''}
       />
+
+      {user?.email === 'ats@gmail.com' && <AIChatWidget />}
     </div>
   );
 }
