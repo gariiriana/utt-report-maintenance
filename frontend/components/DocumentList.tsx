@@ -14,6 +14,7 @@ import logoBRILeft from '@/assets/bri_left_logo.png';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { generateHSEPdf } from '@/utils/HSEPdfExport';
 import { getDoc } from 'firebase/firestore';
+import { generateATSServiceReportPDF } from '@/utils/ATSServiceReportPDF';
 
 interface PhotoData {
   index: number;
@@ -37,6 +38,9 @@ export interface ExcelDocument {
   documentType: 'excel' | 'pdf' | 'hse';
   hseType?: 'inspection' | 'sio' | 'silo';
   maintenanceType?: string;
+  atsCustomerInfo?: any;
+  atsReportData?: any;
+  atsTimeSpent?: any;
 }
 
 interface DocumentListProps {
@@ -476,6 +480,17 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         photoBase64: p.photoBase64 || '',
         description: p.description || '',
       }));
+
+      if (docData.createdBy === 'ats@gmail.com' && docData.atsCustomerInfo && docData.atsReportData && docData.atsTimeSpent) {
+        await generateATSServiceReportPDF(
+          docData.atsCustomerInfo,
+          docData.atsReportData,
+          docData.atsTimeSpent,
+          cards
+        );
+        toast.success('PDF Service Report downloaded successfully!', { id: 'download-pdf' });
+        return;
+      }
 
       const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
       const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;

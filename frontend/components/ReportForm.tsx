@@ -87,8 +87,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     originalReportCards: Array<{ photoBase64?: string; description: string; parameter?: string }>;
     autoTrigger?: boolean;
     triggerGenerateData?: boolean;
+    atsCustomerInfo?: any;
+    atsReportData?: any;
+    atsTimeSpent?: any;
   } | null>(null);
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
+  const [atsData, setAtsData] = useState<{ customerInfo: any; reportData: any; timeSpent: any } | null>(null);
   const tabContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollTabs = (direction: 'left' | 'right') => {
@@ -456,6 +460,22 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       setUnits([editUnit]);
       setActiveUnitId(editUnit.id);
+
+      if (user?.email === 'ats@gmail.com') {
+        setAtsPrefillData({
+          maintenanceName: editingData.maintenanceName,
+          maintenanceTime: editingData.maintenanceTime,
+          specificDetail: editingData.specificDetail || '',
+          originalReportCards: photos.map((p: any) => ({
+            description: p.description || '',
+            photoBase64: p.photoBase64 || '',
+          })),
+          photos: [],
+          atsCustomerInfo: (editingData as any).atsCustomerInfo,
+          atsReportData: (editingData as any).atsReportData,
+          atsTimeSpent: (editingData as any).atsTimeSpent,
+        });
+      }
     }
   }, [editingData]);
 
@@ -749,6 +769,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         photosWithImage,
         fileSize: pdfData?.doc ? pdfData.doc.output('arraybuffer').byteLength : 0,
       };
+
+      if (user?.email === 'ats@gmail.com' && atsData) {
+        reportData.atsCustomerInfo = atsData.customerInfo;
+        reportData.atsReportData = atsData.reportData;
+        reportData.atsTimeSpent = atsData.timeSpent;
+      }
 
       if (!editingData) {
         reportData.createdBy = user?.email;
@@ -1615,6 +1641,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           <ATSServiceReport 
             prefillData={atsPrefillData} 
             onClearPrefill={() => setAtsPrefillData(null)} 
+            onChange={setAtsData}
           />
         </div>
       )}

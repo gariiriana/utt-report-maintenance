@@ -206,11 +206,15 @@ interface ATSServiceReportProps {
     originalReportCards: Array<{ photoBase64?: string; description: string; parameter?: string }>;
     autoTrigger?: boolean;
     triggerGenerateData?: boolean;
+    atsCustomerInfo?: ATSCustomerInfo;
+    atsReportData?: ATSReportData;
+    atsTimeSpent?: ATSTimeSpent;
   } | null;
   onClearPrefill?: () => void;
+  onChange?: (data: { customerInfo: ATSCustomerInfo; reportData: ATSReportData; timeSpent: ATSTimeSpent }) => void;
 }
 
-export function ATSServiceReport({ prefillData, onClearPrefill }: ATSServiceReportProps) {
+export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSServiceReportProps) {
   const [customerInfo, setCustomerInfo] = useState<ATSCustomerInfo>({ ...DEFAULT_CUSTOMER_INFO });
   const [reportData, setReportData] = useState<ATSReportData>({ ...DEFAULT_REPORT_DATA });
   const [timeSpent, setTimeSpent] = useState<ATSTimeSpent>({ ...DEFAULT_TIME_SPENT });
@@ -267,6 +271,13 @@ export function ATSServiceReport({ prefillData, onClearPrefill }: ATSServiceRepo
     return () => clearTimeout(timeoutId);
   }, [customerInfo, reportData, timeSpent, photos, originalReportCards, isDraftLoading]);
 
+  // Notify parent of state changes
+  useEffect(() => {
+    if (onChange) {
+      onChange({ customerInfo, reportData, timeSpent });
+    }
+  }, [customerInfo, reportData, timeSpent, onChange]);
+
   const toggleSection = (key: string) => {
     setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
@@ -321,17 +332,29 @@ export function ATSServiceReport({ prefillData, onClearPrefill }: ATSServiceRepo
   // Prefill side-effect
   useEffect(() => {
     if (prefillData) {
-      setCustomerInfo(prev => ({
-        ...prev,
-        ciName: prefillData.maintenanceName || prev.ciName,
-        date: prefillData.maintenanceTime ? prefillData.maintenanceTime.split('T')[0] : prev.date,
-        specification: prefillData.specificDetail || prev.specification,
-      }));
+      if (prefillData.atsCustomerInfo) {
+        setCustomerInfo(prefillData.atsCustomerInfo);
+      } else {
+        setCustomerInfo(prev => ({
+          ...prev,
+          ciName: prefillData.maintenanceName || prev.ciName,
+          date: prefillData.maintenanceTime ? prefillData.maintenanceTime.split('T')[0] : prev.date,
+          specification: prefillData.specificDetail || prev.specification,
+        }));
+      }
       
-      setTimeSpent(prev => ({
-        ...prev,
-        date: prefillData.maintenanceTime ? prefillData.maintenanceTime.split('T')[0] : prev.date,
-      }));
+      if (prefillData.atsTimeSpent) {
+        setTimeSpent(prefillData.atsTimeSpent);
+      } else {
+        setTimeSpent(prev => ({
+          ...prev,
+          date: prefillData.maintenanceTime ? prefillData.maintenanceTime.split('T')[0] : prev.date,
+        }));
+      }
+
+      if (prefillData.atsReportData) {
+        setReportData(prefillData.atsReportData);
+      }
 
       setOriginalReportCards(prefillData.originalReportCards || []);
 
