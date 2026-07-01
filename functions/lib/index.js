@@ -7,7 +7,7 @@ admin.initializeApp();
 // ─── Environment Configurations ─────────────────────────────────────────────
 const apiKeysStr = process.env.NVIDIA_NIM_API_KEYS || "";
 const apiKeys = apiKeysStr.split(",").map((k) => k.trim()).filter(Boolean);
-const visionModel = process.env.NVIDIA_NIM_VISION_MODEL || "moonshotai/kimi-k2.6";
+const visionModel = process.env.NVIDIA_NIM_VISION_MODEL || "meta/llama-3.2-11b-vision-instruct";
 const reasoningModel = process.env.NVIDIA_NIM_REASONING_MODEL || "deepseek-ai/deepseek-v4-flash";
 let keyIndex = 0;
 function getNextAPIKey() {

@@ -5,7 +5,7 @@ import { ATSPhotoInput, ATSReportData } from '@/types/atsReportTypes';
 const apiKeysStr = import.meta.env.VITE_NVIDIA_NIM_API_KEYS || '';
 const apiKeys = apiKeysStr.split(',').map((k: string) => k.trim()).filter(Boolean);
 
-const visionModel = import.meta.env.VITE_NVIDIA_NIM_VISION_MODEL || 'moonshotai/kimi-k2.6';
+const visionModel = import.meta.env.VITE_NVIDIA_NIM_VISION_MODEL || 'meta/llama-3.2-11b-vision-instruct';
 const reasoningModel = import.meta.env.VITE_NVIDIA_NIM_REASONING_MODEL || 'deepseek-ai/deepseek-v4-flash';
 
 let keyIndex = 0;

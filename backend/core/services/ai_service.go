@@ -37,7 +37,7 @@ type aiService struct {
 func NewAIService() IAIService {
 	svc := &aiService{
 		baseURL:        config.EnvString("NVIDIA_NIM_BASE_URL", "https://integrate.api.nvidia.com/v1/chat/completions"),
-		visionModel:    config.EnvString("NVIDIA_NIM_VISION_MODEL", config.EnvString("NVIDIA_NIM_MODEL", "moonshotai/kimi-k2.6")),
+		visionModel:    config.EnvString("NVIDIA_NIM_VISION_MODEL", config.EnvString("NVIDIA_NIM_MODEL", "meta/llama-3.2-11b-vision-instruct")),
 		reasoningModel: config.EnvString("NVIDIA_NIM_REASONING_MODEL", config.EnvString("NVIDIA_NIM_MODEL", "z-ai/glm-5.1")),
 		chatModel:      config.EnvString("NVIDIA_NIM_CHAT_MODEL", "meta/llama-3.1-8b-instruct"),
 	}
