@@ -5,7 +5,7 @@ import {
   ChevronDown, ChevronUp, Download, Eye, AlertTriangle, Edit2
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { auth } from '@/api/firebase';
+
 import {
   ATSReportData, ATSCustomerInfo, ATSTimeSpent,
   DEFAULT_CUSTOMER_INFO, DEFAULT_REPORT_DATA, DEFAULT_TIME_SPENT,
@@ -237,7 +237,6 @@ export function ATSServiceReport({ prefillData, onClearPrefill }: ATSServiceRepo
           if (saved.timeSpent) setTimeSpent(saved.timeSpent);
           if (saved.photos) setPhotos(saved.photos);
           if (saved.originalReportCards) setOriginalReportCards(saved.originalReportCards);
-          setAiGenerated(true);
         }
       } catch (err) {
         console.error('Failed to load ATS service report draft:', err);
