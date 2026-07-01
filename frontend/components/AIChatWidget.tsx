@@ -70,7 +70,8 @@ export function AIChatWidget() {
       }
 
       const data = await response.json();
-      setMessages(prev => [...prev, { role: 'assistant', content: data.reply || 'Maaf, saya tidak menerima jawaban kosong.' }]);
+      const cleanReply = (data.reply || 'Maaf, saya tidak menerima jawaban kosong.').replace(/\*\*/g, '');
+      setMessages(prev => [...prev, { role: 'assistant', content: cleanReply }]);
     } catch (err: any) {
       console.error('AI Chat error:', err);
       toast.error('Gagal mengirim pesan ke AI.');
