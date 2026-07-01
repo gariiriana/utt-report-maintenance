@@ -5,6 +5,7 @@ import { auth } from '@/api/firebase';
 import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
 import robotLogo from '@/assets/robot_assistant.png';
+import { compressImage } from '@/utils/imageCompression';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -165,16 +166,22 @@ export function AIChatWidget() {
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Ukuran gambar maksimal 5MB.');
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Ukuran gambar maksimal 10MB.');
       return;
     }
-    const reader = new FileReader();
-    reader.onloadend = () => setSelectedImage(reader.result as string);
-    reader.readAsDataURL(file);
+    const compressToastId = toast.loading('Memproses gambar...');
+    try {
+      const compressed = await compressImage(file, { maxWidth: 800, quality: 0.6 });
+      setSelectedImage(compressed);
+      toast.success('Gambar berhasil diproses.', { id: compressToastId });
+    } catch (err) {
+      console.error('Failed to compress image:', err);
+      toast.error('Gagal memproses gambar.', { id: compressToastId });
+    }
   };
 
   const removeSelectedImage = () => {

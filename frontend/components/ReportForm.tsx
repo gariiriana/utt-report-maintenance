@@ -515,7 +515,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
   const handlePhotoChange = async (id: string, file: File | null) => {
     if (file) {
-      if (file.size > 5 * 1024 * 1024) return toast.error('Ukuran foto maksimal 5MB');
+      if (file.size > 10 * 1024 * 1024) return toast.error('Ukuran foto maksimal 10MB');
       try {
         toast.loading('Processing...', { id: `compress-${id}` });
         const base64 = await compressImage(file);
