@@ -12,6 +12,7 @@ import { HSEReportViewer } from '@/components/HSEReportViewer';
 import { useEffect } from 'react';
 import { logFirebaseEvent } from '@/api/firebase';
 import { motion, AnimatePresence } from 'motion/react';
+import { AIChatWidget } from '@/components/AIChatWidget';
 
 function getHSEReportIdFromUri(): string | null {
   try {
@@ -73,6 +74,7 @@ function AppContent() {
               if (userRole === 'inventory') return <InventoryApp />;
               return <MainApp />;
             })()}
+            <AIChatWidget />
           </motion.div>
         ) : (
           <motion.div

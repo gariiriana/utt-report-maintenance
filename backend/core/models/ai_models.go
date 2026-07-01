@@ -102,11 +102,13 @@ type OperationStatusData struct {
 
 // ChatMessage represents a single message in a chat history.
 type ChatMessage struct {
-	Role    string `json:"role"`    // "system", "user", "assistant"
-	Content string `json:"content"`
+	Role        string `json:"role"`    // "system", "user", "assistant"
+	Content     string `json:"content"`
+	ImageBase64 string `json:"image_base64,omitempty"`
 }
 
 // AIChatRequest represents the body of the AI chat room API request.
 type AIChatRequest struct {
+	
 	Messages []ChatMessage `json:"messages"`
 }

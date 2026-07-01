@@ -30,6 +30,7 @@ type aiService struct {
 	baseURL        string
 	visionModel    string // Stage 2: multimodal vision model
 	reasoningModel string // Stage 3: text-only reasoning model
+	chatModel      string // Fast model for interactive chat
 }
 
 // NewAIService creates a new AI service with multi-key and multi-model support.
@@ -38,6 +39,7 @@ func NewAIService() IAIService {
 		baseURL:        config.EnvString("NVIDIA_NIM_BASE_URL", "https://integrate.api.nvidia.com/v1/chat/completions"),
 		visionModel:    config.EnvString("NVIDIA_NIM_VISION_MODEL", config.EnvString("NVIDIA_NIM_MODEL", "moonshotai/kimi-k2.6")),
 		reasoningModel: config.EnvString("NVIDIA_NIM_REASONING_MODEL", config.EnvString("NVIDIA_NIM_MODEL", "z-ai/glm-5.1")),
+		chatModel:      config.EnvString("NVIDIA_NIM_CHAT_MODEL", "meta/llama-3.1-8b-instruct"),
 	}
 
 	// Load API keys: prefer multi-key pool, fallback to single key
@@ -61,6 +63,7 @@ func NewAIService() IAIService {
 		slog.Int("api_keys", len(svc.apiKeys)),
 		slog.String("vision_model", svc.visionModel),
 		slog.String("reasoning_model", svc.reasoningModel),
+		slog.String("chat_model", svc.chatModel),
 	)
 
 	return svc
@@ -237,6 +240,7 @@ func (s *aiService) partitionPhotos(photos []models.ATSPhotoInput) map[string][]
 // STAGE 2: PER-CATEGORY VISION ANALYSIS
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/*
 func (s *aiService) analyzeCategory(ctx context.Context, apiKey, category string, photos []models.ATSPhotoInput) (string, error) {
 	// Build multimodal content array with images
 	var content []map[string]interface{}
@@ -285,6 +289,7 @@ func (s *aiService) analyzeCategory(ctx context.Context, apiKey, category string
 
 	return s.callNVIDIA(ctx, apiKey, s.visionModel, messages, 0.0, 4096, 60*time.Second, nil)
 }
+*/
 
 // buildCategorySystemPrompt returns a hyper-focused system prompt per category.
 func (s *aiService) buildCategorySystemPrompt(category string) string {
@@ -469,6 +474,7 @@ For condition, use ONLY "Good" or "Not Good" based on what you see in the photos
 // STAGE 3: CONSOLIDATION & VERIFICATION (Reasoning Model)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/*
 func (s *aiService) consolidateResults(ctx context.Context, apiKey string, partials map[string]string) (*models.ATSReportData, error) {
 	// Build input from all partial results
 	var sections []string
@@ -579,6 +585,7 @@ RULES:
 
 	return s.parseJSONResponse(respContent)
 }
+*/
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // GENERIC NVIDIA NIM API CALLER
@@ -692,19 +699,54 @@ func (s *aiService) Chat(ctx context.Context, messages []models.ChatMessage) (st
 		return "", fmt.Errorf("no NVIDIA NIM API keys configured")
 	}
 
-	systemInstruction := `You are an expert Data Center AI Assistant specializing strictly in:
-1. Data center infrastructure and operations.
-2. Mechanical and electrical equipment (e.g. ATS, Transformers, UPS, Generators, Distribution Panels, Breakers).
-3. Cooling systems (e.g. Precision Air Conditioning (PAC), Chillers, Cooling Towers, airflow management).
+	baseSystemInstruction := `You are an elite, highly-experienced Data Center M/E & Cooling Principal Engineer. You possess super-intelligent knowledge, extreme technical sharpness, and proactive problem-solving initiative.
 
-RULES:
-- Answer ONLY technical questions related to these topics.
-- Write your answers in a professional, polite, and helpful tone, preferably in Indonesian unless asked in another language.
-- Keep your answers concise, practical, and focused on troubleshooting, operation, or safety guidelines.
-- DO NOT use markdown formatting like asterisks (**) for bolding text. Output plain text only.
-- CRITICAL: If the user asks about ANY topic outside of data centers, mechanical/electrical systems, or cooling (for example: cooking recipes, general pop culture, programming unrelated to equipment, history, personal advice), you must refuse politely and guide them back to the allowed topics.`
+CREATOR & SYSTEM INFO:
+- You were created by Tuan Gari Iriana.
+- All systems, codebases, and projects here were built by Tuan Gari Iriana.
+- If the user asks who created you or who built the system, ALWAYS state that it is Tuan Gari Iriana.
+- If you provide incorrect or inaccurate information, tell the user to report/give feedback to your Master (Tuan) Gari Iriana.
 
-	// Reformat messages to meet NVIDIA API request requirements
+Your expertise covers:
+1. Data center infrastructure, layout design, and operational procedures.
+2. Mechanical & Electrical (M/E): ATS, Transformers, UPS systems, Generators, Distribution Boards, Breakers, and Grounding.
+3. Cooling Systems: PAC, Chillers, CRACs, Cooling Towers, hot/cold aisle containment, and airflow.
+
+RULES & INTERACTIVE STYLE:
+- Actively analyze the context. If there is a problem/alarm, be proactive and provide DIRECT, STEP-BY-STEP, ACTIONABLE SOLUTIONS immediately. Do not delay with filler sentences.
+- Pay close attention to previous messages in the history. Maintain perfect conversational memory and continuity of context.
+- Keep your answers highly professional, polite, practical, and in Indonesian.
+- CRITICAL: Format your output beautifully using clear bullet points, numbered lists, and double newlines (\n\n) between main points so that it is highly readable and easy to scan.
+- DO NOT use complex markdown tables or asterisks (**) for bolding text. Instead, write tables as clear bulleted lists (e.g. "- Parameter: Value") and use clear capitalization or hyphens to organize sections.
+- CRITICAL: Refuse politely if the user asks about unrelated topics (e.g., general programming, recipes, advice, pop culture) and steer them back to data center M/E/cooling.`
+
+	visionSystemInstruction := baseSystemInstruction + `
+
+VISION CAPABILITY (SUPER-GENIUS):
+- You have advanced vision capabilities. When the user uploads an image, analyze it instantly with engineering precision.
+- Read meter displays, screen alarm messages, fault indicators, and status indicators.
+- Directly cross-reference findings with M/E safety standards (e.g., standard grounding values < 1 Ohm, normal UPS parameters) and immediately state whether it is NORMAL or abnormal, then give direct action steps.`
+
+	// Scan messages to determine if any contain images
+	useVisionModel := false
+	for _, msg := range messages {
+		if msg.ImageBase64 != "" {
+			useVisionModel = true
+			break
+		}
+	}
+
+	systemInstruction := baseSystemInstruction
+	if useVisionModel {
+		systemInstruction = visionSystemInstruction
+	}
+
+	slog.Info("Chat request",
+		slog.Int("message_count", len(messages)),
+		slog.Bool("has_images", useVisionModel),
+	)
+
+	// Reformat messages to meet NVIDIA API request requirements.
 	formattedMessages := make([]map[string]interface{}, 0, len(messages)+1)
 	formattedMessages = append(formattedMessages, map[string]interface{}{
 		"role":    "system",
@@ -712,15 +754,58 @@ RULES:
 	})
 
 	for _, msg := range messages {
-		formattedMessages = append(formattedMessages, map[string]interface{}{
-			"role":    msg.Role,
-			"content": msg.Content,
-		})
+		if msg.ImageBase64 != "" {
+			mimeType := "image/jpeg"
+			if strings.HasPrefix(msg.ImageBase64, "iVBOR") {
+				mimeType = "image/png"
+			}
+			imageURL := fmt.Sprintf("data:%s;base64,%s", mimeType, msg.ImageBase64)
+
+			slog.Info("Chat multimodal message",
+				slog.String("role", msg.Role),
+				slog.Int("image_base64_len", len(msg.ImageBase64)),
+				slog.String("mime_type", mimeType),
+				slog.String("text_content", msg.Content),
+			)
+
+			// Multimodal payload format
+			contentArray := []map[string]interface{}{
+				{
+					"type": "text",
+					"text": msg.Content,
+				},
+				{
+					"type": "image_url",
+					"image_url": map[string]interface{}{
+						"url": imageURL,
+					},
+				},
+			}
+
+			formattedMessages = append(formattedMessages, map[string]interface{}{
+				"role":    msg.Role,
+				"content": contentArray,
+			})
+		} else {
+			formattedMessages = append(formattedMessages, map[string]interface{}{
+				"role":    msg.Role,
+				"content": msg.Content,
+			})
+		}
 	}
 
+	targetModel := s.chatModel // Use fast model for interactive chat
+	if useVisionModel {
+		targetModel = s.visionModel
+	}
+
+	slog.Info("Chat calling NVIDIA",
+		slog.String("target_model", targetModel),
+		slog.Int("formatted_messages", len(formattedMessages)),
+	)
+
 	apiKey := s.getNextAPIKey()
-	// Use reasoningModel (GLM-5.1) for chat reasoning
-	reply, err := s.callNVIDIA(ctx, apiKey, s.reasoningModel, formattedMessages, 0.7, 4096, 90*time.Second, nil)
+	reply, err := s.callNVIDIA(ctx, apiKey, targetModel, formattedMessages, 0.7, 1024, 60*time.Second, nil)
 	if err != nil {
 		return "", err
 	}
