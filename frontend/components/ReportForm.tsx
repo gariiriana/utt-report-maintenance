@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, Save, ChevronLeft, ChevronRight, X, Eye, Download } from 'lucide-react';
+import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, Save, ChevronLeft, ChevronRight, X, Eye, Download, Sparkles } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { ExcelDocument } from '@/components/DocumentList';
 import { ImageEditor } from '@/components/ImageEditor';
@@ -24,6 +24,7 @@ import { compressImage, compressBase64Image } from '@/utils/imageCompression';
 import { PreviewReport } from '@/components/PreviewReport';
 import { CameraModal } from '@/components/CameraModal';
 import { draftStorage } from '@/utils/draftStorage';
+import { ATSServiceReport } from '@/components/ATSServiceReport';
 
 import imgStatusWld from '@/assets/Wld/status.jpeg';
 import imgTestPingWld from '@/assets/Wld/test_ping.jpeg';
@@ -49,6 +50,7 @@ export interface PhotoCard {
   photo: File | null;
   photoBase64?: string;
   description: string;
+  parameter?: string;
 }
 
 export interface ReportUnit {
@@ -77,6 +79,15 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   
 
   const [units, setUnits] = useState<ReportUnit[]>([]);
+  const [atsPrefillData, setAtsPrefillData] = useState<{
+    maintenanceName: string;
+    maintenanceTime: string;
+    specificDetail: string;
+    photos: Array<{ base64: string; category: string; label: string; preview: string; parameter?: string }>;
+    originalReportCards: Array<{ photoBase64?: string; description: string; parameter?: string }>;
+    autoTrigger?: boolean;
+    triggerGenerateData?: boolean;
+  } | null>(null);
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
   const tabContainerRef = useRef<HTMLDivElement>(null);
 
@@ -143,7 +154,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     return Array.from({ length: count }, (_, i) => ({
       id: `${i + 1}`,
       photo: null,
-      description: ''
+      description: '',
+      parameter: ''
     }));
   };
 
@@ -176,10 +188,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             let defaultUrl = WLD_DEFAULT_PHOTOS[desc];
             if (lowerEmail === 'fld@gmail.com' && desc === 'Test Ping') defaultUrl = imgTesPingFld;
             let b64 = defaultUrl ? await loadLogoBase64(defaultUrl) : undefined;
-            return { id: `${idx + 1}`, photo: null, photoBase64: b64, description: desc };
+            return { id: `${idx + 1}`, photo: null, photoBase64: b64, description: desc, parameter: '' };
           }));
         } else {
-          initialCards = template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc }));
+          initialCards = template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc, parameter: '' }));
         }
       }
     }
@@ -268,14 +280,16 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     unitCards = template.map((desc, idx) => ({
                       id: `${idx + 1}`,
                       photo: null,
-                      description: desc
+                      description: desc,
+                      parameter: ''
                     }));
                   } else if (unitCards.length < template.length) {
                     const missing = template.slice(unitCards.length);
                     const appended = missing.map((desc, i) => ({
                       id: `${unitCards.length + i + 1}`,
                       photo: null,
-                      description: desc
+                      description: desc,
+                      parameter: ''
                     }));
                     unitCards = [...unitCards, ...appended];
                   }
@@ -461,7 +475,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             cards: u.cards.map(c => ({
               id: c.id,
               description: c.description,
-              photoBase64: c.photoBase64
+              photoBase64: c.photoBase64,
+              parameter: c.parameter || ''
             }))
           })),
         timestamp: new Date().getTime()
@@ -600,6 +615,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
   const handleDescriptionChange = (id: string, description: string) => {
     setCards(prev => prev.map(c => c.id === id ? { ...c, description } : c));
+  };
+
+  const handleParameterChange = (id: string, parameter: string) => {
+    setCards(prev => prev.map(c => c.id === id ? { ...c, parameter } : c));
   };
 
   const handleDownloadPhoto = (base64: string, description: string, index: number) => {
@@ -742,15 +761,14 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       const apiUrl = import.meta.env.VITE_API_URL;
       const isOnline = navigator.onLine;
-
       if (isOnline && apiUrl && !effectiveDocId) {
         const photos = cardsToSave.map((card, i) => ({
           index: i + 1,
           photoBase64: card.photoBase64 || '',
           description: card.description || '',
+          parameter: card.parameter || '',
           hasPhoto: !!card.photoBase64
         }));
-
         const docIdFromAPI = await saveReportViaAPI(apiUrl, collectionName, reportData, photos);
         if (docIdFromAPI) {
           setUnits(prev => prev.map(u => u.id === unit.id ? { ...u, archiveId: docIdFromAPI, archiveType: 'pdf' } : u));
@@ -811,6 +829,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   index: currentIdx,
                   photoBase64: b64,
                   description: card.description || '',
+                  parameter: card.parameter || '',
                   hasPhoto: !!b64,
                   savedAt: serverTimestamp()
                 });
@@ -876,7 +895,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       cards: u.cards.map(c => ({
                         id: c.id,
                         description: c.description,
-                        photoBase64: c.photoBase64
+                        photoBase64: c.photoBase64,
+                        parameter: c.parameter || ''
                       }))
                     })),
                   timestamp: new Date().getTime()
@@ -900,7 +920,77 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }
   };
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
 
+  const handleTriggerAtsData = async () => {
+    const toastId = toast.loading('Mengumpulkan parameter dokumentasi...');
+    try {
+      const collectedPhotos: Array<{ base64: string; category: string; label: string; preview: string; parameter: string }> = [];
+      const originalReportCards: Array<{ photoBase64?: string; description: string; parameter: string }> = [];
+
+      for (const unit of units) {
+        for (const card of unit.cards) {
+          let base64Data = card.photoBase64 || '';
+          if (!base64Data && card.photo) {
+            base64Data = await fileToBase64(card.photo);
+          }
+          
+          const rawBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+          const fullBase64Prefix = base64Data.includes(',') ? base64Data : (base64Data ? `data:image/jpeg;base64,${base64Data}` : '');
+
+          const desc = (card.description || '').toLowerCase();
+          let category = 'visual_inspection';
+          if (desc.includes('thermal') || desc.includes('imager') || desc.includes('suhu') || desc.includes('temp')) {
+            category = 'thermal';
+          } else if (desc.includes('grounding') || desc.includes('earth') || desc.includes('tahanan')) {
+            category = 'grounding';
+          } else if (
+            desc.includes('voltage') || desc.includes('ampere') || desc.includes('current') || 
+            desc.includes('dpm') || desc.includes('power') || desc.includes('daya') ||
+            desc.includes('r-s') || desc.includes('s-t') || desc.includes('t-r') ||
+            desc.includes('r-n') || desc.includes('s-n') || desc.includes('t-n')
+          ) {
+            category = 'power_meter';
+          }
+
+          collectedPhotos.push({
+            base64: rawBase64,
+            category,
+            label: card.description || 'Inspection Photo',
+            preview: fullBase64Prefix,
+            parameter: card.parameter || ''
+          });
+
+          originalReportCards.push({
+            photoBase64: fullBase64Prefix || undefined,
+            description: `${unit.tabName} - ${card.description || 'Dokumentasi'}`,
+            parameter: card.parameter || ''
+          });
+        }
+      }
+
+      toast.success('Sukses mengumpulkan parameter. AI Service Report siap di bawah!', { id: toastId });
+      setAtsPrefillData({
+        maintenanceName,
+        maintenanceTime,
+        specificDetail,
+        photos: collectedPhotos,
+        originalReportCards,
+        autoTrigger: false,
+        triggerGenerateData: true
+      });
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Gagal memproses foto: ' + err.message, { id: toastId });
+    }
+  };
 
   const handleManualSave = async () => {
     if (!activeUnit) return;
@@ -928,10 +1018,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               let defaultUrl = WLD_DEFAULT_PHOTOS[desc];
               if (lowerEmail === 'fld@gmail.com' && desc === 'Test Ping') defaultUrl = imgTesPingFld;
               let b64 = defaultUrl ? await loadLogoBase64(defaultUrl) : undefined;
-              return { id: `${idx + 1}`, photo: null, photoBase64: b64, description: desc };
+              return { id: `${idx + 1}`, photo: null, photoBase64: b64, description: desc, parameter: '' };
             }));
           } else {
-            freshCards = template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc }));
+            freshCards = template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc, parameter: '' }));
           }
         }
       }
@@ -1278,6 +1368,16 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
+                              setPreviewImage({ src: card.photoBase64!, title: card.description || `Doc #${idx + 1}` });
+                            }} 
+                            className="p-1.5 sm:p-2.5 bg-blue-600/20 backdrop-blur-md rounded-lg hover:bg-blue-600/30 transition shadow-xl" 
+                            title="Detail Foto"
+                          >
+                            <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
+                          </button>
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
                               handleDownloadPhoto(card.photoBase64!, card.description, idx);
                             }} 
                             className="p-1.5 sm:p-2.5 bg-emerald-600/20 backdrop-blur-md rounded-lg hover:bg-emerald-600/30 transition shadow-xl" 
@@ -1344,47 +1444,69 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     )}
                   </div>
                   <textarea title="Deskripsi Foto" value={card.description} onChange={e => handleDescriptionChange(card.id, e.target.value)} disabled={isDME} className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg p-2 sm:p-3 text-xs sm:text-sm text-white outline-none focus:ring-1 focus:ring-blue-500 transition placeholder:text-slate-700 disabled:opacity-75 disabled:cursor-not-allowed" rows={2} placeholder="Masukkan deskripsi dokumentasi..." />
+                  {user?.email === 'ats@gmail.com' && (
+                    <input
+                      type="text"
+                      title="Parameter Pengukuran"
+                      value={card.parameter || ''}
+                      onChange={e => handleParameterChange(card.id, e.target.value)}
+                      disabled={isDME}
+                      className="w-full bg-slate-950/80 border border-slate-800 rounded-lg p-2 text-xs text-emerald-400 outline-none focus:ring-1 focus:ring-emerald-500 transition placeholder:text-slate-600 disabled:opacity-75 disabled:cursor-not-allowed mt-1.5 font-mono"
+                      placeholder="Nilai parameter (contoh: 395 V, 31 °C, 0.35 Ω)..."
+                    />
+                  )}
                 </div>
               ))}
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 mt-12 bg-slate-900/40 p-6 sm:p-8 rounded-[2rem] border border-slate-700/30 backdrop-blur-xl">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-12 bg-slate-900/40 p-6 rounded-[2rem] border border-slate-700/30 backdrop-blur-xl w-full">
               {!isDME && (
                 <button 
                   onClick={handleManualSave} 
                   disabled={isSaving || isExporting}
-                  className={`w-full sm:w-auto px-6 py-4 sm:px-10 bg-blue-600/20 text-blue-400 rounded-xl font-black flex items-center justify-center gap-3 border border-blue-500/30 transition shadow-xl active:scale-95 text-xs sm:text-sm lg:text-base group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600/30'}`}
+                  className={`w-full sm:flex-1 py-4 bg-blue-600/20 text-blue-400 rounded-xl font-bold flex items-center justify-center gap-2 border border-blue-500/30 transition shadow-xl active:scale-95 text-xs sm:text-sm group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600/30'}`}
                 >
                   {isSaving ? (
-                    <RefreshCw className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
+                    <RefreshCw className="w-5 h-5 animate-spin" />
                   ) : (
-                    <Save className="w-5 h-5 sm:w-6 sm:h-6 group-active:scale-90 transition-transform" /> 
+                    <Save className="w-5 h-5 group-active:scale-90 transition-transform" /> 
                   )}
-                  <span className="whitespace-nowrap">{isSaving ? 'SEDANG MENYIMPAN...' : 'SIMPAN KE ARSIP DOKUMEN!'}</span>
+                  <span className="whitespace-nowrap">{isSaving ? 'MENYIMPAN...' : 'SIMPAN KE ARSIP'}</span>
                 </button>
               )}
 
               <button 
                 onClick={() => setShowPreview(true)} 
                 disabled={isSaving || isExporting}
-                className={`w-full sm:w-auto px-6 py-4 sm:px-10 bg-emerald-600/20 text-emerald-400 rounded-xl font-black flex items-center justify-center gap-3 border border-emerald-500/30 transition shadow-xl active:scale-95 text-xs sm:text-sm lg:text-base group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-emerald-600/30'}`}
+                className={`w-full sm:flex-1 py-4 bg-emerald-600/20 text-emerald-400 rounded-xl font-bold flex items-center justify-center gap-2 border border-emerald-500/30 transition shadow-xl active:scale-95 text-xs sm:text-sm group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-emerald-600/30'}`}
               >
-                <Eye className="w-5 h-5 sm:w-6 sm:h-6 group-active:scale-90 transition-transform" />
+                <Eye className="w-5 h-5 group-active:scale-90 transition-transform" />
                 <span className="whitespace-nowrap">PREVIEW REPORT</span>
               </button>
+
+              {user?.email === 'ats@gmail.com' && (
+                <button 
+                  onClick={handleTriggerAtsData} 
+                  disabled={isSaving || isExporting}
+                  className={`w-full sm:flex-1 py-4 bg-violet-600/20 text-violet-400 rounded-xl font-bold flex items-center justify-center gap-2 border border-violet-500/30 transition shadow-xl active:scale-95 text-xs sm:text-sm group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-violet-600/30'}`}
+                >
+                  <Sparkles className="w-5 h-5 group-active:scale-90 transition-transform" />
+                  <span className="whitespace-nowrap">GENERATE DATA</span>
+                </button>
+              )}
 
               <button 
                 onClick={() => handleExportPDF()} 
                 disabled={isSaving || isExporting}
-                className={`w-full sm:w-auto px-6 py-4 sm:px-12 sm:py-5 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl font-black flex items-center justify-center gap-3 shadow-2xl shadow-red-600/30 transition active:scale-95 text-sm sm:text-base lg:text-lg border-b-4 border-red-900 active:border-b-0 group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:from-red-700 hover:to-rose-700'}`}
+                className={`w-full sm:flex-1 py-4 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-2xl transition active:scale-95 text-xs sm:text-sm group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:from-red-700 hover:to-rose-700'}`}
               >
                 {isExporting ? (
-                  <RefreshCw className="w-6 h-6 sm:w-8 sm:h-8 animate-spin" />
+                  <RefreshCw className="w-5 h-5 animate-spin" />
                 ) : (
-                  <FileType className="w-6 h-6 sm:w-8 sm:h-8 group-active:scale-90 transition-transform" />
+                  <FileType className="w-5 h-5 group-active:scale-90 transition-transform" />
                 )}
-                <span className="uppercase text-center">
-                  {isExporting ? 'EXPORTING...' : `EXPORT PDF (SUB-REPORT ${activeUnit?.specificDetail || ''})`}
+                <span className="whitespace-nowrap">
+                  {isExporting ? 'EXPORTING...' : 'EXPORT PDF'}
                 </span>
               </button>
             </div>
@@ -1488,7 +1610,14 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         )}
       </AnimatePresence>
 
-
+      {user?.email === 'ats@gmail.com' && (
+        <div className="mt-12 border-t border-slate-800 pt-12">
+          <ATSServiceReport 
+            prefillData={atsPrefillData} 
+            onClearPrefill={() => setAtsPrefillData(null)} 
+          />
+        </div>
+      )}
     </div>
   );
 }

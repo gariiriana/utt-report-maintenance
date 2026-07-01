@@ -4,6 +4,8 @@ import { FindingRecord } from '../types/finding';
 import { loadLogoBase64 } from './ReportPdfExport';
 import logoNeutra from '@/assets/logo_neutradc.png';
 import logoDME from '@/assets/logo_dwimitra_v2.png';
+import { compressBase64Image } from './imageCompression';
+import { toast } from 'sonner';
 
 
 function getImageDimensions(base64: string): Promise<{ width: number; height: number }> {
@@ -17,6 +19,27 @@ function getImageDimensions(base64: string): Promise<{ width: number; height: nu
 
 
 export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<void> {
+  toast.loading('Mengompresi foto temuan...', { id: 'finding-compress' });
+  const optimizedFindings = await Promise.all(
+    findings.map(async (f) => {
+      if (!f.photos || f.photos.length === 0) return f;
+      const optimizedPhotos = await Promise.all(
+        f.photos.map(async (p) => {
+          if (!p.base64) return p;
+          try {
+            const compressed = await compressBase64Image(p.base64, { maxWidth: 800, quality: 0.5 });
+            return { ...p, base64: compressed };
+          } catch (err) {
+            console.error('Failed to compress finding photo', err);
+            return p;
+          }
+        })
+      );
+      return { ...f, photos: optimizedPhotos };
+    })
+  );
+  toast.dismiss('finding-compress');
+
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -72,7 +95,7 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
     currentDoc.text(`Generated: ${now}`, centerX, headerY + 17.5, { align: 'center' });
 
     currentDoc.setFontSize(6.5).setFont('helvetica', 'bold').setTextColor(AMBER);
-    currentDoc.text(`Total Temuan: ${findings.length} item`, centerX, headerY + 21.5, { align: 'center' });
+    currentDoc.text(`Total Temuan: ${optimizedFindings.length} item`, centerX, headerY + 21.5, { align: 'center' });
 
     return headerY + headerH + 6;
   };
@@ -88,7 +111,7 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
 
   let curY = drawHeader(doc);
 
-  const tableData = findings.map((f, idx) => [
+  const tableData = optimizedFindings.map((f, idx) => [
     String(idx + 1),
     f.partName || '-',
     f.partNumber || '-',
@@ -139,7 +162,7 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
     },
   });
 
-  const findingsWithPhotos = findings.filter((f) => f.photos && f.photos.length > 0);
+  const findingsWithPhotos = optimizedFindings.filter((f) => f.photos && f.photos.length > 0);
 
   if (findingsWithPhotos.length > 0) {
     doc.addPage();

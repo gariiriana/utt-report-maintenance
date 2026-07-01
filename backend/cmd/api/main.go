@@ -10,6 +10,8 @@ import (
 
 func main() {
 	config.MustLoadDotEnv(".env")
+	config.MustLoadDotEnv("../.env")
+	config.MustLoadDotEnv("../.env.local")
 	flags := parseFlags()
 	if flags.Port == "" {
 		flags.Port = config.EnvString("PORT", "8080")

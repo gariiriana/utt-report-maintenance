@@ -100,6 +100,10 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 	case strings.HasPrefix(path, "/api/maintenance-progress/") && r.Method == http.MethodPatch:
 		heavy(deps.MaintenanceProgressCtrl.UpdateProgress)(w, r)
 
+	// --- AI Service Report ---
+	case path == "/api/ai/ats-report" && r.Method == http.MethodPost:
+		heavy(deps.AICtrl.AnalyzeATSReport)(w, r)
+
 	// --- Findings ---
 	case path == "/api/findings" && r.Method == http.MethodPost:
 		heavy(deps.FindingCtrl.CreateFinding)(w, r)

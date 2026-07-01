@@ -50,22 +50,6 @@ export default defineConfig({
               }
             }
           },
-          {
-            // SECURITY: Ensure API calls are never served from stale cache
-            urlPattern: ({ url }) => url.pathname.startsWith('/api'),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              networkTimeoutSeconds: 5,
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 // 1 hour
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          }
         ]
       }
     })
@@ -75,6 +59,8 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+        timeout: 300000,
+        proxyTimeout: 300000,
       },
     },
   },

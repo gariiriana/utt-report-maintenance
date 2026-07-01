@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard } from 'lucide-react';
+import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar } from 'lucide-react';
 import { useAuth } from '@/components/AuthContext';
 import { ReportForm } from '@/components/ReportForm';
 import { DocumentList } from '@/components/DocumentList';
@@ -14,9 +14,10 @@ import { Footer } from '@/components/Footer';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import { InventoryBorrowing } from '@/components/InventoryBorrowing';
 import { PTWManagement } from '@/components/PTWManagement';
+import { AbsenTBM } from '@/components/AbsenTBM';
 import logoUTT from '@/assets/logo_utt.png';
 
-type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'inventory' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive';
+type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'inventory' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm';
 
 export function MainApp() {
   const { user, userRole, logout } = useAuth();
@@ -29,10 +30,11 @@ export function MainApp() {
 
   const navItems = [
     { id: 'admin', label: 'Dashboard Admin', icon: Shield, color: 'from-purple-600 to-pink-600', show: isAdmin },
+    { id: 'absen_tbm', label: 'Absen TBM', icon: Calendar, color: 'from-pink-500 to-rose-600', show: isAdmin },
     { id: 'ptw', label: 'PTW', icon: Clipboard, color: 'from-indigo-600 to-blue-600', show: (isAdmin || userRole === 'engineer') && !isStandby },
     { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: !isStandby && userRole !== 'DME' },
-    { id: 'corrective', label: 'Corrective Maint.', icon: PenTool, color: 'from-red-600 to-red-700', show: userRole !== 'DME' },
-    { id: 'corrective_archive', label: 'Arsip CM', icon: FolderOpen, color: 'from-rose-600 to-rose-700', show: userRole !== 'DME' },
+    { id: 'corrective', label: 'Corrective Maint.', icon: PenTool, color: 'from-red-600 to-red-700', show: userRole !== 'DME' && !isAdmin && userRole !== 'engineer' },
+    { id: 'corrective_archive', label: 'Arsip CM', icon: FolderOpen, color: 'from-rose-600 to-rose-700', show: userRole !== 'DME' && !isAdmin && userRole !== 'engineer' },
     { id: 'inventory', label: 'Peminjaman Alat', icon: Shield, color: 'from-indigo-600 to-indigo-700', show: !isStandby && userRole !== 'DME' },
     { id: 'findings', label: 'Temuan', icon: Search, color: 'from-amber-500 to-orange-600', show: userRole === 'engineer' || isStandby || isAdmin },
     { id: 'finding_archive', label: 'Arsip Temuan', icon: FolderOpen, color: 'from-teal-600 to-teal-700', show: userRole !== 'DME' },
@@ -212,12 +214,17 @@ export function MainApp() {
           >
             {activeTab === 'admin' ? (
               <AdminDashboard onEdit={handleEditReport} />
+            ) : activeTab === 'absen_tbm' ? (
+              <AbsenTBM />
             ) : activeTab === 'ptw' ? (
               <PTWManagement />
             ) : activeTab === 'files' ? (
               <FileManagement />
             ) : activeTab === 'report' ? (
-              <ReportForm editingData={editingData} onClearEdit={clearEditingData} />
+              <ReportForm 
+                editingData={editingData} 
+                onClearEdit={clearEditingData} 
+              />
             ) : activeTab === 'corrective' ? (
               <CorrectiveMaintenance readOnly={isTDEorCBRE} />
             ) : activeTab === 'corrective_archive' ? (

@@ -22,6 +22,7 @@ type AppDeps struct {
 	AuditCtrl               *controllers.AuditController
 	MaintenanceProgressCtrl *controllers.MaintenanceProgressController
 	FindingCtrl             *controllers.FindingController
+	AICtrl                  *controllers.AIController
 	RateLimiter             *middlewares.RateLimiter // global catch-all
 	ThrottleHeavy           *middlewares.RateLimiter // POST/DELETE — 5 rps, burst 10
 	ThrottleStandard        *middlewares.RateLimiter // GET lists   — 20 rps, burst 40
@@ -60,6 +61,8 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 	auditCtrl := controllers.NewAuditController(auditSvc)
 	maintenanceCtrl := controllers.NewMaintenanceProgressController(maintenanceSvc)
 	findingCtrl := controllers.NewFindingController(findingSvc)
+	aiSvc := services.NewAIService()
+	aiCtrl := controllers.NewAIController(aiSvc)
 
 	rateLimiter := middlewares.NewRateLimiter(20, 40)
 	throttleHeavy := middlewares.NewThrottle(5, 10)   // expensive write/delete ops
@@ -74,6 +77,7 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 		AuditCtrl:               auditCtrl,
 		MaintenanceProgressCtrl: maintenanceCtrl,
 		FindingCtrl:             findingCtrl,
+		AICtrl:                  aiCtrl,
 		RateLimiter:             rateLimiter,
 		ThrottleHeavy:           throttleHeavy,
 		ThrottleStandard:        throttleStandard,

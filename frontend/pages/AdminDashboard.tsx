@@ -12,7 +12,6 @@ import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
-import { usePresence } from '@/hooks/usePresence';
 
 interface DocumentData {
   id: string;
@@ -40,7 +39,6 @@ interface AdminDashboardProps {
 
 export function AdminDashboard({ onEdit }: AdminDashboardProps) {
   const { companyType } = useAuth();
-  const onlineUsers = usePresence();
   const [documents, setDocuments] = useState<DocumentData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
