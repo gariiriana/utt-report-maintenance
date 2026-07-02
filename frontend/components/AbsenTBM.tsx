@@ -362,10 +362,26 @@ export function AbsenTBM() {
     const chartData = Object.values(dateGroups).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
 
     // Group by Name for Personnel Stats
-    const personGroups: Record<string, { nama: string; jabatan: string; hadir: number; total: number }> = {};
+    const personGroups: Record<string, { nama: string; jabatan: string; category: string; hadir: number; total: number }> = {};
     filteredRecords.forEach(r => {
       if (!personGroups[r.nama]) {
-        personGroups[r.nama] = { nama: r.nama, jabatan: r.jabatan, hadir: 0, total: 0 };
+        let category = r.category || '';
+        if (!category) {
+          if (TBM_LISTS['UTT Daily'].some(p => p.nama === r.nama)) {
+            category = 'UTT Daily';
+          } else if (TBM_LISTS['UTT Mobile'].some(p => p.nama === r.nama)) {
+            category = 'UTT Mobile';
+          } else if (TBM_LISTS['DME'].some(p => p.nama === r.nama)) {
+            category = 'DME';
+          }
+        }
+        if (!category) {
+          const found = personnelList.find(p => p.nama === r.nama);
+          if (found) {
+            category = found.category;
+          }
+        }
+        personGroups[r.nama] = { nama: r.nama, jabatan: r.jabatan, category: category || 'Manual', hadir: 0, total: 0 };
       }
       personGroups[r.nama].total += 1;
       if (r.kehadiran === 'Hadir') {
@@ -376,6 +392,7 @@ export function AbsenTBM() {
     const personStats = Object.values(personGroups).map(p => ({
       nama: p.nama,
       jabatan: p.jabatan,
+      category: p.category,
       rate: p.total > 0 ? Math.round((p.hadir / p.total) * 100) : 0,
       hadir: p.hadir,
       total: p.total
@@ -387,7 +404,7 @@ export function AbsenTBM() {
     ];
 
     return { total, hadir, tidakHadir, rate, chartData, pieData, personStats };
-  }, [filteredRecords]);
+  }, [filteredRecords, personnelList]);
 
   const progressRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -769,23 +786,134 @@ export function AbsenTBM() {
     const periodeFrom = startDate || 'Awal';
     const periodeTo = endDate || 'Sekarang';
     docPdf.text(`Periode: ${periodeFrom}  s/d  ${periodeTo}`, margin + 6, y + 27);
-    
 
+    // ─── Draw 4 Donut Charts (Canvas → Image → PDF) ───────────────────
+    const chartCanvasW = 1200;
+    const chartCanvasH = 340;
+    const chartCanvas = document.createElement('canvas');
+    chartCanvas.width = chartCanvasW;
+    chartCanvas.height = chartCanvasH;
+    const ctx = chartCanvas.getContext('2d')!;
+
+    // Background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, chartCanvasW, chartCanvasH);
+
+    // Main title FIRST
+    ctx.font = 'bold 24px Arial';
+    ctx.fillStyle = '#0f172a';
+    ctx.textAlign = 'center';
+    ctx.fillText('GRAFIK PERFORM KEHADIRAN / KPI ABSENSI TBM', chartCanvasW / 2, 28);
+
+    // Helper: draw a donut chart at given position
+    const drawDonut = (
+      cx: number, cy: number, radius: number, innerR: number,
+      hadir: number, total: number, title: string, color: string
+    ) => {
+      const pct = total > 0 ? hadir / total : 0;
+      const angle = pct * Math.PI * 2;
+      const tidakHadir = total - hadir;
+      const pctDisplay = total > 0 ? Math.round(pct * 100) : 0;
+
+      // Donut title
+      ctx.font = 'bold 16px Arial';
+      ctx.fillStyle = '#334155';
+      ctx.textAlign = 'center';
+      ctx.fillText(title, cx, cy - radius - 12);
+
+      // Hadir slice
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, radius, -Math.PI / 2, -Math.PI / 2 + angle);
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      // Tidak Hadir slice
+      if (tidakHadir > 0) {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, radius, -Math.PI / 2 + angle, -Math.PI / 2 + Math.PI * 2);
+        ctx.closePath();
+        ctx.fillStyle = '#f43f5e';
+        ctx.fill();
+      }
+
+      // Donut hole
+      ctx.beginPath();
+      ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+
+      // Center %
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 28px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${pctDisplay}%`, cx, cy - 3);
+      ctx.font = '11px Arial';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('Kehadiran', cx, cy + 16);
+
+      // Legend below
+      const legY = cy + radius + 14;
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = color;
+      ctx.fillText(`● Hadir: ${hadir}`, cx - 45, legY);
+      ctx.fillStyle = '#f43f5e';
+      ctx.fillText(`● TH: ${tidakHadir}`, cx + 45, legY);
+      ctx.font = '11px Arial';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(`Total: ${total}`, cx, legY + 16);
+    };
+
+    // Calculate category stats
+    const catStats = (cat?: string) => {
+      const recs = cat ? filteredRecords.filter(r => r.category === cat) : filteredRecords;
+      const total = recs.length;
+      const hadir = recs.filter(r => r.kehadiran === 'Hadir').length;
+      return { total, hadir };
+    };
+
+    const allStats = catStats();
+    const uttDailyStats = catStats('UTT Daily');
+    const uttMobileStats = catStats('UTT Mobile');
+    const dmeStats = catStats('DME');
+
+    // 4 donuts evenly spaced
+    const donutR = 65;
+    const donutInner = 40;
+    const spacing = chartCanvasW / 4;
+    const row1Y = 170;
+
+    drawDonut(spacing * 0.5, row1Y, donutR, donutInner, allStats.hadir, allStats.total, 'KESELURUHAN', '#3b82f6');
+    drawDonut(spacing * 1.5, row1Y, donutR, donutInner, uttDailyStats.hadir, uttDailyStats.total, 'UTT DAILY', '#10b981');
+    drawDonut(spacing * 2.5, row1Y, donutR, donutInner, uttMobileStats.hadir, uttMobileStats.total, 'UTT MOBILE', '#f59e0b');
+    drawDonut(spacing * 3.5, row1Y, donutR, donutInner, dmeStats.hadir, dmeStats.total, 'DME', '#8b5cf6');
+
+    // Convert canvas to image and add to PDF
+    const chartImgData = chartCanvas.toDataURL('image/png');
+    const chartPdfW = contentW;
+    const chartPdfH = (chartCanvasH / chartCanvasW) * chartPdfW;
+    const chartInsertY = y + 34;
+    docPdf.addImage(chartImgData, 'PNG', margin, chartInsertY, chartPdfW, chartPdfH);
 
     // ─── Table 1: Rangkuman Kehadiran per Personil ──────────────────────
-    let chartY = y + 45;
+    let chartY = chartInsertY + chartPdfH + 5;
 
     docPdf.setTextColor(15, 23, 42);
     docPdf.setFontSize(9);
     docPdf.setFont('helvetica', 'bold');
     docPdf.text('RANGKUMAN KEHADIRAN PER PERSONIL', margin, chartY - 2.5);
 
-    const summaryHead = [['No', 'Nama Personil', 'Jabatan', 'Hadir', 'Tidak Hadir', 'Total', '%']];
+    const summaryHead = [['No', 'Nama Personil', 'Kategori', 'Jabatan', 'Hadir', 'Tidak Hadir', 'Total', '%']];
     const summaryBody = stats.personStats.map((p, idx) => {
       const tidakHadir = p.total - p.hadir;
       return [
         idx + 1,
         p.nama,
+        p.category || 'Manual',
         p.jabatan,
         p.hadir,
         tidakHadir,
@@ -801,19 +929,20 @@ export function AbsenTBM() {
       theme: 'grid',
       headStyles: { fillColor: [15, 23, 42], halign: 'center', fontSize: 8 },
       columnStyles: {
-        0: { cellWidth: 12, halign: 'center' },
-        1: { cellWidth: 55, halign: 'left' },
-        2: { cellWidth: 40, halign: 'left' },
-        3: { cellWidth: 20, halign: 'center' },
-        4: { cellWidth: 25, halign: 'center' },
-        5: { cellWidth: 18, halign: 'center' },
-        6: { cellWidth: 18, halign: 'center' }
+        0: { cellWidth: 10, halign: 'center' },
+        1: { cellWidth: 45, halign: 'left' },
+        2: { cellWidth: 25, halign: 'left' },
+        3: { cellWidth: 35, halign: 'left' },
+        4: { cellWidth: 18, halign: 'center' },
+        5: { cellWidth: 20, halign: 'center' },
+        6: { cellWidth: 16, halign: 'center' },
+        7: { cellWidth: 17, halign: 'center' }
       },
       styles: { fontSize: 8, cellPadding: 2 },
       willDrawCell: (data) => {
         if (data.section === 'body') {
-          // Color the % column
-          if (data.column.index === 6) {
+          // Color the % column (index 7 now)
+          if (data.column.index === 7) {
             const raw = String(data.cell.raw).replace('%', '');
             const pct = parseInt(raw);
             if (pct >= 80) {
@@ -827,13 +956,13 @@ export function AbsenTBM() {
               data.cell.styles.fontStyle = 'bold';
             }
           }
-          // Color Hadir column green
-          if (data.column.index === 3) {
+          // Color Hadir column green (index 4 now)
+          if (data.column.index === 4) {
             data.cell.styles.textColor = [16, 185, 129];
             data.cell.styles.fontStyle = 'bold';
           }
-          // Color Tidak Hadir column red
-          if (data.column.index === 4) {
+          // Color Tidak Hadir column red (index 5 now)
+          if (data.column.index === 5) {
             const val = Number(data.cell.raw);
             if (val > 0) {
               data.cell.styles.textColor = [244, 63, 94];
@@ -1356,7 +1485,7 @@ export function AbsenTBM() {
                     <div className="flex items-center gap-2 truncate max-w-[70%]">
                       <span className="text-slate-500 font-mono text-[9px]">{idx + 1}.</span>
                       <span className="truncate text-white">{person.nama}</span>
-                      <span className="text-[9px] font-normal text-slate-500 truncate">({person.jabatan})</span>
+                      <span className="text-[9px] font-normal text-slate-500 truncate">({person.jabatan} • {person.category})</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-[9px] font-normal text-slate-500">({person.hadir}/{person.total})</span>
