@@ -106,36 +106,15 @@ export function AIChatWidget() {
   const activeRoom = rooms.find(r => r.id === activeRoomId) || rooms[0] || createNewRoom();
   const messages = activeRoom?.messages || [WELCOME_MESSAGE];
 
+  // Clean up recording on unmount
   useEffect(() => {
-    if (SpeechRecognition) {
-      const rec = new SpeechRecognition();
-      rec.continuous = false;
-      rec.interimResults = false;
-      rec.lang = 'id-ID';
-      
-      rec.onstart = () => {
-        setIsRecording(true);
-      };
-      
-      rec.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInput(prev => prev + (prev ? ' ' : '') + transcript);
-      };
-      
-      rec.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        if (event.error !== 'no-speech' && event.error !== 'aborted') {
-          toast.error('Gagal mengenali suara.');
-        }
-        setIsRecording(false);
-      };
-      
-      rec.onend = () => {
-        setIsRecording(false);
-      };
-      
-      recognitionRef.current = rec;
-    }
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch {}
+      }
+    };
   }, []);
 
   const toggleRecording = () => {
@@ -144,24 +123,50 @@ export function AIChatWidget() {
       return;
     }
     
-    const rec = recognitionRef.current;
-    if (!rec) return;
+    if (isRecording) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (err) {
+          console.error('Stop error:', err);
+        }
+      }
+      setIsRecording(false);
+      return;
+    }
 
     try {
-      if (isRecording) {
-        rec.stop();
-        // Fallback to force reset state if browser delayed
-        setTimeout(() => {
-          setIsRecording(false);
-        }, 150);
-      } else {
-        rec.start();
-      }
+      const rec = new SpeechRecognition();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.lang = 'id-ID';
+
+      rec.onstart = () => {
+        setIsRecording(true);
+      };
+
+      rec.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setInput(prev => prev + (prev ? ' ' : '') + transcript);
+      };
+
+      rec.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          toast.error('Gagal mengenali suara.');
+        }
+        setIsRecording(false);
+      };
+
+      rec.onend = () => {
+        setIsRecording(false);
+      };
+
+      recognitionRef.current = rec;
+      rec.start();
     } catch (err) {
-      console.error('Speech recognition toggle error:', err);
-      try {
-        rec.abort();
-      } catch {}
+      console.error('Speech recognition start error:', err);
+      toast.error('Gagal memulai perekaman suara.');
       setIsRecording(false);
     }
   };

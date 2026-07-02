@@ -165,3 +165,27 @@ input[type='number'] {
   background: linear-gradient(90deg, rgba(99, 102, 241, 0.7), rgba(168, 85, 247, 0.7));
   box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
 }
+
+/* Custom styling for PTW Weekly Chart to avoid oklab/oklch color parse issue in html2canvas */
+.ptw-weekly-chart-container {
+  background-color: #0f172a !important;
+  border: 1px solid #334155 !important;
+}
+
+.ptw-weekly-chart-title {
+  color: #ffffff !important;
+}
+
+.ptw-weekly-chart-desc {
+  color: #94a3b8 !important;
+}
+
+#ptw-weekly-chart-raw {
+  background-color: #0f172a !important;
+}
+
+#ptw-weekly-chart-raw,
+#ptw-weekly-chart-raw * {
+  color: #94a3b8 !important;
+  border-color: #334155 !important;
+}

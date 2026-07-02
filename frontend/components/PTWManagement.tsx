@@ -14,6 +14,14 @@ import {
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import html2canvas from 'html2canvas';
+import { 
+  exportPTWListToExcel, 
+  exportPTWListToPDF, 
+  exportPTWWeeklyReportToExcel, 
+  exportPTWWeeklyReportToPDF 
+} from '@/utils/ptwExport';
 
 const CHUNK_SIZE = 524286; // ~512KB per chunk
 
@@ -53,6 +61,10 @@ interface QueuedPTWItem {
 export function PTWManagement() {
   const { user, userRole } = useAuth();
   const isAdmin = userRole === 'admin';
+  const [activeSubTab, setActiveSubTab] = useState<'list' | 'weekly'>('list');
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedWeek, setSelectedWeek] = useState<number>(1);
   const [records, setRecords] = useState<PTWRecord[]>([]);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [isDeleteCategoryModalOpen, setIsDeleteCategoryModalOpen] = useState(false);
@@ -994,6 +1006,92 @@ export function PTWManagement() {
     }
   }, [searchTerm, filteredRecords]);
 
+  // Helper to split month into 4 weeks
+  const getWeekRanges = (year: number, month: number) => {
+    const lastDay = new Date(year, month, 0).getDate();
+    const formatIsoDate = (day: number) => {
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    };
+    const monthNames = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    const monthLabel = monthNames[month - 1];
+    return [
+      { weekNum: 1, startStr: formatIsoDate(1), endStr: formatIsoDate(7), rangeLabel: `01 - 07 ${monthLabel} ${year}` },
+      { weekNum: 2, startStr: formatIsoDate(8), endStr: formatIsoDate(14), rangeLabel: `08 - 14 ${monthLabel} ${year}` },
+      { weekNum: 3, startStr: formatIsoDate(15), endStr: formatIsoDate(21), rangeLabel: `15 - 21 ${monthLabel} ${year}` },
+      { weekNum: 4, startStr: formatIsoDate(22), endStr: formatIsoDate(lastDay), rangeLabel: `22 - ${String(lastDay).padStart(2, '0')} ${monthLabel} ${year}` },
+    ];
+  };
+
+  const weekRanges = getWeekRanges(selectedYear, selectedMonth);
+
+  const weeklyData = weekRanges.map(week => {
+    const activeRecords = records.filter(r => {
+      if (!r.startDate || !r.endDate) return false;
+      return r.startDate <= week.endStr && r.endDate >= week.startStr;
+    });
+
+    const openRecords = activeRecords.filter(r => !r.closingFileName);
+    const closedRecords = activeRecords.filter(r => !!r.closingFileName);
+
+    return {
+      weekNum: week.weekNum,
+      dateRange: week.rangeLabel,
+      openCount: openRecords.length,
+      closedCount: closedRecords.length,
+      totalCount: activeRecords.length,
+      records: activeRecords
+    };
+  });
+
+  const chartData = weeklyData.map(wd => ({
+    name: `Minggu ${wd.weekNum}`,
+    'Open (Aktif)': wd.openCount,
+    'Closed (Selesai)': wd.closedCount,
+    'Total Aktif': wd.totalCount,
+  }));
+
+  const handleExportPdfReport = async () => {
+    const toastId = toast.loading('Menyiapkan grafik untuk PDF...');
+    try {
+      const chartEl = document.getElementById('ptw-weekly-chart-raw');
+      let chartBase64 = '';
+      if (chartEl) {
+        const canvas = await html2canvas(chartEl, {
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#0f172a', // Slate-900 matching dashboard dark background
+          scale: 2,
+          logging: false,
+        });
+        chartBase64 = canvas.toDataURL('image/png');
+      }
+      toast.dismiss(toastId);
+
+      const monthNames = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+      ];
+      const monthLabel = `${monthNames[selectedMonth - 1]} ${selectedYear}`;
+
+      await exportPTWWeeklyReportToPDF(monthLabel, weeklyData, chartBase64);
+    } catch (err) {
+      console.error('Pdf export failed:', err);
+      toast.error('Gagal mengekspor laporan ke PDF');
+      toast.dismiss(toastId);
+    }
+  };
+
+  const handleExportExcelReport = async () => {
+    const monthNames = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    const monthLabel = `${monthNames[selectedMonth - 1]} ${selectedYear}`;
+    await exportPTWWeeklyReportToExcel(monthLabel, weeklyData);
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
@@ -1024,7 +1122,34 @@ export function PTWManagement() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      {isAdmin && (
+        <div className="flex gap-2 mb-6 bg-slate-900/30 p-1.5 rounded-2xl border border-slate-800/80 w-fit">
+          <button
+            onClick={() => setActiveSubTab('list')}
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+              activeSubTab === 'list'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/10'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+            }`}
+          >
+            Daftar PTW
+          </button>
+          <button
+            onClick={() => setActiveSubTab('weekly')}
+            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+              activeSubTab === 'weekly'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/10'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+            }`}
+          >
+            Laporan Mingguan (Admin)
+          </button>
+        </div>
+      )}
+
+      {activeSubTab === 'list' && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl p-5 border border-slate-700/50 flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
             <Hash className="w-6 h-6 text-blue-400" />
@@ -1070,6 +1195,25 @@ export function PTWManagement() {
         </div>
       ) : (
         <div className="space-y-6">
+          <div className="flex justify-between items-center bg-slate-900/20 px-6 py-4 rounded-2xl border border-slate-800/80">
+            <h2 className="text-sm font-bold text-slate-300">Daftar Dokumen PTW</h2>
+            <div className="flex gap-2">
+              <button
+                onClick={() => exportPTWListToExcel(filteredRecords)}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-xl border border-slate-700/50 text-xs font-bold transition shadow-lg cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                Export Excel
+              </button>
+              <button
+                onClick={() => exportPTWListToPDF(filteredRecords)}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-red-400 rounded-xl border border-slate-700/50 text-xs font-bold transition shadow-lg cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                Export PDF
+              </button>
+            </div>
+          </div>
           {Object.keys(groupedRecords).sort().map((code) => {
             const groupRecords = groupedRecords[code];
             const isExpanded = !!expandedGroups[code];
@@ -1317,6 +1461,222 @@ export function PTWManagement() {
               </div>
             );
           })}
+        </div>
+      )}
+        </>
+      )}
+
+      {activeSubTab === 'weekly' && (
+        <div className="space-y-8 animate-fadeIn">
+          {/* Header Panel with Dropdowns and Export Buttons */}
+          <div className="bg-slate-900/40 backdrop-blur-xl rounded-3xl p-6 mb-2 border border-slate-700/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2 bg-slate-800/40 px-4 py-2.5 rounded-2xl border border-slate-700/30">
+                <Calendar className="w-5 h-5 text-indigo-400" />
+                <span className="text-sm font-bold text-white">Filter Periode:</span>
+              </div>
+              
+              <div className="flex gap-2">
+                <select
+                  title="Pilih Bulan"
+                  value={selectedMonth}
+                  onChange={(e) => {
+                    setSelectedMonth(parseInt(e.target.value));
+                    setSelectedWeek(1); // Reset to week 1 when month changes
+                  }}
+                  className="bg-slate-800/60 border border-slate-700/50 rounded-2xl px-4 py-2.5 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
+                >
+                  <option value={1}>Januari</option>
+                  <option value={2}>Februari</option>
+                  <option value={3}>Maret</option>
+                  <option value={4}>April</option>
+                  <option value={5}>Mei</option>
+                  <option value={6}>Juni</option>
+                  <option value={7}>Juli</option>
+                  <option value={8}>Agustus</option>
+                  <option value={9}>September</option>
+                  <option value={10}>Oktober</option>
+                  <option value={11}>November</option>
+                  <option value={12}>Desember</option>
+                </select>
+
+                <select
+                  title="Pilih Tahun"
+                  value={selectedYear}
+                  onChange={(e) => {
+                    setSelectedYear(parseInt(e.target.value));
+                    setSelectedWeek(1);
+                  }}
+                  className="bg-slate-800/60 border border-slate-700/50 rounded-2xl px-4 py-2.5 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
+                >
+                  <option value={2025}>2025</option>
+                  <option value={2026}>2026</option>
+                  <option value={2027}>2027</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button
+                onClick={handleExportExcelReport}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-2xl border border-slate-700/50 text-xs font-bold transition shadow-lg cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                Excel Laporan
+              </button>
+              <button
+                onClick={handleExportPdfReport}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-red-400 rounded-2xl border border-slate-700/50 text-xs font-bold transition shadow-lg cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                PDF Laporan
+              </button>
+            </div>
+          </div>
+
+          {/* 4 Weeks Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {weeklyData.map((wd) => {
+              const isSelected = selectedWeek === wd.weekNum;
+              return (
+                <motion.div
+                  key={wd.weekNum}
+                  whileHover={{ y: -3, scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setSelectedWeek(wd.weekNum)}
+                  className={`p-5 rounded-3xl backdrop-blur-xl border cursor-pointer transition-all duration-300 ${
+                    isSelected
+                      ? 'bg-gradient-to-br from-indigo-900/40 to-blue-900/30 border-indigo-500/80 shadow-lg shadow-indigo-500/10'
+                      : 'bg-slate-900/40 border-slate-700/50 hover:border-slate-600/80'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                      isSelected 
+                        ? 'bg-indigo-500/20 text-indigo-300' 
+                        : 'bg-slate-800 text-slate-400'
+                    }`}>
+                      Minggu {wd.weekNum}
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-bold">{wd.dateRange.split(' ')[0]} - {wd.dateRange.split(' ')[2]}</span>
+                  </div>
+                  
+                  <div className="mt-4">
+                    <p className="text-3xl font-extrabold text-white tracking-tight">{wd.totalCount}</p>
+                    <p className="text-slate-400 text-xs mt-1 uppercase tracking-wider font-semibold">Total PTW Aktif</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-800/85 text-[11px]">
+                    <div>
+                      <span className="text-emerald-400 font-bold block">{wd.openCount}</span>
+                      <span className="text-slate-500 block uppercase font-bold text-[9px] tracking-tight">Open</span>
+                    </div>
+                    <div>
+                      <span className="text-red-400 font-bold block">{wd.closedCount}</span>
+                      <span className="text-slate-500 block uppercase font-bold text-[9px] tracking-tight">Closed</span>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Chart and Detail Table Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Chart Column (Span 5) */}
+            <div 
+              className="lg:col-span-5 ptw-weekly-chart-container backdrop-blur-xl rounded-3xl p-6 shadow-xl flex flex-col justify-between min-h-[350px]"
+            >
+              <div>
+                <h3 className="text-lg font-bold mb-1 ptw-weekly-chart-title">Visualisasi Tren Validitas</h3>
+                <p className="text-xs mb-6 ptw-weekly-chart-desc">Tingkat kepatuhan open & closed PTW mingguan</p>
+              </div>
+              
+              <div id="ptw-weekly-chart-raw" className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} />
+                    <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} />
+                    <YAxis stroke="#64748b" fontSize={10} tickLine={false} allowDecimals={false} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
+                      labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                    />
+                    <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                    <Bar dataKey="Open (Aktif)" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} />
+                    <Bar dataKey="Closed (Selesai)" fill="#f97316" radius={[4, 4, 0, 0]} barSize={20} />
+                    <Line type="monotone" dataKey="Total Aktif" stroke="#a78bfa" strokeWidth={3} dot={{ fill: '#a78bfa', r: 4 }} />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Selected Week Table (Span 7) */}
+            <div className="lg:col-span-7 bg-slate-900/40 backdrop-blur-xl rounded-3xl p-6 border border-slate-700/50 shadow-xl flex flex-col justify-between">
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h3 className="text-lg font-bold text-white uppercase">Detail Minggu {selectedWeek}</h3>
+                    <p className="text-slate-400 text-xs">{weeklyData[selectedWeek - 1].dateRange}</p>
+                  </div>
+                  <span className="px-3.5 py-1.5 bg-indigo-500/15 border border-indigo-500/20 text-indigo-400 rounded-xl text-xs font-bold shadow-md shadow-indigo-500/5">
+                    {weeklyData[selectedWeek - 1].totalCount} PTW Aktif
+                  </span>
+                </div>
+
+                {weeklyData[selectedWeek - 1].records.length === 0 ? (
+                  <div className="py-16 text-center">
+                    <AlertCircle className="w-10 h-10 text-slate-600 mx-auto mb-2" />
+                    <p className="text-slate-400 text-sm italic">Tidak ada PTW aktif pada minggu ini</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/20 max-h-72 overflow-y-auto scrollbar-thin">
+                    <table className="w-full text-left border-collapse">
+                      <thead className="bg-slate-800/50 sticky top-0 z-10 border-b border-slate-850">
+                        <tr>
+                          <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">No.</th>
+                          <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Nomor PTW</th>
+                          <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Nama Maintenance</th>
+                          <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Masa Berlaku</th>
+                          <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/40">
+                        {weeklyData[selectedWeek - 1].records.map((rec, idx) => {
+                          const isClosed = !!rec.closingFileName;
+                          return (
+                            <tr key={rec.id} className="hover:bg-slate-800/10 transition">
+                              <td className="px-4 py-3 text-xs font-medium text-slate-400">{idx + 1}</td>
+                              <td className="px-4 py-3 text-xs font-bold text-white whitespace-nowrap">
+                                <span className="bg-slate-800 px-2 py-1 rounded-lg border border-slate-700/50">
+                                  {rec.ptwNumber}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-xs text-slate-300 max-w-[180px] truncate" title={rec.notes}>
+                                {rec.notes || '-'}
+                              </td>
+                              <td className="px-4 py-3 text-[11px] text-slate-400 whitespace-nowrap">
+                                {new Date(rec.startDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} - {new Date(rec.endDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                  isClosed 
+                                    ? 'bg-red-500/10 text-red-400 border-red-500/20' 
+                                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                }`}>
+                                  {isClosed ? 'CLOSED' : 'AKTIF'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
