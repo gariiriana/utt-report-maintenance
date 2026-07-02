@@ -762,7 +762,7 @@ export async function exportPTWWeeklyReportToPDF(
     // Draw chart if provided
     if (chartImageBase64) {
       const chartWidth = contentW;
-      const chartHeight = 85;
+      const chartHeight = 90;
       const chartY = finalYOnPage1 + 8;
       
       doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor('#1e293b');
@@ -770,7 +770,7 @@ export async function exportPTWWeeklyReportToPDF(
 
       doc.setDrawColor('#cbd5e1');
       doc.setLineWidth(0.2);
-      doc.roundedRect(margin, chartY + 2.5, chartWidth, chartHeight + 4, 1.5, 1.5, 'D');
+      doc.roundedRect(margin, chartY + 2.5, chartWidth, chartHeight + 8, 1.5, 1.5, 'D');
 
       doc.addImage(
         chartImageBase64, 

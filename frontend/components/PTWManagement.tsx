@@ -1599,7 +1599,7 @@ export function PTWManagement() {
               
               <div id="ptw-weekly-chart-raw" className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={chartData} margin={{ top: 20, right: 10, left: -25, bottom: 0 }}>
+                  <ComposedChart data={chartData} margin={{ top: 20, right: 10, left: -25, bottom: 15 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} />
                     <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} />
                     <YAxis stroke="#64748b" fontSize={10} tickLine={false} allowDecimals={false} />
@@ -1608,13 +1608,13 @@ export function PTWManagement() {
                       labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
                     />
                     <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                    <Line type="monotone" dataKey="Total PTW" stroke="#a78bfa" strokeWidth={3} dot={{ fill: '#a78bfa', r: 4 }} />
                     <Bar dataKey="Open (Aktif)" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20}>
-                      <LabelList dataKey="Open (Aktif)" position="top" style={{ fill: '#ffffff', fontSize: 9, fontWeight: 'bold' }} />
+                      <LabelList dataKey="Open (Aktif)" position="top" offset={10} style={{ fill: '#ffffff', fontSize: 9, fontWeight: 'bold' }} />
                     </Bar>
                     <Bar dataKey="Closed (Selesai)" fill="#f97316" radius={[4, 4, 0, 0]} barSize={20}>
-                      <LabelList dataKey="Closed (Selesai)" position="top" style={{ fill: '#ffffff', fontSize: 9, fontWeight: 'bold' }} />
+                      <LabelList dataKey="Closed (Selesai)" position="top" offset={10} style={{ fill: '#ffffff', fontSize: 9, fontWeight: 'bold' }} />
                     </Bar>
-                    <Line type="monotone" dataKey="Total PTW" stroke="#a78bfa" strokeWidth={3} dot={{ fill: '#a78bfa', r: 4 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
