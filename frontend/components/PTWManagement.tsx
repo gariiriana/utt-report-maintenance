@@ -1032,20 +1032,22 @@ export function PTWManagement() {
     const monthLabel = monthNames[month - 1];
 
     const ranges = [
-      { weekNum: 1, startStr: formatDate(new Date(year, month - 1, 1)), endStr: formatDate(new Date(year, month - 1, 7)), rangeLabel: `01 - 07 ${monthLabel} ${year}` },
-      { weekNum: 2, startStr: formatDate(new Date(year, month - 1, 8)), endStr: formatDate(new Date(year, month - 1, 14)), rangeLabel: `08 - 14 ${monthLabel} ${year}` },
-      { weekNum: 3, startStr: formatDate(new Date(year, month - 1, 15)), endStr: formatDate(new Date(year, month - 1, 21)), rangeLabel: `15 - 21 ${monthLabel} ${year}` },
-      { weekNum: 4, startStr: formatDate(new Date(year, month - 1, 22)), endStr: formatDate(new Date(year, month - 1, 28)), rangeLabel: `22 - 28 ${monthLabel} ${year}` },
+      { weekNum: 1, startStr: formatDate(new Date(year, month - 1, 1)), endStr: formatDate(new Date(year, month - 1, 7)), rangeLabel: `01 - 07 ${monthLabel} ${year}`, shortRange: '01 - 07' },
+      { weekNum: 2, startStr: formatDate(new Date(year, month - 1, 8)), endStr: formatDate(new Date(year, month - 1, 14)), rangeLabel: `08 - 14 ${monthLabel} ${year}`, shortRange: '08 - 14' },
+      { weekNum: 3, startStr: formatDate(new Date(year, month - 1, 15)), endStr: formatDate(new Date(year, month - 1, 21)), rangeLabel: `15 - 21 ${monthLabel} ${year}`, shortRange: '15 - 21' },
+      { weekNum: 4, startStr: formatDate(new Date(year, month - 1, 22)), endStr: formatDate(new Date(year, month - 1, 28)), rangeLabel: `22 - 28 ${monthLabel} ${year}`, shortRange: '22 - 28' },
     ];
 
     if (lastDay > 28) {
       const startDate = new Date(year, month - 1, 29);
       const endDate = new Date(year, month - 1, 29 + 6);
+      const shortMonthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
       ranges.push({
         weekNum: 5,
         startStr: formatDate(startDate),
         endStr: formatDate(endDate),
-        rangeLabel: `${formatLabel(startDate)} - ${formatLabel(endDate)}`
+        rangeLabel: `${formatLabel(startDate)} - ${formatLabel(endDate)}`,
+        shortRange: `29 ${shortMonthNames[startDate.getMonth()]} - ${String(endDate.getDate()).padStart(2, '0')} ${shortMonthNames[endDate.getMonth()]}`
       });
     }
 
@@ -1073,6 +1075,7 @@ export function PTWManagement() {
     return {
       weekNum: week.weekNum,
       dateRange: week.rangeLabel,
+      shortRange: week.shortRange,
       openCount: openRecords.length,
       closedCount: closedRecords.length,
       totalCount: activeRecords.length,
@@ -1572,8 +1575,11 @@ export function PTWManagement() {
             </div>
           </div>
 
-          {/* 4 Weeks Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* 4 or 5 Weeks Cards Grid */}
+          <div className={weeklyData.length === 5 
+            ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4" 
+            : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+          }>
             {weeklyData.map((wd) => {
               const isSelected = selectedWeek === wd.weekNum;
               return (
@@ -1596,7 +1602,7 @@ export function PTWManagement() {
                     }`}>
                       Minggu {wd.weekNum}
                     </span>
-                    <span className="text-[10px] text-slate-500 font-bold">{wd.dateRange.split(' ')[0]} - {wd.dateRange.split(' ')[2]}</span>
+                    <span className="text-[10px] text-slate-500 font-bold">{wd.shortRange}</span>
                   </div>
                   
                   <div className="mt-4">
