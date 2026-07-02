@@ -13,8 +13,8 @@ import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
-  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer, LabelList
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
@@ -770,7 +770,7 @@ export function AbsenTBM() {
 
     // ─── Draw Daily Attendance Bar Chart ──────────────────────────
     let chartY = y + 35;
-    const chartCardH = 68; // Taller box
+    const chartCardH = 60; // Clean, modern height
     docPdf.setFillColor(248, 250, 252);
     docPdf.roundedRect(margin, chartY, contentW, chartCardH, 1.5, 1.5, 'F');
     docPdf.setDrawColor(226, 232, 240);
@@ -785,19 +785,11 @@ export function AbsenTBM() {
     const legendRightX = margin + contentW - 6;
     docPdf.setFontSize(7.5);
     docPdf.setFont('helvetica', 'normal');
-    
-    // Legend: Total Log (Purple Line + Dot)
-    docPdf.setDrawColor(167, 139, 250);
-    docPdf.setLineWidth(0.4);
-    docPdf.line(legendRightX - 85, chartY + 5.5, legendRightX - 79, chartY + 5.5);
-    docPdf.setFillColor(167, 139, 250);
-    docPdf.circle(legendRightX - 82, chartY + 5.5, 0.6, 'F');
-    docPdf.setTextColor(71, 85, 105);
-    docPdf.text('Total Log', legendRightX - 77, chartY + 6.5);
 
     // Legend: Hadir (Green)
     docPdf.setFillColor(16, 185, 129);
     docPdf.roundedRect(legendRightX - 54, chartY + 4, 3, 3, 0.5, 0.5, 'F');
+    docPdf.setTextColor(71, 85, 105);
     docPdf.text('Hadir', legendRightX - 49, chartY + 6.5);
 
     // Legend: Tidak Hadir (Red)
@@ -807,15 +799,15 @@ export function AbsenTBM() {
 
     const startX = margin + 12;
     const chartW = contentW - 18;
-    const chartH = 38; // Increased height
-    const startY = chartY + 48; // X-axis baseline
+    const chartH = 34; // Good visual balance
+    const startY = chartY + 44; // X-axis baseline
 
     const daysCount = stats.chartData.length;
     if (daysCount > 0) {
       let maxVal = 1;
       stats.chartData.forEach(d => {
-        const total = d.Hadir + d['Tidak Hadir'];
-        if (total > maxVal) maxVal = total;
+        if (d.Hadir > maxVal) maxVal = d.Hadir;
+        if (d['Tidak Hadir'] > maxVal) maxVal = d['Tidak Hadir'];
       });
 
       // Draw dynamic Y-axis scale and grid lines
@@ -849,12 +841,13 @@ export function AbsenTBM() {
       docPdf.line(startX, startY, startX, startY - chartH); // Y axis
 
       const colW = chartW / daysCount;
-      const gap = Math.max(0.4, colW * 0.15); // Gap between days
-      const innerGap = Math.max(0.2, colW * 0.05); // Gap between green/red bars
+      const gap = Math.max(0.4, colW * 0.2); // Gap between days (20% of column width)
+      const innerGap = Math.max(0.2, colW * 0.05); // Gap between bars of same day
       const totalBarArea = colW - gap;
-      const barW = Math.max(0.5, (totalBarArea - innerGap) / 2);
+      const barW = Math.max(0.6, (totalBarArea - innerGap) / 2);
 
-      const linePoints: { x: number; y: number; total: number }[] = [];
+      // Determine dynamic date printing interval to prevent overlaps on X-axis
+      const printInterval = Math.max(1, Math.ceil(daysCount / 10)); // Target max 10 ticks horizontally
 
       stats.chartData.forEach((day, idx) => {
         const colStartX = startX + idx * colW;
@@ -867,11 +860,6 @@ export function AbsenTBM() {
           docPdf.setFillColor(16, 185, 129);
           const rx = Math.min(0.5, barHeight / 2);
           docPdf.roundedRect(dxHadir, startY - barHeight, barW, barHeight, rx, rx, 'F');
-
-          // Numbers on top of the bar
-          docPdf.setFontSize(5);
-          docPdf.setTextColor(16, 185, 129);
-          docPdf.text(String(day.Hadir), dxHadir + barW / 2, startY - barHeight - 0.8, { align: 'center' });
         }
 
         // Tidak Hadir Bar (Red)
@@ -880,48 +868,21 @@ export function AbsenTBM() {
           docPdf.setFillColor(244, 63, 94);
           const rx = Math.min(0.5, barHeight / 2);
           docPdf.roundedRect(dxTidakHadir, startY - barHeight, barW, barHeight, rx, rx, 'F');
-
-          // Numbers on top of the bar
-          docPdf.setFontSize(5);
-          docPdf.setTextColor(244, 63, 94);
-          docPdf.text(String(day['Tidak Hadir']), dxTidakHadir + barW / 2, startY - barHeight - 0.8, { align: 'center' });
         }
 
-        // Collect point for total line chart
-        const total = day.Hadir + day['Tidak Hadir'];
-        const cx = colStartX + colW / 2;
-        const cy = startY - (total / maxVal) * chartH;
-        linePoints.push({ x: cx, y: cy, total });
-
-        // Label Tanggal (Rotated 45 degrees to prevent overlap)
-        docPdf.setTextColor(100, 116, 139);
-        docPdf.setFontSize(6);
-        try {
-          const parts = day.tanggal.split('-');
-          const dateLabel = parts.length >= 3 ? `${parts[2]}/${parts[1]}` : day.tanggal;
-          
-          // Center-ish of the daily column
-          const labelX = colStartX + colW / 2;
-          docPdf.text(dateLabel, labelX, startY + 4.5, { angle: -45 });
-        } catch(e) {}
-      });
-
-      // Draw the purple line chart connecting the total of each day
-      docPdf.setDrawColor(167, 139, 250); // Purple
-      docPdf.setLineWidth(0.45);
-      for (let i = 0; i < linePoints.length - 1; i++) {
-        docPdf.line(linePoints[i].x, linePoints[i].y, linePoints[i+1].x, linePoints[i+1].y);
-      }
-
-      // Draw the dots and total labels
-      linePoints.forEach(pt => {
-        docPdf.setFillColor(167, 139, 250);
-        docPdf.circle(pt.x, pt.y, 0.65, 'F');
-
-        // Write total count above the dot
-        docPdf.setFontSize(5.5);
-        docPdf.setTextColor(109, 40, 217); // Darker purple
-        docPdf.text(String(pt.total), pt.x, pt.y - 1.2, { align: 'center' });
+        // Label Tanggal (Skipped dynamically and displayed horizontally for maximum cleanliness)
+        if (idx % printInterval === 0) {
+          docPdf.setTextColor(100, 116, 139);
+          docPdf.setFontSize(6.5);
+          try {
+            const parts = day.tanggal.split('-');
+            const dateLabel = parts.length >= 3 ? `${parts[2]}/${parts[1]}` : day.tanggal;
+            
+            // Print horizontal label centered under the daily column
+            const labelX = colStartX + colW / 2;
+            docPdf.text(dateLabel, labelX, startY + 4, { align: 'center' });
+          } catch(e) {}
+        }
       });
     } else {
       // Draw axis lines even when empty
@@ -1405,23 +1366,18 @@ export function AbsenTBM() {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={stats.chartData} margin={{ top: 20, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={stats.chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                  <XAxis dataKey="tanggal" stroke="#94a3b8" fontSize={10} tickLine={false} />
+                  <XAxis dataKey="tanggal" stroke="#94a3b8" fontSize={9} tickLine={false} minTickGap={25} />
                   <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} allowDecimals={false} />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
                     labelStyle={{ color: '#fff', fontWeight: 'bold' }}
                   />
                   <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '11px', fontWeight: 'bold' }} />
-                  <Bar dataKey="Hadir" fill="#10b981" radius={[4, 4, 0, 0]}>
-                    <LabelList dataKey="Hadir" position="top" offset={5} style={{ fill: '#10b981', fontSize: 9, fontWeight: 'bold' }} />
-                  </Bar>
-                  <Bar dataKey="Tidak Hadir" fill="#f43f5e" radius={[4, 4, 0, 0]}>
-                    <LabelList dataKey="Tidak Hadir" position="top" offset={5} style={{ fill: '#f43f5e', fontSize: 9, fontWeight: 'bold' }} />
-                  </Bar>
-                  <Line type="monotone" dataKey="Total" name="Total Log" stroke="#a78bfa" strokeWidth={2} dot={{ fill: '#a78bfa', r: 3 }} />
-                </ComposedChart>
+                  <Bar dataKey="Hadir" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Tidak Hadir" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
             )}
           </div>
