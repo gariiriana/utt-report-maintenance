@@ -1427,7 +1427,7 @@ export function AbsenTBM() {
                                     : 'bg-transparent text-slate-500 border-slate-700 hover:text-slate-400'
                                 }`}
                               >
-                                ABSEN
+                                TIDAK HADIR
                               </button>
                             </div>
                           </td>
@@ -1841,7 +1841,7 @@ export function AbsenTBM() {
                                                 : 'bg-slate-800 border-slate-700 text-slate-500'
                                             }`}
                                           >
-                                            Absen
+                                            Tidak Hadir
                                           </button>
                                         </div>
                                       ) : (
