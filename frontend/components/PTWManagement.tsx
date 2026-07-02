@@ -1641,7 +1641,7 @@ export function PTWManagement() {
                 ) : (
                   <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/20 max-h-72 overflow-y-auto scrollbar-thin">
                     <table className="w-full text-left border-collapse">
-                      <thead className="bg-slate-800/50 sticky top-0 z-10 border-b border-slate-850">
+                      <thead className="bg-slate-900 sticky top-0 z-10 border-b border-slate-850">
                         <tr>
                           <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">No.</th>
                           <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Nomor PTW</th>
