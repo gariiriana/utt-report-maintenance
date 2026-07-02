@@ -1432,14 +1432,28 @@ export function AbsenTBM() {
                             </div>
                           </td>
                           <td className="px-3 py-3.5">
-                            <input
-                              type="text"
-                              value={item.remark}
-                              onChange={e => updateChecklistItem(index, 'remark', e.target.value)}
-                              placeholder="Tambahkan keterangan (sakit, izin, off)..."
-                              title="Keterangan"
-                              className="w-full bg-slate-800/40 border border-slate-700/50 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50 placeholder-slate-600"
-                            />
+                            <div className="flex items-center gap-1.5">
+                              {['Izin', 'Sakit', 'Mobile'].map((opt) => {
+                                const isChecked = item.remark === opt;
+                                return (
+                                  <button
+                                    type="button"
+                                    key={opt}
+                                    onClick={() => {
+                                      const newValue = isChecked ? '' : opt;
+                                      updateChecklistItem(index, 'remark', newValue);
+                                    }}
+                                    className={`px-2 py-1 rounded-lg border text-[9px] font-black transition-all cursor-pointer ${
+                                      isChecked
+                                        ? 'bg-violet-500/20 text-violet-400 border-violet-500/40 shadow-sm'
+                                        : 'bg-slate-800/40 text-slate-500 border-slate-700/50 hover:border-slate-600 hover:text-slate-400'
+                                    }`}
+                                  >
+                                    {opt.toUpperCase()}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </td>
                           {formCategory === 'Manual' && (
                             <td className="px-3 py-3.5 text-center">
@@ -1859,14 +1873,28 @@ export function AbsenTBM() {
                                     </td>
                                     <td className="px-4 py-3.5 text-slate-400 italic">
                                       {isEditing ? (
-                                        <input
-                                          type="text"
-                                          value={editedRemark}
-                                          onChange={e => setEditedRemark(e.target.value)}
-                                          title="Remark"
-                                          placeholder="Keterangan..."
-                                          className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-pink-500"
-                                        />
+                                        <div className="flex items-center gap-1.5">
+                                          {['Izin', 'Sakit', 'Mobile'].map((opt) => {
+                                            const isChecked = editedRemark === opt;
+                                            return (
+                                              <button
+                                                type="button"
+                                                key={opt}
+                                                onClick={() => {
+                                                  const newValue = isChecked ? '' : opt;
+                                                  setEditedRemark(newValue);
+                                                }}
+                                                className={`px-2 py-1 rounded-lg border text-[9px] font-black transition-all cursor-pointer ${
+                                                  isChecked
+                                                    ? 'bg-pink-500/20 text-pink-400 border-pink-500/40 shadow-sm'
+                                                    : 'bg-slate-800 text-slate-500 border-slate-700 hover:border-slate-600 hover:text-slate-450'
+                                                }`}
+                                              >
+                                                {opt.toUpperCase()}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
                                       ) : (
                                         rec.remark || '—'
                                       )}
