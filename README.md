@@ -2,6 +2,8 @@
 
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://reactjs.org/)
 [![Go](https://img.shields.io/badge/Go-1.23-00ADD8?style=flat-square&logo=go)](https://go.dev/)
+[![NVIDIA NIM](https://img.shields.io/badge/NVIDIA_NIM-AI_Agent-76B900?style=flat-square&logo=nvidia)](https://developer.nvidia.com/)
+[![Meta Llama](https://img.shields.io/badge/Meta_Llama_3-LLM-0460A9?style=flat-square&logo=meta)](https://meta.ai/)
 [![Firebase](https://img.shields.io/badge/Firebase-Cloud-FFCA28?style=flat-square&logo=firebase)](https://firebase.google.com/)
 [![Tailwind](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-007ACC?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
@@ -104,6 +106,7 @@
 | Technology | Purpose |
 | :--- | :--- |
 | **Go 1.23 (Golang)** | High-performance API server |
+| **NVIDIA NIM API** | Enterprise LLM Gateway & model orchestration |
 | **Firebase Admin SDK** | Server-side auth & Firestore access |
 | **Firebase Functions** | Deployment & serverless backend |
 
@@ -121,6 +124,14 @@
 ---
 
 ## 🚀 Features
+
+### 🤖 AI-Powered Assistant & Chat Copilot
+
+Sistem asisten AI interaktif tingkat korporat yang terintegrasi penuh untuk membantu teknisi data center:
+- **Interactive DC Chatbot** — Floating widget chat (`AIChatWidget.tsx`) dengan dukungan render markdown penuh, suggestion chip kontekstual, riwayat percakapan, dan fitur upload gambar.
+- **Multimodal Visual Analyzer** — Analisis visual cerdas panel listrik, grounding, dan thermal hotspot menggunakan model **`meta/llama-3.2-11b-vision-instruct`**.
+- **Telemetry Validator & Consolidator** — Pengenalan otomatis parameter teknis dan pembuatan remarks (dalam Bahasa Indonesia) menggunakan model penalaran tingkat tinggi **`z-ai/glm-5.1`**.
+- **Dynamic Load Balancing** — Algoritma *round-robin key pool* kustom pada backend Go (`ai_service.go`) untuk mengatasi pembatasan rate limit API NVIDIA.
 
 ### 📷 Smart Camera & Watermarking
 
@@ -144,11 +155,13 @@ Sistem pengambilan foto dokumentasi pintar yang menyematkan metadata teknis seca
 Sistem manajemen izin kerja terintegrasi untuk kontrol operasional yang aman:
 
 - **Strict Validation** — Kewajiban upload file PTW yang sudah ditandatangani oleh TDE.
+- **Week 5 Dynamic Intervals** — Pembagian per 7 hari untuk Minggu 1-4 (Tanggal 1-7, 8-14, 15-21, 22-28) dan pembuatan otomatis **Minggu 5** (Hari 29 hingga melintasi batas awal bulan berikutnya) agar semua data tercatat utuh.
+- **Professional PDF & Excel Report** — Layout PDF yang dioptimalkan (tanpa potongan teks legend / tumpang tindih lane garis chart) serta export Excel dinamis.
 - **Smart Sorting** — Pengurutan otomatis berdasarkan nomor urut (Sequence Number) untuk kemudahan pelacakan.
 - **Large Data Handling** — Optimalisasi untuk menangani ratusan data PTW dengan performa tinggi.
 - **Secure Attachments** — Sistem penyimpanan lampiran file (PDF/Image) berbasis Firebase Storage dengan integrasi Firestore.
-- **Smooth Navigation** — Fitur *Quick Scroll* (Top & Bottom) untuk navigasi cepat pada daftar data yang panjang.
-- **Data Integrity** — Proteksi penghapusan data dengan sistem konfirmasi ganda.
+- **Smooth Navigation & UI** — Fitur *Quick Scroll* (Top & Bottom) untuk navigasi cepat pada daftar data yang panjang serta sticky headers `opaque` agar teks tidak menumpuk saat di-scroll.
+- **Data Integrity** — Proteksi penghapusan data dengan sistem konfirmasi ganda dan auto-closed untuk izin yang melebihi masa berlaku.
 
 ### 🔧 Corrective Maintenance
 
@@ -429,6 +442,13 @@ Create `.env` for backend:
 ```env
 BACKEND_API_SECRET=your_secret_here
 FIREBASE_SERVICE_ACCOUNT={"type":"service_account",...}
+
+# NVIDIA NIM AI keys & model configuration
+NVIDIA_NIM_API_KEYS=your_key_1,your_key_2
+NVIDIA_NIM_BASE_URL=https://integrate.api.nvidia.com/v1/chat/completions
+NVIDIA_NIM_VISION_MODEL=meta/llama-3.2-11b-vision-instruct
+NVIDIA_NIM_REASONING_MODEL=z-ai/glm-5.1
+NVIDIA_NIM_CHAT_MODEL=meta/llama-3.1-8b-instruct
 ```
 
 ### Running Development Server
