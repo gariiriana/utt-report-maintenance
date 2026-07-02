@@ -133,6 +133,8 @@ export function AbsenTBM() {
     return new Date().toISOString().split('T')[0];
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeRightTab, setActiveRightTab] = useState<'chart' | 'list'>('chart');
+  const webChartCanvasRef = useRef<HTMLCanvasElement>(null);
 
   // Folder navigation state
   const [viewLevel, setViewLevel] = useState<'month' | 'date' | 'records'>('month');
@@ -405,6 +407,238 @@ export function AbsenTBM() {
 
     return { total, hadir, tidakHadir, rate, chartData, pieData, personStats };
   }, [filteredRecords, personnelList]);
+
+  // Draw web chart
+  useEffect(() => {
+    if (activeRightTab !== 'chart' || !webChartCanvasRef.current) return;
+    const canvas = webChartCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Clear previous drawing
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // ── LEFT SIDE: Overall Donut Chart ──
+    const donutCx = 220;
+    const donutCy = 180;
+    const donutR = 75;
+    const donutInner = 48;
+
+    // Title
+    ctx.font = 'bold 20px Arial';
+    ctx.fillStyle = '#ffffff'; // White text
+    ctx.textAlign = 'center';
+    ctx.fillText('GRAFIK KESELURUHAN', donutCx, 45);
+
+    const totalCount = stats.total;
+    const hadirCount = stats.hadir;
+    const tidakHadirCount = stats.tidakHadir;
+    const pct = totalCount > 0 ? hadirCount / totalCount : 0;
+    const angle = pct * Math.PI * 2;
+    const pctDisplay = totalCount > 0 ? Math.round(pct * 100) : 0;
+
+    // Hadir slice (emerald)
+    ctx.beginPath();
+    ctx.moveTo(donutCx, donutCy);
+    ctx.arc(donutCx, donutCy, donutR, -Math.PI / 2, -Math.PI / 2 + angle);
+    ctx.closePath();
+    ctx.fillStyle = '#10b981';
+    ctx.fill();
+
+    // Tidak Hadir slice (rose)
+    if (tidakHadirCount > 0) {
+      ctx.beginPath();
+      ctx.moveTo(donutCx, donutCy);
+      ctx.arc(donutCx, donutCy, donutR, -Math.PI / 2 + angle, -Math.PI / 2 + Math.PI * 2);
+      ctx.closePath();
+      ctx.fillStyle = '#f43f5e';
+      ctx.fill();
+    }
+
+    // Donut hole (matches dark background of the card: #0f172a / #030712)
+    ctx.beginPath();
+    ctx.arc(donutCx, donutCy, donutInner, 0, Math.PI * 2);
+    ctx.fillStyle = '#0f172a';
+    ctx.fill();
+
+    // Center %
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 30px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${pctDisplay}%`, donutCx, donutCy - 3);
+    ctx.font = '11px Arial';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('Kehadiran', donutCx, donutCy + 16);
+
+    // Legend below Donut
+    const legDonutY = donutCy + donutR + 15;
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#10b981';
+    ctx.fillText(`● Hadir: ${hadirCount}`, donutCx - 55, legDonutY);
+    ctx.fillStyle = '#f43f5e';
+    ctx.fillText(`● TH: ${tidakHadirCount}`, donutCx + 55, legDonutY);
+    ctx.font = '11px Arial';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText(`Total: ${totalCount} record`, donutCx, legDonutY + 15);
+
+
+    // ── RIGHT SIDE: Weekly Bar Chart ──
+    const leftMargin = 450;
+    const rightMargin = 40;
+    const topMargin = 75;
+    const bottomMargin = 50;
+    const chartW = canvas.width - leftMargin - rightMargin;
+    const chartH = canvas.height - topMargin - bottomMargin;
+
+    // Title
+    ctx.font = 'bold 20px Arial';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText('GRAFIK KEHADIRAN MINGGUAN', leftMargin + chartW / 2, 45);
+
+    // Generate weekly date ranges from startDate to endDate
+    const getWeeksInRange = (startStr: string, endStr: string) => {
+      const list: Array<{ start: Date; end: Date; label: string }> = [];
+      const current = new Date(startStr);
+      const limit = new Date(endStr);
+      let weekNum = 1;
+      
+      while (current <= limit) {
+        const wStart = new Date(current);
+        const wEnd = new Date(current);
+        wEnd.setDate(wEnd.getDate() + 6);
+        if (wEnd > limit) {
+          wEnd.setTime(limit.getTime());
+        }
+        
+        const formatDateShort = (d: Date) => {
+          const dd = String(d.getDate()).padStart(2, '0');
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          return `${dd}/${mm}`;
+        };
+        
+        list.push({
+          start: wStart,
+          end: wEnd,
+          label: `Mgg ${weekNum} (${formatDateShort(wStart)}-${formatDateShort(wEnd)})`
+        });
+        
+        current.setDate(current.getDate() + 7);
+        weekNum++;
+      }
+      return list;
+    };
+
+    const weeks = getWeeksInRange(startDate, endDate);
+    
+    // Group records into those weeks
+    const weeklyData = weeks.map(w => {
+      const recs = filteredRecords.filter(r => {
+        const d = new Date(r.tanggal);
+        d.setHours(0, 0, 0, 0);
+        const startNorm = new Date(w.start);
+        startNorm.setHours(0, 0, 0, 0);
+        const endNorm = new Date(w.end);
+        endNorm.setHours(0, 0, 0, 0);
+        return d >= startNorm && d <= endNorm;
+      });
+      const hadir = recs.filter(r => r.kehadiran === 'Hadir').length;
+      const tidakHadir = recs.length - hadir;
+      return {
+        label: w.label,
+        hadir,
+        tidakHadir
+      };
+    });
+
+    // Find max value to determine scale
+    const maxVal = Math.max(...weeklyData.map(d => Math.max(d.hadir, d.tidakHadir)), 5);
+    const yScale = chartH / (maxVal * 1.18);
+
+    // Draw Y grid lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)'; // subtle white grid lines
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const gridY = topMargin + (chartH / 4) * i;
+      ctx.beginPath();
+      ctx.moveTo(leftMargin, gridY);
+      ctx.lineTo(leftMargin + chartW, gridY);
+      ctx.stroke();
+      
+      const val = Math.round(maxVal - (maxVal / 4) * i);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '11px Arial';
+      ctx.textAlign = 'right';
+      ctx.fillText(String(val), leftMargin - 10, gridY + 4);
+    }
+
+    // Draw X base line
+    ctx.strokeStyle = '#475569';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(leftMargin, topMargin + chartH);
+    ctx.lineTo(leftMargin + chartW, topMargin + chartH);
+    ctx.stroke();
+
+    const itemW = chartW / weeklyData.length;
+    const barW = Math.min(30, (itemW * 0.65) / 2);
+
+    weeklyData.forEach((w, idx) => {
+      const groupCenterX = leftMargin + (idx + 0.5) * itemW;
+      const barHadirX = groupCenterX - barW - 3;
+      const barThX = groupCenterX + 3;
+      const yZero = topMargin + chartH;
+
+      const hHadir = w.hadir * yScale;
+      const hTh = w.tidakHadir * yScale;
+
+      // Hadir bar
+      if (hHadir > 0) {
+        ctx.fillStyle = '#10b981';
+        ctx.fillRect(barHadirX, yZero - hHadir, barW, hHadir);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(w.hadir), barHadirX + barW / 2, yZero - hHadir - 6);
+      } else {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('0', barHadirX + barW / 2, yZero - 6);
+      }
+
+      // Tidak Hadir bar
+      if (hTh > 0) {
+        ctx.fillStyle = '#f43f5e';
+        ctx.fillRect(barThX, yZero - hTh, barW, hTh);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(w.tidakHadir), barThX + barW / 2, yZero - hTh - 6);
+      } else {
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('0', barThX + barW / 2, yZero - 6);
+      }
+
+      // X label
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = 'bold 11px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(w.label, groupCenterX, yZero + 20);
+    });
+
+    // Divider line between donut & bar chart
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(400, 40);
+    ctx.lineTo(400, canvas.height - 20);
+    ctx.stroke();
+  }, [activeRightTab, filteredRecords, startDate, endDate, stats]);
 
   const progressRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -1348,9 +1582,6 @@ export function AbsenTBM() {
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-gradient-to-br from-pink-500 to-rose-600 rounded-xl shadow-lg shadow-pink-500/20">
-              <Calendar className="w-6 h-6 text-white" />
-            </div>
             <div>
               <h1 className="text-xl font-bold text-white">Absensi Checklist & Grafik TBM</h1>
               <p className="text-sm text-slate-400">Kelola dan analisis data absensi TBM secara real-time</p>
@@ -1590,46 +1821,82 @@ export function AbsenTBM() {
           </div>
         </div>
 
-        {/* Right Side: Personnel Attendance Rates */}
-        <div className="lg:col-span-2 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 flex flex-col justify-start gap-4 min-h-[300px]">
-          <div>
+        {/* Right Side: Personnel Attendance Rates or Charts */}
+        <div className="lg:col-span-2 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 flex flex-col justify-start gap-4 min-h-[380px]">
+          <div className="flex items-center justify-between border-b border-white/5 pb-3">
             <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <span className="w-2 h-2 bg-pink-500 rounded-full shadow-lg shadow-pink-500" />
-              Rasio Kehadiran per Personil
+              Performa & Rasio Kehadiran
             </h2>
+            <div className="flex bg-slate-800/40 p-0.5 rounded-lg border border-slate-700/50">
+              <button
+                onClick={() => setActiveRightTab('chart')}
+                className={`px-3 py-1 text-xs font-bold rounded-md transition duration-200 ${
+                  activeRightTab === 'chart'
+                    ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Grafik
+              </button>
+              <button
+                onClick={() => setActiveRightTab('list')}
+                className={`px-3 py-1 text-xs font-bold rounded-md transition duration-200 ${
+                  activeRightTab === 'list'
+                    ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Rasio Personil
+              </button>
+            </div>
           </div>
-          <div className="flex-1 w-full max-h-[260px] overflow-y-auto pr-1 space-y-3.5 custom-scrollbar">
-            {stats.personStats.length === 0 ? (
-              <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 text-sm py-12">
-                <Calendar className="w-10 h-10 mb-2 opacity-30" />
-                Belum ada data absensi.
+
+          <div className="flex-1 w-full flex items-center justify-center">
+            {activeRightTab === 'chart' ? (
+              <div className="w-full flex justify-center items-center py-2">
+                <canvas
+                  ref={webChartCanvasRef}
+                  width={1200}
+                  height={340}
+                  className="w-full max-w-[850px] h-auto object-contain"
+                />
               </div>
             ) : (
-              stats.personStats.map((person, idx) => (
-                <div key={idx} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-350">
-                    <div className="flex items-center gap-2 truncate max-w-[70%]">
-                      <span className="text-slate-500 font-mono text-[9px]">{idx + 1}.</span>
-                      <span className="truncate text-white">{person.nama}</span>
-                      <span className="text-[9px] font-normal text-slate-500 truncate">({person.jabatan} • {person.category})</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] font-normal text-slate-500">({person.hadir}/{person.total})</span>
-                      <span className={person.rate >= 80 ? 'text-emerald-400' : person.rate >= 50 ? 'text-amber-400' : 'text-rose-400'}>
-                        {person.rate}%
-                      </span>
-                    </div>
+              <div className="w-full max-h-[260px] overflow-y-auto pr-1 space-y-3.5 custom-scrollbar">
+                {stats.personStats.length === 0 ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 text-sm py-12">
+                    <Calendar className="w-10 h-10 mb-2 opacity-30" />
+                    Belum ada data absensi.
                   </div>
-                  <div className="w-full bg-slate-800/60 rounded-full h-2 overflow-hidden border border-slate-700/30">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        person.rate >= 80 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : person.rate >= 50 ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 'bg-gradient-to-r from-rose-500 to-rose-400'
-                      }`}
-                      style={{ width: `${person.rate}%` }}
-                    />
-                  </div>
-                </div>
-              ))
+                ) : (
+                  stats.personStats.map((person, idx) => (
+                    <div key={idx} className="space-y-1.5 w-full">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-300">
+                        <div className="flex items-center gap-2 truncate max-w-[70%]">
+                          <span className="text-slate-500 font-mono text-[9px]">{idx + 1}.</span>
+                          <span className="truncate text-white">{person.nama}</span>
+                          <span className="text-[9px] font-normal text-slate-500 truncate">({person.jabatan})</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-normal text-slate-500">({person.hadir}/{person.total})</span>
+                          <span className={person.rate >= 80 ? 'text-emerald-400' : person.rate >= 50 ? 'text-amber-400' : 'text-rose-400'}>
+                            {person.rate}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-slate-800/60 rounded-full h-2 overflow-hidden border border-slate-700/30">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            person.rate >= 80 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : person.rate >= 50 ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 'bg-gradient-to-r from-rose-500 to-rose-400'
+                          }`}
+                          style={{ width: `${person.rate}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             )}
           </div>
         </div>
