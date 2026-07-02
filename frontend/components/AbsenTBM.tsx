@@ -1,16 +1,17 @@
 import { useState, useEffect, useMemo, Fragment, useRef } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Calendar, FileText, FileSpreadsheet,
   Plus, Trash2, Search, RefreshCw,
-  TrendingUp, CheckCircle, XCircle
+  TrendingUp, CheckCircle, XCircle,
+  Folder, ChevronLeft, Pencil, Camera, Upload, X, UserPlus, Save
 } from 'lucide-react';
-import { collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, where, updateDoc } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer
@@ -26,6 +27,22 @@ interface AttendanceRecord {
   kehadiran: 'Hadir' | 'Tidak Hadir';
   jabatan: string;
   remark: string;
+  category?: string;
+}
+
+interface Personnel {
+  id: string;
+  nama: string;
+  jabatan: string;
+  category: string;
+}
+
+interface DocumentationRecord {
+  id: string;
+  tanggal: string; // YYYY-MM-DD
+  isDocumentation: true;
+  photos: string[]; // array of base64 compressed photos
+  category?: string;
 }
 
 const TBM_LISTS: Record<'UTT Daily' | 'UTT Mobile' | 'DME', Array<{ nama: string; jabatan: string }>> = {
@@ -79,13 +96,39 @@ const TBM_LISTS: Record<'UTT Daily' | 'UTT Mobile' | 'DME', Array<{ nama: string
   ]
 };
 
+const getIndonesianMonthYear = (dateStr: string) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length < 2) return dateStr;
+  const monthNames = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+  const monthIdx = parseInt(parts[1], 10) - 1;
+  if (monthIdx < 0 || monthIdx > 11) return dateStr;
+  return `${monthNames[monthIdx]} ${parts[0]}`;
+};
+
+const formatIndonesianDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length < 3) return dateStr;
+  const monthNames = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  ];
+  const monthIdx = parseInt(parts[1], 10) - 1;
+  if (monthIdx < 0 || monthIdx > 11) return dateStr;
+  return `${parts[2]} ${monthNames[monthIdx]} ${parts[0]}`;
+};
+
 export function AbsenTBM() {
   const [allRecords, setAllRecords] = useState<AttendanceRecord[]>([]);
+  const [docRecords, setDocRecords] = useState<DocumentationRecord[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Filters
   const [startDate, setStartDate] = useState<string>(() => {
-    // Default to first day of current month
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
   });
@@ -94,10 +137,36 @@ export function AbsenTBM() {
   });
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Folder navigation state
+  const [viewLevel, setViewLevel] = useState<'month' | 'date' | 'records'>('month');
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+
+  // Date delete confirmation modal state
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [dateToDelete, setDateToDelete] = useState<string | null>(null);
+
+  // Dynamic Personnel state
+  const [personnelList, setPersonnelList] = useState<Personnel[]>([]);
+  const [personnelLoading, setPersonnelLoading] = useState(true);
+  const [isPersonnelPanelOpen, setIsPersonnelPanelOpen] = useState(false);
+  const [newPersonName, setNewPersonName] = useState('');
+  const [newPersonJabatan, setNewPersonJabatan] = useState('');
+  const [newPersonCategory, setNewPersonCategory] = useState<'UTT Daily' | 'UTT Mobile' | 'DME'>('UTT Daily');
+
   // Form State
   const [formDate, setFormDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [formCategory, setFormCategory] = useState<'Semua' | 'UTT Daily' | 'UTT Mobile' | 'DME' | 'Manual'>('Semua');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionPhotos, setSubmissionPhotos] = useState<string[]>([]);
+  const [isCompressing, setIsCompressing] = useState(false);
+
+  // Inline edit state for logs
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
+  const [editedNama, setEditedNama] = useState('');
+  const [editedJabatan, setEditedJabatan] = useState('');
+  const [editedKehadiran, setEditedKehadiran] = useState<'Hadir' | 'Tidak Hadir'>('Hadir');
+  const [editedRemark, setEditedRemark] = useState('');
 
   // Checklist state for the active team
   const [checklist, setChecklist] = useState<Array<{
@@ -108,15 +177,65 @@ export function AbsenTBM() {
     category?: string;
   }>>([]);
 
-  // Auto-fill checklist when Category changes
+  // Load personnel list from Firestore
   useEffect(() => {
+    const q = query(collection(db, 'absen_tbm'), where('isPersonnel', '==', true));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const list: Personnel[] = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        list.push({
+          id: docSnap.id,
+          nama: data.nama || '',
+          jabatan: data.jabatan || '',
+          category: data.category || '',
+        });
+      });
+      // Sort alphabetically by name
+      list.sort((a, b) => a.nama.localeCompare(b.nama));
+      setPersonnelList(list);
+      setPersonnelLoading(false);
+    }, (error) => {
+      console.error("Error loading personnel:", error);
+      setPersonnelLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Seeding initial personnel to Firestore if empty
+  useEffect(() => {
+    if (!personnelLoading && personnelList.length === 0) {
+      const seedData = async () => {
+        try {
+          const promises: Promise<any>[] = [];
+          Object.entries(TBM_LISTS).forEach(([category, members]) => {
+            members.forEach(m => {
+              promises.push(
+                addDoc(collection(db, 'absen_tbm'), {
+                  isPersonnel: true,
+                  nama: m.nama,
+                  jabatan: m.jabatan,
+                  category: category,
+                  createdAt: serverTimestamp()
+                })
+              );
+            });
+          });
+          await Promise.all(promises);
+          toast.success("Berhasil menginisialisasi personil TBM awal ke database!");
+        } catch (e: any) {
+          console.error("Failed to seed personnel:", e);
+        }
+      };
+      seedData();
+    }
+  }, [personnelLoading, personnelList.length]);
+
+  // Auto-fill checklist when Category or personnelList changes
+  useEffect(() => {
+    if (personnelLoading) return;
     if (formCategory === 'Semua') {
-      const combined = [
-        ...TBM_LISTS['UTT Daily'].map(e => ({ ...e, category: 'UTT Daily' })),
-        ...TBM_LISTS['UTT Mobile'].map(e => ({ ...e, category: 'UTT Mobile' })),
-        ...TBM_LISTS['DME'].map(e => ({ ...e, category: 'DME' }))
-      ];
-      setChecklist(combined.map(e => ({
+      setChecklist(personnelList.map(e => ({
         nama: e.nama,
         jabatan: e.jabatan,
         category: e.category,
@@ -124,11 +243,11 @@ export function AbsenTBM() {
         remark: ''
       })));
     } else if (formCategory !== 'Manual') {
-      const list = TBM_LISTS[formCategory];
-      setChecklist(list.map(e => ({
+      const filtered = personnelList.filter(e => e.category === formCategory);
+      setChecklist(filtered.map(e => ({
         nama: e.nama,
         jabatan: e.jabatan,
-        category: formCategory,
+        category: e.category,
         kehadiran: 'Hadir',
         remark: ''
       })));
@@ -141,8 +260,7 @@ export function AbsenTBM() {
         remark: ''
       }]);
     }
-  }, [formCategory]);
-
+  }, [formCategory, personnelList, personnelLoading]);
 
   const updateChecklistItem = (index: number, key: 'kehadiran' | 'remark' | 'nama' | 'jabatan', value: any) => {
     setChecklist(prev => prev.map((item, idx) => {
@@ -158,7 +276,8 @@ export function AbsenTBM() {
       nama: '',
       jabatan: '',
       kehadiran: 'Hadir',
-      remark: ''
+      remark: '',
+      category: 'Manual'
     }]);
   };
 
@@ -166,23 +285,41 @@ export function AbsenTBM() {
     setChecklist(prev => prev.filter((_, idx) => idx !== index));
   };
 
-  // Firestore Realtime Listener
+  // Firestore Realtime Listener for logs & documentation
   useEffect(() => {
-    const q = query(collection(db, 'absen_tbm'), orderBy('tanggal', 'desc'));
+    const q = query(collection(db, 'absen_tbm'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list: AttendanceRecord[] = [];
+      const records: AttendanceRecord[] = [];
+      const docs: DocumentationRecord[] = [];
       snapshot.forEach(docSnap => {
         const data = docSnap.data();
-        list.push({
-          id: docSnap.id,
-          tanggal: data.tanggal || '',
-          nama: data.nama || '',
-          kehadiran: data.kehadiran || 'Hadir',
-          jabatan: data.jabatan || '',
-          remark: data.remark || '',
-        });
+        if (data.isPersonnel) {
+          return; // Skip personnel definitions
+        }
+        if (data.isDocumentation) {
+          docs.push({
+            id: docSnap.id,
+            tanggal: data.tanggal || '',
+            isDocumentation: true,
+            photos: data.photos || [],
+            category: data.category || ''
+          });
+        } else {
+          records.push({
+            id: docSnap.id,
+            tanggal: data.tanggal || '',
+            nama: data.nama || '',
+            kehadiran: data.kehadiran || 'Hadir',
+            jabatan: data.jabatan || '',
+            remark: data.remark || '',
+            category: data.category || '',
+          });
+        }
       });
-      setAllRecords(list);
+      // Sort records by tanggal desc
+      records.sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+      setAllRecords(records);
+      setDocRecords(docs);
       setLoading(false);
     }, (error) => {
       console.error("Firestore listener failed:", error);
@@ -192,7 +329,7 @@ export function AbsenTBM() {
     return () => unsubscribe();
   }, []);
 
-  // Filtered Records
+  // Filtered Records for statistics / search
   const filteredRecords = useMemo(() => {
     return allRecords.filter(rec => {
       const matchDate = (!startDate || rec.tanggal >= startDate) && (!endDate || rec.tanggal <= endDate);
@@ -225,7 +362,6 @@ export function AbsenTBM() {
 
     const chartData = Object.values(dateGroups).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
 
-    // Ratio Data for Pie Chart
     const pieData = [
       { name: 'Hadir', value: hadir, color: '#10b981' },
       { name: 'Tidak Hadir', value: tidakHadir, color: '#f43f5e' }
@@ -241,7 +377,95 @@ export function AbsenTBM() {
     }
   }, [stats.rate]);
 
-  // Handle Add Record
+  // Photo handlers for submission
+  const handleAddSubmissionPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    setIsCompressing(true);
+    const promises = Array.from(files).map(file => {
+      return new Promise<string>((resolve) => {
+        if (file.size > 20 * 1024 * 1024) {
+          toast.error(`Ukuran ${file.name} melebihi 20MB`);
+          resolve('');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+          const img = new Image();
+          img.src = event.target?.result as string;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const MAX = 800;
+            let w = img.width;
+            let h = img.height;
+            if (w > h) { if (w > MAX) { h = (h * MAX) / w; w = MAX; } }
+            else { if (h > MAX) { w = (w * MAX) / h; h = MAX; } }
+            canvas.width = w;
+            canvas.height = h;
+            ctx?.drawImage(img, 0, 0, w, h);
+            const compressed = canvas.toDataURL('image/jpeg', 0.7);
+            resolve(compressed);
+          };
+          img.onerror = () => resolve('');
+        };
+        reader.onerror = () => resolve('');
+      });
+    });
+
+    Promise.all(promises).then(compressedPhotos => {
+      const validPhotos = compressedPhotos.filter(p => p !== '');
+      setSubmissionPhotos(prev => [...prev, ...validPhotos]);
+      setIsCompressing(false);
+    });
+    e.target.value = '';
+  };
+
+  const removeSubmissionPhoto = (idx: number) => {
+    setSubmissionPhotos(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  // Add personnel handler
+  const handleAddPersonnel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPersonName.trim() || !newPersonJabatan.trim()) {
+      toast.error("Nama dan Jabatan tidak boleh kosong");
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, 'absen_tbm'), {
+        isPersonnel: true,
+        nama: newPersonName.trim(),
+        jabatan: newPersonJabatan.trim(),
+        category: newPersonCategory,
+        createdAt: serverTimestamp()
+      });
+      toast.success("Personil berhasil ditambahkan!");
+      setNewPersonName('');
+      setNewPersonJabatan('');
+    } catch (err: any) {
+      console.error("Error adding personnel:", err);
+      toast.error("Gagal menambahkan personil: " + err.message);
+    }
+  };
+
+  // Delete personnel handler
+  const handleDeletePersonnel = async (id: string) => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus personil ini?")) return;
+    try {
+      await deleteDoc(doc(db, 'absen_tbm', id));
+      toast.success("Personil berhasil dihapus");
+    } catch (err: any) {
+      console.error("Error deleting personnel:", err);
+      toast.error("Gagal menghapus personil: " + err.message);
+    }
+  };
+
+  // Handle Add Attendance Record
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const invalid = checklist.some(item => !item.nama.trim() || !item.jabatan.trim());
@@ -265,10 +489,22 @@ export function AbsenTBM() {
         })
       );
       await Promise.all(batchPromises);
+
+      // Save documentation photo if uploaded
+      if (submissionPhotos.length > 0) {
+        await addDoc(collection(db, 'absen_tbm'), {
+          tanggal: formDate,
+          isDocumentation: true,
+          photos: submissionPhotos,
+          category: formCategory,
+          createdAt: serverTimestamp()
+        });
+      }
       
       toast.success(`Berhasil menyimpan absensi ${checklist.length} karyawan!`);
-      // Reset remarks
+      // Reset checklist remarks & photos
       setChecklist(prev => prev.map(item => ({ ...item, remark: '', kehadiran: 'Hadir' })));
+      setSubmissionPhotos([]);
     } catch (err: any) {
       console.error("Save checklist error:", err);
       toast.error("Gagal menyimpan absensi: " + err.message);
@@ -277,7 +513,36 @@ export function AbsenTBM() {
     }
   };
 
-  // Handle Delete Record
+  // Inline edit actions
+  const startEditing = (rec: AttendanceRecord) => {
+    setEditingRecordId(rec.id);
+    setEditedNama(rec.nama);
+    setEditedJabatan(rec.jabatan);
+    setEditedKehadiran(rec.kehadiran);
+    setEditedRemark(rec.remark);
+  };
+
+  const handleUpdateRecord = async (id: string) => {
+    if (!editedNama.trim() || !editedJabatan.trim()) {
+      toast.error("Nama dan Jabatan tidak boleh kosong");
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'absen_tbm', id), {
+        nama: editedNama.trim(),
+        jabatan: editedJabatan.trim(),
+        kehadiran: editedKehadiran,
+        remark: editedRemark.trim()
+      });
+      toast.success("Data absen berhasil diperbarui!");
+      setEditingRecordId(null);
+    } catch (err: any) {
+      console.error("Error updating record:", err);
+      toast.error("Gagal memperbarui data: " + err.message);
+    }
+  };
+
+  // Handle Delete Attendance Record
   const handleDelete = async (id: string) => {
     if (!window.confirm("Apakah Anda yakin ingin menghapus catatan absen ini?")) return;
     try {
@@ -286,6 +551,124 @@ export function AbsenTBM() {
     } catch (err: any) {
       console.error("Delete record error:", err);
       toast.error("Gagal menghapus absen: " + err.message);
+    }
+  };
+
+  // Handle Delete Entire Date Logs (Attendance & Documentation)
+  const handleDeleteEntireDate = (dateStr: string) => {
+    setDateToDelete(dateStr);
+    setDeleteConfirmOpen(true);
+  };
+
+  const executeDeleteDate = async (dateStr: string) => {
+    const formatted = formatIndonesianDate(dateStr);
+    try {
+      // Find all records with this date
+      const attendanceToDelete = allRecords.filter(r => r.tanggal === dateStr);
+      const docsToDelete = docRecords.filter(d => d.tanggal === dateStr);
+
+      const promises: Promise<any>[] = [];
+      attendanceToDelete.forEach(r => {
+        promises.push(deleteDoc(doc(db, 'absen_tbm', r.id)));
+      });
+      docsToDelete.forEach(d => {
+        promises.push(deleteDoc(doc(db, 'absen_tbm', d.id)));
+      });
+
+      await Promise.all(promises);
+      toast.success(`Berhasil menghapus seluruh log absensi tanggal ${formatted}!`);
+    } catch (err: any) {
+      console.error("Error deleting entire date logs:", err);
+      toast.error("Gagal menghapus data: " + err.message);
+    }
+  };
+
+  // Find documentation record for the selected date
+  const selectedDateDoc = useMemo(() => {
+    if (!selectedDate) return null;
+    return docRecords.find(d => d.tanggal === selectedDate);
+  }, [selectedDate, docRecords]);
+
+  // Upload/Edit photo for existing date
+  const handleUpdateDatePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!selectedDate) return;
+    const files = e.target.files;
+    if (!files) return;
+
+    setIsCompressing(true);
+    const promises = Array.from(files).map(file => {
+      return new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+          const img = new Image();
+          img.src = event.target?.result as string;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const MAX = 800;
+            let w = img.width;
+            let h = img.height;
+            if (w > h) { if (w > MAX) { h = (h * MAX) / w; w = MAX; } }
+            else { if (h > MAX) { w = (w * MAX) / h; h = MAX; } }
+            canvas.width = w;
+            canvas.height = h;
+            ctx?.drawImage(img, 0, 0, w, h);
+            const compressed = canvas.toDataURL('image/jpeg', 0.7);
+            resolve(compressed);
+          };
+          img.onerror = () => resolve('');
+        };
+        reader.onerror = () => resolve('');
+      });
+    });
+
+    const newPhotos = (await Promise.all(promises)).filter(p => p !== '');
+    setIsCompressing(false);
+
+    if (newPhotos.length === 0) return;
+
+    try {
+      if (selectedDateDoc) {
+        const updatedPhotos = [...selectedDateDoc.photos, ...newPhotos];
+        await updateDoc(doc(db, 'absen_tbm', selectedDateDoc.id), {
+          photos: updatedPhotos
+        });
+        toast.success("Dokumentasi foto berhasil diperbarui!");
+      } else {
+        await addDoc(collection(db, 'absen_tbm'), {
+          tanggal: selectedDate,
+          isDocumentation: true,
+          photos: newPhotos,
+          category: 'Semua',
+          createdAt: serverTimestamp()
+        });
+        toast.success("Dokumentasi foto berhasil ditambahkan!");
+      }
+    } catch (err: any) {
+      console.error("Error updating date photo:", err);
+      toast.error("Gagal menyimpan foto: " + err.message);
+    }
+    e.target.value = '';
+  };
+
+  const handleRemoveDatePhoto = async (photoIndex: number) => {
+    if (!selectedDateDoc) return;
+    if (!window.confirm("Apakah Anda yakin ingin menghapus foto dokumentasi ini?")) return;
+
+    try {
+      const updatedPhotos = selectedDateDoc.photos.filter((_, idx) => idx !== photoIndex);
+      if (updatedPhotos.length === 0) {
+        await deleteDoc(doc(db, 'absen_tbm', selectedDateDoc.id));
+      } else {
+        await updateDoc(doc(db, 'absen_tbm', selectedDateDoc.id), {
+          photos: updatedPhotos
+        });
+      }
+      toast.success("Foto dokumentasi berhasil dihapus");
+    } catch (err: any) {
+      console.error("Error removing photo:", err);
+      toast.error("Gagal menghapus foto: " + err.message);
     }
   };
 
@@ -397,7 +780,6 @@ export function AbsenTBM() {
 
     const daysCount = stats.chartData.length;
     if (daysCount > 0) {
-      // Find max attendance value to scale chart height
       let maxVal = 1;
       stats.chartData.forEach(d => {
         if (d.Hadir > maxVal) maxVal = d.Hadir;
@@ -423,7 +805,7 @@ export function AbsenTBM() {
           docPdf.rect(dx + limitW + 1, startY - barH, limitW, barH, 'F');
         }
 
-        // Label Tanggal (simple formatting DD/MM)
+        // Label Tanggal
         docPdf.setTextColor(100, 116, 139);
         docPdf.setFontSize(6);
         try {
@@ -444,12 +826,12 @@ export function AbsenTBM() {
       r.remark || '-'
     ]);
 
-    (docPdf as any).autoTable({
+    autoTable(docPdf, {
       startY: chartY + 46,
       head: [['No', 'Tanggal', 'Nama', 'Jabatan', 'Status Kehadiran', 'Keterangan']],
       body: tableData,
       theme: 'grid',
-      headStyles: { fillColor: [0, 89, 156], halign: 'left' }, // Theme Blue matching the stripe
+      headStyles: { fillColor: [0, 89, 156], halign: 'left' },
       columnStyles: {
         0: { cellWidth: 10 },
         1: { cellWidth: 25 },
@@ -551,7 +933,6 @@ export function AbsenTBM() {
       });
     }
 
-    // Add empty row
     worksheet.addRow([]);
     worksheet.addRow([`Periode: ${startDate || 'all'} s.d. ${endDate || 'all'}`]);
     worksheet.addRow([`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`]);
@@ -565,7 +946,6 @@ export function AbsenTBM() {
     worksheet.addRow([`Persentase Kehadiran`, `${stats.rate}%`]);
     worksheet.addRow([]);
 
-    // Format summary font
     worksheet.getCell('A8').font = { bold: true };
     for (let r = 9; r <= 12; r++) {
       worksheet.getCell(`A${r}`).font = { bold: true };
@@ -583,7 +963,7 @@ export function AbsenTBM() {
       headerRow.getCell(col).fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FF00599C' } // Theme Blue matching the stripe
+        fgColor: { argb: 'FF00599C' }
       };
       headerRow.getCell(col).border = {
         top: { style: 'thin' },
@@ -606,12 +986,11 @@ export function AbsenTBM() {
       row.height = 20;
       row.alignment = { vertical: 'middle' };
       
-      // Status Color Fill
       const statusCell = row.getCell(5);
       if (rec.kehadiran === 'Hadir') {
-        statusCell.font = { color: { argb: 'FF10B981' }, bold: true }; // Green
+        statusCell.font = { color: { argb: 'FF10B981' }, bold: true };
       } else {
-        statusCell.font = { color: { argb: 'FFF43F5E' }, bold: true }; // Red
+        statusCell.font = { color: { argb: 'FFF43F5E' }, bold: true };
       }
 
       for (let col = 1; col <= 6; col++) {
@@ -624,7 +1003,6 @@ export function AbsenTBM() {
       }
     });
 
-    // Columns width
     worksheet.columns.forEach((col, idx) => {
       if (idx === 0) col.width = 6;
       else if (idx === 1) col.width = 15;
@@ -634,7 +1012,6 @@ export function AbsenTBM() {
       else if (idx === 5) col.width = 25;
     });
 
-    // Save Workbook
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const link = document.createElement('a');
@@ -663,8 +1040,126 @@ export function AbsenTBM() {
               <p className="text-sm text-slate-400">Kelola dan analisis data absensi TBM secara real-time</p>
             </div>
           </div>
+          <button
+            onClick={() => setIsPersonnelPanelOpen(!isPersonnelPanelOpen)}
+            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-750 border border-slate-700/50 hover:border-slate-650 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition active:scale-95 animate-none"
+          >
+            <UserPlus className="w-4 h-4 text-pink-400" />
+            {isPersonnelPanelOpen ? "Tutup Panel Personil" : "Kelola Personil TBM"}
+          </button>
         </div>
       </motion.div>
+
+      {/* ─── Personnel Panel ────────────────────────────────────── */}
+      <AnimatePresence>
+        {isPersonnelPanelOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Form */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-2 h-2 bg-pink-500 rounded-full" />
+                  Tambah Personil Baru
+                </h3>
+                <form onSubmit={handleAddPersonnel} className="space-y-3.5">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 block mb-1">NAMA LENGKAP</label>
+                    <input
+                      type="text"
+                      required
+                      value={newPersonName}
+                      onChange={e => setNewPersonName(e.target.value)}
+                      placeholder="Masukkan nama lengkap..."
+                      className="w-full bg-slate-800/40 border border-slate-700/50 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-pink-500/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 block mb-1">JABATAN</label>
+                    <input
+                      type="text"
+                      required
+                      value={newPersonJabatan}
+                      onChange={e => setNewPersonJabatan(e.target.value)}
+                      placeholder="Contoh: Teknisi, Shift Engineer..."
+                      className="w-full bg-slate-800/40 border border-slate-700/50 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-pink-500/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 block mb-1">KATEGORI TIM</label>
+                    <select
+                      value={newPersonCategory}
+                      onChange={e => setNewPersonCategory(e.target.value as any)}
+                      title="Kategori Tim"
+                      className="w-full bg-slate-800/40 border border-slate-700/50 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-pink-500/50 font-bold font-sans"
+                    >
+                      <option value="UTT Daily">UTT Daily</option>
+                      <option value="UTT Mobile">UTT Mobile</option>
+                      <option value="DME">DME</option>
+                    </select>
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-400 hover:to-rose-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-lg shadow-pink-500/10 active:scale-95 animate-none"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Tambah Personil
+                  </button>
+                </form>
+              </div>
+
+              {/* Right List */}
+              <div className="lg:col-span-2 space-y-3">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <span className="w-2 h-2 bg-violet-500 rounded-full" />
+                  Daftar Personil Terdaftar ({personnelList.length})
+                </h3>
+                <div className="max-h-[250px] overflow-y-auto border border-slate-800 rounded-xl bg-slate-950/20 font-sans">
+                  {personnelList.length === 0 ? (
+                    <div className="text-center py-8 text-xs text-slate-500">Belum ada data personil.</div>
+                  ) : (
+                    <table className="w-full text-xs text-left">
+                      <thead>
+                        <tr className="bg-slate-900/80 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
+                          <th className="px-3 py-2.5 w-12">No</th>
+                          <th className="px-3 py-2.5">Nama</th>
+                          <th className="px-3 py-2.5">Jabatan</th>
+                          <th className="px-3 py-2.5">Kategori</th>
+                          <th className="px-3 py-2.5 text-center w-16">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-900/60">
+                        {personnelList.map((p, idx) => (
+                          <tr key={p.id} className="hover:bg-slate-800/10 text-slate-300">
+                            <td className="px-3 py-2.5 font-mono text-slate-500">{idx + 1}.</td>
+                            <td className="px-3 py-2.5 font-bold text-white">{p.nama}</td>
+                            <td className="px-3 py-2.5">{p.jabatan}</td>
+                            <td className="px-3 py-2.5 text-slate-400">{p.category}</td>
+                            <td className="px-3 py-2.5 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePersonnel(p.id)}
+                                className="p-1 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded transition active:scale-90 animate-none"
+                                title="Hapus Personil"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ─── Filters & Actions Bar ──────────────────────────────── */}
       <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
@@ -715,14 +1210,14 @@ export function AbsenTBM() {
         <div className="flex gap-2">
           <button
             onClick={handleExportPDF}
-            className="flex-1 py-2.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95"
+            className="flex-1 py-2.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95 animate-none"
           >
             <FileText className="w-4 h-4" />
             Export PDF
           </button>
           <button
             onClick={handleExportExcel}
-            className="flex-1 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95"
+            className="flex-1 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95 animate-none"
           >
             <FileSpreadsheet className="w-4 h-4" />
             Export Excel
@@ -734,7 +1229,7 @@ export function AbsenTBM() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left Side: Summary Cards */}
-        <div className="space-y-4">
+        <div className="space-y-4 font-sans">
           <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex items-center justify-between">
             <div>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Record</p>
@@ -838,7 +1333,7 @@ export function AbsenTBM() {
                 value={formCategory}
                 onChange={e => setFormCategory(e.target.value as any)}
                 title="Kategori TBM"
-                className="bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50 font-bold"
+                className="bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50 font-bold font-sans"
               >
                 <option value="Semua">Semua</option>
                 <option value="UTT Daily">UTT Daily</option>
@@ -896,7 +1391,7 @@ export function AbsenTBM() {
                               item.nama
                             )}
                           </td>
-                          <td className="px-3 py-3.5 text-slate-300">
+                          <td className="px-3 py-3.5 text-slate-300 font-medium font-sans">
                             {formCategory === 'Manual' ? (
                               <input
                                 type="text"
@@ -967,13 +1462,63 @@ export function AbsenTBM() {
             </table>
           </div>
 
+          {/* Documentation Upload */}
+          <div className="p-4 bg-slate-950/20 rounded-xl border border-white/5 space-y-3">
+            <div>
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Camera className="w-4 h-4 text-pink-400" />
+                Unggah Foto Dokumentasi TBM
+              </h4>
+              <p className="text-[10px] text-slate-400 mt-0.5">Unggah bukti foto dokumentasi kehadiran TBM untuk hari ini.</p>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="cursor-pointer px-4 py-2.5 bg-slate-800 hover:bg-slate-750 border border-slate-700/50 hover:border-slate-650 rounded-xl text-xs font-bold text-white flex items-center gap-2 transition active:scale-95 animate-none">
+                <Upload className="w-4 h-4 text-pink-400" />
+                Pilih Berkas Foto
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleAddSubmissionPhoto}
+                  className="hidden"
+                />
+              </label>
+
+              {isCompressing && (
+                <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-pink-500" />
+                  Mengompresi gambar...
+                </div>
+              )}
+            </div>
+
+            {submissionPhotos.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 pt-2">
+                {submissionPhotos.map((photo, pIdx) => (
+                  <div key={pIdx} className="relative group aspect-square bg-slate-900 rounded-xl overflow-hidden border border-white/10">
+                    <img src={photo} alt="Preview" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeSubmissionPhoto(pIdx)}
+                      className="absolute top-1.5 right-1.5 p-1 bg-black/60 hover:bg-rose-600 text-white rounded-lg transition active:scale-90"
+                      title="Hapus"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-white/10">
             <div>
               {formCategory === 'Manual' && (
                 <button
                   type="button"
                   onClick={addManualRow}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition active:scale-95 animate-none"
                 >
                   <Plus className="w-4 h-4" />
                   Tambah Baris Manual
@@ -1001,12 +1546,61 @@ export function AbsenTBM() {
         </form>
       </div>
 
-      {/* ─── Table Section: Records List ────────────────────────── */}
-      <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 overflow-hidden">
-        <h2 className="text-sm font-bold text-white mb-4 uppercase tracking-wider flex items-center gap-2">
-          <span className="w-2 h-2 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500" />
-          Daftar Log Kehadiran Absen TBM ({filteredRecords.length})
-        </h2>
+      {/* ─── Table/Folder Section: Records List ────────────────── */}
+      <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 space-y-6">
+        
+        {/* Navigation Breadcrumb & Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+          <div className="space-y-1">
+            <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500" />
+              Daftar Log Kehadiran Absen TBM
+            </h2>
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              <button 
+                onClick={() => { setViewLevel('month'); setSelectedMonth(null); setSelectedDate(null); }}
+                className="hover:text-white transition"
+              >
+                Log Absen
+              </button>
+              {selectedMonth && (
+                <>
+                  <span className="text-slate-600">/</span>
+                  <button 
+                    onClick={() => { setViewLevel('date'); setSelectedDate(null); }}
+                    className="hover:text-white transition"
+                  >
+                    {selectedMonth}
+                  </button>
+                </>
+              )}
+              {selectedDate && (
+                <>
+                  <span className="text-slate-600">/</span>
+                  <span className="text-slate-200">{formatIndonesianDate(selectedDate)}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {viewLevel !== 'month' && (
+            <button
+              onClick={() => {
+                if (viewLevel === 'records') {
+                  setViewLevel('date');
+                  setSelectedDate(null);
+                } else if (viewLevel === 'date') {
+                  setViewLevel('month');
+                  setSelectedMonth(null);
+                }
+              }}
+              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-750 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 border border-slate-700/50 transition active:scale-95 animate-none"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Kembali
+            </button>
+          )}
+        </div>
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-12">
@@ -1019,63 +1613,370 @@ export function AbsenTBM() {
             Tidak ada catatan kehadiran yang cocok dengan pencarian / rentang tanggal.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="bg-slate-800/50 border-b border-slate-700/50 text-slate-300 font-bold uppercase tracking-wider">
-                  <th className="px-4 py-3 text-left w-12">No</th>
-                  <th className="px-4 py-3 text-left w-28">Tanggal</th>
-                  <th className="px-4 py-3 text-left">Nama Lengkap</th>
-                  <th className="px-4 py-3 text-left">Jabatan</th>
-                  <th className="px-4 py-3 text-left w-36">Kehadiran</th>
-                  <th className="px-4 py-3 text-left">Keterangan</th>
-                  <th className="px-4 py-3 text-center w-20">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/40">
-                {filteredRecords.map((rec, index) => (
-                  <tr key={rec.id} className="hover:bg-slate-800/20 transition-colors">
-                    <td className="px-4 py-3.5 text-slate-500 font-mono">{index + 1}.</td>
-                    <td className="px-4 py-3.5 text-slate-300 font-medium">
-                      {new Date(rec.tanggal).toLocaleDateString('id-ID', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric'
-                      })}
-                    </td>
-                    <td className="px-4 py-3.5 text-white font-bold">{rec.nama}</td>
-                    <td className="px-4 py-3.5 text-slate-400">{rec.jabatan}</td>
-                    <td className="px-4 py-3.5">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                        rec.kehadiran === 'Hadir'
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                          : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${
-                          rec.kehadiran === 'Hadir' ? 'bg-emerald-400 shadow-md shadow-emerald-500/50' : 'bg-rose-400 shadow-md shadow-rose-500/50'
-                        }`} />
-                        {rec.kehadiran}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-slate-400 italic max-w-xs truncate" title={rec.remark}>
-                      {rec.remark || '—'}
-                    </td>
-                    <td className="px-4 py-3.5 text-center">
+          <div>
+            {/* LEVEL 1: MONTH FOLDERS */}
+            {viewLevel === 'month' && (() => {
+              const monthGroups: Record<string, number> = {};
+              filteredRecords.forEach(r => {
+                const mStr = getIndonesianMonthYear(r.tanggal);
+                monthGroups[mStr] = (monthGroups[mStr] || 0) + 1;
+              });
+
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Object.entries(monthGroups).map(([month, count]) => (
+                    <motion.button
+                      key={month}
+                      whileHover={{ scale: 1.02, x: 2 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        setSelectedMonth(month);
+                        setViewLevel('date');
+                      }}
+                      className="flex items-center gap-4 p-5 bg-slate-800/40 backdrop-blur-xl border border-slate-700/30 rounded-2xl hover:border-pink-500/30 hover:bg-slate-850/40 transition group text-left w-full animate-none"
+                    >
+                      <div className="p-3 bg-gradient-to-br from-amber-500/10 to-amber-600/5 rounded-xl border border-amber-500/20 group-hover:scale-105 transition-transform flex-shrink-0 animate-none">
+                        <Folder className="w-8 h-8 text-amber-500" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-white group-hover:text-pink-400 transition-colors truncate">{month}</h3>
+                        <p className="text-xs text-slate-400 mt-0.5">{count} Log Kehadiran</p>
+                      </div>
+                    </motion.button>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* LEVEL 2: DATE FOLDERS */}
+            {viewLevel === 'date' && (() => {
+              const dateGroups: Record<string, number> = {};
+              filteredRecords.forEach(r => {
+                const mStr = getIndonesianMonthYear(r.tanggal);
+                if (mStr === selectedMonth) {
+                  dateGroups[r.tanggal] = (dateGroups[r.tanggal] || 0) + 1;
+                }
+              });
+
+              const sortedDates = Object.entries(dateGroups).sort((a, b) => b[0].localeCompare(a[0]));
+
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {sortedDates.map(([dateStr, count]) => (
+                    <motion.div
+                      key={dateStr}
+                      whileHover={{ scale: 1.02, x: 2 }}
+                      className="relative flex items-center justify-between p-5 bg-slate-800/40 backdrop-blur-xl border border-slate-700/30 rounded-2xl hover:border-pink-500/30 hover:bg-slate-850/40 transition group text-left w-full cursor-pointer animate-none"
+                      onClick={() => {
+                        setSelectedDate(dateStr);
+                        setViewLevel('records');
+                      }}
+                    >
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="p-3 bg-gradient-to-br from-pink-500/10 to-rose-600/5 rounded-xl border border-pink-500/20 group-hover:scale-105 transition-transform flex-shrink-0 animate-none">
+                          <Folder className="w-8 h-8 text-pink-400" />
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="text-sm font-bold text-white group-hover:text-pink-400 transition-colors truncate">
+                            {formatIndonesianDate(dateStr)}
+                          </h3>
+                          <p className="text-xs text-slate-400 mt-0.5">{count} Log Kehadiran</p>
+                        </div>
+                      </div>
+
                       <button
-                        onClick={() => handleDelete(rec.id)}
-                        className="p-1.5 bg-slate-800/80 hover:bg-red-500/10 hover:text-red-400 rounded-lg text-slate-500 border border-slate-700/50 hover:border-red-500/20 transition-all active:scale-95"
-                        title="Hapus"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteEntireDate(dateStr);
+                        }}
+                        className="p-2 bg-slate-800/60 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700/50 hover:border-rose-500/30 rounded-xl transition active:scale-90 animate-none flex-shrink-0"
+                        title="Hapus Seluruh Log Tanggal Ini"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </motion.div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* LEVEL 3: DETAILED RECORDS */}
+            {viewLevel === 'records' && (() => {
+              const dayRecords = filteredRecords.filter(r => r.tanggal === selectedDate);
+              const categories = Array.from(new Set(dayRecords.map(r => r.category || 'Lainnya')));
+
+              return (
+                <div className="space-y-6">
+                  {/* Photo Documentation Section */}
+                  <div className="bg-slate-950/20 p-5 rounded-2xl border border-slate-800/60 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                          <Camera className="w-4 h-4 text-pink-400" />
+                          Dokumentasi TBM - {formatIndonesianDate(selectedDate || '')}
+                        </h3>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Bukti foto TBM untuk hari ini.</p>
+                      </div>
+                      <label className="cursor-pointer px-3.5 py-2 bg-slate-800 hover:bg-slate-750 border border-slate-700/50 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 transition active:scale-95 animate-none">
+                        <Upload className="w-4 h-4 text-pink-400" />
+                        Ganti / Tambah Foto
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={handleUpdateDatePhoto}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    {isCompressing && (
+                      <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-pink-500" />
+                        Mengompresi foto...
+                      </div>
+                    )}
+
+                    {!selectedDateDoc || selectedDateDoc.photos.length === 0 ? (
+                      <div className="py-8 text-center text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">
+                        Tidak ada dokumentasi foto untuk tanggal ini. Klik tombol di kanan atas untuk mengunggah.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4">
+                        {selectedDateDoc.photos.map((photo, pIdx) => (
+                          <div key={pIdx} className="relative group aspect-square rounded-xl overflow-hidden bg-slate-900 border border-white/5 shadow-md shadow-black/10">
+                            <img src={photo} alt={`TBM Documentation ${pIdx + 1}`} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveDatePhoto(pIdx)}
+                                className="p-2 bg-rose-600/80 hover:bg-rose-600 text-white rounded-xl transition active:scale-90 animate-none"
+                                title="Hapus Foto"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Attendance Records Table */}
+                  <div className="overflow-x-auto border border-slate-800/85 rounded-2xl bg-slate-900/10">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-slate-800/50 text-slate-300 font-bold uppercase tracking-wider border-b border-slate-800/60">
+                          <th className="px-4 py-3 text-left w-12">No</th>
+                          <th className="px-4 py-3 text-left">Nama Lengkap</th>
+                          <th className="px-4 py-3 text-left">Jabatan</th>
+                          <th className="px-4 py-3 text-left w-36">Kehadiran</th>
+                          <th className="px-4 py-3 text-left">Keterangan</th>
+                          <th className="px-4 py-3 text-center w-28">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/40 bg-slate-950/5">
+                        {categories.map(cat => {
+                          const catRecords = dayRecords.filter(r => (r.category || 'Lainnya') === cat);
+                          return (
+                            <Fragment key={cat}>
+                              {/* Category Header Row */}
+                              <tr className="bg-slate-800/30 border-t border-slate-850">
+                                <td colSpan={6} className="px-4 py-2 font-black uppercase text-[10px] text-pink-400 tracking-wider">
+                                  Kategori: {cat}
+                                </td>
+                              </tr>
+                              {catRecords.map((rec, index) => {
+                                const isEditing = editingRecordId === rec.id;
+                                return (
+                                  <tr key={rec.id} className="hover:bg-slate-800/20 transition-colors">
+                                    <td className="px-4 py-3.5 text-slate-500 font-mono">{index + 1}.</td>
+                                    <td className="px-4 py-3.5 font-bold text-white">
+                                      {isEditing ? (
+                                        <input
+                                          type="text"
+                                          value={editedNama}
+                                          onChange={e => setEditedNama(e.target.value)}
+                                          title="Nama"
+                                          className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-pink-500"
+                                        />
+                                      ) : (
+                                        rec.nama
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3.5 text-slate-300 font-medium font-sans">
+                                      {isEditing ? (
+                                        <input
+                                          type="text"
+                                          value={editedJabatan}
+                                          onChange={e => setEditedJabatan(e.target.value)}
+                                          title="Jabatan"
+                                          className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-pink-500"
+                                        />
+                                      ) : (
+                                        rec.jabatan
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3.5">
+                                      {isEditing ? (
+                                        <div className="flex gap-1.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => setEditedKehadiran('Hadir')}
+                                            className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                                              editedKehadiran === 'Hadir'
+                                                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                                                : 'bg-slate-800 border-slate-700 text-slate-500'
+                                            }`}
+                                          >
+                                            Hadir
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setEditedKehadiran('Tidak Hadir')}
+                                            className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                                              editedKehadiran === 'Tidak Hadir'
+                                                ? 'bg-rose-500/20 border-rose-500/50 text-rose-400'
+                                                : 'bg-slate-800 border-slate-700 text-slate-500'
+                                            }`}
+                                          >
+                                            Absen
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                          rec.kehadiran === 'Hadir'
+                                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                            : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                        }`}>
+                                          <span className={`w-1.5 h-1.5 rounded-full ${
+                                            rec.kehadiran === 'Hadir' ? 'bg-emerald-400 shadow-md' : 'bg-rose-400 shadow-md'
+                                          }`} />
+                                          {rec.kehadiran}
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3.5 text-slate-400 italic">
+                                      {isEditing ? (
+                                        <input
+                                          type="text"
+                                          value={editedRemark}
+                                          onChange={e => setEditedRemark(e.target.value)}
+                                          title="Remark"
+                                          placeholder="Keterangan..."
+                                          className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-pink-500"
+                                        />
+                                      ) : (
+                                        rec.remark || '—'
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3.5 text-center">
+                                      {isEditing ? (
+                                        <div className="flex justify-center gap-1.5">
+                                          <button
+                                            onClick={() => handleUpdateRecord(rec.id)}
+                                            className="p-1.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30 rounded-lg transition active:scale-90 animate-none"
+                                            title="Simpan"
+                                          >
+                                            <Save className="w-3.5 h-3.5" />
+                                          </button>
+                                          <button
+                                            onClick={() => setEditingRecordId(null)}
+                                            className="p-1.5 bg-slate-800 text-slate-400 hover:bg-slate-750 border border-slate-700/50 rounded-lg transition active:scale-90 animate-none"
+                                            title="Batal"
+                                          >
+                                            <X className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <div className="flex justify-center gap-1.5">
+                                          <button
+                                            onClick={() => startEditing(rec)}
+                                            className="p-1.5 bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white border border-slate-700/50 rounded-lg transition active:scale-90 animate-none"
+                                            title="Edit"
+                                          >
+                                            <Pencil className="w-3.5 h-3.5" />
+                                          </button>
+                                          <button
+                                            onClick={() => handleDelete(rec.id)}
+                                            className="p-1.5 bg-slate-800 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 border border-slate-700/50 hover:border-rose-500/20 rounded-lg transition active:scale-90 animate-none"
+                                            title="Hapus"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </Fragment>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
+
+      {/* Custom Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteConfirmOpen && dateToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-md bg-slate-900 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center gap-3 text-rose-500">
+                <div className="p-3 bg-rose-500/10 rounded-xl border border-rose-500/20">
+                  <Trash2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Hapus Log Kehadiran</h3>
+                  <p className="text-xs text-slate-400 font-medium">Konfirmasi Penghapusan Permanen</p>
+                </div>
+              </div>
+
+              <div className="text-xs text-slate-300 leading-relaxed font-sans">
+                Apakah Anda yakin ingin menghapus <span className="font-bold text-white font-sans text-xs">SELURUH</span> data absensi dan dokumentasi foto untuk tanggal <span className="font-bold text-rose-400 font-sans text-xs">{formatIndonesianDate(dateToDelete)}</span>? Tindakan ini bersifat permanen dan tidak dapat dibatalkan.
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeleteConfirmOpen(false);
+                    setDateToDelete(null);
+                  }}
+                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 text-white rounded-xl text-xs font-bold transition active:scale-95 animate-none"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (dateToDelete) {
+                      await executeDeleteDate(dateToDelete);
+                    }
+                    setDeleteConfirmOpen(false);
+                    setDateToDelete(null);
+                  }}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-400 hover:to-rose-500 text-white rounded-xl text-xs font-bold transition active:scale-95 animate-none"
+                >
+                  Ya, Hapus Semua
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
