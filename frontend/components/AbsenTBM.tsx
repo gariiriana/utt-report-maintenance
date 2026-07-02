@@ -787,7 +787,7 @@ export function AbsenTBM() {
     const periodeTo = endDate || 'Sekarang';
     docPdf.text(`Periode: ${periodeFrom}  s/d  ${periodeTo}`, margin + 6, y + 27);
 
-    // ─── Draw Weekly Attendance Bar Chart (Canvas → Image → PDF) ──────
+    // ─── Draw Charts (Overall Donut + Weekly Bar Chart side-by-side) ───
     const chartCanvasW = 1200;
     const chartCanvasH = 340;
     const chartCanvas = document.createElement('canvas');
@@ -799,25 +799,85 @@ export function AbsenTBM() {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, chartCanvasW, chartCanvasH);
 
+    // ── LEFT SIDE: Overall Donut Chart ──
+    const donutCx = 220;
+    const donutCy = 180;
+    const donutR = 75;
+    const donutInner = 48;
+
     // Title
-    ctx.font = 'bold 22px Arial';
+    ctx.font = 'bold 20px Arial';
     ctx.fillStyle = '#0f172a';
     ctx.textAlign = 'center';
-    ctx.fillText('GRAFIK MINGGUAN KEHADIRAN & KETIDAKHADIRAN', chartCanvasW / 2, 28);
+    ctx.fillText('GRAFIK KESELURUHAN', donutCx, 45);
 
-    // Legend
-    ctx.font = '13px Arial';
-    ctx.textAlign = 'left';
-    // Hadir
+    const totalCount = stats.total;
+    const hadirCount = stats.hadir;
+    const tidakHadirCount = stats.tidakHadir;
+    const pct = totalCount > 0 ? hadirCount / totalCount : 0;
+    const angle = pct * Math.PI * 2;
+    const pctDisplay = totalCount > 0 ? Math.round(pct * 100) : 0;
+
+    // Hadir slice (emerald)
+    ctx.beginPath();
+    ctx.moveTo(donutCx, donutCy);
+    ctx.arc(donutCx, donutCy, donutR, -Math.PI / 2, -Math.PI / 2 + angle);
+    ctx.closePath();
     ctx.fillStyle = '#10b981';
-    ctx.fillRect(chartCanvasW - 240, 14, 16, 12);
-    ctx.fillStyle = '#334155';
-    ctx.fillText('Hadir', chartCanvasW - 218, 25);
-    // Tidak Hadir
+    ctx.fill();
+
+    // Tidak Hadir slice (rose)
+    if (tidakHadirCount > 0) {
+      ctx.beginPath();
+      ctx.moveTo(donutCx, donutCy);
+      ctx.arc(donutCx, donutCy, donutR, -Math.PI / 2 + angle, -Math.PI / 2 + Math.PI * 2);
+      ctx.closePath();
+      ctx.fillStyle = '#f43f5e';
+      ctx.fill();
+    }
+
+    // Donut hole
+    ctx.beginPath();
+    ctx.arc(donutCx, donutCy, donutInner, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+
+    // Center %
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 30px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${pctDisplay}%`, donutCx, donutCy - 3);
+    ctx.font = '11px Arial';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('Kehadiran', donutCx, donutCy + 16);
+
+    // Legend below Donut
+    const legDonutY = donutCy + donutR + 15;
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#10b981';
+    ctx.fillText(`● Hadir: ${hadirCount}`, donutCx - 55, legDonutY);
     ctx.fillStyle = '#f43f5e';
-    ctx.fillRect(chartCanvasW - 140, 14, 16, 12);
-    ctx.fillStyle = '#334155';
-    ctx.fillText('Tidak Hadir', chartCanvasW - 118, 25);
+    ctx.fillText(`● TH: ${tidakHadirCount}`, donutCx + 55, legDonutY);
+    ctx.font = '11px Arial';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(`Total: ${totalCount} record`, donutCx, legDonutY + 15);
+
+
+    // ── RIGHT SIDE: Weekly Bar Chart ──
+    const leftMargin = 450;
+    const rightMargin = 40;
+    const topMargin = 75;
+    const bottomMargin = 50;
+    const chartW = chartCanvasW - leftMargin - rightMargin;
+    const chartH = chartCanvasH - topMargin - bottomMargin;
+
+    // Title
+    ctx.font = 'bold 20px Arial';
+    ctx.fillStyle = '#0f172a';
+    ctx.textAlign = 'center';
+    ctx.fillText('GRAFIK KEHADIRAN MINGGUAN', leftMargin + chartW / 2, 45);
 
     // Generate weekly date ranges from startDate to endDate
     const getWeeksInRange = (startStr: string, endStr: string) => {
@@ -858,7 +918,6 @@ export function AbsenTBM() {
     const weeklyData = weeks.map(w => {
       const recs = filteredRecords.filter(r => {
         const d = new Date(r.tanggal);
-        // Normalize time for reliable comparison
         d.setHours(0, 0, 0, 0);
         const startNorm = new Date(w.start);
         startNorm.setHours(0, 0, 0, 0);
@@ -875,17 +934,9 @@ export function AbsenTBM() {
       };
     });
 
-    // Chart dimensions
-    const leftMargin = 70;
-    const rightMargin = 40;
-    const topMargin = 60;
-    const bottomMargin = 50;
-    const chartW = chartCanvasW - leftMargin - rightMargin;
-    const chartH = chartCanvasH - topMargin - bottomMargin;
-
     // Find max value to determine scale
     const maxVal = Math.max(...weeklyData.map(d => Math.max(d.hadir, d.tidakHadir)), 5);
-    const yScale = chartH / (maxVal * 1.18); // 18% padding above highest bar for labels
+    const yScale = chartH / (maxVal * 1.18);
 
     // Draw Y grid lines
     ctx.strokeStyle = '#e2e8f0';
@@ -913,12 +964,12 @@ export function AbsenTBM() {
     ctx.stroke();
 
     const itemW = chartW / weeklyData.length;
-    const barW = Math.min(45, (itemW * 0.6) / 2);
+    const barW = Math.min(30, (itemW * 0.65) / 2);
 
     weeklyData.forEach((w, idx) => {
       const groupCenterX = leftMargin + (idx + 0.5) * itemW;
-      const barHadirX = groupCenterX - barW - 4;
-      const barThX = groupCenterX + 4;
+      const barHadirX = groupCenterX - barW - 3;
+      const barThX = groupCenterX + 3;
       const yZero = topMargin + chartH;
 
       const hHadir = w.hadir * yScale;
@@ -928,15 +979,13 @@ export function AbsenTBM() {
       if (hHadir > 0) {
         ctx.fillStyle = '#10b981';
         ctx.fillRect(barHadirX, yZero - hHadir, barW, hHadir);
-        // Label above
         ctx.fillStyle = '#0f172a';
-        ctx.font = 'bold 12px Arial';
+        ctx.font = 'bold 11px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(String(w.hadir), barHadirX + barW / 2, yZero - hHadir - 6);
       } else {
-        // Draw 0 label at base
         ctx.fillStyle = '#64748b';
-        ctx.font = '11px Arial';
+        ctx.font = '10px Arial';
         ctx.textAlign = 'center';
         ctx.fillText('0', barHadirX + barW / 2, yZero - 6);
       }
@@ -945,25 +994,31 @@ export function AbsenTBM() {
       if (hTh > 0) {
         ctx.fillStyle = '#f43f5e';
         ctx.fillRect(barThX, yZero - hTh, barW, hTh);
-        // Label above
         ctx.fillStyle = '#0f172a';
-        ctx.font = 'bold 12px Arial';
+        ctx.font = 'bold 11px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(String(w.tidakHadir), barThX + barW / 2, yZero - hTh - 6);
       } else {
-        // Draw 0 label at base
         ctx.fillStyle = '#64748b';
-        ctx.font = '11px Arial';
+        ctx.font = '10px Arial';
         ctx.textAlign = 'center';
         ctx.fillText('0', barThX + barW / 2, yZero - 6);
       }
 
-      // X-axis label
+      // X label
       ctx.fillStyle = '#334155';
-      ctx.font = 'bold 12px Arial';
+      ctx.font = 'bold 11px Arial';
       ctx.textAlign = 'center';
       ctx.fillText(w.label, groupCenterX, yZero + 20);
     });
+
+    // Divider line between donut & bar chart
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(400, 40);
+    ctx.lineTo(400, chartCanvasH - 20);
+    ctx.stroke();
 
     // Convert canvas to image and add to PDF
     const chartImgData = chartCanvas.toDataURL('image/png');
