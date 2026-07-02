@@ -787,7 +787,7 @@ export function AbsenTBM() {
     const periodeTo = endDate || 'Sekarang';
     docPdf.text(`Periode: ${periodeFrom}  s/d  ${periodeTo}`, margin + 6, y + 27);
 
-    // ─── Draw 4 Donut Charts (Canvas → Image → PDF) ───────────────────
+    // ─── Draw Weekly Attendance Bar Chart (Canvas → Image → PDF) ──────
     const chartCanvasW = 1200;
     const chartCanvasH = 340;
     const chartCanvas = document.createElement('canvas');
@@ -799,98 +799,171 @@ export function AbsenTBM() {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, chartCanvasW, chartCanvasH);
 
-    // Main title FIRST
-    ctx.font = 'bold 24px Arial';
+    // Title
+    ctx.font = 'bold 22px Arial';
     ctx.fillStyle = '#0f172a';
     ctx.textAlign = 'center';
-    ctx.fillText('GRAFIK PERFORM KEHADIRAN / KPI ABSENSI TBM', chartCanvasW / 2, 28);
+    ctx.fillText('GRAFIK MINGGUAN KEHADIRAN & KETIDAKHADIRAN', chartCanvasW / 2, 28);
 
-    // Helper: draw a donut chart at given position
-    const drawDonut = (
-      cx: number, cy: number, radius: number, innerR: number,
-      hadir: number, total: number, title: string, color: string
-    ) => {
-      const pct = total > 0 ? hadir / total : 0;
-      const angle = pct * Math.PI * 2;
-      const tidakHadir = total - hadir;
-      const pctDisplay = total > 0 ? Math.round(pct * 100) : 0;
+    // Legend
+    ctx.font = '13px Arial';
+    ctx.textAlign = 'left';
+    // Hadir
+    ctx.fillStyle = '#10b981';
+    ctx.fillRect(chartCanvasW - 240, 14, 16, 12);
+    ctx.fillStyle = '#334155';
+    ctx.fillText('Hadir', chartCanvasW - 218, 25);
+    // Tidak Hadir
+    ctx.fillStyle = '#f43f5e';
+    ctx.fillRect(chartCanvasW - 140, 14, 16, 12);
+    ctx.fillStyle = '#334155';
+    ctx.fillText('Tidak Hadir', chartCanvasW - 118, 25);
 
-      // Donut title
-      ctx.font = 'bold 16px Arial';
-      ctx.fillStyle = '#334155';
-      ctx.textAlign = 'center';
-      ctx.fillText(title, cx, cy - radius - 12);
+    // Generate weekly date ranges from startDate to endDate
+    const getWeeksInRange = (startStr: string, endStr: string) => {
+      const list: Array<{ start: Date; end: Date; label: string }> = [];
+      const current = new Date(startStr);
+      const limit = new Date(endStr);
+      let weekNum = 1;
+      
+      while (current <= limit) {
+        const wStart = new Date(current);
+        const wEnd = new Date(current);
+        wEnd.setDate(wEnd.getDate() + 6);
+        if (wEnd > limit) {
+          wEnd.setTime(limit.getTime());
+        }
+        
+        const formatDateShort = (d: Date) => {
+          const dd = String(d.getDate()).padStart(2, '0');
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          return `${dd}/${mm}`;
+        };
+        
+        list.push({
+          start: wStart,
+          end: wEnd,
+          label: `Mgg ${weekNum} (${formatDateShort(wStart)}-${formatDateShort(wEnd)})`
+        });
+        
+        current.setDate(current.getDate() + 7);
+        weekNum++;
+      }
+      return list;
+    };
 
-      // Hadir slice
+    const weeks = getWeeksInRange(startDate, endDate);
+    
+    // Group records into those weeks
+    const weeklyData = weeks.map(w => {
+      const recs = filteredRecords.filter(r => {
+        const d = new Date(r.tanggal);
+        // Normalize time for reliable comparison
+        d.setHours(0, 0, 0, 0);
+        const startNorm = new Date(w.start);
+        startNorm.setHours(0, 0, 0, 0);
+        const endNorm = new Date(w.end);
+        endNorm.setHours(0, 0, 0, 0);
+        return d >= startNorm && d <= endNorm;
+      });
+      const hadir = recs.filter(r => r.kehadiran === 'Hadir').length;
+      const tidakHadir = recs.length - hadir;
+      return {
+        label: w.label,
+        hadir,
+        tidakHadir
+      };
+    });
+
+    // Chart dimensions
+    const leftMargin = 70;
+    const rightMargin = 40;
+    const topMargin = 60;
+    const bottomMargin = 50;
+    const chartW = chartCanvasW - leftMargin - rightMargin;
+    const chartH = chartCanvasH - topMargin - bottomMargin;
+
+    // Find max value to determine scale
+    const maxVal = Math.max(...weeklyData.map(d => Math.max(d.hadir, d.tidakHadir)), 5);
+    const yScale = chartH / (maxVal * 1.18); // 18% padding above highest bar for labels
+
+    // Draw Y grid lines
+    ctx.strokeStyle = '#e2e8f0';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const gridY = topMargin + (chartH / 4) * i;
       ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, radius, -Math.PI / 2, -Math.PI / 2 + angle);
-      ctx.closePath();
-      ctx.fillStyle = color;
-      ctx.fill();
+      ctx.moveTo(leftMargin, gridY);
+      ctx.lineTo(leftMargin + chartW, gridY);
+      ctx.stroke();
+      
+      const val = Math.round(maxVal - (maxVal / 4) * i);
+      ctx.fillStyle = '#64748b';
+      ctx.font = '11px Arial';
+      ctx.textAlign = 'right';
+      ctx.fillText(String(val), leftMargin - 10, gridY + 4);
+    }
 
-      // Tidak Hadir slice
-      if (tidakHadir > 0) {
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.arc(cx, cy, radius, -Math.PI / 2 + angle, -Math.PI / 2 + Math.PI * 2);
-        ctx.closePath();
-        ctx.fillStyle = '#f43f5e';
-        ctx.fill();
+    // Draw X base line
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(leftMargin, topMargin + chartH);
+    ctx.lineTo(leftMargin + chartW, topMargin + chartH);
+    ctx.stroke();
+
+    const itemW = chartW / weeklyData.length;
+    const barW = Math.min(45, (itemW * 0.6) / 2);
+
+    weeklyData.forEach((w, idx) => {
+      const groupCenterX = leftMargin + (idx + 0.5) * itemW;
+      const barHadirX = groupCenterX - barW - 4;
+      const barThX = groupCenterX + 4;
+      const yZero = topMargin + chartH;
+
+      const hHadir = w.hadir * yScale;
+      const hTh = w.tidakHadir * yScale;
+
+      // Hadir bar
+      if (hHadir > 0) {
+        ctx.fillStyle = '#10b981';
+        ctx.fillRect(barHadirX, yZero - hHadir, barW, hHadir);
+        // Label above
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(w.hadir), barHadirX + barW / 2, yZero - hHadir - 6);
+      } else {
+        // Draw 0 label at base
+        ctx.fillStyle = '#64748b';
+        ctx.font = '11px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('0', barHadirX + barW / 2, yZero - 6);
       }
 
-      // Donut hole
-      ctx.beginPath();
-      ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
+      // Tidak Hadir bar
+      if (hTh > 0) {
+        ctx.fillStyle = '#f43f5e';
+        ctx.fillRect(barThX, yZero - hTh, barW, hTh);
+        // Label above
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(w.tidakHadir), barThX + barW / 2, yZero - hTh - 6);
+      } else {
+        // Draw 0 label at base
+        ctx.fillStyle = '#64748b';
+        ctx.font = '11px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('0', barThX + barW / 2, yZero - 6);
+      }
 
-      // Center %
-      ctx.fillStyle = '#0f172a';
-      ctx.font = 'bold 28px Arial';
+      // X-axis label
+      ctx.fillStyle = '#334155';
+      ctx.font = 'bold 12px Arial';
       ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(`${pctDisplay}%`, cx, cy - 3);
-      ctx.font = '11px Arial';
-      ctx.fillStyle = '#64748b';
-      ctx.fillText('Kehadiran', cx, cy + 16);
-
-      // Legend below
-      const legY = cy + radius + 14;
-      ctx.font = '12px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = color;
-      ctx.fillText(`● Hadir: ${hadir}`, cx - 45, legY);
-      ctx.fillStyle = '#f43f5e';
-      ctx.fillText(`● TH: ${tidakHadir}`, cx + 45, legY);
-      ctx.font = '11px Arial';
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillText(`Total: ${total}`, cx, legY + 16);
-    };
-
-    // Calculate category stats
-    const catStats = (cat?: string) => {
-      const recs = cat ? filteredRecords.filter(r => r.category === cat) : filteredRecords;
-      const total = recs.length;
-      const hadir = recs.filter(r => r.kehadiran === 'Hadir').length;
-      return { total, hadir };
-    };
-
-    const allStats = catStats();
-    const uttDailyStats = catStats('UTT Daily');
-    const uttMobileStats = catStats('UTT Mobile');
-    const dmeStats = catStats('DME');
-
-    // 4 donuts evenly spaced
-    const donutR = 65;
-    const donutInner = 40;
-    const spacing = chartCanvasW / 4;
-    const row1Y = 170;
-
-    drawDonut(spacing * 0.5, row1Y, donutR, donutInner, allStats.hadir, allStats.total, 'KESELURUHAN', '#3b82f6');
-    drawDonut(spacing * 1.5, row1Y, donutR, donutInner, uttDailyStats.hadir, uttDailyStats.total, 'UTT DAILY', '#10b981');
-    drawDonut(spacing * 2.5, row1Y, donutR, donutInner, uttMobileStats.hadir, uttMobileStats.total, 'UTT MOBILE', '#f59e0b');
-    drawDonut(spacing * 3.5, row1Y, donutR, donutInner, dmeStats.hadir, dmeStats.total, 'DME', '#8b5cf6');
+      ctx.fillText(w.label, groupCenterX, yZero + 20);
+    });
 
     // Convert canvas to image and add to PDF
     const chartImgData = chartCanvas.toDataURL('image/png');
@@ -907,13 +980,12 @@ export function AbsenTBM() {
     docPdf.setFont('helvetica', 'bold');
     docPdf.text('RANGKUMAN KEHADIRAN PER PERSONIL', margin, chartY - 2.5);
 
-    const summaryHead = [['No', 'Nama Personil', 'Kategori', 'Jabatan', 'Hadir', 'Tidak Hadir', 'Total', '%']];
+    const summaryHead = [['No', 'Nama Personil', 'Jabatan', 'Hadir', 'Tidak Hadir', 'Total', '%']];
     const summaryBody = stats.personStats.map((p, idx) => {
       const tidakHadir = p.total - p.hadir;
       return [
         idx + 1,
         p.nama,
-        p.category || 'Manual',
         p.jabatan,
         p.hadir,
         tidakHadir,
@@ -929,20 +1001,19 @@ export function AbsenTBM() {
       theme: 'grid',
       headStyles: { fillColor: [15, 23, 42], halign: 'center', fontSize: 8 },
       columnStyles: {
-        0: { cellWidth: 10, halign: 'center' },
-        1: { cellWidth: 45, halign: 'left' },
-        2: { cellWidth: 25, halign: 'left' },
-        3: { cellWidth: 35, halign: 'left' },
-        4: { cellWidth: 18, halign: 'center' },
-        5: { cellWidth: 20, halign: 'center' },
-        6: { cellWidth: 16, halign: 'center' },
-        7: { cellWidth: 17, halign: 'center' }
+        0: { cellWidth: 12, halign: 'center' },
+        1: { cellWidth: 55, halign: 'left' },
+        2: { cellWidth: 40, halign: 'left' },
+        3: { cellWidth: 20, halign: 'center' },
+        4: { cellWidth: 25, halign: 'center' },
+        5: { cellWidth: 18, halign: 'center' },
+        6: { cellWidth: 18, halign: 'center' }
       },
       styles: { fontSize: 8, cellPadding: 2 },
       willDrawCell: (data) => {
         if (data.section === 'body') {
-          // Color the % column (index 7 now)
-          if (data.column.index === 7) {
+          // Color the % column (index 6 now)
+          if (data.column.index === 6) {
             const raw = String(data.cell.raw).replace('%', '');
             const pct = parseInt(raw);
             if (pct >= 80) {
@@ -956,13 +1027,13 @@ export function AbsenTBM() {
               data.cell.styles.fontStyle = 'bold';
             }
           }
-          // Color Hadir column green (index 4 now)
-          if (data.column.index === 4) {
+          // Color Hadir column green (index 3 now)
+          if (data.column.index === 3) {
             data.cell.styles.textColor = [16, 185, 129];
             data.cell.styles.fontStyle = 'bold';
           }
-          // Color Tidak Hadir column red (index 5 now)
-          if (data.column.index === 5) {
+          // Color Tidak Hadir column red (index 4 now)
+          if (data.column.index === 4) {
             const val = Number(data.cell.raw);
             if (val > 0) {
               data.cell.styles.textColor = [244, 63, 94];
