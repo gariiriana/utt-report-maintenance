@@ -1009,27 +1009,43 @@ export function PTWManagement() {
   // Helper to split month into 4 weeks
   const getWeekRanges = (year: number, month: number) => {
     const lastDay = new Date(year, month, 0).getDate();
-    const formatIsoDate = (day: number) => {
-      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    
+    const formatDate = (date: Date) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
     };
+
+    const formatLabel = (date: Date) => {
+      const monthNames = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+      ];
+      return `${String(date.getDate()).padStart(2, '0')} ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+    };
+
     const monthNames = [
       'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
       'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
     ];
     const monthLabel = monthNames[month - 1];
+
     const ranges = [
-      { weekNum: 1, startStr: formatIsoDate(1), endStr: formatIsoDate(7), rangeLabel: `01 - 07 ${monthLabel} ${year}` },
-      { weekNum: 2, startStr: formatIsoDate(8), endStr: formatIsoDate(14), rangeLabel: `08 - 14 ${monthLabel} ${year}` },
-      { weekNum: 3, startStr: formatIsoDate(15), endStr: formatIsoDate(21), rangeLabel: `15 - 21 ${monthLabel} ${year}` },
-      { weekNum: 4, startStr: formatIsoDate(22), endStr: formatIsoDate(28), rangeLabel: `22 - 28 ${monthLabel} ${year}` },
+      { weekNum: 1, startStr: formatDate(new Date(year, month - 1, 1)), endStr: formatDate(new Date(year, month - 1, 7)), rangeLabel: `01 - 07 ${monthLabel} ${year}` },
+      { weekNum: 2, startStr: formatDate(new Date(year, month - 1, 8)), endStr: formatDate(new Date(year, month - 1, 14)), rangeLabel: `08 - 14 ${monthLabel} ${year}` },
+      { weekNum: 3, startStr: formatDate(new Date(year, month - 1, 15)), endStr: formatDate(new Date(year, month - 1, 21)), rangeLabel: `15 - 21 ${monthLabel} ${year}` },
+      { weekNum: 4, startStr: formatDate(new Date(year, month - 1, 22)), endStr: formatDate(new Date(year, month - 1, 28)), rangeLabel: `22 - 28 ${monthLabel} ${year}` },
     ];
 
     if (lastDay > 28) {
+      const startDate = new Date(year, month - 1, 29);
+      const endDate = new Date(year, month - 1, 29 + 6);
       ranges.push({
         weekNum: 5,
-        startStr: formatIsoDate(29),
-        endStr: formatIsoDate(lastDay),
-        rangeLabel: `29 - ${String(lastDay).padStart(2, '0')} ${monthLabel} ${year}`
+        startStr: formatDate(startDate),
+        endStr: formatDate(endDate),
+        rangeLabel: `${formatLabel(startDate)} - ${formatLabel(endDate)}`
       });
     }
 
