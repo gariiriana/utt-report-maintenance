@@ -767,35 +767,12 @@ export function AbsenTBM() {
     docPdf.text(`Total Log Kehadiran: ${stats.total} record`, margin + 6, y + 15);
     docPdf.text(`Hadir: ${stats.hadir} kali | Tidak Hadir: ${stats.tidakHadir} kali`, margin + 6, y + 23);
     
-    docPdf.setTextColor(15, 23, 42);
-    docPdf.setFont('helvetica', 'bold');
-    docPdf.text(`Persentase Kehadiran (Attendance Rate): ${stats.rate}%`, margin + 95, y + 14);
 
-    // Visual Percentage Bar (Modern style)
-    docPdf.setFillColor(241, 245, 249); // Slate-100
-    docPdf.roundedRect(margin + 95, y + 17.5, 75, 4.5, 1, 1, 'F');
-    if (stats.rate > 0) {
-      docPdf.setFillColor(16, 185, 129); // Green
-      const activeBarW = (stats.rate / 100) * 75;
-      docPdf.roundedRect(margin + 95, y + 17.5, activeBarW, 4.5, 1, 1, 'F');
-    }
-    // Red indicator for the rest
-    if (stats.rate < 100) {
-      docPdf.setFillColor(244, 63, 94); // Red
-      const activeBarW = (stats.rate / 100) * 75;
-      docPdf.roundedRect(margin + 95 + activeBarW, y + 17.5, 75 - activeBarW, 4.5, 1, 1, 'F');
-    }
 
     // ─── Draw Daily Attendance Matrix Table ──────────────────────────
     let chartY = y + 35;
     const dates = stats.chartData.map(d => d.tanggal);
-    const dateHeaders = dates.map(d => {
-      const parts = d.split('-');
-      if (parts.length >= 3) {
-        return dates.length > 15 ? parts[2] : `${parts[2]}/${parts[1]}`;
-      }
-      return d;
-    });
+    const dateHeaders = dates.map((_, idx) => `D${idx + 1}`);
 
     docPdf.setTextColor(15, 23, 42);
     docPdf.setFontSize(9);
@@ -812,7 +789,7 @@ export function AbsenTBM() {
       dates.forEach(date => {
         const rec = filteredRecords.find(r => r.nama === p.nama && r.tanggal === date);
         if (rec) {
-          row.push(rec.kehadiran === 'Hadir' ? 'H' : 'TH');
+          row.push(rec.kehadiran === 'Hadir' ? 'H' : (rec.remark || 'TH'));
         } else {
           row.push('-');
         }
@@ -825,7 +802,7 @@ export function AbsenTBM() {
       head: matrixTableHead,
       body: matrixTableBody,
       theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], halign: 'left', fontSize: 7 }, // Slate dark
+      headStyles: { fillColor: [15, 23, 42], halign: 'center', fontSize: 6.5 }, // Slate dark
       columnStyles: (() => {
         const colStyles: Record<number, any> = {
           0: { cellWidth: 8, halign: 'center' },
@@ -834,24 +811,69 @@ export function AbsenTBM() {
         };
         const dateColW = Math.max(3.5, (contentW - 72) / dates.length);
         for (let i = 3; i < 3 + dates.length; i++) {
-          colStyles[i] = { cellWidth: dateColW, halign: 'center' };
+          colStyles[i] = { cellWidth: dateColW, halign: 'center', fontSize: 5.5 };
         }
         return colStyles;
       })(),
-      styles: { fontSize: 6.5, cellPadding: 1 },
+      styles: { fontSize: 6.5, cellPadding: 1, valign: 'middle' },
       willDrawCell: (data) => {
         if (data.section === 'body' && data.column.index >= 3) {
-          const val = data.cell.raw;
+          const val = data.cell.raw as string;
           if (val === 'H') {
             data.cell.styles.fillColor = [209, 250, 229]; // light emerald
             data.cell.styles.textColor = [16, 185, 129]; // emerald text
             data.cell.styles.fontStyle = 'bold';
-          } else if (val === 'TH') {
+          } else if (val !== '-' && val !== '') {
             data.cell.styles.fillColor = [254, 226, 226]; // light rose
             data.cell.styles.textColor = [244, 63, 94]; // rose text
             data.cell.styles.fontStyle = 'bold';
           }
         }
+      }
+    });
+
+    // ─── Draw Date Legend Table (Tabel Penjelasan Tanggal) ─────────────
+    const legendBody: any[] = [];
+    const colsCount = 3;
+    const rowsCount = Math.ceil(dates.length / colsCount);
+    for (let r = 0; r < rowsCount; r++) {
+      const row: string[] = [];
+      for (let c = 0; c < colsCount; c++) {
+        const idx = r + c * rowsCount;
+        if (idx < dates.length) {
+          const dStr = dates[idx];
+          const parts = dStr.split('-');
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+          const dateFormatted = parts.length >= 3 ? `${parts[2]} ${months[parseInt(parts[1]) - 1]} ${parts[0]}` : dStr;
+          row.push(`D${idx + 1}`);
+          row.push(dateFormatted);
+        } else {
+          row.push('');
+          row.push('');
+        }
+      }
+      legendBody.push(row);
+    }
+
+    docPdf.setTextColor(15, 23, 42);
+    docPdf.setFontSize(9);
+    docPdf.setFont('helvetica', 'bold');
+    docPdf.text('PENJELASAN TANGGAL MATRIKS (KODE -> TANGGAL)', margin, (docPdf as any).lastAutoTable.finalY + 8);
+
+    autoTable(docPdf, {
+      startY: (docPdf as any).lastAutoTable.finalY + 11,
+      head: [['Kode', 'Tanggal / Bulan / Tahun', 'Kode', 'Tanggal / Bulan / Tahun', 'Kode', 'Tanggal / Bulan / Tahun']],
+      body: legendBody,
+      theme: 'grid',
+      headStyles: { fillColor: [71, 85, 105], halign: 'left', fontSize: 7.5 }, // slate gray
+      styles: { fontSize: 7.5, cellPadding: 1.5 },
+      columnStyles: {
+        0: { cellWidth: 15, fontStyle: 'bold', fillColor: [248, 250, 252], halign: 'center' },
+        1: { cellWidth: 47 },
+        2: { cellWidth: 15, fontStyle: 'bold', fillColor: [248, 250, 252], halign: 'center' },
+        3: { cellWidth: 47 },
+        4: { cellWidth: 15, fontStyle: 'bold', fillColor: [248, 250, 252], halign: 'center' },
+        5: { cellWidth: 47 }
       }
     });
 
@@ -1319,14 +1341,14 @@ export function AbsenTBM() {
         </div>
 
         {/* Right Side: Personnel Attendance Rates */}
-        <div className="lg:col-span-2 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 flex flex-col justify-between min-h-[300px]">
+        <div className="lg:col-span-2 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 flex flex-col justify-start gap-4 min-h-[300px]">
           <div>
-            <h2 className="text-sm font-bold text-white mb-4 uppercase tracking-wider flex items-center gap-2">
+            <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <span className="w-2 h-2 bg-pink-500 rounded-full shadow-lg shadow-pink-500" />
               Rasio Kehadiran per Personil
             </h2>
           </div>
-          <div className="flex-1 w-full max-h-[220px] overflow-y-auto pr-1 space-y-3.5 custom-scrollbar">
+          <div className="flex-1 w-full max-h-[260px] overflow-y-auto pr-1 space-y-3.5 custom-scrollbar">
             {stats.personStats.length === 0 ? (
               <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 text-sm py-12">
                 <Calendar className="w-10 h-10 mb-2 opacity-30" />
@@ -1745,14 +1767,14 @@ export function AbsenTBM() {
                             if (rec) {
                               if (rec.kehadiran === 'Hadir') {
                                 symbol = 'H';
-                                cellClass = 'text-emerald-400 font-black bg-emerald-500/10';
+                                cellClass = 'text-emerald-400 font-bold bg-emerald-500/10';
                               } else {
-                                symbol = 'TH';
-                                cellClass = 'text-rose-500 font-black bg-rose-500/10';
+                                symbol = rec.remark || 'TH';
+                                cellClass = 'text-rose-400 font-bold bg-rose-500/10';
                               }
                             }
                             return (
-                              <td key={date} className={`px-2 py-2 border border-white/5 text-center font-mono ${cellClass}`}>
+                              <td key={date} className={`px-2 py-2 border border-white/5 text-center font-mono text-[10px] ${cellClass}`}>
                                 {symbol}
                               </td>
                             );
