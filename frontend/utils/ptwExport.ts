@@ -489,7 +489,7 @@ export async function exportPTWWeeklyReportToExcel(monthYearLabel: string, weekl
     });
 
     // Total Row for Summary
-    const totalRowIdx = 11;
+    const totalRowIdx = 7 + weeklyData.length;
     ws.getCell(`A${totalRowIdx}`).value = 'TOTAL';
     ws.mergeCells(`A${totalRowIdx}:B${totalRowIdx}`);
     ws.getCell(`A${totalRowIdx}`).alignment = { horizontal: 'right', vertical: 'middle' };
@@ -508,7 +508,7 @@ export async function exportPTWWeeklyReportToExcel(monthYearLabel: string, weekl
     });
 
     // --- Section 2: Rincian per Minggu ---
-    let currentRowIdx = 14;
+    let currentRowIdx = totalRowIdx + 3;
 
     weeklyData.forEach(wd => {
       // Week Title

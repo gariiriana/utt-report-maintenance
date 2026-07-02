@@ -1017,15 +1017,32 @@ export function PTWManagement() {
       'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
     ];
     const monthLabel = monthNames[month - 1];
-    return [
+    const ranges = [
       { weekNum: 1, startStr: formatIsoDate(1), endStr: formatIsoDate(7), rangeLabel: `01 - 07 ${monthLabel} ${year}` },
       { weekNum: 2, startStr: formatIsoDate(8), endStr: formatIsoDate(14), rangeLabel: `08 - 14 ${monthLabel} ${year}` },
       { weekNum: 3, startStr: formatIsoDate(15), endStr: formatIsoDate(21), rangeLabel: `15 - 21 ${monthLabel} ${year}` },
-      { weekNum: 4, startStr: formatIsoDate(22), endStr: formatIsoDate(lastDay), rangeLabel: `22 - ${String(lastDay).padStart(2, '0')} ${monthLabel} ${year}` },
+      { weekNum: 4, startStr: formatIsoDate(22), endStr: formatIsoDate(28), rangeLabel: `22 - 28 ${monthLabel} ${year}` },
     ];
+
+    if (lastDay > 28) {
+      ranges.push({
+        weekNum: 5,
+        startStr: formatIsoDate(29),
+        endStr: formatIsoDate(lastDay),
+        rangeLabel: `29 - ${String(lastDay).padStart(2, '0')} ${monthLabel} ${year}`
+      });
+    }
+
+    return ranges;
   };
 
   const weekRanges = getWeekRanges(selectedYear, selectedMonth);
+
+  useEffect(() => {
+    if (selectedWeek > weekRanges.length) {
+      setSelectedWeek(1);
+    }
+  }, [selectedYear, selectedMonth, selectedWeek, weekRanges.length]);
 
   const weeklyData = weekRanges.map(week => {
     const activeRecords = records.filter(r => {
