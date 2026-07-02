@@ -12,10 +12,7 @@ import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer
-} from 'recharts';
+
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import { loadLogoBase64 } from '@/utils/ReportPdfExport';
@@ -141,6 +138,7 @@ export function AbsenTBM() {
   const [viewLevel, setViewLevel] = useState<'month' | 'date' | 'records'>('month');
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [recordsViewMode, setRecordsViewMode] = useState<'folder' | 'matrix'>('matrix');
 
   // Date delete confirmation modal state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -363,12 +361,32 @@ export function AbsenTBM() {
 
     const chartData = Object.values(dateGroups).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
 
+    // Group by Name for Personnel Stats
+    const personGroups: Record<string, { nama: string; jabatan: string; hadir: number; total: number }> = {};
+    filteredRecords.forEach(r => {
+      if (!personGroups[r.nama]) {
+        personGroups[r.nama] = { nama: r.nama, jabatan: r.jabatan, hadir: 0, total: 0 };
+      }
+      personGroups[r.nama].total += 1;
+      if (r.kehadiran === 'Hadir') {
+        personGroups[r.nama].hadir += 1;
+      }
+    });
+
+    const personStats = Object.values(personGroups).map(p => ({
+      nama: p.nama,
+      jabatan: p.jabatan,
+      rate: p.total > 0 ? Math.round((p.hadir / p.total) * 100) : 0,
+      hadir: p.hadir,
+      total: p.total
+    })).sort((a, b) => b.rate - a.rate || a.nama.localeCompare(b.nama));
+
     const pieData = [
       { name: 'Hadir', value: hadir, color: '#10b981' },
       { name: 'Tidak Hadir', value: tidakHadir, color: '#f43f5e' }
     ];
 
-    return { total, hadir, tidakHadir, rate, chartData, pieData };
+    return { total, hadir, tidakHadir, rate, chartData, pieData, personStats };
   }, [filteredRecords]);
 
   const progressRef = useRef<HTMLDivElement>(null);
@@ -768,131 +786,76 @@ export function AbsenTBM() {
       docPdf.roundedRect(margin + 95 + activeBarW, y + 17.5, 75 - activeBarW, 4.5, 1, 1, 'F');
     }
 
-    // ─── Draw Daily Attendance Bar Chart ──────────────────────────
+    // ─── Draw Daily Attendance Matrix Table ──────────────────────────
     let chartY = y + 35;
-    const chartCardH = 60; // Clean, modern height
-    docPdf.setFillColor(248, 250, 252);
-    docPdf.roundedRect(margin, chartY, contentW, chartCardH, 1.5, 1.5, 'F');
-    docPdf.setDrawColor(226, 232, 240);
-    docPdf.roundedRect(margin, chartY, contentW, chartCardH, 1.5, 1.5, 'D');
+    const dates = stats.chartData.map(d => d.tanggal);
+    const dateHeaders = dates.map(d => {
+      const parts = d.split('-');
+      if (parts.length >= 3) {
+        return dates.length > 15 ? parts[2] : `${parts[2]}/${parts[1]}`;
+      }
+      return d;
+    });
 
     docPdf.setTextColor(15, 23, 42);
     docPdf.setFontSize(9);
     docPdf.setFont('helvetica', 'bold');
-    docPdf.text('GRAFIK HARIAN KEHADIRAN (Hadir vs Tidak Hadir)', margin + 6, chartY + 7);
+    docPdf.text('TABEL MATRIKS KEHADIRAN HARIAN', margin, chartY - 2.5);
 
-    // Draw Legend in top right of the chart card
-    const legendRightX = margin + contentW - 6;
-    docPdf.setFontSize(7.5);
-    docPdf.setFont('helvetica', 'normal');
-
-    // Legend: Hadir (Green)
-    docPdf.setFillColor(16, 185, 129);
-    docPdf.roundedRect(legendRightX - 54, chartY + 4, 3, 3, 0.5, 0.5, 'F');
-    docPdf.setTextColor(71, 85, 105);
-    docPdf.text('Hadir', legendRightX - 49, chartY + 6.5);
-
-    // Legend: Tidak Hadir (Red)
-    docPdf.setFillColor(244, 63, 94);
-    docPdf.roundedRect(legendRightX - 32, chartY + 4, 3, 3, 0.5, 0.5, 'F');
-    docPdf.text('Tidak Hadir', legendRightX - 27, chartY + 6.5);
-
-    const startX = margin + 12;
-    const chartW = contentW - 18;
-    const chartH = 34; // Good visual balance
-    const startY = chartY + 44; // X-axis baseline
-
-    const daysCount = stats.chartData.length;
-    if (daysCount > 0) {
-      let maxVal = 1;
-      stats.chartData.forEach(d => {
-        if (d.Hadir > maxVal) maxVal = d.Hadir;
-        if (d['Tidak Hadir'] > maxVal) maxVal = d['Tidak Hadir'];
+    const matrixTableHead = [['No', 'Nama Personil', 'Jabatan', ...dateHeaders]];
+    const matrixTableBody = stats.personStats.map((p, idx) => {
+      const row: any[] = [
+        idx + 1,
+        p.nama,
+        p.jabatan
+      ];
+      dates.forEach(date => {
+        const rec = filteredRecords.find(r => r.nama === p.nama && r.tanggal === date);
+        if (rec) {
+          row.push(rec.kehadiran === 'Hadir' ? 'H' : 'TH');
+        } else {
+          row.push('-');
+        }
       });
+      return row;
+    });
 
-      // Draw dynamic Y-axis scale and grid lines
-      let yTicks: number[] = [];
-      if (maxVal <= 5) {
-        for (let i = 0; i <= maxVal; i++) yTicks.push(i);
-      } else {
-        yTicks = [0, Math.round(maxVal * 0.33), Math.round(maxVal * 0.66), maxVal];
-        yTicks = Array.from(new Set(yTicks)).sort((a, b) => a - b);
+    autoTable(docPdf, {
+      startY: chartY,
+      head: matrixTableHead,
+      body: matrixTableBody,
+      theme: 'grid',
+      headStyles: { fillColor: [15, 23, 42], halign: 'left', fontSize: 7 }, // Slate dark
+      columnStyles: (() => {
+        const colStyles: Record<number, any> = {
+          0: { cellWidth: 8, halign: 'center' },
+          1: { cellWidth: 38, halign: 'left' },
+          2: { cellWidth: 26, halign: 'left' }
+        };
+        const dateColW = Math.max(3.5, (contentW - 72) / dates.length);
+        for (let i = 3; i < 3 + dates.length; i++) {
+          colStyles[i] = { cellWidth: dateColW, halign: 'center' };
+        }
+        return colStyles;
+      })(),
+      styles: { fontSize: 6.5, cellPadding: 1 },
+      willDrawCell: (data) => {
+        if (data.section === 'body' && data.column.index >= 3) {
+          const val = data.cell.raw;
+          if (val === 'H') {
+            data.cell.styles.fillColor = [209, 250, 229]; // light emerald
+            data.cell.styles.textColor = [16, 185, 129]; // emerald text
+            data.cell.styles.fontStyle = 'bold';
+          } else if (val === 'TH') {
+            data.cell.styles.fillColor = [254, 226, 226]; // light rose
+            data.cell.styles.textColor = [244, 63, 94]; // rose text
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
       }
+    });
 
-      yTicks.forEach(tick => {
-        const ty = startY - (tick / maxVal) * chartH;
-        
-        // Faint horizontal grid line
-        docPdf.setDrawColor(241, 245, 249);
-        docPdf.setLineWidth(0.15);
-        docPdf.line(startX, ty, startX + chartW, ty);
-
-        // Y-axis tick label
-        docPdf.setTextColor(148, 163, 184);
-        docPdf.setFontSize(6.5);
-        docPdf.setFont('helvetica', 'normal');
-        docPdf.text(String(tick), startX - 3.5, ty + 1, { align: 'right' });
-      });
-
-      // Draw axis lines
-      docPdf.setDrawColor(148, 163, 184);
-      docPdf.setLineWidth(0.25);
-      docPdf.line(startX, startY, startX + chartW, startY); // X axis
-      docPdf.line(startX, startY, startX, startY - chartH); // Y axis
-
-      const colW = chartW / daysCount;
-      const gap = Math.max(0.4, colW * 0.2); // Gap between days (20% of column width)
-      const innerGap = Math.max(0.2, colW * 0.05); // Gap between bars of same day
-      const totalBarArea = colW - gap;
-      const barW = Math.max(0.6, (totalBarArea - innerGap) / 2);
-
-      // Determine dynamic date printing interval to prevent overlaps on X-axis
-      const printInterval = Math.max(1, Math.ceil(daysCount / 10)); // Target max 10 ticks horizontally
-
-      stats.chartData.forEach((day, idx) => {
-        const colStartX = startX + idx * colW;
-        const dxHadir = colStartX + gap / 2;
-        const dxTidakHadir = dxHadir + barW + innerGap;
-
-        // Hadir Bar (Green)
-        if (day.Hadir > 0) {
-          const barHeight = (day.Hadir / maxVal) * chartH;
-          docPdf.setFillColor(16, 185, 129);
-          const rx = Math.min(0.5, barHeight / 2);
-          docPdf.roundedRect(dxHadir, startY - barHeight, barW, barHeight, rx, rx, 'F');
-        }
-
-        // Tidak Hadir Bar (Red)
-        if (day['Tidak Hadir'] > 0) {
-          const barHeight = (day['Tidak Hadir'] / maxVal) * chartH;
-          docPdf.setFillColor(244, 63, 94);
-          const rx = Math.min(0.5, barHeight / 2);
-          docPdf.roundedRect(dxTidakHadir, startY - barHeight, barW, barHeight, rx, rx, 'F');
-        }
-
-        // Label Tanggal (Skipped dynamically and displayed horizontally for maximum cleanliness)
-        if (idx % printInterval === 0) {
-          docPdf.setTextColor(100, 116, 139);
-          docPdf.setFontSize(6.5);
-          try {
-            const parts = day.tanggal.split('-');
-            const dateLabel = parts.length >= 3 ? `${parts[2]}/${parts[1]}` : day.tanggal;
-            
-            // Print horizontal label centered under the daily column
-            const labelX = colStartX + colW / 2;
-            docPdf.text(dateLabel, labelX, startY + 4, { align: 'center' });
-          } catch(e) {}
-        }
-      });
-    } else {
-      // Draw axis lines even when empty
-      docPdf.setDrawColor(148, 163, 184);
-      docPdf.setLineWidth(0.25);
-      docPdf.line(startX, startY, startX + chartW, startY); // X axis
-      docPdf.line(startX, startY, startX, startY - chartH); // Y axis
-    }
-
-    // Auto Table
+    // 2nd Auto Table: Detail History Absensi
     const tableData = filteredRecords.map((r, i) => [
       i + 1,
       r.tanggal,
@@ -902,12 +865,17 @@ export function AbsenTBM() {
       r.remark || '-'
     ]);
 
+    docPdf.setTextColor(15, 23, 42);
+    docPdf.setFontSize(9);
+    docPdf.setFont('helvetica', 'bold');
+    docPdf.text('DETAIL RIWAYAT ABSENSI TBM', margin, (docPdf as any).lastAutoTable.finalY + 8);
+
     autoTable(docPdf, {
-      startY: chartY + chartCardH + 6,
+      startY: (docPdf as any).lastAutoTable.finalY + 11,
       head: [['No', 'Tanggal', 'Nama', 'Jabatan', 'Status Kehadiran', 'Keterangan']],
       body: tableData,
       theme: 'grid',
-      headStyles: { fillColor: [0, 89, 156], halign: 'left' },
+      headStyles: { fillColor: [0, 89, 156], halign: 'left' }, // Original Blue
       columnStyles: {
         0: { cellWidth: 10 },
         1: { cellWidth: 25 },
@@ -1350,35 +1318,46 @@ export function AbsenTBM() {
           </div>
         </div>
 
-        {/* Right Side: Charts Display */}
+        {/* Right Side: Personnel Attendance Rates */}
         <div className="lg:col-span-2 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 flex flex-col justify-between min-h-[300px]">
           <div>
             <h2 className="text-sm font-bold text-white mb-4 uppercase tracking-wider flex items-center gap-2">
               <span className="w-2 h-2 bg-pink-500 rounded-full shadow-lg shadow-pink-500" />
-              Grafik Kehadiran Harian
+              Rasio Kehadiran per Personil
             </h2>
           </div>
-          <div className="flex-1 w-full h-[220px]">
-            {stats.chartData.length === 0 ? (
-              <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 text-sm">
+          <div className="flex-1 w-full max-h-[220px] overflow-y-auto pr-1 space-y-3.5 custom-scrollbar">
+            {stats.personStats.length === 0 ? (
+              <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 text-sm py-12">
                 <Calendar className="w-10 h-10 mb-2 opacity-30" />
-                Belum ada data untuk grafik.
+                Belum ada data absensi.
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                  <XAxis dataKey="tanggal" stroke="#94a3b8" fontSize={9} tickLine={false} minTickGap={25} />
-                  <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
-                    labelStyle={{ color: '#fff', fontWeight: 'bold' }}
-                  />
-                  <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '11px', fontWeight: 'bold' }} />
-                  <Bar dataKey="Hadir" fill="#10b981" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Tidak Hadir" fill="#f43f5e" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              stats.personStats.map((person, idx) => (
+                <div key={idx} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-350">
+                    <div className="flex items-center gap-2 truncate max-w-[70%]">
+                      <span className="text-slate-500 font-mono text-[9px]">{idx + 1}.</span>
+                      <span className="truncate text-white">{person.nama}</span>
+                      <span className="text-[9px] font-normal text-slate-500 truncate">({person.jabatan})</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] font-normal text-slate-500">({person.hadir}/{person.total})</span>
+                      <span className={person.rate >= 80 ? 'text-emerald-400' : person.rate >= 50 ? 'text-amber-400' : 'text-rose-400'}>
+                        {person.rate}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="w-full bg-slate-800/60 rounded-full h-2 overflow-hidden border border-slate-700/30">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        person.rate >= 80 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : person.rate >= 50 ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 'bg-gradient-to-r from-rose-500 to-rose-400'
+                      }`}
+                      style={{ width: `${person.rate}%` }}
+                    />
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </div>
@@ -1673,23 +1652,51 @@ export function AbsenTBM() {
             </div>
           </div>
 
-          {viewLevel !== 'month' && (
-            <button
-              onClick={() => {
-                if (viewLevel === 'records') {
-                  setViewLevel('date');
-                  setSelectedDate(null);
-                } else if (viewLevel === 'date') {
-                  setViewLevel('month');
-                  setSelectedMonth(null);
-                }
-              }}
-              className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-750 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 border border-slate-700/50 transition active:scale-95 animate-none"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Kembali
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* View Mode Toggle */}
+            <div className="flex bg-slate-950/40 p-0.5 rounded-lg border border-white/5">
+              <button
+                type="button"
+                onClick={() => setRecordsViewMode('matrix')}
+                className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
+                  recordsViewMode === 'matrix'
+                    ? 'bg-emerald-500 text-white shadow-sm font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Tabel Matriks
+              </button>
+              <button
+                type="button"
+                onClick={() => setRecordsViewMode('folder')}
+                className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
+                  recordsViewMode === 'folder'
+                    ? 'bg-emerald-500 text-white shadow-sm font-black'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Lihat per Folder
+              </button>
+            </div>
+
+            {viewLevel !== 'month' && recordsViewMode === 'folder' && (
+              <button
+                onClick={() => {
+                  if (viewLevel === 'records') {
+                    setViewLevel('date');
+                    setSelectedDate(null);
+                  } else if (viewLevel === 'date') {
+                    setViewLevel('month');
+                    setSelectedMonth(null);
+                  }
+                }}
+                className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-750 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 border border-slate-700/50 transition active:scale-95 animate-none cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Kembali
+              </button>
+            )}
+          </div>
         </div>
 
         {loading ? (
@@ -1704,7 +1711,61 @@ export function AbsenTBM() {
           </div>
         ) : (
           <div>
-            {/* LEVEL 1: MONTH FOLDERS */}
+            {recordsViewMode === 'matrix' ? (() => {
+              const dates = stats.chartData.map(d => d.tanggal);
+              return (
+                <div className="overflow-x-auto rounded-xl border border-white/10 max-h-[500px] custom-scrollbar">
+                  <table className="w-full text-xs text-left border-collapse">
+                    <thead className="bg-slate-800/80 sticky top-0 text-slate-350 z-20">
+                      <tr>
+                        <th className="px-3 py-2.5 border border-white/5 w-10 text-center bg-slate-850">No</th>
+                        <th className="px-4 py-2.5 border border-white/5 min-w-[150px] sticky left-0 bg-slate-850 z-30">Nama Personil</th>
+                        <th className="px-4 py-2.5 border border-white/5 min-w-[120px] bg-slate-850">Jabatan</th>
+                        {dates.map(date => {
+                          const parts = date.split('-');
+                          const label = parts.length >= 3 ? `${parts[2]}/${parts[1]}` : date;
+                          return (
+                            <th key={date} className="px-2 py-2.5 border border-white/5 text-center min-w-[55px] font-mono bg-slate-850">
+                              {label}
+                            </th>
+                          );
+                        })}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800 bg-slate-900/40">
+                      {stats.personStats.map((person, pIdx) => (
+                        <tr key={person.nama} className="hover:bg-white/5 transition-colors">
+                          <td className="px-3 py-2 border border-white/5 text-center text-slate-500 font-mono">{pIdx + 1}</td>
+                          <td className="px-4 py-2 border border-white/5 font-bold text-white truncate sticky left-0 bg-slate-900/90 backdrop-blur-sm z-10">{person.nama}</td>
+                          <td className="px-4 py-2 border border-white/5 text-slate-400 truncate">{person.jabatan}</td>
+                          {dates.map(date => {
+                            const rec = filteredRecords.find(r => r.nama === person.nama && r.tanggal === date);
+                            let symbol = '-';
+                            let cellClass = 'text-slate-600';
+                            if (rec) {
+                              if (rec.kehadiran === 'Hadir') {
+                                symbol = 'H';
+                                cellClass = 'text-emerald-400 font-black bg-emerald-500/10';
+                              } else {
+                                symbol = 'TH';
+                                cellClass = 'text-rose-500 font-black bg-rose-500/10';
+                              }
+                            }
+                            return (
+                              <td key={date} className={`px-2 py-2 border border-white/5 text-center font-mono ${cellClass}`}>
+                                {symbol}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })() : (
+              <div>
+                {/* LEVEL 1: MONTH FOLDERS */}
             {viewLevel === 'month' && (() => {
               const monthGroups: Record<string, number> = {};
               filteredRecords.forEach(r => {
@@ -2024,6 +2085,8 @@ export function AbsenTBM() {
                 </div>
               );
             })()}
+              </div>
+            )}
           </div>
         )}
       </div>
