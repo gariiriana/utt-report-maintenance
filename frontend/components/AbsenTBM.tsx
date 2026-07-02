@@ -732,51 +732,74 @@ export function AbsenTBM() {
     // Summary Card
     let y = headerY + headerH + 5;
     docPdf.setFillColor(248, 250, 252); // Slate-50
-    docPdf.rect(margin, y, contentW, 28, 'F');
+    docPdf.roundedRect(margin, y, contentW, 30, 1.5, 1.5, 'F');
     docPdf.setDrawColor(226, 232, 240); // Slate-200
-    docPdf.rect(margin, y, contentW, 28, 'D');
+    docPdf.setLineWidth(0.15);
+    docPdf.roundedRect(margin, y, contentW, 30, 1.5, 1.5, 'D');
 
     docPdf.setTextColor(15, 23, 42); // Slate-900
-    docPdf.setFontSize(10);
+    docPdf.setFontSize(9.5);
     docPdf.setFont('helvetica', 'bold');
-    docPdf.text('RINGKASAN STATISTIK KEHADIRAN', margin + 5, y + 6);
+    docPdf.text('RINGKASAN STATISTIK KEHADIRAN', margin + 6, y + 7);
 
     docPdf.setFontSize(8);
     docPdf.setFont('helvetica', 'normal');
-    docPdf.text(`Total Log Kehadiran: ${stats.total} record`, margin + 5, y + 14);
-    docPdf.text(`Hadir: ${stats.hadir} kali | Tidak Hadir: ${stats.tidakHadir} kali`, margin + 5, y + 21);
+    docPdf.setTextColor(71, 85, 105); // Slate-600
+    docPdf.text(`Total Log Kehadiran: ${stats.total} record`, margin + 6, y + 15);
+    docPdf.text(`Hadir: ${stats.hadir} kali | Tidak Hadir: ${stats.tidakHadir} kali`, margin + 6, y + 23);
+    
+    docPdf.setTextColor(15, 23, 42);
+    docPdf.setFont('helvetica', 'bold');
     docPdf.text(`Persentase Kehadiran (Attendance Rate): ${stats.rate}%`, margin + 95, y + 14);
 
-    // Visual Percentage Bar
-    docPdf.setFillColor(244, 63, 94); // Red
-    docPdf.rect(margin + 95, y + 18, 75, 4, 'F');
+    // Visual Percentage Bar (Modern style)
+    docPdf.setFillColor(241, 245, 249); // Slate-100
+    docPdf.roundedRect(margin + 95, y + 17.5, 75, 4.5, 1, 1, 'F');
     if (stats.rate > 0) {
       docPdf.setFillColor(16, 185, 129); // Green
-      docPdf.rect(margin + 95, y + 18, (stats.rate / 100) * 75, 4, 'F');
+      const activeBarW = (stats.rate / 100) * 75;
+      docPdf.roundedRect(margin + 95, y + 17.5, activeBarW, 4.5, 1, 1, 'F');
+    }
+    // Red indicator for the rest
+    if (stats.rate < 100) {
+      docPdf.setFillColor(244, 63, 94); // Red
+      const activeBarW = (stats.rate / 100) * 75;
+      docPdf.roundedRect(margin + 95 + activeBarW, y + 17.5, 75 - activeBarW, 4.5, 1, 1, 'F');
     }
 
     // ─── Draw Daily Attendance Bar Chart ──────────────────────────
-    let chartY = y + 32;
+    let chartY = y + 35;
+    const chartCardH = 68; // Taller box
     docPdf.setFillColor(248, 250, 252);
-    docPdf.rect(margin, chartY, contentW, 40, 'F');
+    docPdf.roundedRect(margin, chartY, contentW, chartCardH, 1.5, 1.5, 'F');
     docPdf.setDrawColor(226, 232, 240);
-    docPdf.rect(margin, chartY, contentW, 40, 'D');
+    docPdf.roundedRect(margin, chartY, contentW, chartCardH, 1.5, 1.5, 'D');
 
     docPdf.setTextColor(15, 23, 42);
-    docPdf.setFontSize(8.5);
+    docPdf.setFontSize(9);
     docPdf.setFont('helvetica', 'bold');
-    docPdf.text('GRAFIK HARIAN KEHADIRAN (Hadir vs Tidak Hadir)', margin + 5, chartY + 6);
+    docPdf.text('GRAFIK HARIAN KEHADIRAN (Hadir vs Tidak Hadir)', margin + 6, chartY + 7);
 
-    const chartW = contentW - 20;
-    const chartH = 22;
-    const startX = margin + 10;
-    const startY = chartY + 34;
+    // Draw Legend in top right of the chart card
+    const legendRightX = margin + contentW - 6;
+    docPdf.setFontSize(7.5);
+    docPdf.setFont('helvetica', 'normal');
+    
+    // Legend: Hadir (Green)
+    docPdf.setFillColor(16, 185, 129);
+    docPdf.roundedRect(legendRightX - 52, chartY + 4, 3, 3, 0.5, 0.5, 'F');
+    docPdf.setTextColor(71, 85, 105);
+    docPdf.text('Hadir', legendRightX - 47, chartY + 6.5);
 
-    // Draw axis lines
-    docPdf.setDrawColor(148, 163, 184);
-    docPdf.setLineWidth(0.2);
-    docPdf.line(startX, startY, startX + chartW, startY); // X axis
-    docPdf.line(startX, startY, startX, startY - chartH); // Y axis
+    // Legend: Tidak Hadir (Red)
+    docPdf.setFillColor(244, 63, 94);
+    docPdf.roundedRect(legendRightX - 32, chartY + 4, 3, 3, 0.5, 0.5, 'F');
+    docPdf.text('Tidak Hadir', legendRightX - 27, chartY + 6.5);
+
+    const startX = margin + 12;
+    const chartW = contentW - 18;
+    const chartH = 38; // Increased height
+    const startY = chartY + 48; // X-axis baseline
 
     const daysCount = stats.chartData.length;
     if (daysCount > 0) {
@@ -786,34 +809,81 @@ export function AbsenTBM() {
         if (d['Tidak Hadir'] > maxVal) maxVal = d['Tidak Hadir'];
       });
 
+      // Draw dynamic Y-axis scale and grid lines
+      let yTicks: number[] = [];
+      if (maxVal <= 5) {
+        for (let i = 0; i <= maxVal; i++) yTicks.push(i);
+      } else {
+        yTicks = [0, Math.round(maxVal * 0.33), Math.round(maxVal * 0.66), maxVal];
+        yTicks = Array.from(new Set(yTicks)).sort((a, b) => a - b);
+      }
+
+      yTicks.forEach(tick => {
+        const ty = startY - (tick / maxVal) * chartH;
+        
+        // Faint horizontal grid line
+        docPdf.setDrawColor(241, 245, 249);
+        docPdf.setLineWidth(0.15);
+        docPdf.line(startX, ty, startX + chartW, ty);
+
+        // Y-axis tick label
+        docPdf.setTextColor(148, 163, 184);
+        docPdf.setFontSize(6.5);
+        docPdf.setFont('helvetica', 'normal');
+        docPdf.text(String(tick), startX - 3.5, ty + 1, { align: 'right' });
+      });
+
+      // Draw axis lines
+      docPdf.setDrawColor(148, 163, 184);
+      docPdf.setLineWidth(0.25);
+      docPdf.line(startX, startY, startX + chartW, startY); // X axis
+      docPdf.line(startX, startY, startX, startY - chartH); // Y axis
+
       const colW = chartW / daysCount;
+      const gap = Math.max(0.4, colW * 0.15); // Gap between days
+      const innerGap = Math.max(0.2, colW * 0.05); // Gap between green/red bars
+      const totalBarArea = colW - gap;
+      const barW = Math.max(0.5, (totalBarArea - innerGap) / 2);
+
       stats.chartData.forEach((day, idx) => {
-        const dx = startX + idx * colW + 2;
-        const limitW = Math.max(2, (colW - 4) / 2);
+        const colStartX = startX + idx * colW;
+        const dxHadir = colStartX + gap / 2;
+        const dxTidakHadir = dxHadir + barW + innerGap;
 
         // Hadir Bar (Green)
         if (day.Hadir > 0) {
-          const barH = (day.Hadir / maxVal) * (chartH - 4);
+          const barHeight = (day.Hadir / maxVal) * chartH;
           docPdf.setFillColor(16, 185, 129);
-          docPdf.rect(dx, startY - barH, limitW, barH, 'F');
+          const rx = Math.min(0.5, barHeight / 2);
+          docPdf.roundedRect(dxHadir, startY - barHeight, barW, barHeight, rx, rx, 'F');
         }
 
         // Tidak Hadir Bar (Red)
         if (day['Tidak Hadir'] > 0) {
-          const barH = (day['Tidak Hadir'] / maxVal) * (chartH - 4);
+          const barHeight = (day['Tidak Hadir'] / maxVal) * chartH;
           docPdf.setFillColor(244, 63, 94);
-          docPdf.rect(dx + limitW + 1, startY - barH, limitW, barH, 'F');
+          const rx = Math.min(0.5, barHeight / 2);
+          docPdf.roundedRect(dxTidakHadir, startY - barHeight, barW, barHeight, rx, rx, 'F');
         }
 
-        // Label Tanggal
+        // Label Tanggal (Rotated 45 degrees to prevent overlap)
         docPdf.setTextColor(100, 116, 139);
         docPdf.setFontSize(6);
         try {
           const parts = day.tanggal.split('-');
           const dateLabel = parts.length >= 3 ? `${parts[2]}/${parts[1]}` : day.tanggal;
-          docPdf.text(dateLabel, dx + colW / 4, startY + 4, { align: 'center' });
+          
+          // Center-ish of the daily column
+          const labelX = colStartX + colW / 2;
+          docPdf.text(dateLabel, labelX, startY + 4.5, { angle: -45 });
         } catch(e) {}
       });
+    } else {
+      // Draw axis lines even when empty
+      docPdf.setDrawColor(148, 163, 184);
+      docPdf.setLineWidth(0.25);
+      docPdf.line(startX, startY, startX + chartW, startY); // X axis
+      docPdf.line(startX, startY, startX, startY - chartH); // Y axis
     }
 
     // Auto Table
@@ -827,7 +897,7 @@ export function AbsenTBM() {
     ]);
 
     autoTable(docPdf, {
-      startY: chartY + 46,
+      startY: chartY + chartCardH + 6,
       head: [['No', 'Tanggal', 'Nama', 'Jabatan', 'Status Kehadiran', 'Keterangan']],
       body: tableData,
       theme: 'grid',
