@@ -14,7 +14,7 @@ import {
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
-import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList } from 'recharts';
 import html2canvas from 'html2canvas';
 import { 
   exportPTWListToExcel, 
@@ -1051,7 +1051,7 @@ export function PTWManagement() {
     name: `Minggu ${wd.weekNum}`,
     'Open (Aktif)': wd.openCount,
     'Closed (Selesai)': wd.closedCount,
-    'Total Aktif': wd.totalCount,
+    'Total PTW': wd.totalCount,
   }));
 
   const handleExportPdfReport = async () => {
@@ -1568,7 +1568,7 @@ export function PTWManagement() {
                   
                   <div className="mt-4">
                     <p className="text-3xl font-extrabold text-white tracking-tight">{wd.totalCount}</p>
-                    <p className="text-slate-400 text-xs mt-1 uppercase tracking-wider font-semibold">Total PTW Aktif</p>
+                    <p className="text-slate-400 text-xs mt-1 uppercase tracking-wider font-semibold">Total PTW</p>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-800/85 text-[11px]">
@@ -1599,7 +1599,7 @@ export function PTWManagement() {
               
               <div id="ptw-weekly-chart-raw" className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                  <ComposedChart data={chartData} margin={{ top: 20, right: 10, left: -25, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} />
                     <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} />
                     <YAxis stroke="#64748b" fontSize={10} tickLine={false} allowDecimals={false} />
@@ -1608,9 +1608,13 @@ export function PTWManagement() {
                       labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
                     />
                     <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
-                    <Bar dataKey="Open (Aktif)" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} />
-                    <Bar dataKey="Closed (Selesai)" fill="#f97316" radius={[4, 4, 0, 0]} barSize={20} />
-                    <Line type="monotone" dataKey="Total Aktif" stroke="#a78bfa" strokeWidth={3} dot={{ fill: '#a78bfa', r: 4 }} />
+                    <Bar dataKey="Open (Aktif)" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20}>
+                      <LabelList dataKey="Open (Aktif)" position="top" style={{ fill: '#ffffff', fontSize: 9, fontWeight: 'bold' }} />
+                    </Bar>
+                    <Bar dataKey="Closed (Selesai)" fill="#f97316" radius={[4, 4, 0, 0]} barSize={20}>
+                      <LabelList dataKey="Closed (Selesai)" position="top" style={{ fill: '#ffffff', fontSize: 9, fontWeight: 'bold' }} />
+                    </Bar>
+                    <Line type="monotone" dataKey="Total PTW" stroke="#a78bfa" strokeWidth={3} dot={{ fill: '#a78bfa', r: 4 }} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -1625,7 +1629,7 @@ export function PTWManagement() {
                     <p className="text-slate-400 text-xs">{weeklyData[selectedWeek - 1].dateRange}</p>
                   </div>
                   <span className="px-3.5 py-1.5 bg-indigo-500/15 border border-indigo-500/20 text-indigo-400 rounded-xl text-xs font-bold shadow-md shadow-indigo-500/5">
-                    {weeklyData[selectedWeek - 1].totalCount} PTW Aktif
+                    {weeklyData[selectedWeek - 1].totalCount} Total PTW
                   </span>
                 </div>
 

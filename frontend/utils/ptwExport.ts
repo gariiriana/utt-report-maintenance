@@ -438,7 +438,7 @@ export async function exportPTWWeeklyReportToExcel(monthYearLabel: string, weekl
     ws.getCell('A5').value = '1. RINGKASAN MINGGUAN';
     ws.getCell('A5').font = { name: 'Calibri', size: 11, bold: true, color: { argb: '000000' } };
 
-    const sumHeaders = ['MINGGU', 'RENTANG TANGGAL', 'PTW TERBUKA (OPEN)', 'PTW SELESAI (CLOSED)', 'TOTAL PTW AKTIF'];
+    const sumHeaders = ['MINGGU', 'RENTANG TANGGAL', 'PTW TERBUKA (OPEN)', 'PTW SELESAI (CLOSED)', 'TOTAL PTW'];
     const sumHeaderRow = ws.getRow(6);
     sumHeaderRow.height = 22;
 
@@ -724,7 +724,7 @@ export async function exportPTWWeeklyReportToPDF(
 
     autoTable(doc, {
       startY: 37,
-      head: [['Minggu', 'Rentang Tanggal', 'PTW Open (Aktif)', 'PTW Closed', 'Total PTW Aktif']],
+      head: [['Minggu', 'Rentang Tanggal', 'PTW Open (Aktif)', 'PTW Closed', 'Total PTW']],
       body: sumTableData,
       margin: { left: margin, right: margin },
       styles: {
