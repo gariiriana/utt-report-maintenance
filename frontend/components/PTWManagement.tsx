@@ -1033,8 +1033,9 @@ export function PTWManagement() {
       return r.startDate <= week.endStr && r.endDate >= week.startStr;
     });
 
-    const openRecords = activeRecords.filter(r => !r.closingFileName);
-    const closedRecords = activeRecords.filter(r => !!r.closingFileName);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const openRecords = activeRecords.filter(r => !r.closingFileName && (!r.endDate || r.endDate >= todayStr));
+    const closedRecords = activeRecords.filter(r => !!r.closingFileName || (!!r.endDate && r.endDate < todayStr));
 
     return {
       weekNum: week.weekNum,
@@ -1275,20 +1276,22 @@ export function PTWManagement() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-800/50">
-                              {groupRecords.map((record) => (
-                                <tr key={record.id} className="hover:bg-slate-800/10 transition group">
-                                  <td className="px-6 py-4">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-sm font-bold text-white bg-indigo-500/10 px-3 py-1 rounded-lg border border-indigo-500/20">
-                                        {record.ptwNumber}
-                                      </span>
-                                      {record.closingFileName && (
-                                        <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2.5 py-0.5 rounded-full border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)] animate-pulse">
-                                          CLOSED
+                              {groupRecords.map((record) => {
+                                const isClosed = !!record.closingFileName || (!!record.endDate && record.endDate < new Date().toISOString().split('T')[0]);
+                                return (
+                                  <tr key={record.id} className="hover:bg-slate-800/10 transition group">
+                                    <td className="px-6 py-4">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-bold text-white bg-indigo-500/10 px-3 py-1 rounded-lg border border-indigo-500/20">
+                                          {record.ptwNumber}
                                         </span>
-                                      )}
-                                    </div>
-                                  </td>
+                                        {isClosed && (
+                                          <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2.5 py-0.5 rounded-full border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)] animate-pulse">
+                                            CLOSED
+                                          </span>
+                                        )}
+                                      </div>
+                                    </td>
                                   <td className="px-6 py-4">
                                     <span className="text-sm text-slate-300 bg-slate-700/30 px-2.5 py-0.5 rounded border border-slate-600/30">
                                       Q{parseInt(record.quarter)}
@@ -1361,21 +1364,23 @@ export function PTWManagement() {
                                     </div>
                                   </td>
                                 </tr>
-                              ))}
+                               )})}
                             </tbody>
                           </table>
                         </div>
 
                         {/* Mobile Cards inside group */}
                         <div className="md:hidden space-y-3">
-                          {groupRecords.map((record) => (
+                          {groupRecords.map((record) => {
+                            const isClosed = !!record.closingFileName || (!!record.endDate && record.endDate < new Date().toISOString().split('T')[0]);
+                            return (
                             <div key={record.id} className="bg-slate-950/20 rounded-xl border border-slate-800 p-4 shadow-sm">
                               <div className="flex items-start justify-between mb-3">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-bold text-white bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20">
                                     {record.ptwNumber}
                                   </span>
-                                  {record.closingFileName && (
+                                  {isClosed && (
                                     <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
                                       CLOSED
                                     </span>
@@ -1452,7 +1457,7 @@ export function PTWManagement() {
                                 </div>
                               )}
                             </div>
-                          ))}
+                          )})}
                         </div>
                       </div>
                     </motion.div>
@@ -1643,7 +1648,7 @@ export function PTWManagement() {
                       </thead>
                       <tbody className="divide-y divide-slate-800/40">
                         {weeklyData[selectedWeek - 1].records.map((rec, idx) => {
-                          const isClosed = !!rec.closingFileName;
+                          const isClosed = !!rec.closingFileName || (!!rec.endDate && rec.endDate < new Date().toISOString().split('T')[0]);
                           return (
                             <tr key={rec.id} className="hover:bg-slate-800/10 transition">
                               <td className="px-4 py-3 text-xs font-medium text-slate-400">{idx + 1}</td>

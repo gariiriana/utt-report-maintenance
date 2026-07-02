@@ -151,7 +151,8 @@ export async function exportPTWListToExcel(records: PTWExportRecord[]) {
       const row = ws.getRow(rowIdx);
       row.height = 20;
 
-      const isClosed = !!rec.closingFileName;
+      const todayStr = new Date().toISOString().split('T')[0];
+      const isClosed = !!rec.closingFileName || (!!rec.endDate && rec.endDate < todayStr);
       const statusText = isClosed ? 'CLOSED' : 'AKTIF';
       const rangeText = `${formatIndoDate(rec.startDate)} s.d. ${formatIndoDate(rec.endDate)}`;
 
@@ -292,7 +293,7 @@ export async function exportPTWListToPDF(records: PTWExportRecord[]) {
       rec.equipmentCode,
       `${formatIndoDate(rec.startDate)} - ${formatIndoDate(rec.endDate)}`,
       rec.notes || '-',
-      rec.closingFileName ? 'CLOSED' : 'AKTIF'
+      rec.closingFileName || (rec.endDate && rec.endDate < new Date().toISOString().split('T')[0]) ? 'CLOSED' : 'AKTIF'
     ]);
 
     autoTable(doc, {
@@ -558,7 +559,8 @@ export async function exportPTWWeeklyReportToExcel(monthYearLabel: string, weekl
           const r = ws.getRow(currentRowIdx);
           r.height = 20;
 
-          const isClosed = !!rec.closingFileName;
+          const todayStr = new Date().toISOString().split('T')[0];
+          const isClosed = !!rec.closingFileName || (!!rec.endDate && rec.endDate < todayStr);
           const statusText = isClosed ? 'CLOSED' : 'AKTIF';
           const rangeText = `${formatIndoDate(rec.startDate)} s.d. ${formatIndoDate(rec.endDate)}`;
 
@@ -800,7 +802,7 @@ export async function exportPTWWeeklyReportToPDF(
           rec.notes || '-',
           rec.equipmentCode,
           `${formatIndoDate(rec.startDate)} - ${formatIndoDate(rec.endDate)}`,
-          rec.closingFileName ? 'CLOSED' : 'AKTIF'
+          rec.closingFileName || (rec.endDate && rec.endDate < new Date().toISOString().split('T')[0]) ? 'CLOSED' : 'AKTIF'
         ]);
 
         autoTable(doc, {
