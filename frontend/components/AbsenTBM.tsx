@@ -742,7 +742,7 @@ export function AbsenTBM() {
     docPdf.text('LAPORAN KEHADIRAN ABSENSI TBM', centerX, headerY + 6.5, { align: 'center' });
 
     docPdf.setFontSize(8.5).setFont('helvetica', 'bold').setTextColor(30, 30, 30);
-    docPdf.text('PT UNITED TRANSWORLD TRADING', centerX, headerY + 11.5, { align: 'center' });
+    docPdf.text('PT DWIMITRA EKATAMA MANDIRI', centerX, headerY + 11.5, { align: 'center' });
 
     docPdf.setFontSize(7).setFont('helvetica', 'normal').setTextColor(100, 100, 100);
     docPdf.text(`Periode: ${startDate || '-'} s.d. ${endDate || '-'}`, centerX, headerY + 16, { align: 'center' });
@@ -765,119 +765,86 @@ export function AbsenTBM() {
     docPdf.setFont('helvetica', 'normal');
     docPdf.setTextColor(71, 85, 105); // Slate-600
     docPdf.text(`Total Log Kehadiran: ${stats.total} record`, margin + 6, y + 15);
-    docPdf.text(`Hadir: ${stats.hadir} kali | Tidak Hadir: ${stats.tidakHadir} kali`, margin + 6, y + 23);
+    docPdf.text(`Hadir: ${stats.hadir} kali | Tidak Hadir: ${stats.tidakHadir} kali`, margin + 6, y + 21);
+    const periodeFrom = startDate || 'Awal';
+    const periodeTo = endDate || 'Sekarang';
+    docPdf.text(`Periode: ${periodeFrom}  s/d  ${periodeTo}`, margin + 6, y + 27);
     
 
 
-    // ─── Draw Daily Attendance Matrix Table ──────────────────────────
-    let chartY = y + 35;
-    const dates = stats.chartData.map(d => d.tanggal);
-    const dateHeaders = dates.map((_, idx) => `D${idx + 1}`);
+    // ─── Table 1: Rangkuman Kehadiran per Personil ──────────────────────
+    let chartY = y + 45;
 
     docPdf.setTextColor(15, 23, 42);
     docPdf.setFontSize(9);
     docPdf.setFont('helvetica', 'bold');
-    docPdf.text('TABEL MATRIKS KEHADIRAN HARIAN', margin, chartY - 2.5);
+    docPdf.text('RANGKUMAN KEHADIRAN PER PERSONIL', margin, chartY - 2.5);
 
-    const matrixTableHead = [['No', 'Nama Personil', 'Jabatan', ...dateHeaders]];
-    const matrixTableBody = stats.personStats.map((p, idx) => {
-      const row: any[] = [
+    const summaryHead = [['No', 'Nama Personil', 'Jabatan', 'Hadir', 'Tidak Hadir', 'Total', '%']];
+    const summaryBody = stats.personStats.map((p, idx) => {
+      const tidakHadir = p.total - p.hadir;
+      return [
         idx + 1,
         p.nama,
-        p.jabatan
+        p.jabatan,
+        p.hadir,
+        tidakHadir,
+        p.total,
+        `${p.rate}%`
       ];
-      dates.forEach(date => {
-        const rec = filteredRecords.find(r => r.nama === p.nama && r.tanggal === date);
-        if (rec) {
-          row.push(rec.kehadiran === 'Hadir' ? 'H' : (rec.remark || 'TH'));
-        } else {
-          row.push('-');
-        }
-      });
-      return row;
     });
 
     autoTable(docPdf, {
       startY: chartY,
-      head: matrixTableHead,
-      body: matrixTableBody,
+      head: summaryHead,
+      body: summaryBody,
       theme: 'grid',
-      headStyles: { fillColor: [15, 23, 42], halign: 'center', fontSize: 6.5 }, // Slate dark
-      columnStyles: (() => {
-        const colStyles: Record<number, any> = {
-          0: { cellWidth: 8, halign: 'center' },
-          1: { cellWidth: 38, halign: 'left' },
-          2: { cellWidth: 26, halign: 'left' }
-        };
-        const dateColW = Math.max(3.5, (contentW - 72) / dates.length);
-        for (let i = 3; i < 3 + dates.length; i++) {
-          colStyles[i] = { cellWidth: dateColW, halign: 'center', fontSize: 5.5 };
-        }
-        return colStyles;
-      })(),
-      styles: { fontSize: 6.5, cellPadding: 1, valign: 'middle' },
+      headStyles: { fillColor: [15, 23, 42], halign: 'center', fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: 12, halign: 'center' },
+        1: { cellWidth: 55, halign: 'left' },
+        2: { cellWidth: 40, halign: 'left' },
+        3: { cellWidth: 20, halign: 'center' },
+        4: { cellWidth: 25, halign: 'center' },
+        5: { cellWidth: 18, halign: 'center' },
+        6: { cellWidth: 18, halign: 'center' }
+      },
+      styles: { fontSize: 8, cellPadding: 2 },
       willDrawCell: (data) => {
-        if (data.section === 'body' && data.column.index >= 3) {
-          const val = data.cell.raw as string;
-          if (val === 'H') {
-            data.cell.styles.fillColor = [209, 250, 229]; // light emerald
-            data.cell.styles.textColor = [16, 185, 129]; // emerald text
+        if (data.section === 'body') {
+          // Color the % column
+          if (data.column.index === 6) {
+            const raw = String(data.cell.raw).replace('%', '');
+            const pct = parseInt(raw);
+            if (pct >= 80) {
+              data.cell.styles.textColor = [16, 185, 129]; // emerald
+              data.cell.styles.fontStyle = 'bold';
+            } else if (pct >= 50) {
+              data.cell.styles.textColor = [245, 158, 11]; // amber
+              data.cell.styles.fontStyle = 'bold';
+            } else {
+              data.cell.styles.textColor = [244, 63, 94]; // rose
+              data.cell.styles.fontStyle = 'bold';
+            }
+          }
+          // Color Hadir column green
+          if (data.column.index === 3) {
+            data.cell.styles.textColor = [16, 185, 129];
             data.cell.styles.fontStyle = 'bold';
-          } else if (val !== '-' && val !== '') {
-            data.cell.styles.fillColor = [254, 226, 226]; // light rose
-            data.cell.styles.textColor = [244, 63, 94]; // rose text
-            data.cell.styles.fontStyle = 'bold';
+          }
+          // Color Tidak Hadir column red
+          if (data.column.index === 4) {
+            const val = Number(data.cell.raw);
+            if (val > 0) {
+              data.cell.styles.textColor = [244, 63, 94];
+              data.cell.styles.fontStyle = 'bold';
+            }
           }
         }
       }
     });
 
-    // ─── Draw Date Legend Table (Tabel Penjelasan Tanggal) ─────────────
-    const legendBody: any[] = [];
-    const colsCount = 3;
-    const rowsCount = Math.ceil(dates.length / colsCount);
-    for (let r = 0; r < rowsCount; r++) {
-      const row: string[] = [];
-      for (let c = 0; c < colsCount; c++) {
-        const idx = r + c * rowsCount;
-        if (idx < dates.length) {
-          const dStr = dates[idx];
-          const parts = dStr.split('-');
-          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-          const dateFormatted = parts.length >= 3 ? `${parts[2]} ${months[parseInt(parts[1]) - 1]} ${parts[0]}` : dStr;
-          row.push(`D${idx + 1}`);
-          row.push(dateFormatted);
-        } else {
-          row.push('');
-          row.push('');
-        }
-      }
-      legendBody.push(row);
-    }
-
-    docPdf.setTextColor(15, 23, 42);
-    docPdf.setFontSize(9);
-    docPdf.setFont('helvetica', 'bold');
-    docPdf.text('PENJELASAN TANGGAL MATRIKS (KODE -> TANGGAL)', margin, (docPdf as any).lastAutoTable.finalY + 8);
-
-    autoTable(docPdf, {
-      startY: (docPdf as any).lastAutoTable.finalY + 11,
-      head: [['Kode', 'Tanggal / Bulan / Tahun', 'Kode', 'Tanggal / Bulan / Tahun', 'Kode', 'Tanggal / Bulan / Tahun']],
-      body: legendBody,
-      theme: 'grid',
-      headStyles: { fillColor: [71, 85, 105], halign: 'left', fontSize: 7.5 }, // slate gray
-      styles: { fontSize: 7.5, cellPadding: 1.5 },
-      columnStyles: {
-        0: { cellWidth: 15, fontStyle: 'bold', fillColor: [248, 250, 252], halign: 'center' },
-        1: { cellWidth: 47 },
-        2: { cellWidth: 15, fontStyle: 'bold', fillColor: [248, 250, 252], halign: 'center' },
-        3: { cellWidth: 47 },
-        4: { cellWidth: 15, fontStyle: 'bold', fillColor: [248, 250, 252], halign: 'center' },
-        5: { cellWidth: 47 }
-      }
-    });
-
-    // 2nd Auto Table: Detail History Absensi
+    // ─── Table 2: Detail Riwayat Absensi ──────────────────────
     const tableData = filteredRecords.map((r, i) => [
       i + 1,
       r.tanggal,
@@ -897,7 +864,7 @@ export function AbsenTBM() {
       head: [['No', 'Tanggal', 'Nama', 'Jabatan', 'Status Kehadiran', 'Keterangan']],
       body: tableData,
       theme: 'grid',
-      headStyles: { fillColor: [0, 89, 156], halign: 'left' }, // Original Blue
+      headStyles: { fillColor: [0, 89, 156], halign: 'left' },
       columnStyles: {
         0: { cellWidth: 10 },
         1: { cellWidth: 25 },
@@ -908,6 +875,34 @@ export function AbsenTBM() {
       },
       styles: { fontSize: 8.5 }
     });
+
+    // ─── Add Page Numbers & Blue Grid Footer to ALL pages ─────────────
+    const totalPages = docPdf.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      docPdf.setPage(i);
+      const pageW = docPdf.internal.pageSize.getWidth();
+      const pageH = docPdf.internal.pageSize.getHeight();
+
+      // Blue grid stripe at bottom
+      const stripeH = 8;
+      const stripeY = pageH - stripeH;
+      // Main blue bar
+      docPdf.setFillColor(0, 89, 156); // UTT Blue
+      docPdf.rect(0, stripeY, pageW, stripeH, 'F');
+
+      // Page number text
+      docPdf.setFontSize(7);
+      docPdf.setFont('helvetica', 'normal');
+      docPdf.setTextColor(255, 255, 255);
+      const pageText = `Page ${i} of ${totalPages}`;
+      const textW = docPdf.getTextWidth(pageText);
+      docPdf.text(pageText, pageW - margin - textW, stripeY + 5.5);
+
+      // Left side: report label
+      docPdf.setTextColor(255, 255, 255);
+      docPdf.setFontSize(6.5);
+      docPdf.text('Laporan Absensi TBM — PT Dwimitra Ekatama Mandiri', margin, stripeY + 5.5);
+    }
 
     docPdf.save(`Laporan_Absen_TBM_${startDate || 'all'}_to_${endDate || 'all'}.pdf`);
     toast.success("PDF Laporan Absen TBM berhasil diunduh!");
@@ -962,7 +957,7 @@ export function AbsenTBM() {
 
     worksheet.mergeCells('A2:F2');
     const subtitleCell1 = worksheet.getCell('A2');
-    subtitleCell1.value = 'PT UNITED TRANSWORLD TRADING';
+    subtitleCell1.value = 'PT DWIMITRA EKATAMA MANDIRI';
     subtitleCell1.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF334155' } };
     subtitleCell1.alignment = { vertical: 'middle', horizontal: 'center' };
 
