@@ -906,6 +906,38 @@ export function AbsenTBM() {
     }
   };
 
+  const startEditingNew = (person: Personnel) => {
+    setEditingRecordId("new_" + person.id);
+    setEditedNama(person.nama);
+    setEditedJabatan(person.jabatan);
+    setEditedKehadiran('Hadir');
+    setEditedRemark('');
+  };
+
+  const handleSaveNewRecord = async (person: Personnel) => {
+    if (!selectedDate) {
+      toast.error("Tanggal tidak terpilih");
+      return;
+    }
+    const toastId = toast.loading("Menyimpan data absensi baru...");
+    try {
+      await addDoc(collection(db, 'absen_tbm'), {
+        tanggal: selectedDate,
+        nama: person.nama,
+        jabatan: person.jabatan,
+        kehadiran: editedKehadiran,
+        remark: editedRemark.trim(),
+        category: person.category || '',
+        createdAt: serverTimestamp()
+      });
+      toast.success("Absensi berhasil disimpan!", { id: toastId });
+      setEditingRecordId(null);
+    } catch (err: any) {
+      console.error("Error creating record:", err);
+      toast.error("Gagal menyimpan data: " + err.message, { id: toastId });
+    }
+  };
+
   // Handle Delete Attendance Record
   const handleDelete = async (id: string) => {
     if (!window.confirm("Apakah Anda yakin ingin menghapus catatan absen ini?")) return;
@@ -3415,14 +3447,14 @@ export function AbsenTBM() {
                                   </tr>
                                   {catPersonnel.map((person, index) => {
                                     const rec = dayRecords.find(r => r.nama === person.nama);
-                                    const isEditing = rec ? editingRecordId === rec.id : false;
+                                    const isEditing = rec ? editingRecordId === rec.id : (editingRecordId === "new_" + person.id);
                                     return (
                                       <tr key={person.nama} className="hover:bg-slate-800/20 transition-colors">
                                         <td className="px-4 py-3.5 text-slate-500 font-mono">{index + 1}.</td>
                                         <td className="px-4 py-3.5 font-bold text-white">{person.nama}</td>
                                         <td className="px-4 py-3.5 text-slate-300 font-medium font-sans">{person.jabatan}</td>
                                         <td className="px-4 py-3.5">
-                                          {rec ? (
+                                          {rec || isEditing ? (
                                             isEditing ? (
                                               <div className="flex gap-1.5">
                                                 <button
@@ -3460,25 +3492,27 @@ export function AbsenTBM() {
                                                 </button>
                                               </div>
                                             ) : (
-                                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                                rec.kehadiran === 'Hadir'
-                                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                                  : rec.kehadiran === 'Libur'
-                                                  ? 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
-                                                  : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                                              }`}>
-                                                <span className={`w-1.5 h-1.5 rounded-full ${
-                                                  rec.kehadiran === 'Hadir' ? 'bg-emerald-400 shadow-md' : rec.kehadiran === 'Libur' ? 'bg-violet-400 shadow-md' : 'bg-rose-400 shadow-md'
-                                                }`} />
-                                                {rec.kehadiran}
-                                              </span>
+                                              rec && (
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                                  rec.kehadiran === 'Hadir'
+                                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                    : rec.kehadiran === 'Libur'
+                                                    ? 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
+                                                    : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                                }`}>
+                                                  <span className={`w-1.5 h-1.5 rounded-full ${
+                                                    rec.kehadiran === 'Hadir' ? 'bg-emerald-400 shadow-md' : rec.kehadiran === 'Libur' ? 'bg-violet-400 shadow-md' : 'bg-rose-400 shadow-md'
+                                                  }`} />
+                                                  {rec.kehadiran}
+                                                </span>
+                                              )
                                             )
                                           ) : (
                                             <span className="text-slate-500 italic font-mono">- Belum Input -</span>
                                           )}
                                         </td>
                                         <td className="px-4 py-3.5 text-slate-400 italic">
-                                          {rec ? (
+                                          {rec || isEditing ? (
                                             isEditing ? (
                                               <div className="flex items-center gap-1.5">
                                                 {['Izin', 'Sakit', 'Mobile'].map((opt) => {
@@ -3503,19 +3537,19 @@ export function AbsenTBM() {
                                                 })}
                                               </div>
                                             ) : (
-                                              rec.remark || '—'
+                                              rec && (rec.remark || '—')
                                             )
                                           ) : (
                                             '—'
                                           )}
                                         </td>
                                         <td className="px-4 py-3.5 text-center">
-                                          {rec ? (
+                                          {rec || isEditing ? (
                                             isEditing ? (
                                               <div className="flex justify-center gap-1.5">
                                                 <button
                                                   type="button"
-                                                  onClick={() => handleUpdateRecord(rec.id)}
+                                                  onClick={() => rec ? handleUpdateRecord(rec.id) : handleSaveNewRecord(person)}
                                                   className="p-1.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30 rounded-lg transition active:scale-90 animate-none"
                                                   title="Simpan"
                                                 >
@@ -3531,27 +3565,38 @@ export function AbsenTBM() {
                                                 </button>
                                               </div>
                                             ) : (
-                                              <div className="flex justify-center gap-1.5">
-                                                <button
-                                                  type="button"
-                                                  onClick={() => startEditing(rec)}
-                                                  className="p-1.5 bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white border border-slate-700/50 rounded-lg transition active:scale-90 animate-none"
-                                                  title="Edit"
-                                                >
-                                                  <Pencil className="w-3.5 h-3.5" />
-                                                </button>
-                                                <button
-                                                  type="button"
-                                                  onClick={() => handleDelete(rec.id)}
-                                                  className="p-1.5 bg-slate-800 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 border border-slate-700/50 hover:border-rose-500/20 rounded-lg transition active:scale-90 animate-none"
-                                                  title="Hapus"
-                                                >
-                                                  <Trash2 className="w-3.5 h-3.5" />
-                                                </button>
-                                              </div>
+                                              rec && (
+                                                <div className="flex justify-center gap-1.5">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => startEditing(rec)}
+                                                    className="p-1.5 bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white border border-slate-700/50 rounded-lg transition active:scale-90 animate-none"
+                                                    title="Edit"
+                                                  >
+                                                    <Pencil className="w-3.5 h-3.5" />
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleDelete(rec.id)}
+                                                    className="p-1.5 bg-slate-800 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 border border-slate-700/50 hover:border-rose-500/20 rounded-lg transition active:scale-90 animate-none"
+                                                    title="Hapus"
+                                                  >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                  </button>
+                                                </div>
+                                              )
                                             )
                                           ) : (
-                                            '—'
+                                            <div className="flex justify-center gap-1.5">
+                                              <button
+                                                type="button"
+                                                onClick={() => startEditingNew(person)}
+                                                className="p-1.5 bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white border border-slate-700/50 rounded-lg transition active:scale-90 animate-none"
+                                                title="Input Absen"
+                                              >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                              </button>
+                                            </div>
                                           )}
                                         </td>
                                       </tr>
