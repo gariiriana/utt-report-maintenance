@@ -1407,6 +1407,15 @@ export function AbsenTBM() {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Absensi TBM');
 
+    // Set Column Widths early (before any data is written)
+    worksheet.getColumn(1).width = 6;   // A - No
+    worksheet.getColumn(2).width = 28;  // B
+    worksheet.getColumn(3).width = 25;  // C
+    worksheet.getColumn(4).width = 20;  // D
+    worksheet.getColumn(5).width = 18;  // E
+    worksheet.getColumn(6).width = 20;  // F
+    worksheet.getColumn(7).width = 20;  // G
+
     // Load Logos
     let leftLogoBase64 = '';
     let rightLogoBase64 = '';
@@ -1433,38 +1442,38 @@ export function AbsenTBM() {
       });
     }
 
-    // Set Row Heights and columns width
+    // Set Row Heights for Header Block
     worksheet.getRow(1).height = 45;
     worksheet.getRow(2).height = 20;
     worksheet.getRow(3).height = 18;
 
-    worksheet.mergeCells('A1:F1');
+    worksheet.mergeCells('A1:G1');
     const titleCell = worksheet.getCell('A1');
     titleCell.value = 'LAPORAN KEHADIRAN ABSENSI TBM';
     titleCell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FF00599C' } };
     titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
 
-    worksheet.mergeCells('A2:F2');
+    worksheet.mergeCells('A2:G2');
     const subtitleCell1 = worksheet.getCell('A2');
     subtitleCell1.value = 'PT DWIMITRA EKATAMA MANDIRI';
     subtitleCell1.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF334155' } };
     subtitleCell1.alignment = { vertical: 'middle', horizontal: 'center' };
 
-    worksheet.mergeCells('A3:F3');
+    worksheet.mergeCells('A3:G3');
     const subtitleCell2 = worksheet.getCell('A3');
     subtitleCell2.value = 'Data Center Maintenance System';
     subtitleCell2.font = { name: 'Arial', size: 8, italic: true, color: { argb: 'FF64748B' } };
     subtitleCell2.alignment = { vertical: 'middle', horizontal: 'center' };
 
-    // Apply borders around the Header Block (A1:F3)
+    // Apply borders around the Header Block (A1:G3)
     for (let r = 1; r <= 3; r++) {
-      for (let c = 1; c <= 6; c++) {
+      for (let c = 1; c <= 7; c++) {
         const cell = worksheet.getCell(r, c);
         cell.border = {
           top: r === 1 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
           bottom: r === 3 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
           left: c === 1 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
-          right: c === 6 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
+          right: c === 7 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
         };
       }
     }
@@ -1478,72 +1487,430 @@ export function AbsenTBM() {
 
     if (rightLogoId !== null) {
       worksheet.addImage(rightLogoId, {
-        tl: { col: 5.2, row: 0.2 },
+        tl: { col: 6.1, row: 0.2 },
         ext: { width: 85, height: 32 }
       });
     }
 
-    worksheet.addRow([]);
-    worksheet.addRow([`Periode: ${startDate || 'all'} s.d. ${endDate || 'all'}`]);
-    worksheet.addRow([`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`]);
-    worksheet.addRow([]);
+    // Set row heights for metadata
+    worksheet.getRow(4).height = 15;
+    worksheet.getRow(5).height = 18;
+    worksheet.getRow(6).height = 18;
+    worksheet.getRow(7).height = 15;
 
-    // Summary Rows
-    worksheet.addRow(['RINGKASAN STATISTIK']);
-    worksheet.addRow([`Total Log Kehadiran`, stats.total]);
-    worksheet.addRow([`Hadir`, stats.hadir]);
-    worksheet.addRow([`Tidak Hadir`, stats.tidakHadir]);
-    worksheet.addRow([`Persentase Kehadiran`, `${stats.rate}%`]);
-    worksheet.addRow([]);
+    worksheet.getCell('A5').value = `Periode: ${startDate || 'all'} s.d. ${endDate || 'all'}`;
+    worksheet.getCell('A5').font = { name: 'Arial', size: 9, color: { argb: 'FF475569' } };
+    worksheet.getCell('A6').value = `Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`;
+    worksheet.getCell('A6').font = { name: 'Arial', size: 9, color: { argb: 'FF475569' } };
 
-    worksheet.getCell('A8').font = { bold: true };
-    for (let r = 9; r <= 12; r++) {
-      worksheet.getCell(`A${r}`).font = { bold: true };
-      worksheet.getCell(`B${r}`).alignment = { horizontal: 'left' };
+    // Pre-calculate indices for dynamic formulas
+    const t1StartRow = 31;
+    const t1EndRow = 30 + stats.personStats.length;
+    const t2TitleRowIndex = t1EndRow + 3;
+    const t2HeaderRowIndex = t2TitleRowIndex + 1;
+    const t2StartRow = t2HeaderRowIndex + 1;
+    const t2EndRow = t2StartRow + filteredRecords.length - 1;
+
+    // Summary Card Block (Rows 8 to 12, Columns A to D)
+    worksheet.mergeCells('A8:D8');
+    const summaryTitleCell = worksheet.getCell('A8');
+    summaryTitleCell.value = 'RINGKASAN STATISTIK KEHADIRAN';
+    summaryTitleCell.font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FF0F172A' } };
+    summaryTitleCell.alignment = { vertical: 'middle', horizontal: 'left' };
+
+    const setSummaryRow = (rowNum: number, label: string, valOrFormula: any, isPercent = false) => {
+      worksheet.mergeCells(`A${rowNum}:B${rowNum}`);
+      const lblCell = worksheet.getCell(`A${rowNum}`);
+      lblCell.value = label;
+      lblCell.font = { name: 'Arial', size: 8.5, color: { argb: 'FF475569' } };
+      lblCell.alignment = { vertical: 'middle', horizontal: 'left' };
+
+      worksheet.mergeCells(`C${rowNum}:D${rowNum}`);
+      const valCell = worksheet.getCell(`C${rowNum}`);
+      valCell.value = valOrFormula;
+      valCell.font = { name: 'Arial', size: 8.5, bold: true, color: { argb: 'FF0F172A' } };
+      valCell.alignment = { vertical: 'middle', horizontal: 'left' };
+      if (isPercent) {
+        valCell.numFmt = '0%';
+      }
+    };
+
+    setSummaryRow(9, 'Total Log Kehadiran:', { formula: `COUNTA(E${t2StartRow}:E${t2EndRow})`, result: stats.total });
+    setSummaryRow(10, 'Hadir:', { formula: `COUNTIF(E${t2StartRow}:E${t2EndRow},"Hadir")`, result: stats.hadir });
+    setSummaryRow(11, 'Tidak Hadir:', { formula: `COUNTIF(E${t2StartRow}:E${t2EndRow},"Tidak Hadir")`, result: stats.tidakHadir });
+    setSummaryRow(12, 'Persentase Kehadiran:', { formula: `IF(C9>0,C10/C9,0)`, result: stats.rate / 100 }, true);
+
+    // Style Card Block Background & Border
+    for (let r = 8; r <= 12; r++) {
+      worksheet.getRow(r).height = 18;
+      for (let c = 1; c <= 4; c++) {
+        const cell = worksheet.getCell(r, c);
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFF8FAFC' } // Slate-50
+        };
+        cell.border = {
+          top: r === 8 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
+          bottom: r === 12 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
+          left: c === 1 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
+          right: c === 4 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
+        };
+      }
     }
 
-    // Table Header
-    const headers = ['No', 'Tanggal', 'Nama', 'Jabatan', 'Status Kehadiran', 'Keterangan'];
-    const headerRow = worksheet.addRow(headers);
-    headerRow.height = 24;
-    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    headerRow.alignment = { vertical: 'middle' };
-    
-    for (let col = 1; col <= 6; col++) {
-      headerRow.getCell(col).fill = {
+    // Generate Chart Image (Render on in-memory canvas)
+    const chartCanvasW = 1200;
+    const chartCanvasH = 340;
+    const chartCanvas = document.createElement('canvas');
+    chartCanvas.width = chartCanvasW;
+    chartCanvas.height = chartCanvasH;
+    const ctx = chartCanvas.getContext('2d');
+
+    if (ctx) {
+      // Background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, chartCanvasW, chartCanvasH);
+
+      // ── LEFT SIDE: Overall Donut Chart ──
+      const donutCx = 220;
+      const donutCy = 180;
+      const donutR = 75;
+      const donutInner = 48;
+
+      // Title
+      ctx.font = 'bold 20px Arial';
+      ctx.fillStyle = '#0f172a';
+      ctx.textAlign = 'center';
+      ctx.fillText('GRAFIK KESELURUHAN', donutCx, 45);
+
+      const totalCount = stats.total;
+      const hadirCount = stats.hadir;
+      const tidakHadirCount = stats.tidakHadir;
+      const pct = totalCount > 0 ? hadirCount / totalCount : 0;
+      const angle = pct * Math.PI * 2;
+      const pctDisplay = totalCount > 0 ? Math.round(pct * 100) : 0;
+
+      // Hadir slice (emerald)
+      ctx.beginPath();
+      ctx.moveTo(donutCx, donutCy);
+      ctx.arc(donutCx, donutCy, donutR, -Math.PI / 2, -Math.PI / 2 + angle);
+      ctx.closePath();
+      ctx.fillStyle = '#10b981';
+      ctx.fill();
+
+      // Tidak Hadir slice (rose)
+      if (tidakHadirCount > 0) {
+        ctx.beginPath();
+        ctx.moveTo(donutCx, donutCy);
+        ctx.arc(donutCx, donutCy, donutR, -Math.PI / 2 + angle, -Math.PI / 2 + Math.PI * 2);
+        ctx.closePath();
+        ctx.fillStyle = '#f43f5e';
+        ctx.fill();
+      }
+
+      // Donut hole
+      ctx.beginPath();
+      ctx.arc(donutCx, donutCy, donutInner, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+
+      // Center %
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 30px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${pctDisplay}%`, donutCx, donutCy - 3);
+      ctx.font = '11px Arial';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('Kehadiran', donutCx, donutCy + 16);
+
+      // Legend below Donut
+      const legDonutY = donutCy + donutR + 15;
+      ctx.font = '12px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#10b981';
+      ctx.fillText(`● Hadir: ${hadirCount}`, donutCx - 55, legDonutY);
+      ctx.fillStyle = '#f43f5e';
+      ctx.fillText(`● TH: ${tidakHadirCount}`, donutCx + 55, legDonutY);
+      ctx.font = '11px Arial';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText(`Total: ${totalCount} record`, donutCx, legDonutY + 15);
+
+      // ── RIGHT SIDE: Weekly Bar Chart ──
+      const leftMargin = 450;
+      const rightMargin = 40;
+      const topMargin = 75;
+      const bottomMargin = 50;
+      const chartW = chartCanvasW - leftMargin - rightMargin;
+      const chartH = chartCanvasH - topMargin - bottomMargin;
+
+      // Title
+      ctx.font = 'bold 20px Arial';
+      ctx.fillStyle = '#0f172a';
+      ctx.textAlign = 'center';
+      ctx.fillText('GRAFIK KEHADIRAN MINGGUAN', leftMargin + chartW / 2, 45);
+
+      // Generate weekly date ranges from startDate to endDate
+      const getWeeksInRange = (startStr: string, endStr: string) => {
+        const list: Array<{ start: Date; end: Date; label: string }> = [];
+        const current = new Date(startStr);
+        const limit = new Date(endStr);
+        let weekNum = 1;
+        
+        while (current <= limit) {
+          const wStart = new Date(current);
+          const wEnd = new Date(current);
+          wEnd.setDate(wEnd.getDate() + 6);
+          if (wEnd > limit) {
+            wEnd.setTime(limit.getTime());
+          }
+          
+          const formatDateShort = (d: Date) => {
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            return `${dd}/${mm}`;
+          };
+          
+          list.push({
+            start: wStart,
+            end: wEnd,
+            label: `Mgg ${weekNum} (${formatDateShort(wStart)}-${formatDateShort(wEnd)})`
+          });
+          
+          current.setDate(current.getDate() + 7);
+          weekNum++;
+        }
+        return list;
+      };
+
+      const weeks = getWeeksInRange(startDate, endDate);
+      
+      // Group records into those weeks
+      const weeklyData = weeks.map(w => {
+        const recs = filteredRecords.filter(r => {
+          const d = new Date(r.tanggal);
+          d.setHours(0, 0, 0, 0);
+          const startNorm = new Date(w.start);
+          startNorm.setHours(0, 0, 0, 0);
+          const endNorm = new Date(w.end);
+          endNorm.setHours(0, 0, 0, 0);
+          return d >= startNorm && d <= endNorm;
+        });
+        const hadir = recs.filter(r => r.kehadiran === 'Hadir').length;
+        const tidakHadir = recs.length - hadir;
+        return {
+          label: w.label,
+          hadir,
+          tidakHadir
+        };
+      });
+
+      // Find max value to determine scale
+      const maxVal = Math.max(...weeklyData.map(d => Math.max(d.hadir, d.tidakHadir)), 5);
+      const yScale = chartH / (maxVal * 1.18);
+
+      // Draw Y grid lines
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        const gridY = topMargin + (chartH / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(leftMargin, gridY);
+        ctx.lineTo(leftMargin + chartW, gridY);
+        ctx.stroke();
+        
+        const val = Math.round(maxVal - (maxVal / 4) * i);
+        ctx.fillStyle = '#64748b';
+        ctx.font = '11px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText(String(val), leftMargin - 10, gridY + 4);
+      }
+
+      // Draw X base line
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(leftMargin, topMargin + chartH);
+      ctx.lineTo(leftMargin + chartW, topMargin + chartH);
+      ctx.stroke();
+
+      const itemW = chartW / weeklyData.length;
+      const barW = Math.min(30, (itemW * 0.65) / 2);
+
+      weeklyData.forEach((w, idx) => {
+        const groupCenterX = leftMargin + (idx + 0.5) * itemW;
+        const barHadirX = groupCenterX - barW - 3;
+        const barThX = groupCenterX + 3;
+        const yZero = topMargin + chartH;
+
+        const hHadir = w.hadir * yScale;
+        const hTh = w.tidakHadir * yScale;
+
+        // Hadir bar
+        if (hHadir > 0) {
+          ctx.fillStyle = '#10b981';
+          ctx.fillRect(barHadirX, yZero - hHadir, barW, hHadir);
+          ctx.fillStyle = '#0f172a';
+          ctx.font = 'bold 11px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(String(w.hadir), barHadirX + barW / 2, yZero - hHadir - 6);
+        } else {
+          ctx.fillStyle = '#64748b';
+          ctx.font = '10px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('0', barHadirX + barW / 2, yZero - 6);
+        }
+
+        // Tidak Hadir bar
+        if (hTh > 0) {
+          ctx.fillStyle = '#f43f5e';
+          ctx.fillRect(barThX, yZero - hTh, barW, hTh);
+          ctx.fillStyle = '#0f172a';
+          ctx.font = 'bold 11px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText(String(w.tidakHadir), barThX + barW / 2, yZero - hTh - 6);
+        } else {
+          ctx.fillStyle = '#64748b';
+          ctx.font = '10px Arial';
+          ctx.textAlign = 'center';
+          ctx.fillText('0', barThX + barW / 2, yZero - 6);
+        }
+
+        // X label
+        ctx.fillStyle = '#334155';
+        ctx.font = 'bold 11px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(w.label, groupCenterX, yZero + 20);
+      });
+
+      // Divider line between donut & bar chart
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(400, 40);
+      ctx.lineTo(400, chartCanvasH - 20);
+      ctx.stroke();
+
+      const chartImgData = chartCanvas.toDataURL('image/png');
+      const chartImgId = workbook.addImage({
+        base64: chartImgData,
+        extension: 'png',
+      });
+
+      // Position charts in Row 14 to Row 27
+      for (let r = 14; r <= 27; r++) {
+        worksheet.getRow(r).height = 20;
+      }
+
+      worksheet.addImage(chartImgId, {
+        tl: { col: 0, row: 13 } as any,
+        br: { col: 7, row: 27 } as any
+      });
+    }
+
+    worksheet.getRow(28).height = 15; // blank spacer
+
+    // ─── Table 1: Rangkuman Kehadiran per Personil ──────────────────────
+    const table1TitleRow = worksheet.getRow(29);
+    table1TitleRow.height = 20;
+    worksheet.mergeCells('A29:G29');
+    const t1TitleCell = worksheet.getCell('A29');
+    t1TitleCell.value = 'RANGKUMAN KEHADIRAN PER PERSONIL';
+    t1TitleCell.font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FF0F172A' } };
+    t1TitleCell.alignment = { vertical: 'middle', horizontal: 'left' };
+
+    const t1Headers = ['No', 'Nama Personil', 'Jabatan', 'Hadir', 'Tidak Hadir', 'Total', '%'];
+    const t1HeaderRow = worksheet.getRow(30);
+    t1HeaderRow.height = 24;
+    t1Headers.forEach((h, idx) => {
+      const cell = t1HeaderRow.getCell(idx + 1);
+      cell.value = h;
+      cell.font = { name: 'Arial', size: 8.5, bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.alignment = { vertical: 'middle', horizontal: idx === 0 || idx >= 3 ? 'center' : 'left' };
+      cell.fill = {
         type: 'pattern',
         pattern: 'solid',
-        fgColor: { argb: 'FF00599C' }
+        fgColor: { argb: 'FF0F172A' } // Dark Slate header
       };
-      headerRow.getCell(col).border = {
+      cell.border = {
         top: { style: 'thin' },
         bottom: { style: 'thin' },
         left: { style: 'thin' },
         right: { style: 'thin' }
       };
-    }
+    });
 
-    // Rows Data
-    filteredRecords.forEach((rec, idx) => {
-      const row = worksheet.addRow([
-        idx + 1,
-        rec.tanggal,
-        rec.nama,
-        rec.jabatan,
-        rec.kehadiran,
-        rec.remark || '-'
-      ]);
+    let currentRow = 31;
+    stats.personStats.forEach((p, idx) => {
+      const row = worksheet.getRow(currentRow);
       row.height = 20;
-      row.alignment = { vertical: 'middle' };
+      const thCount = p.total - p.hadir;
+
+      row.getCell(1).value = idx + 1;
+      row.getCell(2).value = p.nama;
+      row.getCell(3).value = p.jabatan;
+
+      // Hadir (Col D)
+      row.getCell(4).value = {
+        formula: `COUNTIFS(C$${t2StartRow}:C$${t2EndRow},B${currentRow},E$${t2StartRow}:E$${t2EndRow},"Hadir")`,
+        result: p.hadir
+      };
+
+      // Tidak Hadir (Col E)
+      row.getCell(5).value = {
+        formula: `COUNTIFS(C$${t2StartRow}:C$${t2EndRow},B${currentRow},E$${t2StartRow}:E$${t2EndRow},"Tidak Hadir")`,
+        result: thCount
+      };
+
+      // Total (Col F)
+      row.getCell(6).value = {
+        formula: `SUM(D${currentRow}:E${currentRow})`,
+        result: p.total
+      };
+
+      // % (Col G)
+      row.getCell(7).value = {
+        formula: `IF(F${currentRow}>0,D${currentRow}/F${currentRow},0)`,
+        result: p.rate / 100
+      };
+      row.getCell(7).numFmt = '0%';
+
+      // Alignments
+      row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(2).alignment = { vertical: 'middle', horizontal: 'left' };
+      row.getCell(3).alignment = { vertical: 'middle', horizontal: 'left' };
+      row.getCell(4).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(5).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(6).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(7).alignment = { vertical: 'middle', horizontal: 'center' };
+
+      // Colors & Fonts
+      row.getCell(1).font = { name: 'Arial', size: 8.5 };
+      row.getCell(2).font = { name: 'Arial', size: 8.5 };
+      row.getCell(3).font = { name: 'Arial', size: 8.5 };
       
-      const statusCell = row.getCell(5);
-      if (rec.kehadiran === 'Hadir') {
-        statusCell.font = { color: { argb: 'FF10B981' }, bold: true };
+      row.getCell(4).font = { name: 'Arial', size: 8.5, bold: true, color: { argb: 'FF10B981' } }; // Hadir = Green
+      
+      if (thCount > 0) {
+        row.getCell(5).font = { name: 'Arial', size: 8.5, bold: true, color: { argb: 'FFF43F5E' } }; // TH > 0 = Red
       } else {
-        statusCell.font = { color: { argb: 'FFF43F5E' }, bold: true };
+        row.getCell(5).font = { name: 'Arial', size: 8.5, color: { argb: 'FF64748B' } };
       }
 
-      for (let col = 1; col <= 6; col++) {
+      row.getCell(6).font = { name: 'Arial', size: 8.5 };
+
+      // % Color Coding
+      if (p.rate >= 80) {
+        row.getCell(7).font = { name: 'Arial', size: 8.5, bold: true, color: { argb: 'FF10B981' } }; // >= 80% Green
+      } else if (p.rate >= 50) {
+        row.getCell(7).font = { name: 'Arial', size: 8.5, bold: true, color: { argb: 'FFF59E0B' } }; // >= 50% Amber
+      } else {
+        row.getCell(7).font = { name: 'Arial', size: 8.5, bold: true, color: { argb: 'FFF43F5E' } }; // < 50% Red
+      }
+
+      // Borders
+      for (let col = 1; col <= 7; col++) {
         row.getCell(col).border = {
           top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
           bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
@@ -1551,16 +1918,187 @@ export function AbsenTBM() {
           right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
         };
       }
+
+      currentRow++;
     });
 
-    worksheet.columns.forEach((col, idx) => {
-      if (idx === 0) col.width = 6;
-      else if (idx === 1) col.width = 15;
-      else if (idx === 2) col.width = 25;
-      else if (idx === 3) col.width = 20;
-      else if (idx === 4) col.width = 18;
-      else if (idx === 5) col.width = 25;
+    // Space after Table 1
+    worksheet.getRow(currentRow).height = 15;
+    worksheet.getRow(currentRow + 1).height = 15;
+    currentRow += 2;
+
+    // ─── Table 2: Detail Riwayat Absensi TBM ──────────────────────
+    const table2TitleRow = worksheet.getRow(currentRow);
+    table2TitleRow.height = 20;
+    worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
+    const t2TitleCell = worksheet.getCell(`A${currentRow}`);
+    t2TitleCell.value = 'DETAIL RIWAYAT ABSENSI TBM';
+    t2TitleCell.font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FF0F172A' } };
+    t2TitleCell.alignment = { vertical: 'middle', horizontal: 'left' };
+
+    currentRow++;
+
+    const t2Headers = ['No', 'Tanggal', 'Nama', 'Jabatan', 'Status Kehadiran', 'Keterangan'];
+    const t2HeaderRow = worksheet.getRow(currentRow);
+    t2HeaderRow.height = 24;
+    t2Headers.forEach((h, idx) => {
+      // Note: Keterangan will span column F and G
+      const colPos = idx + 1;
+      let cell;
+      if (h === 'Keterangan') {
+        worksheet.mergeCells(`F${currentRow}:G${currentRow}`);
+        cell = worksheet.getCell(`F${currentRow}`);
+      } else {
+        cell = t2HeaderRow.getCell(colPos);
+      }
+
+      cell.value = h;
+      cell.font = { name: 'Arial', size: 8.5, bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.alignment = { vertical: 'middle', horizontal: idx === 0 || idx === 1 || idx === 4 ? 'center' : 'left' };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF00599C' } // UTT Blue header
+      };
+
+      // Apply borders to header cells including the merged G column header
+      const borderConfig: any = {
+        top: { style: 'thin' },
+        bottom: { style: 'thin' },
+        left: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+
+      if (h === 'Keterangan') {
+        worksheet.getCell(`F${currentRow}`).border = borderConfig;
+        worksheet.getCell(`G${currentRow}`).border = borderConfig;
+      } else {
+        cell.border = borderConfig;
+      }
     });
+
+    currentRow++;
+
+    filteredRecords.forEach((rec, idx) => {
+      const row = worksheet.getRow(currentRow);
+      row.height = 20;
+
+      row.getCell(1).value = idx + 1;
+      row.getCell(2).value = rec.tanggal;
+      row.getCell(3).value = rec.nama;
+      row.getCell(4).value = rec.jabatan;
+      row.getCell(5).value = rec.kehadiran;
+      
+      // Merge Keterangan columns F and G
+      worksheet.mergeCells(`F${currentRow}:G${currentRow}`);
+      worksheet.getCell(`F${currentRow}`).value = rec.remark || '-';
+
+      // Alignment
+      row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(3).alignment = { vertical: 'middle', horizontal: 'left' };
+      row.getCell(4).alignment = { vertical: 'middle', horizontal: 'left' };
+      row.getCell(5).alignment = { vertical: 'middle', horizontal: 'center' };
+      worksheet.getCell(`F${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left' };
+
+      // Font size & colors
+      for (let col = 1; col <= 4; col++) {
+        row.getCell(col).font = { name: 'Arial', size: 8.5 };
+      }
+      
+      if (rec.kehadiran === 'Hadir') {
+        row.getCell(5).font = { name: 'Arial', size: 8.5, bold: true, color: { argb: 'FF10B981' } }; // Hadir = Green
+      } else {
+        row.getCell(5).font = { name: 'Arial', size: 8.5, bold: true, color: { argb: 'FFF43F5E' } }; // Tidak Hadir = Red
+      }
+      
+      worksheet.getCell(`F${currentRow}`).font = { name: 'Arial', size: 8.5 };
+
+      // Apply borders to all columns A:G
+      for (let col = 1; col <= 7; col++) {
+        const c = worksheet.getCell(currentRow, col);
+        c.border = {
+          top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+          right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+        };
+        // Ensure data cells are editable
+        c.protection = { locked: false };
+      }
+
+      currentRow++;
+    });
+
+    // (Column widths already set at worksheet creation)
+
+    // Add dynamic conditional formatting rules
+    try {
+      // Column G (%) in Table 1
+      worksheet.addConditionalFormatting({
+        ref: `G${t1StartRow}:G${t1EndRow}`,
+        rules: [
+          {
+            priority: 1,
+            type: 'cellIs',
+            operator: 'lessThan',
+            formulae: ['0.5'],
+            style: { font: { color: { argb: 'FFF43F5E' }, bold: true } }
+          },
+          {
+            priority: 2,
+            type: 'cellIs',
+            operator: 'between',
+            formulae: ['0.5', '0.7999'],
+            style: { font: { color: { argb: 'FFF59E0B' }, bold: true } }
+          },
+          {
+            priority: 3,
+            type: 'cellIs',
+            operator: 'greaterThan',
+            formulae: ['0.7999'],
+            style: { font: { color: { argb: 'FF10B981' }, bold: true } }
+          }
+        ]
+      });
+
+      // Column E (Tidak Hadir) in Table 1
+      worksheet.addConditionalFormatting({
+        ref: `E${t1StartRow}:E${t1EndRow}`,
+        rules: [
+          {
+            priority: 4,
+            type: 'cellIs',
+            operator: 'greaterThan',
+            formulae: ['0'],
+            style: { font: { color: { argb: 'FFF43F5E' }, bold: true } }
+          }
+        ]
+      });
+
+      // Column E (Status Kehadiran) in Table 2
+      worksheet.addConditionalFormatting({
+        ref: `E${t2StartRow}:E${t2EndRow}`,
+        rules: [
+          {
+            priority: 5,
+            type: 'cellIs',
+            operator: 'equal',
+            formulae: ['"Hadir"'],
+            style: { font: { color: { argb: 'FF10B981' }, bold: true } }
+          },
+          {
+            priority: 6,
+            type: 'cellIs',
+            operator: 'equal',
+            formulae: ['"Tidak Hadir"'],
+            style: { font: { color: { argb: 'FFF43F5E' }, bold: true } }
+          }
+        ]
+      });
+    } catch (cfError) {
+      console.warn("Failed to add conditional formatting:", cfError);
+    }
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
