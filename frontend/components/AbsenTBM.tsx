@@ -6,7 +6,7 @@ import {
   TrendingUp, CheckCircle, XCircle,
   Folder, ChevronLeft, Pencil, Camera, Upload, X, UserPlus, Save
 } from 'lucide-react';
-import { collection, addDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, where, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, where, updateDoc, writeBatch, getDocs } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
@@ -21,7 +21,7 @@ interface AttendanceRecord {
   id: string;
   tanggal: string; // YYYY-MM-DD
   nama: string;
-  kehadiran: 'Hadir' | 'Tidak Hadir';
+  kehadiran: 'Hadir' | 'Tidak Hadir' | 'Libur';
   jabatan: string;
   remark: string;
   category?: string;
@@ -153,9 +153,28 @@ export function AbsenTBM() {
   const [newPersonName, setNewPersonName] = useState('');
   const [newPersonJabatan, setNewPersonJabatan] = useState('');
   const [newPersonCategory, setNewPersonCategory] = useState<'UTT Daily' | 'UTT Mobile' | 'DME'>('UTT Daily');
+  const [editingPersonnelId, setEditingPersonnelId] = useState<string | null>(null);
+  const [editPersonName, setEditPersonName] = useState('');
+  const [editPersonJabatan, setEditPersonJabatan] = useState('');
+  const [editPersonCategory, setEditPersonCategory] = useState<'UTT Daily' | 'UTT Mobile' | 'DME'>('UTT Daily');
 
-  // Form State
-  const [formDate, setFormDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [formDate, setFormDate] = useState(() => {
+    const d = new Date();
+    const day = d.getDay();
+    if (day === 0) { // Sunday
+      d.setDate(d.getDate() - 2); // Friday
+    } else if (day === 6) { // Saturday
+      d.setDate(d.getDate() - 1); // Friday
+    }
+    return d.toISOString().split('T')[0];
+  });
+  const isWeekend = useMemo(() => {
+    if (!formDate) return false;
+    const parts = formDate.split('-');
+    const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    const day = d.getDay();
+    return day === 0 || day === 6;
+  }, [formDate]);
   const [formCategory, setFormCategory] = useState<'Semua' | 'UTT Daily' | 'UTT Mobile' | 'DME' | 'Manual'>('Semua');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionPhotos, setSubmissionPhotos] = useState<string[]>([]);
@@ -165,14 +184,14 @@ export function AbsenTBM() {
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [editedNama, setEditedNama] = useState('');
   const [editedJabatan, setEditedJabatan] = useState('');
-  const [editedKehadiran, setEditedKehadiran] = useState<'Hadir' | 'Tidak Hadir'>('Hadir');
+  const [editedKehadiran, setEditedKehadiran] = useState<'Hadir' | 'Tidak Hadir' | 'Libur'>('Hadir');
   const [editedRemark, setEditedRemark] = useState('');
 
   // Checklist state for the active team
   const [checklist, setChecklist] = useState<Array<{
     nama: string;
     jabatan: string;
-    kehadiran: 'Hadir' | 'Tidak Hadir';
+    kehadiran: 'Hadir' | 'Tidak Hadir' | 'Libur';
     remark: string;
     category?: string;
   }>>([]);
@@ -231,15 +250,24 @@ export function AbsenTBM() {
     }
   }, [personnelLoading, personnelList.length]);
 
-  // Auto-fill checklist when Category or personnelList changes
+  // Auto-fill checklist when Category, personnelList or formDate changes
   useEffect(() => {
     if (personnelLoading) return;
+    
+    const getLocalDay = (dateStr: string) => {
+      const parts = dateStr.split('-');
+      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      return d.getDay();
+    };
+    const day = getLocalDay(formDate);
+    const defaultKehadiran: 'Hadir' | 'Tidak Hadir' | 'Libur' = (day === 0 || day === 6) ? 'Libur' : 'Hadir';
+
     if (formCategory === 'Semua') {
       setChecklist(personnelList.map(e => ({
         nama: e.nama,
         jabatan: e.jabatan,
         category: e.category,
-        kehadiran: 'Hadir',
+        kehadiran: defaultKehadiran,
         remark: ''
       })));
     } else if (formCategory !== 'Manual') {
@@ -248,7 +276,7 @@ export function AbsenTBM() {
         nama: e.nama,
         jabatan: e.jabatan,
         category: e.category,
-        kehadiran: 'Hadir',
+        kehadiran: defaultKehadiran,
         remark: ''
       })));
     } else {
@@ -256,11 +284,11 @@ export function AbsenTBM() {
         nama: '',
         jabatan: '',
         category: 'Manual',
-        kehadiran: 'Hadir',
+        kehadiran: defaultKehadiran,
         remark: ''
       }]);
     }
-  }, [formCategory, personnelList, personnelLoading]);
+  }, [formCategory, personnelList, personnelLoading, formDate]);
 
   const updateChecklistItem = (index: number, key: 'kehadiran' | 'remark' | 'nama' | 'jabatan', value: any) => {
     setChecklist(prev => prev.map((item, idx) => {
@@ -332,6 +360,14 @@ export function AbsenTBM() {
   // Filtered Records for statistics / search
   const filteredRecords = useMemo(() => {
     return allRecords.filter(rec => {
+      // Exclude Saturdays and Sundays completely from display and statistics
+      if (rec.tanggal) {
+        const parts = rec.tanggal.split('-');
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        const day = d.getDay();
+        if (day === 0 || day === 6) return false;
+      }
+
       const matchDate = (!startDate || rec.tanggal >= startDate) && (!endDate || rec.tanggal <= endDate);
       const matchText = rec.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         rec.jabatan.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -342,20 +378,21 @@ export function AbsenTBM() {
 
   // Statistics
   const stats = useMemo(() => {
-    let total = filteredRecords.length;
-    let hadir = filteredRecords.filter(r => r.kehadiran === 'Hadir').length;
-    let tidakHadir = total - hadir;
+    const statsRecords = filteredRecords.filter(r => r.kehadiran !== 'Libur');
+    let total = statsRecords.length;
+    let hadir = statsRecords.filter(r => r.kehadiran === 'Hadir').length;
+    let tidakHadir = statsRecords.filter(r => r.kehadiran === 'Tidak Hadir').length;
     let rate = total > 0 ? Math.round((hadir / total) * 100) : 0;
     
     // Group by Date for Bar Chart
     const dateGroups: Record<string, { tanggal: string; Hadir: number; 'Tidak Hadir': number; Total: number }> = {};
-    filteredRecords.forEach(r => {
+    statsRecords.forEach(r => {
       if (!dateGroups[r.tanggal]) {
         dateGroups[r.tanggal] = { tanggal: r.tanggal, Hadir: 0, 'Tidak Hadir': 0, Total: 0 };
       }
       if (r.kehadiran === 'Hadir') {
         dateGroups[r.tanggal].Hadir += 1;
-      } else {
+      } else if (r.kehadiran === 'Tidak Hadir') {
         dateGroups[r.tanggal]['Tidak Hadir'] += 1;
       }
       dateGroups[r.tanggal].Total += 1;
@@ -385,9 +422,11 @@ export function AbsenTBM() {
         }
         personGroups[r.nama] = { nama: r.nama, jabatan: r.jabatan, category: category || 'Manual', hadir: 0, total: 0 };
       }
-      personGroups[r.nama].total += 1;
-      if (r.kehadiran === 'Hadir') {
-        personGroups[r.nama].hadir += 1;
+      if (r.kehadiran !== 'Libur') {
+        personGroups[r.nama].total += 1;
+        if (r.kehadiran === 'Hadir') {
+          personGroups[r.nama].hadir += 1;
+        }
       }
     });
 
@@ -498,20 +537,30 @@ export function AbsenTBM() {
     ctx.textAlign = 'center';
     ctx.fillText('GRAFIK KEHADIRAN MINGGUAN', leftMargin + chartW / 2, 45);
 
-    // Generate weekly date ranges from startDate to endDate
+    // Generate weekly date ranges from startDate to endDate starting from Monday
     const getWeeksInRange = (startStr: string, endStr: string) => {
       const list: Array<{ start: Date; end: Date; label: string }> = [];
-      const current = new Date(startStr);
-      const limit = new Date(endStr);
+      
+      const parseLocalDate = (dateStr: string) => {
+        const parts = dateStr.split('-');
+        return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      };
+      
+      const start = parseLocalDate(startStr);
+      const limit = parseLocalDate(endStr);
+      
+      // Align start to the Monday of its week
+      const startDay = start.getDay();
+      const diffToMonday = startDay === 0 ? -6 : 1 - startDay;
+      const current = new Date(start);
+      current.setDate(current.getDate() + diffToMonday);
+      
       let weekNum = 1;
       
       while (current <= limit) {
         const wStart = new Date(current);
         const wEnd = new Date(current);
         wEnd.setDate(wEnd.getDate() + 6);
-        if (wEnd > limit) {
-          wEnd.setTime(limit.getTime());
-        }
         
         const formatDateShort = (d: Date) => {
           const dd = String(d.getDate()).padStart(2, '0');
@@ -536,16 +585,20 @@ export function AbsenTBM() {
     // Group records into those weeks
     const weeklyData = weeks.map(w => {
       const recs = filteredRecords.filter(r => {
-        const d = new Date(r.tanggal);
+        const parts = r.tanggal.split('-');
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
         d.setHours(0, 0, 0, 0);
+        
         const startNorm = new Date(w.start);
         startNorm.setHours(0, 0, 0, 0);
+        
         const endNorm = new Date(w.end);
         endNorm.setHours(0, 0, 0, 0);
+        
         return d >= startNorm && d <= endNorm;
       });
       const hadir = recs.filter(r => r.kehadiran === 'Hadir').length;
-      const tidakHadir = recs.length - hadir;
+      const tidakHadir = recs.filter(r => r.kehadiran === 'Tidak Hadir').length;
       return {
         label: w.label,
         hadir,
@@ -732,6 +785,47 @@ export function AbsenTBM() {
     } catch (err: any) {
       console.error("Error deleting personnel:", err);
       toast.error("Gagal menghapus personil: " + err.message);
+    }
+  };
+
+  // Update personnel handler
+  const handleUpdatePersonnel = async (id: string) => {
+    if (!editPersonName.trim() || !editPersonJabatan.trim()) {
+      toast.error("Nama dan Jabatan tidak boleh kosong");
+      return;
+    }
+    
+    const toastId = toast.loading("Memperbarui data personil...");
+    try {
+      // 1. Update the personnel definition document in Firestore
+      await updateDoc(doc(db, 'absen_tbm', id), {
+        nama: editPersonName.trim(),
+        jabatan: editPersonJabatan.trim(),
+        category: editPersonCategory
+      });
+      
+      // 2. Update historical attendance records where name equals the old name
+      const oldPerson = personnelList.find(p => p.id === id);
+      if (oldPerson && oldPerson.nama !== editPersonName.trim()) {
+        const snapshot = await getDocs(query(collection(db, 'absen_tbm'), where('nama', '==', oldPerson.nama)));
+        const batch = writeBatch(db);
+        snapshot.docs.forEach(docSnap => {
+          const data = docSnap.data();
+          if (!data.isPersonnel && !data.isDocumentation) {
+            batch.update(docSnap.ref, { 
+              nama: editPersonName.trim(),
+              jabatan: editPersonJabatan.trim()
+            });
+          }
+        });
+        await batch.commit();
+      }
+      
+      toast.success("Data personil berhasil diperbarui!", { id: toastId });
+      setEditingPersonnelId(null);
+    } catch (err: any) {
+      console.error("Error updating personnel:", err);
+      toast.error("Gagal memperbarui data personil: " + err.message, { id: toastId });
     }
   };
 
@@ -1113,20 +1207,30 @@ export function AbsenTBM() {
     ctx.textAlign = 'center';
     ctx.fillText('GRAFIK KEHADIRAN MINGGUAN', leftMargin + chartW / 2, 45);
 
-    // Generate weekly date ranges from startDate to endDate
+    // Generate weekly date ranges from startDate to endDate starting from Monday
     const getWeeksInRange = (startStr: string, endStr: string) => {
       const list: Array<{ start: Date; end: Date; label: string }> = [];
-      const current = new Date(startStr);
-      const limit = new Date(endStr);
+      
+      const parseLocalDate = (dateStr: string) => {
+        const parts = dateStr.split('-');
+        return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      };
+      
+      const start = parseLocalDate(startStr);
+      const limit = parseLocalDate(endStr);
+      
+      // Align start to the Monday of its week
+      const startDay = start.getDay();
+      const diffToMonday = startDay === 0 ? -6 : 1 - startDay;
+      const current = new Date(start);
+      current.setDate(current.getDate() + diffToMonday);
+      
       let weekNum = 1;
       
       while (current <= limit) {
         const wStart = new Date(current);
         const wEnd = new Date(current);
         wEnd.setDate(wEnd.getDate() + 6);
-        if (wEnd > limit) {
-          wEnd.setTime(limit.getTime());
-        }
         
         const formatDateShort = (d: Date) => {
           const dd = String(d.getDate()).padStart(2, '0');
@@ -1151,16 +1255,20 @@ export function AbsenTBM() {
     // Group records into those weeks
     const weeklyData = weeks.map(w => {
       const recs = filteredRecords.filter(r => {
-        const d = new Date(r.tanggal);
+        const parts = r.tanggal.split('-');
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
         d.setHours(0, 0, 0, 0);
+        
         const startNorm = new Date(w.start);
         startNorm.setHours(0, 0, 0, 0);
+        
         const endNorm = new Date(w.end);
         endNorm.setHours(0, 0, 0, 0);
+        
         return d >= startNorm && d <= endNorm;
       });
       const hadir = recs.filter(r => r.kehadiran === 'Hadir').length;
-      const tidakHadir = recs.length - hadir;
+      const tidakHadir = recs.filter(r => r.kehadiran === 'Tidak Hadir').length;
       return {
         label: w.label,
         hadir,
@@ -1364,6 +1472,79 @@ export function AbsenTBM() {
       },
       styles: { fontSize: 8.5 }
     });
+
+    // ─── Add Documentation Photos ────────────────────────────────────
+    const filteredDocs = docRecords.filter(d => {
+      const matchDate = (!startDate || d.tanggal >= startDate) && (!endDate || d.tanggal <= endDate);
+      return matchDate && d.photos && d.photos.length > 0;
+    }).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+
+    if (filteredDocs.length > 0) {
+      docPdf.addPage();
+      let currentY = margin + 10;
+      const pageHeight = docPdf.internal.pageSize.getHeight();
+      
+      docPdf.setTextColor(0, 89, 156);
+      docPdf.setFontSize(12);
+      docPdf.setFont('helvetica', 'bold');
+      docPdf.text('LAMPIRAN DOKUMENTASI KEHADIRAN TBM', margin, currentY);
+      currentY += 8;
+      
+      filteredDocs.forEach(docGroup => {
+        const dateLabel = formatIndonesianDate(docGroup.tanggal) + (docGroup.category ? ` (${docGroup.category})` : '');
+        
+        if (currentY + 20 > pageHeight - margin - 10) {
+          docPdf.addPage();
+          currentY = margin + 10;
+        }
+        
+        docPdf.setTextColor(15, 23, 42);
+        docPdf.setFontSize(9.5);
+        docPdf.setFont('helvetica', 'bold');
+        docPdf.text(`Tanggal: ${dateLabel}`, margin, currentY);
+        currentY += 6;
+        
+        const photoWidth = 82;
+        const photoHeight = 60;
+        const spacingX = 6;
+        const spacingY = 6;
+        
+        docGroup.photos.forEach((photoData, idx) => {
+          const col = idx % 2;
+          const posX = margin + col * (photoWidth + spacingX);
+          
+          if (col === 0 && currentY + photoHeight > pageHeight - margin - 10) {
+            docPdf.addPage();
+            currentY = margin + 10;
+            docPdf.setTextColor(100, 100, 100);
+            docPdf.setFontSize(7.5);
+            docPdf.setFont('helvetica', 'italic');
+            docPdf.text(`Dokumentasi Tanggal: ${dateLabel} (sambungan)`, margin, currentY);
+            currentY += 6;
+          }
+          
+          try {
+            let format = 'JPEG';
+            if (photoData.includes('image/png') || photoData.includes('png')) {
+              format = 'PNG';
+            }
+            docPdf.addImage(photoData, format, posX, currentY, photoWidth, photoHeight, undefined, 'FAST');
+          } catch (err) {
+            console.error("Error adding photo to PDF:", err);
+            docPdf.setDrawColor(226, 232, 240);
+            docPdf.rect(posX, currentY, photoWidth, photoHeight, 'D');
+            docPdf.setFontSize(8).setFont('helvetica', 'italic').setTextColor(150, 150, 150);
+            docPdf.text('Gagal memuat gambar', posX + photoWidth / 2, currentY + photoHeight / 2, { align: 'center' });
+          }
+          
+          if (col === 1 || idx === docGroup.photos.length - 1) {
+            currentY += photoHeight + spacingY;
+          }
+        });
+        
+        currentY += 4;
+      });
+    }
 
     // ─── Add Page Numbers & Blue Grid Footer to ALL pages ─────────────
     const totalPages = docPdf.getNumberOfPages();
@@ -1651,20 +1832,30 @@ export function AbsenTBM() {
       ctx.textAlign = 'center';
       ctx.fillText('GRAFIK KEHADIRAN MINGGUAN', leftMargin + chartW / 2, 45);
 
-      // Generate weekly date ranges from startDate to endDate
+      // Generate weekly date ranges from startDate to endDate starting from Monday
       const getWeeksInRange = (startStr: string, endStr: string) => {
         const list: Array<{ start: Date; end: Date; label: string }> = [];
-        const current = new Date(startStr);
-        const limit = new Date(endStr);
+        
+        const parseLocalDate = (dateStr: string) => {
+          const parts = dateStr.split('-');
+          return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        };
+        
+        const start = parseLocalDate(startStr);
+        const limit = parseLocalDate(endStr);
+        
+        // Align start to the Monday of its week
+        const startDay = start.getDay();
+        const diffToMonday = startDay === 0 ? -6 : 1 - startDay;
+        const current = new Date(start);
+        current.setDate(current.getDate() + diffToMonday);
+        
         let weekNum = 1;
         
         while (current <= limit) {
           const wStart = new Date(current);
           const wEnd = new Date(current);
           wEnd.setDate(wEnd.getDate() + 6);
-          if (wEnd > limit) {
-            wEnd.setTime(limit.getTime());
-          }
           
           const formatDateShort = (d: Date) => {
             const dd = String(d.getDate()).padStart(2, '0');
@@ -1689,16 +1880,20 @@ export function AbsenTBM() {
       // Group records into those weeks
       const weeklyData = weeks.map(w => {
         const recs = filteredRecords.filter(r => {
-          const d = new Date(r.tanggal);
+          const parts = r.tanggal.split('-');
+          const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
           d.setHours(0, 0, 0, 0);
+          
           const startNorm = new Date(w.start);
           startNorm.setHours(0, 0, 0, 0);
+          
           const endNorm = new Date(w.end);
           endNorm.setHours(0, 0, 0, 0);
+          
           return d >= startNorm && d <= endNorm;
         });
         const hadir = recs.filter(r => r.kehadiran === 'Hadir').length;
-        const tidakHadir = recs.length - hadir;
+        const tidakHadir = recs.filter(r => r.kehadiran === 'Tidak Hadir').length;
         return {
           label: w.label,
           hadir,
@@ -2100,6 +2295,87 @@ export function AbsenTBM() {
       console.warn("Failed to add conditional formatting:", cfError);
     }
 
+    // ─── Add Documentation Sheet ─────────────────────────────────────
+    const filteredExcelDocs = docRecords.filter(d => {
+      const matchDate = (!startDate || d.tanggal >= startDate) && (!endDate || d.tanggal <= endDate);
+      return matchDate && d.photos && d.photos.length > 0;
+    }).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+
+    if (filteredExcelDocs.length > 0) {
+      const docSheet = workbook.addWorksheet('Dokumentasi Foto');
+      
+      // Title
+      docSheet.mergeCells('A1:K1');
+      const titleCell = docSheet.getCell('A1');
+      titleCell.value = 'LAMPIRAN DOKUMENTASI KEHADIRAN TBM';
+      titleCell.font = { name: 'Arial', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+      titleCell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF00599C' } // UTT Blue
+      };
+      titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+      docSheet.getRow(1).height = 40;
+      
+      let currentRow = 3;
+      
+      filteredExcelDocs.forEach(docGroup => {
+        const dateLabel = formatIndonesianDate(docGroup.tanggal) + (docGroup.category ? ` (${docGroup.category})` : '');
+        
+        // Date Header
+        docSheet.mergeCells(`A${currentRow}:K${currentRow}`);
+        const dateCell = docSheet.getCell(`A${currentRow}`);
+        dateCell.value = `Tanggal: ${dateLabel}`;
+        dateCell.font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FF0F172A' } };
+        dateCell.alignment = { vertical: 'middle', horizontal: 'left' };
+        docSheet.getRow(currentRow).height = 25;
+        
+        currentRow += 2;
+        
+        const photoWidthCols = 4;
+        const photoHeightRows = 12;
+        
+        for (let r = 0; r < photoHeightRows; r++) {
+          docSheet.getRow(currentRow + r).height = 20;
+        }
+        
+        docGroup.photos.forEach((photoData, idx) => {
+          const colOffset = idx % 2;
+          const startCol = colOffset === 0 ? 1 : 6;
+          const endCol = startCol + photoWidthCols;
+          
+          try {
+            const base64Clean = photoData.replace(/^data:image\/\w+;base64,/, "");
+            const extension = photoData.includes('image/png') ? 'png' : 'jpeg';
+            
+            const imageId = workbook.addImage({
+              base64: base64Clean,
+              extension: extension as any,
+            });
+            
+            docSheet.addImage(imageId, {
+              tl: { col: startCol, row: currentRow - 1 } as any,
+              br: { col: endCol, row: currentRow - 1 + photoHeightRows } as any,
+              editAs: 'oneCell'
+            });
+          } catch (err) {
+            console.error("Error adding photo to Excel:", err);
+          }
+          
+          if (colOffset === 1 || idx === docGroup.photos.length - 1) {
+            currentRow += photoHeightRows + 2;
+          }
+        });
+        
+        currentRow += 1;
+      });
+      
+      docSheet.getColumn(1).width = 4;
+      for (let c = 2; c <= 11; c++) {
+        docSheet.getColumn(c).width = 15;
+      }
+    }
+
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const link = document.createElement('a');
@@ -2218,24 +2494,97 @@ export function AbsenTBM() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-900/60">
-                        {personnelList.map((p, idx) => (
-                          <tr key={p.id} className="hover:bg-slate-800/10 text-slate-300">
-                            <td className="px-3 py-2.5 font-mono text-slate-500">{idx + 1}.</td>
-                            <td className="px-3 py-2.5 font-bold text-white">{p.nama}</td>
-                            <td className="px-3 py-2.5">{p.jabatan}</td>
-                            <td className="px-3 py-2.5 text-slate-400">{p.category}</td>
-                            <td className="px-3 py-2.5 text-center">
-                              <button
-                                type="button"
-                                onClick={() => handleDeletePersonnel(p.id)}
-                                className="p-1 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded transition active:scale-90 animate-none"
-                                title="Hapus Personil"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                        {personnelList.map((p, idx) => {
+                          const isEditing = editingPersonnelId === p.id;
+                          return (
+                            <tr key={p.id} className="hover:bg-slate-800/10 text-slate-300">
+                              <td className="px-3 py-2.5 font-mono text-slate-500">{idx + 1}.</td>
+                              {isEditing ? (
+                                <>
+                                  <td className="px-2 py-2">
+                                    <input
+                                      type="text"
+                                      value={editPersonName}
+                                      onChange={e => setEditPersonName(e.target.value)}
+                                      className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-violet-500 w-full"
+                                      placeholder="Nama"
+                                    />
+                                  </td>
+                                  <td className="px-2 py-2">
+                                    <input
+                                      type="text"
+                                      value={editPersonJabatan}
+                                      onChange={e => setEditPersonJabatan(e.target.value)}
+                                      className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-violet-500 w-full"
+                                      placeholder="Jabatan"
+                                    />
+                                  </td>
+                                  <td className="px-2 py-2">
+                                    <select
+                                      value={editPersonCategory}
+                                      onChange={e => setEditPersonCategory(e.target.value as any)}
+                                      title="Edit Kategori"
+                                      className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-violet-500 w-full"
+                                    >
+                                      <option value="UTT Daily">UTT Daily</option>
+                                      <option value="UTT Mobile">UTT Mobile</option>
+                                      <option value="DME">DME</option>
+                                    </select>
+                                  </td>
+                                  <td className="px-3 py-2.5 text-center flex items-center justify-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdatePersonnel(p.id)}
+                                      className="p-1 hover:bg-emerald-500/10 text-emerald-500 hover:text-emerald-400 rounded transition active:scale-90 animate-none"
+                                      title="Simpan Perubahan"
+                                    >
+                                      <Save className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingPersonnelId(null)}
+                                      className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded transition active:scale-90 animate-none"
+                                      title="Batal"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  </td>
+                                </>
+                              ) : (
+                                <>
+                                  <td className="px-3 py-2.5 font-bold text-white">{p.nama}</td>
+                                  <td className="px-3 py-2.5">{p.jabatan}</td>
+                                  <td className="px-3 py-2.5 text-slate-400">{p.category}</td>
+                                  <td className="px-3 py-2.5 text-center">
+                                    <div className="flex items-center justify-center gap-1.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setEditingPersonnelId(p.id);
+                                          setEditPersonName(p.nama);
+                                          setEditPersonJabatan(p.jabatan);
+                                          setEditPersonCategory(p.category as any);
+                                        }}
+                                        className="p-1 hover:bg-violet-500/10 text-slate-500 hover:text-violet-400 rounded transition active:scale-90 animate-none"
+                                        title="Edit Personil"
+                                      >
+                                        <Pencil className="w-3.5 h-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeletePersonnel(p.id)}
+                                        className="p-1 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded transition active:scale-90 animate-none"
+                                        title="Hapus Personil"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </>
+                              )}
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   )}
@@ -2454,7 +2803,18 @@ export function AbsenTBM() {
               <input
                 type="date"
                 value={formDate}
-                onChange={e => setFormDate(e.target.value)}
+                onChange={e => {
+                  const val = e.target.value;
+                  if (!val) return;
+                  const parts = val.split('-');
+                  const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                  const day = d.getDay();
+                  if (day === 0 || day === 6) {
+                    toast.error("Hari Sabtu dan Minggu tidak dapat dipilih untuk absensi!");
+                    return;
+                  }
+                  setFormDate(val);
+                }}
                 title="Tanggal Absen"
                 className="bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50"
               />
@@ -2477,6 +2837,17 @@ export function AbsenTBM() {
           </div>
         </div>
 
+      {isWeekend ? (
+        <div className="py-12 px-6 flex flex-col items-center justify-center text-center bg-slate-950/20 rounded-xl border border-white/5 space-y-3">
+          <div className="p-3 bg-rose-500/10 rounded-full border border-rose-500/20">
+            <Calendar className="w-8 h-8 text-rose-400" />
+          </div>
+          <h3 className="text-sm font-bold text-white uppercase tracking-wider">PENGINPUTAN DINONAKTIFKAN</h3>
+          <p className="text-xs text-slate-400 max-w-md leading-relaxed font-medium">
+            Penginputan absensi TBM dinonaktifkan pada hari <strong className="text-rose-400">Sabtu & Minggu</strong> (hari libur kerja). Anda tidak dapat memasukkan atau menyimpan absensi pada tanggal ini.
+          </p>
+        </div>
+      ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
@@ -2538,7 +2909,7 @@ export function AbsenTBM() {
                             )}
                           </td>
                           <td className="px-3 py-3.5 text-center">
-                            <div className="flex items-center justify-center gap-2">
+                            <div className="flex items-center justify-center gap-1.5">
                               <button
                                 type="button"
                                 onClick={() => updateChecklistItem(index, 'kehadiran', 'Hadir')}
@@ -2560,6 +2931,17 @@ export function AbsenTBM() {
                                 }`}
                               >
                                 TIDAK HADIR
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateChecklistItem(index, 'kehadiran', 'Libur')}
+                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all border ${
+                                  item.kehadiran === 'Libur'
+                                    ? 'bg-violet-500/20 text-violet-400 border-violet-500/40 shadow-sm shadow-violet-500/10'
+                                    : 'bg-transparent text-slate-500 border-slate-700 hover:text-slate-400'
+                                }`}
+                              >
+                                LIBUR
                               </button>
                             </div>
                           </td>
@@ -2608,7 +2990,6 @@ export function AbsenTBM() {
             </table>
           </div>
 
-          {/* Documentation Upload */}
           <div className="p-4 bg-slate-950/20 rounded-xl border border-white/5 space-y-3">
             <div>
               <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
@@ -2690,6 +3071,7 @@ export function AbsenTBM() {
             </button>
           </div>
         </form>
+      )}
       </div>
 
       {/* ─── Table/Folder Section: Records List ────────────────── */}
@@ -2703,27 +3085,33 @@ export function AbsenTBM() {
               Daftar Log Kehadiran Absen TBM
             </h2>
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              <button 
-                onClick={() => { setViewLevel('month'); setSelectedMonth(null); setSelectedDate(null); }}
-                className="hover:text-white transition"
-              >
-                Log Absen
-              </button>
-              {selectedMonth && (
+              {recordsViewMode === 'matrix' ? (
+                <span className="text-slate-200">Log Absen / Tabel Matriks</span>
+              ) : (
                 <>
-                  <span className="text-slate-600">/</span>
                   <button 
-                    onClick={() => { setViewLevel('date'); setSelectedDate(null); }}
+                    onClick={() => { setViewLevel('month'); setSelectedMonth(null); setSelectedDate(null); }}
                     className="hover:text-white transition"
                   >
-                    {selectedMonth}
+                    Log Absen
                   </button>
-                </>
-              )}
-              {selectedDate && (
-                <>
-                  <span className="text-slate-600">/</span>
-                  <span className="text-slate-200">{formatIndonesianDate(selectedDate)}</span>
+                  {selectedMonth && (
+                    <>
+                      <span className="text-slate-600">/</span>
+                      <button 
+                        onClick={() => { setViewLevel('date'); setSelectedDate(null); }}
+                        className="hover:text-white transition"
+                      >
+                        {selectedMonth}
+                      </button>
+                    </>
+                  )}
+                  {selectedDate && (
+                    <>
+                      <span className="text-slate-600">/</span>
+                      <span className="text-slate-200">{formatIndonesianDate(selectedDate)}</span>
+                    </>
+                  )}
                 </>
               )}
             </div>
@@ -2823,6 +3211,9 @@ export function AbsenTBM() {
                               if (rec.kehadiran === 'Hadir') {
                                 symbol = 'H';
                                 cellClass = 'text-emerald-400 font-bold bg-emerald-500/10';
+                              } else if (rec.kehadiran === 'Libur') {
+                                symbol = 'L';
+                                cellClass = 'text-violet-400 font-bold bg-violet-500/10';
                               } else {
                                 symbol = rec.remark || 'TH';
                                 cellClass = 'text-rose-400 font-bold bg-rose-500/10';
@@ -2932,7 +3323,6 @@ export function AbsenTBM() {
             {/* LEVEL 3: DETAILED RECORDS */}
             {viewLevel === 'records' && (() => {
               const dayRecords = filteredRecords.filter(r => r.tanggal === selectedDate);
-              const categories = Array.from(new Set(dayRecords.map(r => r.category || 'Lainnya')));
 
               return (
                 <div className="space-y-6">
@@ -3005,157 +3395,340 @@ export function AbsenTBM() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800/40 bg-slate-950/5">
-                        {categories.map(cat => {
-                          const catRecords = dayRecords.filter(r => (r.category || 'Lainnya') === cat);
-                          return (
-                            <Fragment key={cat}>
-                              {/* Category Header Row */}
-                              <tr className="bg-slate-800/30 border-t border-slate-850">
-                                <td colSpan={6} className="px-4 py-2 font-black uppercase text-[10px] text-pink-400 tracking-wider">
-                                  Kategori: {cat}
-                                </td>
-                              </tr>
-                              {catRecords.map((rec, index) => {
-                                const isEditing = editingRecordId === rec.id;
-                                return (
-                                  <tr key={rec.id} className="hover:bg-slate-800/20 transition-colors">
-                                    <td className="px-4 py-3.5 text-slate-500 font-mono">{index + 1}.</td>
-                                    <td className="px-4 py-3.5 font-bold text-white">
-                                      {isEditing ? (
-                                        <input
-                                          type="text"
-                                          value={editedNama}
-                                          onChange={e => setEditedNama(e.target.value)}
-                                          title="Nama"
-                                          className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-pink-500"
-                                        />
-                                      ) : (
-                                        rec.nama
-                                      )}
-                                    </td>
-                                    <td className="px-4 py-3.5 text-slate-300 font-medium font-sans">
-                                      {isEditing ? (
-                                        <input
-                                          type="text"
-                                          value={editedJabatan}
-                                          onChange={e => setEditedJabatan(e.target.value)}
-                                          title="Jabatan"
-                                          className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-pink-500"
-                                        />
-                                      ) : (
-                                        rec.jabatan
-                                      )}
-                                    </td>
-                                    <td className="px-4 py-3.5">
-                                      {isEditing ? (
-                                        <div className="flex gap-1.5">
-                                          <button
-                                            type="button"
-                                            onClick={() => setEditedKehadiran('Hadir')}
-                                            className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-all ${
-                                              editedKehadiran === 'Hadir'
-                                                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
-                                                : 'bg-slate-800 border-slate-700 text-slate-500'
-                                            }`}
-                                          >
-                                            Hadir
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => setEditedKehadiran('Tidak Hadir')}
-                                            className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-all ${
-                                              editedKehadiran === 'Tidak Hadir'
-                                                ? 'bg-rose-500/20 border-rose-500/50 text-rose-400'
-                                                : 'bg-slate-800 border-slate-700 text-slate-500'
-                                            }`}
-                                          >
-                                            Tidak Hadir
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                          rec.kehadiran === 'Hadir'
-                                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                            : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                                        }`}>
-                                          <span className={`w-1.5 h-1.5 rounded-full ${
-                                            rec.kehadiran === 'Hadir' ? 'bg-emerald-400 shadow-md' : 'bg-rose-400 shadow-md'
-                                          }`} />
-                                          {rec.kehadiran}
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="px-4 py-3.5 text-slate-400 italic">
-                                      {isEditing ? (
-                                        <div className="flex items-center gap-1.5">
-                                          {['Izin', 'Sakit', 'Mobile'].map((opt) => {
-                                            const isChecked = editedRemark === opt;
-                                            return (
-                                              <button
-                                                type="button"
-                                                key={opt}
-                                                onClick={() => {
-                                                  const newValue = isChecked ? '' : opt;
-                                                  setEditedRemark(newValue);
-                                                }}
-                                                className={`px-2 py-1 rounded-lg border text-[9px] font-black transition-all cursor-pointer ${
-                                                  isChecked
-                                                    ? 'bg-pink-500/20 text-pink-400 border-pink-500/40 shadow-sm'
-                                                    : 'bg-slate-800 text-slate-500 border-slate-700 hover:border-slate-600 hover:text-slate-450'
-                                                }`}
-                                              >
-                                                {opt.toUpperCase()}
-                                              </button>
-                                            );
-                                          })}
-                                        </div>
-                                      ) : (
-                                        rec.remark || '—'
-                                      )}
-                                    </td>
-                                    <td className="px-4 py-3.5 text-center">
-                                      {isEditing ? (
-                                        <div className="flex justify-center gap-1.5">
-                                          <button
-                                            onClick={() => handleUpdateRecord(rec.id)}
-                                            className="p-1.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30 rounded-lg transition active:scale-90 animate-none"
-                                            title="Simpan"
-                                          >
-                                            <Save className="w-3.5 h-3.5" />
-                                          </button>
-                                          <button
-                                            onClick={() => setEditingRecordId(null)}
-                                            className="p-1.5 bg-slate-800 text-slate-400 hover:bg-slate-750 border border-slate-700/50 rounded-lg transition active:scale-90 animate-none"
-                                            title="Batal"
-                                          >
-                                            <X className="w-3.5 h-3.5" />
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        <div className="flex justify-center gap-1.5">
-                                          <button
-                                            onClick={() => startEditing(rec)}
-                                            className="p-1.5 bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white border border-slate-700/50 rounded-lg transition active:scale-90 animate-none"
-                                            title="Edit"
-                                          >
-                                            <Pencil className="w-3.5 h-3.5" />
-                                          </button>
-                                          <button
-                                            onClick={() => handleDelete(rec.id)}
-                                            className="p-1.5 bg-slate-800 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 border border-slate-700/50 hover:border-rose-500/20 rounded-lg transition active:scale-90 animate-none"
-                                            title="Hapus"
-                                          >
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                          </button>
-                                        </div>
-                                      )}
+                        {(() => {
+                          const standardCategories: Array<'UTT Daily' | 'UTT Mobile' | 'DME'> = ['UTT Daily', 'UTT Mobile', 'DME'];
+                          const extraCategories = Array.from(new Set(dayRecords.map(r => r.category || 'Lainnya')))
+                            .filter(cat => cat !== 'UTT Daily' && cat !== 'UTT Mobile' && cat !== 'DME');
+                          const allCategories = [...standardCategories, ...extraCategories];
+
+                          return allCategories.map(cat => {
+                            const isStandard = cat === 'UTT Daily' || cat === 'UTT Mobile' || cat === 'DME';
+                            if (isStandard) {
+                              const catPersonnel = personnelList.filter(p => p.category === cat);
+                              if (catPersonnel.length === 0) return null;
+                              return (
+                                <Fragment key={cat}>
+                                  <tr className="bg-slate-800/30 border-t border-slate-850">
+                                    <td colSpan={6} className="px-4 py-2 font-black uppercase text-[10px] text-pink-400 tracking-wider">
+                                      Kategori: {cat}
                                     </td>
                                   </tr>
-                                );
-                              })}
-                            </Fragment>
-                          );
-                        })}
+                                  {catPersonnel.map((person, index) => {
+                                    const rec = dayRecords.find(r => r.nama === person.nama);
+                                    const isEditing = rec ? editingRecordId === rec.id : false;
+                                    return (
+                                      <tr key={person.nama} className="hover:bg-slate-800/20 transition-colors">
+                                        <td className="px-4 py-3.5 text-slate-500 font-mono">{index + 1}.</td>
+                                        <td className="px-4 py-3.5 font-bold text-white">{person.nama}</td>
+                                        <td className="px-4 py-3.5 text-slate-300 font-medium font-sans">{person.jabatan}</td>
+                                        <td className="px-4 py-3.5">
+                                          {rec ? (
+                                            isEditing ? (
+                                              <div className="flex gap-1.5">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setEditedKehadiran('Hadir')}
+                                                  className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                                                    editedKehadiran === 'Hadir'
+                                                      ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                                                      : 'bg-slate-800 border-slate-700 text-slate-500'
+                                                  }`}
+                                                >
+                                                  Hadir
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setEditedKehadiran('Tidak Hadir')}
+                                                  className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                                                    editedKehadiran === 'Tidak Hadir'
+                                                      ? 'bg-rose-500/20 border-rose-500/50 text-rose-400'
+                                                      : 'bg-slate-800 border-slate-700 text-slate-500'
+                                                  }`}
+                                                >
+                                                  Tidak Hadir
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setEditedKehadiran('Libur')}
+                                                  className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                                                    editedKehadiran === 'Libur'
+                                                      ? 'bg-violet-500/20 border-violet-500/50 text-violet-400'
+                                                      : 'bg-slate-800 border-slate-700 text-slate-500'
+                                                  }`}
+                                                >
+                                                  Libur
+                                                </button>
+                                              </div>
+                                            ) : (
+                                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                                rec.kehadiran === 'Hadir'
+                                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                  : rec.kehadiran === 'Libur'
+                                                  ? 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
+                                                  : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                              }`}>
+                                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                                  rec.kehadiran === 'Hadir' ? 'bg-emerald-400 shadow-md' : rec.kehadiran === 'Libur' ? 'bg-violet-400 shadow-md' : 'bg-rose-400 shadow-md'
+                                                }`} />
+                                                {rec.kehadiran}
+                                              </span>
+                                            )
+                                          ) : (
+                                            <span className="text-slate-500 italic font-mono">- Belum Input -</span>
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-slate-400 italic">
+                                          {rec ? (
+                                            isEditing ? (
+                                              <div className="flex items-center gap-1.5">
+                                                {['Izin', 'Sakit', 'Mobile'].map((opt) => {
+                                                  const isChecked = editedRemark === opt;
+                                                  return (
+                                                    <button
+                                                      type="button"
+                                                      key={opt}
+                                                      onClick={() => {
+                                                        const newValue = isChecked ? '' : opt;
+                                                        setEditedRemark(newValue);
+                                                      }}
+                                                      className={`px-2 py-1 rounded-lg border text-[9px] font-black transition-all cursor-pointer ${
+                                                        isChecked
+                                                          ? 'bg-pink-500/20 text-pink-400 border-pink-500/40 shadow-sm'
+                                                          : 'bg-slate-800 text-slate-500 border-slate-700 hover:border-slate-600 hover:text-slate-450'
+                                                      }`}
+                                                    >
+                                                      {opt.toUpperCase()}
+                                                    </button>
+                                                  );
+                                                })}
+                                              </div>
+                                            ) : (
+                                              rec.remark || '—'
+                                            )
+                                          ) : (
+                                            '—'
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-center">
+                                          {rec ? (
+                                            isEditing ? (
+                                              <div className="flex justify-center gap-1.5">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleUpdateRecord(rec.id)}
+                                                  className="p-1.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30 rounded-lg transition active:scale-90 animate-none"
+                                                  title="Simpan"
+                                                >
+                                                  <Save className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => setEditingRecordId(null)}
+                                                  className="p-1.5 bg-slate-800 text-slate-400 hover:bg-slate-750 border border-slate-700/50 rounded-lg transition active:scale-90 animate-none"
+                                                  title="Batal"
+                                                >
+                                                  <X className="w-3.5 h-3.5" />
+                                                </button>
+                                              </div>
+                                            ) : (
+                                              <div className="flex justify-center gap-1.5">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => startEditing(rec)}
+                                                  className="p-1.5 bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white border border-slate-700/50 rounded-lg transition active:scale-90 animate-none"
+                                                  title="Edit"
+                                                >
+                                                  <Pencil className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleDelete(rec.id)}
+                                                  className="p-1.5 bg-slate-800 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 border border-slate-700/50 hover:border-rose-500/20 rounded-lg transition active:scale-90 animate-none"
+                                                  title="Hapus"
+                                                >
+                                                  <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                              </div>
+                                            )
+                                          ) : (
+                                            '—'
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </Fragment>
+                              );
+                            } else {
+                              const catRecords = dayRecords.filter(r => (r.category || 'Lainnya') === cat);
+                              if (catRecords.length === 0) return null;
+                              return (
+                                <Fragment key={cat}>
+                                  <tr className="bg-slate-800/30 border-t border-slate-850">
+                                    <td colSpan={6} className="px-4 py-2 font-black uppercase text-[10px] text-pink-400 tracking-wider">
+                                      Kategori: {cat}
+                                    </td>
+                                  </tr>
+                                  {catRecords.map((rec, index) => {
+                                    const isEditing = editingRecordId === rec.id;
+                                    return (
+                                      <tr key={rec.id} className="hover:bg-slate-800/20 transition-colors">
+                                        <td className="px-4 py-3.5 text-slate-500 font-mono">{index + 1}.</td>
+                                        <td className="px-4 py-3.5 font-bold text-white">
+                                          {isEditing ? (
+                                            <input
+                                              type="text"
+                                              value={editedNama}
+                                              onChange={e => setEditedNama(e.target.value)}
+                                              title="Nama"
+                                              className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-pink-500"
+                                            />
+                                          ) : (
+                                            rec.nama
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-slate-300 font-medium font-sans">
+                                          {isEditing ? (
+                                            <input
+                                              type="text"
+                                              value={editedJabatan}
+                                              onChange={e => setEditedJabatan(e.target.value)}
+                                              title="Jabatan"
+                                              className="w-full bg-slate-800 border border-slate-700 rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-pink-500"
+                                            />
+                                          ) : (
+                                            rec.jabatan
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-3.5">
+                                          {isEditing ? (
+                                            <div className="flex gap-1.5">
+                                              <button
+                                                type="button"
+                                                onClick={() => setEditedKehadiran('Hadir')}
+                                                className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                                                  editedKehadiran === 'Hadir'
+                                                    ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
+                                                    : 'bg-slate-800 border-slate-700 text-slate-500'
+                                                }`}
+                                              >
+                                                Hadir
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => setEditedKehadiran('Tidak Hadir')}
+                                                className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                                                  editedKehadiran === 'Tidak Hadir'
+                                                    ? 'bg-rose-500/20 border-rose-500/50 text-rose-400'
+                                                    : 'bg-slate-800 border-slate-700 text-slate-500'
+                                                }`}
+                                              >
+                                                Tidak Hadir
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => setEditedKehadiran('Libur')}
+                                                className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-all ${
+                                                  editedKehadiran === 'Libur'
+                                                    ? 'bg-violet-500/20 border-violet-500/50 text-violet-400'
+                                                    : 'bg-slate-800 border-slate-700 text-slate-500'
+                                                }`}
+                                              >
+                                                Libur
+                                              </button>
+                                            </div>
+                                          ) : (
+                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                              rec.kehadiran === 'Hadir'
+                                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                : rec.kehadiran === 'Libur'
+                                                ? 'bg-violet-500/10 text-violet-400 border border-violet-500/20'
+                                                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                            }`}>
+                                              <span className={`w-1.5 h-1.5 rounded-full ${
+                                                rec.kehadiran === 'Hadir' ? 'bg-emerald-400 shadow-md' : rec.kehadiran === 'Libur' ? 'bg-violet-400 shadow-md' : 'bg-rose-400 shadow-md'
+                                              }`} />
+                                              {rec.kehadiran}
+                                            </span>
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-slate-400 italic">
+                                          {isEditing ? (
+                                            <div className="flex items-center gap-1.5">
+                                              {['Izin', 'Sakit', 'Mobile'].map((opt) => {
+                                                const isChecked = editedRemark === opt;
+                                                return (
+                                                  <button
+                                                    type="button"
+                                                    key={opt}
+                                                    onClick={() => {
+                                                      const newValue = isChecked ? '' : opt;
+                                                      setEditedRemark(newValue);
+                                                    }}
+                                                    className={`px-2 py-1 rounded-lg border text-[9px] font-black transition-all cursor-pointer ${
+                                                      isChecked
+                                                        ? 'bg-pink-500/20 text-pink-400 border-pink-500/40 shadow-sm'
+                                                        : 'bg-slate-800 text-slate-500 border-slate-700 hover:border-slate-600 hover:text-slate-450'
+                                                    }`}
+                                                  >
+                                                    {opt.toUpperCase()}
+                                                  </button>
+                                                );
+                                              })}
+                                            </div>
+                                          ) : (
+                                            rec.remark || '—'
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-center">
+                                          {isEditing ? (
+                                            <div className="flex justify-center gap-1.5">
+                                              <button
+                                                type="button"
+                                                onClick={() => handleUpdateRecord(rec.id)}
+                                                className="p-1.5 bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30 rounded-lg transition active:scale-90 animate-none"
+                                                title="Simpan"
+                                              >
+                                                <Save className="w-3.5 h-3.5" />
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => setEditingRecordId(null)}
+                                                className="p-1.5 bg-slate-800 text-slate-400 hover:bg-slate-750 border border-slate-700/50 rounded-lg transition active:scale-90 animate-none"
+                                                title="Batal"
+                                              >
+                                                <X className="w-3.5 h-3.5" />
+                                              </button>
+                                            </div>
+                                          ) : (
+                                            <div className="flex justify-center gap-1.5">
+                                              <button
+                                                type="button"
+                                                onClick={() => startEditing(rec)}
+                                                className="p-1.5 bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white border border-slate-700/50 rounded-lg transition active:scale-90 animate-none"
+                                                title="Edit"
+                                              >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleDelete(rec.id)}
+                                                className="p-1.5 bg-slate-800 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 border border-slate-700/50 hover:border-rose-500/20 rounded-lg transition active:scale-90 animate-none"
+                                                title="Hapus"
+                                              >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                              </button>
+                                            </div>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </Fragment>
+                              );
+                            }
+                          });
+                        })()}
                       </tbody>
                     </table>
                   </div>
