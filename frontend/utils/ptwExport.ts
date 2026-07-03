@@ -367,7 +367,11 @@ export async function exportPTWListToPDF(records: PTWExportRecord[]) {
 // ==========================================
 // 3. EXPORT WEEKLY REPORT TO EXCEL
 // ==========================================
-export async function exportPTWWeeklyReportToExcel(monthYearLabel: string, weeklyData: WeeklyExportData[]) {
+export async function exportPTWWeeklyReportToExcel(
+  monthYearLabel: string, 
+  weeklyData: WeeklyExportData[], 
+  chartImageBase64?: string
+) {
   const toastId = toast.loading('Sedang membuat laporan Excel...');
   try {
     const workbook = new ExcelJS.Workbook();
@@ -507,8 +511,32 @@ export async function exportPTWWeeklyReportToExcel(monthYearLabel: string, weekl
       }
     });
 
+    // Add chart image if provided
+    if (chartImageBase64) {
+      try {
+        const titleCell = ws.getCell(`A${totalRowIdx + 2}`);
+        titleCell.value = '2. GRAFIK TREN VALIDITAS PTW';
+        titleCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '000000' } };
+
+        const chartLogoId = workbook.addImage({
+          base64: chartImageBase64.split(',')[1],
+          extension: 'png',
+        });
+        ws.addImage(chartLogoId, {
+          tl: { col: 0, row: totalRowIdx + 3 },
+          br: { col: 6, row: totalRowIdx + 16 }
+        } as any);
+
+        const detailTitleCell = ws.getCell(`A${totalRowIdx + 18}`);
+        detailTitleCell.value = '3. RINCIAN DOKUMEN PTW PER MINGGU';
+        detailTitleCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '000000' } };
+      } catch (e) {
+        console.error('Failed to add chart image to Excel', e);
+      }
+    }
+
     // --- Section 2: Rincian per Minggu ---
-    let currentRowIdx = totalRowIdx + 3;
+    let currentRowIdx = chartImageBase64 ? totalRowIdx + 20 : totalRowIdx + 3;
 
     weeklyData.forEach(wd => {
       // Week Title

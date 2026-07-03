@@ -1122,12 +1122,33 @@ export function PTWManagement() {
   };
 
   const handleExportExcelReport = async () => {
-    const monthNames = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-    ];
-    const monthLabel = `${monthNames[selectedMonth - 1]} ${selectedYear}`;
-    await exportPTWWeeklyReportToExcel(monthLabel, weeklyData);
+    const toastId = toast.loading('Menyiapkan grafik untuk Excel...');
+    try {
+      const chartEl = document.getElementById('ptw-weekly-chart-raw');
+      let chartBase64 = '';
+      if (chartEl) {
+        const canvas = await html2canvas(chartEl, {
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#0f172a', // Slate-900 matching dashboard dark background
+          scale: 2,
+          logging: false,
+        });
+        chartBase64 = canvas.toDataURL('image/png');
+      }
+      toast.dismiss(toastId);
+
+      const monthNames = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+      ];
+      const monthLabel = `${monthNames[selectedMonth - 1]} ${selectedYear}`;
+      await exportPTWWeeklyReportToExcel(monthLabel, weeklyData, chartBase64);
+    } catch (err) {
+      console.error('Excel export failed:', err);
+      toast.error('Gagal mengekspor laporan ke Excel');
+      toast.dismiss(toastId);
+    }
   };
 
   return (
