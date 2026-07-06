@@ -237,7 +237,7 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
         curY = drawHeader(doc);
       }
       const usablePageHeight = pageHeight - curY - margin - 12;
-      const photoHLV = isFirstPage ? Math.floor(usablePageHeight / rows - capHLV - gapLV) : normalPhotoH;
+      const photoHLV = isFirstPage ? Math.min(Math.floor(usablePageHeight / rows - capHLV - gapLV), normalPhotoH) : normalPhotoH;
       for (let i = 0; i < pageCards.length; i += cols) {
         const row = pageCards.slice(i, i + cols);
         for (let j = 0; j < row.length; j++) {
