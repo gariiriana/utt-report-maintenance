@@ -2809,7 +2809,9 @@ export function AbsenTBM() {
                           className={`h-full rounded-full transition-all duration-500 ${
                             person.rate >= 80 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : person.rate >= 50 ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 'bg-gradient-to-r from-rose-500 to-rose-400'
                           }`}
-                          style={{ width: `${person.rate}%` }}
+                          ref={(el) => {
+                            if (el) el.style.width = `${person.rate}%`;
+                          }}
                         />
                       </div>
                     </div>
