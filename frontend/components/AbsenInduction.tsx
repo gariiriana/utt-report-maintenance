@@ -23,8 +23,15 @@ interface InductionRecord {
   tanggal: string; // YYYY-MM-DD
   nama: string;
   perusahaan: string;
-  foto: string; // base64 compressed photo
+  foto: string; // legacy field, kept for compatibility
   remark: string;
+}
+
+interface DocumentationRecord {
+  id: string;
+  tanggal: string; // YYYY-MM-DD
+  isDocumentation: boolean;
+  photos: Array<{ base64: string; description: string }>;
 }
 
 // ─── Helper Functions ───
@@ -83,6 +90,7 @@ const compressImage = (file: File | Blob, maxSize = 800, quality = 0.7): Promise
 export function AbsenInduction() {
   // Data state
   const [allRecords, setAllRecords] = useState<InductionRecord[]>([]);
+  const [docRecords, setDocRecords] = useState<DocumentationRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filters
@@ -117,8 +125,8 @@ export function AbsenInduction() {
     remark: string;
   }>>([{ nama: '', perusahaan: '', remark: '' }]);
 
-  // Single activity photo for the induction event
-  const [activityPhoto, setActivityPhoto] = useState<string>('');
+  // Multiple activity photos for the induction event
+  const [activityPhotos, setActivityPhotos] = useState<Array<{ base64: string; description: string }>>([]);
 
   // Inline edit state for existing records
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
@@ -132,15 +140,28 @@ export function AbsenInduction() {
   // File input ref for activity photo
   const activityPhotoRef = useRef<HTMLInputElement | null>(null);
 
+  // Tab and Chart refs
+  const [activeRightTab, setActiveRightTab] = useState<'chart' | 'list'>('chart');
+  const webChartCanvasRef = useRef<HTMLCanvasElement>(null);
+
   // ─── Firestore Realtime Listener ───
   useEffect(() => {
     const q = query(collection(db, 'absen_induction'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const records: InductionRecord[] = [];
+      const docs: DocumentationRecord[] = [];
       snapshot.forEach(docSnap => {
         const data = docSnap.data();
-        // Skip legacy personnel definitions or documentation records
-        if (data.isPersonnel || data.isDocumentation) return;
+        if (data.isDocumentation) {
+          docs.push({
+            id: docSnap.id,
+            tanggal: data.tanggal || '',
+            isDocumentation: true,
+            photos: data.photos || []
+          });
+          return;
+        }
+        if (data.isPersonnel) return;
         records.push({
           id: docSnap.id,
           tanggal: data.tanggal || '',
@@ -152,6 +173,7 @@ export function AbsenInduction() {
       });
       records.sort((a, b) => b.tanggal.localeCompare(a.tanggal));
       setAllRecords(records);
+      setDocRecords(docs);
       setLoading(false);
     }, (error) => {
       console.error("Firestore listener failed:", error);
@@ -188,8 +210,293 @@ export function AbsenInduction() {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([tanggal, count]) => ({ tanggal, count }));
 
-    return { total, uniqueDates, uniqueCompanies, chartData };
+    // Group by company for leaderboard
+    const companyGroups: Record<string, number> = {};
+    filteredRecords.forEach(r => {
+      const comp = r.perusahaan?.trim() || 'Lainnya';
+      companyGroups[comp] = (companyGroups[comp] || 0) + 1;
+    });
+    const companyStats = Object.entries(companyGroups)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+
+    return { total, uniqueDates, uniqueCompanies, chartData, companyStats };
   }, [filteredRecords]);
+
+  // Draw web chart for induction (Person & Days KPI)
+  useEffect(() => {
+    if (activeRightTab !== 'chart' || !webChartCanvasRef.current) return;
+    const canvas = webChartCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Clear previous drawing
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // ── LEFT SIDE: Company Distribution Donut Chart ──
+    const donutCx = 220;
+    const donutCy = 180;
+    const donutR = 75;
+    const donutInner = 48;
+
+    // Title
+    ctx.font = 'bold 20px Arial';
+    ctx.fillStyle = '#ffffff'; // White text
+    ctx.textAlign = 'center';
+    ctx.fillText('PORSI KONTRAKTOR', donutCx, 45);
+
+    const totalCount = stats.total;
+    const topStats = stats.companyStats.slice(0, 4);
+    const otherCount = stats.companyStats.slice(4).reduce((sum, item) => sum + item.count, 0);
+
+    const donutData: Array<{ name: string; count: number; color: string }> = [];
+    const colors = ['#00599c', '#3b82f6', '#60a5fa', '#10b981', '#64748b'];
+
+    topStats.forEach((item, idx) => {
+      donutData.push({ name: item.name, count: item.count, color: colors[idx] });
+    });
+    if (otherCount > 0) {
+      donutData.push({ name: 'Lainnya', count: otherCount, color: colors[4] });
+    }
+
+    let currentAngle = -Math.PI / 2;
+    donutData.forEach(item => {
+      const share = totalCount > 0 ? item.count / totalCount : 0;
+      const angle = share * Math.PI * 2;
+
+      ctx.beginPath();
+      ctx.moveTo(donutCx, donutCy);
+      ctx.arc(donutCx, donutCy, donutR, currentAngle, currentAngle + angle);
+      ctx.closePath();
+      ctx.fillStyle = item.color;
+      ctx.fill();
+
+      currentAngle += angle;
+    });
+
+    // Donut hole
+    ctx.beginPath();
+    ctx.arc(donutCx, donutCy, donutInner, 0, Math.PI * 2);
+    ctx.fillStyle = '#0f172a'; // Matches dashboard background (slate-900 / slate-950)
+    ctx.fill();
+
+    // Center stats
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 24px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${totalCount}`, donutCx, donutCy - 5);
+    ctx.font = '10px Arial';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('Total Orang', donutCx, donutCy + 15);
+
+    // Legend below Donut
+    const legYStart = donutCy + donutR + 15;
+    ctx.font = '10px Arial';
+    ctx.textAlign = 'left';
+    
+    donutData.slice(0, 3).forEach((item, idx) => {
+      ctx.fillStyle = item.color;
+      const label = item.name.length > 10 ? item.name.substring(0, 10) + '..' : item.name;
+      ctx.fillText(`● ${label}: ${item.count}`, donutCx - 100 + (idx * 75), legYStart);
+    });
+    if (donutData.length > 3) {
+      ctx.fillStyle = donutData[3].color;
+      const label4 = donutData[3].name.length > 10 ? donutData[3].name.substring(0, 10) + '..' : donutData[3].name;
+      ctx.fillText(`● ${label4}: ${donutData[3].count}`, donutCx - 70, legYStart + 15);
+      if (donutData.length > 4) {
+        ctx.fillStyle = donutData[4].color;
+        ctx.fillText(`● Lainnya: ${donutData[4].count}`, donutCx + 15, legYStart + 15);
+      }
+    }
+
+    // ── RIGHT SIDE: Weekly Induction activity chart (People & Days) ──
+    const leftMargin = 450;
+    const rightMargin = 40;
+    const topMargin = 75;
+    const bottomMargin = 50;
+    const chartW = canvas.width - leftMargin - rightMargin;
+    const chartH = canvas.height - topMargin - bottomMargin;
+
+    // Title
+    ctx.font = 'bold 20px Arial';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText('AKTIVITAS INDUCTION MINGGUAN', leftMargin + chartW / 2, 45);
+
+    // Helper for weekly ranges
+    const getWeeksInRange = (startStr: string, endStr: string) => {
+      const list: Array<{ start: Date; end: Date; label: string }> = [];
+      const parseLocalDate = (dateStr: string) => {
+        const parts = dateStr.split('-');
+        return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      };
+      
+      const start = parseLocalDate(startStr);
+      const limit = parseLocalDate(endStr);
+      
+      const startDay = start.getDay();
+      const diffToMonday = startDay === 0 ? -6 : 1 - startDay;
+      const current = new Date(start);
+      current.setDate(current.getDate() + diffToMonday);
+      
+      let weekNum = 1;
+      while (current <= limit) {
+        const wStart = new Date(current);
+        const wEnd = new Date(current);
+        wEnd.setDate(wEnd.getDate() + 6);
+        
+        const formatDateShort = (d: Date) => {
+          const dd = String(d.getDate()).padStart(2, '0');
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          return `${dd}/${mm}`;
+        };
+        
+        list.push({
+          start: wStart,
+          end: wEnd,
+          label: `Mgg ${weekNum} (${formatDateShort(wStart)}-${formatDateShort(wEnd)})`
+        });
+        current.setDate(current.getDate() + 7);
+        weekNum++;
+      }
+      return list;
+    };
+
+    const weeks = getWeeksInRange(startDate, endDate);
+
+    // Group records and calculate unique dates per week
+    const weeklyData = weeks.map(w => {
+      const recs = filteredRecords.filter(r => {
+        const parts = r.tanggal.split('-');
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        d.setHours(0, 0, 0, 0);
+        
+        const startNorm = new Date(w.start);
+        startNorm.setHours(0, 0, 0, 0);
+        
+        const endNorm = new Date(w.end);
+        endNorm.setHours(0, 0, 0, 0);
+        
+        return d >= startNorm && d <= endNorm;
+      });
+
+      const uniqueDays = new Set(recs.map(r => r.tanggal)).size;
+      return {
+        label: w.label,
+        peopleCount: recs.length,
+        dayCount: uniqueDays
+      };
+    });
+
+    // Find max value for y-axis scaling
+    let maxVal = 10;
+    weeklyData.forEach(d => {
+      if (d.peopleCount > maxVal) maxVal = d.peopleCount;
+      if (d.dayCount > maxVal) maxVal = d.dayCount;
+    });
+    // Round maxVal to nice increment
+    maxVal = Math.ceil(maxVal / 5) * 5;
+
+    // Draw axes
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(leftMargin, topMargin);
+    ctx.lineTo(leftMargin, topMargin + chartH);
+    ctx.lineTo(canvas.width - rightMargin, topMargin + chartH);
+    ctx.stroke();
+
+    // Draw horizontal grid lines (y-axis grid)
+    ctx.font = '10px Arial';
+    ctx.fillStyle = '#94a3b8';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    const gridLines = 5;
+    for (let i = 0; i <= gridLines; i++) {
+      const val = (maxVal / gridLines) * i;
+      const y = topMargin + chartH - (i * (chartH / gridLines));
+      
+      // grid line
+      if (i > 0) {
+        ctx.strokeStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.moveTo(leftMargin, y);
+        ctx.lineTo(canvas.width - rightMargin, y);
+        ctx.stroke();
+      }
+      
+      ctx.fillText(String(Math.round(val)), leftMargin - 10, y);
+    }
+
+    // Draw bars
+    const numWeeks = weeklyData.length;
+    const weekW = chartW / (numWeeks || 1);
+    const barSpacing = Math.max(3, weekW * 0.15);
+    const barW = Math.max(4, (weekW - barSpacing * 2) / 2 - 2);
+
+    weeklyData.forEach((d, idx) => {
+      const weekCenterX = leftMargin + (idx * weekW) + weekW / 2;
+      const leftBarX = weekCenterX - barW - 1;
+      const rightBarX = weekCenterX + 1;
+
+      // Heights
+      const leftBarH = (d.peopleCount / maxVal) * chartH;
+      const rightBarH = (d.dayCount / maxVal) * chartH;
+
+      const yBase = topMargin + chartH;
+
+      // Draw left bar (People: DME Blue)
+      if (d.peopleCount > 0) {
+        ctx.fillStyle = '#00599c';
+        ctx.fillRect(leftBarX, yBase - leftBarH, barW, leftBarH);
+        
+        // value label on top of bar
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 9px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(d.peopleCount), leftBarX + barW / 2, yBase - leftBarH - 6);
+      }
+
+      // Draw right bar (Days: Emerald)
+      if (d.dayCount > 0) {
+        ctx.fillStyle = '#10b981';
+        ctx.fillRect(rightBarX, yBase - rightBarH, barW, rightBarH);
+        
+        // value label on top of bar
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 9px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(d.dayCount), rightBarX + barW / 2, yBase - rightBarH - 6);
+      }
+
+      // x-axis label (rotated slightly if many weeks)
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = numWeeks > 6 ? '8px Arial' : '9px Arial';
+      ctx.textAlign = 'center';
+      
+      const labelY = yBase + 15;
+      if (numWeeks > 5) {
+        ctx.save();
+        ctx.translate(weekCenterX, labelY);
+        ctx.rotate(-Math.PI / 12);
+        ctx.fillText(d.label, 0, 0);
+        ctx.restore();
+      } else {
+        ctx.fillText(d.label, weekCenterX, labelY);
+      }
+    });
+
+    // Draw Weekly chart legend
+    const legendWeeklyY = topMargin + chartH + 35;
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#00599c';
+    ctx.fillText('● Jumlah Orang Di-induction', leftMargin + chartW / 2 - 80, legendWeeklyY);
+    ctx.fillStyle = '#10b981';
+    ctx.fillText('● Jumlah Hari Kegiatan', leftMargin + chartW / 2 + 80, legendWeeklyY);
+
+  }, [activeRightTab, stats, startDate, endDate, filteredRecords]);
 
   // ─── Folder Navigation Data ───
   const monthFolders = useMemo(() => {
@@ -223,6 +530,11 @@ export function AbsenInduction() {
     return filteredRecords.filter(r => r.tanggal === selectedDate);
   }, [filteredRecords, selectedDate]);
 
+  const selectedDateDoc = useMemo(() => {
+    if (!selectedDate) return null;
+    return docRecords.find(d => d.tanggal === selectedDate);
+  }, [docRecords, selectedDate]);
+
   // ─── Checklist Actions ───
   const updateChecklistItem = (index: number, key: keyof typeof checklist[0], value: string) => {
     setChecklist(prev => prev.map((item, idx) => idx === index ? { ...item, [key]: value } : item));
@@ -237,15 +549,28 @@ export function AbsenInduction() {
   };
 
   const handleActivityPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
     setIsCompressing(true);
-    const compressed = await compressImage(file);
-    if (compressed) {
-      setActivityPhoto(compressed);
+    const newPhotos: Array<{ base64: string; description: string }> = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const compressed = await compressImage(file);
+      if (compressed) {
+        newPhotos.push({ base64: compressed, description: '' });
+      }
     }
+    setActivityPhotos(prev => [...prev, ...newPhotos]);
     setIsCompressing(false);
     e.target.value = '';
+  };
+
+  const removeActivityPhoto = (index: number) => {
+    setActivityPhotos(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const updatePhotoDescription = (index: number, desc: string) => {
+    setActivityPhotos(prev => prev.map((p, idx) => idx === index ? { ...p, description: desc } : p));
   };
 
   // ─── Submit ───
@@ -259,17 +584,38 @@ export function AbsenInduction() {
 
     setIsSubmitting(true);
     try {
+      // 1. Save participant rows
       const batchPromises = validRows.map(item =>
         addDoc(collection(db, 'absen_induction'), {
           tanggal: formDate,
           nama: item.nama.trim(),
           perusahaan: item.perusahaan.trim(),
-          foto: activityPhoto,
+          foto: '', // legacy compat
           remark: item.remark.trim(),
           createdAt: serverTimestamp()
         })
       );
       await Promise.all(batchPromises);
+
+      // 2. Save or update documentation document for the selected date
+      if (activityPhotos.length > 0) {
+        const existingDoc = docRecords.find(d => d.tanggal === formDate);
+        if (existingDoc) {
+          const docRef = doc(db, 'absen_induction', existingDoc.id);
+          await updateDoc(docRef, {
+            photos: activityPhotos,
+            updatedAt: serverTimestamp()
+          });
+        } else {
+          await addDoc(collection(db, 'absen_induction'), {
+            tanggal: formDate,
+            isDocumentation: true,
+            photos: activityPhotos,
+            createdAt: serverTimestamp()
+          });
+        }
+      }
+
       toast.success(`Berhasil menyimpan ${validRows.length} data induction!`);
 
       // Auto-expand date filter range if the submitted date is outside the current range
@@ -282,7 +628,7 @@ export function AbsenInduction() {
 
       // Reset
       setChecklist([{ nama: '', perusahaan: '', remark: '' }]);
-      setActivityPhoto('');
+      setActivityPhotos([]);
     } catch (err: any) {
       console.error("Save error:", err);
       toast.error("Gagal menyimpan data: " + err.message);
@@ -337,6 +683,12 @@ export function AbsenInduction() {
     try {
       const toDelete = allRecords.filter(r => r.tanggal === dateStr);
       await Promise.all(toDelete.map(r => deleteDoc(doc(db, 'absen_induction', r.id))));
+
+      const existingDoc = docRecords.find(d => d.tanggal === dateStr);
+      if (existingDoc) {
+        await deleteDoc(doc(db, 'absen_induction', existingDoc.id));
+      }
+
       toast.success(`Berhasil menghapus seluruh data tanggal ${formatIndonesianDate(dateStr)}!`);
       if (selectedDate === dateStr) {
         setSelectedDate(null);
@@ -396,16 +748,27 @@ export function AbsenInduction() {
       });
     });
 
-    // Kumpulkan foto unik per tanggal
-    const datePhotos: { tanggal: string; foto: string }[] = [];
-    const seenDates = new Set<string>();
-    filteredRecords.forEach(rec => {      if (rec.foto && !seenDates.has(rec.tanggal)) {
-        seenDates.add(rec.tanggal);
-        datePhotos.push({ tanggal: rec.tanggal, foto: rec.foto });
+    // Collect documentation photos within filter date range
+    const filterStart = startDate || '';
+    const filterEnd = endDate || '';
+    const matchedDocs = docRecords.filter(d => {
+      return (!filterStart || d.tanggal >= filterStart) && (!filterEnd || d.tanggal <= filterEnd);
+    });
+
+    const exportPhotos: Array<{ tanggal: string; base64: string; description: string }> = [];
+    matchedDocs.forEach(d => {
+      if (d.photos) {
+        d.photos.forEach(p => {
+          exportPhotos.push({
+            tanggal: d.tanggal,
+            base64: p.base64,
+            description: p.description
+          });
+        });
       }
     });
 
-    if (datePhotos.length > 0) {
+    if (exportPhotos.length > 0) {
       ws.addRow([]);
       ws.addRow([]);
       const titleRow = ws.addRow(['DOKUMENTASI FOTO KEGIATAN INDUCTION']);
@@ -414,21 +777,29 @@ export function AbsenInduction() {
 
       let startRow = filteredRecords.length + 5; // Baris setelah tabel + gap
 
-      for (const item of datePhotos) {
+      for (const item of exportPhotos) {
         ws.getRow(startRow).getCell(1).value = `Foto Kegiatan - ${formatIndonesianDate(item.tanggal)}`;
         ws.getRow(startRow).getCell(1).font = { bold: true, size: 9 };
         
+        // Show description below label if exists
+        const hasDesc = !!item.description;
+        if (hasDesc) {
+          ws.getRow(startRow + 1).getCell(1).value = `Keterangan: ${item.description}`;
+          ws.getRow(startRow + 1).getCell(1).font = { italic: true, size: 8, color: { argb: 'FF555555' } };
+        }
+
         try {
           const imgId = wb.addImage({
-            base64: item.foto,
+            base64: item.base64,
             extension: 'jpeg',
           });
           
           ws.addImage(imgId, {
-            tl: { col: 0, row: startRow },
+            tl: { col: 0, row: startRow + (hasDesc ? 2 : 1) },
             ext: { width: 320, height: 180 }
           });
-          startRow += 11; // beri jarak vertikal untuk gambar
+          
+          startRow += hasDesc ? 13 : 12; // beri jarak vertikal untuk gambar & deskripsi
         } catch (e) {
           console.error("Gagal export foto ke Excel:", e);
           startRow += 2;
@@ -536,16 +907,27 @@ export function AbsenInduction() {
     });
 
     // Kumpulkan foto unik per tanggal
-    const datePhotos: { tanggal: string; foto: string }[] = [];
-    const seenDates = new Set<string>();
-    filteredRecords.forEach(rec => {
-      if (rec.foto && !seenDates.has(rec.tanggal)) {
-        seenDates.add(rec.tanggal);
-        datePhotos.push({ tanggal: rec.tanggal, foto: rec.foto });
+    // Collect documentation photos within filter date range
+    const filterStart = startDate || '';
+    const filterEnd = endDate || '';
+    const matchedDocs = docRecords.filter(d => {
+      return (!filterStart || d.tanggal >= filterStart) && (!filterEnd || d.tanggal <= filterEnd);
+    });
+
+    const exportPhotos: Array<{ tanggal: string; base64: string; description: string }> = [];
+    matchedDocs.forEach(d => {
+      if (d.photos) {
+        d.photos.forEach(p => {
+          exportPhotos.push({
+            tanggal: d.tanggal,
+            base64: p.base64,
+            description: p.description
+          });
+        });
       }
     });
 
-    if (datePhotos.length > 0) {
+    if (exportPhotos.length > 0) {
       docPdf.addPage();
       
       // Header Halaman Dokumentasi
@@ -577,7 +959,7 @@ export function AbsenInduction() {
 
       let imgY = headerY + headerH + 12;
       
-      datePhotos.forEach((item, idx) => {
+      exportPhotos.forEach((item, idx) => {
         const isLeft = idx % 2 === 0;
         const colW = (contentW - 6) / 2;
         const imgX = isLeft ? margin : margin + colW + 6;
@@ -585,10 +967,10 @@ export function AbsenInduction() {
         if (!isLeft && idx > 0) {
           // No shift on Y
         } else if (idx > 0) {
-          imgY += 62; // Tinggi baris foto + label + gap
+          imgY += 66; // Tinggi baris foto + label + gap + deskripsi
         }
 
-        if (imgY + 55 > docPdf.internal.pageSize.getHeight() - margin) {
+        if (imgY + 58 > docPdf.internal.pageSize.getHeight() - margin) {
           docPdf.addPage();
           docPdf.setFillColor(0, 89, 156);
           docPdf.rect(0, 0, pageWidth, 2.5, 'F');
@@ -603,9 +985,14 @@ export function AbsenInduction() {
         docPdf.roundedRect(imgX, imgY, colW, 45, 1, 1, 'D');
 
         try {
-          docPdf.addImage(item.foto, 'JPEG', imgX + 1, imgY + 1, colW - 2, 43, undefined, 'FAST');
+          docPdf.addImage(item.base64, 'JPEG', imgX + 1, imgY + 1, colW - 2, 43, undefined, 'FAST');
         } catch (e) {
           console.error("Gagal export foto ke PDF:", e);
+        }
+
+        if (item.description) {
+          docPdf.setFontSize(7).setFont('helvetica', 'oblique').setTextColor(100, 100, 100);
+          docPdf.text(item.description, imgX, imgY + 49, { maxWidth: colW });
         }
       });
     }
@@ -661,39 +1048,117 @@ export function AbsenInduction() {
         </div>
       </div>
 
-      {/* ─── Stats Cards ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border border-blue-500/20 rounded-2xl p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/20 rounded-lg">
-              <Users className="w-5 h-5 text-blue-400" />
-            </div>
+      {/* ─── Statistics Cards & Chart Section ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Left Side: Summary Cards */}
+        <div className="space-y-4 font-sans">
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex items-center justify-between">
             <div>
-              <p className="text-2xl font-black text-white">{stats.total}</p>
-              <p className="text-xs text-slate-400">Total Peserta</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Peserta</p>
+              <h3 className="text-2xl font-black text-white mt-1">{stats.total} orang</h3>
+            </div>
+            <div className="p-3 bg-blue-500/10 rounded-xl text-blue-400">
+              <Users className="w-6 h-6" />
+            </div>
+          </div>
+
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Jumlah Hari</p>
+              <h3 className="text-2xl font-black text-emerald-400 mt-1">{stats.uniqueDates} hari</h3>
+            </div>
+            <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400">
+              <Calendar className="w-6 h-6" />
+            </div>
+          </div>
+
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Kontraktor</p>
+              <h3 className="text-2xl font-black text-purple-400 mt-1">{stats.uniqueCompanies} perusahaan</h3>
+            </div>
+            <div className="p-3 bg-purple-500/10 rounded-xl text-purple-400">
+              <Building2 className="w-6 h-6" />
             </div>
           </div>
         </div>
-        <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/5 border border-blue-500/20 rounded-2xl p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/20 rounded-lg">
-              <Calendar className="w-5 h-5 text-blue-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-black text-white">{stats.uniqueDates}</p>
-              <p className="text-xs text-slate-400">Jumlah Hari</p>
+
+        {/* Right Side: Charts & Leaderboard */}
+        <div className="lg:col-span-2 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 flex flex-col justify-start gap-4 min-h-[380px]">
+          <div className="flex items-center justify-between border-b border-white/5 pb-3">
+            <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <span className="w-2 h-2 bg-blue-500 rounded-full shadow-lg shadow-blue-500" />
+              Performa & Aktivitas Induction
+            </h2>
+            <div className="flex bg-slate-800/40 p-0.5 rounded-lg border border-slate-700/50">
+              <button
+                onClick={() => setActiveRightTab('chart')}
+                className={`px-3 py-1 text-xs font-bold rounded-md transition duration-200 ${
+                  activeRightTab === 'chart'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Grafik
+              </button>
+              <button
+                onClick={() => setActiveRightTab('list')}
+                className={`px-3 py-1 text-xs font-bold rounded-md transition duration-200 ${
+                  activeRightTab === 'list'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Kontraktor
+              </button>
             </div>
           </div>
-        </div>
-        <div className="bg-gradient-to-br from-purple-500/10 to-violet-500/5 border border-purple-500/20 rounded-2xl p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-500/20 rounded-lg">
-              <Building2 className="w-5 h-5 text-purple-400" />
-            </div>
-            <div>
-              <p className="text-2xl font-black text-white">{stats.uniqueCompanies}</p>
-              <p className="text-xs text-slate-400">Perusahaan</p>
-            </div>
+
+          <div className="flex-1 w-full flex items-center justify-center">
+            {activeRightTab === 'chart' ? (
+              <div className="w-full flex justify-center items-center py-2">
+                <canvas
+                  ref={webChartCanvasRef}
+                  width={1200}
+                  height={340}
+                  className="w-full max-w-[850px] h-auto object-contain"
+                />
+              </div>
+            ) : (
+              <div className="w-full max-h-[260px] overflow-y-auto pr-1 space-y-3.5 custom-scrollbar">
+                {stats.companyStats.length === 0 ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 text-sm py-12">
+                    <Building2 className="w-10 h-10 mb-2 opacity-30" />
+                    Belum ada data induction.
+                  </div>
+                ) : (
+                  stats.companyStats.map((item, idx) => {
+                    const pct = stats.total > 0 ? Math.round((item.count / stats.total) * 100) : 0;
+                    return (
+                      <div key={idx} className="space-y-1.5 w-full">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-slate-300">
+                          <div className="flex items-center gap-2 truncate max-w-[70%]">
+                            <span className="text-slate-500 font-mono text-[9px]">{idx + 1}.</span>
+                            <span className="truncate text-white">{item.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-normal text-slate-500">({item.count} orang)</span>
+                            <span className="text-blue-400">{pct}%</span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-slate-800/60 rounded-full h-2 overflow-hidden border border-slate-700/30">
+                          <div
+                            className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-blue-600 to-blue-400"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -787,55 +1252,64 @@ export function AbsenInduction() {
               ))}
             </div>
 
-            {/* ─── Foto Kegiatan Induction ─── */}
+            {/* ─── Foto Kegiatan Induction (Multi-Photo) ─── */}
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5">
-                <Camera className="w-3 h-3" /> Foto Kegiatan Induction
+                <Camera className="w-3 h-3" /> Foto Kegiatan Induction (Bisa Upload Lebih dari Satu)
               </label>
-              <div className="bg-slate-800/40 border border-slate-700/30 rounded-xl p-3">
+              <div className="bg-slate-800/40 border border-slate-700/30 rounded-xl p-3 space-y-3">
                 <input
                   ref={activityPhotoRef}
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={handleActivityPhotoUpload}
                   title="Upload Foto Kegiatan"
                   className="hidden"
                 />
-                {activityPhoto ? (
-                  <div className="space-y-2">
-                    <div className="relative group inline-block">
-                      <img
-                        src={activityPhoto}
-                        alt="Foto kegiatan induction"
-                        className="w-full max-h-48 rounded-lg object-cover border border-slate-700/50 cursor-pointer"
-                        onClick={() => setPreviewPhoto(activityPhoto)}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setActivityPhoto('')}
-                        title="Hapus foto"
-                        className="absolute top-2 right-2 w-6 h-6 bg-red-500/90 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="w-3.5 h-3.5 text-white" />
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => activityPhotoRef.current?.click()}
-                      className="w-full px-3 py-1.5 bg-slate-900/50 border border-slate-700/40 rounded-lg text-[10px] text-slate-400 hover:text-blue-400 hover:border-blue-500/30 flex items-center justify-center gap-1.5 transition-all"
-                    >
-                      <Camera className="w-3 h-3" /> Ganti Foto
-                    </button>
+                
+                {activityPhotos.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {activityPhotos.map((p, idx) => (
+                      <div key={idx} className="bg-slate-900/50 border border-slate-800/80 rounded-lg p-2 space-y-2 relative group">
+                        <div className="relative aspect-video rounded-md overflow-hidden bg-slate-950">
+                          <img
+                            src={p.base64}
+                            alt={`Foto kegiatan ${idx + 1}`}
+                            className="w-full h-full object-cover cursor-pointer"
+                            onClick={() => setPreviewPhoto(p.base64)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeActivityPhoto(idx)}
+                            title="Hapus foto"
+                            className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500/90 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="w-3.5 h-3.5 text-white" />
+                          </button>
+                        </div>
+                        <div>
+                          <input
+                            type="text"
+                            value={p.description}
+                            onChange={e => updatePhotoDescription(idx, e.target.value)}
+                            placeholder="Tulis deskripsi foto..."
+                            className="w-full text-[10px] bg-slate-900 border border-slate-700/50 rounded-lg px-2.5 py-1.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/50"
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => activityPhotoRef.current?.click()}
-                    className="w-full px-3 py-2.5 bg-slate-900/50 border border-dashed border-slate-600/50 rounded-lg text-xs text-slate-400 hover:text-blue-400 hover:border-blue-500/30 flex items-center justify-center gap-2 transition-all"
-                  >
-                    <Camera className="w-4 h-4" /> Ambil / Upload Foto Kegiatan
-                  </button>
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => activityPhotoRef.current?.click()}
+                  className="w-full px-3 py-2.5 bg-slate-900/50 border border-dashed border-slate-650/40 rounded-lg text-xs text-slate-400 hover:text-blue-400 hover:border-blue-500/30 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+                >
+                  <Camera className="w-4 h-4 text-blue-400" />
+                  {activityPhotos.length > 0 ? "Tambah Foto Kegiatan Lain" : "Ambil / Upload Foto Kegiatan"}
+                </button>
               </div>
             </div>
 
@@ -992,115 +1466,137 @@ export function AbsenInduction() {
               )
             )}
 
-            {/* Individual records */}
-            {viewLevel === 'records' && (
-              dateRecords.length === 0 ? (
-                <div className="text-center py-12">
-                  <Users className="w-12 h-12 text-slate-700 mx-auto mb-3" />
-                  <p className="text-sm text-slate-500">Tidak ada data untuk tanggal ini</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {dateRecords.map((rec, idx) => (
-                    <motion.div
-                      key={rec.id}
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.03 }}
-                      className="bg-slate-800/30 border border-slate-700/20 rounded-xl p-3 group"
-                    >
-                      {editingRecordId === rec.id ? (
-                        /* Edit mode */
-                        <div className="space-y-2">
-                          <input
-                            value={editedNama}
-                            onChange={e => setEditedNama(e.target.value)}
-                            placeholder="Nama..."
-                            className="w-full px-3 py-1.5 bg-slate-900/50 border border-teal-500/30 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-teal-500/40"
-                          />
-                          <input
-                            value={editedPerusahaan}
-                            onChange={e => setEditedPerusahaan(e.target.value)}
-                            placeholder="Perusahaan..."
-                            className="w-full px-3 py-1.5 bg-slate-900/50 border border-teal-500/30 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-teal-500/40"
-                          />
-                          <input
-                            value={editedRemark}
-                            onChange={e => setEditedRemark(e.target.value)}
-                            placeholder="Remark..."
-                            className="w-full px-3 py-1.5 bg-slate-900/50 border border-teal-500/30 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-teal-500/40"
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleUpdateRecord(rec.id)}
-                              className="flex-1 py-1.5 bg-teal-600/80 hover:bg-teal-600 text-white text-[10px] font-bold rounded-lg flex items-center justify-center gap-1 transition-all"
-                            >
-                              <Save className="w-3 h-3" /> Simpan
-                            </button>
-                            <button
-                              onClick={() => setEditingRecordId(null)}
-                              className="px-3 py-1.5 bg-slate-700/50 hover:bg-slate-700 text-slate-300 text-[10px] font-bold rounded-lg transition-all"
-                            >
-                              Batal
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        /* View mode */
-                        <div className="flex items-start gap-3">
-                          {/* Photo */}
-                          {rec.foto ? (
-                            <img
-                              src={rec.foto}
-                              alt={rec.nama}
-                              className="w-12 h-12 rounded-lg object-cover border border-slate-700/50 cursor-pointer hover:border-teal-500/50 flex-shrink-0 transition-all"
-                              onClick={() => setPreviewPhoto(rec.foto)}
-                            />
-                          ) : (
-                            <div className="w-12 h-12 rounded-lg bg-slate-800/60 border border-slate-700/50 flex items-center justify-center flex-shrink-0">
-                              <Users className="w-5 h-5 text-slate-600" />
-                            </div>
-                          )}
+             {/* Individual records */}
+             {viewLevel === 'records' && (
+               dateRecords.length === 0 ? (
+                 <div className="text-center py-12">
+                   <Users className="w-12 h-12 text-slate-700 mx-auto mb-3" />
+                   <p className="text-sm text-slate-500">Tidak ada data untuk tanggal ini</p>
+                 </div>
+               ) : (
+                 <div className="space-y-3">
+                   {/* Dokumentasi Foto Tanggal */}
+                   {selectedDateDoc && selectedDateDoc.photos && selectedDateDoc.photos.length > 0 && (
+                     <div className="bg-slate-800/40 border border-slate-750 rounded-xl p-3 space-y-2 mb-2">
+                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                         <Camera className="w-3.5 h-3.5 text-blue-400" /> Dokumentasi Kegiatan ({selectedDateDoc.photos.length} Foto)
+                       </p>
+                       <div className="grid grid-cols-2 gap-2">
+                         {selectedDateDoc.photos.map((ph, idx) => (
+                           <div key={idx} className="bg-slate-900/60 rounded-lg p-1.5 border border-slate-800 space-y-1 relative group">
+                             <div className="aspect-video w-full rounded overflow-hidden bg-black">
+                               <img
+                                 src={ph.base64}
+                                 alt={ph.description || `Foto ${idx + 1}`}
+                                 className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                 onClick={() => setPreviewPhoto(ph.base64)}
+                               />
+                             </div>
+                             {ph.description && (
+                               <p className="text-[9px] text-slate-400 italic truncate px-0.5" title={ph.description}>
+                                 {ph.description}
+                               </p>
+                             )}
+                           </div>
+                         ))}
+                       </div>
+                     </div>
+                   )}
 
-                          {/* Info */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-white truncate">{rec.nama || '-'}</p>
-                            <p className="text-[10px] text-teal-400 flex items-center gap-1">
-                              <Building2 className="w-3 h-3" />
-                              {rec.perusahaan || '-'}
-                            </p>
-                            {rec.remark && (
-                              <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
-                                <MessageSquare className="w-3 h-3" />
-                                {rec.remark}
-                              </p>
-                            )}
-                          </div>
+                   {/* Daftar Peserta */}
+                   <div className="space-y-2">
+                     {dateRecords.map((rec, idx) => (
+                       <motion.div
+                         key={rec.id}
+                         initial={{ opacity: 0, y: 5 }}
+                         animate={{ opacity: 1, y: 0 }}
+                         transition={{ delay: idx * 0.03 }}
+                         className="bg-slate-800/30 border border-slate-700/20 rounded-xl p-3 group"
+                       >
+                         {editingRecordId === rec.id ? (
+                           /* Edit mode */
+                           <div className="space-y-2">
+                             <input
+                               value={editedNama}
+                               onChange={e => setEditedNama(e.target.value)}
+                               placeholder="Nama..."
+                               className="w-full px-3 py-1.5 bg-slate-900/50 border border-blue-500/30 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500/40"
+                             />
+                             <input
+                               value={editedPerusahaan}
+                               onChange={e => setEditedPerusahaan(e.target.value)}
+                               placeholder="Perusahaan..."
+                               className="w-full px-3 py-1.5 bg-slate-900/50 border border-blue-500/30 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500/40"
+                             />
+                             <input
+                               value={editedRemark}
+                               onChange={e => setEditedRemark(e.target.value)}
+                               placeholder="Remark..."
+                               className="w-full px-3 py-1.5 bg-slate-900/50 border border-blue-500/30 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500/40"
+                             />
+                             <div className="flex gap-2">
+                               <button
+                                 onClick={() => handleUpdateRecord(rec.id)}
+                                 className="flex-1 py-1.5 bg-blue-600/80 hover:bg-blue-600 text-white text-[10px] font-bold rounded-lg flex items-center justify-center gap-1 transition-all"
+                               >
+                                 <Save className="w-3 h-3" /> Simpan
+                               </button>
+                               <button
+                                 onClick={() => setEditingRecordId(null)}
+                                 className="px-3 py-1.5 bg-slate-700/50 hover:bg-slate-700 text-slate-300 text-[10px] font-bold rounded-lg transition-all"
+                               >
+                                 Batal
+                               </button>
+                             </div>
+                           </div>
+                         ) : (
+                           /* View mode */
+                           <div className="flex items-start gap-3">
+                             {/* Icon placeholder (replacing individual photos) */}
+                             <div className="w-10 h-10 rounded-lg bg-slate-800/60 border border-slate-700/50 flex items-center justify-center flex-shrink-0">
+                               <Users className="w-5 h-5 text-blue-400" />
+                             </div>
 
-                          {/* Actions */}
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                            <button
-                              onClick={() => startEditing(rec)}
-                              className="p-1.5 hover:bg-slate-700/50 rounded-lg text-slate-400 hover:text-teal-400 transition-all"
-                              title="Edit"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(rec.id)}
-                              className="p-1.5 hover:bg-red-500/10 rounded-lg text-slate-400 hover:text-red-400 transition-all"
-                              title="Hapus"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </motion.div>
-                  ))}
-                </div>
-              )
-            )}
+                             {/* Info */}
+                             <div className="flex-1 min-w-0">
+                               <p className="text-sm font-bold text-white truncate">{rec.nama || '-'}</p>
+                               <p className="text-[10px] text-blue-400 flex items-center gap-1">
+                                 <Building2 className="w-3 h-3" />
+                                 {rec.perusahaan || '-'}
+                               </p>
+                               {rec.remark && (
+                                 <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
+                                   <MessageSquare className="w-3 h-3" />
+                                   {rec.remark}
+                                 </p>
+                               )}
+                             </div>
+
+                             {/* Actions */}
+                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                               <button
+                                 onClick={() => startEditing(rec)}
+                                 className="p-1.5 hover:bg-slate-700/50 rounded-lg text-slate-400 hover:text-blue-400 transition-all"
+                                 title="Edit"
+                               >
+                                 <Pencil className="w-3.5 h-3.5" />
+                               </button>
+                               <button
+                                 onClick={() => handleDelete(rec.id)}
+                                 className="p-1.5 hover:bg-red-500/10 rounded-lg text-slate-400 hover:text-red-400 transition-all"
+                                 title="Hapus"
+                               >
+                                 <Trash2 className="w-3.5 h-3.5" />
+                               </button>
+                             </div>
+                           </div>
+                         )}
+                       </motion.div>
+                     ))}
+                   </div>
+                 </div>
+               )
+             )}
           </div>
         </div>
       </div>

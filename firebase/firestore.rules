@@ -393,8 +393,17 @@ service cloud.firestore {
       allow create: if request.auth != null 
                     && (isAdminSafe() || isHSE() || isPrivilegedRole())
                     && hasAcceptableFieldCount(request.resource.data, 10)
-                    && request.resource.data.keys().hasAll(['tanggal', 'nama', 'createdAt'])
-                    && isValidString(request.resource.data.nama, 300)
+                    && (
+                      (
+                        request.resource.data.keys().hasAll(['tanggal', 'nama', 'createdAt'])
+                        && isValidString(request.resource.data.nama, 300)
+                      )
+                      ||
+                      (
+                        request.resource.data.keys().hasAll(['tanggal', 'isDocumentation', 'photos', 'createdAt'])
+                        && request.resource.data.isDocumentation == true
+                      )
+                    )
                     && isValidString(request.resource.data.tanggal, 20);
       allow update: if request.auth != null 
                     && (isAdminSafe() || isHSE() || isPrivilegedRole())
