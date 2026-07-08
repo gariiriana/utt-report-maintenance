@@ -115,7 +115,7 @@ function drawInductionCharts(
   const donutInner = 48;
 
   // Title
-  ctx.font = 'bold 20px Arial';
+  ctx.font = 'bold 15px Arial';
   ctx.fillStyle = titleColor;
   ctx.textAlign = 'center';
   ctx.fillText('TOTAL JUMLAH ORANG', donutCx, 45);
@@ -191,7 +191,7 @@ function drawInductionCharts(
   const chartH = canvas.height - topMargin - bottomMargin;
 
   // Title
-  ctx.font = 'bold 20px Arial';
+  ctx.font = 'bold 15px Arial';
   ctx.fillStyle = titleColor;
   ctx.textAlign = 'center';
   ctx.fillText('AKTIVITAS INDUCTION MINGGUAN', leftMargin + chartW / 2, 45);
@@ -339,14 +339,15 @@ function drawInductionCharts(
 
     // x-axis label
     ctx.fillStyle = labelColor;
-    ctx.font = numWeeks > 6 ? '8px Arial' : '9px Arial';
+    ctx.font = numWeeks > 6 ? '7px Arial' : '8px Arial';
     ctx.textAlign = 'center';
     
-    const labelY = yBase + 15;
-    if (numWeeks > 5) {
+    const labelY = yBase + 12;
+    if (numWeeks >= 2) {
       ctx.save();
       ctx.translate(weekCenterX, labelY);
-      ctx.rotate(-Math.PI / 12);
+      ctx.rotate(-Math.PI / 8); // 22.5 degrees rotation
+      ctx.textAlign = 'right';
       ctx.fillText(d.label, 0, 0);
       ctx.restore();
     } else {
