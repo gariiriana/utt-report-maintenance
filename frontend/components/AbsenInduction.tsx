@@ -512,7 +512,7 @@ export function AbsenInduction() {
     docPdf.setFontSize(9.5).setFont('helvetica', 'bold');
     docPdf.text('RINGKASAN', margin + 6, y + 7);
     docPdf.setFontSize(8).setFont('helvetica', 'normal').setTextColor(71, 85, 105);
-    docPdf.text(`Total Peserta: ${stats.total}  |  Jumlah Hari: ${stats.uniqueDates}  |  Perusahaan: ${stats.uniqueCompanies}`, margin + 6, y + 14);
+    docPdf.text(`Total Peserta: ${stats.total}  |  Perusahaan: ${stats.uniqueCompanies}`, margin + 6, y + 14);
 
     y += 23;
 
