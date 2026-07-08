@@ -104,18 +104,19 @@ function drawInductionCharts(
 
   // Text and lines theme mapping
   const titleColor = theme === 'dark' ? '#ffffff' : '#0f172a';
-  const labelColor = theme === 'dark' ? '#94a3b8' : '#475569';
+  const labelColor = theme === 'dark' ? '#94a3b8' : '#64748b';
   const gridColor = theme === 'dark' ? '#1e293b' : '#e2e8f0';
   const axisColor = theme === 'dark' ? '#334155' : '#cbd5e1';
+  const valueColor = theme === 'dark' ? '#ffffff' : '#0f172a';
 
   // ── LEFT SIDE: Company Distribution Donut Chart ──
-  const donutCx = 220;
+  const donutCx = 200;
   const donutCy = 180;
   const donutR = 75;
   const donutInner = 48;
 
-  // Title
-  ctx.font = 'bold 15px Arial';
+  // Title (Size 20px bold matching TBM)
+  ctx.font = 'bold 20px Arial';
   ctx.fillStyle = titleColor;
   ctx.textAlign = 'center';
   ctx.fillText('TOTAL JUMLAH ORANG', donutCx, 45);
@@ -155,9 +156,9 @@ function drawInductionCharts(
   ctx.fillStyle = theme === 'dark' ? '#0f172a' : '#ffffff';
   ctx.fill();
 
-  // Center stats
+  // Center stats (Size 30px bold matching TBM)
   ctx.fillStyle = titleColor;
-  ctx.font = 'bold 24px Arial';
+  ctx.font = 'bold 30px Arial';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(`${totalCount}`, donutCx, donutCy);
@@ -165,22 +166,31 @@ function drawInductionCharts(
   // Legend below Donut
   const legYStart = donutCy + donutR + 15;
   ctx.font = '10px Arial';
-  ctx.textAlign = 'left';
+  ctx.textAlign = 'center';
   
   donutData.slice(0, 3).forEach((item, idx) => {
     ctx.fillStyle = item.color;
     const label = item.name.length > 10 ? item.name.substring(0, 10) + '..' : item.name;
-    ctx.fillText(`● ${label}: ${item.count}`, donutCx - 100 + (idx * 75), legYStart);
+    const offset = donutCx - 75 + (idx * 75);
+    ctx.fillText(`● ${label}: ${item.count}`, offset, legYStart);
   });
   if (donutData.length > 3) {
     ctx.fillStyle = donutData[3].color;
     const label4 = donutData[3].name.length > 10 ? donutData[3].name.substring(0, 10) + '..' : donutData[3].name;
-    ctx.fillText(`● ${label4}: ${donutData[3].count}`, donutCx - 70, legYStart + 15);
+    ctx.fillText(`● ${label4}: ${donutData[3].count}`, donutCx - 40, legYStart + 15);
     if (donutData.length > 4) {
       ctx.fillStyle = donutData[4].color;
-      ctx.fillText(`● Lainnya: ${donutData[4].count}`, donutCx + 15, legYStart + 15);
+      ctx.fillText(`● Lainnya: ${donutData[4].count}`, donutCx + 40, legYStart + 15);
     }
   }
+
+  // Divider line between donut & weekly bar chart (Matching TBM x=400)
+  ctx.strokeStyle = axisColor;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(400, 40);
+  ctx.lineTo(400, canvas.height - 20);
+  ctx.stroke();
 
   // ── RIGHT SIDE: Weekly Induction activity chart (People & Days) ──
   const leftMargin = 450;
@@ -190,8 +200,8 @@ function drawInductionCharts(
   const chartW = canvas.width - leftMargin - rightMargin;
   const chartH = canvas.height - topMargin - bottomMargin;
 
-  // Title
-  ctx.font = 'bold 15px Arial';
+  // Title (Size 20px bold matching TBM)
+  ctx.font = 'bold 20px Arial';
   ctx.fillStyle = titleColor;
   ctx.textAlign = 'center';
   ctx.fillText('AKTIVITAS INDUCTION MINGGUAN', leftMargin + chartW / 2, 45);
@@ -269,89 +279,93 @@ function drawInductionCharts(
   });
   maxVal = Math.ceil(maxVal / 5) * 5;
 
-  // Draw axes
-  ctx.strokeStyle = axisColor;
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(leftMargin, topMargin);
-  ctx.lineTo(leftMargin, topMargin + chartH);
-  ctx.lineTo(canvas.width - rightMargin, topMargin + chartH);
-  ctx.stroke();
+  const yScale = chartH / (maxVal * 1.18);
+  const yZero = topMargin + chartH;
 
-  // Draw horizontal grid lines (y-axis grid)
-  ctx.font = '10px Arial';
-  ctx.fillStyle = labelColor;
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'middle';
-  const gridLines = 5;
-  for (let i = 0; i <= gridLines; i++) {
-    const val = (maxVal / gridLines) * i;
-    const y = topMargin + chartH - (i * (chartH / gridLines));
+  // Draw Y grid lines (Divided by 4, matching TBM style)
+  ctx.strokeStyle = gridColor;
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const gridY = topMargin + (chartH / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(leftMargin, gridY);
+    ctx.lineTo(leftMargin + chartW, gridY);
+    ctx.stroke();
     
-    if (i > 0) {
-      ctx.strokeStyle = gridColor;
-      ctx.beginPath();
-      ctx.moveTo(leftMargin, y);
-      ctx.lineTo(canvas.width - rightMargin, y);
-      ctx.stroke();
-    }
-    
-    ctx.fillText(String(Math.round(val)), leftMargin - 10, y);
+    const val = Math.round(maxVal - (maxVal / 4) * i);
+    ctx.fillStyle = labelColor;
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'right';
+    ctx.fillText(String(val), leftMargin - 10, gridY + 4);
   }
+
+  // Draw X base line
+  ctx.strokeStyle = axisColor;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(leftMargin, yZero);
+  ctx.lineTo(leftMargin + chartW, yZero);
+  ctx.stroke();
 
   // Draw bars
   const numWeeks = weeklyData.length;
-  const weekW = chartW / (numWeeks || 1);
-  const barSpacing = Math.max(3, weekW * 0.15);
-  const barW = Math.max(4, (weekW - barSpacing * 2) / 2 - 2);
+  const itemW = chartW / (numWeeks || 1);
+  const barW = Math.min(30, (itemW * 0.65) / 2);
 
   weeklyData.forEach((d, idx) => {
-    const weekCenterX = leftMargin + (idx * weekW) + weekW / 2;
-    const leftBarX = weekCenterX - barW - 1;
-    const rightBarX = weekCenterX + 1;
+    const groupCenterX = leftMargin + (idx + 0.5) * itemW;
+    const barLeftX = groupCenterX - barW - 3;
+    const barRightX = groupCenterX + 3;
 
-    const leftBarH = (d.peopleCount / maxVal) * chartH;
-    const rightBarH = (d.dayCount / maxVal) * chartH;
-
-    const yBase = topMargin + chartH;
+    const leftBarH = d.peopleCount * yScale;
+    const rightBarH = d.dayCount * yScale;
 
     // Draw left bar (People: DME Blue)
-    if (d.peopleCount > 0) {
+    if (leftBarH > 0) {
       ctx.fillStyle = '#00599c';
-      ctx.fillRect(leftBarX, yBase - leftBarH, barW, leftBarH);
+      ctx.fillRect(barLeftX, yZero - leftBarH, barW, leftBarH);
       
-      ctx.fillStyle = theme === 'dark' ? '#ffffff' : '#0f172a';
-      ctx.font = 'bold 9px Arial';
+      ctx.fillStyle = valueColor;
+      ctx.font = 'bold 11px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText(String(d.peopleCount), leftBarX + barW / 2, yBase - leftBarH - 6);
+      ctx.fillText(String(d.peopleCount), barLeftX + barW / 2, yZero - leftBarH - 6);
+    } else {
+      ctx.fillStyle = labelColor;
+      ctx.font = '10px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('0', barLeftX + barW / 2, yZero - 6);
     }
 
     // Draw right bar (Days: Emerald)
-    if (d.dayCount > 0) {
+    if (rightBarH > 0) {
       ctx.fillStyle = '#10b981';
-      ctx.fillRect(rightBarX, yBase - rightBarH, barW, rightBarH);
+      ctx.fillRect(barRightX, yZero - rightBarH, barW, rightBarH);
       
-      ctx.fillStyle = theme === 'dark' ? '#ffffff' : '#0f172a';
-      ctx.font = 'bold 9px Arial';
+      ctx.fillStyle = valueColor;
+      ctx.font = 'bold 11px Arial';
       ctx.textAlign = 'center';
-      ctx.fillText(String(d.dayCount), rightBarX + barW / 2, yBase - rightBarH - 6);
+      ctx.fillText(String(d.dayCount), barRightX + barW / 2, yZero - rightBarH - 6);
+    } else {
+      ctx.fillStyle = labelColor;
+      ctx.font = '10px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('0', barRightX + barW / 2, yZero - 6);
     }
 
-    // x-axis label
+    // x-axis label (Rotated miring if >= 6 weeks, otherwise centered horizontally)
     ctx.fillStyle = labelColor;
-    ctx.font = numWeeks > 6 ? '7px Arial' : '8px Arial';
+    ctx.font = 'bold 11px Arial';
     ctx.textAlign = 'center';
     
-    const labelY = yBase + 12;
-    if (numWeeks >= 2) {
+    if (numWeeks >= 6) {
       ctx.save();
-      ctx.translate(weekCenterX, labelY);
-      ctx.rotate(-Math.PI / 8); // 22.5 degrees rotation
+      ctx.translate(groupCenterX, yZero + 18);
+      ctx.rotate(-Math.PI / 8);
       ctx.textAlign = 'right';
       ctx.fillText(d.label, 0, 0);
       ctx.restore();
     } else {
-      ctx.fillText(d.label, weekCenterX, labelY);
+      ctx.fillText(d.label, groupCenterX, yZero + 20);
     }
   });
 
@@ -823,8 +837,8 @@ export function AbsenInduction() {
     let chartImgBase64 = '';
     try {
       const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = 720;
-      tempCanvas.height = 280;
+      tempCanvas.width = 1200;
+      tempCanvas.height = 340;
       drawInductionCharts(tempCanvas, 'light', stats, startDate, endDate, filteredRecords);
       chartImgBase64 = tempCanvas.toDataURL('image/jpeg', 0.95);
     } catch (e) {
@@ -844,11 +858,11 @@ export function AbsenInduction() {
         
         ws.addImage(chartImgId, {
           tl: { col: 0, row: 7 }, // Starts at row index 7 (row 8)
-          ext: { width: 560, height: 218 }
+          ext: { width: 620, height: 175 } // Aspect ratio 3.53: 620 / 3.53 = 175
         });
         
         // Add empty rows so subsequent table doesn't overlap the chart image
-        for (let i = 0; i < 12; i++) {
+        for (let i = 0; i < 10; i++) {
           ws.addRow([]);
         }
       } catch (e) {
@@ -1019,8 +1033,8 @@ export function AbsenInduction() {
     let chartImgBase64 = '';
     try {
       const tempCanvas = document.createElement('canvas');
-      tempCanvas.width = 720;
-      tempCanvas.height = 280;
+      tempCanvas.width = 1200;
+      tempCanvas.height = 340;
       drawInductionCharts(tempCanvas, 'light', stats, startDate, endDate, filteredRecords);
       chartImgBase64 = tempCanvas.toDataURL('image/jpeg', 0.95);
     } catch (e) {
@@ -1029,9 +1043,9 @@ export function AbsenInduction() {
 
     if (chartImgBase64) {
       try {
-        // Render chart: width 150mm, height 58mm (ratio 2.58), centered on contentW (186mm)
-        docPdf.addImage(chartImgBase64, 'JPEG', margin + 18, y, 150, 58, undefined, 'FAST');
-        y += 62;
+        // Render chart: width 186mm (full content width), height 52.7mm (ratio 1200:340)
+        docPdf.addImage(chartImgBase64, 'JPEG', margin, y, contentW, 52.7, undefined, 'FAST');
+        y += 57;
       } catch (e) {
         console.error("Gagal menambahkan chart ke PDF:", e);
       }
