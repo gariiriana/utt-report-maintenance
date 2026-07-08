@@ -15,9 +15,10 @@ import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import { InventoryBorrowing } from '@/components/InventoryBorrowing';
 import { PTWManagement } from '@/components/PTWManagement';
 import { AbsenTBM } from '@/components/AbsenTBM';
+import { AbsenInduction } from '@/components/AbsenInduction';
 import logoUTT from '@/assets/logo_utt.png';
 
-type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'inventory' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm';
+type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'inventory' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction';
 
 export function MainApp() {
   const { user, userRole, logout } = useAuth();
@@ -31,6 +32,7 @@ export function MainApp() {
   const navItems = [
     { id: 'admin', label: 'Dashboard Admin', icon: Shield, color: 'from-purple-600 to-pink-600', show: isAdmin },
     { id: 'absen_tbm', label: 'Absen TBM', icon: Calendar, color: 'from-pink-500 to-rose-600', show: isAdmin },
+    { id: 'absen_induction', label: 'Absen Induction', icon: Calendar, color: 'from-blue-500 to-blue-600', show: isAdmin },
     { id: 'ptw', label: 'PTW', icon: Clipboard, color: 'from-indigo-600 to-blue-600', show: (isAdmin || userRole === 'engineer') && !isStandby },
     { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: !isStandby && userRole !== 'DME' },
     { id: 'corrective', label: 'Corrective Maint.', icon: PenTool, color: 'from-red-600 to-red-700', show: userRole !== 'DME' && !isAdmin && userRole !== 'engineer' },
@@ -216,6 +218,8 @@ export function MainApp() {
               <AdminDashboard onEdit={handleEditReport} />
             ) : activeTab === 'absen_tbm' ? (
               <AbsenTBM />
+            ) : activeTab === 'absen_induction' ? (
+              <AbsenInduction />
             ) : activeTab === 'ptw' ? (
               <PTWManagement />
             ) : activeTab === 'files' ? (

@@ -272,7 +272,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 template = REPORT_TEMPLATES[lowerEmail] || (lowerEmail.includes('dock') || lowerEmail.includes('leveler') ? REPORT_TEMPLATES['dock'] : null);
               }
 
-              setUnits(draft.units.map((u: any) => {
+              const processedUnits = await Promise.all(draft.units.map(async (u: any) => {
                 let unitCards = u.cards.map((c: any) => ({ ...c, photo: null }));
                 if (template) {
                   if (lowerEmail === 'wld@gmail.com') {
@@ -289,28 +289,50 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       }
                       unitCards = unitCards.map((c: any, idx: number) => ({ ...c, id: `${idx + 1}` }));
                     }
+
+                    // Force override with the new static WLD_DEFAULT_PHOTOS
+                    unitCards = await Promise.all(unitCards.map(async (c: any) => {
+                      if (WLD_DEFAULT_PHOTOS[c.description]) {
+                        const defaultUrl = WLD_DEFAULT_PHOTOS[c.description];
+                        const b64 = defaultUrl ? await loadLogoBase64(defaultUrl) : undefined;
+                        return { ...c, photoBase64: b64 || c.photoBase64 };
+                      }
+                      return c;
+                    }));
                   }
                   const allEmpty = unitCards.every((c: any) => !c.description && !c.photoBase64);
                   if (allEmpty) {
-                    unitCards = template.map((desc, idx) => ({
-                      id: `${idx + 1}`,
-                      photo: null,
-                      description: desc,
-                      parameter: ''
+                    unitCards = await Promise.all(template.map(async (desc, idx) => {
+                      let defaultUrl = WLD_DEFAULT_PHOTOS[desc];
+                      let b64 = defaultUrl ? await loadLogoBase64(defaultUrl) : undefined;
+                      return {
+                        id: `${idx + 1}`,
+                        photo: null,
+                        photoBase64: b64,
+                        description: desc,
+                        parameter: ''
+                      };
                     }));
                   } else if (unitCards.length < template.length) {
                     const missing = template.slice(unitCards.length);
-                    const appended = missing.map((desc, i) => ({
-                      id: `${unitCards.length + i + 1}`,
-                      photo: null,
-                      description: desc,
-                      parameter: ''
+                    const appended = await Promise.all(missing.map(async (desc, i) => {
+                      let defaultUrl = WLD_DEFAULT_PHOTOS[desc];
+                      let b64 = defaultUrl ? await loadLogoBase64(defaultUrl) : undefined;
+                      return {
+                        id: `${unitCards.length + i + 1}`,
+                        photo: null,
+                        photoBase64: b64,
+                        description: desc,
+                        parameter: ''
+                      };
                     }));
                     unitCards = [...unitCards, ...appended];
                   }
                 }
                 return { ...u, cards: unitCards };
               }));
+
+              setUnits(processedUnits);
               setActiveUnitId(draft.units[0].id);
             }
           }
