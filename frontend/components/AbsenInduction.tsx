@@ -1375,9 +1375,13 @@ export function AbsenInduction() {
                           </div>
                         </div>
                         <div className="w-full bg-slate-800/60 rounded-full h-2 overflow-hidden border border-slate-700/30">
+                          <style dangerouslySetInnerHTML={{ __html: `
+                            .progress-bar-ind-${idx} {
+                              width: ${pct}%;
+                            }
+                          `}} />
                           <div
-                            className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-blue-600 to-blue-400"
-                            style={{ width: `${pct}%` }}
+                            className={`h-full rounded-full transition-all duration-500 bg-gradient-to-r from-blue-600 to-blue-400 progress-bar-ind-${idx}`}
                           />
                         </div>
                       </div>
