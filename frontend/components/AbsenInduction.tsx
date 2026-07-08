@@ -91,7 +91,8 @@ export function AbsenInduction() {
     return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState<string>(() => {
-    return new Date().toISOString().split('T')[0];
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
   });
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -270,6 +271,15 @@ export function AbsenInduction() {
       );
       await Promise.all(batchPromises);
       toast.success(`Berhasil menyimpan ${validRows.length} data induction!`);
+
+      // Auto-expand date filter range if the submitted date is outside the current range
+      if (formDate > endDate) {
+        setEndDate(formDate);
+      }
+      if (formDate < startDate) {
+        setStartDate(formDate);
+      }
+
       // Reset
       setChecklist([{ nama: '', perusahaan: '', remark: '' }]);
       setActivityPhoto('');
