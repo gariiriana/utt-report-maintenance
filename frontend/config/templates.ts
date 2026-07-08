@@ -110,8 +110,7 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
   ],
   'wld@gmail.com': [
     'Status', 'Test Ping', 'System Setting', 'Communication Setting',
-    'Tag Cable', 'Cleaning', 'Voltage Measurement', 'Current Measurement',
-    'Test'
+    'Tag Cable', 'Cleaning', 'Fg Map', 'Test'
   ],
   'fld@gmail.com': [
     'Status', 'Test Ping', 'System Setting', 'FG BBOX #2 CABLES',

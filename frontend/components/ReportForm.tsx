@@ -29,9 +29,7 @@ import { ATSServiceReport } from '@/components/ATSServiceReport';
 import imgStatusWld from '@/assets/Wld/status.jpeg';
 import imgTestPingWld from '@/assets/Wld/test_ping.jpeg';
 import imgSystemSettingWld from '@/assets/Wld/system_setting.jpeg';
-import imgVoltageMeasurementWld from '@/assets/Wld/voltage_measurement.jpeg';
 import imgCommunicationSettingWld from '@/assets/Wld/communication_setting.jpeg';
-import imgCurrentMeasurementWld from '@/assets/Wld/current_measurement.jpeg';
 import imgFgBbox2CablesFld from '@/assets/Fld/fg_bbox_2_cables.jpeg';
 import imgTesPingFld from '@/assets/Fld/tes_ping_fld.jpeg';
 
@@ -39,10 +37,8 @@ const WLD_DEFAULT_PHOTOS: Record<string, string> = {
   'Status': imgStatusWld,
   'Test Ping': imgTestPingWld,
   'System Setting': imgSystemSettingWld,
-  'Voltage Measurement': imgVoltageMeasurementWld,
   'Communication Setting': imgCommunicationSettingWld,
   'FG BBOX #2 CABLES': imgFgBbox2CablesFld,
-  'Current Measurement': imgCurrentMeasurementWld,
 };
 
 export interface PhotoCard {
@@ -279,6 +275,21 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               setUnits(draft.units.map((u: any) => {
                 let unitCards = u.cards.map((c: any) => ({ ...c, photo: null }));
                 if (template) {
+                  if (lowerEmail === 'wld@gmail.com') {
+                    const hasOldCards = unitCards.some((c: any) => c.description === 'Voltage Measurement' || c.description === 'Current Measurement');
+                    if (hasOldCards) {
+                      unitCards = unitCards.filter((c: any) => c.description !== 'Voltage Measurement' && c.description !== 'Current Measurement');
+                      if (!unitCards.some((c: any) => c.description === 'Fg Map')) {
+                        unitCards.push({
+                          id: `${unitCards.length + 1}`,
+                          photo: null,
+                          description: 'Fg Map',
+                          parameter: ''
+                        });
+                      }
+                      unitCards = unitCards.map((c: any, idx: number) => ({ ...c, id: `${idx + 1}` }));
+                    }
+                  }
                   const allEmpty = unitCards.every((c: any) => !c.description && !c.photoBase64);
                   if (allEmpty) {
                     unitCards = template.map((desc, idx) => ({

@@ -92,6 +92,28 @@ function AppContent() {
   );
 }
 
+function AppWithBackground() {
+  const { user, loading } = useAuth();
+  
+  const showVideo = !loading && !user && !PUBLIC_HSE_REPORT_ID;
+
+  return (
+    <div className="relative min-h-screen bg-slate-950 overflow-x-hidden">
+      <DataCenterBackground showVideo={showVideo} />
+      
+      {PUBLIC_HSE_REPORT_ID ? (
+        <div className="relative z-10">
+          <HSEReportViewer reportId={PUBLIC_HSE_REPORT_ID} />
+        </div>
+      ) : (
+        <AppContent />
+      )}
+      
+      <Toaster position="top-center" richColors />
+    </div>
+  );
+}
+
 export default function App() {
   useEffect(() => {
     logFirebaseEvent('session_start', {
@@ -101,20 +123,8 @@ export default function App() {
   }, []);
 
   return (
-    <div className="relative min-h-screen bg-slate-950 overflow-x-hidden">
-      <DataCenterBackground />
-      
-      {PUBLIC_HSE_REPORT_ID ? (
-        <div className="relative z-10">
-          <HSEReportViewer reportId={PUBLIC_HSE_REPORT_ID} />
-        </div>
-      ) : (
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      )}
-      
-      <Toaster position="top-center" richColors />
-    </div>
+    <AuthProvider>
+      <AppWithBackground />
+    </AuthProvider>
   );
 }
