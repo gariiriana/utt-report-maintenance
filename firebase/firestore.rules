@@ -4,9 +4,19 @@ service cloud.firestore {
     
     function isAdminSafe() {
       return request.auth != null 
-             && request.auth.uid != null
-             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+             && (
+               (
+                 request.auth.uid != null
+                 && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+                 && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+               )
+               ||
+               (
+                 request.auth.token != null
+                 && request.auth.token.email != null
+                 && request.auth.token.email.matches('.*admin.*')
+               )
+             );
     }
 
     function isStandbyEngineer() {
@@ -18,9 +28,19 @@ service cloud.firestore {
 
     function isHSE() {
       return request.auth != null 
-             && request.auth.uid != null
-             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hse';
+             && (
+               (
+                 request.auth.uid != null
+                 && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+                 && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hse'
+               )
+               ||
+               (
+                 request.auth.token != null
+                 && request.auth.token.email != null
+                 && request.auth.token.email.matches('.*hse.*')
+               )
+             );
     }
 
     function isDirector() {
@@ -44,9 +64,28 @@ service cloud.firestore {
 
     function isPrivilegedRole() {
        return request.auth != null 
-             && request.auth.uid != null
-             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'manager', 'site_manager', 'hse', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
+             && (
+               (
+                 request.auth.uid != null
+                 && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+                 && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'manager', 'site_manager', 'hse', 'dirut', 'direksiSDM', 'DireksiKeuangan']
+               )
+               ||
+               (
+                 request.auth.token != null
+                 && request.auth.token.email != null
+                 && (
+                   request.auth.token.email.matches('.*admin.*')
+                   || request.auth.token.email.matches('.*manager.*')
+                   || request.auth.token.email.matches('.*sitemanager.*')
+                   || request.auth.token.email.matches('.*site_manager.*')
+                   || request.auth.token.email.matches('.*hse.*')
+                   || request.auth.token.email.matches('.*dirut.*')
+                   || request.auth.token.email.matches('.*direksisdm.*')
+                   || request.auth.token.email.matches('.*direksikeuangan.*')
+                 )
+               )
+             );
     }
 
     function isDME() {
