@@ -524,30 +524,15 @@ export function AbsenTBM() {
     ctx.textAlign = 'center';
     ctx.fillText('GRAFIK KESELURUHAN', donutCx, 45);
 
-    const totalCount = stats.total;
     const hadirCount = stats.hadir;
-    const tidakHadirCount = stats.tidakHadir;
-    const pct = totalCount > 0 ? hadirCount / totalCount : 0;
-    const angle = pct * Math.PI * 2;
-    const pctDisplay = totalCount > 0 ? Math.round(pct * 100) : 0;
 
-    // Hadir slice (emerald)
+    // Hadir slice (emerald) - solid green circle
     ctx.beginPath();
     ctx.moveTo(donutCx, donutCy);
-    ctx.arc(donutCx, donutCy, donutR, -Math.PI / 2, -Math.PI / 2 + angle);
+    ctx.arc(donutCx, donutCy, donutR, 0, Math.PI * 2);
     ctx.closePath();
     ctx.fillStyle = '#10b981';
     ctx.fill();
-
-    // Tidak Hadir slice (rose)
-    if (tidakHadirCount > 0) {
-      ctx.beginPath();
-      ctx.moveTo(donutCx, donutCy);
-      ctx.arc(donutCx, donutCy, donutR, -Math.PI / 2 + angle, -Math.PI / 2 + Math.PI * 2);
-      ctx.closePath();
-      ctx.fillStyle = '#f43f5e';
-      ctx.fill();
-    }
 
     // Donut hole (matches dark background of the card: #0f172a / #030712)
     ctx.beginPath();
@@ -555,27 +540,22 @@ export function AbsenTBM() {
     ctx.fillStyle = '#0f172a';
     ctx.fill();
 
-    // Center %
+    // Center count
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 30px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`${pctDisplay}%`, donutCx, donutCy - 3);
+    ctx.fillText(`${hadirCount}`, donutCx, donutCy - 3);
     ctx.font = '11px Arial';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText('Kehadiran', donutCx, donutCy + 16);
+    ctx.fillText('Orang Hadir', donutCx, donutCy + 16);
 
     // Legend below Donut
     const legDonutY = donutCy + donutR + 15;
     ctx.font = '12px Arial';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#10b981';
-    ctx.fillText(`● Hadir: ${hadirCount}`, donutCx - 55, legDonutY);
-    ctx.fillStyle = '#f43f5e';
-    ctx.fillText(`● TH: ${tidakHadirCount}`, donutCx + 55, legDonutY);
-    ctx.font = '11px Arial';
-    ctx.fillStyle = '#64748b';
-    ctx.fillText(`Total: ${totalCount} record`, donutCx, legDonutY + 15);
+    ctx.fillText(`● Hadir: ${hadirCount}`, donutCx, legDonutY);
 
 
     // ── RIGHT SIDE: Weekly Bar Chart ──
@@ -637,7 +617,7 @@ export function AbsenTBM() {
 
     const weeks = getWeeksInRange(startDate, endDate);
     
-    // Group records into those weeks
+    // Group records into those weeks (only count Hadir)
     const weeklyData = weeks.map(w => {
       const recs = filteredRecords.filter(r => {
         const parts = r.tanggal.split('-');
@@ -653,16 +633,14 @@ export function AbsenTBM() {
         return d >= startNorm && d <= endNorm;
       });
       const hadir = recs.filter(r => r.kehadiran === 'Hadir').length;
-      const tidakHadir = recs.filter(r => r.kehadiran === 'Tidak Hadir').length;
       return {
         label: w.label,
-        hadir,
-        tidakHadir
+        hadir
       };
     });
 
     // Find max value to determine scale
-    const maxVal = Math.max(...weeklyData.map(d => Math.max(d.hadir, d.tidakHadir)), 5);
+    const maxVal = Math.max(...weeklyData.map(d => d.hadir), 5);
     const yScale = chartH / (maxVal * 1.18);
 
     // Draw Y grid lines
@@ -691,45 +669,28 @@ export function AbsenTBM() {
     ctx.stroke();
 
     const itemW = chartW / weeklyData.length;
-    const barW = Math.min(30, (itemW * 0.65) / 2);
+    const barW = Math.min(30, itemW * 0.45); // Centered single bar width
 
     weeklyData.forEach((w, idx) => {
       const groupCenterX = leftMargin + (idx + 0.5) * itemW;
-      const barHadirX = groupCenterX - barW - 3;
-      const barThX = groupCenterX + 3;
+      const barX = groupCenterX - barW / 2;
       const yZero = topMargin + chartH;
 
       const hHadir = w.hadir * yScale;
-      const hTh = w.tidakHadir * yScale;
 
       // Hadir bar
       if (hHadir > 0) {
         ctx.fillStyle = '#10b981';
-        ctx.fillRect(barHadirX, yZero - hHadir, barW, hHadir);
+        ctx.fillRect(barX, yZero - hHadir, barW, hHadir);
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 11px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(String(w.hadir), barHadirX + barW / 2, yZero - hHadir - 6);
+        ctx.fillText(String(w.hadir), groupCenterX, yZero - hHadir - 6);
       } else {
         ctx.fillStyle = '#64748b';
         ctx.font = '10px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('0', barHadirX + barW / 2, yZero - 6);
-      }
-
-      // Tidak Hadir bar
-      if (hTh > 0) {
-        ctx.fillStyle = '#f43f5e';
-        ctx.fillRect(barThX, yZero - hTh, barW, hTh);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 11px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(String(w.tidakHadir), barThX + barW / 2, yZero - hTh - 6);
-      } else {
-        ctx.fillStyle = '#64748b';
-        ctx.font = '10px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('0', barThX + barW / 2, yZero - 6);
+        ctx.fillText('0', groupCenterX, yZero - 6);
       }
 
       // X label
@@ -1182,7 +1143,8 @@ export function AbsenTBM() {
 
   // Export PDF
   const handleExportPDF = async () => {
-    if (filteredRecords.length === 0) {
+    const pdfRecords = filteredRecords.filter(r => r.kehadiran === 'Hadir');
+    if (pdfRecords.length === 0) {
       toast.error("Tidak ada data untuk diekspor");
       return;
     }
@@ -1253,8 +1215,8 @@ export function AbsenTBM() {
     docPdf.setFontSize(8);
     docPdf.setFont('helvetica', 'normal');
     docPdf.setTextColor(71, 85, 105); // Slate-600
-    docPdf.text(`Total Log Kehadiran: ${stats.total} record`, margin + 6, y + 15);
-    docPdf.text(`Hadir: ${stats.hadir} kali | Tidak Hadir: ${stats.tidakHadir} kali`, margin + 6, y + 21);
+    docPdf.text(`Total Log Kehadiran: ${pdfRecords.length} record`, margin + 6, y + 15);
+    docPdf.text(`Hadir: ${pdfRecords.length} kali | Tidak Hadir: 0 kali`, margin + 6, y + 21);
     const periodeFrom = startDate || 'Awal';
     const periodeTo = endDate || 'Sekarang';
     docPdf.text(`Periode: ${periodeFrom}  s/d  ${periodeTo}`, margin + 6, y + 27);
@@ -1283,30 +1245,15 @@ export function AbsenTBM() {
     ctx.textAlign = 'center';
     ctx.fillText('GRAFIK KESELURUHAN', donutCx, 45);
 
-    const totalCount = stats.total;
-    const hadirCount = stats.hadir;
-    const tidakHadirCount = stats.tidakHadir;
-    const pct = totalCount > 0 ? hadirCount / totalCount : 0;
-    const angle = pct * Math.PI * 2;
-    const pctDisplay = totalCount > 0 ? Math.round(pct * 100) : 0;
+    const hadirCount = pdfRecords.length;
 
-    // Hadir slice (emerald)
+    // Hadir slice (emerald) - solid green circle
     ctx.beginPath();
     ctx.moveTo(donutCx, donutCy);
-    ctx.arc(donutCx, donutCy, donutR, -Math.PI / 2, -Math.PI / 2 + angle);
+    ctx.arc(donutCx, donutCy, donutR, 0, Math.PI * 2);
     ctx.closePath();
     ctx.fillStyle = '#10b981';
     ctx.fill();
-
-    // Tidak Hadir slice (rose)
-    if (tidakHadirCount > 0) {
-      ctx.beginPath();
-      ctx.moveTo(donutCx, donutCy);
-      ctx.arc(donutCx, donutCy, donutR, -Math.PI / 2 + angle, -Math.PI / 2 + Math.PI * 2);
-      ctx.closePath();
-      ctx.fillStyle = '#f43f5e';
-      ctx.fill();
-    }
 
     // Donut hole
     ctx.beginPath();
@@ -1314,28 +1261,22 @@ export function AbsenTBM() {
     ctx.fillStyle = '#ffffff';
     ctx.fill();
 
-    // Center %
+    // Center count
     ctx.fillStyle = '#0f172a';
     ctx.font = 'bold 30px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`${pctDisplay}%`, donutCx, donutCy - 3);
+    ctx.fillText(`${hadirCount}`, donutCx, donutCy - 3);
     ctx.font = '11px Arial';
     ctx.fillStyle = '#64748b';
-    ctx.fillText('Kehadiran', donutCx, donutCy + 16);
+    ctx.fillText('Orang Hadir', donutCx, donutCy + 16);
 
     // Legend below Donut
     const legDonutY = donutCy + donutR + 15;
     ctx.font = '12px Arial';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#10b981';
-    ctx.fillText(`● Hadir: ${hadirCount}`, donutCx - 55, legDonutY);
-    ctx.fillStyle = '#f43f5e';
-    ctx.fillText(`● TH: ${tidakHadirCount}`, donutCx + 55, legDonutY);
-    ctx.font = '11px Arial';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`Total: ${totalCount} record`, donutCx, legDonutY + 15);
-
+    ctx.fillText(`● Hadir: ${hadirCount}`, donutCx, legDonutY);
 
     // ── RIGHT SIDE: Weekly Bar Chart ──
     const leftMargin = 450;
@@ -1398,7 +1339,7 @@ export function AbsenTBM() {
     
     // Group records into those weeks
     const weeklyData = weeks.map(w => {
-      const recs = filteredRecords.filter(r => {
+      const recs = pdfRecords.filter(r => {
         const parts = r.tanggal.split('-');
         const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
         d.setHours(0, 0, 0, 0);
@@ -1412,16 +1353,14 @@ export function AbsenTBM() {
         return d >= startNorm && d <= endNorm;
       });
       const hadir = recs.filter(r => r.kehadiran === 'Hadir').length;
-      const tidakHadir = recs.filter(r => r.kehadiran === 'Tidak Hadir').length;
       return {
         label: w.label,
-        hadir,
-        tidakHadir
+        hadir
       };
     });
 
     // Find max value to determine scale
-    const maxVal = Math.max(...weeklyData.map(d => Math.max(d.hadir, d.tidakHadir)), 5);
+    const maxVal = Math.max(...weeklyData.map(d => d.hadir), 5);
     const yScale = chartH / (maxVal * 1.18);
 
     // Draw Y grid lines
@@ -1450,45 +1389,28 @@ export function AbsenTBM() {
     ctx.stroke();
 
     const itemW = chartW / weeklyData.length;
-    const barW = Math.min(30, (itemW * 0.65) / 2);
+    const barW = Math.min(30, itemW * 0.45); // Centered single bar width
 
     weeklyData.forEach((w, idx) => {
       const groupCenterX = leftMargin + (idx + 0.5) * itemW;
-      const barHadirX = groupCenterX - barW - 3;
-      const barThX = groupCenterX + 3;
+      const barX = groupCenterX - barW / 2;
       const yZero = topMargin + chartH;
 
       const hHadir = w.hadir * yScale;
-      const hTh = w.tidakHadir * yScale;
 
       // Hadir bar
       if (hHadir > 0) {
         ctx.fillStyle = '#10b981';
-        ctx.fillRect(barHadirX, yZero - hHadir, barW, hHadir);
+        ctx.fillRect(barX, yZero - hHadir, barW, hHadir);
         ctx.fillStyle = '#0f172a';
         ctx.font = 'bold 11px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(String(w.hadir), barHadirX + barW / 2, yZero - hHadir - 6);
+        ctx.fillText(String(w.hadir), groupCenterX, yZero - hHadir - 6);
       } else {
         ctx.fillStyle = '#64748b';
         ctx.font = '10px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('0', barHadirX + barW / 2, yZero - 6);
-      }
-
-      // Tidak Hadir bar
-      if (hTh > 0) {
-        ctx.fillStyle = '#f43f5e';
-        ctx.fillRect(barThX, yZero - hTh, barW, hTh);
-        ctx.fillStyle = '#0f172a';
-        ctx.font = 'bold 11px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(String(w.tidakHadir), barThX + barW / 2, yZero - hTh - 6);
-      } else {
-        ctx.fillStyle = '#64748b';
-        ctx.font = '10px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('0', barThX + barW / 2, yZero - 6);
+        ctx.fillText('0', groupCenterX, yZero - 6);
       }
 
       // X label
@@ -1521,17 +1443,33 @@ export function AbsenTBM() {
     docPdf.setFont('helvetica', 'bold');
     docPdf.text('RANGKUMAN KEHADIRAN PER PERSONIL', margin, chartY - 2.5);
 
+    // Compute personStats from pdfRecords for Table 1
+    const personGroups: Record<string, { nama: string; jabatan: string; category: string; hadir: number; total: number }> = {};
+    pdfRecords.forEach(r => {
+      if (!personGroups[r.nama]) {
+        personGroups[r.nama] = { nama: r.nama, jabatan: r.jabatan, category: r.category || 'Manual', hadir: 0, total: 0 };
+      }
+      personGroups[r.nama].total += 1;
+      personGroups[r.nama].hadir += 1;
+    });
+    const pdfPersonStats = Object.values(personGroups).map(p => ({
+      nama: p.nama,
+      jabatan: p.jabatan,
+      rate: 100,
+      hadir: p.hadir,
+      total: p.total
+    })).sort((a, b) => b.hadir - a.hadir || a.nama.localeCompare(b.nama));
+
     const summaryHead = [['No', 'Nama Personil', 'Jabatan', 'Hadir', 'Tidak Hadir', 'Total', '%']];
-    const summaryBody = stats.personStats.map((p, idx) => {
-      const tidakHadir = p.total - p.hadir;
+    const summaryBody = pdfPersonStats.map((p, idx) => {
       return [
         idx + 1,
         p.nama,
         p.jabatan,
         p.hadir,
-        tidakHadir,
+        0, // tidak hadir is always 0 in export
         p.total,
-        `${p.rate}%`
+        '100%'
       ];
     });
 
@@ -1555,38 +1493,20 @@ export function AbsenTBM() {
         if (data.section === 'body') {
           // Color the % column (index 6 now)
           if (data.column.index === 6) {
-            const raw = String(data.cell.raw).replace('%', '');
-            const pct = parseInt(raw);
-            if (pct >= 80) {
-              data.cell.styles.textColor = [16, 185, 129]; // emerald
-              data.cell.styles.fontStyle = 'bold';
-            } else if (pct >= 50) {
-              data.cell.styles.textColor = [245, 158, 11]; // amber
-              data.cell.styles.fontStyle = 'bold';
-            } else {
-              data.cell.styles.textColor = [244, 63, 94]; // rose
-              data.cell.styles.fontStyle = 'bold';
-            }
+            data.cell.styles.textColor = [16, 185, 129]; // emerald
+            data.cell.styles.fontStyle = 'bold';
           }
           // Color Hadir column green (index 3 now)
           if (data.column.index === 3) {
             data.cell.styles.textColor = [16, 185, 129];
             data.cell.styles.fontStyle = 'bold';
           }
-          // Color Tidak Hadir column red (index 4 now)
-          if (data.column.index === 4) {
-            const val = Number(data.cell.raw);
-            if (val > 0) {
-              data.cell.styles.textColor = [244, 63, 94];
-              data.cell.styles.fontStyle = 'bold';
-            }
-          }
         }
       }
     });
 
     // ─── Table 2: Detail Riwayat Absensi ──────────────────────
-    const tableData = filteredRecords.map((r, i) => [
+    const tableData = pdfRecords.map((r, i) => [
       i + 1,
       r.tanggal,
       r.nama,
@@ -1768,7 +1688,8 @@ export function AbsenTBM() {
 
   // Export Excel
   const handleExportExcel = async () => {
-    if (filteredRecords.length === 0) {
+    const excelRecords = filteredRecords.filter(r => r.kehadiran === 'Hadir');
+    if (excelRecords.length === 0) {
       toast.error("Tidak ada data untuk diekspor");
       return;
     }
@@ -1872,13 +1793,32 @@ export function AbsenTBM() {
     worksheet.getCell('A6').value = `Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`;
     worksheet.getCell('A6').font = { name: 'Arial', size: 9, color: { argb: 'FF475569' } };
 
+    // Compute excelPersonStats based on excelRecords
+    const excelPersonGroups: Record<string, { nama: string; jabatan: string; category: string; hadir: number; total: number }> = {};
+    excelRecords.forEach(r => {
+      if (!excelPersonGroups[r.nama]) {
+        excelPersonGroups[r.nama] = { nama: r.nama, jabatan: r.jabatan, category: r.category || 'Manual', hadir: 0, total: 0 };
+      }
+      excelPersonGroups[r.nama].total += 1;
+      excelPersonGroups[r.nama].hadir += 1;
+    });
+
+    const excelPersonStats = Object.values(excelPersonGroups).map(p => ({
+      nama: p.nama,
+      jabatan: p.jabatan,
+      category: p.category,
+      rate: 100,
+      hadir: p.hadir,
+      total: p.total
+    })).sort((a, b) => b.hadir - a.hadir || a.nama.localeCompare(b.nama));
+
     // Pre-calculate indices for dynamic formulas
     const t1StartRow = 31;
-    const t1EndRow = 30 + stats.personStats.length;
+    const t1EndRow = 30 + excelPersonStats.length;
     const t2TitleRowIndex = t1EndRow + 3;
     const t2HeaderRowIndex = t2TitleRowIndex + 1;
     const t2StartRow = t2HeaderRowIndex + 1;
-    const t2EndRow = t2StartRow + filteredRecords.length - 1;
+    const t2EndRow = t2StartRow + excelRecords.length - 1;
 
     // Summary Card Block (Rows 8 to 12, Columns A to D)
     worksheet.mergeCells('A8:D8');
@@ -1904,10 +1844,10 @@ export function AbsenTBM() {
       }
     };
 
-    setSummaryRow(9, 'Total Log Kehadiran:', { formula: `COUNTA(E${t2StartRow}:E${t2EndRow})`, result: stats.total });
-    setSummaryRow(10, 'Hadir:', { formula: `COUNTIF(E${t2StartRow}:E${t2EndRow},"Hadir")`, result: stats.hadir });
-    setSummaryRow(11, 'Tidak Hadir:', { formula: `COUNTIF(E${t2StartRow}:E${t2EndRow},"Tidak Hadir")`, result: stats.tidakHadir });
-    setSummaryRow(12, 'Persentase Kehadiran:', { formula: `IF(C9>0,C10/C9,0)`, result: stats.rate / 100 }, true);
+    setSummaryRow(9, 'Total Log Kehadiran:', { formula: `COUNTA(E${t2StartRow}:E${t2EndRow})`, result: excelRecords.length });
+    setSummaryRow(10, 'Hadir:', { formula: `COUNTIF(E${t2StartRow}:E${t2EndRow},"Hadir")`, result: excelRecords.length });
+    setSummaryRow(11, 'Tidak Hadir:', { formula: `COUNTIF(E${t2StartRow}:E${t2EndRow},"Tidak Hadir")`, result: 0 });
+    setSummaryRow(12, 'Persentase Kehadiran:', { formula: `IF(C9>0,C10/C9,0)`, result: 1 }, true);
 
     // Style Card Block Background & Border
     for (let r = 8; r <= 12; r++) {
@@ -1953,30 +1893,15 @@ export function AbsenTBM() {
       ctx.textAlign = 'center';
       ctx.fillText('GRAFIK KESELURUHAN', donutCx, 45);
 
-      const totalCount = stats.total;
-      const hadirCount = stats.hadir;
-      const tidakHadirCount = stats.tidakHadir;
-      const pct = totalCount > 0 ? hadirCount / totalCount : 0;
-      const angle = pct * Math.PI * 2;
-      const pctDisplay = totalCount > 0 ? Math.round(pct * 100) : 0;
+      const hadirCount = excelRecords.length;
 
-      // Hadir slice (emerald)
+      // Hadir slice (emerald) - solid circle
       ctx.beginPath();
       ctx.moveTo(donutCx, donutCy);
-      ctx.arc(donutCx, donutCy, donutR, -Math.PI / 2, -Math.PI / 2 + angle);
+      ctx.arc(donutCx, donutCy, donutR, 0, Math.PI * 2);
       ctx.closePath();
       ctx.fillStyle = '#10b981';
       ctx.fill();
-
-      // Tidak Hadir slice (rose)
-      if (tidakHadirCount > 0) {
-        ctx.beginPath();
-        ctx.moveTo(donutCx, donutCy);
-        ctx.arc(donutCx, donutCy, donutR, -Math.PI / 2 + angle, -Math.PI / 2 + Math.PI * 2);
-        ctx.closePath();
-        ctx.fillStyle = '#f43f5e';
-        ctx.fill();
-      }
 
       // Donut hole
       ctx.beginPath();
@@ -1984,27 +1909,22 @@ export function AbsenTBM() {
       ctx.fillStyle = '#ffffff';
       ctx.fill();
 
-      // Center %
+      // Center count
       ctx.fillStyle = '#0f172a';
       ctx.font = 'bold 30px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`${pctDisplay}%`, donutCx, donutCy - 3);
+      ctx.fillText(`${hadirCount}`, donutCx, donutCy - 3);
       ctx.font = '11px Arial';
       ctx.fillStyle = '#64748b';
-      ctx.fillText('Kehadiran', donutCx, donutCy + 16);
+      ctx.fillText('Orang Hadir', donutCx, donutCy + 16);
 
       // Legend below Donut
       const legDonutY = donutCy + donutR + 15;
       ctx.font = '12px Arial';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#10b981';
-      ctx.fillText(`● Hadir: ${hadirCount}`, donutCx - 55, legDonutY);
-      ctx.fillStyle = '#f43f5e';
-      ctx.fillText(`● TH: ${tidakHadirCount}`, donutCx + 55, legDonutY);
-      ctx.font = '11px Arial';
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillText(`Total: ${totalCount} record`, donutCx, legDonutY + 15);
+      ctx.fillText(`● Hadir: ${hadirCount}`, donutCx, legDonutY);
 
       // ── RIGHT SIDE: Weekly Bar Chart ──
       const leftMargin = 450;
@@ -2067,7 +1987,7 @@ export function AbsenTBM() {
       
       // Group records into those weeks
       const weeklyData = weeks.map(w => {
-        const recs = filteredRecords.filter(r => {
+        const recs = excelRecords.filter(r => {
           const parts = r.tanggal.split('-');
           const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
           d.setHours(0, 0, 0, 0);
@@ -2081,16 +2001,14 @@ export function AbsenTBM() {
           return d >= startNorm && d <= endNorm;
         });
         const hadir = recs.filter(r => r.kehadiran === 'Hadir').length;
-        const tidakHadir = recs.filter(r => r.kehadiran === 'Tidak Hadir').length;
         return {
           label: w.label,
-          hadir,
-          tidakHadir
+          hadir
         };
       });
 
       // Find max value to determine scale
-      const maxVal = Math.max(...weeklyData.map(d => Math.max(d.hadir, d.tidakHadir)), 5);
+      const maxVal = Math.max(...weeklyData.map(d => d.hadir), 5);
       const yScale = chartH / (maxVal * 1.18);
 
       // Draw Y grid lines
@@ -2119,45 +2037,28 @@ export function AbsenTBM() {
       ctx.stroke();
 
       const itemW = chartW / weeklyData.length;
-      const barW = Math.min(30, (itemW * 0.65) / 2);
+      const barW = Math.min(30, itemW * 0.45); // Centered single bar width
 
       weeklyData.forEach((w, idx) => {
         const groupCenterX = leftMargin + (idx + 0.5) * itemW;
-        const barHadirX = groupCenterX - barW - 3;
-        const barThX = groupCenterX + 3;
+        const barX = groupCenterX - barW / 2;
         const yZero = topMargin + chartH;
 
         const hHadir = w.hadir * yScale;
-        const hTh = w.tidakHadir * yScale;
 
         // Hadir bar
         if (hHadir > 0) {
           ctx.fillStyle = '#10b981';
-          ctx.fillRect(barHadirX, yZero - hHadir, barW, hHadir);
+          ctx.fillRect(barX, yZero - hHadir, barW, hHadir);
           ctx.fillStyle = '#0f172a';
           ctx.font = 'bold 11px Arial';
           ctx.textAlign = 'center';
-          ctx.fillText(String(w.hadir), barHadirX + barW / 2, yZero - hHadir - 6);
+          ctx.fillText(String(w.hadir), groupCenterX, yZero - hHadir - 6);
         } else {
           ctx.fillStyle = '#64748b';
           ctx.font = '10px Arial';
           ctx.textAlign = 'center';
-          ctx.fillText('0', barHadirX + barW / 2, yZero - 6);
-        }
-
-        // Tidak Hadir bar
-        if (hTh > 0) {
-          ctx.fillStyle = '#f43f5e';
-          ctx.fillRect(barThX, yZero - hTh, barW, hTh);
-          ctx.fillStyle = '#0f172a';
-          ctx.font = 'bold 11px Arial';
-          ctx.textAlign = 'center';
-          ctx.fillText(String(w.tidakHadir), barThX + barW / 2, yZero - hTh - 6);
-        } else {
-          ctx.fillStyle = '#64748b';
-          ctx.font = '10px Arial';
-          ctx.textAlign = 'center';
-          ctx.fillText('0', barThX + barW / 2, yZero - 6);
+          ctx.fillText('0', groupCenterX, yZero - 6);
         }
 
         // X label
@@ -2225,10 +2126,9 @@ export function AbsenTBM() {
     });
 
     let currentRow = 31;
-    stats.personStats.forEach((p, idx) => {
+    excelPersonStats.forEach((p, idx) => {
       const row = worksheet.getRow(currentRow);
       row.height = 20;
-      const thCount = p.total - p.hadir;
 
       row.getCell(1).value = idx + 1;
       row.getCell(2).value = p.nama;
@@ -2243,7 +2143,7 @@ export function AbsenTBM() {
       // Tidak Hadir (Col E)
       row.getCell(5).value = {
         formula: `COUNTIFS(C$${t2StartRow}:C$${t2EndRow},B${currentRow},E$${t2StartRow}:E$${t2EndRow},"Tidak Hadir")`,
-        result: thCount
+        result: 0
       };
 
       // Total (Col F)
@@ -2255,7 +2155,7 @@ export function AbsenTBM() {
       // % (Col G)
       row.getCell(7).value = {
         formula: `IF(F${currentRow}>0,D${currentRow}/F${currentRow},0)`,
-        result: p.rate / 100
+        result: 1
       };
       row.getCell(7).numFmt = '0%';
 
@@ -2274,12 +2174,7 @@ export function AbsenTBM() {
       row.getCell(3).font = { name: 'Arial', size: 8.5 };
       
       row.getCell(4).font = { name: 'Arial', size: 8.5, bold: true, color: { argb: 'FF10B981' } }; // Hadir = Green
-      
-      if (thCount > 0) {
-        row.getCell(5).font = { name: 'Arial', size: 8.5, bold: true, color: { argb: 'FFF43F5E' } }; // TH > 0 = Red
-      } else {
-        row.getCell(5).font = { name: 'Arial', size: 8.5, color: { argb: 'FF64748B' } };
-      }
+      row.getCell(5).font = { name: 'Arial', size: 8.5, color: { argb: 'FF64748B' } }; // TH is always 0
 
       row.getCell(6).font = { name: 'Arial', size: 8.5 };
 
@@ -2362,7 +2257,7 @@ export function AbsenTBM() {
 
     currentRow++;
 
-    filteredRecords.forEach((rec, idx) => {
+    excelRecords.forEach((rec, idx) => {
       const row = worksheet.getRow(currentRow);
       row.height = 20;
 
