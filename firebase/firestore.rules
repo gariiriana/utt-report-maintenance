@@ -366,7 +366,7 @@ service cloud.firestore {
                     && (isAdminSafe() || isEngineer())
                     && hasAcceptableFieldCount(request.resource.data, 20)
                     && request.resource.data.keys().hasAll(['partName', 'partNumber', 'quantity', 'findingDate', 'photos', 'createdBy', 'createdByEmail', 'createdAt'])
-                    && request.resource.data.createdBy == request.auth.u  id
+                    && request.resource.data.createdBy == request.auth.uid
                     && request.resource.data.createdByEmail == request.auth.token.email
                     && isValidString(request.resource.data.partName, 500)
                     && isValidString(request.resource.data.partNumber, 200);
