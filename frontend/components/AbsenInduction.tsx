@@ -445,6 +445,17 @@ export function AbsenInduction() {
   const activityPhotoRef = useRef<HTMLInputElement | null>(null);
   const activityPdfRef = useRef<HTMLInputElement | null>(null);
 
+  // Edit Session Modal state
+  const [isEditSessionOpen, setIsEditSessionOpen] = useState(false);
+  const [editSessionDate, setEditSessionDate] = useState('');
+  const [editSessionPhotos, setEditSessionPhotos] = useState<Array<{ base64: string; description: string }>>([]);
+  const [editSessionPdfs, setEditSessionPdfs] = useState<Array<{ id: string; name: string; base64: string; isChunked?: boolean; description?: string }>>([]);
+  const [isSavingSession, setIsSavingSession] = useState(false);
+  const [isCompressingEditPhotos, setIsCompressingEditPhotos] = useState(false);
+
+  const editSessionPhotoRef = useRef<HTMLInputElement | null>(null);
+  const editSessionPdfRef = useRef<HTMLInputElement | null>(null);
+
   // Helper to reassemble chunked PDF from Firestore
   const getFullPdfBase64 = async (pdfRecord: { id: string; name: string; base64: string; isChunked?: boolean }) => {
     if (!pdfRecord.isChunked) {
@@ -719,6 +730,367 @@ export function AbsenInduction() {
 
   const removeActivityPdf = (index: number) => {
     setActivityPdfs(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  // ─── Edit Session Handlers ───
+  const openEditSessionModal = () => {
+    if (!selectedDate) return;
+    setEditSessionDate(selectedDate);
+    setEditSessionPhotos(selectedDateDoc?.photos || []);
+    setEditSessionPdfs(selectedDateDoc?.pdfs || []);
+    setIsEditSessionOpen(true);
+  };
+
+  const handleEditSessionPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsCompressingEditPhotos(true);
+    const newPhotos: Array<{ base64: string; description: string }> = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const compressed = await compressImage(file);
+      if (compressed) {
+        newPhotos.push({ base64: compressed, description: '' });
+      }
+    }
+    setEditSessionPhotos(prev => [...prev, ...newPhotos]);
+    setIsCompressingEditPhotos(false);
+    e.target.value = '';
+  };
+
+  const removeEditSessionPhoto = (index: number) => {
+    setEditSessionPhotos(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const updateEditPhotoDescription = (index: number, desc: string) => {
+    setEditSessionPhotos(prev => prev.map((p, idx) => idx === index ? { ...p, description: desc } : p));
+  };
+
+  const handleEditSessionPdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    const MAX_SIZE = 15 * 1024 * 1024; // 15MB limit
+    const newPdfs: Array<{ id: string; name: string; base64: string; isChunked?: boolean; description: string }> = [];
+    let hasLargeFile = false;
+    
+    const promises = Array.from(files).map(file => {
+      return new Promise<void>((resolve) => {
+        if (file.size > MAX_SIZE) {
+          hasLargeFile = true;
+          resolve();
+          return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const base64 = event.target?.result as string;
+          if (base64) {
+            newPdfs.push({
+              id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 9),
+              name: file.name,
+              base64,
+              isChunked: false,
+              description: ''
+            });
+          }
+          resolve();
+        };
+        reader.onerror = () => resolve();
+        reader.readAsDataURL(file);
+      });
+    });
+    
+    Promise.all(promises).then(() => {
+      if (hasLargeFile) {
+        toast.error("Ada file PDF yang melebihi batas ukuran 15MB dan dilewati.");
+      }
+      if (newPdfs.length > 0) {
+        setEditSessionPdfs(prev => [...prev, ...newPdfs]);
+      }
+    });
+    e.target.value = '';
+  };
+
+  const removeEditSessionPdf = (index: number) => {
+    setEditSessionPdfs(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleSaveSessionEdit = async () => {
+    if (!editSessionDate) {
+      toast.error("Tanggal tidak boleh kosong");
+      return;
+    }
+    
+    setIsSavingSession(true);
+    const saveToastId = toast.loading("Menyimpan perubahan sesi...");
+    
+    try {
+      const batchPromises: Array<Promise<any>> = [];
+      const oldDate = selectedDate;
+      const newDate = editSessionDate;
+      
+      // 1. Delete chunks of PDFs that are deleted in this edit session
+      const originalPdfs = selectedDateDoc?.pdfs || [];
+      const deletedPdfs = originalPdfs.filter(orig => !editSessionPdfs.some(p => p.id === orig.id));
+      for (const pdf of deletedPdfs) {
+        const qChunks = query(collection(db, 'absen_induction_chunks'), where('pdfId', '==', pdf.id));
+        const chunkSnap = await getDocs(qChunks);
+        chunkSnap.forEach(chunkDoc => {
+          batchPromises.push(deleteDoc(doc(db, 'absen_induction_chunks', chunkDoc.id)));
+        });
+      }
+      
+      // 2. If date changed, update all participant records
+      if (newDate !== oldDate) {
+        for (const rec of dateRecords) {
+          batchPromises.push(
+            updateDoc(doc(db, 'absen_induction', rec.id), {
+              tanggal: newDate,
+              updatedAt: serverTimestamp()
+            })
+          );
+        }
+      }
+      
+      // 3. Update or create the Documentation document
+      if (selectedDateDoc) {
+        // If there's an existing documentation doc, check if we need to merge with a target date doc
+        const targetDoc = docRecords.find(d => d.tanggal === newDate && d.id !== selectedDateDoc.id);
+        
+        if (targetDoc) {
+          // Merge photos
+          const mergedPhotos = [...(targetDoc.photos || []), ...editSessionPhotos];
+          
+          // Process PDFs
+          const finalPdfs = [];
+          const chunkPromises = [];
+          const CHUNK_SIZE = 800000;
+          
+          for (const pdf of editSessionPdfs) {
+            if (!pdf.base64) {
+              finalPdfs.push(pdf);
+              continue;
+            }
+            
+            // New PDF upload: chunk it into targetDoc
+            const pdfBase64 = pdf.base64;
+            let chunkIndex = 0;
+            for (let i = 0; i < pdfBase64.length; i += CHUNK_SIZE) {
+              const chunkData = pdfBase64.substring(i, i + CHUNK_SIZE);
+              chunkPromises.push(
+                addDoc(collection(db, 'absen_induction_chunks'), {
+                  docId: targetDoc.id,
+                  pdfId: pdf.id,
+                  chunkIndex: chunkIndex,
+                  data: chunkData,
+                  createdAt: serverTimestamp()
+                })
+              );
+              chunkIndex++;
+            }
+            finalPdfs.push({
+              id: pdf.id,
+              name: pdf.name,
+              base64: "",
+              isChunked: true,
+              description: pdf.description || ""
+            });
+          }
+          if (chunkPromises.length > 0) {
+            await Promise.all(chunkPromises);
+          }
+          
+          // Update targetDoc
+          batchPromises.push(
+            updateDoc(doc(db, 'absen_induction', targetDoc.id), {
+              photos: mergedPhotos,
+              pdfs: [...(targetDoc.pdfs || []), ...finalPdfs],
+              updatedAt: serverTimestamp()
+            })
+          );
+          
+          // Transfer chunks of the old documentation to the target documentation
+          const chunksQuery = query(collection(db, 'absen_induction_chunks'), where('docId', '==', selectedDateDoc.id));
+          const chunksSnap = await getDocs(chunksQuery);
+          chunksSnap.forEach(chunkDoc => {
+            batchPromises.push(
+              updateDoc(doc(db, 'absen_induction_chunks', chunkDoc.id), {
+                docId: targetDoc.id
+              })
+            );
+          });
+          
+          // Delete old documentation record
+          batchPromises.push(deleteDoc(doc(db, 'absen_induction', selectedDateDoc.id)));
+        } else {
+          // No target documentation doc, update the current one
+          const finalPdfs = [];
+          const chunkPromises = [];
+          const CHUNK_SIZE = 800000;
+          
+          for (const pdf of editSessionPdfs) {
+            if (!pdf.base64) {
+              finalPdfs.push(pdf);
+              continue;
+            }
+            
+            const pdfBase64 = pdf.base64;
+            let chunkIndex = 0;
+            for (let i = 0; i < pdfBase64.length; i += CHUNK_SIZE) {
+              const chunkData = pdfBase64.substring(i, i + CHUNK_SIZE);
+              chunkPromises.push(
+                addDoc(collection(db, 'absen_induction_chunks'), {
+                  docId: selectedDateDoc.id,
+                  pdfId: pdf.id,
+                  chunkIndex: chunkIndex,
+                  data: chunkData,
+                  createdAt: serverTimestamp()
+                })
+              );
+              chunkIndex++;
+            }
+            finalPdfs.push({
+              id: pdf.id,
+              name: pdf.name,
+              base64: "",
+              isChunked: true,
+              description: pdf.description || ""
+            });
+          }
+          if (chunkPromises.length > 0) {
+            await Promise.all(chunkPromises);
+          }
+          
+          batchPromises.push(
+            updateDoc(doc(db, 'absen_induction', selectedDateDoc.id), {
+              tanggal: newDate,
+              photos: editSessionPhotos,
+              pdfs: finalPdfs,
+              updatedAt: serverTimestamp()
+            })
+          );
+        }
+      } else {
+        // No documentation doc existed initially, but maybe photos/PDFs were added
+        if (editSessionPhotos.length > 0 || editSessionPdfs.length > 0) {
+          const targetDoc = docRecords.find(d => d.tanggal === newDate);
+          if (targetDoc) {
+            const finalPdfs = [];
+            const chunkPromises = [];
+            const CHUNK_SIZE = 800000;
+            
+            for (const pdf of editSessionPdfs) {
+              if (!pdf.base64) {
+                finalPdfs.push(pdf);
+                continue;
+              }
+              
+              const pdfBase64 = pdf.base64;
+              let chunkIndex = 0;
+              for (let i = 0; i < pdfBase64.length; i += CHUNK_SIZE) {
+                const chunkData = pdfBase64.substring(i, i + CHUNK_SIZE);
+                chunkPromises.push(
+                  addDoc(collection(db, 'absen_induction_chunks'), {
+                    docId: targetDoc.id,
+                    pdfId: pdf.id,
+                    chunkIndex: chunkIndex,
+                    data: chunkData,
+                    createdAt: serverTimestamp()
+                  })
+                );
+                chunkIndex++;
+              }
+              finalPdfs.push({
+                id: pdf.id,
+                name: pdf.name,
+                base64: "",
+                isChunked: true,
+                description: pdf.description || ""
+              });
+            }
+            if (chunkPromises.length > 0) {
+              await Promise.all(chunkPromises);
+            }
+            
+            batchPromises.push(
+              updateDoc(doc(db, 'absen_induction', targetDoc.id), {
+                photos: [...(targetDoc.photos || []), ...editSessionPhotos],
+                pdfs: [...(targetDoc.pdfs || []), ...finalPdfs],
+                updatedAt: serverTimestamp()
+              })
+            );
+          } else {
+            // Create a brand new documentation doc
+            const docRef = await addDoc(collection(db, 'absen_induction'), {
+              tanggal: newDate,
+              isDocumentation: true,
+              photos: [],
+              pdfs: [],
+              createdAt: serverTimestamp()
+            });
+            const docId = docRef.id;
+            
+            const finalPdfs = [];
+            const chunkPromises = [];
+            const CHUNK_SIZE = 800000;
+            
+            for (const pdf of editSessionPdfs) {
+              const pdfBase64 = pdf.base64;
+              let chunkIndex = 0;
+              for (let i = 0; i < pdfBase64.length; i += CHUNK_SIZE) {
+                const chunkData = pdfBase64.substring(i, i + CHUNK_SIZE);
+                chunkPromises.push(
+                  addDoc(collection(db, 'absen_induction_chunks'), {
+                    docId: docId,
+                    pdfId: pdf.id,
+                    chunkIndex: chunkIndex,
+                    data: chunkData,
+                    createdAt: serverTimestamp()
+                  })
+                );
+                chunkIndex++;
+              }
+              finalPdfs.push({
+                id: pdf.id,
+                name: pdf.name,
+                base64: "",
+                isChunked: true,
+                description: pdf.description || ""
+              });
+            }
+            if (chunkPromises.length > 0) {
+              await Promise.all(chunkPromises);
+            }
+            
+            batchPromises.push(
+              updateDoc(doc(db, 'absen_induction', docId), {
+                photos: editSessionPhotos,
+                pdfs: finalPdfs
+              })
+            );
+          }
+        }
+      }
+      
+      if (batchPromises.length > 0) {
+        await Promise.all(batchPromises);
+      }
+      
+      toast.success("Berhasil memperbarui sesi induction!", { id: saveToastId });
+      
+      // Update UI Navigation States
+      setSelectedDate(newDate);
+      const newMonth = newDate.substring(0, 7);
+      setSelectedMonth(newMonth);
+      
+      setIsEditSessionOpen(false);
+    } catch (err: any) {
+      toast.error("Gagal memperbarui sesi: " + err.message, { id: saveToastId });
+      console.error("Edit session error:", err);
+    } finally {
+      setIsSavingSession(false);
+    }
   };
 
   // ─── Submit ───
@@ -2011,6 +2383,16 @@ export function AbsenInduction() {
                   {viewLevel === 'records' && (selectedDate ? formatIndonesianDate(selectedDate) : '')}
                 </h3>
               </div>
+
+              {viewLevel === 'records' && selectedDate && (
+                <button
+                  onClick={openEditSessionModal}
+                  className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/20 hover:border-blue-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  Edit Sesi / Foto
+                </button>
+              )}
             </div>
           </div>
 
@@ -2244,6 +2626,194 @@ export function AbsenInduction() {
           </div>
         </div>
       </div>
+
+      {/* ─── Edit Session Modal ─── */}
+      <AnimatePresence>
+        {isEditSessionOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { if (!isSavingSession) setIsEditSessionOpen(false); }}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] max-w-2xl max-h-[90vh] bg-slate-900 border border-slate-800 rounded-2xl p-6 z-[110] shadow-2xl flex flex-col font-sans"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-slate-850 pb-4 mb-4">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Pencil className="w-4 h-4 text-blue-400" />
+                  Edit Sesi & Dokumentasi
+                </h3>
+                <button
+                  onClick={() => setIsEditSessionOpen(false)}
+                  disabled={isSavingSession}
+                  className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-all disabled:opacity-50"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar">
+                {/* Date */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1.5">Tanggal Sesi</label>
+                  <input
+                    type="date"
+                    value={editSessionDate}
+                    onChange={e => setEditSessionDate(e.target.value)}
+                    disabled={isSavingSession}
+                    className="w-full px-4 py-2.5 bg-slate-800/60 border border-slate-700/50 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all disabled:opacity-50"
+                  />
+                </div>
+
+                {/* Photos */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5">
+                    <Camera className="w-3.5 h-3.5 text-blue-400" /> Foto Dokumentasi
+                  </label>
+                  <div className="bg-slate-800/30 border border-slate-800 rounded-xl p-4 space-y-3">
+                    <input
+                      ref={editSessionPhotoRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleEditSessionPhotoUpload}
+                      disabled={isSavingSession || isCompressingEditPhotos}
+                      className="hidden"
+                    />
+
+                    {editSessionPhotos.length > 0 && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {editSessionPhotos.map((p, idx) => (
+                          <div key={idx} className="bg-slate-900/60 border border-slate-800 rounded-lg p-2 space-y-2 relative group">
+                            <div className="relative aspect-video rounded overflow-hidden bg-slate-950">
+                              <img
+                                src={p.base64}
+                                alt={`Foto edit ${idx + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => removeEditSessionPhoto(idx)}
+                                disabled={isSavingSession}
+                                title="Hapus foto"
+                                className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500/90 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                              >
+                                <X className="w-3.5 h-3.5 text-white" />
+                              </button>
+                            </div>
+                            <input
+                              type="text"
+                              value={p.description || ''}
+                              onChange={e => updateEditPhotoDescription(idx, e.target.value)}
+                              disabled={isSavingSession}
+                              placeholder="Deskripsi foto..."
+                              className="w-full text-[10px] bg-slate-900 border border-slate-800 rounded px-2 py-1 text-slate-200 focus:outline-none focus:border-blue-500/50"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => editSessionPhotoRef.current?.click()}
+                      disabled={isSavingSession || isCompressingEditPhotos}
+                      className="w-full px-3 py-2.5 bg-slate-900/50 border border-dashed border-slate-800 hover:border-blue-500/40 rounded-lg text-xs text-slate-400 hover:text-blue-400 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50"
+                    >
+                      <Camera className="w-4 h-4 text-blue-400" />
+                      {isCompressingEditPhotos ? "Mengompresi..." : "Upload / Tambah Foto"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* PDFs */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-blue-400" /> Dokumen PDF
+                  </label>
+                  <div className="bg-slate-800/30 border border-slate-800 rounded-xl p-4 space-y-3">
+                    <input
+                      ref={editSessionPdfRef}
+                      type="file"
+                      accept="application/pdf"
+                      multiple
+                      onChange={handleEditSessionPdfUpload}
+                      disabled={isSavingSession}
+                      className="hidden"
+                    />
+
+                    {editSessionPdfs.length > 0 && (
+                      <div className="space-y-2">
+                        {editSessionPdfs.map((pdf, idx) => (
+                          <div key={idx} className="bg-slate-900/60 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between gap-3 relative group">
+                            <div className="flex items-center gap-2 truncate">
+                              <FileText className="w-4 h-4 text-red-400 flex-shrink-0" />
+                              <span className="text-xs text-slate-200 truncate font-medium" title={pdf.name}>
+                                {pdf.name}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeEditSessionPdf(idx)}
+                              disabled={isSavingSession}
+                              title="Hapus PDF"
+                              className="p-1 hover:bg-red-500/10 text-red-450 rounded transition disabled:opacity-50"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => editSessionPdfRef.current?.click()}
+                      disabled={isSavingSession}
+                      className="w-full px-3 py-2.5 bg-slate-900/50 border border-dashed border-slate-800 hover:border-blue-500/40 rounded-lg text-xs text-slate-400 hover:text-blue-400 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50"
+                    >
+                      <FileText className="w-4 h-4 text-blue-400" />
+                      Upload / Tambah PDF
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex gap-3 border-t border-slate-850 pt-4 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsEditSessionOpen(false)}
+                  disabled={isSavingSession}
+                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 rounded-xl text-sm font-bold transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveSessionEdit}
+                  disabled={isSavingSession || isCompressingEditPhotos}
+                  className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-blue-500/10"
+                >
+                  {isSavingSession ? (
+                    <><RefreshCw className="w-4 h-4 animate-spin" /> Menyimpan...</>
+                  ) : (
+                    <><Save className="w-4 h-4" /> Simpan Perubahan</>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* ─── Delete Date Confirmation Modal ─── */}
       <AnimatePresence>
