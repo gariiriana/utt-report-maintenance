@@ -1930,9 +1930,6 @@ export function AbsenInduction() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl shadow-lg shadow-blue-500/20">
-              <Users className="w-6 h-6 text-white" />
-            </div>
             Absen Induction
           </h2>
           <p className="text-slate-400 text-sm mt-1">Input dan kelola data absensi induction</p>
