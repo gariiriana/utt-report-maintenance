@@ -6,7 +6,7 @@ import {
   TrendingUp, CheckCircle, XCircle,
   Folder, ChevronLeft, Pencil, Camera, Upload, X, UserPlus, Save
 } from 'lucide-react';
-import { collection, addDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, where, updateDoc, writeBatch, getDocs } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, where, updateDoc, writeBatch, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
@@ -201,8 +201,20 @@ export function AbsenTBM() {
     const q = query(collection(db, 'absen_tbm'), where('isPersonnel', '==', true));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list: Personnel[] = [];
+      const seenNames = new Set<string>();
+      const duplicatesToDelete: string[] = [];
+
       snapshot.forEach(docSnap => {
         const data = docSnap.data();
+        const name = (data.nama || '').trim().toUpperCase();
+        if (name) {
+          if (seenNames.has(name)) {
+            duplicatesToDelete.push(docSnap.id);
+            return; // Skip adding to local list to immediately clean UI
+          }
+          seenNames.add(name);
+        }
+
         list.push({
           id: docSnap.id,
           nama: data.nama || '',
@@ -210,6 +222,20 @@ export function AbsenTBM() {
           category: data.category || '',
         });
       });
+
+      // Automatically clean up duplicate documents from the database
+      if (duplicatesToDelete.length > 0) {
+        console.log("Removing duplicate personnel documents from database:", duplicatesToDelete);
+        duplicatesToDelete.forEach(async (dupId) => {
+          try {
+            await deleteDoc(doc(db, 'absen_tbm', dupId));
+            console.log(`Successfully deleted duplicate doc ${dupId}`);
+          } catch (err) {
+            console.error(`Failed to delete duplicate doc ${dupId}:`, err);
+          }
+        });
+      }
+
       // Sort alphabetically by name
       list.sort((a, b) => a.nama.localeCompare(b.nama));
       setPersonnelList(list);
@@ -229,8 +255,10 @@ export function AbsenTBM() {
           const promises: Promise<any>[] = [];
           Object.entries(TBM_LISTS).forEach(([category, members]) => {
             members.forEach(m => {
+              // Use a deterministic document ID to prevent duplicates under hot-reload/strict mode
+              const docId = `personnel_${m.nama.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
               promises.push(
-                addDoc(collection(db, 'absen_tbm'), {
+                setDoc(doc(db, 'absen_tbm', docId), {
                   isPersonnel: true,
                   nama: m.nama,
                   jabatan: m.jabatan,
