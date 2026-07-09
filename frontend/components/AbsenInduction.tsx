@@ -6,7 +6,7 @@ import {
   Folder, ChevronLeft, Pencil,
   Camera, X, Save, Users, Building2, MessageSquare
 } from 'lucide-react';
-import { collection, addDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, updateDoc, where, getDocs } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
@@ -32,7 +32,7 @@ interface DocumentationRecord {
   tanggal: string; // YYYY-MM-DD
   isDocumentation: boolean;
   photos: Array<{ base64: string; description: string }>;
-  pdfs?: Array<{ name: string; base64: string; description?: string }>;
+  pdfs?: Array<{ id: string; name: string; base64: string; isChunked?: boolean; description?: string }>;
 }
 
 // ─── Helper Functions ───
@@ -423,7 +423,7 @@ export function AbsenInduction() {
   const [activityPhotos, setActivityPhotos] = useState<Array<{ base64: string; description: string }>>([]);
 
   // Multiple activity PDFs for the induction event
-  const [activityPdfs, setActivityPdfs] = useState<Array<{ name: string; base64: string; description: string }>>([]);
+  const [activityPdfs, setActivityPdfs] = useState<Array<{ id: string; name: string; base64: string; isChunked?: boolean; description: string }>>([]);
 
   // Inline edit state for existing records
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
@@ -438,10 +438,39 @@ export function AbsenInduction() {
   const activityPhotoRef = useRef<HTMLInputElement | null>(null);
   const activityPdfRef = useRef<HTMLInputElement | null>(null);
 
+  // Helper to reassemble chunked PDF from Firestore
+  const getFullPdfBase64 = async (pdfRecord: { id: string; name: string; base64: string; isChunked?: boolean }) => {
+    if (!pdfRecord.isChunked) {
+      return pdfRecord.base64;
+    }
+    const q = query(
+      collection(db, 'absen_induction_chunks'),
+      where('pdfId', '==', pdfRecord.id)
+    );
+    const snapshot = await getDocs(q);
+    const docsData: Array<{ chunkIndex: number; data: string }> = [];
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      docsData.push({
+        chunkIndex: data.chunkIndex,
+        data: data.data
+      });
+    });
+    docsData.sort((a, b) => a.chunkIndex - b.chunkIndex);
+    return docsData.map(d => d.data).join('');
+  };
+
   // Helper to open PDF in a new tab
-  const openPdf = (base64String: string, fileName = 'document.pdf') => {
+  const openPdf = async (pdfRecord: { id: string; name: string; base64: string; isChunked?: boolean }) => {
+    let toastId = null;
     try {
-      console.log("Membuka PDF:", fileName);
+      if (pdfRecord.isChunked) {
+        toastId = toast.loading("Memuat file PDF...");
+      }
+      const base64String = await getFullPdfBase64(pdfRecord);
+      if (toastId) toast.dismiss(toastId);
+
+      console.log("Membuka PDF:", pdfRecord.name);
       const base64Parts = base64String.split(';base64,');
       const base64Data = base64Parts.length > 1 ? base64Parts[1] : base64String;
       const contentType = base64Parts.length > 1 ? base64Parts[0].replace('data:', '') : 'application/pdf';
@@ -456,8 +485,9 @@ export function AbsenInduction() {
       const fileURL = URL.createObjectURL(blob);
       window.open(fileURL, '_blank');
     } catch (err) {
-      console.error("Gagal membuka PDF:", fileName, err);
-      toast.error("Gagal membuka PDF: " + fileName);
+      if (toastId) toast.dismiss(toastId);
+      console.error("Gagal membuka PDF:", pdfRecord.name, err);
+      toast.error("Gagal membuka PDF: " + pdfRecord.name);
     }
   };
 
@@ -637,8 +667,8 @@ export function AbsenInduction() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     
-    const MAX_SIZE = 800 * 1024; // 800KB
-    const newPdfs: Array<{ name: string; base64: string; description: string }> = [];
+    const MAX_SIZE = 15 * 1024 * 1024; // 15MB limit
+    const newPdfs: Array<{ id: string; name: string; base64: string; isChunked?: boolean; description: string }> = [];
     
     let hasLargeFile = false;
     
@@ -655,8 +685,10 @@ export function AbsenInduction() {
           const base64 = event.target?.result as string;
           if (base64) {
             newPdfs.push({
+              id: Date.now().toString() + '_' + Math.random().toString(36).substr(2, 9),
               name: file.name,
               base64,
+              isChunked: false,
               description: ''
             });
           }
@@ -669,7 +701,7 @@ export function AbsenInduction() {
     
     Promise.all(promises).then(() => {
       if (hasLargeFile) {
-        toast.error("Ada file PDF yang melebihi batas ukuran 800KB dan dilewati.");
+        toast.error("Ada file PDF yang melebihi batas ukuran 15MB dan dilewati.");
       }
       if (newPdfs.length > 0) {
         setActivityPdfs(prev => [...prev, ...newPdfs]);
@@ -692,7 +724,13 @@ export function AbsenInduction() {
     }
 
     setIsSubmitting(true);
+    let submitToastId = null;
     try {
+      const needsChunking = activityPdfs.some(pdf => pdf.base64 && pdf.base64.length > 800000);
+      if (needsChunking) {
+        submitToastId = toast.loading("Memproses dan memecah file PDF besar...");
+      }
+
       // 1. Save participant rows
       const batchPromises = validRows.map(item =>
         addDoc(collection(db, 'absen_induction'), {
@@ -709,25 +747,81 @@ export function AbsenInduction() {
       // 2. Save or update documentation document for the selected date
       if (activityPhotos.length > 0 || activityPdfs.length > 0) {
         const existingDoc = docRecords.find(d => d.tanggal === formDate);
+        let docId = "";
+        
+        // Prepare list of PDFs, split large ones if needed
+        const finalPdfs = [];
+        const chunkPromises = [];
+        
+        // Resolve or create the main doc ID
         if (existingDoc) {
-          const docRef = doc(db, 'absen_induction', existingDoc.id);
-          await updateDoc(docRef, {
-            photos: activityPhotos,
-            pdfs: activityPdfs,
-            updatedAt: serverTimestamp()
-          });
+          docId = existingDoc.id;
         } else {
-          await addDoc(collection(db, 'absen_induction'), {
+          const docRef = await addDoc(collection(db, 'absen_induction'), {
             tanggal: formDate,
             isDocumentation: true,
-            photos: activityPhotos,
-            pdfs: activityPdfs,
+            photos: [],
+            pdfs: [],
             createdAt: serverTimestamp()
           });
+          docId = docRef.id;
         }
+        
+        const CHUNK_SIZE = 800000;
+        for (const pdf of activityPdfs) {
+          if (!pdf.base64) {
+            // Already uploaded and saved (existing doc)
+            finalPdfs.push(pdf);
+            continue;
+          }
+          
+          if (pdf.base64.length > CHUNK_SIZE) {
+            // Chunk base64 string
+            const pdfBase64 = pdf.base64;
+            let chunkIndex = 0;
+            for (let i = 0; i < pdfBase64.length; i += CHUNK_SIZE) {
+              const chunkData = pdfBase64.substring(i, i + CHUNK_SIZE);
+              chunkPromises.push(
+                addDoc(collection(db, 'absen_induction_chunks'), {
+                  docId: docId,
+                  pdfId: pdf.id,
+                  chunkIndex: chunkIndex,
+                  data: chunkData,
+                  createdAt: serverTimestamp()
+                })
+              );
+              chunkIndex++;
+            }
+            finalPdfs.push({
+              id: pdf.id,
+              name: pdf.name,
+              base64: "", // Keep main record empty to prevent exceeding 1MB limit
+              isChunked: true,
+              description: pdf.description || ""
+            });
+          } else {
+            // Store inline
+            finalPdfs.push(pdf);
+          }
+        }
+        
+        if (chunkPromises.length > 0) {
+          await Promise.all(chunkPromises);
+        }
+        
+        const docRef = doc(db, 'absen_induction', docId);
+        await updateDoc(docRef, {
+          photos: activityPhotos,
+          pdfs: finalPdfs,
+          updatedAt: serverTimestamp()
+        });
       }
 
-      toast.success(`Berhasil menyimpan ${validRows.length} data induction!`);
+      if (submitToastId) {
+        toast.success(`Berhasil menyimpan ${validRows.length} data induction!`, { id: submitToastId });
+      } else {
+        toast.success(`Berhasil menyimpan ${validRows.length} data induction!`);
+      }
 
       // Auto-expand date filter range if the submitted date is outside the current range
       if (formDate > endDate) {
@@ -742,8 +836,12 @@ export function AbsenInduction() {
       setActivityPhotos([]);
       setActivityPdfs([]);
     } catch (err: any) {
+      if (submitToastId) {
+        toast.error("Gagal menyimpan data: " + err.message, { id: submitToastId });
+      } else {
+        toast.error("Gagal menyimpan data: " + err.message);
+      }
       console.error("Save error:", err);
-      toast.error("Gagal menyimpan data: " + err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -798,6 +896,17 @@ export function AbsenInduction() {
 
       const existingDoc = docRecords.find(d => d.tanggal === dateStr);
       if (existingDoc) {
+        // Delete any related PDF chunks in Firestore
+        const q = query(collection(db, 'absen_induction_chunks'), where('docId', '==', existingDoc.id));
+        const chunkSnap = await getDocs(q);
+        const deletePromises: Array<Promise<void>> = [];
+        chunkSnap.forEach(chunkDoc => {
+          deletePromises.push(deleteDoc(doc(db, 'absen_induction_chunks', chunkDoc.id)));
+        });
+        if (deletePromises.length > 0) {
+          await Promise.all(deletePromises);
+        }
+
         await deleteDoc(doc(db, 'absen_induction', existingDoc.id));
       }
 
@@ -1310,15 +1419,17 @@ export function AbsenInduction() {
     }
 
     // Collect all PDF base64 strings from docRecords in range
-    const exportPdfs: Array<{ name: string; base64: string }> = [];
+    const exportPdfs: Array<{ id: string; name: string; base64: string; isChunked?: boolean }> = [];
     matchedDocs.forEach(d => {
       const docPdfs = (d as any).pdfs;
       if (docPdfs && Array.isArray(docPdfs)) {
         docPdfs.forEach((p: any) => {
-          if (p && p.base64) {
+          if (p) {
             exportPdfs.push({
+              id: p.id,
               name: p.name || 'document.pdf',
-              base64: p.base64
+              base64: p.base64,
+              isChunked: !!p.isChunked
             });
           }
         });
@@ -1340,7 +1451,8 @@ export function AbsenInduction() {
         // 2. Load and append each uploaded PDF
         for (const pdf of exportPdfs) {
           try {
-            const cleanBase64 = pdf.base64.split(';base64,').pop() || '';
+            const base64String = await getFullPdfBase64(pdf);
+            const cleanBase64 = base64String.split(';base64,').pop() || '';
             const pdfBytes = Uint8Array.from(atob(cleanBase64), c => c.charCodeAt(0));
             const subDoc = await PDFDocument.load(pdfBytes);
             const subPages = await mergedDoc.copyPages(subDoc, subDoc.getPageIndices());
@@ -1763,7 +1875,7 @@ export function AbsenInduction() {
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => openPdf(pdf.base64, pdf.name)}
+                            onClick={() => openPdf(pdf)}
                             className="px-2.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-200 rounded text-[10px] font-bold transition duration-150 active:scale-95"
                           >
                             Lihat
@@ -1967,7 +2079,7 @@ export function AbsenInduction() {
                               </div>
                               <button
                                 type="button"
-                                onClick={() => openPdf(pdf.base64, pdf.name)}
+                                onClick={() => openPdf(pdf)}
                                 className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-[10px] font-bold transition flex items-center gap-1 active:scale-95"
                               >
                                 Buka PDF
