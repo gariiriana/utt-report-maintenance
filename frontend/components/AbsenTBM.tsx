@@ -887,7 +887,7 @@ export function AbsenTBM() {
   // Handle Add Attendance Record
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const itemsToSubmit = visibleChecklist;
+    const itemsToSubmit = formCategory === 'Manual' ? manualChecklist : checklist;
     const invalid = itemsToSubmit.some(item => !item.nama.trim() || !item.jabatan.trim());
     if (invalid) {
       toast.error("Semua baris harus memiliki Nama dan Jabatan");
