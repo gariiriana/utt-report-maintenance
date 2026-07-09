@@ -187,7 +187,7 @@ export function AbsenTBM() {
   const [editedKehadiran, setEditedKehadiran] = useState<'Hadir' | 'Tidak Hadir' | 'Libur'>('Hadir');
   const [editedRemark, setEditedRemark] = useState('');
 
-  // Checklist state for the active team
+  // Checklist state for standard personnel
   const [checklist, setChecklist] = useState<Array<{
     nama: string;
     jabatan: string;
@@ -195,6 +195,28 @@ export function AbsenTBM() {
     remark: string;
     category?: string;
   }>>([]);
+
+  // Checklist state for manual inputs
+  const [manualChecklist, setManualChecklist] = useState<Array<{
+    nama: string;
+    jabatan: string;
+    kehadiran: 'Hadir' | 'Tidak Hadir' | 'Libur';
+    remark: string;
+    category?: string;
+  }>>([
+    { nama: '', jabatan: '', kehadiran: 'Hadir', remark: '', category: 'Manual' }
+  ]);
+
+  // Derived visible checklist based on selected category
+  const visibleChecklist = useMemo(() => {
+    if (formCategory === 'Semua') {
+      return checklist;
+    } else if (formCategory === 'Manual') {
+      return manualChecklist;
+    } else {
+      return checklist.filter(item => item.category === formCategory);
+    }
+  }, [checklist, manualChecklist, formCategory]);
 
   // Load personnel list from Firestore
   useEffect(() => {
@@ -278,7 +300,7 @@ export function AbsenTBM() {
     }
   }, [personnelLoading, personnelList.length]);
 
-  // Auto-fill checklist when Category, personnelList or formDate changes
+  // Auto-fill checklist when personnelList or formDate changes
   useEffect(() => {
     if (personnelLoading) return;
     
@@ -290,45 +312,50 @@ export function AbsenTBM() {
     const day = getLocalDay(formDate);
     const defaultKehadiran: 'Hadir' | 'Tidak Hadir' | 'Libur' = (day === 0 || day === 6) ? 'Libur' : 'Hadir';
 
-    if (formCategory === 'Semua') {
-      setChecklist(personnelList.map(e => ({
-        nama: e.nama,
-        jabatan: e.jabatan,
-        category: e.category,
-        kehadiran: defaultKehadiran,
-        remark: ''
-      })));
-    } else if (formCategory !== 'Manual') {
-      const filtered = personnelList.filter(e => e.category === formCategory);
-      setChecklist(filtered.map(e => ({
-        nama: e.nama,
-        jabatan: e.jabatan,
-        category: e.category,
-        kehadiran: defaultKehadiran,
-        remark: ''
-      })));
-    } else {
-      setChecklist([{
-        nama: '',
-        jabatan: '',
-        category: 'Manual',
-        kehadiran: defaultKehadiran,
-        remark: ''
-      }]);
-    }
-  }, [formCategory, personnelList, personnelLoading, formDate]);
+    // Populate all standard personnel
+    setChecklist(personnelList.map(e => ({
+      nama: e.nama,
+      jabatan: e.jabatan,
+      category: e.category,
+      kehadiran: defaultKehadiran,
+      remark: ''
+    })));
+
+    // Reset manual list
+    setManualChecklist([{
+      nama: '',
+      jabatan: '',
+      category: 'Manual',
+      kehadiran: defaultKehadiran,
+      remark: ''
+    }]);
+  }, [personnelList, personnelLoading, formDate]);
 
   const updateChecklistItem = (index: number, key: 'kehadiran' | 'remark' | 'nama' | 'jabatan', value: any) => {
-    setChecklist(prev => prev.map((item, idx) => {
-      if (idx === index) {
-        return { ...item, [key]: value };
-      }
-      return item;
-    }));
+    if (formCategory === 'Manual') {
+      setManualChecklist(prev => prev.map((item, idx) => {
+        if (idx === index) {
+          return { ...item, [key]: value };
+        }
+        return item;
+      }));
+    } else {
+      // Find the item name at the index in visibleChecklist
+      const targetItem = visibleChecklist[index];
+      if (!targetItem) return;
+
+      // Update the correct person in standard checklist
+      setChecklist(prev => prev.map(item => {
+        if (item.nama === targetItem.nama) {
+          return { ...item, [key]: value };
+        }
+        return item;
+      }));
+    }
   };
 
   const addManualRow = () => {
-    setChecklist(prev => [...prev, {
+    setManualChecklist(prev => [...prev, {
       nama: '',
       jabatan: '',
       kehadiran: 'Hadir',
@@ -338,7 +365,7 @@ export function AbsenTBM() {
   };
 
   const removeManualRow = (index: number) => {
-    setChecklist(prev => prev.filter((_, idx) => idx !== index));
+    setManualChecklist(prev => prev.filter((_, idx) => idx !== index));
   };
 
   // Firestore Realtime Listener for logs & documentation
@@ -860,7 +887,8 @@ export function AbsenTBM() {
   // Handle Add Attendance Record
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const invalid = checklist.some(item => !item.nama.trim() || !item.jabatan.trim());
+    const itemsToSubmit = visibleChecklist;
+    const invalid = itemsToSubmit.some(item => !item.nama.trim() || !item.jabatan.trim());
     if (invalid) {
       toast.error("Semua baris harus memiliki Nama dan Jabatan");
       return;
@@ -868,8 +896,8 @@ export function AbsenTBM() {
 
     setIsSubmitting(true);
     try {
-      // Save all checklist items to Firestore
-      const batchPromises = checklist.map(item => 
+      // Save all visible checklist items to Firestore
+      const batchPromises = itemsToSubmit.map(item => 
         addDoc(collection(db, 'absen_tbm'), {
           tanggal: formDate,
           nama: item.nama.trim(),
@@ -893,9 +921,34 @@ export function AbsenTBM() {
         });
       }
       
-      toast.success(`Berhasil menyimpan absensi ${checklist.length} karyawan!`);
-      // Reset checklist remarks & photos
-      setChecklist(prev => prev.map(item => ({ ...item, remark: '', kehadiran: 'Hadir' })));
+      toast.success(`Berhasil menyimpan absensi ${itemsToSubmit.length} karyawan!`);
+
+      // Reset only the submitted checklist items & photos
+      const getLocalDay = (dateStr: string) => {
+        const parts = dateStr.split('-');
+        const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        return d.getDay();
+      };
+      const day = getLocalDay(formDate);
+      const defaultKehadiran: 'Hadir' | 'Tidak Hadir' | 'Libur' = (day === 0 || day === 6) ? 'Libur' : 'Hadir';
+
+      if (formCategory === 'Manual') {
+        setManualChecklist([{
+          nama: '',
+          jabatan: '',
+          category: 'Manual',
+          kehadiran: defaultKehadiran,
+          remark: ''
+        }]);
+      } else {
+        const submittedNames = new Set(itemsToSubmit.map(item => item.nama));
+        setChecklist(prev => prev.map(item => {
+          if (submittedNames.has(item.nama)) {
+            return { ...item, remark: '', kehadiran: defaultKehadiran };
+          }
+          return item;
+        }));
+      }
       setSubmissionPhotos([]);
     } catch (err: any) {
       console.error("Save checklist error:", err);
@@ -2926,7 +2979,7 @@ export function AbsenTBM() {
               <tbody className="divide-y divide-slate-850">
                 {(() => {
                   let lastCategory = '';
-                  return checklist.map((item, index) => {
+                  return visibleChecklist.map((item, index) => {
                     const isNewCategory = formCategory === 'Semua' && item.category !== lastCategory;
                     if (isNewCategory && item.category) {
                       lastCategory = item.category;
@@ -3116,7 +3169,7 @@ export function AbsenTBM() {
             </div>
             <button
               type="submit"
-              disabled={isSubmitting || checklist.length === 0}
+              disabled={isSubmitting || visibleChecklist.length === 0}
               className="px-6 py-2.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-violet-500/25 active:scale-95 transition"
             >
               {isSubmitting ? (
@@ -3127,7 +3180,7 @@ export function AbsenTBM() {
               ) : (
                 <>
                   <CheckCircle className="w-4 h-4" />
-                  Simpan Absensi Checklist ({checklist.length} Karyawan)
+                  Simpan Absensi Checklist ({visibleChecklist.length} Karyawan)
                 </>
               )}
             </button>
