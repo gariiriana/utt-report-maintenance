@@ -12,6 +12,13 @@ import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Configure pdf.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url
+).toString();
 
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
@@ -726,9 +733,9 @@ export function AbsenInduction() {
     setIsSubmitting(true);
     let submitToastId = null;
     try {
-      const needsChunking = activityPdfs.some(pdf => pdf.base64 && pdf.base64.length > 800000);
+      const needsChunking = activityPdfs.some(pdf => pdf.base64);
       if (needsChunking) {
-        submitToastId = toast.loading("Memproses dan memecah file PDF besar...");
+        submitToastId = toast.loading("Memproses file PDF...");
       }
 
       // 1. Save participant rows
@@ -775,34 +782,29 @@ export function AbsenInduction() {
             continue;
           }
           
-          if (pdf.base64.length > CHUNK_SIZE) {
-            // Chunk base64 string
-            const pdfBase64 = pdf.base64;
-            let chunkIndex = 0;
-            for (let i = 0; i < pdfBase64.length; i += CHUNK_SIZE) {
-              const chunkData = pdfBase64.substring(i, i + CHUNK_SIZE);
-              chunkPromises.push(
-                addDoc(collection(db, 'absen_induction_chunks'), {
-                  docId: docId,
-                  pdfId: pdf.id,
-                  chunkIndex: chunkIndex,
-                  data: chunkData,
-                  createdAt: serverTimestamp()
-                })
-              );
-              chunkIndex++;
-            }
-            finalPdfs.push({
-              id: pdf.id,
-              name: pdf.name,
-              base64: "", // Keep main record empty to prevent exceeding 1MB limit
-              isChunked: true,
-              description: pdf.description || ""
-            });
-          } else {
-            // Store inline
-            finalPdfs.push(pdf);
+          // Always chunk the PDF if it has a base64 string
+          const pdfBase64 = pdf.base64;
+          let chunkIndex = 0;
+          for (let i = 0; i < pdfBase64.length; i += CHUNK_SIZE) {
+            const chunkData = pdfBase64.substring(i, i + CHUNK_SIZE);
+            chunkPromises.push(
+              addDoc(collection(db, 'absen_induction_chunks'), {
+                docId: docId,
+                pdfId: pdf.id,
+                chunkIndex: chunkIndex,
+                data: chunkData,
+                createdAt: serverTimestamp()
+              })
+            );
+            chunkIndex++;
           }
+          finalPdfs.push({
+            id: pdf.id,
+            name: pdf.name,
+            base64: "", // Keep main record empty to prevent exceeding 1MB limit
+            isChunked: true,
+            description: pdf.description || ""
+          });
         }
         
         if (chunkPromises.length > 0) {
@@ -1217,6 +1219,45 @@ export function AbsenInduction() {
     toast.success("File Excel berhasil diunduh!");
   };
 
+  // Helper to convert base64 PDF's all pages into JPEG base64 image strings
+  const convertPdfPagesToImages = async (pdfBase64: string): Promise<string[]> => {
+    try {
+      const cleanBase64 = pdfBase64.split(';base64,').pop() || '';
+      const pdfBytes = Uint8Array.from(atob(cleanBase64), c => c.charCodeAt(0));
+      
+      const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
+      const pdfDoc = await loadingTask.promise;
+      const images: string[] = [];
+      
+      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 1.5 });
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) continue;
+        
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        await page.render({
+          canvasContext: ctx,
+          viewport: viewport,
+          canvas: canvas
+        } as any).promise;
+        
+        images.push(canvas.toDataURL('image/jpeg', 0.85));
+      }
+      return images;
+    } catch (e) {
+      console.error('Failed to convert PDF pages to images:', e);
+      return [];
+    }
+  };
+
   // ─── Export PDF ───
   const handleExportPDF = async () => {
     if (filteredRecords.length === 0) {
@@ -1348,6 +1389,59 @@ export function AbsenInduction() {
       }
     });
 
+    // Process PDF document attachments, convert pages to images, and append to exportPhotos
+    let totalPdfs = 0;
+    matchedDocs.forEach(d => {
+      const docPdfs = (d as any).pdfs;
+      if (docPdfs && Array.isArray(docPdfs)) {
+        totalPdfs += docPdfs.length;
+      }
+    });
+
+    if (totalPdfs > 0) {
+      const loadToastId = toast.loading(`Sedang merender ${totalPdfs} lampiran PDF dokumen...`);
+      try {
+        for (const d of matchedDocs) {
+          const docPdfs = (d as any).pdfs;
+          if (docPdfs && Array.isArray(docPdfs)) {
+            for (const p of docPdfs) {
+              if (p) {
+                const fullBase64 = await getFullPdfBase64(p);
+                if (fullBase64) {
+                  const imgList = await convertPdfPagesToImages(fullBase64);
+                  imgList.forEach((imgBase64, pageIdx) => {
+                    const cleanName = p.name ? p.name.replace(/\.[^/.]+$/, "") : "Dokumen PDF";
+                    const pageSuffix = imgList.length > 1 ? ` (Hal ${pageIdx + 1})` : "";
+                    exportPhotos.push({
+                      tanggal: d.tanggal,
+                      base64: imgBase64,
+                      description: `${cleanName.toUpperCase()}${pageSuffix}`
+                    });
+                  });
+                }
+              }
+            }
+          }
+        }
+        toast.dismiss(loadToastId);
+      } catch (err) {
+        console.error("Gagal memproses lampiran PDF:", err);
+        toast.error("Gagal memproses beberapa lampiran PDF", { id: loadToastId });
+      }
+    }
+
+    // Pre-load all photo dimensions to preserve aspect ratio
+    const photoDimensions = await Promise.all(
+      exportPhotos.map(p =>
+        new Promise<{ width: number; height: number }>((resolve) => {
+          const img = new Image();
+          img.src = p.base64;
+          img.onload = () => resolve({ width: img.width, height: img.height });
+          img.onerror = () => resolve({ width: 0, height: 0 });
+        })
+      )
+    );
+
     if (exportPhotos.length > 0) {
       docPdf.addPage();
       
@@ -1399,14 +1493,36 @@ export function AbsenInduction() {
         }
 
         docPdf.setFontSize(8).setFont('helvetica', 'bold').setTextColor(30, 30, 30);
-        docPdf.text(`Foto Kegiatan - ${formatIndonesianDate(item.tanggal)}`, imgX, imgY - 2);
+        docPdf.text(`Foto/Dokumen - ${formatIndonesianDate(item.tanggal)}`, imgX, imgY - 2);
 
         docPdf.setDrawColor(200, 200, 200);
         docPdf.setLineWidth(0.15);
         docPdf.roundedRect(imgX, imgY, colW, 45, 1, 1, 'D');
 
+        const dims = photoDimensions[idx];
+        let imgWidth = colW - 2;
+        let imgHeight = 43;
+
+        if (dims && dims.width > 0 && dims.height > 0) {
+          const imgRatio = dims.width / dims.height;
+          const boxRatio = (colW - 2) / 43;
+
+          if (imgRatio > boxRatio) {
+            // Image is wider than box
+            imgWidth = colW - 2;
+            imgHeight = imgWidth / imgRatio;
+          } else {
+            // Image is taller than box
+            imgHeight = 43;
+            imgWidth = imgHeight * imgRatio;
+          }
+        }
+
+        const finalX = imgX + 1 + ((colW - 2) - imgWidth) / 2;
+        const finalY = imgY + 1 + (43 - imgHeight) / 2;
+
         try {
-          docPdf.addImage(item.base64, 'JPEG', imgX + 1, imgY + 1, colW - 2, 43, undefined, 'FAST');
+          docPdf.addImage(item.base64, 'JPEG', finalX, finalY, imgWidth, imgHeight, undefined, 'FAST');
         } catch (e) {
           console.error("Gagal export foto ke PDF:", e);
         }
@@ -1418,67 +1534,8 @@ export function AbsenInduction() {
       });
     }
 
-    // Collect all PDF base64 strings from docRecords in range
-    const exportPdfs: Array<{ id: string; name: string; base64: string; isChunked?: boolean }> = [];
-    matchedDocs.forEach(d => {
-      const docPdfs = (d as any).pdfs;
-      if (docPdfs && Array.isArray(docPdfs)) {
-        docPdfs.forEach((p: any) => {
-          if (p) {
-            exportPdfs.push({
-              id: p.id,
-              name: p.name || 'document.pdf',
-              base64: p.base64,
-              isChunked: !!p.isChunked
-            });
-          }
-        });
-      }
-    });
-
-    if (exportPdfs.length > 0) {
-      const toastId = toast.loading("Menggabungkan file dokumentasi PDF...");
-      try {
-        const { PDFDocument } = await import('pdf-lib');
-        const mergedDoc = await PDFDocument.create();
-
-        // 1. Load jsPDF main report
-        const mainPdfBytes = docPdf.output('arraybuffer');
-        const mainDoc = await PDFDocument.load(mainPdfBytes);
-        const copiedPages = await mergedDoc.copyPages(mainDoc, mainDoc.getPageIndices());
-        copiedPages.forEach((page) => mergedDoc.addPage(page));
-
-        // 2. Load and append each uploaded PDF
-        for (const pdf of exportPdfs) {
-          try {
-            const base64String = await getFullPdfBase64(pdf);
-            const cleanBase64 = base64String.split(';base64,').pop() || '';
-            const pdfBytes = Uint8Array.from(atob(cleanBase64), c => c.charCodeAt(0));
-            const subDoc = await PDFDocument.load(pdfBytes);
-            const subPages = await mergedDoc.copyPages(subDoc, subDoc.getPageIndices());
-            subPages.forEach((page) => mergedDoc.addPage(page));
-          } catch (pdfErr) {
-            console.error(`Gagal menggabungkan file PDF ${pdf.name}:`, pdfErr);
-          }
-        }
-
-        const mergedBytes = await mergedDoc.save();
-        const blob = new Blob([mergedBytes as any], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Absen_Induction_${startDate}_${endDate}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success("File PDF beserta lampiran berhasil diunduh!", { id: toastId });
-      } catch (err: any) {
-        console.error("Gagal menggabungkan PDF:", err);
-        toast.error("Gagal mengekspor PDF: " + err.message, { id: toastId });
-      }
-    } else {
-      docPdf.save(`Absen_Induction_${startDate}_${endDate}.pdf`);
-      toast.success("File PDF berhasil diunduh!");
-    }
+    docPdf.save(`Absen_Induction_${startDate}_${endDate}.pdf`);
+    toast.success("File PDF berhasil diunduh!");
   };
 
   // ─── Render ───

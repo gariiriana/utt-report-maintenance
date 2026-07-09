@@ -896,7 +896,38 @@ export function AbsenTBM() {
 
     setIsSubmitting(true);
     try {
-      // Save all visible checklist items to Firestore
+      // Delete existing standard category attendance and documentation documents to prevent duplicates
+      if (formCategory !== 'Manual') {
+        const qExisting = query(
+          collection(db, 'absen_tbm'),
+          where('tanggal', '==', formDate)
+        );
+        const querySnapshot = await getDocs(qExisting);
+        const batch = writeBatch(db);
+        let deleteCount = 0;
+        querySnapshot.docs.forEach(docSnap => {
+          const data = docSnap.data();
+          if (!data.isPersonnel) {
+            const isStandardCategory = ['UTT Daily', 'UTT Mobile', 'DME', 'Semua'].includes(data.category);
+            // Delete attendance records of standard categories
+            if (!data.isDocumentation && isStandardCategory) {
+              batch.delete(docSnap.ref);
+              deleteCount++;
+            }
+            // Delete documentation records of standard categories ONLY if we are uploading new photos
+            else if (data.isDocumentation && isStandardCategory && submissionPhotos.length > 0) {
+              batch.delete(docSnap.ref);
+              deleteCount++;
+            }
+          }
+        });
+        if (deleteCount > 0) {
+          await batch.commit();
+          console.log(`Deleted ${deleteCount} duplicate TBM records for date ${formDate}`);
+        }
+      }
+
+      // Save all checklist items to Firestore
       const batchPromises = itemsToSubmit.map(item => 
         addDoc(collection(db, 'absen_tbm'), {
           tanggal: formDate,
@@ -916,7 +947,7 @@ export function AbsenTBM() {
           tanggal: formDate,
           isDocumentation: true,
           photos: submissionPhotos,
-          category: formCategory,
+          category: formCategory === 'Manual' ? 'Manual' : 'Semua',
           createdAt: serverTimestamp()
         });
       }
@@ -1592,6 +1623,27 @@ export function AbsenTBM() {
       return matchDate && d.photos && d.photos.length > 0;
     }).sort((a, b) => b.tanggal.localeCompare(a.tanggal));
 
+    // Pre-load all photo dimensions to preserve aspect ratio
+    const tbmPhotosToLoad: string[] = [];
+    filteredDocs.forEach(d => {
+      if (d.photos) {
+        d.photos.forEach(p => {
+          tbmPhotosToLoad.push(p);
+        });
+      }
+    });
+
+    const tbmPhotoDimensions = await Promise.all(
+      tbmPhotosToLoad.map(p =>
+        new Promise<{ width: number; height: number }>((resolve) => {
+          const img = new Image();
+          img.src = p;
+          img.onload = () => resolve({ width: img.width, height: img.height });
+          img.onerror = () => resolve({ width: 0, height: 0 });
+        })
+      )
+    );
+
     if (filteredDocs.length > 0) {
       docPdf.addPage();
       let currentY = margin + 10;
@@ -1603,6 +1655,7 @@ export function AbsenTBM() {
       docPdf.text('LAMPIRAN DOKUMENTASI KEHADIRAN TBM', margin, currentY);
       currentY += 8;
       
+      let photoGlobalIdx = 0;
       filteredDocs.forEach(docGroup => {
         const dateLabel = formatIndonesianDate(docGroup.tanggal) + (docGroup.category ? ` (${docGroup.category})` : '');
         
@@ -1636,12 +1689,34 @@ export function AbsenTBM() {
             currentY += 6;
           }
           
+          const dims = tbmPhotoDimensions[photoGlobalIdx];
+          photoGlobalIdx++;
+
+          let drawWidth = photoWidth;
+          let drawHeight = photoHeight;
+
+          if (dims && dims.width > 0 && dims.height > 0) {
+            const imgRatio = dims.width / dims.height;
+            const boxRatio = photoWidth / photoHeight;
+
+            if (imgRatio > boxRatio) {
+              drawWidth = photoWidth;
+              drawHeight = drawWidth / imgRatio;
+            } else {
+              drawHeight = photoHeight;
+              drawWidth = drawHeight * imgRatio;
+            }
+          }
+
+          const finalX = posX + (photoWidth - drawWidth) / 2;
+          const finalY = currentY + (photoHeight - drawHeight) / 2;
+
           try {
             let format = 'JPEG';
             if (photoData.includes('image/png') || photoData.includes('png')) {
               format = 'PNG';
             }
-            docPdf.addImage(photoData, format, posX, currentY, photoWidth, photoHeight, undefined, 'FAST');
+            docPdf.addImage(photoData, format, finalX, finalY, drawWidth, drawHeight, undefined, 'FAST');
           } catch (err) {
             console.error("Error adding photo to PDF:", err);
             docPdf.setDrawColor(226, 232, 240);
@@ -3169,7 +3244,7 @@ export function AbsenTBM() {
             </div>
             <button
               type="submit"
-              disabled={isSubmitting || visibleChecklist.length === 0}
+              disabled={isSubmitting || (formCategory === 'Manual' ? manualChecklist.length === 0 : checklist.length === 0)}
               className="px-6 py-2.5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-violet-500/25 active:scale-95 transition"
             >
               {isSubmitting ? (
@@ -3180,7 +3255,7 @@ export function AbsenTBM() {
               ) : (
                 <>
                   <CheckCircle className="w-4 h-4" />
-                  Simpan Absensi Checklist ({visibleChecklist.length} Karyawan)
+                  Simpan Absensi Checklist ({formCategory === 'Manual' ? manualChecklist.length : checklist.length} Karyawan)
                 </>
               )}
             </button>
