@@ -4,7 +4,8 @@ import {
   Calendar, FileText, FileSpreadsheet,
   Plus, Trash2, Search, RefreshCw,
   TrendingUp, CheckCircle, XCircle,
-  Folder, ChevronLeft, Pencil, Camera, Upload, X, UserPlus, Save
+  Folder, ChevronLeft, Pencil, Camera, Upload, X, UserPlus, Save,
+  Clock, Zap
 } from 'lucide-react';
 import { collection, addDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, where, updateDoc, writeBatch, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '@/api/firebase';
@@ -25,6 +26,9 @@ interface AttendanceRecord {
   jabatan: string;
   remark: string;
   category?: string;
+  jamKerja: number;   // total jam kerja (desimal)
+  isLembur: boolean;  // flag lembur
+  jamLembur: number;  // jam lembur = max(0, jamKerja - 8)
 }
 
 interface Personnel {
@@ -186,6 +190,7 @@ export function AbsenTBM() {
   const [editedJabatan, setEditedJabatan] = useState('');
   const [editedKehadiran, setEditedKehadiran] = useState<'Hadir' | 'Tidak Hadir' | 'Libur'>('Hadir');
   const [editedRemark, setEditedRemark] = useState('');
+  const [editedJamKerja, setEditedJamKerja] = useState<number>(8);
 
   // Checklist state for standard personnel
   const [checklist, setChecklist] = useState<Array<{
@@ -194,6 +199,7 @@ export function AbsenTBM() {
     kehadiran: 'Hadir' | 'Tidak Hadir' | 'Libur';
     remark: string;
     category?: string;
+    jamKerja: number;
   }>>([]);
 
   // Checklist state for manual inputs
@@ -203,8 +209,9 @@ export function AbsenTBM() {
     kehadiran: 'Hadir' | 'Tidak Hadir' | 'Libur';
     remark: string;
     category?: string;
+    jamKerja: number;
   }>>([
-    { nama: '', jabatan: '', kehadiran: 'Hadir', remark: '', category: 'Manual' }
+    { nama: '', jabatan: '', kehadiran: 'Hadir', remark: '', category: 'Manual', jamKerja: 8 }
   ]);
 
   // Derived visible checklist based on selected category
@@ -318,7 +325,8 @@ export function AbsenTBM() {
       jabatan: e.jabatan,
       category: e.category,
       kehadiran: defaultKehadiran,
-      remark: ''
+      remark: '',
+      jamKerja: defaultKehadiran === 'Hadir' ? 8 : 0
     })));
 
     // Reset manual list
@@ -327,15 +335,29 @@ export function AbsenTBM() {
       jabatan: '',
       category: 'Manual',
       kehadiran: defaultKehadiran,
-      remark: ''
+      remark: '',
+      jamKerja: defaultKehadiran === 'Hadir' ? 8 : 0
     }]);
   }, [personnelList, personnelLoading, formDate]);
 
-  const updateChecklistItem = (index: number, key: 'kehadiran' | 'remark' | 'nama' | 'jabatan', value: any) => {
+  const updateChecklistItem = (index: number, key: 'kehadiran' | 'remark' | 'nama' | 'jabatan' | 'jamKerja', value: any) => {
+    const applyAutoJamKerja = (item: any, updatedKey: string, updatedValue: any) => {
+      const updated = { ...item, [updatedKey]: updatedValue };
+      // Auto-set jamKerja when kehadiran changes
+      if (updatedKey === 'kehadiran') {
+        if (updatedValue === 'Hadir') {
+          updated.jamKerja = 8;
+        } else {
+          updated.jamKerja = 0;
+        }
+      }
+      return updated;
+    };
+
     if (formCategory === 'Manual') {
       setManualChecklist(prev => prev.map((item, idx) => {
         if (idx === index) {
-          return { ...item, [key]: value };
+          return applyAutoJamKerja(item, key, value);
         }
         return item;
       }));
@@ -347,7 +369,7 @@ export function AbsenTBM() {
       // Update the correct person in standard checklist
       setChecklist(prev => prev.map(item => {
         if (item.nama === targetItem.nama) {
-          return { ...item, [key]: value };
+          return applyAutoJamKerja(item, key, value);
         }
         return item;
       }));
@@ -360,7 +382,8 @@ export function AbsenTBM() {
       jabatan: '',
       kehadiran: 'Hadir',
       remark: '',
-      category: 'Manual'
+      category: 'Manual',
+      jamKerja: 8
     }]);
   };
 
@@ -396,6 +419,9 @@ export function AbsenTBM() {
             jabatan: data.jabatan || '',
             remark: data.remark || '',
             category: data.category || '',
+            jamKerja: data.jamKerja || 0,
+            isLembur: data.isLembur || false,
+            jamLembur: data.jamLembur || 0,
           });
         }
       });
@@ -456,7 +482,7 @@ export function AbsenTBM() {
     const chartData = Object.values(dateGroups).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
 
     // Group by Name for Personnel Stats
-    const personGroups: Record<string, { nama: string; jabatan: string; category: string; hadir: number; total: number }> = {};
+    const personGroups: Record<string, { nama: string; jabatan: string; category: string; hadir: number; total: number; totalJamKerja: number; totalJamLembur: number }> = {};
     filteredRecords.forEach(r => {
       if (!personGroups[r.nama]) {
         let category = r.category || '';
@@ -475,7 +501,7 @@ export function AbsenTBM() {
             category = found.category;
           }
         }
-        personGroups[r.nama] = { nama: r.nama, jabatan: r.jabatan, category: category || 'Manual', hadir: 0, total: 0 };
+        personGroups[r.nama] = { nama: r.nama, jabatan: r.jabatan, category: category || 'Manual', hadir: 0, total: 0, totalJamKerja: 0, totalJamLembur: 0 };
       }
       if (r.kehadiran !== 'Libur') {
         personGroups[r.nama].total += 1;
@@ -483,6 +509,8 @@ export function AbsenTBM() {
           personGroups[r.nama].hadir += 1;
         }
       }
+      personGroups[r.nama].totalJamKerja += (r.jamKerja || 0);
+      personGroups[r.nama].totalJamLembur += (r.jamLembur || 0);
     });
 
     const personStats = Object.values(personGroups).map(p => ({
@@ -491,15 +519,22 @@ export function AbsenTBM() {
       category: p.category,
       rate: p.total > 0 ? Math.round((p.hadir / p.total) * 100) : 0,
       hadir: p.hadir,
-      total: p.total
+      total: p.total,
+      totalJamKerja: p.totalJamKerja,
+      totalJamLembur: p.totalJamLembur
     })).sort((a, b) => b.rate - a.rate || a.nama.localeCompare(b.nama));
+
+    // Compute overall jam kerja & lembur totals
+    const totalJamKerja = filteredRecords.reduce((sum, r) => sum + (r.jamKerja || 0), 0);
+    const totalJamLembur = filteredRecords.reduce((sum, r) => sum + (r.jamLembur || 0), 0);
+    const totalOrangLembur = new Set(filteredRecords.filter(r => (r.jamLembur || 0) > 0).map(r => r.nama)).size;
 
     const pieData = [
       { name: 'Hadir', value: hadir, color: '#10b981' },
       { name: 'Tidak Hadir', value: tidakHadir, color: '#f43f5e' }
     ];
 
-    return { total, hadir, tidakHadir, rate, chartData, pieData, personStats };
+    return { total, hadir, tidakHadir, rate, chartData, pieData, personStats, totalJamKerja, totalJamLembur, totalOrangLembur };
   }, [filteredRecords, personnelList]);
 
   // Draw web chart
@@ -512,54 +547,122 @@ export function AbsenTBM() {
     // Clear previous drawing
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // ── LEFT SIDE: Overall Donut Chart ──
-    const donutCx = 220;
-    const donutCy = 180;
-    const donutR = 75;
-    const donutInner = 48;
+    // ── LEFT SIDE: Overall Donuts (Kehadiran & Jam Kerja) ──
+    const donut1Cx = 170;
+    const donut2Cx = 410;
+    const donutCy = 175;
+    const donutR = 68;
+    const donutInner = 44;
 
-    // Title
-    ctx.font = 'bold 20px Arial';
-    ctx.fillStyle = '#ffffff'; // White text
+    // Title for Donut 1
+    ctx.font = 'bold 15px Arial';
+    ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
-    ctx.fillText('GRAFIK KESELURUHAN', donutCx, 45);
+    ctx.fillText('KEHADIRAN ABSENSI', donut1Cx, 45);
 
-    const hadirCount = stats.hadir;
+    // Donut 1 (Kehadiran) slices (Show Hadir only)
+    if (stats.hadir === 0) {
+      ctx.beginPath();
+      ctx.arc(donut1Cx, donutCy, donutR, 0, Math.PI * 2);
+      ctx.fillStyle = '#475569';
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(donut1Cx, donutCy, donutR, 0, Math.PI * 2);
+      ctx.fillStyle = '#10b981';
+      ctx.fill();
+    }
 
-    // Hadir slice (emerald) - solid green circle
+    // Donut 1 hole
     ctx.beginPath();
-    ctx.moveTo(donutCx, donutCy);
-    ctx.arc(donutCx, donutCy, donutR, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.fillStyle = '#10b981';
-    ctx.fill();
-
-    // Donut hole (matches dark background of the card: #0f172a / #030712)
-    ctx.beginPath();
-    ctx.arc(donutCx, donutCy, donutInner, 0, Math.PI * 2);
+    ctx.arc(donut1Cx, donutCy, donutInner, 0, Math.PI * 2);
     ctx.fillStyle = '#0f172a';
     ctx.fill();
 
-    // Center count
+    // Center text Donut 1
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 30px Arial';
+    ctx.font = 'bold 24px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`${hadirCount}`, donutCx, donutCy - 3);
-    ctx.font = '11px Arial';
+    ctx.fillText(`${stats.hadir}`, donut1Cx, donutCy - 3);
+    ctx.font = '10px Arial';
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText('Orang Hadir', donutCx, donutCy + 16);
+    ctx.fillText('Orang Hadir', donut1Cx, donutCy + 16);
 
-    // Legend below Donut
-    const legDonutY = donutCy + donutR + 15;
-    ctx.font = '12px Arial';
+    // Legend Donut 1
+    const legDonut1Y = donutCy + donutR + 15;
+    ctx.font = '11px Arial';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#10b981';
-    ctx.fillText(`● Hadir: ${hadirCount}`, donutCx, legDonutY);
+    ctx.fillText(`● Hadir: ${stats.hadir}`, donut1Cx, legDonut1Y);
+
+
+    // Title for Donut 2
+    ctx.font = 'bold 15px Arial';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText('TOTAL JAM KERJA', donut2Cx, 45);
+
+    // Donut 2 (Jam Kerja) slices
+    const totalJK = stats.totalJamKerja;
+    const totalJL = stats.totalJamLembur;
+    const regularJK = Math.max(0, totalJK - totalJL);
+    let startAngle2 = -Math.PI / 2;
+
+    if (totalJK === 0) {
+      ctx.beginPath();
+      ctx.arc(donut2Cx, donutCy, donutR, 0, Math.PI * 2);
+      ctx.fillStyle = '#475569';
+      ctx.fill();
+    } else {
+      // Regular slice
+      const regularAngle = (regularJK / totalJK) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(donut2Cx, donutCy);
+      ctx.arc(donut2Cx, donutCy, donutR, startAngle2, startAngle2 + regularAngle);
+      ctx.closePath();
+      ctx.fillStyle = '#0284c7';
+      ctx.fill();
+      startAngle2 += regularAngle;
+
+      // Lembur slice
+      const lemburAngle = (totalJL / totalJK) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(donut2Cx, donutCy);
+      ctx.arc(donut2Cx, donutCy, donutR, startAngle2, startAngle2 + lemburAngle);
+      ctx.closePath();
+      ctx.fillStyle = '#fbbf24';
+      ctx.fill();
+    }
+
+    // Donut 2 hole
+    ctx.beginPath();
+    ctx.arc(donut2Cx, donutCy, donutInner, 0, Math.PI * 2);
+    ctx.fillStyle = '#0f172a';
+    ctx.fill();
+
+    // Center text Donut 2
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${totalJK}j`, donut2Cx, donutCy - 3);
+    ctx.font = '10px Arial';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('Total Jam', donut2Cx, donutCy + 16);
+
+    // Legend Donut 2
+    const legDonut2Y = donutCy + donutR + 15;
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText(`● Reguler: ${regularJK}j`, donut2Cx, legDonut2Y);
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillText(`● Lembur: ${totalJL}j`, donut2Cx, legDonut2Y + 16);
 
 
     // ── RIGHT SIDE: Weekly Bar Chart ──
-    const leftMargin = 450;
+    const leftMargin = 630;
     const rightMargin = 40;
     const topMargin = 75;
     const bottomMargin = 50;
@@ -617,7 +720,7 @@ export function AbsenTBM() {
 
     const weeks = getWeeksInRange(startDate, endDate);
     
-    // Group records into those weeks (only count Hadir)
+    // Group records into those weeks (count Hadir and sum Jam Lembur)
     const weeklyData = weeks.map(w => {
       const recs = filteredRecords.filter(r => {
         const parts = r.tanggal.split('-');
@@ -633,14 +736,16 @@ export function AbsenTBM() {
         return d >= startNorm && d <= endNorm;
       });
       const hadir = recs.filter(r => r.kehadiran === 'Hadir').length;
+      const lembur = recs.reduce((sum, r) => sum + (r.jamLembur || 0), 0);
       return {
         label: w.label,
-        hadir
+        hadir,
+        lembur
       };
     });
 
-    // Find max value to determine scale
-    const maxVal = Math.max(...weeklyData.map(d => d.hadir), 5);
+    // Find max value to determine scale (using both Hadir and Lembur)
+    const maxVal = Math.max(...weeklyData.map(d => Math.max(d.hadir, d.lembur)), 5);
     const yScale = chartH / (maxVal * 1.18);
 
     // Draw Y grid lines
@@ -668,29 +773,44 @@ export function AbsenTBM() {
     ctx.lineTo(leftMargin + chartW, topMargin + chartH);
     ctx.stroke();
 
+    // Draw small legend for the bar chart at top right of bar chart section
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#10b981';
+    ctx.fillText('● Hadir (Orang)', leftMargin + chartW - 200, topMargin - 15);
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillText('● Lembur (Jam)', leftMargin + chartW - 100, topMargin - 15);
+
     const itemW = chartW / weeklyData.length;
-    const barW = Math.min(30, itemW * 0.45); // Centered single bar width
+    const barW = Math.min(16, itemW * 0.3); // Width for each bar
 
     weeklyData.forEach((w, idx) => {
       const groupCenterX = leftMargin + (idx + 0.5) * itemW;
-      const barX = groupCenterX - barW / 2;
+      const barX1 = groupCenterX - barW - 2; // Hadir bar (left)
+      const barX2 = groupCenterX + 2;        // Lembur bar (right)
       const yZero = topMargin + chartH;
 
       const hHadir = w.hadir * yScale;
+      const hLembur = w.lembur * yScale;
 
       // Hadir bar
       if (hHadir > 0) {
         ctx.fillStyle = '#10b981';
-        ctx.fillRect(barX, yZero - hHadir, barW, hHadir);
+        ctx.fillRect(barX1, yZero - hHadir, barW, hHadir);
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 11px Arial';
+        ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(String(w.hadir), groupCenterX, yZero - hHadir - 6);
-      } else {
-        ctx.fillStyle = '#64748b';
-        ctx.font = '10px Arial';
+        ctx.fillText(String(w.hadir), barX1 + barW / 2, yZero - hHadir - 4);
+      }
+
+      // Lembur bar
+      if (hLembur > 0) {
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(barX2, yZero - hLembur, barW, hLembur);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('0', groupCenterX, yZero - 6);
+        ctx.fillText(String(w.lembur), barX2 + barW / 2, yZero - hLembur - 4);
       }
 
       // X label
@@ -700,12 +820,12 @@ export function AbsenTBM() {
       ctx.fillText(w.label, groupCenterX, yZero + 20);
     });
 
-    // Divider line between donut & bar chart
+    // Divider line between overall donuts & weekly bar chart
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(400, 40);
-    ctx.lineTo(400, canvas.height - 20);
+    ctx.moveTo(590, 40);
+    ctx.lineTo(590, canvas.height - 20);
     ctx.stroke();
   }, [activeRightTab, filteredRecords, startDate, endDate, stats]);
 
@@ -889,17 +1009,23 @@ export function AbsenTBM() {
       }
 
       // Save all checklist items to Firestore
-      const batchPromises = itemsToSubmit.map(item => 
-        addDoc(collection(db, 'absen_tbm'), {
+      const batchPromises = itemsToSubmit.map(item => {
+        const jk = item.jamKerja || 0;
+        const jl = Math.max(0, jk - 8);
+        const il = jl > 0;
+        return addDoc(collection(db, 'absen_tbm'), {
           tanggal: formDate,
           nama: item.nama.trim(),
           kehadiran: item.kehadiran,
           jabatan: item.jabatan.trim(),
           remark: item.remark.trim(),
           category: item.category || formCategory,
+          jamKerja: jk,
+          isLembur: il,
+          jamLembur: jl,
           createdAt: serverTimestamp()
-        })
-      );
+        });
+      });
       await Promise.all(batchPromises);
 
       // Save documentation photo if uploaded
@@ -930,13 +1056,14 @@ export function AbsenTBM() {
           jabatan: '',
           category: 'Manual',
           kehadiran: defaultKehadiran,
-          remark: ''
+          remark: '',
+          jamKerja: defaultKehadiran === 'Hadir' ? 8 : 0
         }]);
       } else {
         const submittedNames = new Set(itemsToSubmit.map(item => item.nama));
         setChecklist(prev => prev.map(item => {
           if (submittedNames.has(item.nama)) {
-            return { ...item, remark: '', kehadiran: defaultKehadiran };
+            return { ...item, remark: '', kehadiran: defaultKehadiran, jamKerja: defaultKehadiran === 'Hadir' ? 8 : 0 };
           }
           return item;
         }));
@@ -957,6 +1084,7 @@ export function AbsenTBM() {
     setEditedJabatan(rec.jabatan);
     setEditedKehadiran(rec.kehadiran);
     setEditedRemark(rec.remark);
+    setEditedJamKerja(rec.jamKerja || 0);
   };
 
   const handleUpdateRecord = async (id: string) => {
@@ -965,11 +1093,16 @@ export function AbsenTBM() {
       return;
     }
     try {
+      const jl = Math.max(0, editedJamKerja - 8);
+      const il = jl > 0;
       await updateDoc(doc(db, 'absen_tbm', id), {
         nama: editedNama.trim(),
         jabatan: editedJabatan.trim(),
         kehadiran: editedKehadiran,
-        remark: editedRemark.trim()
+        remark: editedRemark.trim(),
+        jamKerja: editedJamKerja,
+        isLembur: il,
+        jamLembur: jl
       });
       toast.success("Data absen berhasil diperbarui!");
       setEditingRecordId(null);
@@ -985,6 +1118,7 @@ export function AbsenTBM() {
     setEditedJabatan(person.jabatan);
     setEditedKehadiran('Hadir');
     setEditedRemark('');
+    setEditedJamKerja(8);
   };
 
   const handleSaveNewRecord = async (person: Personnel) => {
@@ -994,6 +1128,8 @@ export function AbsenTBM() {
     }
     const toastId = toast.loading("Menyimpan data absensi baru...");
     try {
+      const jl = Math.max(0, editedJamKerja - 8);
+      const il = jl > 0;
       await addDoc(collection(db, 'absen_tbm'), {
         tanggal: selectedDate,
         nama: person.nama,
@@ -1001,6 +1137,9 @@ export function AbsenTBM() {
         kehadiran: editedKehadiran,
         remark: editedRemark.trim(),
         category: person.category || '',
+        jamKerja: editedJamKerja,
+        isLembur: il,
+        jamLembur: jl,
         createdAt: serverTimestamp()
       });
       toast.success("Absensi berhasil disimpan!", { id: toastId });
@@ -1215,11 +1354,16 @@ export function AbsenTBM() {
     docPdf.setFontSize(8);
     docPdf.setFont('helvetica', 'normal');
     docPdf.setTextColor(71, 85, 105); // Slate-600
-    docPdf.text(`Total Log Kehadiran: ${pdfRecords.length} record`, margin + 6, y + 15);
-    docPdf.text(`Hadir: ${pdfRecords.length} kali | Tidak Hadir: 0 kali`, margin + 6, y + 21);
+    docPdf.text(`Total Log Kehadiran: ${pdfRecords.length} record`, margin + 6, y + 13);
+    docPdf.text(`Hadir: ${pdfRecords.length} kali | Tidak Hadir: 0 kali`, margin + 6, y + 18);
+    // Jam kerja & lembur summary
+    const totalPdfJK = pdfRecords.reduce((sum, r) => sum + (r.jamKerja || 0), 0);
+    const totalPdfJL = pdfRecords.reduce((sum, r) => sum + (r.jamLembur || 0), 0);
+    const totalPdfOrgLembur = new Set(pdfRecords.filter(r => (r.jamLembur || 0) > 0).map(r => r.nama)).size;
+    docPdf.text(`Total Jam Kerja: ${totalPdfJK} jam | Total Lembur: ${totalPdfJL} jam (${totalPdfOrgLembur} org)`, margin + 6, y + 23);
     const periodeFrom = startDate || 'Awal';
     const periodeTo = endDate || 'Sekarang';
-    docPdf.text(`Periode: ${periodeFrom}  s/d  ${periodeTo}`, margin + 6, y + 27);
+    docPdf.text(`Periode: ${periodeFrom}  s/d  ${periodeTo}`, margin + 6, y + 28);
 
     // ─── Draw Charts (Overall Donut + Weekly Bar Chart side-by-side) ───
     const chartCanvasW = 1200;
@@ -1233,53 +1377,123 @@ export function AbsenTBM() {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, chartCanvasW, chartCanvasH);
 
-    // ── LEFT SIDE: Overall Donut Chart ──
-    const donutCx = 220;
-    const donutCy = 180;
-    const donutR = 75;
-    const donutInner = 48;
+    // ── LEFT SIDE: Overall Donuts (Kehadiran & Jam Kerja) ──
+    const donut1Cx = 170;
+    const donut2Cx = 410;
+    const donutCy = 175;
+    const donutR = 68;
+    const donutInner = 44;
 
-    // Title
-    ctx.font = 'bold 20px Arial';
+    // Title for Donut 1
+    ctx.font = 'bold 15px Arial';
     ctx.fillStyle = '#0f172a';
     ctx.textAlign = 'center';
-    ctx.fillText('GRAFIK KESELURUHAN', donutCx, 45);
+    ctx.fillText('KEHADIRAN ABSENSI', donut1Cx, 45);
 
-    const hadirCount = pdfRecords.length;
+    // Donut 1 (Kehadiran) slices (Show Hadir only)
+    const pdfHadir = pdfRecords.filter(r => r.kehadiran === 'Hadir').length;
+    if (pdfHadir === 0) {
+      ctx.beginPath();
+      ctx.arc(donut1Cx, donutCy, donutR, 0, Math.PI * 2);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(donut1Cx, donutCy, donutR, 0, Math.PI * 2);
+      ctx.fillStyle = '#10b981';
+      ctx.fill();
+    }
 
-    // Hadir slice (emerald) - solid green circle
+    // Donut 1 hole (White for PDF background)
     ctx.beginPath();
-    ctx.moveTo(donutCx, donutCy);
-    ctx.arc(donutCx, donutCy, donutR, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.fillStyle = '#10b981';
-    ctx.fill();
-
-    // Donut hole
-    ctx.beginPath();
-    ctx.arc(donutCx, donutCy, donutInner, 0, Math.PI * 2);
+    ctx.arc(donut1Cx, donutCy, donutInner, 0, Math.PI * 2);
     ctx.fillStyle = '#ffffff';
     ctx.fill();
 
-    // Center count
+    // Center text Donut 1
     ctx.fillStyle = '#0f172a';
-    ctx.font = 'bold 30px Arial';
+    ctx.font = 'bold 24px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`${hadirCount}`, donutCx, donutCy - 3);
-    ctx.font = '11px Arial';
+    ctx.fillText(`${pdfHadir}`, donut1Cx, donutCy - 3);
+    ctx.font = '10px Arial';
     ctx.fillStyle = '#64748b';
-    ctx.fillText('Orang Hadir', donutCx, donutCy + 16);
+    ctx.fillText('Orang Hadir', donut1Cx, donutCy + 16);
 
-    // Legend below Donut
-    const legDonutY = donutCy + donutR + 15;
-    ctx.font = '12px Arial';
+    // Legend Donut 1
+    const legDonut1Y = donutCy + donutR + 15;
+    ctx.font = '11px Arial';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#10b981';
-    ctx.fillText(`● Hadir: ${hadirCount}`, donutCx, legDonutY);
+    ctx.fillText(`● Hadir: ${pdfHadir}`, donut1Cx, legDonut1Y);
+
+
+    // Title for Donut 2
+    ctx.font = 'bold 15px Arial';
+    ctx.fillStyle = '#0f172a';
+    ctx.textAlign = 'center';
+    ctx.fillText('TOTAL JAM KERJA', donut2Cx, 45);
+
+    // Donut 2 (Jam Kerja) slices
+    const totalJK = totalPdfJK;
+    const totalJL = totalPdfJL;
+    const regularJK = Math.max(0, totalJK - totalJL);
+    let startAngle2 = -Math.PI / 2;
+
+    if (totalJK === 0) {
+      ctx.beginPath();
+      ctx.arc(donut2Cx, donutCy, donutR, 0, Math.PI * 2);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fill();
+    } else {
+      // Regular slice
+      const regularAngle = (regularJK / totalJK) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(donut2Cx, donutCy);
+      ctx.arc(donut2Cx, donutCy, donutR, startAngle2, startAngle2 + regularAngle);
+      ctx.closePath();
+      ctx.fillStyle = '#0284c7';
+      ctx.fill();
+      startAngle2 += regularAngle;
+
+      // Lembur slice
+      const lemburAngle = (totalJL / totalJK) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(donut2Cx, donutCy);
+      ctx.arc(donut2Cx, donutCy, donutR, startAngle2, startAngle2 + lemburAngle);
+      ctx.closePath();
+      ctx.fillStyle = '#fbbf24';
+      ctx.fill();
+    }
+
+    // Donut 2 hole (White for PDF background)
+    ctx.beginPath();
+    ctx.arc(donut2Cx, donutCy, donutInner, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+
+    // Center text Donut 2
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 20px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${totalJK}j`, donut2Cx, donutCy - 3);
+    ctx.font = '10px Arial';
+    ctx.fillStyle = '#64748b';
+    ctx.fillText('Total Jam', donut2Cx, donutCy + 16);
+
+    // Legend Donut 2
+    const legDonut2Y = donutCy + donutR + 15;
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#0284c7';
+    ctx.fillText(`● Reguler: ${regularJK}j`, donut2Cx, legDonut2Y);
+    ctx.fillStyle = '#d97706';
+    ctx.fillText(`● Lembur: ${totalJL}j`, donut2Cx, legDonut2Y + 16);
+
 
     // ── RIGHT SIDE: Weekly Bar Chart ──
-    const leftMargin = 450;
+    const leftMargin = 630;
     const rightMargin = 40;
     const topMargin = 75;
     const bottomMargin = 50;
@@ -1353,14 +1567,16 @@ export function AbsenTBM() {
         return d >= startNorm && d <= endNorm;
       });
       const hadir = recs.filter(r => r.kehadiran === 'Hadir').length;
+      const lembur = recs.reduce((sum, r) => sum + (r.jamLembur || 0), 0);
       return {
         label: w.label,
-        hadir
+        hadir,
+        lembur
       };
     });
 
-    // Find max value to determine scale
-    const maxVal = Math.max(...weeklyData.map(d => d.hadir), 5);
+    // Find max value to determine scale (using both Hadir and Lembur)
+    const maxVal = Math.max(...weeklyData.map(d => Math.max(d.hadir, d.lembur)), 5);
     const yScale = chartH / (maxVal * 1.18);
 
     // Draw Y grid lines
@@ -1388,29 +1604,44 @@ export function AbsenTBM() {
     ctx.lineTo(leftMargin + chartW, topMargin + chartH);
     ctx.stroke();
 
+    // Draw small legend for the bar chart at top right of bar chart section
+    ctx.font = '11px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#10b981';
+    ctx.fillText('● Hadir (Orang)', leftMargin + chartW - 200, topMargin - 15);
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillText('● Lembur (Jam)', leftMargin + chartW - 100, topMargin - 15);
+
     const itemW = chartW / weeklyData.length;
-    const barW = Math.min(30, itemW * 0.45); // Centered single bar width
+    const barW = Math.min(16, itemW * 0.3); // Side-by-side bar width
 
     weeklyData.forEach((w, idx) => {
       const groupCenterX = leftMargin + (idx + 0.5) * itemW;
-      const barX = groupCenterX - barW / 2;
+      const barX1 = groupCenterX - barW - 2; // Hadir bar (left)
+      const barX2 = groupCenterX + 2;        // Lembur bar (right)
       const yZero = topMargin + chartH;
 
       const hHadir = w.hadir * yScale;
+      const hLembur = w.lembur * yScale;
 
       // Hadir bar
       if (hHadir > 0) {
         ctx.fillStyle = '#10b981';
-        ctx.fillRect(barX, yZero - hHadir, barW, hHadir);
+        ctx.fillRect(barX1, yZero - hHadir, barW, hHadir);
         ctx.fillStyle = '#0f172a';
-        ctx.font = 'bold 11px Arial';
+        ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(String(w.hadir), groupCenterX, yZero - hHadir - 6);
-      } else {
-        ctx.fillStyle = '#64748b';
-        ctx.font = '10px Arial';
+        ctx.fillText(String(w.hadir), barX1 + barW / 2, yZero - hHadir - 4);
+      }
+
+      // Lembur bar
+      if (hLembur > 0) {
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(barX2, yZero - hLembur, barW, hLembur);
+        ctx.fillStyle = '#0f172a';
+        ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('0', groupCenterX, yZero - 6);
+        ctx.fillText(String(w.lembur), barX2 + barW / 2, yZero - hLembur - 4);
       }
 
       // X label
@@ -1419,13 +1650,12 @@ export function AbsenTBM() {
       ctx.textAlign = 'center';
       ctx.fillText(w.label, groupCenterX, yZero + 20);
     });
-
-    // Divider line between donut & bar chart
+    // Divider line between overall donuts & weekly bar chart
     ctx.strokeStyle = '#cbd5e1';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(400, 40);
-    ctx.lineTo(400, chartCanvasH - 20);
+    ctx.moveTo(590, 40);
+    ctx.lineTo(590, chartCanvasH - 20);
     ctx.stroke();
 
     // Convert canvas to image and add to PDF
@@ -1444,23 +1674,27 @@ export function AbsenTBM() {
     docPdf.text('RANGKUMAN KEHADIRAN PER PERSONIL', margin, chartY - 2.5);
 
     // Compute personStats from pdfRecords for Table 1
-    const personGroups: Record<string, { nama: string; jabatan: string; category: string; hadir: number; total: number }> = {};
+    const personGroups: Record<string, { nama: string; jabatan: string; category: string; hadir: number; total: number; totalJamKerja: number; totalJamLembur: number }> = {};
     pdfRecords.forEach(r => {
       if (!personGroups[r.nama]) {
-        personGroups[r.nama] = { nama: r.nama, jabatan: r.jabatan, category: r.category || 'Manual', hadir: 0, total: 0 };
+        personGroups[r.nama] = { nama: r.nama, jabatan: r.jabatan, category: r.category || 'Manual', hadir: 0, total: 0, totalJamKerja: 0, totalJamLembur: 0 };
       }
       personGroups[r.nama].total += 1;
       personGroups[r.nama].hadir += 1;
+      personGroups[r.nama].totalJamKerja += (r.jamKerja || 0);
+      personGroups[r.nama].totalJamLembur += (r.jamLembur || 0);
     });
     const pdfPersonStats = Object.values(personGroups).map(p => ({
       nama: p.nama,
       jabatan: p.jabatan,
       rate: 100,
       hadir: p.hadir,
-      total: p.total
+      total: p.total,
+      totalJamKerja: p.totalJamKerja,
+      totalJamLembur: p.totalJamLembur
     })).sort((a, b) => b.hadir - a.hadir || a.nama.localeCompare(b.nama));
 
-    const summaryHead = [['No', 'Nama Personil', 'Jabatan', 'Hadir', 'Tidak Hadir', 'Total', '%']];
+    const summaryHead = [['No', 'Nama Personil', 'Jabatan', 'Hadir', 'Tidak Hadir', 'Total', '%', 'Jam Kerja', 'Jam Lembur']];
     const summaryBody = pdfPersonStats.map((p, idx) => {
       return [
         idx + 1,
@@ -1469,7 +1703,9 @@ export function AbsenTBM() {
         p.hadir,
         0, // tidak hadir is always 0 in export
         p.total,
-        '100%'
+        '100%',
+        `${p.totalJamKerja} jam`,
+        p.totalJamLembur > 0 ? `${p.totalJamLembur} jam` : '-'
       ];
     });
 
@@ -1480,15 +1716,17 @@ export function AbsenTBM() {
       theme: 'grid',
       headStyles: { fillColor: [15, 23, 42], halign: 'center', fontSize: 8 },
       columnStyles: {
-        0: { cellWidth: 12, halign: 'center' },
-        1: { cellWidth: 55, halign: 'left' },
-        2: { cellWidth: 40, halign: 'left' },
-        3: { cellWidth: 20, halign: 'center' },
-        4: { cellWidth: 25, halign: 'center' },
-        5: { cellWidth: 18, halign: 'center' },
-        6: { cellWidth: 18, halign: 'center' }
+        0: { cellWidth: 10, halign: 'center' },
+        1: { cellWidth: 50, halign: 'left' },
+        2: { cellWidth: 35, halign: 'left' },
+        3: { cellWidth: 15, halign: 'center' },
+        4: { cellWidth: 20, halign: 'center' },
+        5: { cellWidth: 14, halign: 'center' },
+        6: { cellWidth: 14, halign: 'center' },
+        7: { cellWidth: 18, halign: 'center' },
+        8: { cellWidth: 16, halign: 'center' }
       },
-      styles: { fontSize: 8, cellPadding: 2 },
+      styles: { fontSize: 7.5, cellPadding: 1.5 },
       willDrawCell: (data) => {
         if (data.section === 'body') {
           // Color the % column (index 6 now)
@@ -1499,6 +1737,11 @@ export function AbsenTBM() {
           // Color Hadir column green (index 3 now)
           if (data.column.index === 3) {
             data.cell.styles.textColor = [16, 185, 129];
+            data.cell.styles.fontStyle = 'bold';
+          }
+          // Color Lembur column amber (index 8)
+          if (data.column.index === 8 && data.cell.text[0] !== '-') {
+            data.cell.styles.textColor = [217, 119, 6]; // amber-600
             data.cell.styles.fontStyle = 'bold';
           }
         }
@@ -1512,7 +1755,9 @@ export function AbsenTBM() {
       r.nama,
       r.jabatan,
       r.kehadiran,
-      r.remark || '-'
+      r.remark || '-',
+      `${r.jamKerja || 0} jam`,
+      r.jamLembur > 0 ? `${r.jamLembur} jam` : '-'
     ]);
 
     docPdf.setTextColor(15, 23, 42);
@@ -1522,19 +1767,30 @@ export function AbsenTBM() {
 
     autoTable(docPdf, {
       startY: (docPdf as any).lastAutoTable.finalY + 11,
-      head: [['No', 'Tanggal', 'Nama', 'Jabatan', 'Status Kehadiran', 'Keterangan']],
+      head: [['No', 'Tanggal', 'Nama', 'Jabatan', 'Status Kehadiran', 'Keterangan', 'Jam Kerja', 'Lembur']],
       body: tableData,
       theme: 'grid',
       headStyles: { fillColor: [0, 89, 156], halign: 'left' },
       columnStyles: {
-        0: { cellWidth: 10 },
-        1: { cellWidth: 25 },
-        2: { cellWidth: 45 },
-        3: { cellWidth: 40 },
-        4: { cellWidth: 30 },
-        5: { cellWidth: contentW - 150 }
+        0: { cellWidth: 8 },
+        1: { cellWidth: 22 },
+        2: { cellWidth: 40 },
+        3: { cellWidth: 32 },
+        4: { cellWidth: 25 },
+        5: { cellWidth: contentW - 170 },
+        6: { cellWidth: 18 },
+        7: { cellWidth: 17 }
       },
-      styles: { fontSize: 8.5 }
+      styles: { fontSize: 8 },
+      willDrawCell: (data) => {
+        if (data.section === 'body') {
+          // Color Lembur column amber
+          if (data.column.index === 7 && data.cell.text[0] !== '-') {
+            data.cell.styles.textColor = [217, 119, 6];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
+      }
     });
 
     // ─── Add Documentation Photos ────────────────────────────────────
@@ -1705,6 +1961,8 @@ export function AbsenTBM() {
     worksheet.getColumn(5).width = 18;  // E
     worksheet.getColumn(6).width = 20;  // F
     worksheet.getColumn(7).width = 20;  // G
+    worksheet.getColumn(8).width = 16;  // H - Jam Kerja
+    worksheet.getColumn(9).width = 16;  // I - Jam Lembur
 
     // Load Logos
     let leftLogoBase64 = '';
@@ -1737,33 +1995,33 @@ export function AbsenTBM() {
     worksheet.getRow(2).height = 20;
     worksheet.getRow(3).height = 18;
 
-    worksheet.mergeCells('A1:G1');
+    worksheet.mergeCells('A1:I1');
     const titleCell = worksheet.getCell('A1');
     titleCell.value = 'LAPORAN KEHADIRAN ABSENSI TBM';
     titleCell.font = { name: 'Arial', size: 12, bold: true, color: { argb: 'FF00599C' } };
     titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
 
-    worksheet.mergeCells('A2:G2');
+    worksheet.mergeCells('A2:I2');
     const subtitleCell1 = worksheet.getCell('A2');
     subtitleCell1.value = 'PT DWIMITRA EKATAMA MANDIRI';
     subtitleCell1.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FF334155' } };
     subtitleCell1.alignment = { vertical: 'middle', horizontal: 'center' };
 
-    worksheet.mergeCells('A3:G3');
+    worksheet.mergeCells('A3:I3');
     const subtitleCell2 = worksheet.getCell('A3');
     subtitleCell2.value = 'Data Center Maintenance System';
     subtitleCell2.font = { name: 'Arial', size: 8, italic: true, color: { argb: 'FF64748B' } };
     subtitleCell2.alignment = { vertical: 'middle', horizontal: 'center' };
 
-    // Apply borders around the Header Block (A1:G3)
+    // Apply borders around the Header Block (A1:I3)
     for (let r = 1; r <= 3; r++) {
-      for (let c = 1; c <= 7; c++) {
+      for (let c = 1; c <= 9; c++) {
         const cell = worksheet.getCell(r, c);
         cell.border = {
           top: r === 1 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
           bottom: r === 3 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
           left: c === 1 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
-          right: c === 7 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
+          right: c === 9 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
         };
       }
     }
@@ -1777,7 +2035,7 @@ export function AbsenTBM() {
 
     if (rightLogoId !== null) {
       worksheet.addImage(rightLogoId, {
-        tl: { col: 6.1, row: 0.2 },
+        tl: { col: 8.1, row: 0.2 },
         ext: { width: 85, height: 32 }
       });
     }
@@ -1794,13 +2052,15 @@ export function AbsenTBM() {
     worksheet.getCell('A6').font = { name: 'Arial', size: 9, color: { argb: 'FF475569' } };
 
     // Compute excelPersonStats based on excelRecords
-    const excelPersonGroups: Record<string, { nama: string; jabatan: string; category: string; hadir: number; total: number }> = {};
+    const excelPersonGroups: Record<string, { nama: string; jabatan: string; category: string; hadir: number; total: number; totalJamKerja: number; totalJamLembur: number }> = {};
     excelRecords.forEach(r => {
       if (!excelPersonGroups[r.nama]) {
-        excelPersonGroups[r.nama] = { nama: r.nama, jabatan: r.jabatan, category: r.category || 'Manual', hadir: 0, total: 0 };
+        excelPersonGroups[r.nama] = { nama: r.nama, jabatan: r.jabatan, category: r.category || 'Manual', hadir: 0, total: 0, totalJamKerja: 0, totalJamLembur: 0 };
       }
       excelPersonGroups[r.nama].total += 1;
       excelPersonGroups[r.nama].hadir += 1;
+      excelPersonGroups[r.nama].totalJamKerja += (r.jamKerja || 0);
+      excelPersonGroups[r.nama].totalJamLembur += (r.jamLembur || 0);
     });
 
     const excelPersonStats = Object.values(excelPersonGroups).map(p => ({
@@ -1809,18 +2069,20 @@ export function AbsenTBM() {
       category: p.category,
       rate: 100,
       hadir: p.hadir,
-      total: p.total
+      total: p.total,
+      totalJamKerja: p.totalJamKerja,
+      totalJamLembur: p.totalJamLembur
     })).sort((a, b) => b.hadir - a.hadir || a.nama.localeCompare(b.nama));
 
     // Pre-calculate indices for dynamic formulas
-    const t1StartRow = 31;
-    const t1EndRow = 30 + excelPersonStats.length;
+    const t1StartRow = 33; // Adjusted for taller summary card block
+    const t1EndRow = 32 + excelPersonStats.length;
     const t2TitleRowIndex = t1EndRow + 3;
     const t2HeaderRowIndex = t2TitleRowIndex + 1;
     const t2StartRow = t2HeaderRowIndex + 1;
     const t2EndRow = t2StartRow + excelRecords.length - 1;
 
-    // Summary Card Block (Rows 8 to 12, Columns A to D)
+    // Summary Card Block (Rows 8 to 14, Columns A to D)
     worksheet.mergeCells('A8:D8');
     const summaryTitleCell = worksheet.getCell('A8');
     summaryTitleCell.value = 'RINGKASAN STATISTIK KEHADIRAN';
@@ -1844,13 +2106,18 @@ export function AbsenTBM() {
       }
     };
 
+    const totalExcelJK = excelRecords.reduce((sum, r) => sum + (r.jamKerja || 0), 0);
+    const totalExcelJL = excelRecords.reduce((sum, r) => sum + (r.jamLembur || 0), 0);
+
     setSummaryRow(9, 'Total Log Kehadiran:', { formula: `COUNTA(E${t2StartRow}:E${t2EndRow})`, result: excelRecords.length });
     setSummaryRow(10, 'Hadir:', { formula: `COUNTIF(E${t2StartRow}:E${t2EndRow},"Hadir")`, result: excelRecords.length });
     setSummaryRow(11, 'Tidak Hadir:', { formula: `COUNTIF(E${t2StartRow}:E${t2EndRow},"Tidak Hadir")`, result: 0 });
     setSummaryRow(12, 'Persentase Kehadiran:', { formula: `IF(C9>0,C10/C9,0)`, result: 1 }, true);
+    setSummaryRow(13, 'Total Jam Kerja:', { formula: `SUM(H${t2StartRow}:H${t2EndRow})`, result: totalExcelJK });
+    setSummaryRow(14, 'Total Jam Lembur:', { formula: `SUM(I${t2StartRow}:I${t2EndRow})`, result: totalExcelJL });
 
     // Style Card Block Background & Border
-    for (let r = 8; r <= 12; r++) {
+    for (let r = 8; r <= 14; r++) {
       worksheet.getRow(r).height = 18;
       for (let c = 1; c <= 4; c++) {
         const cell = worksheet.getCell(r, c);
@@ -1861,7 +2128,7 @@ export function AbsenTBM() {
         };
         cell.border = {
           top: r === 8 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
-          bottom: r === 12 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
+          bottom: r === 14 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
           left: c === 1 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
           right: c === 4 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
         };
@@ -1881,53 +2148,123 @@ export function AbsenTBM() {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, chartCanvasW, chartCanvasH);
 
-      // ── LEFT SIDE: Overall Donut Chart ──
-      const donutCx = 220;
-      const donutCy = 180;
-      const donutR = 75;
-      const donutInner = 48;
+      // ── LEFT SIDE: Overall Donuts (Kehadiran & Jam Kerja) ──
+      const donut1Cx = 170;
+      const donut2Cx = 410;
+      const donutCy = 175;
+      const donutR = 68;
+      const donutInner = 44;
 
-      // Title
-      ctx.font = 'bold 20px Arial';
+      // Title for Donut 1
+      ctx.font = 'bold 15px Arial';
       ctx.fillStyle = '#0f172a';
       ctx.textAlign = 'center';
-      ctx.fillText('GRAFIK KESELURUHAN', donutCx, 45);
+      ctx.fillText('KEHADIRAN ABSENSI', donut1Cx, 45);
 
-      const hadirCount = excelRecords.length;
+      // Donut 1 (Kehadiran) slices (Show Hadir only)
+      const excelHadir = excelRecords.filter(r => r.kehadiran === 'Hadir').length;
+      if (excelHadir === 0) {
+        ctx.beginPath();
+        ctx.arc(donut1Cx, donutCy, donutR, 0, Math.PI * 2);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.arc(donut1Cx, donutCy, donutR, 0, Math.PI * 2);
+        ctx.fillStyle = '#10b981';
+        ctx.fill();
+      }
 
-      // Hadir slice (emerald) - solid circle
+      // Donut 1 hole (White for Excel background)
       ctx.beginPath();
-      ctx.moveTo(donutCx, donutCy);
-      ctx.arc(donutCx, donutCy, donutR, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.fillStyle = '#10b981';
-      ctx.fill();
-
-      // Donut hole
-      ctx.beginPath();
-      ctx.arc(donutCx, donutCy, donutInner, 0, Math.PI * 2);
+      ctx.arc(donut1Cx, donutCy, donutInner, 0, Math.PI * 2);
       ctx.fillStyle = '#ffffff';
       ctx.fill();
 
-      // Center count
+      // Center text Donut 1
       ctx.fillStyle = '#0f172a';
-      ctx.font = 'bold 30px Arial';
+      ctx.font = 'bold 24px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(`${hadirCount}`, donutCx, donutCy - 3);
-      ctx.font = '11px Arial';
+      ctx.fillText(`${excelHadir}`, donut1Cx, donutCy - 3);
+      ctx.font = '10px Arial';
       ctx.fillStyle = '#64748b';
-      ctx.fillText('Orang Hadir', donutCx, donutCy + 16);
+      ctx.fillText('Orang Hadir', donut1Cx, donutCy + 16);
 
-      // Legend below Donut
-      const legDonutY = donutCy + donutR + 15;
-      ctx.font = '12px Arial';
+      // Legend Donut 1
+      const legDonut1Y = donutCy + donutR + 15;
+      ctx.font = '11px Arial';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#10b981';
-      ctx.fillText(`● Hadir: ${hadirCount}`, donutCx, legDonutY);
+      ctx.fillText(`● Hadir: ${excelHadir}`, donut1Cx, legDonut1Y);
+
+
+      // Title for Donut 2
+      ctx.font = 'bold 15px Arial';
+      ctx.fillStyle = '#0f172a';
+      ctx.textAlign = 'center';
+      ctx.fillText('TOTAL JAM KERJA', donut2Cx, 45);
+
+      // Donut 2 (Jam Kerja) slices
+      const totalJK = totalExcelJK;
+      const totalJL = totalExcelJL;
+      const regularJK = Math.max(0, totalJK - totalJL);
+      let startAngle2 = -Math.PI / 2;
+
+      if (totalJK === 0) {
+        ctx.beginPath();
+        ctx.arc(donut2Cx, donutCy, donutR, 0, Math.PI * 2);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fill();
+      } else {
+        // Regular slice
+        const regularAngle = (regularJK / totalJK) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(donut2Cx, donutCy);
+        ctx.arc(donut2Cx, donutCy, donutR, startAngle2, startAngle2 + regularAngle);
+        ctx.closePath();
+        ctx.fillStyle = '#0284c7';
+        ctx.fill();
+        startAngle2 += regularAngle;
+
+        // Lembur slice
+        const lemburAngle = (totalJL / totalJK) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(donut2Cx, donutCy);
+        ctx.arc(donut2Cx, donutCy, donutR, startAngle2, startAngle2 + lemburAngle);
+        ctx.closePath();
+        ctx.fillStyle = '#fbbf24';
+        ctx.fill();
+      }
+
+      // Donut 2 hole (White for Excel background)
+      ctx.beginPath();
+      ctx.arc(donut2Cx, donutCy, donutInner, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+
+      // Center text Donut 2
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 20px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${totalJK}j`, donut2Cx, donutCy - 3);
+      ctx.font = '10px Arial';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('Total Jam', donut2Cx, donutCy + 16);
+
+      // Legend Donut 2
+      const legDonut2Y = donutCy + donutR + 15;
+      ctx.font = '11px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#0284c7';
+      ctx.fillText(`● Reguler: ${regularJK}j`, donut2Cx, legDonut2Y);
+      ctx.fillStyle = '#d97706';
+      ctx.fillText(`● Lembur: ${totalJL}j`, donut2Cx, legDonut2Y + 16);
+
 
       // ── RIGHT SIDE: Weekly Bar Chart ──
-      const leftMargin = 450;
+      const leftMargin = 630;
       const rightMargin = 40;
       const topMargin = 75;
       const bottomMargin = 50;
@@ -2001,14 +2338,16 @@ export function AbsenTBM() {
           return d >= startNorm && d <= endNorm;
         });
         const hadir = recs.filter(r => r.kehadiran === 'Hadir').length;
+        const lembur = recs.reduce((sum, r) => sum + (r.jamLembur || 0), 0);
         return {
           label: w.label,
-          hadir
+          hadir,
+          lembur
         };
       });
 
-      // Find max value to determine scale
-      const maxVal = Math.max(...weeklyData.map(d => d.hadir), 5);
+      // Find max value to determine scale (using both Hadir and Lembur)
+      const maxVal = Math.max(...weeklyData.map(d => Math.max(d.hadir, d.lembur)), 5);
       const yScale = chartH / (maxVal * 1.18);
 
       // Draw Y grid lines
@@ -2036,29 +2375,44 @@ export function AbsenTBM() {
       ctx.lineTo(leftMargin + chartW, topMargin + chartH);
       ctx.stroke();
 
+      // Draw small legend for the bar chart at top right of bar chart section
+      ctx.font = '11px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#10b981';
+      ctx.fillText('● Hadir (Orang)', leftMargin + chartW - 200, topMargin - 15);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillText('● Lembur (Jam)', leftMargin + chartW - 100, topMargin - 15);
+
       const itemW = chartW / weeklyData.length;
-      const barW = Math.min(30, itemW * 0.45); // Centered single bar width
+      const barW = Math.min(16, itemW * 0.3); // Side-by-side bar width
 
       weeklyData.forEach((w, idx) => {
         const groupCenterX = leftMargin + (idx + 0.5) * itemW;
-        const barX = groupCenterX - barW / 2;
+        const barX1 = groupCenterX - barW - 2; // Hadir bar (left)
+        const barX2 = groupCenterX + 2;        // Lembur bar (right)
         const yZero = topMargin + chartH;
 
         const hHadir = w.hadir * yScale;
+        const hLembur = w.lembur * yScale;
 
         // Hadir bar
         if (hHadir > 0) {
           ctx.fillStyle = '#10b981';
-          ctx.fillRect(barX, yZero - hHadir, barW, hHadir);
+          ctx.fillRect(barX1, yZero - hHadir, barW, hHadir);
           ctx.fillStyle = '#0f172a';
-          ctx.font = 'bold 11px Arial';
+          ctx.font = 'bold 10px Arial';
           ctx.textAlign = 'center';
-          ctx.fillText(String(w.hadir), groupCenterX, yZero - hHadir - 6);
-        } else {
-          ctx.fillStyle = '#64748b';
-          ctx.font = '10px Arial';
+          ctx.fillText(String(w.hadir), barX1 + barW / 2, yZero - hHadir - 4);
+        }
+
+        // Lembur bar
+        if (hLembur > 0) {
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillRect(barX2, yZero - hLembur, barW, hLembur);
+          ctx.fillStyle = '#0f172a';
+          ctx.font = 'bold 10px Arial';
           ctx.textAlign = 'center';
-          ctx.fillText('0', groupCenterX, yZero - 6);
+          ctx.fillText(String(w.lembur), barX2 + barW / 2, yZero - hLembur - 4);
         }
 
         // X label
@@ -2067,13 +2421,12 @@ export function AbsenTBM() {
         ctx.textAlign = 'center';
         ctx.fillText(w.label, groupCenterX, yZero + 20);
       });
-
-      // Divider line between donut & bar chart
+      // Divider line between overall donuts & weekly bar chart
       ctx.strokeStyle = '#cbd5e1';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(400, 40);
-      ctx.lineTo(400, chartCanvasH - 20);
+      ctx.moveTo(590, 40);
+      ctx.lineTo(590, chartCanvasH - 20);
       ctx.stroke();
 
       const chartImgData = chartCanvas.toDataURL('image/png');
@@ -2082,14 +2435,14 @@ export function AbsenTBM() {
         extension: 'png',
       });
 
-      // Position charts in Row 14 to Row 27
-      for (let r = 14; r <= 27; r++) {
+      // Position charts in Row 16 to Row 29 (adjusted offset for taller summary card block)
+      for (let r = 16; r <= 29; r++) {
         worksheet.getRow(r).height = 20;
       }
 
       worksheet.addImage(chartImgId, {
-        tl: { col: 0, row: 13 } as any,
-        br: { col: 7, row: 27 } as any
+        tl: { col: 0, row: 15 } as any,
+        br: { col: 9, row: 29 } as any
       });
     }
 
@@ -2098,13 +2451,13 @@ export function AbsenTBM() {
     // ─── Table 1: Rangkuman Kehadiran per Personil ──────────────────────
     const table1TitleRow = worksheet.getRow(29);
     table1TitleRow.height = 20;
-    worksheet.mergeCells('A29:G29');
+    worksheet.mergeCells('A29:I29');
     const t1TitleCell = worksheet.getCell('A29');
     t1TitleCell.value = 'RANGKUMAN KEHADIRAN PER PERSONIL';
     t1TitleCell.font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FF0F172A' } };
     t1TitleCell.alignment = { vertical: 'middle', horizontal: 'left' };
 
-    const t1Headers = ['No', 'Nama Personil', 'Jabatan', 'Hadir', 'Tidak Hadir', 'Total', '%'];
+    const t1Headers = ['No', 'Nama Personil', 'Jabatan', 'Hadir', 'Tidak Hadir', 'Total', '%', 'Jam Kerja', 'Jam Lembur'];
     const t1HeaderRow = worksheet.getRow(30);
     t1HeaderRow.height = 24;
     t1Headers.forEach((h, idx) => {
@@ -2159,6 +2512,18 @@ export function AbsenTBM() {
       };
       row.getCell(7).numFmt = '0%';
 
+      // Jam Kerja (Col H)
+      row.getCell(8).value = {
+        formula: `SUMIFS(H$${t2StartRow}:H$${t2EndRow},C$${t2StartRow}:C$${t2EndRow},B${currentRow})`,
+        result: p.totalJamKerja
+      };
+
+      // Jam Lembur (Col I)
+      row.getCell(9).value = {
+        formula: `SUMIFS(I$${t2StartRow}:I$${t2EndRow},C$${t2StartRow}:C$${t2EndRow},B${currentRow})`,
+        result: p.totalJamLembur
+      };
+
       // Alignments
       row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
       row.getCell(2).alignment = { vertical: 'middle', horizontal: 'left' };
@@ -2167,6 +2532,8 @@ export function AbsenTBM() {
       row.getCell(5).alignment = { vertical: 'middle', horizontal: 'center' };
       row.getCell(6).alignment = { vertical: 'middle', horizontal: 'center' };
       row.getCell(7).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(9).alignment = { vertical: 'middle', horizontal: 'center' };
 
       // Colors & Fonts
       row.getCell(1).font = { name: 'Arial', size: 8.5 };
@@ -2177,6 +2544,8 @@ export function AbsenTBM() {
       row.getCell(5).font = { name: 'Arial', size: 8.5, color: { argb: 'FF64748B' } }; // TH is always 0
 
       row.getCell(6).font = { name: 'Arial', size: 8.5 };
+      row.getCell(8).font = { name: 'Arial', size: 8.5 };
+      row.getCell(9).font = { name: 'Arial', size: 8.5, bold: p.totalJamLembur > 0, color: p.totalJamLembur > 0 ? { argb: 'FFD97706' } : { argb: 'FF64748B' } };
 
       // % Color Coding
       if (p.rate >= 80) {
@@ -2188,7 +2557,7 @@ export function AbsenTBM() {
       }
 
       // Borders
-      for (let col = 1; col <= 7; col++) {
+      for (let col = 1; col <= 9; col++) {
         row.getCell(col).border = {
           top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
           bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
@@ -2208,7 +2577,7 @@ export function AbsenTBM() {
     // ─── Table 2: Detail Riwayat Absensi TBM ──────────────────────
     const table2TitleRow = worksheet.getRow(currentRow);
     table2TitleRow.height = 20;
-    worksheet.mergeCells(`A${currentRow}:G${currentRow}`);
+    worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
     const t2TitleCell = worksheet.getCell(`A${currentRow}`);
     t2TitleCell.value = 'DETAIL RIWAYAT ABSENSI TBM';
     t2TitleCell.font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FF0F172A' } };
@@ -2216,23 +2585,27 @@ export function AbsenTBM() {
 
     currentRow++;
 
-    const t2Headers = ['No', 'Tanggal', 'Nama', 'Jabatan', 'Status Kehadiran', 'Keterangan'];
+    const t2Headers = ['No', 'Tanggal', 'Nama', 'Jabatan', 'Status Kehadiran', 'Keterangan', 'Jam Kerja', 'Lembur'];
     const t2HeaderRow = worksheet.getRow(currentRow);
     t2HeaderRow.height = 24;
     t2Headers.forEach((h, idx) => {
       // Note: Keterangan will span column F and G
-      const colPos = idx + 1;
       let cell;
       if (h === 'Keterangan') {
         worksheet.mergeCells(`F${currentRow}:G${currentRow}`);
         cell = worksheet.getCell(`F${currentRow}`);
+      } else if (h === 'Jam Kerja') {
+        cell = worksheet.getCell(`H${currentRow}`);
+      } else if (h === 'Lembur') {
+        cell = worksheet.getCell(`I${currentRow}`);
       } else {
+        const colPos = idx + 1;
         cell = t2HeaderRow.getCell(colPos);
       }
 
       cell.value = h;
       cell.font = { name: 'Arial', size: 8.5, bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.alignment = { vertical: 'middle', horizontal: idx === 0 || idx === 1 || idx === 4 ? 'center' : 'left' };
+      cell.alignment = { vertical: 'middle', horizontal: idx === 0 || idx === 1 || idx === 4 || idx >= 6 ? 'center' : 'left' };
       cell.fill = {
         type: 'pattern',
         pattern: 'solid',
@@ -2271,6 +2644,9 @@ export function AbsenTBM() {
       worksheet.mergeCells(`F${currentRow}:G${currentRow}`);
       worksheet.getCell(`F${currentRow}`).value = rec.remark || '-';
 
+      row.getCell(8).value = rec.jamKerja || 0;
+      row.getCell(9).value = rec.jamLembur || 0;
+
       // Alignment
       row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
       row.getCell(2).alignment = { vertical: 'middle', horizontal: 'center' };
@@ -2278,6 +2654,8 @@ export function AbsenTBM() {
       row.getCell(4).alignment = { vertical: 'middle', horizontal: 'left' };
       row.getCell(5).alignment = { vertical: 'middle', horizontal: 'center' };
       worksheet.getCell(`F${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left' };
+      row.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
+      row.getCell(9).alignment = { vertical: 'middle', horizontal: 'center' };
 
       // Font size & colors
       for (let col = 1; col <= 4; col++) {
@@ -2291,9 +2669,11 @@ export function AbsenTBM() {
       }
       
       worksheet.getCell(`F${currentRow}`).font = { name: 'Arial', size: 8.5 };
+      row.getCell(8).font = { name: 'Arial', size: 8.5 };
+      row.getCell(9).font = { name: 'Arial', size: 8.5, bold: rec.jamLembur > 0, color: rec.jamLembur > 0 ? { argb: 'FFD97706' } : { argb: 'FF64748B' } };
 
-      // Apply borders to all columns A:G
-      for (let col = 1; col <= 7; col++) {
+      // Apply borders to all columns A:I
+      for (let col = 1; col <= 9; col++) {
         const c = worksheet.getCell(currentRow, col);
         c.border = {
           top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
@@ -2789,6 +3169,29 @@ export function AbsenTBM() {
               <span className="text-sm font-black text-white">{stats.rate}%</span>
             </div>
           </div>
+
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Jam Kerja</p>
+              <h3 className="text-2xl font-black text-sky-400 mt-1">{stats.totalJamKerja}<span className="text-sm font-bold text-slate-500 ml-1">jam</span></h3>
+            </div>
+            <div className="p-3 bg-sky-500/10 rounded-xl text-sky-400">
+              <Clock className="w-6 h-6" />
+            </div>
+          </div>
+
+          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Lembur</p>
+              <h3 className="text-2xl font-black text-amber-400 mt-1">{stats.totalJamLembur}<span className="text-sm font-bold text-slate-500 ml-1">jam</span></h3>
+              {stats.totalOrangLembur > 0 && (
+                <p className="text-[10px] font-bold text-amber-500/70 mt-0.5">{stats.totalOrangLembur} orang lembur</p>
+              )}
+            </div>
+            <div className="p-3 bg-amber-500/10 rounded-xl text-amber-400">
+              <Zap className="w-6 h-6" />
+            </div>
+          </div>
         </div>
 
         {/* Right Side: Personnel Attendance Rates or Charts */}
@@ -2843,12 +3246,18 @@ export function AbsenTBM() {
                   stats.personStats.map((person, idx) => (
                     <div key={idx} className="space-y-1.5 w-full">
                       <div className="flex items-center justify-between text-[11px] font-bold text-slate-300">
-                        <div className="flex items-center gap-2 truncate max-w-[70%]">
+                        <div className="flex items-center gap-2 truncate max-w-[55%]">
                           <span className="text-slate-500 font-mono text-[9px]">{idx + 1}.</span>
                           <span className="truncate text-white">{person.nama}</span>
                           <span className="text-[9px] font-normal text-slate-500 truncate">({person.jabatan})</span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="text-[8px] font-bold text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded">{person.totalJamKerja}j</span>
+                          {person.totalJamLembur > 0 && (
+                            <span className="text-[8px] font-black text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                              <Zap className="w-2.5 h-2.5" />{person.totalJamLembur}j
+                            </span>
+                          )}
                           <span className="text-[9px] font-normal text-slate-500">({person.hadir}/{person.total})</span>
                           <span className={person.rate >= 80 ? 'text-emerald-400' : person.rate >= 50 ? 'text-amber-400' : 'text-rose-400'}>
                             {person.rate}%
@@ -2943,6 +3352,8 @@ export function AbsenTBM() {
                   <th className="px-3 py-3 text-left w-48">Jabatan</th>
                   <th className="px-3 py-3 text-center w-60">Status Kehadiran</th>
                   <th className="px-3 py-3 text-left">Keterangan (Remark)</th>
+                  <th className="px-3 py-3 text-center w-24">Jam Kerja</th>
+                  <th className="px-3 py-3 text-center w-28">Lembur</th>
                   {formCategory === 'Manual' && <th className="px-3 py-3 text-center w-16">Aksi</th>}
                 </tr>
               </thead>
@@ -2954,11 +3365,12 @@ export function AbsenTBM() {
                     if (isNewCategory && item.category) {
                       lastCategory = item.category;
                     }
+                    const lemburHours = Math.max(0, (item.jamKerja || 0) - 8);
                     return (
                       <Fragment key={index}>
                         {isNewCategory && item.category && (
                           <tr className="bg-slate-800/40 text-slate-300 border-t border-slate-700/50">
-                            <td colSpan={5} className="px-3 py-2 text-[10px] text-pink-400 font-black tracking-wider uppercase bg-slate-900/40">
+                            <td colSpan={8} className="px-3 py-2 text-[10px] text-pink-400 font-black tracking-wider uppercase bg-slate-900/40">
                               {item.category}
                             </td>
                           </tr>
@@ -3053,6 +3465,33 @@ export function AbsenTBM() {
                                 );
                               })}
                             </div>
+                          </td>
+                          <td className="px-3 py-3.5 text-center">
+                            <input
+                              type="number"
+                              min="0"
+                              max="24"
+                              step="0.5"
+                              value={item.jamKerja === 0 || item.jamKerja === undefined ? '' : item.jamKerja}
+                              onChange={e => {
+                                const v = parseFloat(e.target.value);
+                                updateChecklistItem(index, 'jamKerja', isNaN(v) ? 0 : v);
+                              }}
+                              className="w-16 bg-slate-800/60 border border-slate-700/50 rounded-lg px-2 py-1 text-center text-xs text-white focus:outline-none focus:border-violet-500/50"
+                              disabled={item.kehadiran !== 'Hadir'}
+                              placeholder="-"
+                              title="Masukkan angka desimal saja (contoh: 8, 8.5)"
+                            />
+                          </td>
+                          <td className="px-3 py-3.5 text-center">
+                            {lemburHours > 0 ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-sm shadow-amber-500/5">
+                                <Zap className="w-2.5 h-2.5" />
+                                {lemburHours} jam
+                              </span>
+                            ) : (
+                              <span className="text-slate-600">-</span>
+                            )}
                           </td>
                           {formCategory === 'Manual' && (
                             <td className="px-3 py-3.5 text-center">
@@ -3305,7 +3744,7 @@ export function AbsenTBM() {
                               }
                             }
                             return (
-                              <td key={date} className={`px-2 py-2 border border-white/5 text-center font-mono text-[10px] ${cellClass}`}>
+                              <td key={date} className={`px-2 py-2 border border-white/5 text-center font-mono text-[10px] ${cellClass}`} title={rec ? `Jam Kerja: ${rec.jamKerja || 0}j | Lembur: ${rec.jamLembur || 0}j` : undefined}>
                                 {symbol}
                               </td>
                             );
@@ -3476,6 +3915,8 @@ export function AbsenTBM() {
                           <th className="px-4 py-3 text-left">Jabatan</th>
                           <th className="px-4 py-3 text-left w-36">Kehadiran</th>
                           <th className="px-4 py-3 text-left">Keterangan</th>
+                          <th className="px-4 py-3 text-center w-24">Jam Kerja</th>
+                          <th className="px-4 py-3 text-center w-28">Lembur</th>
                           <th className="px-4 py-3 text-center w-28">Aksi</th>
                         </tr>
                       </thead>
@@ -3494,7 +3935,7 @@ export function AbsenTBM() {
                               return (
                                 <Fragment key={cat}>
                                   <tr className="bg-slate-800/30 border-t border-slate-850">
-                                    <td colSpan={6} className="px-4 py-2 font-black uppercase text-[10px] text-pink-400 tracking-wider">
+                                    <td colSpan={8} className="px-4 py-2 font-black uppercase text-[10px] text-pink-400 tracking-wider">
                                       Kategori: {cat}
                                     </td>
                                   </tr>
@@ -3599,6 +4040,57 @@ export function AbsenTBM() {
                                         <td className="px-4 py-3.5 text-center">
                                           {rec || isEditing ? (
                                             isEditing ? (
+                                              <input
+                                                type="number"
+                                                min="0"
+                                                max="24"
+                                                step="0.5"
+                                                value={editedJamKerja === 0 || editedJamKerja === undefined ? '' : editedJamKerja}
+                                                onChange={e => {
+                                                  const v = parseFloat(e.target.value);
+                                                  setEditedJamKerja(isNaN(v) ? 0 : v);
+                                                }}
+                                                className="w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-center text-xs text-white focus:outline-none focus:border-pink-500"
+                                                disabled={editedKehadiran !== 'Hadir'}
+                                                placeholder="-"
+                                                title="Masukkan angka desimal saja (contoh: 8, 8.5)"
+                                              />
+                                            ) : (
+                                              rec && (
+                                                <span className="text-slate-300 font-bold">
+                                                  {rec.jamKerja !== undefined ? `${rec.jamKerja} jam` : '—'}
+                                                </span>
+                                              )
+                                            )
+                                          ) : (
+                                            '—'
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-center">
+                                          {isEditing ? (
+                                            (() => {
+                                              const lemburHrs = Math.max(0, editedJamKerja - 8);
+                                              return lemburHrs > 0 ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-sm">
+                                                  <Zap className="w-2.5 h-2.5" /> {lemburHrs} jam
+                                                </span>
+                                              ) : (
+                                                <span className="text-slate-600">-</span>
+                                              );
+                                            })()
+                                          ) : (
+                                            rec && rec.jamLembur > 0 ? (
+                                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-sm">
+                                                <Zap className="w-2.5 h-2.5" /> {rec.jamLembur} jam
+                                              </span>
+                                            ) : (
+                                              <span className="text-slate-600">-</span>
+                                            )
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-center">
+                                          {rec || isEditing ? (
+                                            isEditing ? (
                                               <div className="flex justify-center gap-1.5">
                                                 <button
                                                   type="button"
@@ -3663,7 +4155,7 @@ export function AbsenTBM() {
                               return (
                                 <Fragment key={cat}>
                                   <tr className="bg-slate-800/30 border-t border-slate-850">
-                                    <td colSpan={6} className="px-4 py-2 font-black uppercase text-[10px] text-pink-400 tracking-wider">
+                                    <td colSpan={8} className="px-4 py-2 font-black uppercase text-[10px] text-pink-400 tracking-wider">
                                       Kategori: {cat}
                                     </td>
                                   </tr>
@@ -3776,6 +4268,51 @@ export function AbsenTBM() {
                                             </div>
                                           ) : (
                                             rec.remark || '—'
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-center">
+                                          {isEditing ? (
+                                            <input
+                                              type="number"
+                                              min="0"
+                                              max="24"
+                                              step="0.5"
+                                              value={editedJamKerja === 0 || editedJamKerja === undefined ? '' : editedJamKerja}
+                                              onChange={e => {
+                                                const v = parseFloat(e.target.value);
+                                                setEditedJamKerja(isNaN(v) ? 0 : v);
+                                              }}
+                                              className="w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-center text-xs text-white focus:outline-none focus:border-pink-500"
+                                              disabled={editedKehadiran !== 'Hadir'}
+                                              placeholder="-"
+                                              title="Masukkan angka desimal saja (contoh: 8, 8.5)"
+                                            />
+                                          ) : (
+                                            <span className="text-slate-300 font-bold">
+                                              {rec.jamKerja !== undefined ? `${rec.jamKerja} jam` : '—'}
+                                            </span>
+                                          )}
+                                        </td>
+                                        <td className="px-4 py-3.5 text-center">
+                                          {isEditing ? (
+                                            (() => {
+                                              const lemburHrs = Math.max(0, editedJamKerja - 8);
+                                              return lemburHrs > 0 ? (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-sm">
+                                                  <Zap className="w-2.5 h-2.5" /> {lemburHrs} jam
+                                                </span>
+                                              ) : (
+                                                <span className="text-slate-650">-</span>
+                                              );
+                                            })()
+                                          ) : (
+                                            rec.jamLembur > 0 ? (
+                                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-sm">
+                                                <Zap className="w-2.5 h-2.5" /> {rec.jamLembur} jam
+                                              </span>
+                                            ) : (
+                                              <span className="text-slate-600">-</span>
+                                            )
                                           )}
                                         </td>
                                         <td className="px-4 py-3.5 text-center">

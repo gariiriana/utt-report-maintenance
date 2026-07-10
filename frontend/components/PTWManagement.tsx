@@ -1695,30 +1695,69 @@ export function PTWManagement() {
             {/* Chart Column (Span 5) */}
             <div 
               id="ptw-weekly-chart-container"
-              className="lg:col-span-5 ptw-weekly-chart-container backdrop-blur-xl rounded-3xl p-6 shadow-xl flex flex-col justify-between min-h-[350px]"
+              className="lg:col-span-5 ptw-weekly-chart-container backdrop-blur-xl rounded-3xl p-6 shadow-xl flex flex-col justify-between"
+              style={{ minHeight: '350px' }}
             >
-              <div>
-                <h3 className="text-lg font-bold mb-1 ptw-weekly-chart-title">Visualisasi Tren Validitas</h3>
-                <p className="text-xs mb-4 ptw-weekly-chart-desc">Tingkat kepatuhan open & closed PTW mingguan</p>
-              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%' }}>
+                <div>
+                  <h3 className="text-lg font-bold mb-1 ptw-weekly-chart-title">Visualisasi Tren Validitas</h3>
+                  <p className="text-xs ptw-weekly-chart-desc" style={{ color: '#94a3b8' }}>Tingkat kepatuhan open &amp; closed PTW mingguan</p>
+                </div>
 
-              {/* Monthly Summary Totals */}
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                <div className="bg-gradient-to-br from-violet-900/40 to-purple-900/20 rounded-2xl p-3 border border-violet-500/20 text-center">
-                  <p className="text-2xl font-extrabold text-violet-300 tracking-tight">{monthlyTotalPTW}</p>
-                  <p className="text-[9px] text-violet-400/80 uppercase font-bold tracking-widest mt-0.5">Total PTW</p>
-                </div>
-                <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/20 rounded-2xl p-3 border border-blue-500/20 text-center">
-                  <p className="text-2xl font-extrabold text-blue-300 tracking-tight">{monthlyTotalOpen}</p>
-                  <p className="text-[9px] text-blue-400/80 uppercase font-bold tracking-widest mt-0.5">Total Open</p>
-                </div>
-                <div className="bg-gradient-to-br from-orange-900/40 to-amber-900/20 rounded-2xl p-3 border border-orange-500/20 text-center">
-                  <p className="text-2xl font-extrabold text-orange-300 tracking-tight">{monthlyTotalClosed}</p>
-                  <p className="text-[9px] text-orange-400/80 uppercase font-bold tracking-widest mt-0.5">Total Closed</p>
+                {/* Monthly Summary Totals */}
+                <div 
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    gap: '10px',
+                    width: '100%',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <div 
+                    className="rounded-2xl text-center"
+                    style={{
+                      flex: '1 1 32%',
+                      background: 'linear-gradient(135deg, rgba(109, 40, 217, 0.3) 0%, rgba(88, 28, 135, 0.15) 100%)',
+                      border: '1px solid rgba(139, 92, 246, 0.25)',
+                      padding: '10px 4px',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <p className="text-xl font-extrabold tracking-tight" style={{ color: '#c084fc', margin: 0, padding: 0 }}>{monthlyTotalPTW}</p>
+                    <p className="text-[8px] uppercase font-bold tracking-widest mt-1" style={{ color: 'rgba(167, 139, 250, 0.8)', margin: 0, padding: 0 }}>Total PTW</p>
+                  </div>
+                  <div 
+                    className="rounded-2xl text-center"
+                    style={{
+                      flex: '1 1 32%',
+                      background: 'linear-gradient(135deg, rgba(29, 78, 216, 0.3) 0%, rgba(21, 94, 117, 0.15) 100%)',
+                      border: '1px solid rgba(59, 130, 246, 0.25)',
+                      padding: '10px 4px',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <p className="text-xl font-extrabold tracking-tight" style={{ color: '#93c5fd', margin: 0, padding: 0 }}>{monthlyTotalOpen}</p>
+                    <p className="text-[8px] uppercase font-bold tracking-widest mt-1" style={{ color: 'rgba(96, 165, 250, 0.8)', margin: 0, padding: 0 }}>Total Open</p>
+                  </div>
+                  <div 
+                    className="rounded-2xl text-center"
+                    style={{
+                      flex: '1 1 32%',
+                      background: 'linear-gradient(135deg, rgba(194, 65, 12, 0.3) 0%, rgba(180, 83, 9, 0.15) 100%)',
+                      border: '1px solid rgba(249, 115, 22, 0.25)',
+                      padding: '10px 4px',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <p className="text-xl font-extrabold tracking-tight" style={{ color: '#fdba74', margin: 0, padding: 0 }}>{monthlyTotalClosed}</p>
+                    <p className="text-[8px] uppercase font-bold tracking-widest mt-1" style={{ color: 'rgba(251, 146, 60, 0.8)', margin: 0, padding: 0 }}>Total Closed</p>
+                  </div>
                 </div>
               </div>
               
-              <div id="ptw-weekly-chart-raw" className="h-64 w-full">
+              <div id="ptw-weekly-chart-raw" className="h-64 w-full" style={{ marginTop: '14px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={chartData} margin={{ top: 20, right: 10, left: -25, bottom: 15 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} />

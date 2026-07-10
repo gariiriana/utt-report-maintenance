@@ -524,10 +524,10 @@ export async function exportPTWWeeklyReportToExcel(
         });
         ws.addImage(chartLogoId, {
           tl: { col: 0, row: totalRowIdx + 3 },
-          br: { col: 6, row: totalRowIdx + 20 }
+          br: { col: 6, row: totalRowIdx + 23 }
         } as any);
 
-        const detailTitleCell = ws.getCell(`A${totalRowIdx + 22}`);
+        const detailTitleCell = ws.getCell(`A${totalRowIdx + 25}`);
         detailTitleCell.value = '3. RINCIAN DOKUMEN PTW PER MINGGU';
         detailTitleCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '000000' } };
       } catch (e) {
@@ -536,7 +536,7 @@ export async function exportPTWWeeklyReportToExcel(
     }
 
     // --- Section 2: Rincian per Minggu ---
-    let currentRowIdx = chartImageBase64 ? totalRowIdx + 24 : totalRowIdx + 3;
+    let currentRowIdx = chartImageBase64 ? totalRowIdx + 27 : totalRowIdx + 3;
 
     weeklyData.forEach(wd => {
       // Week Title
@@ -789,23 +789,25 @@ export async function exportPTWWeeklyReportToPDF(
 
     // Draw chart if provided
     if (chartImageBase64) {
-      const chartWidth = contentW;
-      const chartHeight = 105;
+      const chartWidth = 135;
+      const chartHeight = 125;
       const chartY = finalYOnPage1 + 8;
       
       doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor('#1e293b');
       doc.text('II. GRAFIK TREN VALIDITAS PTW', margin, chartY);
 
+      const chartX = margin + (contentW - chartWidth) / 2;
+
       doc.setDrawColor('#cbd5e1');
       doc.setLineWidth(0.2);
-      doc.roundedRect(margin, chartY + 2.5, chartWidth, chartHeight + 8, 1.5, 1.5, 'D');
+      doc.roundedRect(chartX - 2, chartY + 2.5, chartWidth + 4, chartHeight + 8, 1.5, 1.5, 'D');
 
       doc.addImage(
         chartImageBase64, 
         'PNG', 
-        margin + 2, 
+        chartX, 
         chartY + 4.5, 
-        chartWidth - 4, 
+        chartWidth, 
         chartHeight, 
         'recharts_weekly_chart', 
         'FAST'
