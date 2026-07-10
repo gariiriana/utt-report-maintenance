@@ -1129,6 +1129,11 @@ export function PTWManagement() {
     'Total PTW': wd.totalCount,
   }));
 
+  // Monthly grand totals for the summary cards
+  const monthlyTotalPTW = weeklyData.reduce((sum, wd) => sum + wd.totalCount, 0);
+  const monthlyTotalOpen = weeklyData.reduce((sum, wd) => sum + wd.openCount, 0);
+  const monthlyTotalClosed = weeklyData.reduce((sum, wd) => sum + wd.closedCount, 0);
+
   const handleExportPdfReport = async () => {
     const toastId = toast.loading('Menyiapkan grafik untuk PDF...');
     try {
@@ -1693,7 +1698,23 @@ export function PTWManagement() {
             >
               <div>
                 <h3 className="text-lg font-bold mb-1 ptw-weekly-chart-title">Visualisasi Tren Validitas</h3>
-                <p className="text-xs mb-6 ptw-weekly-chart-desc">Tingkat kepatuhan open & closed PTW mingguan</p>
+                <p className="text-xs mb-4 ptw-weekly-chart-desc">Tingkat kepatuhan open & closed PTW mingguan</p>
+              </div>
+
+              {/* Monthly Summary Totals */}
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="bg-gradient-to-br from-violet-900/40 to-purple-900/20 rounded-2xl p-3 border border-violet-500/20 text-center">
+                  <p className="text-2xl font-extrabold text-violet-300 tracking-tight">{monthlyTotalPTW}</p>
+                  <p className="text-[9px] text-violet-400/80 uppercase font-bold tracking-widest mt-0.5">Total PTW</p>
+                </div>
+                <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/20 rounded-2xl p-3 border border-blue-500/20 text-center">
+                  <p className="text-2xl font-extrabold text-blue-300 tracking-tight">{monthlyTotalOpen}</p>
+                  <p className="text-[9px] text-blue-400/80 uppercase font-bold tracking-widest mt-0.5">Total Open</p>
+                </div>
+                <div className="bg-gradient-to-br from-orange-900/40 to-amber-900/20 rounded-2xl p-3 border border-orange-500/20 text-center">
+                  <p className="text-2xl font-extrabold text-orange-300 tracking-tight">{monthlyTotalClosed}</p>
+                  <p className="text-[9px] text-orange-400/80 uppercase font-bold tracking-widest mt-0.5">Total Closed</p>
+                </div>
               </div>
               
               <div id="ptw-weekly-chart-raw" className="h-64 w-full">
