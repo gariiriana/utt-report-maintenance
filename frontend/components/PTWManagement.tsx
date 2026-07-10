@@ -41,6 +41,24 @@ interface PTWRecord {
   createdBy: string;
   createdAt: Timestamp;
 }
+const EQUIPMENT_CODE_MAP: Record<string, string> = {
+  'WT': 'WATER TREATMENT',
+  'WL': 'WATER LEAK DETECTOR',
+  'FLD': 'FUEL LEAK DETECTOR',
+  'LP': 'LIGHTING POINT',
+  'CT': 'COOLING TOWER',
+  'DL': 'DOCK LEVELLER'
+};
+
+export const normalizeEquipmentCode = (rawCode: string): string => {
+  if (!rawCode) return 'LAINNYA';
+  let code = rawCode.toUpperCase().trim();
+  while (/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i.test(code)) {
+    code = code.replace(/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i, '').trim();
+  }
+  code = code.toUpperCase() || 'LAINNYA';
+  return EQUIPMENT_CODE_MAP[code] || code;
+};
 
 
 interface QueuedPTWItem {
@@ -713,15 +731,10 @@ export function PTWManagement() {
         const ptwNum = `TDE/PTW/${formData.sequenceNumber.padStart(4, '0')}`;
         let totalChunks = 0;
 
-        let cleanEqCode = formData.equipmentCode.toUpperCase().trim();
-        while (/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i.test(cleanEqCode)) {
-          cleanEqCode = cleanEqCode.replace(/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i, '').trim();
-        }
-
         const updateData: Record<string, any> = {
           sequenceNumber: parseInt(formData.sequenceNumber),
           ptwNumber: ptwNum,
-          equipmentCode: cleanEqCode || 'LAINNYA',
+          equipmentCode: normalizeEquipmentCode(formData.equipmentCode),
           startDate: formData.startDate,
           endDate: formData.endDate,
           notes: formData.notes,
@@ -860,11 +873,6 @@ export function PTWManagement() {
             itemChunks = Math.ceil(item.file.size / CHUNK_SIZE);
           }
 
-          let cleanEqCode = item.equipmentCode.toUpperCase().trim();
-          while (/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i.test(cleanEqCode)) {
-            cleanEqCode = cleanEqCode.replace(/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i, '').trim();
-          }
-          
           // Show toast status for the current uploading file
           toast.loading(`Mengunggah PTW ${idx + 1} dari ${totalItems}: ${item.file ? item.file.name : 'Data Manual'}...`, { id: 'multi-upload-toast' });
           
@@ -872,7 +880,7 @@ export function PTWManagement() {
           const newDocRef = await addDoc(collection(db, 'ptw_records'), {
             sequenceNumber: parseInt(item.sequenceNumber),
             ptwNumber: ptwNum,
-            equipmentCode: cleanEqCode || 'LAINNYA',
+            equipmentCode: normalizeEquipmentCode(item.equipmentCode),
             quarter: item.quarter,
             startDate: item.startDate,
             endDate: item.endDate,
@@ -1012,17 +1020,12 @@ export function PTWManagement() {
 
   const filteredRecords = records.filter(r =>
     r.ptwNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.equipmentCode.toLowerCase().includes(searchTerm.toLowerCase())
+    r.equipmentCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    normalizeEquipmentCode(r.equipmentCode).toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const groupedRecords = filteredRecords.reduce((acc, record) => {
-    const rawCode = record.equipmentCode.toUpperCase().trim();
-    // Normalize code by repeatedly stripping prefixes like PM, PTW, etc.
-    let code = rawCode;
-    while (/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i.test(code)) {
-      code = code.replace(/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i, '').trim();
-    }
-    code = code.toUpperCase() || 'LAINNYA';
+    const code = normalizeEquipmentCode(record.equipmentCode);
 
     if (!acc[code]) acc[code] = [];
     acc[code].push(record);
@@ -1031,13 +1034,9 @@ export function PTWManagement() {
 
   useEffect(() => {
     if (searchTerm) {
-      const activeGroups = [...new Set(filteredRecords.map(r => {
-        let code = r.equipmentCode.toUpperCase().trim();
-        while (/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i.test(code)) {
-          code = code.replace(/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i, '').trim();
-        }
-        return code.toUpperCase() || 'LAINNYA';
-      }))];
+      const activeGroups = [...new Set(filteredRecords.map(r => 
+        normalizeEquipmentCode(r.equipmentCode)
+      ))];
       const newExpanded: Record<string, boolean> = {};
       activeGroups.forEach(g => {
         newExpanded[g] = true;
