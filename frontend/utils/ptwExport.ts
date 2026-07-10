@@ -524,10 +524,10 @@ export async function exportPTWWeeklyReportToExcel(
         });
         ws.addImage(chartLogoId, {
           tl: { col: 0, row: totalRowIdx + 3 },
-          br: { col: 6, row: totalRowIdx + 16 }
+          br: { col: 6, row: totalRowIdx + 20 }
         } as any);
 
-        const detailTitleCell = ws.getCell(`A${totalRowIdx + 18}`);
+        const detailTitleCell = ws.getCell(`A${totalRowIdx + 22}`);
         detailTitleCell.value = '3. RINCIAN DOKUMEN PTW PER MINGGU';
         detailTitleCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '000000' } };
       } catch (e) {
@@ -536,7 +536,7 @@ export async function exportPTWWeeklyReportToExcel(
     }
 
     // --- Section 2: Rincian per Minggu ---
-    let currentRowIdx = chartImageBase64 ? totalRowIdx + 20 : totalRowIdx + 3;
+    let currentRowIdx = chartImageBase64 ? totalRowIdx + 24 : totalRowIdx + 3;
 
     weeklyData.forEach(wd => {
       // Week Title
@@ -790,7 +790,7 @@ export async function exportPTWWeeklyReportToPDF(
     // Draw chart if provided
     if (chartImageBase64) {
       const chartWidth = contentW;
-      const chartHeight = 90;
+      const chartHeight = 105;
       const chartY = finalYOnPage1 + 8;
       
       doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor('#1e293b');

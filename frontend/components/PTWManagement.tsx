@@ -1137,7 +1137,7 @@ export function PTWManagement() {
   const handleExportPdfReport = async () => {
     const toastId = toast.loading('Menyiapkan grafik untuk PDF...');
     try {
-      const chartEl = document.getElementById('ptw-weekly-chart-raw');
+      const chartEl = document.getElementById('ptw-weekly-chart-container');
       let chartBase64 = '';
       if (chartEl) {
         const canvas = await html2canvas(chartEl, {
@@ -1168,7 +1168,7 @@ export function PTWManagement() {
   const handleExportExcelReport = async () => {
     const toastId = toast.loading('Menyiapkan grafik untuk Excel...');
     try {
-      const chartEl = document.getElementById('ptw-weekly-chart-raw');
+      const chartEl = document.getElementById('ptw-weekly-chart-container');
       let chartBase64 = '';
       if (chartEl) {
         const canvas = await html2canvas(chartEl, {
@@ -1694,6 +1694,7 @@ export function PTWManagement() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Chart Column (Span 5) */}
             <div 
+              id="ptw-weekly-chart-container"
               className="lg:col-span-5 ptw-weekly-chart-container backdrop-blur-xl rounded-3xl p-6 shadow-xl flex flex-col justify-between min-h-[350px]"
             >
               <div>
