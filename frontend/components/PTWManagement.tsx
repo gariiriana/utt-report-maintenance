@@ -106,6 +106,26 @@ export function PTWManagement() {
   const [isDragging, setIsDragging] = useState(false);
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [confirmModalMessage, setConfirmModalMessage] = useState('');
+  const [confirmResolver, setConfirmResolver] = useState<{ resolve: (val: boolean) => void } | null>(null);
+
+  const askConfirmation = (message: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setConfirmModalMessage(message);
+      setConfirmResolver({ resolve });
+      setConfirmModalOpen(true);
+    });
+  };
+
+  const handleConfirmResponse = (value: boolean) => {
+    if (confirmResolver) {
+      confirmResolver.resolve(value);
+    }
+    setConfirmModalOpen(false);
+    setConfirmResolver(null);
+  };
+
   const toggleQueueItemExpanded = (id: string) => {
     setQueuedItems(prev => prev.map(item => 
       item.id === id ? { ...item, isExpanded: !item.isExpanded } : item
@@ -223,7 +243,7 @@ export function PTWManagement() {
       reader.readAsDataURL(blob);
     });
 
-  const processUploadedFiles = (files: FileList | File[]) => {
+  const processUploadedFiles = async (files: FileList | File[]) => {
     const newItems: QueuedPTWItem[] = [];
     
     for (let i = 0; i < files.length; i++) {
@@ -235,6 +255,15 @@ export function PTWManagement() {
       if (file.size > MAX_FILE_SIZE) {
         toast.error(`File ${file.name} terlalu besar. Maksimal 10MB.`);
         continue;
+      }
+
+      // Check if file is already uploaded
+      const isDuplicate = records.some(r => r.fileName === file.name || r.closingFileName === file.name);
+      if (isDuplicate) {
+        const confirmUpload = await askConfirmation(`File "${file.name}" sudah pernah di-upload sebelumnya. Apakah Anda yakin ingin tetap mengunggahnya?`);
+        if (!confirmUpload) {
+          continue;
+        }
       }
       
       const itemId = Math.random().toString(36).substring(2, 9);
@@ -310,6 +339,17 @@ export function PTWManagement() {
         e.target.value = '';
         return;
       }
+
+      // Check if file is already uploaded
+      const isDuplicate = records.some(r => r.fileName === file.name || r.closingFileName === file.name);
+      if (isDuplicate) {
+        const confirmUpload = await askConfirmation(`File "${file.name}" sudah pernah di-upload sebelumnya. Apakah Anda yakin ingin tetap mengunggahnya?`);
+        if (!confirmUpload) {
+          e.target.value = '';
+          return;
+        }
+      }
+
       setSelectedFile(file);
 
       if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
@@ -603,7 +643,7 @@ export function PTWManagement() {
 
   // Prevent background scrolling when modal is open
   useEffect(() => {
-    if (isAddModalOpen || isEditModalOpen || isDeleteModalOpen || isDeleteCategoryModalOpen) {
+    if (isAddModalOpen || isEditModalOpen || isDeleteModalOpen || isDeleteCategoryModalOpen || confirmModalOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -611,7 +651,7 @@ export function PTWManagement() {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isAddModalOpen, isEditModalOpen, isDeleteModalOpen, isDeleteCategoryModalOpen]);
+  }, [isAddModalOpen, isEditModalOpen, isDeleteModalOpen, isDeleteCategoryModalOpen, confirmModalOpen]);
 
 
   useEffect(() => {
@@ -1989,13 +2029,24 @@ export function PTWManagement() {
                         id="ptw-closing-file-input"
                         title="Pilih File Closing"
                         type="file"
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
                             if (file.size > MAX_FILE_SIZE) {
                               toast.error('File terlalu besar. Maksimal 10MB.');
                               return;
                             }
+
+                            // Check if file is already uploaded
+                            const isDuplicate = records.some(r => r.fileName === file.name || r.closingFileName === file.name);
+                            if (isDuplicate) {
+                              const confirmUpload = await askConfirmation(`File "${file.name}" sudah pernah di-upload sebelumnya. Apakah Anda yakin ingin tetap mengunggahnya?`);
+                              if (!confirmUpload) {
+                                e.target.value = '';
+                                return;
+                              }
+                            }
+
                             setSelectedClosingFile(file);
                             setShouldDeleteClosingFile(false);
                           }
@@ -2438,6 +2489,47 @@ export function PTWManagement() {
             </div>
           )}
 
+          {confirmModalOpen && (
+            <div key="confirm-modal-wrapper" className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => handleConfirmResponse(false)}
+                className="fixed inset-0 bg-black/90 backdrop-blur-md"
+              />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="relative w-full max-w-md bg-slate-900 rounded-3xl border border-white/10 shadow-2xl p-8 text-center"
+              >
+                <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-amber-500/20">
+                  <AlertCircle className="w-10 h-10 text-amber-500" />
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-2">File Sudah Ada</h3>
+                <p className="text-slate-400 mb-8 text-sm leading-relaxed">
+                  {confirmModalMessage}
+                </p>
+                <div className="flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => handleConfirmResponse(false)}
+                    className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold transition cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleConfirmResponse(true)}
+                    className="flex-1 py-4 bg-amber-600 hover:bg-amber-500 text-white rounded-2xl font-bold shadow-xl shadow-amber-900/20 transition cursor-pointer"
+                  >
+                    Tetap Upload
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
 
         </AnimatePresence>,
         document.body
