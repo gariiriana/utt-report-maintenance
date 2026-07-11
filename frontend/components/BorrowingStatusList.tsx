@@ -25,7 +25,7 @@ export function BorrowingStatusList() {
 
     const q = query(
       collection(db, 'inventory_borrowings'),
-      where('engineerEmail', '==', user.email),
+      where('engineerEmail', '==', user.email.toLowerCase()),
       orderBy('createdAt', 'desc')
     );
 

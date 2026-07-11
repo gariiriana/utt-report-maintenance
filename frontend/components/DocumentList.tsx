@@ -108,7 +108,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           if (userRole !== 'DME') {
             const excelQuery = isPrivileged
               ? query(collection(db, 'excel_documents'))
-              : query(collection(db, 'excel_documents'), where('createdBy', '==', user.email));
+              : query(collection(db, 'excel_documents'), where('createdBy', '==', (user.email || '').toLowerCase()));
             fetchPromises.push(getDocs(excelQuery));
           } else {
             fetchPromises.push(Promise.resolve(null));
@@ -116,7 +116,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
           const pdfQuery = (isPrivileged || userRole === 'DME')
             ? query(collection(db, 'pdf_documents'))
-            : query(collection(db, 'pdf_documents'), where('createdBy', '==', user.email));
+            : query(collection(db, 'pdf_documents'), where('createdBy', '==', (user.email || '').toLowerCase()));
           fetchPromises.push(getDocs(pdfQuery));
         } else {
           fetchPromises.push(Promise.resolve(null));
@@ -131,7 +131,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           } else if (isAdmin) {
             hseQuery = query(collection(db, 'hse'));
           } else {
-            hseQuery = query(collection(db, 'hse'), where('authorEmail', '==', user.email));
+            hseQuery = query(collection(db, 'hse'), where('authorEmail', '==', (user.email || '').toLowerCase()));
           }
           fetchPromises.push(getDocs(hseQuery));
         } else {

@@ -118,7 +118,7 @@ export function FindingManagement() {
         photos,
         remark: formData.remark,
         createdBy: user.uid,
-        createdByEmail: user.email,
+        createdByEmail: (user.email || '').toLowerCase(),
         createdAt: serverTimestamp(),
       });
 

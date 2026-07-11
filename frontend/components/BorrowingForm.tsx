@@ -178,7 +178,7 @@ export function BorrowingForm({ onSuccess }: BorrowingFormProps) {
         requestDate: formData.requestDate,
         requestTime: formData.requestTime,
         requestSignature: formData.requestSignature,
-        engineerEmail: user?.email,
+        engineerEmail: user?.email?.toLowerCase(),
         status: 'pending',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()

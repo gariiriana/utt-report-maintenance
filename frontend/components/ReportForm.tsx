@@ -810,7 +810,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       }
 
       if (!editingData) {
-        reportData.createdBy = user?.email;
+        reportData.createdBy = user?.email?.toLowerCase();
         reportData.createdAt = serverTimestamp();
       }
 

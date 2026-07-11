@@ -410,7 +410,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                 anggota: anggota || '',
                 inspectorK3: inspectorK3 || user?.email || '',
                 date: formData.date,
-                authorEmail: user?.email || '',
+                authorEmail: (user?.email || '').toLowerCase(),
                 updatedAt: serverTimestamp(),
                 reportType: resolvedReportType,
                 hseType: mode,
