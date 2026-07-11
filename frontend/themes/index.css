@@ -205,3 +205,7 @@ input[type='number'] {
     scrollbar-width: none;
   }
 }
+
+.justify-safe-center {
+  justify-content: safe center !important;
+}

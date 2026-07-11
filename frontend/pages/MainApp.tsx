@@ -117,14 +117,14 @@ export function MainApp() {
         {/* Desktop Secondary Navigation (Tabs) */}
       <div className="hidden md:block bg-slate-900/30 border-t border-slate-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-          <div className="flex items-center justify-center gap-1 lg:gap-1.5 whitespace-nowrap">
+          <div className="flex items-center justify-safe-center gap-1 md:gap-1.5 whitespace-nowrap overflow-x-auto no-scrollbar">
             {navItems.filter(i => i.show).map((item) => (
               <motion.button
                 key={item.id}
                 whileHover={{ y: -1, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setActiveTab(item.id as Tab)}
-                className={`flex items-center gap-1 px-2 py-1 md:px-1.5 md:py-1 md:text-[10px] lg:px-2.5 lg:py-1.5 lg:text-xs font-bold transition-all whitespace-nowrap border ${activeTab === item.id
+                className={`flex items-center gap-1 md:gap-1.5 px-2 py-1 md:px-2.5 md:py-1.5 text-xs font-bold transition-all whitespace-nowrap border ${activeTab === item.id
                   ? `bg-gradient-to-r ${item.color} text-white border-transparent shadow-lg shadow-black/20`
                   : 'bg-slate-800/40 text-slate-400 border-slate-700/30 hover:bg-slate-800/60 hover:text-slate-200'
                   }`}
