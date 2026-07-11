@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, User, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ClipboardList } from 'lucide-react';
-import { collection, query, getDocs, deleteDoc, doc, where } from 'firebase/firestore';
+import { collection, query, getDocs, deleteDoc, doc, where, updateDoc, deleteField } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
@@ -41,6 +41,9 @@ export interface ExcelDocument {
   atsCustomerInfo?: any;
   atsReportData?: any;
   atsTimeSpent?: any;
+  deleteRequested?: boolean;
+  deleteRequestedBy?: string;
+  deleteReason?: string;
 }
 
 interface DocumentListProps {
@@ -160,6 +163,9 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
               photosWithImage: data.photosWithImage || 0,
               photosData: [], // Optimized: photosData is lazily loaded on edit
               documentType: 'excel',
+              deleteRequested: data.deleteRequested || false,
+              deleteRequestedBy: data.deleteRequestedBy || '',
+              deleteReason: data.deleteReason || '',
             });
           });
         }
@@ -180,6 +186,9 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
               photosWithImage: data.photosWithImage || 0,
               photosData: [], // Optimized: photosData is lazily loaded on edit
               documentType: 'pdf',
+              deleteRequested: data.deleteRequested || false,
+              deleteRequestedBy: data.deleteRequestedBy || '',
+              deleteReason: data.deleteReason || '',
             });
           });
         }
@@ -201,7 +210,10 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
               photosData: [],
               documentType: 'hse',
               hseType: data.hseType || 'inspection',
-              maintenanceType: data.maintenanceType || 'OTHER'
+              maintenanceType: data.maintenanceType || 'OTHER',
+              deleteRequested: data.deleteRequested || false,
+              deleteRequestedBy: data.deleteRequestedBy || '',
+              deleteReason: data.deleteReason || '',
             });
           });
         }
@@ -249,23 +261,63 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
     setDeleteModalOpen(true);
   };
 
-  const confirmDelete = async () => {
+  const confirmDelete = async (reason?: string) => {
     if (!documentToDelete) return;
 
     try {
       setBulkDeleting(true);
-      const toastId = toast.loading('Menghapus dokumen...');
-
       const collectionName = documentToDelete.documentType === 'hse' ? 'hse' : documentToDelete.documentType + '_documents';
-      await deleteDoc(doc(db, collectionName, documentToDelete.id));
-      toast.success('Dokumen berhasil dihapus', { id: toastId });
+
+      if (isAdmin) {
+        // Admins approve delete and delete the document permanently
+        const toastId = toast.loading('Menghapus dokumen secara permanen...');
+        await deleteDoc(doc(db, collectionName, documentToDelete.id));
+        toast.success('Dokumen berhasil dihapus permanen', { id: toastId });
+      } else {
+        // Non-admins request delete
+        const toastId = toast.loading('Mengajukan permohonan hapus...');
+        const docRef = doc(db, collectionName, documentToDelete.id);
+        await updateDoc(docRef, {
+          deleteRequested: true,
+          deleteRequestedBy: user?.email || '',
+          deleteReason: reason || '',
+        });
+        toast.success('Pengajuan hapus dikirim ke admin', { id: toastId });
+      }
 
       setDeleteModalOpen(false);
       setDocumentToDelete(null);
       fetchDocuments();
     } catch (error) {
       console.error('Error deleting document:', error);
-      toast.error('Gagal menghapus dokumen');
+      toast.error('Gagal memproses penghapusan');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  const rejectDeleteRequest = async () => {
+    if (!documentToDelete) return;
+
+    try {
+      setBulkDeleting(true);
+      const toastId = toast.loading('Menolak pengajuan hapus...');
+      const collectionName = documentToDelete.documentType === 'hse' ? 'hse' : documentToDelete.documentType + '_documents';
+      
+      const docRef = doc(db, collectionName, documentToDelete.id);
+      await updateDoc(docRef, {
+        deleteRequested: deleteField(),
+        deleteRequestedBy: deleteField(),
+        deleteReason: deleteField()
+      });
+      
+      toast.success('Pengajuan hapus ditolak', { id: toastId });
+      setDeleteModalOpen(false);
+      setDocumentToDelete(null);
+      fetchDocuments();
+    } catch (error) {
+      console.error('Error rejecting delete request:', error);
+      toast.error('Gagal menolak pengajuan hapus');
     } finally {
       setBulkDeleting(false);
     }
@@ -577,6 +629,11 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   };
 
   const filteredDocuments = documents.filter(doc => {
+    // If user is Admin, only show documents that have pending delete requests
+    if (isAdmin && !doc.deleteRequested) {
+      return false;
+    }
+
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       const inMaintenanceName = doc.maintenanceName.toLowerCase().includes(lowerQuery);
@@ -1014,6 +1071,11 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
                 {document.hseType}
               </span>
             )}
+            {document.deleteRequested && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 animate-pulse uppercase">
+                Menunggu Persetujuan Hapus
+              </span>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-1 text-xs sm:text-sm text-slate-400">
             <div className="flex items-center gap-1.5">
@@ -1086,11 +1148,21 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           </motion.button>
           {canDelete && (
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => openDeleteModal(document)}
-              className="flex-1 sm:flex-initial p-2.5 sm:p-3 bg-red-600/10 hover:bg-red-600/20 text-red-400 rounded-lg transition border border-red-500/20"
-              title="Delete"
+              whileHover={{ scale: document.deleteRequested && !isAdmin ? 1 : 1.05 }}
+              whileTap={{ scale: document.deleteRequested && !isAdmin ? 1 : 0.95 }}
+              onClick={() => {
+                if (document.deleteRequested && !isAdmin) return;
+                openDeleteModal(document);
+              }}
+              disabled={document.deleteRequested && !isAdmin}
+              className={`flex-1 sm:flex-initial p-2.5 sm:p-3 rounded-lg transition border ${
+                document.deleteRequested 
+                  ? isAdmin 
+                    ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/30' 
+                    : 'bg-slate-800 text-slate-500 border-slate-700/50 cursor-not-allowed opacity-50'
+                  : 'bg-red-600/10 hover:bg-red-600/20 text-red-400 border-red-500/20'
+              }`}
+              title={document.deleteRequested ? isAdmin ? "Tinjau Pengajuan Hapus" : "Menunggu Persetujuan Hapus" : "Delete"}
             >
               <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 mx-auto" />
             </motion.button>
@@ -1204,13 +1276,14 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
             <FileType className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
             <select
               value={filterType}
-              onChange={(e) => setFilterType(e.target.value as 'all' | 'excel' | 'pdf')}
+              onChange={(e) => setFilterType(e.target.value as any)}
               className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white appearance-none cursor-pointer text-sm sm:text-base"
               title="Filter tipe dokumen"
             >
-              <option value="all">Semua</option>
+              <option value="all">{isAdmin ? 'Semua Pengajuan' : 'Semua Tipe'}</option>
               <option value="excel">Excel</option>
               <option value="pdf">PDF</option>
+              <option value="hse">HSE</option>
             </select>
           </div>
         </div>
@@ -1287,8 +1360,13 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         isOpen={deleteModalOpen}
         onClose={() => !bulkDeleting && setDeleteModalOpen(false)}
         onConfirm={confirmDelete}
+        onRejectRequest={rejectDeleteRequest}
         documentName={documentToDelete?.fileName || ''}
         loading={bulkDeleting}
+        isRequested={documentToDelete?.deleteRequested || false}
+        requestedBy={documentToDelete?.deleteRequestedBy || ''}
+        isAdmin={isAdmin}
+        deleteReason={documentToDelete?.deleteReason || ''}
       />
     </div>
   );

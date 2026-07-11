@@ -30,7 +30,7 @@ export function MainApp() {
   const [editingData, setEditingData] = useState<ExcelDocument | null>(null);
 
   const navItems = [
-    { id: 'admin', label: 'Dashboard Admin', icon: Shield, color: 'from-purple-600 to-pink-600', show: isAdmin },
+    { id: 'admin', label: 'Dashboard', icon: Shield, color: 'from-purple-600 to-pink-600', show: isAdmin },
     { id: 'absen_tbm', label: 'Absen TBM', icon: Calendar, color: 'from-pink-500 to-rose-600', show: isAdmin },
     { id: 'absen_induction', label: 'Absen Induction', icon: Calendar, color: 'from-blue-500 to-blue-600', show: isAdmin },
     { id: 'ptw', label: 'PTW', icon: Clipboard, color: 'from-indigo-600 to-blue-600', show: (isAdmin || userRole === 'engineer') && !isStandby },
@@ -41,7 +41,7 @@ export function MainApp() {
     { id: 'findings', label: 'Temuan', icon: Search, color: 'from-amber-500 to-orange-600', show: userRole === 'engineer' || isStandby || isAdmin },
     { id: 'finding_archive', label: 'Arsip Temuan', icon: FolderOpen, color: 'from-teal-600 to-teal-700', show: userRole !== 'DME' },
     { id: 'report', label: userRole === 'DME' ? 'Detail Laporan' : 'Buat Laporan', icon: FileText, color: 'from-blue-600 to-blue-700', show: !isStandby && (userRole !== 'DME' || !!editingData) },
-    { id: 'documents', label: 'Arsip Dokumen', icon: FolderOpen, color: 'from-emerald-600 to-emerald-700', show: !isAdmin && !isStandby },
+    { id: 'documents', label: 'Arsip Dokumen', icon: FolderOpen, color: 'from-emerald-600 to-emerald-700', show: !isStandby },
   ] as const;
 
   const getDefaultTab = (): Tab => {
@@ -117,14 +117,14 @@ export function MainApp() {
         {/* Desktop Secondary Navigation (Tabs) */}
       <div className="hidden md:block bg-slate-900/30 border-t border-slate-800/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-          <div className="flex flex-wrap items-center justify-center gap-1">
+          <div className="flex items-center justify-center gap-1 lg:gap-1.5 whitespace-nowrap">
             {navItems.filter(i => i.show).map((item) => (
               <motion.button
                 key={item.id}
                 whileHover={{ y: -1, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setActiveTab(item.id as Tab)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap border ${activeTab === item.id
+                className={`flex items-center gap-1 px-2 py-1 md:px-1.5 md:py-1 md:text-[10px] lg:px-2.5 lg:py-1.5 lg:text-xs font-bold transition-all whitespace-nowrap border ${activeTab === item.id
                   ? `bg-gradient-to-r ${item.color} text-white border-transparent shadow-lg shadow-black/20`
                   : 'bg-slate-800/40 text-slate-400 border-slate-700/30 hover:bg-slate-800/60 hover:text-slate-200'
                   }`}

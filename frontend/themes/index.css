@@ -189,3 +189,19 @@ input[type='number'] {
   color: #94a3b8 !important;
   border-color: #334155 !important;
 }
+
+.scrollbar-none::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none,
+.no-scrollbar {
+  -ms-overflow-style: none;
+}
+
+@supports (scrollbar-width: none) {
+  .scrollbar-none,
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+}

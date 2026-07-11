@@ -475,6 +475,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                 const message = editingData ? 'Laporan HSE diperbarui!' : 'Laporan HSE tersimpan!';
                 toast.success(message, { id: toastId });
             }
+            if (onClearEdit) onClearEdit();
             return finalDocId;
         } catch (err) {
             console.error(err);

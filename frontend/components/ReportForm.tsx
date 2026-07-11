@@ -937,6 +937,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         } else {
           const saveResult = await saveReportToFirestore(targetUnit, result);
           if (saveResult) {
+            if (onClearEdit) onClearEdit();
             doc.save(fileName);
             
             setUnits(prev => {
@@ -1055,6 +1056,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     if (!activeUnit) return;
     const result = await saveReportToFirestore(activeUnit);
     if (result) {
+      if (onClearEdit) onClearEdit();
       let freshCards = createDefaultCards(11);
       if (user?.email) {
         const lowerEmail = user.email.toLowerCase();
