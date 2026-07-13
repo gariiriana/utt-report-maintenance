@@ -1045,7 +1045,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       });
 
       if (!response.ok) {
-        throw new Error(`Analyze failed: ${response.statusText}`);
+        let errMsg = '';
+        try {
+          const errData = await response.json();
+          errMsg = errData.error || errData.message || '';
+        } catch (_) {}
+        throw new Error(errMsg || `Analyze failed (Status: ${response.status})`);
       }
 
       const data = await response.json();
@@ -1138,16 +1143,33 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           if (data && data.parameter) {
             return { id: card.id, parameter: data.parameter };
           }
+          throw new Error('AI tidak menemukan parameter di foto.');
+        } else {
+          let errMsg = '';
+          try {
+            const errData = await response.json();
+            errMsg = errData.error || errData.message || '';
+          } catch (_) {}
+          throw new Error(errMsg || `Analyze failed (Status: ${response.status})`);
         }
-        return null;
       });
 
       const results = await Promise.allSettled(promises);
+      let successCount = 0;
+      const failureMsgs: string[] = [];
 
       for (const result of results) {
         if (result.status === 'fulfilled' && result.value) {
           updatedCardsMap.set(result.value.id, result.value.parameter);
+          successCount++;
+        } else if (result.status === 'rejected') {
+          failureMsgs.push(result.reason.message || 'Unknown error');
         }
+      }
+
+      if (successCount === 0 && cardsWithPhotos.length > 0) {
+        const uniqueErrors = Array.from(new Set(failureMsgs));
+        throw new Error(`Semua foto gagal dianalisis. Detail: ${uniqueErrors.join(', ')}`);
       }
 
       setCards(prev => prev.map(c => {

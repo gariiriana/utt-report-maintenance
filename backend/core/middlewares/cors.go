@@ -8,7 +8,7 @@ import (
 func corsAllowedOrigins() map[string]bool {
 	raw := os.Getenv("ALLOWED_ORIGINS")
 	if raw == "" {
-		raw = "http://localhost:3000,http://localhost:5173"
+		raw = "http://localhost:3000,http://localhost:5173,https://report-utt.web.app,https://report-utt.firebaseapp.com"
 	}
 	result := make(map[string]bool)
 	for _, o := range strings.Split(raw, ",") {
