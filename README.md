@@ -128,10 +128,11 @@
 ### 🤖 AI-Powered Assistant & Chat Copilot
 
 Sistem asisten AI interaktif tingkat korporat yang terintegrasi penuh untuk membantu teknisi data center:
+
 - **Interactive DC Chatbot** — Floating widget chat (`AIChatWidget.tsx`) dengan dukungan render markdown penuh, suggestion chip kontekstual, riwayat percakapan, dan fitur upload gambar.
-- **Multimodal Visual Analyzer** — Analisis visual cerdas panel listrik, grounding, dan thermal hotspot menggunakan model **`meta/llama-3.2-11b-vision-instruct`**.
-- **Telemetry Validator & Consolidator** — Pengenalan otomatis parameter teknis dan pembuatan remarks (dalam Bahasa Indonesia) menggunakan model penalaran tingkat tinggi **`z-ai/glm-5.1`**.
-- **Dynamic Load Balancing** — Algoritma *round-robin key pool* kustom pada backend Go (`ai_service.go`) untuk mengatasi pembatasan rate limit API NVIDIA.
+- **Multimodal Visual Analyzer** — Analisis visual cerdas panel listrik, grounding, dan thermal hotspot menggunakan model **`models/gemini-3.1-flash-lite`**.
+- **Telemetry Validator & Consolidator** — Pengenalan otomatis parameter teknis dan pembuatan remarks (dalam Bahasa Indonesia) menggunakan model penalaran tingkat tinggi **`models/gemini-3.1-flash-lite`**.
+- **Dynamic Load Balancing** — Algoritma *round-robin key pool* kustom pada backend Go (`ai_service.go`) untuk mengatasi pembatasan rate limit API Google Gemini.
 
 ### 📷 Smart Camera & Watermarking
 
