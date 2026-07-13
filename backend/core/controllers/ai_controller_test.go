@@ -31,6 +31,19 @@ func (m *mockAIService) Chat(_ context.Context, _ []models.ChatMessage) (string,
 	return "mock reply", nil
 }
 
+func (m *mockAIService) ValidateATSForm(_ context.Context, _ models.ATSReportData, _ []models.ATSPhotoInput) (*models.FormValidationResponse, error) {
+	return &models.FormValidationResponse{
+		IsValid: true,
+		Summary: "mock validation success",
+	}, m.err
+}
+
+func (m *mockAIService) AnalyzeSingleCard(_ context.Context, _ models.CardAnalyzeRequest) (*models.CardAnalyzeResponse, error) {
+	return &models.CardAnalyzeResponse{
+		Parameter: "mock parameter value",
+	}, m.err
+}
+
 // Ensure mockAIService implements IAIService
 var _ services.IAIService = (*mockAIService)(nil)
 
@@ -283,6 +296,92 @@ func TestAIChat(t *testing.T) {
 		ctrl.Chat(w, req)
 		if w.Code != http.StatusBadRequest {
 			t.Errorf("expected 400, got %d", w.Code)
+		}
+	})
+}
+
+func TestValidateATSForm(t *testing.T) {
+	t.Run("success_returns_200", func(t *testing.T) {
+		ctrl := newTestController(nil, nil)
+		body, _ := json.Marshal(models.FormValidationRequest{
+			ReportData: models.ATSReportData{},
+			Photos:     []models.ATSPhotoInput{},
+		})
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/validate-form", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		ctrl.ValidateATSForm(w, req)
+		if w.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", w.Code)
+		}
+		var resp models.FormValidationResponse
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if resp.Summary != "mock validation success" {
+			t.Errorf("expected summary 'mock validation success', got '%s'", resp.Summary)
+		}
+	})
+
+	t.Run("GET_returns_405", func(t *testing.T) {
+		ctrl := newTestController(nil, nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/ai/validate-form", nil)
+		w := httptest.NewRecorder()
+		ctrl.ValidateATSForm(w, req)
+		if w.Code != http.StatusMethodNotAllowed {
+			t.Errorf("expected 405, got %d", w.Code)
+		}
+	})
+
+	t.Run("invalid_json_returns_400", func(t *testing.T) {
+		ctrl := newTestController(nil, nil)
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/validate-form", strings.NewReader("{invalid"))
+		w := httptest.NewRecorder()
+		ctrl.ValidateATSForm(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", w.Code)
+		}
+	})
+}
+
+func TestAnalyzeSingleCard(t *testing.T) {
+	t.Run("success_returns_200", func(t *testing.T) {
+		ctrl := newTestController(nil, nil)
+		body, _ := json.Marshal(models.CardAnalyzeRequest{
+			PhotoBase64: "dGVzdC1iYXNlNjQ=",
+			Description: "grounding resistance",
+			Category:    "grounding",
+		})
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/analyze-card", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		ctrl.AnalyzeSingleCard(w, req)
+		if w.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", w.Code)
+		}
+		var resp models.CardAnalyzeResponse
+		json.Unmarshal(w.Body.Bytes(), &resp)
+		if resp.Parameter != "mock parameter value" {
+			t.Errorf("expected parameter 'mock parameter value', got '%s'", resp.Parameter)
+		}
+	})
+
+	t.Run("missing_photo_returns_400", func(t *testing.T) {
+		ctrl := newTestController(nil, nil)
+		body, _ := json.Marshal(models.CardAnalyzeRequest{
+			Description: "missing photo",
+		})
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/analyze-card", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		ctrl.AnalyzeSingleCard(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", w.Code)
+		}
+	})
+
+	t.Run("GET_returns_405", func(t *testing.T) {
+		ctrl := newTestController(nil, nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/ai/analyze-card", nil)
+		w := httptest.NewRecorder()
+		ctrl.AnalyzeSingleCard(w, req)
+		if w.Code != http.StatusMethodNotAllowed {
+			t.Errorf("expected 405, got %d", w.Code)
 		}
 	})
 }

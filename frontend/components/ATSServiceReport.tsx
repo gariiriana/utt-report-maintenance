@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Sparkles, Upload, X,
-  ChevronDown, ChevronUp, Download, Eye, AlertTriangle, Edit2
+  X, ChevronDown, ChevronUp, Download, Eye, AlertTriangle, Edit2
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -228,7 +228,6 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
     voltage: false, thermal: false, grounding: false, operation: false, time: false,
   });
   const [isDraftLoading, setIsDraftLoading] = useState(true);
-  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // Load draft from draftStorage (IndexedDB)
   useEffect(() => {
@@ -284,29 +283,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
 
 
 
-  // ─── Photo Management ────────────────────────────────────────────────
-  const handlePhotoUpload = useCallback(async (files: FileList, category: PhotoCategory) => {
-    const newPhotos: UploadedPhoto[] = [];
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (!file.type.startsWith('image/')) continue;
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error(`${file.name} terlalu besar (max 10MB)`);
-        continue;
-      }
-      const base64 = await fileToBase64(file);
-      newPhotos.push({
-        id: `${Date.now()}_${i}_${Math.random().toString(36).slice(2)}`,
-        file,
-        base64: base64.split(',')[1], // Remove data:image/... prefix
-        preview: base64,
-        category,
-        label: file.name.replace(/\.[^.]+$/, ''),
-      });
-    }
-    setPhotos(prev => [...prev, ...newPhotos]);
-    toast.success(`${newPhotos.length} foto ditambahkan ke ${CATEGORY_CONFIG[category].label}`);
-  }, []);
+
 
   const removePhoto = (id: string) => {
     setPhotoToDelete(id);
@@ -412,7 +389,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
 
   // ─── Render ──────────────────────────────────────────────────────────
   if (showPreview) {
-    return (
+    return createPortal(
       <ATSServiceReportPreview
         customerInfo={customerInfo}
         reportData={reportData}
@@ -420,7 +397,8 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
         originalReportCards={originalReportCards}
         onBack={() => setShowPreview(false)}
         onExportPDF={handleExportPDF}
-      />
+      />,
+      document.body
     );
   }
 
@@ -433,9 +411,6 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
         className="bg-gradient-to-br from-slate-900/80 to-slate-800/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6"
       >
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/20">
-            <Sparkles className="w-6 h-6 text-white" />
-          </div>
           <div>
             <h1 className="text-xl font-bold text-white">Service Report — ATS</h1>
             <p className="text-sm text-slate-400">Automatic Transfer Switch • Neutra DC Cikarang</p>
@@ -468,7 +443,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
       </CollapsibleSection>
 
       {/* ─── Section: Photo Upload ───────────────────────────────── */}
-      <CollapsibleSection title="Upload Foto" sectionKey="photos" expanded={expandedSections.photos} toggle={toggleSection} icon="📷" badge={`${photos.length} foto`}>
+      <CollapsibleSection title="Foto Dokumentasi" sectionKey="photos" expanded={expandedSections.photos} toggle={toggleSection} icon="📷" badge={`${photos.length} foto`}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {(Object.keys(CATEGORY_CONFIG) as PhotoCategory[]).map(cat => {
             const cfg = CATEGORY_CONFIG[cat];
@@ -486,27 +461,8 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
                   <span className="text-xs font-mono text-slate-500 bg-slate-800 px-2 py-0.5 rounded">{catPhotos.length}</span>
                 </div>
 
-                {/* Upload area */}
-                <button
-                  onClick={() => fileInputRefs.current[cat]?.click()}
-                  className={`w-full border-2 border-dashed border-slate-600/50 hover:border-slate-500 rounded-xl p-4 flex flex-col items-center gap-2 transition-all hover:bg-slate-700/20`}
-                >
-                  <Upload className="w-5 h-5 text-slate-400" />
-                  <span className="text-xs text-slate-400">Klik untuk upload foto</span>
-                </button>
-                <input
-                  ref={el => { fileInputRefs.current[cat] = el; }}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={e => e.target.files && handlePhotoUpload(e.target.files, cat)}
-                  title="Upload Foto"
-                  aria-label="Upload Foto"
-                />
-
                 {/* Photo thumbnails */}
-                {catPhotos.length > 0 && (
+                {catPhotos.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {catPhotos.map(photo => (
                       <PhotoThumbnail
@@ -517,6 +473,10 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
                         onEditLabel={() => editPhotoLabel(photo.id, photo.label)}
                       />
                     ))}
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-slate-500 italic py-1">
+                    Tidak ada foto terklasifikasi
                   </div>
                 )}
               </div>
@@ -911,22 +871,21 @@ function PhotoThumbnail({ photo, onPreview, onDelete, onEditLabel }: {
   onDelete: () => void;
   onEditLabel: () => void;
 }) {
-  const [hovered, setHovered] = useState(false);
-
   return (
-    <div
-      className="relative w-16 h-16 rounded-lg overflow-hidden border border-white/10 shadow-md cursor-pointer"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      title={photo.label ? `Deskripsi: ${photo.label}` : 'Klik icon Edit di dalam untuk menambah deskripsi'}
-    >
-      <img src={photo.preview} alt={photo.label} className="w-full h-full object-cover" />
+    <div className="flex flex-col items-center gap-1">
+      {/* Photo */}
       <div
-        className={`absolute inset-0 bg-slate-950/80 flex items-center justify-center gap-1.5 transition-all duration-150 ${hovered ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
+        className="relative w-20 h-20 sm:w-16 sm:h-16 rounded-lg overflow-hidden border border-white/10 shadow-md cursor-pointer"
+        onClick={onPreview}
+        title={photo.label ? `Deskripsi: ${photo.label}` : 'Klik untuk lihat foto'}
       >
+        <img src={photo.preview} alt={photo.label} className="w-full h-full object-cover" />
+      </div>
+      {/* Action buttons — always visible, bigger hit targets for mobile */}
+      <div className="flex items-center gap-1.5">
         <button
           onClick={(e) => { e.stopPropagation(); onPreview(); }}
-          className="p-1 bg-white/10 hover:bg-white/25 rounded transition-colors text-white"
+          className="p-1.5 sm:p-1 bg-white/10 hover:bg-white/25 active:bg-white/30 rounded-md transition-colors text-white"
           title="Lihat foto"
           aria-label="Lihat foto"
         >
@@ -934,7 +893,7 @@ function PhotoThumbnail({ photo, onPreview, onDelete, onEditLabel }: {
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onEditLabel(); }}
-          className="p-1 bg-amber-500/20 hover:bg-amber-500/40 rounded transition-colors text-amber-300"
+          className="p-1.5 sm:p-1 bg-amber-500/20 hover:bg-amber-500/40 active:bg-amber-500/50 rounded-md transition-colors text-amber-300"
           title="Edit deskripsi"
           aria-label="Edit deskripsi"
         >
@@ -942,7 +901,7 @@ function PhotoThumbnail({ photo, onPreview, onDelete, onEditLabel }: {
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-1 bg-red-500/20 hover:bg-red-500/40 rounded transition-colors text-red-400"
+          className="p-1.5 sm:p-1 bg-red-500/20 hover:bg-red-500/40 active:bg-red-500/50 rounded-md transition-colors text-red-400"
           title="Hapus foto"
           aria-label="Hapus foto"
         >
@@ -953,49 +912,3 @@ function PhotoThumbnail({ photo, onPreview, onDelete, onEditLabel }: {
   );
 }
 
-// ─── Utility ────────────────────────────────────────────────────────────
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-        const maxDim = 1024;
-
-        if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          } else {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          resolve(e.target?.result as string);
-          return;
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-        // Compress as JPEG with 0.75 quality (highly optimized for size vs detail)
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
-        resolve(compressedBase64);
-      };
-      img.onerror = () => {
-        // Fallback to original if image load fails
-        resolve(e.target?.result as string);
-      };
-      img.src = e.target?.result as string;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}

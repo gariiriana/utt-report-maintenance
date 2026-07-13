@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Download } from 'lucide-react';
 import { ATSCustomerInfo, ATSReportData, ATSTimeSpent } from '@/types/atsReportTypes';
@@ -20,36 +21,50 @@ export function ATSServiceReportPreview({
     ? new Date(customerInfo.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
     : '—';
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to top when preview opens
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = 0;
+    }
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
   return (
     <motion.div
+      ref={containerRef}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="w-full max-w-5xl mx-auto pb-20"
+      className="fixed inset-0 z-[100] bg-slate-950/98 overflow-y-auto pb-10 pt-4 px-2 sm:px-4"
     >
       {/* Sticky toolbar */}
       <div className="sticky top-0 z-50 bg-slate-950/95 backdrop-blur-xl border-b border-white/10 shadow-2xl">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <button onClick={onBack} className="flex items-center gap-2 text-sm text-slate-300 hover:text-white transition-colors">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          <button onClick={onBack} className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-300 hover:text-white transition-colors shrink-0">
             <ArrowLeft className="w-4 h-4" />
             <span className="font-bold">Kembali</span>
           </button>
-          <div className="text-center">
+          <div className="text-center hidden sm:block">
             <p className="text-xs font-bold text-white">Preview Service Report ATS</p>
           </div>
           <button
             onClick={onExportPDF}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-bold rounded-lg shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs sm:text-sm font-bold rounded-lg shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all shrink-0"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-3.5 h-3.5" />
             Export PDF
           </button>
         </div>
       </div>
 
       {/* Report Preview - mimics PDF layout */}
-      <div className="max-w-4xl mx-auto mt-6 bg-white rounded-2xl shadow-2xl overflow-hidden">
-        <div className="p-6 sm:p-8 space-y-4 font-sans text-slate-900">
+      <div className="max-w-4xl mx-auto mt-6 overflow-x-auto">
+        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden min-w-[700px]">
+          <div className="p-6 sm:p-8 space-y-4 font-sans text-slate-900">
 
           {/* Header with logos */}
           <div className="flex items-center justify-between border-2 border-gray-300 rounded-lg p-3">
@@ -400,36 +415,54 @@ export function ATSServiceReportPreview({
               </div>
             </div>
           </div>
+          </div>
         </div>
       </div>
 
       {/* Documentation Page Preview */}
       {originalReportCards && originalReportCards.length > 0 && (
-        <div className="max-w-4xl mx-auto mt-6 bg-white rounded-2xl shadow-2xl overflow-hidden">
-          <div className="p-6 sm:p-8 space-y-4 font-sans text-slate-900">
-            {/* Blue header bar */}
-            <div className="bg-blue-700 text-white px-3 py-1.5 rounded font-bold text-xs">
-              DOKUMENTASI MAINTENANCE
-            </div>
-            
-            {/* Grid of photos */}
-            <div className="grid grid-cols-3 gap-3">
-              {originalReportCards.map((card, idx) => (
-                <div key={idx} className="border border-gray-200 rounded-lg overflow-hidden flex flex-col bg-gray-50">
-                  <div className="aspect-video w-full relative bg-slate-900 flex items-center justify-center overflow-hidden">
-                    {card.photoBase64 ? (
-                      <img src={card.photoBase64} alt={card.description} className="object-cover w-full h-full" />
-                    ) : (
-                      <span className="text-[10px] text-gray-500">No Photo</span>
-                    )}
-                  </div>
-                  <div className="p-2 border-t border-gray-100 flex-1">
-                    <p className="text-[9px] text-gray-700 font-medium line-clamp-2 leading-tight">
-                      {card.description}
-                    </p>
-                  </div>
+        <div className="max-w-4xl mx-auto mt-6 overflow-x-auto">
+          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden min-w-[700px]">
+            <div className="p-6 sm:p-8 space-y-4 font-sans text-slate-900">
+              
+              {/* Header with logos matching the PDF format */}
+              <div className="flex items-center justify-between border-2 border-gray-300 rounded-lg p-3 mb-6">
+                <img src={logoDwimitra} alt="Dwimitra" className="h-10 object-contain" />
+                <div className="text-center flex-1 mx-4">
+                  <h1 className="text-sm font-bold text-blue-800 uppercase tracking-tight">Laporan Maintenance</h1>
+                  <h2 className="text-[11px] font-bold text-gray-800 uppercase">Dokumentasi PM: ATS</h2>
+                  {customerInfo.specification && (
+                    <p className="text-[9px] font-bold text-blue-600 uppercase mt-0.5">{customerInfo.specification}</p>
+                  )}
+                  <p className="text-[8px] text-gray-500 mt-0.5">Tanggal Maintenance: {formattedDate}</p>
                 </div>
-              ))}
+                <img src={logoNeutraDC} alt="NeutraDC" className="h-8 object-contain" />
+              </div>
+
+              <div className="h-px w-full bg-slate-100 mb-6" />
+            
+              {/* Grid of photos matching standard preview style */}
+              <div className="grid grid-cols-3 gap-3">
+                {originalReportCards.map((card, idx) => (
+                  <div key={idx} className="flex flex-col border-2 border-slate-900 overflow-hidden shadow-sm bg-white">
+                    <div className="aspect-video w-full relative bg-slate-100 flex items-center justify-center overflow-hidden border-b-2 border-slate-900">
+                      {card.photoBase64 ? (
+                        <img src={card.photoBase64} alt={card.description} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="flex flex-col items-center gap-1.5 text-slate-300">
+                          <span className="text-[10px] font-black uppercase tracking-tighter">No Photo</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-2 bg-white min-h-[50px] flex items-center gap-2 text-left relative">
+                      <div className="absolute left-1 top-2 bottom-2 w-[2.5px] bg-blue-600 rounded-full" />
+                      <p className="text-[11px] leading-tight text-slate-900 font-bold break-words pl-2.5 pr-1">
+                        {card.description || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

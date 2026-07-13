@@ -103,3 +103,64 @@ func (c *AIController) Chat(w http.ResponseWriter, r *http.Request) {
 		"reply": reply,
 	})
 }
+
+// ValidateATSForm handles POST /api/ai/validate-form
+func (c *AIController) ValidateATSForm(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse request body
+	var req models.FormValidationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.SendError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Call AI service to validate
+	result, err := c.service.ValidateATSForm(r.Context(), req.ReportData, req.Photos)
+	if err != nil {
+		logger.Error("ai_ats_validate_error",
+			"request_id", helpers.ExtractRequestID(r),
+			"error", err.Error(),
+		)
+		helpers.SendError(w, "AI validation failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	helpers.SendJSON(w, http.StatusOK, result)
+}
+
+// AnalyzeSingleCard handles POST /api/ai/analyze-card
+func (c *AIController) AnalyzeSingleCard(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse request body
+	var req models.CardAnalyzeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.SendError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.PhotoBase64 == "" {
+		helpers.SendError(w, "Photo base64 is required", http.StatusBadRequest)
+		return
+	}
+
+	// Call AI service
+	result, err := c.service.AnalyzeSingleCard(r.Context(), req)
+	if err != nil {
+		logger.Error("ai_ats_analyze_card_error",
+			"request_id", helpers.ExtractRequestID(r),
+			"error", err.Error(),
+		)
+		helpers.SendError(w, "AI card analysis failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	helpers.SendJSON(w, http.StatusOK, result)
+}

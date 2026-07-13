@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, Save, ChevronLeft, ChevronRight, X, Eye, Download, Sparkles } from 'lucide-react';
+import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, Save, ChevronLeft, ChevronRight, X, Eye, Download, Sparkles, Loader2 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { ExcelDocument } from '@/components/DocumentList';
 import { ImageEditor } from '@/components/ImageEditor';
@@ -108,6 +108,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [cardClipboard, setCardClipboard] = useState<{ photoBase64?: string, description: string } | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [analyzingCardId, setAnalyzingCardId] = useState<string | null>(null);
+  const [isBulkAnalyzing, setIsBulkAnalyzing] = useState(false);
   const [previewImage, setPreviewImage] = useState<{ src: string; title: string } | null>(null);
 
 
@@ -989,6 +991,185 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     });
   };
 
+  const handleAnalyzeSingleCard = async (cardId: string) => {
+    const card = cards.find(c => c.id === cardId);
+    if (!card) return;
+    if (!card.photoBase64 && !card.photo) {
+      toast.error('Unggah foto terlebih dahulu untuk dianalisis.');
+      return;
+    }
+
+    setAnalyzingCardId(cardId);
+    const toastId = toast.loading(`Asisten AI sedang menganalisis foto...`);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Not authenticated');
+
+      let base64 = card.photoBase64 || '';
+      if (!base64 && card.photo) {
+        base64 = await fileToBase64(card.photo);
+      }
+      const rawBase64 = base64.includes(',') ? base64.split(',')[1] : base64;
+
+      const desc = (card.description || '').toLowerCase();
+      let category = 'visual_inspection';
+      if (desc.includes('thermal') || desc.includes('imager') || desc.includes('suhu') || desc.includes('temp')) {
+        category = 'thermal';
+      } else if (desc.includes('grounding') || desc.includes('earth') || desc.includes('tahanan')) {
+        category = 'grounding';
+      } else if (
+        desc.includes('voltage') || desc.includes('ampere') || desc.includes('current') || 
+        desc.includes('dpm') || desc.includes('power') || desc.includes('daya') ||
+        desc.includes('r-s') || desc.includes('s-t') || desc.includes('t-r') ||
+        desc.includes('r-n') || desc.includes('s-n') || desc.includes('t-n')
+      ) {
+        category = 'power_meter';
+      }
+
+      const apiBaseUrl = import.meta.env.VITE_API_URL || '';
+      const url = apiBaseUrl.endsWith('/api')
+        ? `${apiBaseUrl}/ai/analyze-card`
+        : `${apiBaseUrl}/api/ai/analyze-card`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          photo_base64: rawBase64,
+          description: card.description || '',
+          category
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Analyze failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      if (data && data.parameter) {
+        handleParameterChange(cardId, data.parameter);
+        toast.success(`Parameter berhasil diisi: ${data.parameter}`, { id: toastId });
+      } else {
+        toast.error('AI tidak menemukan parameter di foto.', { id: toastId });
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Analisis AI gagal: ${err.message}`, { id: toastId });
+    } finally {
+      setAnalyzingCardId(null);
+    }
+  };
+
+  const handleBulkAnalyzeAtsParameters = async () => {
+    // Skip cards whose description is visual-only (no numeric parameter to extract)
+    const visualOnlyKeywords = ['condition', 'cleaning', 'visual', 'inspeksi'];
+    const isVisualOnly = (desc: string) => {
+      const d = desc.toLowerCase();
+      return visualOnlyKeywords.some(kw => d.includes(kw));
+    };
+
+    const cardsWithPhotos = cards.filter(c =>
+      (c.photoBase64 || c.photo) && !c.parameter && !isVisualOnly(c.description || '')
+    );
+    if (cardsWithPhotos.length === 0) {
+      toast.error('Tidak ada card berfoto (dengan data parameter) yang perlu dianalisis.');
+      return;
+    }
+
+    setIsBulkAnalyzing(true);
+    const toastId = toast.loading(`Menganalisis ${cardsWithPhotos.length} foto parameter secara paralel...`);
+    
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Not authenticated');
+
+      const apiBaseUrl = import.meta.env.VITE_API_URL || '';
+      const url = apiBaseUrl.endsWith('/api')
+        ? `${apiBaseUrl}/ai/analyze-card`
+        : `${apiBaseUrl}/api/ai/analyze-card`;
+
+      const updatedCardsMap = new Map<string, string>();
+
+      // Helper: determine category from description
+      const getCategory = (desc: string): string => {
+        const d = desc.toLowerCase();
+        if (d.includes('thermal') || d.includes('imager') || d.includes('suhu') || d.includes('temp')) {
+          return 'thermal';
+        } else if (d.includes('grounding') || d.includes('earth') || d.includes('tahanan')) {
+          return 'grounding';
+        } else if (
+          d.includes('voltage') || d.includes('ampere') || d.includes('current') || 
+          d.includes('dpm') || d.includes('power') || d.includes('daya') ||
+          d.includes('r-s') || d.includes('s-t') || d.includes('t-r') ||
+          d.includes('r-n') || d.includes('s-n') || d.includes('t-n')
+        ) {
+          return 'power_meter';
+        }
+        return 'visual_inspection';
+      };
+
+      // Fire all requests in parallel
+      const promises = cardsWithPhotos.map(async (card) => {
+        let base64 = card.photoBase64 || '';
+        if (!base64 && card.photo) {
+          base64 = await fileToBase64(card.photo);
+        }
+        const rawBase64 = base64.includes(',') ? base64.split(',')[1] : base64;
+        const category = getCategory(card.description || '');
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            photo_base64: rawBase64,
+            description: card.description || '',
+            category
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.parameter) {
+            return { id: card.id, parameter: data.parameter };
+          }
+        }
+        return null;
+      });
+
+      const results = await Promise.allSettled(promises);
+
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value) {
+          updatedCardsMap.set(result.value.id, result.value.parameter);
+        }
+      }
+
+      setCards(prev => prev.map(c => {
+        const pVal = updatedCardsMap.get(c.id);
+        return pVal ? { ...c, parameter: pVal } : c;
+      }));
+
+      toast.success(`Berhasil memproses ${updatedCardsMap.size} dari ${cardsWithPhotos.length} foto parameter! ⚡`, { id: toastId });
+      
+      // Auto trigger collect parameter data to populate ATS Service Report at the bottom
+      setTimeout(() => {
+        handleTriggerAtsData();
+      }, 500);
+
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Gagal analisis massal: ${err.message}`, { id: toastId });
+    } finally {
+      setIsBulkAnalyzing(false);
+    }
+  };
+
   const handleTriggerAtsData = async () => {
     const toastId = toast.loading('Mengumpulkan parameter dokumentasi...');
     try {
@@ -1506,68 +1687,101 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   </div>
                   <textarea title="Deskripsi Foto" value={card.description} onChange={e => handleDescriptionChange(card.id, e.target.value)} disabled={isDME} className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg p-2 sm:p-3 text-xs sm:text-sm text-white outline-none focus:ring-1 focus:ring-blue-500 transition placeholder:text-slate-700 disabled:opacity-75 disabled:cursor-not-allowed" rows={2} placeholder="Masukkan deskripsi dokumentasi..." />
                   {user?.email === 'ats@gmail.com' && (
-                    <input
-                      type="text"
-                      title="Parameter Pengukuran"
-                      value={card.parameter || ''}
-                      onChange={e => handleParameterChange(card.id, e.target.value)}
-                      disabled={isDME}
-                      className="w-full bg-slate-950/80 border border-slate-800 rounded-lg p-2 text-xs text-emerald-400 outline-none focus:ring-1 focus:ring-emerald-500 transition placeholder:text-slate-600 disabled:opacity-75 disabled:cursor-not-allowed mt-1.5 font-mono"
-                      placeholder="Nilai parameter (contoh: 395 V, 31 °C, 0.35 Ω)..."
-                    />
+                    <div className="relative flex items-center mt-1.5 w-full">
+                      <input
+                        type="text"
+                        title="Parameter Pengukuran"
+                        value={card.parameter || ''}
+                        onChange={e => handleParameterChange(card.id, e.target.value)}
+                        disabled={isDME || analyzingCardId === card.id}
+                        className="w-full bg-slate-950/80 border border-slate-800 rounded-lg p-2 pr-9 text-xs text-emerald-400 outline-none focus:ring-1 focus:ring-emerald-500 transition placeholder:text-slate-600 disabled:opacity-75 disabled:cursor-not-allowed font-mono"
+                        placeholder="Nilai parameter (contoh: 395 V, 31 °C, 0.35 Ω)..."
+                      />
+                      {(card.photoBase64 || card.photo) && (
+                        <button
+                          type="button"
+                          onClick={() => handleAnalyzeSingleCard(card.id)}
+                          disabled={isDME || analyzingCardId !== null}
+                          className="absolute right-2.5 p-1 bg-violet-600/20 border border-violet-500/30 text-violet-400 hover:text-white rounded transition active:scale-95 disabled:opacity-50"
+                          title="Generate parameter dari foto dengan AI"
+                        >
+                          {analyzingCardId === card.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-12 bg-slate-900/40 p-6 rounded-[2rem] border border-slate-700/30 backdrop-blur-xl w-full">
+            <div className="grid grid-cols-2 sm:flex sm:flex-row sm:flex-wrap lg:flex-nowrap items-stretch justify-center gap-2 sm:gap-3 mt-12 bg-slate-900/40 p-4 sm:p-5 rounded-[2rem] border border-slate-700/30 backdrop-blur-xl w-full">
               {!isDME && (
                 <button 
                   onClick={handleManualSave} 
                   disabled={isSaving || isExporting}
-                  className={`w-full sm:flex-1 py-4 bg-blue-600/20 text-blue-400 rounded-xl font-bold flex items-center justify-center gap-2 border border-blue-500/30 transition shadow-xl active:scale-95 text-xs sm:text-sm group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600/30'}`}
+                  className={`col-span-1 sm:flex-1 sm:min-w-[150px] py-3.5 sm:py-4 px-1.5 sm:px-2 bg-blue-600/20 text-blue-400 rounded-xl font-bold flex flex-col items-center justify-center gap-1.5 border border-blue-500/30 transition shadow-xl active:scale-95 text-[10px] sm:text-xs md:text-sm group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600/30'}`}
                 >
                   {isSaving ? (
-                    <RefreshCw className="w-5 h-5 animate-spin" />
+                    <RefreshCw className="w-4 h-4 sm:w-5 h-5 animate-spin" />
                   ) : (
-                    <Save className="w-5 h-5 group-active:scale-90 transition-transform" /> 
+                    <Save className="w-4 h-4 sm:w-5 h-5 group-active:scale-90 transition-transform" /> 
                   )}
-                  <span className="whitespace-nowrap">{isSaving ? 'MENYIMPAN...' : 'SIMPAN KE ARSIP'}</span>
+                  <span className="text-center leading-tight">SIMPAN KE ARSIP</span>
                 </button>
               )}
 
               <button 
                 onClick={() => setShowPreview(true)} 
                 disabled={isSaving || isExporting}
-                className={`w-full sm:flex-1 py-4 bg-emerald-600/20 text-emerald-400 rounded-xl font-bold flex items-center justify-center gap-2 border border-emerald-500/30 transition shadow-xl active:scale-95 text-xs sm:text-sm group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-emerald-600/30'}`}
+                className={`col-span-1 sm:flex-1 sm:min-w-[150px] py-3.5 sm:py-4 px-1.5 sm:px-2 bg-emerald-600/20 text-emerald-400 rounded-xl font-bold flex flex-col items-center justify-center gap-1.5 border border-emerald-500/30 transition shadow-xl active:scale-95 text-[10px] sm:text-xs md:text-sm group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-emerald-600/30'}`}
               >
-                <Eye className="w-5 h-5 group-active:scale-90 transition-transform" />
-                <span className="whitespace-nowrap">PREVIEW REPORT</span>
+                <Eye className="w-4 h-4 sm:w-5 h-5 group-active:scale-90 transition-transform" />
+                <span className="text-center leading-tight">PREVIEW DOKUMENTASI</span>
               </button>
 
               {user?.email === 'ats@gmail.com' && (
-                <button 
-                  onClick={handleTriggerAtsData} 
-                  disabled={isSaving || isExporting}
-                  className={`w-full sm:flex-1 py-4 bg-violet-600/20 text-violet-400 rounded-xl font-bold flex items-center justify-center gap-2 border border-violet-500/30 transition shadow-xl active:scale-95 text-xs sm:text-sm group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-violet-600/30'}`}
-                >
-                  <Sparkles className="w-5 h-5 group-active:scale-90 transition-transform" />
-                  <span className="whitespace-nowrap">GENERATE DATA</span>
-                </button>
+                <>
+                  <button 
+                    onClick={handleBulkAnalyzeAtsParameters} 
+                    disabled={isSaving || isExporting || isBulkAnalyzing}
+                    className={`col-span-1 sm:flex-1 sm:min-w-[150px] py-3.5 sm:py-4 px-1.5 sm:px-2 bg-violet-600/20 text-violet-400 rounded-xl font-bold flex flex-col items-center justify-center gap-1.5 border border-violet-500/30 transition shadow-xl active:scale-95 text-[10px] sm:text-xs md:text-sm group ${(isSaving || isExporting || isBulkAnalyzing) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-violet-600/30'}`}
+                  >
+                    {isBulkAnalyzing ? (
+                      <Loader2 className="w-4 h-4 sm:w-5 h-5 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4 sm:w-5 h-5 group-active:scale-90 transition-transform" />
+                    )}
+                    <span className="text-center leading-tight">
+                      {isBulkAnalyzing ? 'MENGANALISIS...' : 'GENERATE AI PARAMETER'}
+                    </span>
+                  </button>
+                  <button 
+                    onClick={handleTriggerAtsData} 
+                    disabled={isSaving || isExporting || isBulkAnalyzing}
+                    className={`col-span-1 sm:flex-1 sm:min-w-[150px] py-3.5 sm:py-4 px-1.5 sm:px-2 bg-slate-800/80 text-slate-300 rounded-xl font-bold flex flex-col items-center justify-center gap-1.5 border border-slate-700/50 transition shadow-xl active:scale-95 text-[10px] sm:text-xs md:text-sm group ${(isSaving || isExporting || isBulkAnalyzing) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-700'}`}
+                  >
+                    <RefreshCw className="w-4 h-4 sm:w-5 h-5 group-active:scale-90 transition-transform animate-none hover:rotate-180 duration-500" />
+                    <span className="text-center leading-tight">SINKRONISASI KE ATS</span>
+                  </button>
+                </>
               )}
 
               <button 
                 onClick={() => handleExportPDF()} 
                 disabled={isSaving || isExporting}
-                className={`w-full sm:flex-1 py-4 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-2xl transition active:scale-95 text-xs sm:text-sm group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:from-red-700 hover:to-rose-700'}`}
+                className={`col-span-2 sm:col-span-1 sm:flex-1 sm:min-w-[150px] py-3.5 sm:py-4 px-1.5 sm:px-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-2xl transition active:scale-95 text-[10px] sm:text-xs md:text-sm group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:from-red-700 hover:to-rose-700'}`}
               >
                 {isExporting ? (
-                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  <RefreshCw className="w-4 h-4 sm:w-5 h-5 animate-spin" />
                 ) : (
-                  <FileType className="w-5 h-5 group-active:scale-90 transition-transform" />
+                  <FileType className="w-4 h-4 sm:w-5 h-5 group-active:scale-90 transition-transform" />
                 )}
-                <span className="whitespace-nowrap">
-                  {isExporting ? 'EXPORTING...' : 'EXPORT PDF'}
+                <span className="text-center leading-tight">
+                  {isExporting ? 'EXPORTING...' : 'EXPORT DOKUMENTASI (PDF)'}
                 </span>
               </button>
             </div>

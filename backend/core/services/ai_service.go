@@ -20,6 +20,8 @@ import (
 type IAIService interface {
 	AnalyzeATSPhotos(ctx context.Context, photos []models.ATSPhotoInput, existingData *models.ATSReportData) (*models.ATSReportData, error)
 	Chat(ctx context.Context, messages []models.ChatMessage) (string, error)
+	ValidateATSForm(ctx context.Context, data models.ATSReportData, photos []models.ATSPhotoInput) (*models.FormValidationResponse, error)
+	AnalyzeSingleCard(ctx context.Context, req models.CardAnalyzeRequest) (*models.CardAnalyzeResponse, error)
 }
 
 // ─── AI AGENT SERVICE ────────────────────────────────────────────────────────
@@ -824,4 +826,221 @@ VISION CAPABILITY (SUPER-GENIUS):
 	}
 
 	return reply, nil
+}
+
+// ValidateATSForm validates user form input values and cross-checks them against uploaded photos.
+func (s *aiService) ValidateATSForm(ctx context.Context, data models.ATSReportData, photos []models.ATSPhotoInput) (*models.FormValidationResponse, error) {
+	if len(s.apiKeys) == 0 {
+		return nil, fmt.Errorf("no NVIDIA NIM API keys configured")
+	}
+
+	dataBytes, _ := json.MarshalIndent(data, "", "  ")
+	formText := string(dataBytes)
+
+	// Determine model to use
+	useVision := false
+	var messages []map[string]interface{}
+
+	prompt := fmt.Sprintf(`You are an elite Data Center Principal Electrical Engineer.
+Your task is to validate an ATS (Automatic Transfer Switch) maintenance service report form and provide real-time guidance.
+
+Here is the current form data filled in by the engineer:
+%s
+
+RULES & CRITERIA TO VALIDATE:
+1. Grounding Resistance (grounding_resistance.result_ohm): Must be < 5 Ohm. If >= 5 Ohm, flag as WARNING with a message to clean the grounding rod connection or inspect the ground pit.
+2. Thermal Measurement Temperature (thermal_measurement.result_temperature): Must be < 40°C. If >= 40°C, flag as WARNING with a message of potential hotspot, recommending retightening terminal lugs.
+3. Voltage Balance:
+   - Phase-to-Phase Voltages (voltage_current.voltage_rs, voltage_st, voltage_tr): Should be roughly balanced (within 5%% deviation of each other). If unbalanced, flag as WARNING.
+   - Phase-to-Neutral Voltages (voltage_current.voltage_rn, voltage_sn, voltage_tn): Should be roughly 220V (within 5%%). If out of bounds, flag as WARNING.
+   - Voltage N-G (voltage_current.voltage_ng): Should be < 2V (preferably < 1V). If >= 2V, flag as WARNING (high neutral-to-ground voltage indicates poor grounding or unbalanced load).
+4. Visual Inspection Checklist:
+   - If any item in visual_inspection has condition == "Not Good", check if the 'remarks' field is empty. If it is empty, flag as ERROR (requires a remark detailing the issue).
+   - If a remark indicates a physical issue (e.g., corrosion, loose wire), suggest a recommendation for it.
+5. Operation Status (operation_status):
+   - If grounding is >= 5 Ohm, temperature is >= 40°C, or any visual inspection is "Not Good", but operation_status.is_normal is true, flag as ERROR (status should be Abnormal when critical issues exist).
+
+Output your response as ONLY a valid JSON object matching the schema below. Do NOT output markdown code fences, do not output explanations, just the JSON.
+
+SCHEMA:
+{
+  "is_valid": true/false, // false if there are any warnings or errors
+  "summary": "Brief summary of the validation result in Indonesian",
+  "issues": [
+    {
+      "field": "name of the field, e.g. grounding_resistance.result_ohm, or visual_inspection.0.remarks",
+      "severity": "warning", // or "error"
+      "message": "Detailed explanation of the issue and why it violates standards, in Indonesian"
+    }
+  ],
+  "recommendations": [
+    "Step-by-step technical action item to resolve the issues, in Indonesian (e.g. 'Lakukan pengencangan baut...', 'Lakukan pengujian ulang...')"
+  ]
+}`, formText)
+
+	// Filter out photos with empty base64
+	var validPhotos []models.ATSPhotoInput
+	for _, p := range photos {
+		if strings.TrimSpace(p.Base64) != "" {
+			validPhotos = append(validPhotos, p)
+		}
+	}
+
+	if len(validPhotos) > 0 {
+		useVision = true
+		prompt += `\n6. Photo Verification: Check if the numeric values shown in the multimeter/clamp-meter display in the photos match the values entered in the form fields. If there is a mismatch (e.g. photo shows 4.5 Ohm but form input has 0.5 Ohm), flag as ERROR.`
+
+		contentArray := []map[string]interface{}{
+			{
+				"type": "text",
+				"text": prompt,
+			},
+		}
+
+		for i, photo := range validPhotos {
+			mimeType := "image/jpeg"
+			if strings.HasPrefix(photo.Base64, "iVBOR") {
+				mimeType = "image/png"
+			}
+			imageURL := fmt.Sprintf("data:%s;base64,%s", mimeType, photo.Base64)
+
+			contentArray = append(contentArray, map[string]interface{}{
+				"type": "text",
+				"text": fmt.Sprintf("--- PHOTO %d ---\nCategory: %s\nEngineer Label: %s\nForm Input Parameter: %s", i+1, photo.Category, photo.Label, photo.Parameter),
+			})
+			contentArray = append(contentArray, map[string]interface{}{
+				"type": "image_url",
+				"image_url": map[string]interface{}{
+					"url": imageURL,
+				},
+			})
+		}
+
+		messages = append(messages, map[string]interface{}{
+			"role":    "system",
+			"content": "You are a professional Data Center Principal Electrical Engineer. Analyze the provided form data and photos, verify consistency and standards compliance, and return a structured JSON validation report. Output ONLY JSON, no explanation.",
+		})
+		messages = append(messages, map[string]interface{}{
+			"role":    "user",
+			"content": contentArray,
+		})
+	} else {
+		messages = append(messages, map[string]interface{}{
+			"role":    "system",
+			"content": "You are a professional Data Center Principal Electrical Engineer. Analyze the provided form data, verify consistency and standards compliance, and return a structured JSON validation report. Output ONLY JSON, no explanation.",
+		})
+		messages = append(messages, map[string]interface{}{
+			"role":    "user",
+			"content": prompt,
+		})
+	}
+
+	targetModel := s.chatModel // Llama 3.1 8B Instruct (fast text model)
+	if useVision {
+		targetModel = s.visionModel // Llama 3.2 11B Vision
+	}
+
+	slog.Info("ValidateATSForm calling NVIDIA",
+		slog.String("target_model", targetModel),
+		slog.Bool("use_vision", useVision),
+	)
+
+	apiKey := s.getNextAPIKey()
+	respContent, err := s.callNVIDIA(ctx, apiKey, targetModel, messages, 0.2, 8192, 90*time.Second, nil)
+	if err != nil {
+		return nil, fmt.Errorf("NVIDIA NIM validation call failed: %w", err)
+	}
+
+	return s.parseValidationJSONResponse(respContent)
+}
+
+func (s *aiService) parseValidationJSONResponse(content string) (*models.FormValidationResponse, error) {
+	slog.Info("RAW VALIDATION RESPONSE", slog.String("content", content))
+
+	// Clean the content
+	content = strings.TrimSpace(content)
+
+	// Handle deepseek <think>...</think> blocks if any
+	if idx := strings.Index(content, "</think>"); idx != -1 {
+		content = strings.TrimSpace(content[idx+len("</think>"):])
+	}
+
+	// Remove markdown code fences
+	content = strings.TrimPrefix(content, "```json")
+	content = strings.TrimPrefix(content, "```")
+	content = strings.TrimSuffix(content, "```")
+	content = strings.TrimSpace(content)
+
+	var result models.FormValidationResponse
+	if err := json.Unmarshal([]byte(content), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse validation JSON: %w (raw: %.500s)", err, content)
+	}
+
+	return &result, nil
+}
+
+// AnalyzeSingleCard reads the exact value from a single documentation card photo using Llama 3.2 Vision.
+func (s *aiService) AnalyzeSingleCard(ctx context.Context, req models.CardAnalyzeRequest) (*models.CardAnalyzeResponse, error) {
+	if len(s.apiKeys) == 0 {
+		return nil, fmt.Errorf("no NVIDIA NIM API keys configured")
+	}
+
+	mimeType := "image/jpeg"
+	if strings.HasPrefix(req.PhotoBase64, "iVBOR") {
+		mimeType = "image/png"
+	}
+	imageURL := fmt.Sprintf("data:%s;base64,%s", mimeType, req.PhotoBase64)
+
+	systemInstruction := "You are a precision instrument reader specializing in electrical equipment display readouts."
+
+	prompt := fmt.Sprintf(`Look at the photo and read the exact value or status from the instrument display.
+Context:
+- Category: %s
+- Description: %s
+
+Rules:
+1. Extract the number (e.g., voltage, current, resistance, or temperature) or status shown in the image.
+2. Be precise. Do not guess or round up the numbers.
+3. Respond ONLY with the raw read value or status (e.g., "0.35 Ohm", "380.5 V", "32.4 °C", "Clean", "Normal").
+4. Do NOT output markdown code fences, do NOT output explanations, do NOT output JSON. Just the raw text.`, req.Category, req.Description)
+
+	contentArray := []map[string]interface{}{
+		{
+			"type": "text",
+			"text": prompt,
+		},
+		{
+			"type": "image_url",
+			"image_url": map[string]interface{}{
+				"url": imageURL,
+			},
+		},
+	}
+
+	messages := []map[string]interface{}{
+		{
+			"role":    "system",
+			"content": systemInstruction,
+		},
+		{
+			"role":    "user",
+			"content": contentArray,
+		},
+	}
+
+	apiKey := s.getNextAPIKey()
+	respContent, err := s.callNVIDIA(ctx, apiKey, s.visionModel, messages, 0.0, 1024, 45*time.Second, nil)
+	if err != nil {
+		return nil, fmt.Errorf("NVIDIA NIM vision call failed: %w", err)
+	}
+
+	// Clean respContent just in case
+	respContent = strings.TrimSpace(respContent)
+	respContent = strings.TrimPrefix(respContent, "```")
+	respContent = strings.TrimSuffix(respContent, "```")
+	respContent = strings.TrimSpace(respContent)
+
+	return &models.CardAnalyzeResponse{
+		Parameter: respContent,
+	}, nil
 }
