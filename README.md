@@ -443,12 +443,12 @@ Create `.env` for backend:
 BACKEND_API_SECRET=your_secret_here
 FIREBASE_SERVICE_ACCOUNT={"type":"service_account",...}
 
-# NVIDIA NIM AI keys & model configuration
-NVIDIA_NIM_API_KEYS=your_key_1,your_key_2
-NVIDIA_NIM_BASE_URL=https://integrate.api.nvidia.com/v1/chat/completions
-NVIDIA_NIM_VISION_MODEL=meta/llama-3.2-11b-vision-instruct
-NVIDIA_NIM_REASONING_MODEL=z-ai/glm-5.1
-NVIDIA_NIM_CHAT_MODEL=meta/llama-3.1-8b-instruct
+# AI Model Configuration (Google Gemini API - using backward compatible env names)
+NVIDIA_NIM_API_KEYS=your_gemini_api_key_1,your_gemini_api_key_2
+NVIDIA_NIM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+NVIDIA_NIM_VISION_MODEL=models/gemini-3.1-flash-lite
+NVIDIA_NIM_REASONING_MODEL=models/gemini-3.1-flash-lite
+NVIDIA_NIM_CHAT_MODEL=models/gemini-3.1-flash-lite
 ```
 
 ### Running Development Server
