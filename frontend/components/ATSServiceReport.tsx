@@ -214,6 +214,28 @@ interface ATSServiceReportProps {
   onChange?: (data: { customerInfo: ATSCustomerInfo; reportData: ATSReportData; timeSpent: ATSTimeSpent }) => void;
 }
 
+const mergeWithDefaults = (info: Partial<ATSCustomerInfo>): ATSCustomerInfo => {
+  const merged = { ...DEFAULT_CUSTOMER_INFO };
+  (Object.keys(DEFAULT_CUSTOMER_INFO) as Array<keyof ATSCustomerInfo>).forEach((k) => {
+    const val = info[k];
+    if (val !== undefined && val !== null && String(val).trim() !== '') {
+      merged[k] = val as any;
+    }
+  });
+  return merged;
+};
+
+const getQuarterFromDate = (dateStr: string): string => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return '';
+  const month = date.getMonth(); // 0-indexed: 0 = Jan, 11 = Dec
+  if (month >= 0 && month <= 2) return 'Q1';
+  if (month >= 3 && month <= 5) return 'Q2';
+  if (month >= 6 && month <= 8) return 'Q3';
+  return 'Q4';
+};
+
 export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSServiceReportProps) {
   const [customerInfo, setCustomerInfo] = useState<ATSCustomerInfo>({ ...DEFAULT_CUSTOMER_INFO });
   const [reportData, setReportData] = useState<ATSReportData>({ ...DEFAULT_REPORT_DATA });
@@ -235,7 +257,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
       try {
         const saved = await draftStorage.get('ats_service_report_draft');
         if (saved) {
-          if (saved.customerInfo) setCustomerInfo(saved.customerInfo);
+          if (saved.customerInfo) setCustomerInfo(mergeWithDefaults(saved.customerInfo));
           if (saved.reportData) setReportData(saved.reportData);
           if (saved.timeSpent) setTimeSpent(saved.timeSpent);
           if (saved.photos) setPhotos(saved.photos);
@@ -310,13 +332,14 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
   useEffect(() => {
     if (prefillData) {
       if (prefillData.atsCustomerInfo) {
-        setCustomerInfo(prefillData.atsCustomerInfo);
+        setCustomerInfo(mergeWithDefaults(prefillData.atsCustomerInfo));
       } else {
-        setCustomerInfo(prev => ({
+        const computedQuarter = prefillData.maintenanceTime ? getQuarterFromDate(prefillData.maintenanceTime) : '';
+        setCustomerInfo(prev => mergeWithDefaults({
           ...prev,
-          ciName: prefillData.maintenanceName || prev.ciName,
+          ciName: prefillData.specificDetail || prev.ciName,
           date: prefillData.maintenanceTime ? prefillData.maintenanceTime.split('T')[0] : prev.date,
-          specification: prefillData.specificDetail || prev.specification,
+          quarter: computedQuarter || prev.quarter,
         }));
       }
       
