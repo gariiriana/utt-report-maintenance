@@ -1066,6 +1066,15 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
               }`}>
               {document.documentType.toUpperCase()}
             </span>
+            {document.createdBy === 'ats@gmail.com' && (
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                document.atsCustomerInfo
+                  ? 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30'
+                  : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+              }`}>
+                {document.atsCustomerInfo ? 'SERVICE REPORT' : 'DOKUMENTASI REPORT'}
+              </span>
+            )}
             {document.hseType && (
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase">
                 {document.hseType}
