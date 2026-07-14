@@ -1116,54 +1116,69 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         return 'visual_inspection';
       };
 
-      // Fire all requests in parallel
-      const promises = cardsWithPhotos.map(async (card) => {
-        let base64 = card.photoBase64 || '';
-        if (!base64 && card.photo) {
-          base64 = await fileToBase64(card.photo);
-        }
-        const rawBase64 = base64.includes(',') ? base64.split(',')[1] : base64;
-        const category = getCategory(card.description || '');
-
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            photo_base64: rawBase64,
-            description: card.description || '',
-            category
-          })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data && data.parameter) {
-            return { id: card.id, parameter: data.parameter };
-          }
-          throw new Error('AI tidak menemukan parameter di foto.');
-        } else {
-          let errMsg = '';
-          try {
-            const errData = await response.json();
-            errMsg = errData.error || errData.message || '';
-          } catch (_) {}
-          throw new Error(errMsg || `Analyze failed (Status: ${response.status})`);
-        }
-      });
-
-      const results = await Promise.allSettled(promises);
       let successCount = 0;
       const failureMsgs: string[] = [];
 
-      for (const result of results) {
-        if (result.status === 'fulfilled' && result.value) {
-          updatedCardsMap.set(result.value.id, result.value.parameter);
-          successCount++;
-        } else if (result.status === 'rejected') {
-          failureMsgs.push(result.reason.message || 'Unknown error');
+      // Process in small parallel chunks (size 3) with a short delay to balance speed and rate limits
+      const chunkSize = 3;
+      for (let i = 0; i < cardsWithPhotos.length; i += chunkSize) {
+        const chunk = cardsWithPhotos.slice(i, i + chunkSize);
+        toast.loading(`Menganalisis foto ${i + 1} - ${Math.min(i + chunkSize, cardsWithPhotos.length)} dari ${cardsWithPhotos.length}...`, { id: toastId });
+
+        const chunkPromises = chunk.map(async (card) => {
+          try {
+            let base64 = card.photoBase64 || '';
+            if (!base64 && card.photo) {
+              base64 = await fileToBase64(card.photo);
+            }
+            const rawBase64 = base64.includes(',') ? base64.split(',')[1] : base64;
+            const category = getCategory(card.description || '');
+
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                photo_base64: rawBase64,
+                description: card.description || '',
+                category
+              })
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              if (data && data.parameter) {
+                return { id: card.id, parameter: data.parameter };
+              }
+              throw new Error('AI tidak menemukan parameter di foto.');
+            } else {
+              let errMsg = '';
+              try {
+                const errData = await response.json();
+                errMsg = errData.error || errData.message || '';
+              } catch (_) {}
+              throw new Error(errMsg || `Analyze failed (Status: ${response.status})`);
+            }
+          } catch (err: any) {
+            throw new Error(`${card.description || 'Foto'}: ${err.message || 'Error'}`);
+          }
+        });
+
+        const chunkResults = await Promise.allSettled(chunkPromises);
+        for (const res of chunkResults) {
+          if (res.status === 'fulfilled' && res.value) {
+            updatedCardsMap.set(res.value.id, res.value.parameter);
+            successCount++;
+          } else if (res.status === 'rejected') {
+            failureMsgs.push(res.reason.message || 'Unknown error');
+          }
+        }
+
+        // Delay between chunks to respect the 15 RPM limit
+        if (i + chunkSize < cardsWithPhotos.length) {
+          await new Promise(resolve => setTimeout(resolve, 1500));
         }
       }
 
@@ -1177,7 +1192,11 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         return pVal ? { ...c, parameter: pVal } : c;
       }));
 
-      toast.success(`Berhasil memproses ${updatedCardsMap.size} dari ${cardsWithPhotos.length} foto parameter! ⚡`, { id: toastId });
+      if (successCount < cardsWithPhotos.length) {
+        toast.success(`Selesai memproses! ${successCount} berhasil, ${cardsWithPhotos.length - successCount} gagal. ⚡`, { id: toastId });
+      } else {
+        toast.success(`Berhasil menganalisis semua ${cardsWithPhotos.length} foto parameter! ⚡`, { id: toastId });
+      }
       
       // Auto trigger collect parameter data to populate ATS Service Report at the bottom
       setTimeout(() => {

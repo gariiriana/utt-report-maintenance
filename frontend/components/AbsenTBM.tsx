@@ -5,7 +5,7 @@ import {
   Plus, Trash2, Search, RefreshCw,
   TrendingUp, CheckCircle, XCircle,
   Folder, ChevronLeft, Pencil, Camera, Upload, X, UserPlus, Save,
-  Clock, Zap
+  Clock
 } from 'lucide-react';
 import { collection, addDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, where, updateDoc, writeBatch, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '@/api/firebase';
@@ -27,8 +27,8 @@ interface AttendanceRecord {
   remark: string;
   category?: string;
   jamKerja: number;   // total jam kerja (desimal)
-  isLembur: boolean;  // flag lembur
-  jamLembur: number;  // jam lembur = max(0, jamKerja - 8)
+  isLembur?: boolean;  // flag lembur
+  jamLembur?: number;  // jam lembur = max(0, jamKerja - 8)
 }
 
 interface Personnel {
@@ -510,7 +510,7 @@ export function AbsenTBM() {
         }
       }
       personGroups[r.nama].totalJamKerja += (r.jamKerja || 0);
-      personGroups[r.nama].totalJamLembur += (r.jamLembur || 0);
+      personGroups[r.nama].totalJamLembur += 0;
     });
 
     const personStats = Object.values(personGroups).map(p => ({
@@ -521,13 +521,13 @@ export function AbsenTBM() {
       hadir: p.hadir,
       total: p.total,
       totalJamKerja: p.totalJamKerja,
-      totalJamLembur: p.totalJamLembur
+      totalJamLembur: 0
     })).sort((a, b) => b.rate - a.rate || a.nama.localeCompare(b.nama));
 
     // Compute overall jam kerja & lembur totals
     const totalJamKerja = filteredRecords.reduce((sum, r) => sum + (r.jamKerja || 0), 0);
-    const totalJamLembur = filteredRecords.reduce((sum, r) => sum + (r.jamLembur || 0), 0);
-    const totalOrangLembur = new Set(filteredRecords.filter(r => (r.jamLembur || 0) > 0).map(r => r.nama)).size;
+    const totalJamLembur = 0;
+    const totalOrangLembur = 0;
 
     const pieData = [
       { name: 'Hadir', value: hadir, color: '#10b981' },
@@ -605,8 +605,6 @@ export function AbsenTBM() {
 
     // Donut 2 (Jam Kerja) slices
     const totalJK = stats.totalJamKerja;
-    const totalJL = stats.totalJamLembur;
-    const regularJK = Math.max(0, totalJK - totalJL);
     let startAngle2 = -Math.PI / 2;
 
     if (totalJK === 0) {
@@ -616,22 +614,11 @@ export function AbsenTBM() {
       ctx.fill();
     } else {
       // Regular slice
-      const regularAngle = (regularJK / totalJK) * Math.PI * 2;
       ctx.beginPath();
       ctx.moveTo(donut2Cx, donutCy);
-      ctx.arc(donut2Cx, donutCy, donutR, startAngle2, startAngle2 + regularAngle);
+      ctx.arc(donut2Cx, donutCy, donutR, startAngle2, startAngle2 + Math.PI * 2);
       ctx.closePath();
       ctx.fillStyle = '#0284c7';
-      ctx.fill();
-      startAngle2 += regularAngle;
-
-      // Lembur slice
-      const lemburAngle = (totalJL / totalJK) * Math.PI * 2;
-      ctx.beginPath();
-      ctx.moveTo(donut2Cx, donutCy);
-      ctx.arc(donut2Cx, donutCy, donutR, startAngle2, startAngle2 + lemburAngle);
-      ctx.closePath();
-      ctx.fillStyle = '#fbbf24';
       ctx.fill();
     }
 
@@ -656,9 +643,7 @@ export function AbsenTBM() {
     ctx.font = '11px Arial';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#38bdf8';
-    ctx.fillText(`● Reguler: ${regularJK}j`, donut2Cx, legDonut2Y);
-    ctx.fillStyle = '#fbbf24';
-    ctx.fillText(`● Lembur: ${totalJL}j`, donut2Cx, legDonut2Y + 16);
+    ctx.fillText(`● Total Jam: ${totalJK}j`, donut2Cx, legDonut2Y);
 
 
     // ── RIGHT SIDE: Weekly Bar Chart ──
@@ -720,7 +705,7 @@ export function AbsenTBM() {
 
     const weeks = getWeeksInRange(startDate, endDate);
     
-    // Group records into those weeks (count Hadir and sum Jam Lembur)
+    // Group records into those weeks (count Hadir and sum Jam Kerja)
     const weeklyData = weeks.map(w => {
       const recs = filteredRecords.filter(r => {
         const parts = r.tanggal.split('-');
@@ -736,16 +721,16 @@ export function AbsenTBM() {
         return d >= startNorm && d <= endNorm;
       });
       const hadir = recs.filter(r => r.kehadiran === 'Hadir').length;
-      const lembur = recs.reduce((sum, r) => sum + (r.jamLembur || 0), 0);
+      const jamKerja = recs.reduce((sum, r) => sum + (r.jamKerja || 0), 0);
       return {
         label: w.label,
         hadir,
-        lembur
+        jamKerja
       };
     });
 
-    // Find max value to determine scale (using both Hadir and Lembur)
-    const maxVal = Math.max(...weeklyData.map(d => Math.max(d.hadir, d.lembur)), 5);
+    // Find max value to determine scale (using both Hadir and Jam Kerja)
+    const maxVal = Math.max(...weeklyData.map(d => Math.max(d.hadir, d.jamKerja)), 5);
     const yScale = chartH / (maxVal * 1.18);
 
     // Draw Y grid lines
@@ -778,20 +763,20 @@ export function AbsenTBM() {
     ctx.textAlign = 'left';
     ctx.fillStyle = '#10b981';
     ctx.fillText('● Hadir (Orang)', leftMargin + chartW - 200, topMargin - 15);
-    ctx.fillStyle = '#fbbf24';
-    ctx.fillText('● Lembur (Jam)', leftMargin + chartW - 100, topMargin - 15);
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText('● Jam Kerja (Jam)', leftMargin + chartW - 100, topMargin - 15);
 
     const itemW = chartW / weeklyData.length;
-    const barW = Math.min(16, itemW * 0.3); // Width for each bar
+    const barW = Math.min(16, itemW * 0.3); // Side-by-side bar width
 
     weeklyData.forEach((w, idx) => {
       const groupCenterX = leftMargin + (idx + 0.5) * itemW;
       const barX1 = groupCenterX - barW - 2; // Hadir bar (left)
-      const barX2 = groupCenterX + 2;        // Lembur bar (right)
+      const barX2 = groupCenterX + 2;        // Jam Kerja bar (right)
       const yZero = topMargin + chartH;
 
       const hHadir = w.hadir * yScale;
-      const hLembur = w.lembur * yScale;
+      const hJamKerja = w.jamKerja * yScale;
 
       // Hadir bar
       if (hHadir > 0) {
@@ -803,14 +788,14 @@ export function AbsenTBM() {
         ctx.fillText(String(w.hadir), barX1 + barW / 2, yZero - hHadir - 4);
       }
 
-      // Lembur bar
-      if (hLembur > 0) {
-        ctx.fillStyle = '#fbbf24';
-        ctx.fillRect(barX2, yZero - hLembur, barW, hLembur);
+      // Jam Kerja bar
+      if (hJamKerja > 0) {
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(barX2, yZero - hJamKerja, barW, hJamKerja);
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(String(w.lembur), barX2 + barW / 2, yZero - hLembur - 4);
+        ctx.fillText(String(w.jamKerja), barX2 + barW / 2, yZero - hJamKerja - 4);
       }
 
       // X label
@@ -1011,8 +996,6 @@ export function AbsenTBM() {
       // Save all checklist items to Firestore
       const batchPromises = itemsToSubmit.map(item => {
         const jk = item.jamKerja || 0;
-        const jl = Math.max(0, jk - 8);
-        const il = jl > 0;
         return addDoc(collection(db, 'absen_tbm'), {
           tanggal: formDate,
           nama: item.nama.trim(),
@@ -1021,8 +1004,8 @@ export function AbsenTBM() {
           remark: item.remark.trim(),
           category: item.category || formCategory,
           jamKerja: jk,
-          isLembur: il,
-          jamLembur: jl,
+          isLembur: false,
+          jamLembur: 0,
           createdAt: serverTimestamp()
         });
       });
@@ -1093,16 +1076,14 @@ export function AbsenTBM() {
       return;
     }
     try {
-      const jl = Math.max(0, editedJamKerja - 8);
-      const il = jl > 0;
       await updateDoc(doc(db, 'absen_tbm', id), {
         nama: editedNama.trim(),
         jabatan: editedJabatan.trim(),
         kehadiran: editedKehadiran,
         remark: editedRemark.trim(),
         jamKerja: editedJamKerja,
-        isLembur: il,
-        jamLembur: jl
+        isLembur: false,
+        jamLembur: 0
       });
       toast.success("Data absen berhasil diperbarui!");
       setEditingRecordId(null);
@@ -1128,8 +1109,6 @@ export function AbsenTBM() {
     }
     const toastId = toast.loading("Menyimpan data absensi baru...");
     try {
-      const jl = Math.max(0, editedJamKerja - 8);
-      const il = jl > 0;
       await addDoc(collection(db, 'absen_tbm'), {
         tanggal: selectedDate,
         nama: person.nama,
@@ -1138,8 +1117,8 @@ export function AbsenTBM() {
         remark: editedRemark.trim(),
         category: person.category || '',
         jamKerja: editedJamKerja,
-        isLembur: il,
-        jamLembur: jl,
+        isLembur: false,
+        jamLembur: 0,
         createdAt: serverTimestamp()
       });
       toast.success("Absensi berhasil disimpan!", { id: toastId });
@@ -1356,11 +1335,9 @@ export function AbsenTBM() {
     docPdf.setTextColor(71, 85, 105); // Slate-600
     docPdf.text(`Total Log Kehadiran: ${pdfRecords.length} record`, margin + 6, y + 13);
     docPdf.text(`Hadir: ${pdfRecords.length} kali | Tidak Hadir: 0 kali`, margin + 6, y + 18);
-    // Jam kerja & lembur summary
+    // Jam kerja summary
     const totalPdfJK = pdfRecords.reduce((sum, r) => sum + (r.jamKerja || 0), 0);
-    const totalPdfJL = pdfRecords.reduce((sum, r) => sum + (r.jamLembur || 0), 0);
-    const totalPdfOrgLembur = new Set(pdfRecords.filter(r => (r.jamLembur || 0) > 0).map(r => r.nama)).size;
-    docPdf.text(`Total Jam Kerja: ${totalPdfJK} jam | Total Lembur: ${totalPdfJL} jam (${totalPdfOrgLembur} org)`, margin + 6, y + 23);
+    docPdf.text(`Total Jam Kerja: ${totalPdfJK} jam`, margin + 6, y + 23);
     const periodeFrom = startDate || 'Awal';
     const periodeTo = endDate || 'Sekarang';
     docPdf.text(`Periode: ${periodeFrom}  s/d  ${periodeTo}`, margin + 6, y + 28);
@@ -1436,8 +1413,6 @@ export function AbsenTBM() {
 
     // Donut 2 (Jam Kerja) slices
     const totalJK = totalPdfJK;
-    const totalJL = totalPdfJL;
-    const regularJK = Math.max(0, totalJK - totalJL);
     let startAngle2 = -Math.PI / 2;
 
     if (totalJK === 0) {
@@ -1447,22 +1422,11 @@ export function AbsenTBM() {
       ctx.fill();
     } else {
       // Regular slice
-      const regularAngle = (regularJK / totalJK) * Math.PI * 2;
       ctx.beginPath();
       ctx.moveTo(donut2Cx, donutCy);
-      ctx.arc(donut2Cx, donutCy, donutR, startAngle2, startAngle2 + regularAngle);
+      ctx.arc(donut2Cx, donutCy, donutR, startAngle2, startAngle2 + Math.PI * 2);
       ctx.closePath();
       ctx.fillStyle = '#0284c7';
-      ctx.fill();
-      startAngle2 += regularAngle;
-
-      // Lembur slice
-      const lemburAngle = (totalJL / totalJK) * Math.PI * 2;
-      ctx.beginPath();
-      ctx.moveTo(donut2Cx, donutCy);
-      ctx.arc(donut2Cx, donutCy, donutR, startAngle2, startAngle2 + lemburAngle);
-      ctx.closePath();
-      ctx.fillStyle = '#fbbf24';
       ctx.fill();
     }
 
@@ -1487,9 +1451,7 @@ export function AbsenTBM() {
     ctx.font = '11px Arial';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#0284c7';
-    ctx.fillText(`● Reguler: ${regularJK}j`, donut2Cx, legDonut2Y);
-    ctx.fillStyle = '#d97706';
-    ctx.fillText(`● Lembur: ${totalJL}j`, donut2Cx, legDonut2Y + 16);
+    ctx.fillText(`● Total Jam: ${totalJK}j`, donut2Cx, legDonut2Y);
 
 
     // ── RIGHT SIDE: Weekly Bar Chart ──
@@ -1567,16 +1529,16 @@ export function AbsenTBM() {
         return d >= startNorm && d <= endNorm;
       });
       const hadir = recs.filter(r => r.kehadiran === 'Hadir').length;
-      const lembur = recs.reduce((sum, r) => sum + (r.jamLembur || 0), 0);
+      const jamKerja = recs.reduce((sum, r) => sum + (r.jamKerja || 0), 0);
       return {
         label: w.label,
         hadir,
-        lembur
+        jamKerja
       };
     });
 
-    // Find max value to determine scale (using both Hadir and Lembur)
-    const maxVal = Math.max(...weeklyData.map(d => Math.max(d.hadir, d.lembur)), 5);
+    // Find max value to determine scale (using both Hadir and Jam Kerja)
+    const maxVal = Math.max(...weeklyData.map(d => Math.max(d.hadir, d.jamKerja)), 5);
     const yScale = chartH / (maxVal * 1.18);
 
     // Draw Y grid lines
@@ -1609,8 +1571,8 @@ export function AbsenTBM() {
     ctx.textAlign = 'left';
     ctx.fillStyle = '#10b981';
     ctx.fillText('● Hadir (Orang)', leftMargin + chartW - 200, topMargin - 15);
-    ctx.fillStyle = '#fbbf24';
-    ctx.fillText('● Lembur (Jam)', leftMargin + chartW - 100, topMargin - 15);
+    ctx.fillStyle = '#0284c7';
+    ctx.fillText('● Jam Kerja (Jam)', leftMargin + chartW - 100, topMargin - 15);
 
     const itemW = chartW / weeklyData.length;
     const barW = Math.min(16, itemW * 0.3); // Side-by-side bar width
@@ -1618,11 +1580,11 @@ export function AbsenTBM() {
     weeklyData.forEach((w, idx) => {
       const groupCenterX = leftMargin + (idx + 0.5) * itemW;
       const barX1 = groupCenterX - barW - 2; // Hadir bar (left)
-      const barX2 = groupCenterX + 2;        // Lembur bar (right)
+      const barX2 = groupCenterX + 2;        // Jam Kerja bar (right)
       const yZero = topMargin + chartH;
 
       const hHadir = w.hadir * yScale;
-      const hLembur = w.lembur * yScale;
+      const hJamKerja = w.jamKerja * yScale;
 
       // Hadir bar
       if (hHadir > 0) {
@@ -1634,14 +1596,14 @@ export function AbsenTBM() {
         ctx.fillText(String(w.hadir), barX1 + barW / 2, yZero - hHadir - 4);
       }
 
-      // Lembur bar
-      if (hLembur > 0) {
-        ctx.fillStyle = '#fbbf24';
-        ctx.fillRect(barX2, yZero - hLembur, barW, hLembur);
+      // Jam Kerja bar
+      if (hJamKerja > 0) {
+        ctx.fillStyle = '#0284c7';
+        ctx.fillRect(barX2, yZero - hJamKerja, barW, hJamKerja);
         ctx.fillStyle = '#0f172a';
         ctx.font = 'bold 10px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(String(w.lembur), barX2 + barW / 2, yZero - hLembur - 4);
+        ctx.fillText(String(w.jamKerja), barX2 + barW / 2, yZero - hJamKerja - 4);
       }
 
       // X label
@@ -1682,7 +1644,6 @@ export function AbsenTBM() {
       personGroups[r.nama].total += 1;
       personGroups[r.nama].hadir += 1;
       personGroups[r.nama].totalJamKerja += (r.jamKerja || 0);
-      personGroups[r.nama].totalJamLembur += (r.jamLembur || 0);
     });
     const pdfPersonStats = Object.values(personGroups).map(p => ({
       nama: p.nama,
@@ -1691,10 +1652,10 @@ export function AbsenTBM() {
       hadir: p.hadir,
       total: p.total,
       totalJamKerja: p.totalJamKerja,
-      totalJamLembur: p.totalJamLembur
+      totalJamLembur: 0
     })).sort((a, b) => b.hadir - a.hadir || a.nama.localeCompare(b.nama));
 
-    const summaryHead = [['No', 'Nama Personil', 'Jabatan', 'Hadir', 'Tidak Hadir', 'Total', '%', 'Jam Kerja', 'Jam Lembur']];
+    const summaryHead = [['No', 'Nama Personil', 'Jabatan', 'Hadir', 'Tidak Hadir', 'Total', '%', 'Jam Kerja']];
     const summaryBody = pdfPersonStats.map((p, idx) => {
       return [
         idx + 1,
@@ -1704,8 +1665,7 @@ export function AbsenTBM() {
         0, // tidak hadir is always 0 in export
         p.total,
         '100%',
-        `${p.totalJamKerja} jam`,
-        p.totalJamLembur > 0 ? `${p.totalJamLembur} jam` : '-'
+        `${p.totalJamKerja} jam`
       ];
     });
 
@@ -1717,14 +1677,13 @@ export function AbsenTBM() {
       headStyles: { fillColor: [15, 23, 42], halign: 'center', fontSize: 8 },
       columnStyles: {
         0: { cellWidth: 10, halign: 'center' },
-        1: { cellWidth: 50, halign: 'left' },
+        1: { cellWidth: 66, halign: 'left' },
         2: { cellWidth: 35, halign: 'left' },
         3: { cellWidth: 15, halign: 'center' },
         4: { cellWidth: 20, halign: 'center' },
         5: { cellWidth: 14, halign: 'center' },
         6: { cellWidth: 14, halign: 'center' },
-        7: { cellWidth: 18, halign: 'center' },
-        8: { cellWidth: 16, halign: 'center' }
+        7: { cellWidth: 18, halign: 'center' }
       },
       styles: { fontSize: 7.5, cellPadding: 1.5 },
       willDrawCell: (data) => {
@@ -1739,11 +1698,6 @@ export function AbsenTBM() {
             data.cell.styles.textColor = [16, 185, 129];
             data.cell.styles.fontStyle = 'bold';
           }
-          // Color Lembur column amber (index 8)
-          if (data.column.index === 8 && data.cell.text[0] !== '-') {
-            data.cell.styles.textColor = [217, 119, 6]; // amber-600
-            data.cell.styles.fontStyle = 'bold';
-          }
         }
       }
     });
@@ -1756,8 +1710,7 @@ export function AbsenTBM() {
       r.jabatan,
       r.kehadiran,
       r.remark || '-',
-      `${r.jamKerja || 0} jam`,
-      r.jamLembur > 0 ? `${r.jamLembur} jam` : '-'
+      `${r.jamKerja || 0} jam`
     ]);
 
     docPdf.setTextColor(15, 23, 42);
@@ -1767,7 +1720,7 @@ export function AbsenTBM() {
 
     autoTable(docPdf, {
       startY: (docPdf as any).lastAutoTable.finalY + 11,
-      head: [['No', 'Tanggal', 'Nama', 'Jabatan', 'Status Kehadiran', 'Keterangan', 'Jam Kerja', 'Lembur']],
+      head: [['No', 'Tanggal', 'Nama', 'Jabatan', 'Status Kehadiran', 'Keterangan', 'Jam Kerja']],
       body: tableData,
       theme: 'grid',
       headStyles: { fillColor: [0, 89, 156], halign: 'left' },
@@ -1777,20 +1730,10 @@ export function AbsenTBM() {
         2: { cellWidth: 40 },
         3: { cellWidth: 32 },
         4: { cellWidth: 25 },
-        5: { cellWidth: contentW - 170 },
-        6: { cellWidth: 18 },
-        7: { cellWidth: 17 }
+        5: { cellWidth: contentW - 153 },
+        6: { cellWidth: 18 }
       },
-      styles: { fontSize: 8 },
-      willDrawCell: (data) => {
-        if (data.section === 'body') {
-          // Color Lembur column amber
-          if (data.column.index === 7 && data.cell.text[0] !== '-') {
-            data.cell.styles.textColor = [217, 119, 6];
-            data.cell.styles.fontStyle = 'bold';
-          }
-        }
-      }
+      styles: { fontSize: 8 }
     });
 
     // ─── Add Documentation Photos ────────────────────────────────────
@@ -1962,7 +1905,6 @@ export function AbsenTBM() {
     worksheet.getColumn(6).width = 20;  // F
     worksheet.getColumn(7).width = 20;  // G
     worksheet.getColumn(8).width = 16;  // H - Jam Kerja
-    worksheet.getColumn(9).width = 16;  // I - Jam Lembur
 
     // Load Logos
     let leftLogoBase64 = '';
@@ -2060,7 +2002,6 @@ export function AbsenTBM() {
       excelPersonGroups[r.nama].total += 1;
       excelPersonGroups[r.nama].hadir += 1;
       excelPersonGroups[r.nama].totalJamKerja += (r.jamKerja || 0);
-      excelPersonGroups[r.nama].totalJamLembur += (r.jamLembur || 0);
     });
 
     const excelPersonStats = Object.values(excelPersonGroups).map(p => ({
@@ -2071,18 +2012,18 @@ export function AbsenTBM() {
       hadir: p.hadir,
       total: p.total,
       totalJamKerja: p.totalJamKerja,
-      totalJamLembur: p.totalJamLembur
+      totalJamLembur: 0
     })).sort((a, b) => b.hadir - a.hadir || a.nama.localeCompare(b.nama));
 
-    // Pre-calculate indices for dynamic formulas
-    const t1StartRow = 33; // Adjusted for taller summary card block
-    const t1EndRow = 32 + excelPersonStats.length;
+    // Pre-calculate indices for dynamic formulas (shifted up due to removal of Lembur summary row)
+    const t1StartRow = 32;
+    const t1EndRow = 31 + excelPersonStats.length;
     const t2TitleRowIndex = t1EndRow + 3;
     const t2HeaderRowIndex = t2TitleRowIndex + 1;
     const t2StartRow = t2HeaderRowIndex + 1;
     const t2EndRow = t2StartRow + excelRecords.length - 1;
 
-    // Summary Card Block (Rows 8 to 14, Columns A to D)
+    // Summary Card Block (Rows 8 to 13, Columns A to D)
     worksheet.mergeCells('A8:D8');
     const summaryTitleCell = worksheet.getCell('A8');
     summaryTitleCell.value = 'RINGKASAN STATISTIK KEHADIRAN';
@@ -2107,17 +2048,15 @@ export function AbsenTBM() {
     };
 
     const totalExcelJK = excelRecords.reduce((sum, r) => sum + (r.jamKerja || 0), 0);
-    const totalExcelJL = excelRecords.reduce((sum, r) => sum + (r.jamLembur || 0), 0);
 
     setSummaryRow(9, 'Total Log Kehadiran:', { formula: `COUNTA(E${t2StartRow}:E${t2EndRow})`, result: excelRecords.length });
     setSummaryRow(10, 'Hadir:', { formula: `COUNTIF(E${t2StartRow}:E${t2EndRow},"Hadir")`, result: excelRecords.length });
     setSummaryRow(11, 'Tidak Hadir:', { formula: `COUNTIF(E${t2StartRow}:E${t2EndRow},"Tidak Hadir")`, result: 0 });
     setSummaryRow(12, 'Persentase Kehadiran:', { formula: `IF(C9>0,C10/C9,0)`, result: 1 }, true);
     setSummaryRow(13, 'Total Jam Kerja:', { formula: `SUM(H${t2StartRow}:H${t2EndRow})`, result: totalExcelJK });
-    setSummaryRow(14, 'Total Jam Lembur:', { formula: `SUM(I${t2StartRow}:I${t2EndRow})`, result: totalExcelJL });
 
     // Style Card Block Background & Border
-    for (let r = 8; r <= 14; r++) {
+    for (let r = 8; r <= 13; r++) {
       worksheet.getRow(r).height = 18;
       for (let c = 1; c <= 4; c++) {
         const cell = worksheet.getCell(r, c);
@@ -2128,7 +2067,7 @@ export function AbsenTBM() {
         };
         cell.border = {
           top: r === 8 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
-          bottom: r === 14 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
+          bottom: r === 13 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
           left: c === 1 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
           right: c === 4 ? { style: 'thin', color: { argb: 'FFCBD5E1' } } : undefined,
         };
@@ -2207,8 +2146,6 @@ export function AbsenTBM() {
 
       // Donut 2 (Jam Kerja) slices
       const totalJK = totalExcelJK;
-      const totalJL = totalExcelJL;
-      const regularJK = Math.max(0, totalJK - totalJL);
       let startAngle2 = -Math.PI / 2;
 
       if (totalJK === 0) {
@@ -2218,22 +2155,11 @@ export function AbsenTBM() {
         ctx.fill();
       } else {
         // Regular slice
-        const regularAngle = (regularJK / totalJK) * Math.PI * 2;
         ctx.beginPath();
         ctx.moveTo(donut2Cx, donutCy);
-        ctx.arc(donut2Cx, donutCy, donutR, startAngle2, startAngle2 + regularAngle);
+        ctx.arc(donut2Cx, donutCy, donutR, startAngle2, startAngle2 + Math.PI * 2);
         ctx.closePath();
         ctx.fillStyle = '#0284c7';
-        ctx.fill();
-        startAngle2 += regularAngle;
-
-        // Lembur slice
-        const lemburAngle = (totalJL / totalJK) * Math.PI * 2;
-        ctx.beginPath();
-        ctx.moveTo(donut2Cx, donutCy);
-        ctx.arc(donut2Cx, donutCy, donutR, startAngle2, startAngle2 + lemburAngle);
-        ctx.closePath();
-        ctx.fillStyle = '#fbbf24';
         ctx.fill();
       }
 
@@ -2258,9 +2184,7 @@ export function AbsenTBM() {
       ctx.font = '11px Arial';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#0284c7';
-      ctx.fillText(`● Reguler: ${regularJK}j`, donut2Cx, legDonut2Y);
-      ctx.fillStyle = '#d97706';
-      ctx.fillText(`● Lembur: ${totalJL}j`, donut2Cx, legDonut2Y + 16);
+      ctx.fillText(`● Total Jam: ${totalJK}j`, donut2Cx, legDonut2Y);
 
 
       // ── RIGHT SIDE: Weekly Bar Chart ──
@@ -2338,16 +2262,16 @@ export function AbsenTBM() {
           return d >= startNorm && d <= endNorm;
         });
         const hadir = recs.filter(r => r.kehadiran === 'Hadir').length;
-        const lembur = recs.reduce((sum, r) => sum + (r.jamLembur || 0), 0);
+        const jamKerja = recs.reduce((sum, r) => sum + (r.jamKerja || 0), 0);
         return {
           label: w.label,
           hadir,
-          lembur
+          jamKerja
         };
       });
 
-      // Find max value to determine scale (using both Hadir and Lembur)
-      const maxVal = Math.max(...weeklyData.map(d => Math.max(d.hadir, d.lembur)), 5);
+      // Find max value to determine scale (using both Hadir and Jam Kerja)
+      const maxVal = Math.max(...weeklyData.map(d => Math.max(d.hadir, d.jamKerja)), 5);
       const yScale = chartH / (maxVal * 1.18);
 
       // Draw Y grid lines
@@ -2380,8 +2304,8 @@ export function AbsenTBM() {
       ctx.textAlign = 'left';
       ctx.fillStyle = '#10b981';
       ctx.fillText('● Hadir (Orang)', leftMargin + chartW - 200, topMargin - 15);
-      ctx.fillStyle = '#fbbf24';
-      ctx.fillText('● Lembur (Jam)', leftMargin + chartW - 100, topMargin - 15);
+      ctx.fillStyle = '#0284c7';
+      ctx.fillText('● Jam Kerja (Jam)', leftMargin + chartW - 100, topMargin - 15);
 
       const itemW = chartW / weeklyData.length;
       const barW = Math.min(16, itemW * 0.3); // Side-by-side bar width
@@ -2389,11 +2313,11 @@ export function AbsenTBM() {
       weeklyData.forEach((w, idx) => {
         const groupCenterX = leftMargin + (idx + 0.5) * itemW;
         const barX1 = groupCenterX - barW - 2; // Hadir bar (left)
-        const barX2 = groupCenterX + 2;        // Lembur bar (right)
+        const barX2 = groupCenterX + 2;        // Jam Kerja bar (right)
         const yZero = topMargin + chartH;
 
         const hHadir = w.hadir * yScale;
-        const hLembur = w.lembur * yScale;
+        const hJamKerja = w.jamKerja * yScale;
 
         // Hadir bar
         if (hHadir > 0) {
@@ -2405,14 +2329,14 @@ export function AbsenTBM() {
           ctx.fillText(String(w.hadir), barX1 + barW / 2, yZero - hHadir - 4);
         }
 
-        // Lembur bar
-        if (hLembur > 0) {
-          ctx.fillStyle = '#fbbf24';
-          ctx.fillRect(barX2, yZero - hLembur, barW, hLembur);
+        // Jam Kerja bar
+        if (hJamKerja > 0) {
+          ctx.fillStyle = '#0284c7';
+          ctx.fillRect(barX2, yZero - hJamKerja, barW, hJamKerja);
           ctx.fillStyle = '#0f172a';
           ctx.font = 'bold 10px Arial';
           ctx.textAlign = 'center';
-          ctx.fillText(String(w.lembur), barX2 + barW / 2, yZero - hLembur - 4);
+          ctx.fillText(String(w.jamKerja), barX2 + barW / 2, yZero - hJamKerja - 4);
         }
 
         // X label
@@ -2435,30 +2359,30 @@ export function AbsenTBM() {
         extension: 'png',
       });
 
-      // Position charts in Row 16 to Row 29 (adjusted offset for taller summary card block)
-      for (let r = 16; r <= 29; r++) {
+      // Position charts in Row 15 to Row 28 (adjusted offset for shorter summary card block)
+      for (let r = 15; r <= 28; r++) {
         worksheet.getRow(r).height = 20;
       }
 
       worksheet.addImage(chartImgId, {
-        tl: { col: 0, row: 15 } as any,
-        br: { col: 9, row: 29 } as any
+        tl: { col: 0, row: 14 } as any,
+        br: { col: 9, row: 28 } as any
       });
     }
 
     worksheet.getRow(28).height = 15; // blank spacer
 
     // ─── Table 1: Rangkuman Kehadiran per Personil ──────────────────────
-    const table1TitleRow = worksheet.getRow(29);
+    const table1TitleRow = worksheet.getRow(28);
     table1TitleRow.height = 20;
-    worksheet.mergeCells('A29:I29');
-    const t1TitleCell = worksheet.getCell('A29');
+    worksheet.mergeCells('A28:H28');
+    const t1TitleCell = worksheet.getCell('A28');
     t1TitleCell.value = 'RANGKUMAN KEHADIRAN PER PERSONIL';
     t1TitleCell.font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FF0F172A' } };
     t1TitleCell.alignment = { vertical: 'middle', horizontal: 'left' };
 
-    const t1Headers = ['No', 'Nama Personil', 'Jabatan', 'Hadir', 'Tidak Hadir', 'Total', '%', 'Jam Kerja', 'Jam Lembur'];
-    const t1HeaderRow = worksheet.getRow(30);
+    const t1Headers = ['No', 'Nama Personil', 'Jabatan', 'Hadir', 'Tidak Hadir', 'Total', '%', 'Jam Kerja'];
+    const t1HeaderRow = worksheet.getRow(29);
     t1HeaderRow.height = 24;
     t1Headers.forEach((h, idx) => {
       const cell = t1HeaderRow.getCell(idx + 1);
@@ -2478,7 +2402,7 @@ export function AbsenTBM() {
       };
     });
 
-    let currentRow = 31;
+    let currentRow = 30;
     excelPersonStats.forEach((p, idx) => {
       const row = worksheet.getRow(currentRow);
       row.height = 20;
@@ -2518,12 +2442,6 @@ export function AbsenTBM() {
         result: p.totalJamKerja
       };
 
-      // Jam Lembur (Col I)
-      row.getCell(9).value = {
-        formula: `SUMIFS(I$${t2StartRow}:I$${t2EndRow},C$${t2StartRow}:C$${t2EndRow},B${currentRow})`,
-        result: p.totalJamLembur
-      };
-
       // Alignments
       row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
       row.getCell(2).alignment = { vertical: 'middle', horizontal: 'left' };
@@ -2533,7 +2451,6 @@ export function AbsenTBM() {
       row.getCell(6).alignment = { vertical: 'middle', horizontal: 'center' };
       row.getCell(7).alignment = { vertical: 'middle', horizontal: 'center' };
       row.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
-      row.getCell(9).alignment = { vertical: 'middle', horizontal: 'center' };
 
       // Colors & Fonts
       row.getCell(1).font = { name: 'Arial', size: 8.5 };
@@ -2545,7 +2462,6 @@ export function AbsenTBM() {
 
       row.getCell(6).font = { name: 'Arial', size: 8.5 };
       row.getCell(8).font = { name: 'Arial', size: 8.5 };
-      row.getCell(9).font = { name: 'Arial', size: 8.5, bold: p.totalJamLembur > 0, color: p.totalJamLembur > 0 ? { argb: 'FFD97706' } : { argb: 'FF64748B' } };
 
       // % Color Coding
       if (p.rate >= 80) {
@@ -2557,7 +2473,7 @@ export function AbsenTBM() {
       }
 
       // Borders
-      for (let col = 1; col <= 9; col++) {
+      for (let col = 1; col <= 8; col++) {
         row.getCell(col).border = {
           top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
           bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
@@ -2577,7 +2493,7 @@ export function AbsenTBM() {
     // ─── Table 2: Detail Riwayat Absensi TBM ──────────────────────
     const table2TitleRow = worksheet.getRow(currentRow);
     table2TitleRow.height = 20;
-    worksheet.mergeCells(`A${currentRow}:I${currentRow}`);
+    worksheet.mergeCells(`A${currentRow}:H${currentRow}`);
     const t2TitleCell = worksheet.getCell(`A${currentRow}`);
     t2TitleCell.value = 'DETAIL RIWAYAT ABSENSI TBM';
     t2TitleCell.font = { name: 'Arial', size: 9.5, bold: true, color: { argb: 'FF0F172A' } };
@@ -2585,7 +2501,7 @@ export function AbsenTBM() {
 
     currentRow++;
 
-    const t2Headers = ['No', 'Tanggal', 'Nama', 'Jabatan', 'Status Kehadiran', 'Keterangan', 'Jam Kerja', 'Lembur'];
+    const t2Headers = ['No', 'Tanggal', 'Nama', 'Jabatan', 'Status Kehadiran', 'Keterangan', 'Jam Kerja'];
     const t2HeaderRow = worksheet.getRow(currentRow);
     t2HeaderRow.height = 24;
     t2Headers.forEach((h, idx) => {
@@ -2596,8 +2512,6 @@ export function AbsenTBM() {
         cell = worksheet.getCell(`F${currentRow}`);
       } else if (h === 'Jam Kerja') {
         cell = worksheet.getCell(`H${currentRow}`);
-      } else if (h === 'Lembur') {
-        cell = worksheet.getCell(`I${currentRow}`);
       } else {
         const colPos = idx + 1;
         cell = t2HeaderRow.getCell(colPos);
@@ -2645,7 +2559,6 @@ export function AbsenTBM() {
       worksheet.getCell(`F${currentRow}`).value = rec.remark || '-';
 
       row.getCell(8).value = rec.jamKerja || 0;
-      row.getCell(9).value = rec.jamLembur || 0;
 
       // Alignment
       row.getCell(1).alignment = { vertical: 'middle', horizontal: 'center' };
@@ -2655,7 +2568,6 @@ export function AbsenTBM() {
       row.getCell(5).alignment = { vertical: 'middle', horizontal: 'center' };
       worksheet.getCell(`F${currentRow}`).alignment = { vertical: 'middle', horizontal: 'left' };
       row.getCell(8).alignment = { vertical: 'middle', horizontal: 'center' };
-      row.getCell(9).alignment = { vertical: 'middle', horizontal: 'center' };
 
       // Font size & colors
       for (let col = 1; col <= 4; col++) {
@@ -2670,10 +2582,9 @@ export function AbsenTBM() {
       
       worksheet.getCell(`F${currentRow}`).font = { name: 'Arial', size: 8.5 };
       row.getCell(8).font = { name: 'Arial', size: 8.5 };
-      row.getCell(9).font = { name: 'Arial', size: 8.5, bold: rec.jamLembur > 0, color: rec.jamLembur > 0 ? { argb: 'FFD97706' } : { argb: 'FF64748B' } };
 
-      // Apply borders to all columns A:I
-      for (let col = 1; col <= 9; col++) {
+      // Apply borders to all columns A:H
+      for (let col = 1; col <= 8; col++) {
         const c = worksheet.getCell(currentRow, col);
         c.border = {
           top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
@@ -3180,18 +3091,6 @@ export function AbsenTBM() {
             </div>
           </div>
 
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Lembur</p>
-              <h3 className="text-2xl font-black text-amber-400 mt-1">{stats.totalJamLembur}<span className="text-sm font-bold text-slate-500 ml-1">jam</span></h3>
-              {stats.totalOrangLembur > 0 && (
-                <p className="text-[10px] font-bold text-amber-500/70 mt-0.5">{stats.totalOrangLembur} orang lembur</p>
-              )}
-            </div>
-            <div className="p-3 bg-amber-500/10 rounded-xl text-amber-400">
-              <Zap className="w-6 h-6" />
-            </div>
-          </div>
         </div>
 
         {/* Right Side: Personnel Attendance Rates or Charts */}
@@ -3253,11 +3152,6 @@ export function AbsenTBM() {
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <span className="text-[8px] font-bold text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded">{person.totalJamKerja}j</span>
-                          {person.totalJamLembur > 0 && (
-                            <span className="text-[8px] font-black text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                              <Zap className="w-2.5 h-2.5" />{person.totalJamLembur}j
-                            </span>
-                          )}
                           <span className="text-[9px] font-normal text-slate-500">({person.hadir}/{person.total})</span>
                           <span className={person.rate >= 80 ? 'text-emerald-400' : person.rate >= 50 ? 'text-amber-400' : 'text-rose-400'}>
                             {person.rate}%
@@ -3353,7 +3247,6 @@ export function AbsenTBM() {
                   <th className="px-3 py-3 text-center w-60">Status Kehadiran</th>
                   <th className="px-3 py-3 text-left">Keterangan (Remark)</th>
                   <th className="px-3 py-3 text-center w-24">Jam Kerja</th>
-                  <th className="px-3 py-3 text-center w-28">Lembur</th>
                   {formCategory === 'Manual' && <th className="px-3 py-3 text-center w-16">Aksi</th>}
                 </tr>
               </thead>
@@ -3365,12 +3258,11 @@ export function AbsenTBM() {
                     if (isNewCategory && item.category) {
                       lastCategory = item.category;
                     }
-                    const lemburHours = Math.max(0, (item.jamKerja || 0) - 8);
                     return (
                       <Fragment key={index}>
                         {isNewCategory && item.category && (
                           <tr className="bg-slate-800/40 text-slate-300 border-t border-slate-700/50">
-                            <td colSpan={8} className="px-3 py-2 text-[10px] text-pink-400 font-black tracking-wider uppercase bg-slate-900/40">
+                            <td colSpan={7} className="px-3 py-2 text-[10px] text-pink-400 font-black tracking-wider uppercase bg-slate-900/40">
                               {item.category}
                             </td>
                           </tr>
@@ -3482,16 +3374,6 @@ export function AbsenTBM() {
                               placeholder="-"
                               title="Masukkan angka desimal saja (contoh: 8, 8.5)"
                             />
-                          </td>
-                          <td className="px-3 py-3.5 text-center">
-                            {lemburHours > 0 ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-sm shadow-amber-500/5">
-                                <Zap className="w-2.5 h-2.5" />
-                                {lemburHours} jam
-                              </span>
-                            ) : (
-                              <span className="text-slate-600">-</span>
-                            )}
                           </td>
                           {formCategory === 'Manual' && (
                             <td className="px-3 py-3.5 text-center">
@@ -3744,7 +3626,7 @@ export function AbsenTBM() {
                               }
                             }
                             return (
-                              <td key={date} className={`px-2 py-2 border border-white/5 text-center font-mono text-[10px] ${cellClass}`} title={rec ? `Jam Kerja: ${rec.jamKerja || 0}j | Lembur: ${rec.jamLembur || 0}j` : undefined}>
+                              <td key={date} className={`px-2 py-2 border border-white/5 text-center font-mono text-[10px] ${cellClass}`} title={rec ? `Jam Kerja: ${rec.jamKerja || 0}j` : undefined}>
                                 {symbol}
                               </td>
                             );
@@ -3916,7 +3798,6 @@ export function AbsenTBM() {
                           <th className="px-4 py-3 text-left w-36">Kehadiran</th>
                           <th className="px-4 py-3 text-left">Keterangan</th>
                           <th className="px-4 py-3 text-center w-24">Jam Kerja</th>
-                          <th className="px-4 py-3 text-center w-28">Lembur</th>
                           <th className="px-4 py-3 text-center w-28">Aksi</th>
                         </tr>
                       </thead>
@@ -3935,7 +3816,7 @@ export function AbsenTBM() {
                               return (
                                 <Fragment key={cat}>
                                   <tr className="bg-slate-800/30 border-t border-slate-850">
-                                    <td colSpan={8} className="px-4 py-2 font-black uppercase text-[10px] text-pink-400 tracking-wider">
+                                    <td colSpan={7} className="px-4 py-2 font-black uppercase text-[10px] text-pink-400 tracking-wider">
                                       Kategori: {cat}
                                     </td>
                                   </tr>
@@ -4067,28 +3948,6 @@ export function AbsenTBM() {
                                           )}
                                         </td>
                                         <td className="px-4 py-3.5 text-center">
-                                          {isEditing ? (
-                                            (() => {
-                                              const lemburHrs = Math.max(0, editedJamKerja - 8);
-                                              return lemburHrs > 0 ? (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-sm">
-                                                  <Zap className="w-2.5 h-2.5" /> {lemburHrs} jam
-                                                </span>
-                                              ) : (
-                                                <span className="text-slate-600">-</span>
-                                              );
-                                            })()
-                                          ) : (
-                                            rec && rec.jamLembur > 0 ? (
-                                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-sm">
-                                                <Zap className="w-2.5 h-2.5" /> {rec.jamLembur} jam
-                                              </span>
-                                            ) : (
-                                              <span className="text-slate-600">-</span>
-                                            )
-                                          )}
-                                        </td>
-                                        <td className="px-4 py-3.5 text-center">
                                           {rec || isEditing ? (
                                             isEditing ? (
                                               <div className="flex justify-center gap-1.5">
@@ -4155,7 +4014,7 @@ export function AbsenTBM() {
                               return (
                                 <Fragment key={cat}>
                                   <tr className="bg-slate-800/30 border-t border-slate-850">
-                                    <td colSpan={8} className="px-4 py-2 font-black uppercase text-[10px] text-pink-400 tracking-wider">
+                                    <td colSpan={7} className="px-4 py-2 font-black uppercase text-[10px] text-pink-400 tracking-wider">
                                       Kategori: {cat}
                                     </td>
                                   </tr>
@@ -4291,28 +4150,6 @@ export function AbsenTBM() {
                                             <span className="text-slate-300 font-bold">
                                               {rec.jamKerja !== undefined ? `${rec.jamKerja} jam` : '—'}
                                             </span>
-                                          )}
-                                        </td>
-                                        <td className="px-4 py-3.5 text-center">
-                                          {isEditing ? (
-                                            (() => {
-                                              const lemburHrs = Math.max(0, editedJamKerja - 8);
-                                              return lemburHrs > 0 ? (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-sm">
-                                                  <Zap className="w-2.5 h-2.5" /> {lemburHrs} jam
-                                                </span>
-                                              ) : (
-                                                <span className="text-slate-650">-</span>
-                                              );
-                                            })()
-                                          ) : (
-                                            rec.jamLembur > 0 ? (
-                                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-sm">
-                                                <Zap className="w-2.5 h-2.5" /> {rec.jamLembur} jam
-                                              </span>
-                                            ) : (
-                                              <span className="text-slate-600">-</span>
-                                            )
                                           )}
                                         </td>
                                         <td className="px-4 py-3.5 text-center">
