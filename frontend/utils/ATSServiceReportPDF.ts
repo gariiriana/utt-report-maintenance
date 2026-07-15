@@ -7,7 +7,7 @@ import { compressBase64Image } from '@/utils/imageCompression';
 import { toast } from 'sonner';
 
 // ─── Color Constants ─────────────────────────────────────────────────
-const YELLOW_SUB = [255, 255, 204];  // #FFFFCC — sub header
+const HEADER_SUB = [195, 210, 230];  // Light blue/grey sub header
 const DARK_TEXT: [number, number, number] = [30, 30, 30];
 
 /** Load an image URL as base64 data URL */
@@ -118,10 +118,10 @@ export async function generateATSServiceReportPDF(
     : '';
 
   const customerRows = [
-    ['Company name', customerInfo.companyName, 'Type', customerInfo.type, 'Specification', customerInfo.specification, 'Map No', customerInfo.mapNo],
+    ['Company name', customerInfo.companyName, 'Type', customerInfo.type, 'Spesification', customerInfo.specification, 'Mop No:', customerInfo.mapNo],
     ['Equipment name', customerInfo.equipmentName, 'Serial No.', customerInfo.serialNo, '', '', 'Quarter', customerInfo.quarter],
     ['CI Description', customerInfo.ciDescription, 'Product Name', customerInfo.productName, 'Location', customerInfo.location, 'Date', formattedDate],
-    ['CI Name', customerInfo.ciName, 'Product Years', customerInfo.productYears, 'Area', customerInfo.area, 'Engineer', customerInfo.engineer],
+    ['CI Name', customerInfo.ciName, 'Product Years', customerInfo.productYears, 'Area', customerInfo.area, 'Engginer', customerInfo.engineer],
   ];
 
   autoTable(doc, {
@@ -142,7 +142,7 @@ export async function generateATSServiceReportPDF(
     },
     didParseCell(data) {
       if (data.column.index % 2 === 0) {
-        data.cell.styles.fillColor = [240, 240, 240] as any;
+        data.cell.styles.fillColor = HEADER_SUB as any;
       }
     },
   });
@@ -157,7 +157,19 @@ export async function generateATSServiceReportPDF(
   doc.text('Visual Inspection & Check', margin + 2, y + 3.5);
   y += 5;
 
-  const viHeaders = [['No', 'Activity', 'Parameter', 'Condition\nGood', 'Condition\nNot Good', 'Remarks']];
+  const viHeaders = [
+    [
+      { content: 'No', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+      { content: 'Activity', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+      { content: 'Parameter', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+      { content: 'Condition', colSpan: 2, styles: { halign: 'center' } },
+      { content: 'Remarks', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } }
+    ],
+    [
+      { content: 'Good', styles: { halign: 'center' } },
+      { content: 'Not Good', styles: { halign: 'center' } }
+    ]
+  ] as any;
   const viBody = reportData.visual_inspection.map(item => [
     `${item.no}.`,
     item.activity,
@@ -174,7 +186,7 @@ export async function generateATSServiceReportPDF(
     body: viBody,
     theme: 'grid',
     styles: { fontSize: 5.0, cellPadding: 0.5, lineColor: [180, 180, 180], lineWidth: 0.2, textColor: DARK_TEXT },
-    headStyles: { fillColor: YELLOW_SUB as any, textColor: DARK_TEXT, fontStyle: 'bold', fontSize: 5.0 },
+    headStyles: { fillColor: HEADER_SUB as any, textColor: DARK_TEXT, fontStyle: 'bold', fontSize: 5.0 },
     columnStyles: {
       0: { cellWidth: 8, halign: 'center' },
       1: { cellWidth: contentW - 100 },
@@ -203,7 +215,7 @@ export async function generateATSServiceReportPDF(
   doc.setFillColor(0, 89, 156);
   doc.rect(margin, y, contentW, 4, 'F');
   doc.setFontSize(5.5).setFont('helvetica', 'bold').setTextColor(255, 255, 255);
-  doc.text('Digital Power Meter Recording  Please mark OK (✓), not OK(✗), not applicable (N/A) in the box', margin + 2, y + 2.8);
+  doc.text('Digital Power Meter Recording  Please mark OK (V), not OK (X), not applicable (N/A) in the box', margin + 2, y + 2.8);
   y += 4;
 
   const pmHeaders = [['Wire', 'Result (Voltage)', 'Wire', 'Result (Voltage)', 'Wire', 'Result', 'Wire', 'Result\n(Ampere)', 'Remarks']];
@@ -222,7 +234,7 @@ export async function generateATSServiceReportPDF(
     body: pmBody,
     theme: 'grid',
     styles: { fontSize: 5.2, cellPadding: 0.5, lineColor: [180, 180, 180], lineWidth: 0.2, textColor: DARK_TEXT, halign: 'center' },
-    headStyles: { fillColor: YELLOW_SUB as any, textColor: DARK_TEXT, fontStyle: 'bold' },
+    headStyles: { fillColor: HEADER_SUB as any, textColor: DARK_TEXT, fontStyle: 'bold' },
     columnStyles: {
       0: { fontStyle: 'bold', cellWidth: 12 },
       2: { fontStyle: 'bold', cellWidth: 12 },
@@ -241,12 +253,12 @@ export async function generateATSServiceReportPDF(
   y += 4;
 
   const vc = reportData.voltage_current;
-  const vcHeaders = [['Wire', 'Result (Voltage)', 'Wire', 'Result (Voltage)', 'Wire', 'Result (Ampere)', 'Standard']];
+  const vcHeaders = [['Wire', 'Result (Voltage)', 'Wire', 'Result (Voltage)', 'Wire', 'Result (Ampere)', 'Standard', 'Remarks']];
   const vcBody = [
-    ['R-S', vc.voltage_rs, 'R-N', vc.voltage_rn, 'R', vc.ampere_r, ''],
-    ['S-T', vc.voltage_st, 'S-N', vc.voltage_sn, 'S', vc.ampere_s, '+5% - 10% from 380V &\n220V load deviation 10%'],
-    ['T-R', vc.voltage_tr, 'T-N', vc.voltage_tn, 'T', vc.ampere_t, ''],
-    ['', '', 'N-G', vc.voltage_ng, 'N', '', ''],
+    ['R-S', vc.voltage_rs, 'R-N', vc.voltage_rn, 'R', vc.ampere_r, '', ''],
+    ['S-T', vc.voltage_st, 'S-N', vc.voltage_sn, 'S', vc.ampere_s, '+5% - 10% from 380V &\n220V load deviation 10%', ''],
+    ['T-R', vc.voltage_tr, 'T-N', vc.voltage_tn, 'T', vc.ampere_t, '', ''],
+    ['', '', 'N-G', vc.voltage_ng, 'N', '', '', ''],
   ];
 
   autoTable(doc, {
@@ -256,12 +268,16 @@ export async function generateATSServiceReportPDF(
     body: vcBody,
     theme: 'grid',
     styles: { fontSize: 5.2, cellPadding: 0.5, lineColor: [180, 180, 180], lineWidth: 0.2, textColor: DARK_TEXT, halign: 'center' },
-    headStyles: { fillColor: YELLOW_SUB as any, textColor: DARK_TEXT, fontStyle: 'bold' },
+    headStyles: { fillColor: HEADER_SUB as any, textColor: DARK_TEXT, fontStyle: 'bold' },
     columnStyles: {
       0: { fontStyle: 'bold', cellWidth: 12 },
+      1: { cellWidth: 22 },
       2: { fontStyle: 'bold', cellWidth: 12 },
+      3: { cellWidth: 22 },
       4: { fontStyle: 'bold', cellWidth: 12 },
+      5: { cellWidth: 22 },
       6: { cellWidth: 34, fontSize: 4.8, textColor: [200, 0, 0] as any },
+      7: { cellWidth: contentW - 136 },
     },
   });
 
@@ -271,7 +287,7 @@ export async function generateATSServiceReportPDF(
   doc.setFillColor(0, 89, 156);
   doc.rect(margin, y, contentW, 4, 'F');
   doc.setFontSize(5.5).setFont('helvetica', 'bold').setTextColor(255, 255, 255);
-  doc.text('Thermal Measurement  Please mark OK (✓), not OK(✗), not applicable (N/A) in the box', margin + 2, y + 2.8);
+  doc.text('Thermal Measurement  Please mark OK (V), not OK (X), not applicable (N/A) in the box', margin + 2, y + 2.8);
   y += 4;
 
   const therm = reportData.thermal_measurement;
@@ -285,7 +301,7 @@ export async function generateATSServiceReportPDF(
     ],
     theme: 'grid',
     styles: { fontSize: 5.2, cellPadding: 0.6, lineColor: [180, 180, 180], lineWidth: 0.2, textColor: DARK_TEXT, halign: 'center' },
-    headStyles: { fillColor: YELLOW_SUB as any, textColor: DARK_TEXT, fontStyle: 'bold' },
+    headStyles: { fillColor: HEADER_SUB as any, textColor: DARK_TEXT, fontStyle: 'bold' },
     columnStyles: { 0: { fontStyle: 'bold', halign: 'left' } },
   });
 
@@ -295,18 +311,18 @@ export async function generateATSServiceReportPDF(
   doc.setFillColor(0, 89, 156);
   doc.rect(margin, y, contentW, 4, 'F');
   doc.setFontSize(5.5).setFont('helvetica', 'bold').setTextColor(255, 255, 255);
-  doc.text('Grounding Resistance Measurement  Please mark OK (✓), not OK(✗), not applicable (N/A) in the box', margin + 2, y + 2.8);
+  doc.text('Grounding Resistance Measurement  Please mark OK (V), not OK (X), not applicable (N/A) in the box', margin + 2, y + 2.8);
   y += 4;
 
   const gnd = reportData.grounding_resistance;
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
-    head: [['Wire', 'Result (Ω)', 'Standard', 'Remarks']],
-    body: [['Grounding', gnd.result_ohm || '—', '<5 Ω', gnd.remarks]],
+    head: [['Wire', 'Result (Ohm)', 'Standard', 'Remarks']],
+    body: [['Grounding', gnd.result_ohm || '—', '<5 Ohm', gnd.remarks]],
     theme: 'grid',
     styles: { fontSize: 5.2, cellPadding: 0.6, lineColor: [180, 180, 180], lineWidth: 0.2, textColor: DARK_TEXT, halign: 'center' },
-    headStyles: { fillColor: YELLOW_SUB as any, textColor: DARK_TEXT, fontStyle: 'bold' },
+    headStyles: { fillColor: HEADER_SUB as any, textColor: DARK_TEXT, fontStyle: 'bold' },
     columnStyles: { 0: { fontStyle: 'bold', halign: 'left' } },
   });
 
@@ -314,12 +330,35 @@ export async function generateATSServiceReportPDF(
 
   // ─── OPERATION STATUS ──────────────────────────────────────────────
   const ops = reportData.operation_status;
-  const opsBody: string[][] = [];
-  if (ops.is_normal) {
-    opsBody.push(['☑ Normal operation', 'Remark', ops.remark]);
-  } else {
-    opsBody.push(['☐ Normal operation', 'Remark', ops.remark]);
-  }
+  const opsBody = [
+    [
+      { content: ops.is_normal ? '[x] Normal operation' : '[ ] Normal operation', colSpan: 2, styles: { halign: 'left', fontStyle: 'bold', fontSize: 5.2 } },
+      { content: 'Remark:', styles: { fontStyle: 'bold', fillColor: HEADER_SUB, fontSize: 5.2 } },
+      { content: ops.remark || '', colSpan: 3, styles: { halign: 'left', fontSize: 5.2 } }
+    ],
+    [
+      { content: !ops.is_normal ? '[x] Abnormal operation' : '[ ] Abnormal operation', colSpan: 2, styles: { halign: 'left', fontStyle: 'bold', fontSize: 5.2 } },
+      { content: 'Fault symptom', styles: { fontStyle: 'bold', fillColor: HEADER_SUB, fontSize: 5.2 } },
+      { content: ops.fault_symptom || '', colSpan: 3, styles: { halign: 'left', fontSize: 5.2 } }
+    ],
+    [
+      { content: '(Please fill the items if the service is repair)', colSpan: 2, styles: { halign: 'left', fontStyle: 'italic', fontSize: 4.2, textColor: [100, 100, 100] } },
+      { content: 'Fault analysis', styles: { fontStyle: 'bold', fillColor: HEADER_SUB, fontSize: 5.2 } },
+      { content: ops.fault_analysis || '', colSpan: 3, styles: { halign: 'left', fontSize: 5.2 } }
+    ],
+    [
+      { content: '', colSpan: 2 },
+      { content: 'Work done/\naction taken', styles: { fontStyle: 'bold', fillColor: HEADER_SUB, fontSize: 5.2 } },
+      { content: ops.work_done || '', colSpan: 3, styles: { halign: 'left', fontSize: 5.2 } }
+    ],
+    [
+      { content: '', colSpan: 2 },
+      { content: 'Fault Part SN', styles: { fontStyle: 'bold', fillColor: HEADER_SUB, fontSize: 5.2 } },
+      { content: ops.fault_part_sn || '', styles: { halign: 'left', fontSize: 5.2 } },
+      { content: 'Fault part Name', styles: { fontStyle: 'bold', fillColor: HEADER_SUB, fontSize: 5.2 } },
+      { content: ops.fault_part_name || '', styles: { halign: 'left', fontSize: 5.2 } }
+    ]
+  ] as any;
 
   autoTable(doc, {
     startY: y,
@@ -327,27 +366,17 @@ export async function generateATSServiceReportPDF(
     body: opsBody,
     theme: 'grid',
     styles: { fontSize: 5.2, cellPadding: 0.6, lineColor: [180, 180, 180], lineWidth: 0.2, textColor: DARK_TEXT },
-    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 35 }, 1: { fontStyle: 'bold', cellWidth: 20 } },
+    columnStyles: {
+      0: { cellWidth: 35 },
+      1: { cellWidth: 35 },
+      2: { cellWidth: 22 },
+      3: { cellWidth: 34 },
+      4: { cellWidth: 28 },
+      5: { cellWidth: contentW - 154 }
+    }
   });
 
   y = (doc as any).lastAutoTable.finalY;
-
-  if (!ops.is_normal) {
-    autoTable(doc, {
-      startY: y,
-      margin: { left: margin, right: margin },
-      body: [
-        ['☑ Abnormal operation', 'Fault symptom', ops.fault_symptom],
-        ['(Please fill the items if the service is repair)', 'Fault analysis', ops.fault_analysis],
-        ['', 'Work done / action taken', ops.work_done],
-        ['', 'Fault Part SN', ops.fault_part_sn],
-      ],
-      theme: 'grid',
-      styles: { fontSize: 5.2, cellPadding: 0.6, lineColor: [180, 180, 180], lineWidth: 0.2, textColor: DARK_TEXT },
-      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 35 }, 1: { fontStyle: 'bold', cellWidth: 30 } },
-    });
-    y = (doc as any).lastAutoTable.finalY;
-  }
 
   y += 0.6;
 
@@ -365,7 +394,7 @@ export async function generateATSServiceReportPDF(
     body: [[timeSpent.date, timeSpent.departure, timeSpent.start, timeSpent.finish]],
     theme: 'grid',
     styles: { fontSize: 6.0, cellPadding: 0.8, lineColor: [180, 180, 180], lineWidth: 0.2, textColor: DARK_TEXT, halign: 'center' },
-    headStyles: { fillColor: YELLOW_SUB as any, textColor: DARK_TEXT, fontStyle: 'bold' },
+    headStyles: { fillColor: [255, 255, 204] as any, textColor: DARK_TEXT, fontStyle: 'bold' },
   });
 
   y = (doc as any).lastAutoTable.finalY + 2.5;

@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  X, ChevronDown, ChevronUp, Download, Eye, AlertTriangle, Edit2
+  X, ChevronDown, ChevronUp, Download, Eye, AlertTriangle, Edit2, Save
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { db } from '@/api/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 import {
   ATSReportData, ATSCustomerInfo, ATSTimeSpent,
@@ -209,6 +211,8 @@ interface ATSServiceReportProps {
     atsCustomerInfo?: ATSCustomerInfo;
     atsReportData?: ATSReportData;
     atsTimeSpent?: ATSTimeSpent;
+    archiveId?: string;
+    archiveType?: string;
   } | null;
   onClearPrefill?: () => void;
   onChange?: (data: { customerInfo: ATSCustomerInfo; reportData: ATSReportData; timeSpent: ATSTimeSpent }) => void;
@@ -250,6 +254,10 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
     voltage: false, thermal: false, grounding: false, operation: false, time: false,
   });
   const [isDraftLoading, setIsDraftLoading] = useState(true);
+  const [archiveId, setArchiveId] = useState<string | null>(null);
+  const [archiveType, setArchiveType] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Load draft from draftStorage (IndexedDB)
   useEffect(() => {
@@ -331,6 +339,9 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
   // Prefill side-effect
   useEffect(() => {
     if (prefillData) {
+      if (prefillData.archiveId) setArchiveId(prefillData.archiveId);
+      if (prefillData.archiveType) setArchiveType(prefillData.archiveType);
+
       if (prefillData.atsCustomerInfo) {
         setCustomerInfo(mergeWithDefaults(prefillData.atsCustomerInfo));
       } else {
@@ -401,12 +412,56 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
 
   // ─── Export PDF ───────────────────────────────────────────────────────
   const handleExportPDF = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    const toastId = toast.loading('Sedang memproses dan meng-export PDF...');
     try {
       await generateATSServiceReportPDF(customerInfo, reportData, timeSpent, originalReportCards);
-      toast.success('PDF berhasil di-export!');
+
+      if (archiveId) {
+        const effectiveDocType = archiveType || 'pdf';
+        const collectionName = effectiveDocType === 'excel' ? 'excel_documents' : (effectiveDocType === 'hse' ? 'hse' : 'pdf_documents');
+
+        const docRef = doc(db, collectionName, archiveId);
+        await updateDoc(docRef, {
+          atsCustomerInfo: customerInfo,
+          atsReportData: reportData,
+          atsTimeSpent: timeSpent
+        });
+        toast.success('PDF berhasil diekspor & divalidasi ke arsip!', { id: toastId });
+      } else {
+        toast.success('PDF berhasil diekspor!', { id: toastId });
+      }
     } catch (error: any) {
       console.error('PDF export error:', error);
-      toast.error(`PDF export gagal: ${error.message}`);
+      toast.error(`PDF export gagal: ${error.message}`, { id: toastId });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // ─── Save to Firestore Archive ─────────────────────────────────────────
+  const handleSaveArchive = async () => {
+    if (!archiveId || isSaving) return;
+    setIsSaving(true);
+    const toastId = toast.loading('Menyimpan Service Report ke arsip...');
+    try {
+      const effectiveDocType = archiveType || 'pdf';
+      const collectionName = effectiveDocType === 'excel' ? 'excel_documents' : (effectiveDocType === 'hse' ? 'hse' : 'pdf_documents');
+
+      const docRef = doc(db, collectionName, archiveId);
+      await updateDoc(docRef, {
+        atsCustomerInfo: customerInfo,
+        atsReportData: reportData,
+        atsTimeSpent: timeSpent
+      });
+
+      toast.success('Service Report berhasil disimpan ke arsip!', { id: toastId });
+    } catch (error: any) {
+      console.error('Save to archive error:', error);
+      toast.error(`Gagal menyimpan: ${error.message}`, { id: toastId });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -687,14 +742,55 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
           Preview Service Report
         </motion.button>
         <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={!isExporting ? { scale: 1.02 } : undefined}
+          whileTap={!isExporting ? { scale: 0.98 } : undefined}
           onClick={handleExportPDF}
-          className="flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all"
+          disabled={isExporting}
+          className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all ${
+            isExporting ? 'opacity-60 cursor-not-allowed' : ''
+          }`}
         >
-          <Download className="w-4 h-4" />
-          Export PDF
+          {isExporting ? (
+            <>
+              <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Mengekspor...
+            </>
+          ) : (
+            <>
+              <Download className="w-4 h-4" />
+              Export PDF SR & Dokumentasi
+            </>
+          )}
         </motion.button>
+        {archiveId && (
+          <motion.button
+            whileHover={!isSaving ? { scale: 1.02 } : undefined}
+            whileTap={!isSaving ? { scale: 0.98 } : undefined}
+            onClick={handleSaveArchive}
+            disabled={isSaving}
+            className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all ${
+              isSaving ? 'opacity-60 cursor-not-allowed' : ''
+            }`}
+          >
+            {isSaving ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Menyimpan...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Simpan Arsip Service Report
+              </>
+            )}
+          </motion.button>
+        )}
       </div>
 
       {/* Lightbox / Preview Modal */}

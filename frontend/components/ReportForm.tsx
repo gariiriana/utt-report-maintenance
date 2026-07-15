@@ -86,6 +86,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     atsCustomerInfo?: any;
     atsReportData?: any;
     atsTimeSpent?: any;
+    archiveId?: string;
+    archiveType?: string;
   } | null>(null);
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
   const [atsData, setAtsData] = useState<{ customerInfo: any; reportData: any; timeSpent: any } | null>(null);
@@ -277,9 +279,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               const processedUnits = await Promise.all(draft.units.map(async (u: any) => {
                 let unitCards = u.cards.map((c: any) => ({ ...c, photo: null }));
                 if (template) {
-                  if (lowerEmail === 'wld@gmail.com') {
+                  if (lowerEmail === 'wld@gmail.com' || lowerEmail === 'fld@gmail.com') {
                     const hasOldCards = unitCards.some((c: any) => c.description === 'Voltage Measurement' || c.description === 'Current Measurement');
-                    if (hasOldCards) {
+                    if (hasOldCards && lowerEmail === 'wld@gmail.com') {
                       unitCards = unitCards.filter((c: any) => c.description !== 'Voltage Measurement' && c.description !== 'Current Measurement');
                       if (!unitCards.some((c: any) => c.description === 'Fg Map')) {
                         unitCards.push({
@@ -292,11 +294,14 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       unitCards = unitCards.map((c: any, idx: number) => ({ ...c, id: `${idx + 1}` }));
                     }
 
-                    // Force override with the new static WLD_DEFAULT_PHOTOS
+                    // Force override with the new static photos
                     unitCards = await Promise.all(unitCards.map(async (c: any) => {
-                      if (WLD_DEFAULT_PHOTOS[c.description]) {
-                        const defaultUrl = WLD_DEFAULT_PHOTOS[c.description];
-                        const b64 = defaultUrl ? await loadLogoBase64(defaultUrl) : undefined;
+                      let defaultUrl = WLD_DEFAULT_PHOTOS[c.description];
+                      if (lowerEmail === 'fld@gmail.com' && c.description === 'Test Ping') {
+                        defaultUrl = imgTesPingFld;
+                      }
+                      if (defaultUrl) {
+                        const b64 = await loadLogoBase64(defaultUrl);
                         return { ...c, photoBase64: b64 || c.photoBase64 };
                       }
                       return c;
@@ -306,6 +311,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   if (allEmpty) {
                     unitCards = await Promise.all(template.map(async (desc, idx) => {
                       let defaultUrl = WLD_DEFAULT_PHOTOS[desc];
+                      if (lowerEmail === 'fld@gmail.com' && desc === 'Test Ping') {
+                        defaultUrl = imgTesPingFld;
+                      }
                       let b64 = defaultUrl ? await loadLogoBase64(defaultUrl) : undefined;
                       return {
                         id: `${idx + 1}`,
@@ -319,6 +327,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     const missing = template.slice(unitCards.length);
                     const appended = await Promise.all(missing.map(async (desc, i) => {
                       let defaultUrl = WLD_DEFAULT_PHOTOS[desc];
+                      if (lowerEmail === 'fld@gmail.com' && desc === 'Test Ping') {
+                        defaultUrl = imgTesPingFld;
+                      }
                       let b64 = defaultUrl ? await loadLogoBase64(defaultUrl) : undefined;
                       return {
                         id: `${unitCards.length + i + 1}`,
@@ -509,6 +520,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           atsCustomerInfo: (editingData as any).atsCustomerInfo,
           atsReportData: (editingData as any).atsReportData,
           atsTimeSpent: (editingData as any).atsTimeSpent,
+          archiveId: editingData.id,
+          archiveType: editingData.documentType,
         });
       }
     }
@@ -1266,7 +1279,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         photos: collectedPhotos,
         originalReportCards,
         autoTrigger: false,
-        triggerGenerateData: true
+        triggerGenerateData: true,
+        archiveId: editingData?.id,
+        archiveType: editingData?.documentType,
       });
     } catch (err: any) {
       console.error(err);
