@@ -172,13 +172,6 @@ export function AbsenTBM() {
     }
     return d.toISOString().split('T')[0];
   });
-  const isWeekend = useMemo(() => {
-    if (!formDate) return false;
-    const parts = formDate.split('-');
-    const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-    const day = d.getDay();
-    return day === 0 || day === 6;
-  }, [formDate]);
   const [formCategory, setFormCategory] = useState<'Semua' | 'UTT Daily' | 'UTT Mobile' | 'DME' | 'Manual'>('Semua');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionPhotos, setSubmissionPhotos] = useState<string[]>([]);
@@ -442,11 +435,15 @@ export function AbsenTBM() {
   const filteredRecords = useMemo(() => {
     return allRecords.filter(rec => {
       // Exclude Saturdays and Sundays completely from display and statistics
+      // EXCEPT when the record indicates the person was present ('Hadir') and has positive working hours (jamKerja > 0).
       if (rec.tanggal) {
         const parts = rec.tanggal.split('-');
         const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
         const day = d.getDay();
-        if (day === 0 || day === 6) return false;
+        if (day === 0 || day === 6) {
+          const isWorkingWeekend = rec.kehadiran === 'Hadir' && (rec.jamKerja ?? 0) > 0;
+          if (!isWorkingWeekend) return false;
+        }
       }
 
       const matchDate = (!startDate || rec.tanggal >= startDate) && (!endDate || rec.tanggal <= endDate);
@@ -3194,13 +3191,6 @@ export function AbsenTBM() {
                 onChange={e => {
                   const val = e.target.value;
                   if (!val) return;
-                  const parts = val.split('-');
-                  const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-                  const day = d.getDay();
-                  if (day === 0 || day === 6) {
-                    toast.error("Hari Sabtu dan Minggu tidak dapat dipilih untuk absensi!");
-                    return;
-                  }
                   setFormDate(val);
                 }}
                 title="Tanggal Absen"
@@ -3224,18 +3214,7 @@ export function AbsenTBM() {
             </div>
           </div>
         </div>
-
-      {isWeekend ? (
-        <div className="py-12 px-6 flex flex-col items-center justify-center text-center bg-slate-950/20 rounded-xl border border-white/5 space-y-3">
-          <div className="p-3 bg-rose-500/10 rounded-full border border-rose-500/20">
-            <Calendar className="w-8 h-8 text-rose-400" />
-          </div>
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">PENGINPUTAN DINONAKTIFKAN</h3>
-          <p className="text-xs text-slate-400 max-w-md leading-relaxed font-medium">
-            Penginputan absensi TBM dinonaktifkan pada hari <strong className="text-rose-400">Sabtu & Minggu</strong> (hari libur kerja). Anda tidak dapat memasukkan atau menyimpan absensi pada tanggal ini.
-          </p>
-        </div>
-      ) : (
+        
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
@@ -3477,7 +3456,6 @@ export function AbsenTBM() {
             </button>
           </div>
         </form>
-      )}
       </div>
 
       {/* ─── Table/Folder Section: Records List ────────────────── */}

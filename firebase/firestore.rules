@@ -2,6 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    function getEmail() {
+      return request.auth.token.get('email', '');
+    }
+
     function isAdminSafe() {
       return request.auth != null 
              && (
@@ -13,8 +17,7 @@ service cloud.firestore {
                ||
                (
                  request.auth.token != null
-                 && request.auth.token.email != null
-                 && request.auth.token.email.matches('.*admin.*')
+                 && getEmail().matches('.*admin.*')
                )
              );
     }
@@ -37,8 +40,7 @@ service cloud.firestore {
                ||
                (
                  request.auth.token != null
-                 && request.auth.token.email != null
-                 && request.auth.token.email.matches('.*hse.*')
+                 && getEmail().matches('.*hse.*')
                )
              );
     }
@@ -73,16 +75,15 @@ service cloud.firestore {
                ||
                (
                  request.auth.token != null
-                 && request.auth.token.email != null
                  && (
-                   request.auth.token.email.matches('.*admin.*')
-                   || request.auth.token.email.matches('.*manager.*')
-                   || request.auth.token.email.matches('.*sitemanager.*')
-                   || request.auth.token.email.matches('.*site_manager.*')
-                   || request.auth.token.email.matches('.*hse.*')
-                   || request.auth.token.email.matches('.*dirut.*')
-                   || request.auth.token.email.matches('.*direksisdm.*')
-                   || request.auth.token.email.matches('.*direksikeuangan.*')
+                   getEmail().matches('.*admin.*')
+                   || getEmail().matches('.*manager.*')
+                   || getEmail().matches('.*sitemanager.*')
+                   || getEmail().matches('.*site_manager.*')
+                   || getEmail().matches('.*hse.*')
+                   || getEmail().matches('.*dirut.*')
+                   || getEmail().matches('.*direksisdm.*')
+                   || getEmail().matches('.*direksikeuangan.*')
                  )
                )
              );
@@ -117,7 +118,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow create: if request.auth != null 
                     && request.auth.uid == userId
-                    && request.resource.data.email == request.auth.token.email
+                    && request.resource.data.email == getEmail()
                     && request.resource.data.uid == userId
                     && request.resource.data.keys().hasAll(['email', 'uid', 'role', 'companyType', 'createdAt'])
                     && hasAcceptableFieldCount(request.resource.data, 8)
@@ -142,7 +143,7 @@ service cloud.firestore {
     
     match /excel_documents/{docId} {
       allow create: if request.auth != null 
-                    && request.resource.data.createdBy == request.auth.token.email
+                    && request.resource.data.createdBy == getEmail()
                     && request.resource.data.keys().hasAll([
                       'fileName', 
                       'maintenanceName', 
@@ -159,15 +160,14 @@ service cloud.firestore {
                     && isValidString(request.resource.data.createdBy, 200)
                     && (!request.resource.data.keys().hasAny(['specificDetail']) || request.resource.data.specificDetail is string);
       
+      allow read: if request.auth != null && isPrivilegedRole();
       allow read: if request.auth != null 
-                  && (resource.data.createdBy == request.auth.token.get('email', '') 
-                      || resource.data.createdBy == request.auth.token.email
-                      || isPrivilegedRole());
+                   && resource.data.createdBy == getEmail();
       
       allow delete: if request.auth != null && isAdminSafe();
       
       allow update: if request.auth != null 
-                    && (resource.data.createdBy == request.auth.token.email || isPrivilegedRole())
+                    && (resource.data.createdBy == getEmail() || isPrivilegedRole())
                     && hasAcceptableFieldCount(request.resource.data, 15);
 
       match /photos/{photoId} {
@@ -176,13 +176,13 @@ service cloud.firestore {
                       && hasAcceptableFieldCount(request.resource.data, 6)
                       && (!request.resource.data.keys().hasAny(['dataUrl']) || isValidPhotoData(request.resource.data.dataUrl));
         allow update, delete: if request.auth != null 
-                              && (get(/databases/$(database)/documents/excel_documents/$(docId)).data.createdBy == request.auth.token.email || isPrivilegedRole());
+                              && (get(/databases/$(database)/documents/excel_documents/$(docId)).data.createdBy == getEmail() || isPrivilegedRole());
       }
     }
     
     match /pdf_documents/{docId} {
       allow create: if request.auth != null 
-                    && request.resource.data.createdBy == request.auth.token.email
+                    && request.resource.data.createdBy == getEmail()
                     && request.resource.data.keys().hasAll([
                       'fileName', 
                       'maintenanceName', 
@@ -199,16 +199,14 @@ service cloud.firestore {
                     && isValidString(request.resource.data.createdBy, 200)
                     && (!request.resource.data.keys().hasAny(['specificDetail']) || request.resource.data.specificDetail is string);
       
+      allow read: if request.auth != null && (isPrivilegedRole() || isDME());
       allow read: if request.auth != null 
-                  && (resource.data.createdBy == request.auth.token.email 
-                      || resource.data.createdBy == request.auth.token.get('email', '')
-                      || isPrivilegedRole()
-                      || isDME());
+                   && resource.data.createdBy == getEmail();
       
       allow delete: if request.auth != null && isAdminSafe();
       
       allow update: if request.auth != null 
-                    && (resource.data.createdBy == request.auth.token.email || isPrivilegedRole())
+                    && (resource.data.createdBy == getEmail() || isPrivilegedRole())
                     && hasAcceptableFieldCount(request.resource.data, 15);
 
       match /photos/{photoId} {
@@ -217,7 +215,7 @@ service cloud.firestore {
                       && hasAcceptableFieldCount(request.resource.data, 6)
                       && (!request.resource.data.keys().hasAny(['dataUrl']) || isValidPhotoData(request.resource.data.dataUrl));
         allow update, delete: if request.auth != null 
-                              && (get(/databases/$(database)/documents/pdf_documents/$(docId)).data.createdBy == request.auth.token.email || isPrivilegedRole());
+                              && (get(/databases/$(database)/documents/pdf_documents/$(docId)).data.createdBy == getEmail() || isPrivilegedRole());
       }
     }
     
@@ -234,7 +232,7 @@ service cloud.firestore {
                     ])
                     && hasAcceptableFieldCount(request.resource.data, 20)
                     && request.resource.data.uploadedBy == request.auth.uid
-                    && request.resource.data.uploadedByEmail == request.auth.token.email
+                    && request.resource.data.uploadedByEmail == getEmail()
                     && isValidString(request.resource.data.fileName, 500)
                     && isValidString(request.resource.data.fileType, 100);
       
@@ -303,7 +301,7 @@ service cloud.firestore {
       allow create: if request.auth != null 
                     && (isHSE() || isAdminSafe() || isPrivilegedRole())
                     && request.resource.data.keys().hasAll(['aktivitas', 'lokasi', 'createdAt', 'authorEmail'])
-                    && request.resource.data.authorEmail == request.auth.token.email
+                    && request.resource.data.authorEmail == getEmail()
                     && hasAcceptableFieldCount(request.resource.data, 30)
                     && isValidString(request.resource.data.aktivitas, 500)
                     && isValidString(request.resource.data.lokasi, 500)
@@ -314,8 +312,8 @@ service cloud.firestore {
       
       allow update: if request.auth != null 
                     && (isAdminSafe() 
-                        || (isHSE() && resource.data.authorEmail == request.auth.token.email)
-                        || (isPrivilegedRole() && resource.data.authorEmail == request.auth.token.email))
+                        || (isHSE() && resource.data.authorEmail == getEmail())
+                        || (isPrivilegedRole() && resource.data.authorEmail == getEmail()))
                     && hasAcceptableFieldCount(request.resource.data, 30);
       
       allow delete: if request.auth != null && isAdminSafe();
@@ -327,7 +325,7 @@ service cloud.firestore {
                       && hasAcceptableFieldCount(request.resource.data, 8)
                       && (!request.resource.data.keys().hasAny(['dataUrl']) || isValidPhotoData(request.resource.data.dataUrl));
         allow update, delete: if request.auth != null 
-                              && (get(/databases/$(database)/documents/hse/$(reportId)).data.authorEmail == request.auth.token.email || isAdminSafe() || isPrivilegedRole());
+                              && (get(/databases/$(database)/documents/hse/$(reportId)).data.authorEmail == getEmail() || isAdminSafe() || isPrivilegedRole());
       }
     }
 
@@ -364,7 +362,7 @@ service cloud.firestore {
                     && hasAcceptableFieldCount(request.resource.data, 20)
                     && request.resource.data.keys().hasAll(['partName', 'partNumber', 'quantity', 'findingDate', 'photos', 'createdBy', 'createdByEmail', 'createdAt'])
                     && request.resource.data.createdBy == request.auth.uid
-                    && request.resource.data.createdByEmail == request.auth.token.email
+                    && request.resource.data.createdByEmail == getEmail()
                     && isValidString(request.resource.data.partName, 500)
                     && isValidString(request.resource.data.partNumber, 200);
       
@@ -389,12 +387,12 @@ service cloud.firestore {
       allow create: if request.auth != null 
                     && (isStandbyEngineer() || isAdminSafe())
                     && hasAcceptableFieldCount(request.resource.data, 15)
-                    && request.resource.data.engineerEmail == request.auth.token.email;
+                    && request.resource.data.engineerEmail == getEmail();
       
       allow read: if request.auth != null;
       
       allow update: if request.auth != null 
-                    && (isAdminSafe() || (isStandbyEngineer() && resource.data.engineerEmail == request.auth.token.email))
+                    && (isAdminSafe() || (isStandbyEngineer() && resource.data.engineerEmail == getEmail()))
                     && hasAcceptableFieldCount(request.resource.data, 20);
       
       allow delete: if request.auth != null && isAdminSafe();
