@@ -57,27 +57,31 @@ export async function generateResumePdf(summary: MaintenanceSummary, maintenance
         logoUttB64 = await loadImageAsBase64(logoUtt);
     } catch (_) {}
 
-    doc.setFillColor(0, 89, 156);
-    doc.rect(0, 0, pageW, 2.5, 'F');
+    const drawHeader = (pdf: jsPDF) => {
+        pdf.setFillColor(0, 89, 156);
+        pdf.rect(0, 0, pageW, 2.5, 'F');
 
-    if (logoDmeB64) {
-        doc.addImage(logoDmeB64, 'JPEG', margin, 8, 25, 15);
-    }
-    if (logoUttB64) {
-        doc.addImage(logoUttB64, 'JPEG', pageW - margin - 25, 8, 25, 12);
-    }
+        if (logoDmeB64) {
+            pdf.addImage(logoDmeB64, 'JPEG', margin, 8, 25, 15, undefined, 'FAST');
+        }
+        if (logoUttB64) {
+            pdf.addImage(logoUttB64, 'JPEG', pageW - margin - 25, 8, 25, 12, undefined, 'FAST');
+        }
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(30, 41, 59);
-    doc.text(maintenanceName ? maintenanceName.toUpperCase() : 'MAINTENANCE PROGRESS RESUME', pageW / 2, 18, { align: 'center' });
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text(projectName ? projectName : 'Reporting & Monitoring System - PT United Transworld Trading', pageW / 2, 23, { align: 'center' });
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(16);
+        pdf.setTextColor(30, 41, 59);
+        pdf.text(maintenanceName ? maintenanceName.toUpperCase() : 'MAINTENANCE PROGRESS RESUME', pageW / 2, 18, { align: 'center' });
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(100, 116, 139);
+        pdf.text(projectName ? projectName : 'Reporting & Monitoring System - PT United Transworld Trading', pageW / 2, 23, { align: 'center' });
 
-    doc.setDrawColor(226, 232, 240);
-    doc.line(margin, 30, pageW - margin, 30);
+        pdf.setDrawColor(226, 232, 240);
+        pdf.line(margin, 30, pageW - margin, 30);
+    };
+
+    drawHeader(doc);
 
     const dateStr = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
     doc.setFontSize(10);
@@ -185,12 +189,22 @@ export async function generateResumePdf(summary: MaintenanceSummary, maintenance
                     doc.setTextColor(51);
                 }
             }
+        },
+        didDrawPage: (data) => {
+            if (data.pageNumber > 1) {
+                drawHeader(doc);
+            }
         }
     });
 
     const totalPages = (doc.internal as any).getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
+
+        // Draw bottom blue stripe
+        doc.setFillColor(0, 89, 156);
+        doc.rect(0, doc.internal.pageSize.getHeight() - 2.5, pageW, 2.5, 'F');
+
         doc.setFontSize(8);
         doc.setTextColor(148, 163, 184);
         doc.text(

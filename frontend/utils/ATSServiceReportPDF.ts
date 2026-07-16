@@ -526,6 +526,22 @@ export async function generateATSServiceReportPDF(
     }
   }
 
+  // ─── FOOTER ────────────────────────────────────────────────────────
+  const pageH = doc.internal.pageSize.getHeight();
+  const totalPages = (doc.internal as any).getNumberOfPages();
+  for (let pg = 1; pg <= totalPages; pg++) {
+    doc.setPage(pg);
+    
+    // Draw bottom blue stripe
+    doc.setFillColor(0, 89, 156);
+    doc.rect(0, pageH - 2.5, pageW, 2.5, 'F');
+
+    // Page number and company text
+    doc.setFontSize(7.5).setTextColor(100, 116, 139);
+    doc.text('PT DWIMITRA EKATAMA MANDIRI — ATS Service Report', margin, pageH - 5);
+    doc.text(`Halaman ${pg} dari ${totalPages}`, pageW - margin, pageH - 5, { align: 'right' });
+  }
+
   // ─── SAVE ──────────────────────────────────────────────────────────
   const filename = `Service_Report_ATS_${customerInfo.mapNo || 'Report'}_${customerInfo.date || 'undated'}.pdf`;
   doc.save(filename);
