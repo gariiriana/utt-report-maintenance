@@ -1070,8 +1070,26 @@ export function PTWManagement() {
     ];
     const monthLabel = monthNames[month - 1];
 
+    // Calculate Week 1 start day based on previous month's Week 5 end date (if any)
+    let week1StartDay = 1;
+    const prevYear = month === 1 ? year - 1 : year;
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevMonthLastDay = new Date(prevYear, prevMonth, 0).getDate();
+    if (prevMonthLastDay > 28) {
+      const prevMonthWeek5EndDay = 29 + 6 - prevMonthLastDay;
+      if (prevMonthWeek5EndDay >= 1) {
+        week1StartDay = prevMonthWeek5EndDay + 1;
+      }
+    }
+
     const ranges = [
-      { weekNum: 1, startStr: formatDate(new Date(year, month - 1, 1)), endStr: formatDate(new Date(year, month - 1, 7)), rangeLabel: `01 - 07 ${monthLabel} ${year}`, shortRange: '01 - 07' },
+      { 
+        weekNum: 1, 
+        startStr: formatDate(new Date(year, month - 1, week1StartDay)), 
+        endStr: formatDate(new Date(year, month - 1, 7)), 
+        rangeLabel: `${String(week1StartDay).padStart(2, '0')} - 07 ${monthLabel} ${year}`, 
+        shortRange: `${String(week1StartDay).padStart(2, '0')} - 07` 
+      },
       { weekNum: 2, startStr: formatDate(new Date(year, month - 1, 8)), endStr: formatDate(new Date(year, month - 1, 14)), rangeLabel: `08 - 14 ${monthLabel} ${year}`, shortRange: '08 - 14' },
       { weekNum: 3, startStr: formatDate(new Date(year, month - 1, 15)), endStr: formatDate(new Date(year, month - 1, 21)), rangeLabel: `15 - 21 ${monthLabel} ${year}`, shortRange: '15 - 21' },
       { weekNum: 4, startStr: formatDate(new Date(year, month - 1, 22)), endStr: formatDate(new Date(year, month - 1, 28)), rangeLabel: `22 - 28 ${monthLabel} ${year}`, shortRange: '22 - 28' },
