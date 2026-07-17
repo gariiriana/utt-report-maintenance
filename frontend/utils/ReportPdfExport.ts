@@ -23,9 +23,17 @@ interface ExportOptions {
   };
 }
 
-export const loadLogoBase64 = (pathOrObj: string | { src: string }): Promise<string> => {
+export const loadLogoBase64 = (pathOrObj: string | { src: string } | null | undefined): Promise<string> => {
   return new Promise<string>((resolve) => {
-    const url = typeof pathOrObj === 'string' ? pathOrObj : pathOrObj.src;
+    if (!pathOrObj) {
+      resolve('');
+      return;
+    }
+    const url = typeof pathOrObj === 'string' ? pathOrObj : (pathOrObj.src || '');
+    if (!url) {
+      resolve('');
+      return;
+    }
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {

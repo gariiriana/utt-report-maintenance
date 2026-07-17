@@ -100,7 +100,7 @@ export async function exportPTWListToExcel(records: PTWExportRecord[]) {
       try {
         const dmeLogoId = workbook.addImage({
           base64: dmeLogo.split(',')[1],
-          extension: 'png',
+          extension: 'jpeg',
         });
         ws.addImage(dmeLogoId, {
           tl: { col: 0.1, row: 1.1 }, // Col A, Row 2 (Left)
@@ -115,7 +115,7 @@ export async function exportPTWListToExcel(records: PTWExportRecord[]) {
       try {
         const neutraLogoId = workbook.addImage({
           base64: neutraLogo.split(',')[1],
-          extension: 'png',
+          extension: 'jpeg',
         });
         ws.addImage(neutraLogoId, {
           tl: { col: 5.9, row: 1.1 }, // Col G, Row 2 (Right)
@@ -412,7 +412,7 @@ export async function exportPTWWeeklyReportToExcel(
       try {
         const dmeLogoId = workbook.addImage({
           base64: dmeLogo.split(',')[1],
-          extension: 'png',
+          extension: 'jpeg',
         });
         ws.addImage(dmeLogoId, {
           tl: { col: 0.1, row: 1.1 }, // Col A, Row 2 (Left)
@@ -427,7 +427,7 @@ export async function exportPTWWeeklyReportToExcel(
       try {
         const neutraLogoId = workbook.addImage({
           base64: neutraLogo.split(',')[1],
-          extension: 'png',
+          extension: 'jpeg',
         });
         ws.addImage(neutraLogoId, {
           tl: { col: 5.15, row: 1.1 }, // Col F, Row 2 (Right)

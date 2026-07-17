@@ -1045,7 +1045,7 @@ export function PTWManagement() {
     }
   }, [searchTerm, filteredRecords]);
 
-  // Helper to split month into 4 weeks
+  // Helper to split month into 4 or 5 weeks
   const getWeekRanges = (year: number, month: number) => {
     const lastDay = new Date(year, month, 0).getDate();
     
@@ -1070,25 +1070,13 @@ export function PTWManagement() {
     ];
     const monthLabel = monthNames[month - 1];
 
-    // Calculate Week 1 start day based on previous month's Week 5 end date (if any)
-    let week1StartDay = 1;
-    const prevYear = month === 1 ? year - 1 : year;
-    const prevMonth = month === 1 ? 12 : month - 1;
-    const prevMonthLastDay = new Date(prevYear, prevMonth, 0).getDate();
-    if (prevMonthLastDay > 28) {
-      const prevMonthWeek5EndDay = 29 + 6 - prevMonthLastDay;
-      if (prevMonthWeek5EndDay >= 1) {
-        week1StartDay = prevMonthWeek5EndDay + 1;
-      }
-    }
-
     const ranges = [
       { 
         weekNum: 1, 
-        startStr: formatDate(new Date(year, month - 1, week1StartDay)), 
+        startStr: formatDate(new Date(year, month - 1, 1)), 
         endStr: formatDate(new Date(year, month - 1, 7)), 
-        rangeLabel: `${String(week1StartDay).padStart(2, '0')} - 07 ${monthLabel} ${year}`, 
-        shortRange: `${String(week1StartDay).padStart(2, '0')} - 07` 
+        rangeLabel: `01 - 07 ${monthLabel} ${year}`, 
+        shortRange: '01 - 07' 
       },
       { weekNum: 2, startStr: formatDate(new Date(year, month - 1, 8)), endStr: formatDate(new Date(year, month - 1, 14)), rangeLabel: `08 - 14 ${monthLabel} ${year}`, shortRange: '08 - 14' },
       { weekNum: 3, startStr: formatDate(new Date(year, month - 1, 15)), endStr: formatDate(new Date(year, month - 1, 21)), rangeLabel: `15 - 21 ${monthLabel} ${year}`, shortRange: '15 - 21' },
@@ -1097,21 +1085,69 @@ export function PTWManagement() {
 
     if (lastDay > 28) {
       const startDate = new Date(year, month - 1, 29);
-      const endDate = new Date(year, month - 1, 29 + 6);
-      const shortMonthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+      const endDate = new Date(year, month - 1, lastDay);
       ranges.push({
         weekNum: 5,
         startStr: formatDate(startDate),
         endStr: formatDate(endDate),
         rangeLabel: `${formatLabel(startDate)} - ${formatLabel(endDate)}`,
-        shortRange: `29 ${shortMonthNames[startDate.getMonth()]} - ${String(endDate.getDate()).padStart(2, '0')} ${shortMonthNames[endDate.getMonth()]}`
+        shortRange: `29 - ${String(lastDay).padStart(2, '0')}`
       });
     }
 
     return ranges;
   };
 
-  const weekRanges = getWeekRanges(selectedYear, selectedMonth);
+  const getDynamicWeekRanges = (year: number, month: number, ptwRecords: PTWRecord[]) => {
+    const standardRanges = getWeekRanges(year, month);
+    return standardRanges.map(range => {
+      const weekRecords = ptwRecords.filter(r => {
+        if (!r.startDate) return false;
+        return r.startDate >= range.startStr && r.startDate <= range.endStr;
+      });
+
+      if (weekRecords.length === 0) {
+        return range;
+      }
+
+      const dayNumbers = weekRecords.map(r => {
+        const parts = r.startDate.split('-');
+        return parseInt(parts[2], 10);
+      });
+      const minDay = Math.min(...dayNumbers);
+      
+      const endParts = range.endStr.split('-');
+      const standardEndDay = parseInt(endParts[2], 10);
+
+      const minDayStr = String(minDay).padStart(2, '0');
+      const maxDayStr = String(standardEndDay).padStart(2, '0');
+
+      const monthNames = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+      ];
+      const monthLabel = monthNames[month - 1];
+
+      let newRangeLabel = '';
+      let newShortRange = '';
+
+      if (minDay === standardEndDay) {
+        newRangeLabel = `${minDayStr} ${monthLabel} ${year}`;
+        newShortRange = minDayStr;
+      } else {
+        newRangeLabel = `${minDayStr} - ${maxDayStr} ${monthLabel} ${year}`;
+        newShortRange = `${minDayStr} - ${maxDayStr}`;
+      }
+
+      return {
+        ...range,
+        rangeLabel: newRangeLabel,
+        shortRange: newShortRange
+      };
+    });
+  };
+
+  const weekRanges = getDynamicWeekRanges(selectedYear, selectedMonth, records);
 
   useEffect(() => {
     if (selectedWeek > weekRanges.length) {
@@ -1121,8 +1157,8 @@ export function PTWManagement() {
 
   const weeklyData = weekRanges.map(week => {
     const activeRecords = records.filter(r => {
-      if (!r.startDate || !r.endDate) return false;
-      return r.startDate <= week.endStr && r.endDate >= week.startStr;
+      if (!r.startDate) return false;
+      return r.startDate >= week.startStr && r.startDate <= week.endStr;
     });
 
     const todayStr = new Date().toISOString().split('T')[0];
@@ -1218,9 +1254,6 @@ export function PTWManagement() {
       <div className="bg-gradient-to-r from-indigo-900/40 to-blue-900/40 backdrop-blur-xl rounded-2xl p-6 mb-8 border border-indigo-500/30">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-indigo-500/20 rounded-xl border border-indigo-500/30 shadow-lg shadow-indigo-500/10">
-              <ClipboardIcon className="w-8 h-8 text-indigo-400" />
-            </div>
             <div>
               <h1 className="text-2xl font-bold text-white tracking-tight">PTW Management</h1>
               <p className="text-indigo-300 text-sm">Kelola data Permit to Work secara terorganisir</p>
