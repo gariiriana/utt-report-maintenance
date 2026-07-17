@@ -1122,7 +1122,9 @@ export function PTWManagement() {
 
       const dates = weekRecords.map(r => parseLocalDate(r.startDate));
       const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
-      const maxDate = parseLocalDate(range.endStr);
+      
+      const endDates = weekRecords.map(r => r.endDate ? parseLocalDate(r.endDate) : parseLocalDate(range.endStr));
+      const maxDate = new Date(Math.max(...endDates.map(d => d.getTime())));
 
       const minDayStr = String(minDate.getDate()).padStart(2, '0');
       const maxDayStr = String(maxDate.getDate()).padStart(2, '0');
