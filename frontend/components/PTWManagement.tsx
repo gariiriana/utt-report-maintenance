@@ -1045,10 +1045,8 @@ export function PTWManagement() {
     }
   }, [searchTerm, filteredRecords]);
 
-  // Helper to split month into 4 or 5 weeks
-  const getWeekRanges = (year: number, month: number) => {
-    const lastDay = new Date(year, month, 0).getDate();
-    
+  // Helper to split month dynamically into weeks based on PTW data
+  const getDataDrivenWeeks = (year: number, month: number, ptwRecords: PTWRecord[]) => {
     const formatDate = (date: Date) => {
       const y = date.getFullYear();
       const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -1056,108 +1054,104 @@ export function PTWManagement() {
       return `${y}-${m}-${d}`;
     };
 
-    const formatLabel = (date: Date) => {
-      const monthNames = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-      ];
-      return `${String(date.getDate()).padStart(2, '0')} ${monthNames[date.getMonth()]} ${date.getFullYear()}`;
-    };
-
-    const monthNames = [
+    const monthFull = [
       'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
       'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
     ];
-    const monthLabel = monthNames[month - 1];
+    const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
 
-    const ranges = [
-      { 
-        weekNum: 1, 
-        startStr: formatDate(new Date(year, month - 1, 1)), 
-        endStr: formatDate(new Date(year, month - 1, 7)), 
-        rangeLabel: `01 - 07 ${monthLabel} ${year}`, 
-        shortRange: '01 - 07' 
-      },
-      { weekNum: 2, startStr: formatDate(new Date(year, month - 1, 8)), endStr: formatDate(new Date(year, month - 1, 14)), rangeLabel: `08 - 14 ${monthLabel} ${year}`, shortRange: '08 - 14' },
-      { weekNum: 3, startStr: formatDate(new Date(year, month - 1, 15)), endStr: formatDate(new Date(year, month - 1, 21)), rangeLabel: `15 - 21 ${monthLabel} ${year}`, shortRange: '15 - 21' },
-      { weekNum: 4, startStr: formatDate(new Date(year, month - 1, 22)), endStr: formatDate(new Date(year, month - 1, 28)), rangeLabel: `22 - 28 ${monthLabel} ${year}`, shortRange: '22 - 28' },
-    ];
+    const parseLocal = (dateStr: string) => {
+      const parts = dateStr.split('-');
+      return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    };
 
-    if (lastDay > 28) {
-      const startDate = new Date(year, month - 1, 29);
-      const endDate = new Date(year, month - 1, 29 + 6);
-      const shortMonthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
-      ranges.push({
-        weekNum: 5,
-        startStr: formatDate(startDate),
-        endStr: formatDate(endDate),
-        rangeLabel: `${formatLabel(startDate)} - ${formatLabel(endDate)}`,
-        shortRange: `29 ${shortMonthNames[startDate.getMonth()]} - ${String(endDate.getDate()).padStart(2, '0')} ${shortMonthNames[endDate.getMonth()]}`
-      });
-    }
-
-    return ranges;
-  };
-
-  const weekRanges = getWeekRanges(selectedYear, selectedMonth);
-
-  useEffect(() => {
-    if (selectedWeek > weekRanges.length) {
-      setSelectedWeek(1);
-    }
-  }, [selectedYear, selectedMonth, selectedWeek, weekRanges.length]);
-
-  const weeklyData = weekRanges.map(week => {
-    const activeRecords = records.filter(r => {
+    // Filter records belonging to the selected month and year
+    const monthRecords = ptwRecords.filter(r => {
       if (!r.startDate) return false;
-      return r.startDate >= week.startStr && r.startDate <= week.endStr;
+      const d = parseLocal(r.startDate);
+      return d.getFullYear() === year && d.getMonth() === month - 1;
     });
 
-    const todayStr = new Date().toISOString().split('T')[0];
-    const openRecords = activeRecords.filter(r => !r.closingFileName && (!r.endDate || r.endDate >= todayStr));
-    const closedRecords = activeRecords.filter(r => !!r.closingFileName || (!!r.endDate && r.endDate < todayStr));
-
-    // Compute dynamic range from actual PTW data
-    let dateRange = week.rangeLabel;
-    let shortRange = week.shortRange;
-
-    if (activeRecords.length > 0) {
-      const parseLocal = (s: string) => {
-        const p = s.split('-');
-        return new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]));
-      };
-
-      const startDates = activeRecords.map(r => parseLocal(r.startDate));
-      const endDates = activeRecords.map(r => r.endDate ? parseLocal(r.endDate) : parseLocal(r.startDate));
-
-      const minDate = new Date(Math.min(...startDates.map(d => d.getTime())));
-      const maxDate = new Date(Math.max(...endDates.map(d => d.getTime())));
-
-      const minDay = String(minDate.getDate()).padStart(2, '0');
-      const maxDay = String(maxDate.getDate()).padStart(2, '0');
-
-      const monthFull = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-      const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
-
-      if (minDate.getMonth() === maxDate.getMonth() && minDate.getFullYear() === maxDate.getFullYear()) {
-        dateRange = `${minDay} - ${maxDay} ${monthFull[minDate.getMonth()]} ${minDate.getFullYear()}`;
-        shortRange = `${minDay} - ${maxDay}`;
-      } else {
-        dateRange = `${minDay} ${monthFull[minDate.getMonth()]} - ${maxDay} ${monthFull[maxDate.getMonth()]} ${maxDate.getFullYear()}`;
-        shortRange = `${minDay} ${monthShort[minDate.getMonth()]} - ${maxDay} ${monthShort[maxDate.getMonth()]}`;
-      }
+    let startWeekDate = new Date(year, month - 1, 1);
+    if (monthRecords.length > 0) {
+      const startDates = monthRecords.map(r => parseLocal(r.startDate));
+      startWeekDate = new Date(Math.min(...startDates.map(d => d.getTime())));
     }
 
-    return {
-      weekNum: week.weekNum,
-      dateRange,
-      shortRange,
-      openCount: openRecords.length,
-      closedCount: closedRecords.length,
-      totalCount: activeRecords.length,
-      records: activeRecords
-    };
-  });
+    const weeks: {
+      weekNum: number;
+      startStr: string;
+      endStr: string;
+      rangeLabel: string;
+      dateRange: string;
+      shortRange: string;
+      records: PTWRecord[];
+      openCount: number;
+      closedCount: number;
+      totalCount: number;
+    }[] = [];
+
+    let blockStart = new Date(startWeekDate);
+    let weekNum = 1;
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // We continue generating weeks until blockStart is past the selected month
+    while (blockStart.getFullYear() === year && blockStart.getMonth() === month - 1) {
+      const blockEnd = new Date(blockStart);
+      blockEnd.setDate(blockEnd.getDate() + 6);
+
+      const startStr = formatDate(blockStart);
+      const endStr = formatDate(blockEnd);
+
+      // Label formatting
+      const minDay = String(blockStart.getDate()).padStart(2, '0');
+      const maxDay = String(blockEnd.getDate()).padStart(2, '0');
+
+      let rangeLabel = '';
+      let shortRange = '';
+
+      if (blockStart.getMonth() === blockEnd.getMonth()) {
+        rangeLabel = `${minDay} - ${maxDay} ${monthFull[blockStart.getMonth()]} ${blockStart.getFullYear()}`;
+        shortRange = `${minDay} - ${maxDay}`;
+      } else {
+        rangeLabel = `${minDay} ${monthFull[blockStart.getMonth()]} - ${maxDay} ${monthFull[blockEnd.getMonth()]} ${blockEnd.getFullYear()}`;
+        shortRange = `${minDay} ${monthShort[blockStart.getMonth()]} - ${maxDay} ${monthShort[blockEnd.getMonth()]}`;
+      }
+
+      // Filter active records within this week block
+      const weekRecords = monthRecords.filter(r => r.startDate >= startStr && r.startDate <= endStr);
+      
+      const openRecords = weekRecords.filter(r => !r.closingFileName && (!r.endDate || r.endDate >= todayStr));
+      const closedRecords = weekRecords.filter(r => !!r.closingFileName || (!!r.endDate && r.endDate < todayStr));
+
+      weeks.push({
+        weekNum,
+        startStr,
+        endStr,
+        rangeLabel,
+        dateRange: rangeLabel,
+        shortRange,
+        records: weekRecords,
+        openCount: openRecords.length,
+        closedCount: closedRecords.length,
+        totalCount: weekRecords.length,
+      });
+
+      weekNum++;
+      blockStart = new Date(blockEnd);
+      blockStart.setDate(blockStart.getDate() + 1);
+    }
+
+    return weeks;
+  };
+
+  const weeklyData = getDataDrivenWeeks(selectedYear, selectedMonth, records);
+
+  useEffect(() => {
+    if (selectedWeek > weeklyData.length) {
+      setSelectedWeek(1);
+    }
+  }, [selectedYear, selectedMonth, selectedWeek, weeklyData.length]);
 
   const chartData = weeklyData.map(wd => ({
     name: `Minggu ${wd.weekNum}`,
