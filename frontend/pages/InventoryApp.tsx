@@ -118,7 +118,7 @@ export function InventoryApp() {
                 }}
                 className="bg-blue-600/10 border-blue-500/20 text-blue-400 hover:bg-blue-600 hover:text-white transition-all mr-2"
              >
-                <Camera className="w-4 h-4 mr-2" /> Capture View
+                <Camera className="w-4 h-4 mr-2" /> Tangkap Layar
              </Button>
              <Button variant="outline" onClick={() => setLogoutModalOpen(true)} className="bg-slate-800/50 border-slate-700 text-slate-300 hover:bg-red-600/10 hover:text-red-400 transition-colors">
                 <LogOut className="w-4 h-4 mr-2" /> Keluar
@@ -202,7 +202,7 @@ export function InventoryApp() {
             ) : filteredData.length === 0 ? (
               <div className="p-20 text-center space-y-4">
                  <AlertCircle className="w-12 h-12 text-slate-800 mx-auto" />
-                 <p className="text-slate-500 font-medium tracking-wide">No borrowing records found for this criteria.</p>
+                 <p className="text-slate-500 font-medium tracking-wide">Tidak ada data peminjaman yang ditemukan untuk kriteria ini.</p>
               </div>
             ) : (
               <table className="w-full">
@@ -231,8 +231,8 @@ export function InventoryApp() {
                              </div>
                              <div>
                                 <p className="font-bold text-white text-sm uppercase tracking-wide group-hover:text-blue-400 transition-colors">
-                                   {item.items?.[0]?.name || 'Unknown Item'}
-                                   {item.items?.length > 1 ? ` (+${item.items.length - 1} more)` : ''}
+                                   {item.items?.[0]?.name || 'Barang Tidak Dikenal'}
+                                   {item.items?.length > 1 ? ` (+${item.items.length - 1} lagi)` : ''}
                                 </p>
                                 <p className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
                                    <Hash className="w-3 h-3" /> {item.items?.length || 0} Jenis Barang • <Calendar className="w-3 h-3" /> {item.requestDate}
@@ -270,7 +270,7 @@ export function InventoryApp() {
                               )}
                               {item.status === 'return_pending' && (
                                  <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(item.id, 'completed'); }} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-50 text-white hover:text-blue-600 font-bold text-[10px] rounded-lg transition-all border border-blue-500 shadow-lg shadow-blue-900/20 uppercase tracking-widest">
-                                    Approve Return
+                                    Setujui Pengembalian
                                  </button>
                               )}
                               <ChevronRight className="w-4 h-4 text-slate-700 group-hover:text-slate-400 group-hover:translate-x-1 transition-all" />

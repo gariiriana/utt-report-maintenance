@@ -423,7 +423,7 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                         PT United Transworld Trading
                       </h1>
                       <div className="flex items-center gap-2 text-indigo-400 text-[7px] md:text-xs font-bold uppercase tracking-wider whitespace-nowrap">
-                        Maintenance Progress Report
+                        Laporan Progres Pemeliharaan
                       </div>
                     </div>
                   </div>
@@ -482,7 +482,7 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                       activeTab === 'summary' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'
                     }`}
                   >
-                    Summary
+                    Ringkasan
                   </button>
                   <button
                     onClick={() => setActiveTab('input')}
@@ -545,7 +545,7 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                           className="p-2 md:px-4 md:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white transition-all flex items-center gap-2 text-[10px] md:text-sm font-bold uppercase tracking-wider"
                         >
                           <Download className="w-4 h-4" />
-                          <span className="hidden sm:inline">PDF Report</span>
+                          <span className="hidden sm:inline">Laporan PDF</span>
                         </button>
                       )}
                     </div>
@@ -556,14 +556,14 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                           <tr className="bg-slate-900/50 text-[8px] md:text-[11px] font-black tracking-[0.2em] text-slate-400 uppercase">
                             <th rowSpan={3} className="sticky left-0 z-30 bg-slate-950 p-3 md:px-4 border border-white/5 w-10 md:w-16 shadow-[2px_0_10px_rgba(0,0,0,0.3)]">NO</th>
                             <th rowSpan={3} className="sticky left-10 md:left-16 z-30 bg-slate-950 p-3 md:px-6 border border-white/5 min-w-[140px] md:min-w-[280px] text-center shadow-[4px_0_15px_rgba(0,0,0,0.3)]">KATEGORI</th>
-                            <th colSpan={2} className="p-3 border border-white/5 bg-indigo-500/10 text-indigo-400">PLAN</th>
-                            <th colSpan={4} className="p-3 border border-white/5 bg-emerald-500/10 text-emerald-400">PROGRESS</th>
+                            <th colSpan={2} className="p-3 border border-white/5 bg-indigo-500/10 text-indigo-400">RENCANA</th>
+                            <th colSpan={4} className="p-3 border border-white/5 bg-emerald-500/10 text-emerald-400">PROGRES</th>
                           </tr>
                           <tr className="bg-white/[0.01] text-[7px] md:text-[9px]">
                             <th rowSpan={2} className="p-1 md:p-3 border border-white/5 bg-indigo-500/5">QTY</th>
                             <th rowSpan={2} className="p-1 md:p-3 border border-white/5 bg-indigo-500/5">WEIGHT %</th>
-                            <th colSpan={2} className="p-1 md:p-3 border border-white/5 bg-emerald-500/5">YESTERDAY</th>
-                            <th colSpan={2} className="p-1 md:p-3 border border-white/5 bg-purple-500/5 text-purple-400">TODAY</th>
+                            <th colSpan={2} className="p-1 md:p-3 border border-white/5 bg-emerald-500/5">KEMARIN</th>
+                            <th colSpan={2} className="p-1 md:p-3 border border-white/5 bg-purple-500/5 text-purple-400">HARI INI</th>
                           </tr>
                           <tr className="text-[6px] md:text-[8px] text-slate-600">
                             <th className="p-1 md:p-2 border border-white/5">QTY</th>
@@ -620,7 +620,7 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                   <input
                     type="text"
-                    placeholder="Search equipment or category..."
+                    placeholder="Cari alat atau kategori..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full bg-slate-900 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all"
@@ -641,13 +641,13 @@ export function SiteManagerDashboard({ onLogin }: { onLogin?: () => void }) {
                   <table className="w-full border-collapse">
                     <thead className="bg-white/[0.02] text-slate-500 text-[10px] font-black uppercase tracking-widest">
                       <tr>
-                        <th className="px-6 py-4 text-left">Equipment</th>
-                        <th className="px-6 py-4 text-center">Plan Qty</th>
-                        <th className="px-6 py-4 text-center">Period</th>
-                        <th className="px-6 py-4 text-center w-32">Actual</th>
+                        <th className="px-6 py-4 text-left">Alat / Perangkat</th>
+                        <th className="px-6 py-4 text-center">Rencana Qty</th>
+                        <th className="px-6 py-4 text-center">Periode</th>
+                        <th className="px-6 py-4 text-center w-32">Aktual</th>
                         <th className="px-6 py-4 text-center">Progres</th>
-                        <th className="px-6 py-4 text-left">Remark</th>
-                        <th className="px-6 py-4 text-center">Action</th>
+                        <th className="px-6 py-4 text-left">Keterangan</th>
+                        <th className="px-6 py-4 text-center">Aksi</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -891,13 +891,13 @@ function ActivityRow({ activity, onUpdate, onDelete, isSaving }: {
       </td>
       <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-none">
         <div className="flex justify-between items-center md:justify-center">
-          <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Plan Qty</span>
+          <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Rencana Qty</span>
           <span className="text-slate-400 font-mono">{activity.plan_qty}</span>
         </div>
       </td>
       <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-none">
         <div className="flex justify-between items-center md:justify-center">
-          <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Plan Period</span>
+          <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Periode Rencana</span>
           <div className="flex items-center gap-2 text-[10px] md:text-[11px] text-slate-500 font-medium">
             <span>{activity.plan_start}</span>
             <ArrowRight className="w-3 h-3 text-slate-600" />
@@ -907,7 +907,7 @@ function ActivityRow({ activity, onUpdate, onDelete, isSaving }: {
       </td>
       <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-none">
         <div className="flex flex-col gap-1.5">
-          <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Actual Qty</span>
+          <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Qty Aktual</span>
           <input
             type="number"
             value={qty}
@@ -923,7 +923,7 @@ function ActivityRow({ activity, onUpdate, onDelete, isSaving }: {
       </td>
       <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-none">
         <div className="flex justify-between items-center md:flex-col md:gap-1.5">
-          <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Progress</span>
+          <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Progres</span>
           <div className="flex flex-col items-center gap-1">
             <div className="w-24 bg-slate-800 h-1.5 rounded-full overflow-hidden">
               <div
@@ -947,7 +947,7 @@ function ActivityRow({ activity, onUpdate, onDelete, isSaving }: {
       </td>
       <td className="block md:table-cell px-6 py-4 border-b border-slate-800 md:border-none">
         <div className="flex flex-col gap-1.5">
-          <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Remark</span>
+          <span className="md:hidden text-[10px] font-bold text-slate-500 uppercase tracking-wider">Keterangan</span>
           <input
             type="text"
             value={remark}

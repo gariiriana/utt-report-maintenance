@@ -60,7 +60,7 @@ export function HSEApp() {
                             <div className="p-6 border-b border-slate-700/50 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <img src={logoUTT} alt="UTT" className="w-10 h-10 object-contain" />
-                                    <span className="font-bold text-white text-sm uppercase tracking-wider">HSE System</span>
+                                    <span className="font-bold text-white text-sm uppercase tracking-wider">Sistem HSE</span>
                                 </div>
                                 <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400" title="Tutup Menu">
                                     <X className="w-6 h-6" />

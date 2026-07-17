@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import { PhotoCard } from '@/components/ReportForm';
 import { compressBase64Image } from '@/utils/imageCompression';
 import { toast } from 'sonner';
+import html2canvas from 'html2canvas';
 
 export interface PDFExportResult {
   doc: jsPDF;
@@ -53,6 +54,53 @@ export const loadLogoBase64 = (pathOrObj: string | { src: string } | null | unde
   });
 };
 
+export const safeHtml2Canvas = async (element: HTMLElement, options: any): Promise<HTMLCanvasElement> => {
+  const originalGetComputedStyle = window.getComputedStyle;
+  
+  window.getComputedStyle = function (elt, pseudoElt) {
+    const style = originalGetComputedStyle(elt, pseudoElt);
+    return new Proxy(style, {
+      get(target, prop) {
+        if (prop === 'getPropertyValue') {
+          return function(propertyName: string) {
+            const val = target.getPropertyValue(propertyName);
+            if (typeof val === 'string' && val.includes('oklch')) {
+              return val.replace(/oklch\(([^)]+)\)/g, (_match, p1) => {
+                if (p1.includes('/')) {
+                  const opacity = p1.split('/').pop().trim();
+                  return `rgba(148, 163, 184, ${opacity})`;
+                }
+                return 'rgb(148, 163, 184)';
+              });
+            }
+            return val;
+          };
+        }
+        const val = target[prop as any];
+        if (typeof val === 'string' && val.includes('oklch')) {
+          return val.replace(/oklch\(([^)]+)\)/g, (_match, p1) => {
+            if (p1.includes('/')) {
+              const opacity = p1.split('/').pop().trim();
+              return `rgba(148, 163, 184, ${opacity})`;
+            }
+            return 'rgb(148, 163, 184)';
+          });
+        }
+        if (typeof val === 'function') {
+          return (val as any).bind(target);
+        }
+        return val;
+      }
+    });
+  };
+
+  try {
+    return await html2canvas(element, options);
+  } finally {
+    window.getComputedStyle = originalGetComputedStyle;
+  }
+};
+
 export const generateReportPDF = async (options: ExportOptions): Promise<PDFExportResult | null> => {
   const {
     maintenanceName,
@@ -72,7 +120,7 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
 
   const filled = cards.filter(c => c.photoBase64 || c.description);
   if (!filled.length) {
-    toast.error('Minimal 1 card filled');
+    toast.error('Minimal 1 kartu terisi');
     return null;
   }
 
@@ -82,7 +130,7 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
 
   for (let batchStart = 0; batchStart < filled.length; batchStart += BATCH_SIZE) {
     const batch = filled.slice(batchStart, batchStart + BATCH_SIZE);
-    toast.loading(`Optimizing photo ${batchStart + 1}-${Math.min(batchStart + BATCH_SIZE, filled.length)}/${filled.length}...`, { id: 'export' });
+    toast.loading(`Mengoptimalkan foto ${batchStart + 1}-${Math.min(batchStart + BATCH_SIZE, filled.length)}/${filled.length}...`, { id: 'export' });
 
     const batchResults = await Promise.all(batch.map(async (c) => {
       if (!c.photoBase64) return c;
@@ -193,7 +241,7 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
       doc.addImage(photo.photoBase64, 'JPEG', cardX + 1, cardY + 1, cardW - 2, h - 2, `p_${index}`, 'FAST');
     } else {
       doc.setFillColor(241, 245, 249).rect(cardX + 0.5, cardY + 0.5, cardW - 1, h - 1, 'F');
-      doc.setFontSize(7).setTextColor(GRAY).text('No Photo', cardX + cardW / 2, cardY + h / 2, { align: 'center' });
+      doc.setFontSize(7).setTextColor(GRAY).text('Tidak Ada Foto', cardX + cardW / 2, cardY + h / 2, { align: 'center' });
     }
 
     doc.setDrawColor(SLATE_200).setLineWidth(0.3);
@@ -275,8 +323,8 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
     doc.setFillColor(THEME_BLUE).rect(0, pageHeight - 2.5, pageWidth, 2.5, 'F');
     doc.setFontSize(7.5).setTextColor(GRAY);
     const footerCompany = companyType === 'bri' ? 'BANK RAKYAT INDONESIA' : 'PT DWIMITRA EKATAMA MANDIRI';
-    doc.text(`${footerCompany} — Maintenance Document`, margin, pageHeight - 6);
-    doc.text(`Page ${pg} of ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
+    doc.text(`${footerCompany} — Dokumen Pemeliharaan`, margin, pageHeight - 6);
+    doc.text(`Halaman ${pg} dari ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
   }
 
   const safeName = maintenanceName.replace(/[/\\?%*:|"<>]/g, ' ').trim();

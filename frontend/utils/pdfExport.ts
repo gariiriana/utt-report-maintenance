@@ -126,7 +126,7 @@ export async function exportMonthlyPDF(
       day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
     });
     currentDoc.setFontSize(7).setFont('helvetica', 'normal').setTextColor(GRAY);
-    currentDoc.text(`Generated: ${nowStr} WIB`, centerX, headerY + 18.5, { align: 'center' });
+    currentDoc.text(`Dibuat: ${nowStr} WIB`, centerX, headerY + 18.5, { align: 'center' });
 
     return headerY + headerH + 6;
   };
@@ -310,7 +310,7 @@ export async function exportMonthlyPDF(
       doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor(DARK).text(duration, x + 3, curY + 10);
       doc.setFontSize(6.5).setFont('helvetica', 'bold')
         .setTextColor(complies ? EMERALD : ROSE)
-        .text(complies ? 'COMPLY' : 'NOT COMPLY', x + cellW - 18, curY + 10);
+        .text(complies ? 'MEMENUHI' : 'TIDAK MEMENUHI', x + cellW - 18, curY + 10);
     };
 
     drawSLACell(margin, '1. RESPONSE TIME', `${report.actualResponseTimeMin} Min`, !!report.responseComply);
@@ -366,7 +366,7 @@ export async function exportMonthlyPDF(
             
             doc.addImage(photo.base64, 'JPEG', x + offX, y + offY, drawW, drawH, `sla_${sIdx}_img_${rowIdx}_${colIdx}`, 'FAST');
           } catch (e) {
-            doc.setFontSize(7).setTextColor(GRAY).text('Image Error', x + gridColW / 2, y + gridRowH / 2, { align: 'center' });
+            doc.setFontSize(7).setTextColor(GRAY).text('Gagal Memuat Gambar', x + gridColW / 2, y + gridRowH / 2, { align: 'center' });
           }
         } else {
           doc.setFillColor(245, 245, 245).rect(x + 0.5, y + 0.5, gridColW - 1, gridRowH - 1, 'F');
@@ -447,7 +447,7 @@ export async function exportMonthlyPDF(
 
         doc.addImage(report.photoBase64, 'JPEG', photoX + offX, curY + offY, drawW, drawH, `std_${stdIdx}_photo`, 'FAST');
       } catch (e) {
-        doc.setFontSize(7).setTextColor(GRAY).text('Image Error', photoX + photoW / 2, curY + photoH / 2, { align: 'center' });
+        doc.setFontSize(7).setTextColor(GRAY).text('Gagal Memuat Gambar', photoX + photoW / 2, curY + photoH / 2, { align: 'center' });
       }
     } else {
       doc.setFillColor(245, 245, 245).rect(photoX + 0.5, curY + 0.5, photoW - 1, photoH - 1, 'F');

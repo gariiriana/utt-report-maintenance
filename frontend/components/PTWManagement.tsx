@@ -15,7 +15,7 @@ import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList } from 'recharts';
-import html2canvas from 'html2canvas';
+import { safeHtml2Canvas } from '@/utils/ReportPdfExport';
 import { 
   exportPTWListToExcel, 
   exportPTWListToPDF, 
@@ -1085,13 +1085,14 @@ export function PTWManagement() {
 
     if (lastDay > 28) {
       const startDate = new Date(year, month - 1, 29);
-      const endDate = new Date(year, month - 1, lastDay);
+      const endDate = new Date(year, month - 1, 29 + 6);
+      const shortMonthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
       ranges.push({
         weekNum: 5,
         startStr: formatDate(startDate),
         endStr: formatDate(endDate),
         rangeLabel: `${formatLabel(startDate)} - ${formatLabel(endDate)}`,
-        shortRange: `29 - ${String(lastDay).padStart(2, '0')}`
+        shortRange: `29 ${shortMonthNames[startDate.getMonth()]} - ${String(endDate.getDate()).padStart(2, '0')} ${shortMonthNames[endDate.getMonth()]}`
       });
     }
 
@@ -1100,6 +1101,15 @@ export function PTWManagement() {
 
   const getDynamicWeekRanges = (year: number, month: number, ptwRecords: PTWRecord[]) => {
     const standardRanges = getWeekRanges(year, month);
+    
+    const parseLocalDate = (dateStr: string) => {
+      const parts = dateStr.split('-');
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+      return new Date(y, m, d);
+    };
+
     return standardRanges.map(range => {
       const weekRecords = ptwRecords.filter(r => {
         if (!r.startDate) return false;
@@ -1110,33 +1120,31 @@ export function PTWManagement() {
         return range;
       }
 
-      const dayNumbers = weekRecords.map(r => {
-        const parts = r.startDate.split('-');
-        return parseInt(parts[2], 10);
-      });
-      const minDay = Math.min(...dayNumbers);
-      
-      const endParts = range.endStr.split('-');
-      const standardEndDay = parseInt(endParts[2], 10);
+      const dates = weekRecords.map(r => parseLocalDate(r.startDate));
+      const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
+      const maxDate = parseLocalDate(range.endStr);
 
-      const minDayStr = String(minDay).padStart(2, '0');
-      const maxDayStr = String(standardEndDay).padStart(2, '0');
+      const minDayStr = String(minDate.getDate()).padStart(2, '0');
+      const maxDayStr = String(maxDate.getDate()).padStart(2, '0');
 
       const monthNames = [
         'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
       ];
-      const monthLabel = monthNames[month - 1];
+      const shortMonthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
 
       let newRangeLabel = '';
       let newShortRange = '';
 
-      if (minDay === standardEndDay) {
-        newRangeLabel = `${minDayStr} ${monthLabel} ${year}`;
+      if (minDate.getTime() === maxDate.getTime()) {
+        newRangeLabel = `${minDayStr} ${monthNames[minDate.getMonth()]} ${minDate.getFullYear()}`;
         newShortRange = minDayStr;
-      } else {
-        newRangeLabel = `${minDayStr} - ${maxDayStr} ${monthLabel} ${year}`;
+      } else if (minDate.getMonth() === maxDate.getMonth()) {
+        newRangeLabel = `${minDayStr} - ${maxDayStr} ${monthNames[minDate.getMonth()]} ${minDate.getFullYear()}`;
         newShortRange = `${minDayStr} - ${maxDayStr}`;
+      } else {
+        newRangeLabel = `${minDayStr} ${monthNames[minDate.getMonth()]} ${minDate.getFullYear()} - ${maxDayStr} ${monthNames[maxDate.getMonth()]} ${maxDate.getFullYear()}`;
+        newShortRange = `${minDayStr} ${shortMonthNames[minDate.getMonth()]} - ${maxDayStr} ${shortMonthNames[maxDate.getMonth()]}`;
       }
 
       return {
@@ -1194,7 +1202,7 @@ export function PTWManagement() {
       const chartEl = document.getElementById('ptw-weekly-chart-container');
       let chartBase64 = '';
       if (chartEl) {
-        const canvas = await html2canvas(chartEl, {
+        const canvas = await safeHtml2Canvas(chartEl, {
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#0f172a', // Slate-900 matching dashboard dark background
@@ -1225,7 +1233,7 @@ export function PTWManagement() {
       const chartEl = document.getElementById('ptw-weekly-chart-container');
       let chartBase64 = '';
       if (chartEl) {
-        const canvas = await html2canvas(chartEl, {
+        const canvas = await safeHtml2Canvas(chartEl, {
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#0f172a', // Slate-900 matching dashboard dark background
@@ -1439,7 +1447,7 @@ export function PTWManagement() {
                                         </span>
                                         {isClosed && (
                                           <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2.5 py-0.5 rounded-full border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)] animate-pulse">
-                                            CLOSED
+                                            SELESAI
                                           </span>
                                         )}
                                       </div>
@@ -1534,7 +1542,7 @@ export function PTWManagement() {
                                   </span>
                                   {isClosed && (
                                     <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
-                                      CLOSED
+                                      SELESAI
                                     </span>
                                   )}
                                 </div>
@@ -1884,7 +1892,7 @@ export function PTWManagement() {
                                     ? 'bg-red-500/10 text-red-400 border-red-500/20' 
                                     : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                 }`}>
-                                  {isClosed ? 'CLOSED' : 'AKTIF'}
+                                  {isClosed ? 'SELESAI' : 'AKTIF'}
                                 </span>
                               </td>
                             </tr>

@@ -134,7 +134,7 @@ export async function exportFindingsToWord(findings: FindingRecord[]): Promise<v
                 spacing: { after: 40 },
                 children: [
                   new TextRun({
-                    text: 'MAINTENANCE FINDING REPORT',
+                    text: 'LAPORAN TEMUAN PEMELIHARAAN',
                     bold: true,
                     size: 18,
                     color: DARK,
@@ -398,7 +398,7 @@ export async function exportFindingsToWord(findings: FindingRecord[]): Promise<v
                 alignment: AlignmentType.RIGHT,
                 children: [
                   new TextRun({
-                    text: 'CONFIDENTIAL — PT Dwimitra Ekatama Mandiri',
+                    text: 'RAHASIA — PT Dwimitra Ekatama Mandiri',
                     size: 14,
                     color: '94A3B8',
                     font: 'Calibri',
@@ -416,7 +416,7 @@ export async function exportFindingsToWord(findings: FindingRecord[]): Promise<v
                 alignment: AlignmentType.CENTER,
                 children: [
                   new TextRun({
-                    text: 'PT Dwimitra Ekatama Mandiri — Maintenance Finding Report — Halaman ',
+                    text: 'PT Dwimitra Ekatama Mandiri — Laporan Temuan Pemeliharaan — Halaman ',
                     size: 14,
                     color: '94A3B8',
                     font: 'Calibri',

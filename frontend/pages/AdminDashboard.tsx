@@ -638,7 +638,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
           ) : filteredDocuments.length === 0 ? (
             <div className="text-center py-12 px-4">
               <Database className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400 text-sm">No documents found</p>
+              <p className="text-slate-400 text-sm">Tidak ada dokumen ditemukan</p>
             </div>
           ) : (
             <div className="divide-y divide-slate-700/30">
@@ -765,7 +765,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
               ) : filteredDocuments.length === 0 ? (
                 <div className="text-center py-12">
                   <Database className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                  <p className="text-slate-400">No documents found</p>
+                  <p className="text-slate-400">Tidak ada dokumen ditemukan</p>
                 </div>
               ) : (
                 <table className="w-full min-w-[1000px]">
@@ -853,7 +853,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
       {}
       <div className="mt-6 text-center">
         <p className="text-sm text-slate-500">
-          Showing {filteredDocuments.length} of {documents.length} documents
+          Menampilkan {filteredDocuments.length} dari {documents.length} dokumen
         </p>
       </div>
     </div>

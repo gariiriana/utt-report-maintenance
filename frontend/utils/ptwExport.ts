@@ -153,7 +153,7 @@ export async function exportPTWListToExcel(records: PTWExportRecord[]) {
 
       const todayStr = new Date().toISOString().split('T')[0];
       const isClosed = !!rec.closingFileName || (!!rec.endDate && rec.endDate < todayStr);
-      const statusText = isClosed ? 'CLOSED' : 'AKTIF';
+      const statusText = isClosed ? 'SELESAI' : 'AKTIF';
       const rangeText = `${formatIndoDate(rec.startDate)} s.d. ${formatIndoDate(rec.endDate)}`;
 
       ws.getCell(`A${rowIdx}`).value = idx + 1;
@@ -280,7 +280,7 @@ export async function exportPTWListToPDF(records: PTWExportRecord[]) {
       pdf.rect(0, pageHeight - 2.5, pageWidth, 2.5, 'F');
 
       pdf.setFontSize(7).setTextColor('#64748b');
-      pdf.text('PT United Transworld Trading — PTW Archives', margin, pageHeight - 5);
+      pdf.text('PT United Transworld Trading — Arsip PTW', margin, pageHeight - 5);
       pdf.text(`Halaman ${pg} dari ${totalPages}`, pageWidth - margin, pageHeight - 5, { align: 'right' });
     };
 
@@ -293,7 +293,7 @@ export async function exportPTWListToPDF(records: PTWExportRecord[]) {
       rec.equipmentCode,
       `${formatIndoDate(rec.startDate)} - ${formatIndoDate(rec.endDate)}`,
       rec.notes || '-',
-      rec.closingFileName || (rec.endDate && rec.endDate < new Date().toISOString().split('T')[0]) ? 'CLOSED' : 'AKTIF'
+      rec.closingFileName || (rec.endDate && rec.endDate < new Date().toISOString().split('T')[0]) ? 'SELESAI' : 'AKTIF'
     ]);
 
     autoTable(doc, {
@@ -335,7 +335,7 @@ export async function exportPTWListToPDF(records: PTWExportRecord[]) {
       },
       didParseCell: (data) => {
         if (data.section === 'body' && data.column.index === 6) {
-          if (data.cell.raw === 'CLOSED') {
+          if (data.cell.raw === 'SELESAI') {
             data.cell.styles.textColor = [239, 68, 68]; // Red
           } else {
             data.cell.styles.textColor = [16, 185, 129]; // Green
@@ -442,7 +442,7 @@ export async function exportPTWWeeklyReportToExcel(
     ws.getCell('A5').value = '1. RINGKASAN MINGGUAN';
     ws.getCell('A5').font = { name: 'Calibri', size: 11, bold: true, color: { argb: '000000' } };
 
-    const sumHeaders = ['MINGGU', 'RENTANG TANGGAL', 'PTW TERBUKA (OPEN)', 'PTW SELESAI (CLOSED)', 'TOTAL PTW'];
+    const sumHeaders = ['MINGGU', 'RENTANG TANGGAL', 'PTW TERBUKA (AKTIF)', 'PTW SELESAI', 'TOTAL PTW'];
     const sumHeaderRow = ws.getRow(6);
     sumHeaderRow.height = 22;
 
@@ -589,7 +589,7 @@ export async function exportPTWWeeklyReportToExcel(
 
           const todayStr = new Date().toISOString().split('T')[0];
           const isClosed = !!rec.closingFileName || (!!rec.endDate && rec.endDate < todayStr);
-          const statusText = isClosed ? 'CLOSED' : 'AKTIF';
+          const statusText = isClosed ? 'SELESAI' : 'AKTIF';
           const rangeText = `${formatIndoDate(rec.startDate)} s.d. ${formatIndoDate(rec.endDate)}`;
 
           ws.getCell(`A${currentRowIdx}`).value = idx + 1;
@@ -752,7 +752,7 @@ export async function exportPTWWeeklyReportToPDF(
 
     autoTable(doc, {
       startY: 37,
-      head: [['Minggu', 'Rentang Tanggal', 'PTW Open (Aktif)', 'PTW Closed', 'Total PTW']],
+      head: [['Minggu', 'Rentang Tanggal', 'PTW Terbuka (Aktif)', 'PTW Selesai', 'Total PTW']],
       body: sumTableData,
       margin: { left: margin, right: margin },
       styles: {
@@ -832,7 +832,7 @@ export async function exportPTWWeeklyReportToPDF(
           rec.notes || '-',
           rec.equipmentCode,
           `${formatIndoDate(rec.startDate)} - ${formatIndoDate(rec.endDate)}`,
-          rec.closingFileName || (rec.endDate && rec.endDate < new Date().toISOString().split('T')[0]) ? 'CLOSED' : 'AKTIF'
+          rec.closingFileName || (rec.endDate && rec.endDate < new Date().toISOString().split('T')[0]) ? 'SELESAI' : 'AKTIF'
         ]);
 
         autoTable(doc, {
@@ -869,7 +869,7 @@ export async function exportPTWWeeklyReportToPDF(
           },
           didParseCell: (data) => {
             if (data.section === 'body' && data.column.index === 5) {
-              if (data.cell.raw === 'CLOSED') {
+              if (data.cell.raw === 'SELESAI') {
                 data.cell.styles.textColor = [239, 68, 68]; // Red
               } else {
                 data.cell.styles.textColor = [16, 185, 129]; // Green

@@ -198,7 +198,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         switch (data.hseType) {
             case 'sio': return 'SURAT IZIN OPERATOR (SIO)';
             case 'silo': return 'SURAT IZIN LAYAK OPERASI (SILO)';
-            default: return 'HSE INSPECTION REPORT';
+            default: return 'LAPORAN INSPEKSI HSE';
         }
     };
 
@@ -234,7 +234,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(GRAY);
-        doc.text('Safety, Health & Equipment Documentation System', pageW / 2, titleY + 5.5, { align: 'center' });
+        doc.text('Sistem Dokumentasi Keselamatan, Kesehatan Kerja & Alat', pageW / 2, titleY + 5.5, { align: 'center' });
 
         const dateObj = data.date ? new Date(data.date) : new Date();
         const dateStr = isNaN(dateObj.getTime())
@@ -352,8 +352,8 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         });
 
         const conclusionItems = [
-            { label: 'Safe Condition', value: data.checklist.safeCondition },
-            { label: 'Safe Action', value: data.checklist.safeAction },
+            { label: 'Kondisi Aman (Safe Condition)', value: data.checklist.safeCondition },
+            { label: 'Tindakan Aman (Safe Action)', value: data.checklist.safeAction },
         ];
 
         const colW = (contentW - 6) / 2;
@@ -419,7 +419,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor('#ffffff');
-        const sectionTitle = data.hseType === 'inspection' ? 'II. FOTO DOKUMENTASI & EVIDENCE' : 'DOKUMEN EVIDENCE';
+        const sectionTitle = data.hseType === 'inspection' ? 'II. DOKUMENTASI FOTO & BUKTI' : 'DOKUMEN BUKTI';
         doc.text(sectionTitle, marginL + 4, curY + 5.5);
         curY += 12;
 
@@ -481,7 +481,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
                 } catch (_) {
                     doc.setFillColor(241, 245, 249);
                     doc.rect(x + 1, y + 1, photoW - 2, photoH - 2, 'F');
-                    doc.setFontSize(7).setTextColor(GRAY).text('Foto Error', x + photoW / 2, y + photoH / 2, { align: 'center' });
+                    doc.setFontSize(7).setTextColor(GRAY).text('Gagal Memuat Foto', x + photoW / 2, y + photoH / 2, { align: 'center' });
                 }
 
                 // Draw label badge

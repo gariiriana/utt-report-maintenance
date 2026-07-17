@@ -18,22 +18,22 @@ export function Footer() {
               />
               <div>
                 <h3 className="text-lg font-bold text-slate-200 tracking-tight">PT United Transworld Trading</h3>
-                <p className="text-sm text-slate-500 font-medium tracking-wide italic">Data Center Solutions</p>
+                <p className="text-sm text-slate-500 font-medium tracking-wide italic">Solusi Data Center</p>
               </div>
             </div>
             <p className="text-sm text-slate-500 max-w-xs leading-relaxed">
-              reliable and high-quality solutions for your data center infrastructure needs.
+              solusi andal dan berkualitas tinggi untuk kebutuhan infrastruktur data center Anda.
             </p>
           </div>
 
           <div className="space-y-6">
-            <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-[0.2em] mb-4">Location</h4>
+            <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-[0.2em] mb-4">Lokasi</h4>
             <div className="flex items-start gap-4 group">
               <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl flex-shrink-0">
                 <MapPin className="w-5 h-5 text-slate-500" />
               </div>
               <div className="text-sm text-slate-500 leading-relaxed group-hover:text-slate-400 transition-colors">
-                <span className="font-semibold text-slate-300 block mb-1">Head Office</span>
+                <span className="font-semibold text-slate-300 block mb-1">Kantor Pusat</span>
                 Thamrin Residence Blok RTE 16-17<br />
                 Jl Kebon Kacang Raya, Waduk Melati<br />
                 Jakarta Pusat – 10230, Indonesia
@@ -42,14 +42,14 @@ export function Footer() {
           </div>
 
           <div className="space-y-6">
-            <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-[0.2em] mb-4">Contact</h4>
+            <h4 className="text-sm font-semibold text-slate-400 uppercase tracking-[0.2em] mb-4">Kontak</h4>
             <div className="space-y-4">
               <a href="tel:+622129496230" className="flex items-center gap-4 group">
                 <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl flex-shrink-0 group-hover:border-blue-500/30 transition-all">
                   <Phone className="w-5 h-5 text-slate-500 group-hover:text-blue-400" />
                 </div>
                 <div className="text-sm text-slate-500 group-hover:text-slate-300 transition-colors">
-                  <p className="text-xs text-slate-600 mb-0.5 font-medium">Telephone</p>
+                  <p className="text-xs text-slate-600 mb-0.5 font-medium">Telepon</p>
                   <p className="font-medium">+62-21-29496230</p>
                 </div>
               </a>
@@ -70,16 +70,16 @@ export function Footer() {
 
         <div className="mt-16 pt-8 border-t border-slate-900 flex flex-col sm:flex-row items-center justify-between gap-6">
           <p className="text-xs text-slate-600 font-medium">
-            © {new Date().getFullYear()} PT United Transworld Trading. All rights reserved.
+            © {new Date().getFullYear()} PT United Transworld Trading. Hak cipta dilindungi undang-undang.
           </p>
           <div className="flex items-center gap-6 text-xs font-medium text-slate-600">
             <span className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-emerald-500/50 rounded-full animate-pulse" />
-              System v2.0
+              Sistem v2.0
             </span>
             <div className="flex gap-4">
-              <a href="#" className="hover:text-slate-400 transition-colors">Privacy</a>
-              <a href="#" className="hover:text-slate-400 transition-colors">Terms</a>
+              <a href="#" className="hover:text-slate-400 transition-colors">Privasi</a>
+              <a href="#" className="hover:text-slate-400 transition-colors">Ketentuan</a>
             </div>
           </div>
         </div>

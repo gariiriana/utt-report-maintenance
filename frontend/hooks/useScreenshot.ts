@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import html2canvas from 'html2canvas';
+import { safeHtml2Canvas } from '@/utils/ReportPdfExport';
 
 export function useScreenshot() {
   const takeScreenshot = useCallback(async (elementId: string, fileName: string = 'screenshot.png') => {
@@ -14,7 +14,7 @@ export function useScreenshot() {
       const bgVideo = document.getElementById('bg-video-container');
       if (bgVideo) bgVideo.style.display = 'none';
 
-      const canvas = await html2canvas(element, {
+      const canvas = await safeHtml2Canvas(element, {
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#020617',

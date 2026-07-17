@@ -67,10 +67,10 @@ export async function exportSLAReportToExcel(report: any) {
   wsResponse.getCell('A6').value = 'NO';
   
   wsResponse.mergeCells('B6:C7');
-  wsResponse.getCell('B6').value = 'ORDER/TICKET';
+  wsResponse.getCell('B6').value = 'ORDER/TIKET';
   
   wsResponse.mergeCells('D6:D7');
-  wsResponse.getCell('D6').value = 'LOCATION';
+  wsResponse.getCell('D6').value = 'LOKASI';
 
   wsResponse.mergeCells('E6:F6');
   wsResponse.getCell('E6').value = 'PIC';
@@ -78,19 +78,19 @@ export async function exportSLAReportToExcel(report: any) {
   wsResponse.getCell('F7').value = 'TDE';
 
   wsResponse.mergeCells('G6:G7');
-  wsResponse.getCell('G6').value = 'TIME ORDER\n(DATE : HOUR)';
+  wsResponse.getCell('G6').value = 'WAKTU ORDER\n(TANGGAL : JAM)';
   wsResponse.getCell('G6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
 
   wsResponse.mergeCells('H6:H7');
-  wsResponse.getCell('H6').value = 'ACTUAL TIME RESPONSE\n(TARGET: 10 MINUTES)\nDATE : HOUR';
+  wsResponse.getCell('H6').value = 'WAKTU RESPON AKTUAL\n(TARGET: 10 MENIT)\nTANGGAL : JAM';
   wsResponse.getCell('H6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
 
   wsResponse.mergeCells('I6:I7');
-  wsResponse.getCell('I6').value = 'ACTUAL\nRESPONSE TIME';
+  wsResponse.getCell('I6').value = 'WAKTU RESPON\nAKTUAL';
   wsResponse.getCell('I6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
 
   wsResponse.mergeCells('J6:J7');
-  wsResponse.getCell('J6').value = 'TARGET\n(MINUTES)';
+  wsResponse.getCell('J6').value = 'TARGET\n(MENIT)';
   wsResponse.getCell('J6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
 
   wsResponse.mergeCells('K6:K7');
@@ -98,7 +98,7 @@ export async function exportSLAReportToExcel(report: any) {
   wsResponse.getCell('K6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
 
   wsResponse.mergeCells('L6:L7');
-  wsResponse.getCell('L6').value = 'REMARK';
+  wsResponse.getCell('L6').value = 'KETERANGAN';
 
   // Apply styles to headers
   const headerCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'];
@@ -130,7 +130,7 @@ export async function exportSLAReportToExcel(report: any) {
   wsResponse.getCell('I8').value = report.actualResponseTimeMin;
   wsResponse.getCell('J8').value = report.targetResponseMin;
   wsResponse.getCell('K8').value = report.responseComply ? 'M' : 'TM';
-  wsResponse.getCell('L8').value = 'Via WhatsApp / Ticket';
+  wsResponse.getCell('L8').value = 'Via WhatsApp / Tiket';
 
   headerCols.forEach(col => {
     const cell = wsResponse.getCell(`${col}8`);
@@ -150,12 +150,12 @@ export async function exportSLAReportToExcel(report: any) {
   wsResponse.getCell('A9').alignment = { horizontal: 'right', vertical: 'middle' };
   wsResponse.getCell('A9').border = thinBorder;
 
-  wsResponse.getCell('I9').value = `${report.actualResponseTimeMin} minutes`;
+  wsResponse.getCell('I9').value = `${report.actualResponseTimeMin} menit`;
   wsResponse.getCell('I9').font = headerFont;
   wsResponse.getCell('I9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsResponse.getCell('I9').border = thinBorder;
 
-  wsResponse.getCell('J9').value = `${report.targetResponseMin} minutes`;
+  wsResponse.getCell('J9').value = `${report.targetResponseMin} menit`;
   wsResponse.getCell('J9').font = headerFont;
   wsResponse.getCell('J9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsResponse.getCell('J9').border = thinBorder;
@@ -198,30 +198,30 @@ export async function exportSLAReportToExcel(report: any) {
   wsOnsite.mergeCells('A6:A7');
   wsOnsite.getCell('A6').value = 'NO';
   wsOnsite.mergeCells('B6:C7');
-  wsOnsite.getCell('B6').value = 'ORDER/TICKET';
+  wsOnsite.getCell('B6').value = 'ORDER/TIKET';
   wsOnsite.mergeCells('D6:D7');
-  wsOnsite.getCell('D6').value = 'LOCATION';
+  wsOnsite.getCell('D6').value = 'LOKASI';
   wsOnsite.mergeCells('E6:F6');
   wsOnsite.getCell('E6').value = 'PIC';
   wsOnsite.getCell('E7').value = 'DME';
   wsOnsite.getCell('F7').value = 'TDE';
   wsOnsite.mergeCells('G6:G7');
-  wsOnsite.getCell('G6').value = 'TIME ORDER\n(DATE : HOUR)';
+  wsOnsite.getCell('G6').value = 'WAKTU ORDER\n(TANGGAL : JAM)';
   wsOnsite.getCell('G6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsOnsite.mergeCells('H6:H7');
-  wsOnsite.getCell('H6').value = 'ACTUAL TIME ONSITE\n(TARGET: 2 HOURS)\nDATE : HOUR';
+  wsOnsite.getCell('H6').value = 'WAKTU ONSITE AKTUAL\n(TARGET: 2 JAM)\nTANGGAL : JAM';
   wsOnsite.getCell('H6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsOnsite.mergeCells('I6:I7');
-  wsOnsite.getCell('I6').value = 'ACTUAL ONSITE TIME\n(MINUTES)';
+  wsOnsite.getCell('I6').value = 'WAKTU ONSITE AKTUAL\n(MENIT)';
   wsOnsite.getCell('I6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsOnsite.mergeCells('J6:J7');
-  wsOnsite.getCell('J6').value = 'TARGET\n(MINUTES)';
+  wsOnsite.getCell('J6').value = 'TARGET\n(MENIT)';
   wsOnsite.getCell('J6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsOnsite.mergeCells('K6:K7');
   wsOnsite.getCell('K6').value = 'COMPLY\nM/TM';
   wsOnsite.getCell('K6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsOnsite.mergeCells('L6:L7');
-  wsOnsite.getCell('L6').value = 'REMARK';
+  wsOnsite.getCell('L6').value = 'KETERANGAN';
 
   headerCols.forEach(col => {
     const c6 = wsOnsite.getCell(`${col}6`);
@@ -250,7 +250,7 @@ export async function exportSLAReportToExcel(report: any) {
   wsOnsite.getCell('I8').value = report.actualOnsiteTimeMin;
   wsOnsite.getCell('J8').value = report.targetOnsiteMin;
   wsOnsite.getCell('K8').value = report.onsiteComply ? 'M' : 'TM';
-  wsOnsite.getCell('L8').value = 'Via WhatsApp / Ticket';
+  wsOnsite.getCell('L8').value = 'Via WhatsApp / Tiket';
 
   headerCols.forEach(col => {
     const cell = wsOnsite.getCell(`${col}8`);
@@ -270,12 +270,12 @@ export async function exportSLAReportToExcel(report: any) {
   wsOnsite.getCell('A9').alignment = { horizontal: 'right', vertical: 'middle' };
   wsOnsite.getCell('A9').border = thinBorder;
 
-  wsOnsite.getCell('I9').value = `${report.actualOnsiteTimeMin} minutes`;
+  wsOnsite.getCell('I9').value = `${report.actualOnsiteTimeMin} menit`;
   wsOnsite.getCell('I9').font = headerFont;
   wsOnsite.getCell('I9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsOnsite.getCell('I9').border = thinBorder;
 
-  wsOnsite.getCell('J9').value = `${report.targetOnsiteMin} minutes`;
+  wsOnsite.getCell('J9').value = `${report.targetOnsiteMin} menit`;
   wsOnsite.getCell('J9').font = headerFont;
   wsOnsite.getCell('J9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsOnsite.getCell('J9').border = thinBorder;
@@ -317,26 +317,26 @@ export async function exportSLAReportToExcel(report: any) {
   wsRestore.mergeCells('A6:A7');
   wsRestore.getCell('A6').value = 'NO';
   wsRestore.mergeCells('B6:C7');
-  wsRestore.getCell('B6').value = 'ORDER/TICKET';
+  wsRestore.getCell('B6').value = 'ORDER/TIKET';
   wsRestore.mergeCells('D6:D7');
-  wsRestore.getCell('D6').value = 'LOCATION';
+  wsRestore.getCell('D6').value = 'LOKASI';
   wsRestore.mergeCells('E6:E7');
-  wsRestore.getCell('E6').value = 'START ORDER\n(DATE : HOUR)';
+  wsRestore.getCell('E6').value = 'MULAI ORDER\n(TANGGAL : JAM)';
   wsRestore.getCell('E6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsRestore.mergeCells('F6:F7');
-  wsRestore.getCell('F6').value = 'FINISH ORDER\n(TARGET: 3 HOURS)\nDATE : HOUR : MINUTES';
+  wsRestore.getCell('F6').value = 'SELESAI ORDER\n(TARGET: 3 JAM)\nTANGGAL : JAM : MENIT';
   wsRestore.getCell('F6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsRestore.mergeCells('G6:G7');
-  wsRestore.getCell('G6').value = 'ACTUAL RESTORE TIME\n(HOUR : MINUTES)';
+  wsRestore.getCell('G6').value = 'WAKTU PEMULIHAN AKTUAL\n(JAM : MENIT)';
   wsRestore.getCell('G6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsRestore.mergeCells('H6:H7');
-  wsRestore.getCell('H6').value = 'TARGET\n(HOUR : MINUTES)';
+  wsRestore.getCell('H6').value = 'TARGET\n(JAM : MENIT)';
   wsRestore.getCell('H6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsRestore.mergeCells('I6:I7');
   wsRestore.getCell('I6').value = 'COMPLY\nM/TM';
   wsRestore.getCell('I6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsRestore.mergeCells('J6:J7');
-  wsRestore.getCell('J6').value = 'REMARK';
+  wsRestore.getCell('J6').value = 'KETERANGAN';
 
   const restoreCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
   restoreCols.forEach(col => {
@@ -384,12 +384,12 @@ export async function exportSLAReportToExcel(report: any) {
   wsRestore.getCell('A9').alignment = { horizontal: 'right', vertical: 'middle' };
   wsRestore.getCell('A9').border = thinBorder;
 
-  wsRestore.getCell('G9').value = `${report.actualRestoreTimeMin} minutes`;
+  wsRestore.getCell('G9').value = `${report.actualRestoreTimeMin} menit`;
   wsRestore.getCell('G9').font = headerFont;
   wsRestore.getCell('G9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsRestore.getCell('G9').border = thinBorder;
 
-  wsRestore.getCell('H9').value = `${report.targetRestoreMin} minutes`;
+  wsRestore.getCell('H9').value = `${report.targetRestoreMin} menit`;
   wsRestore.getCell('H9').font = headerFont;
   wsRestore.getCell('H9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsRestore.getCell('H9').border = thinBorder;
@@ -429,28 +429,28 @@ export async function exportSLAReportToExcel(report: any) {
   wsRes.mergeCells('A6:A7');
   wsRes.getCell('A6').value = 'NO';
   wsRes.mergeCells('B6:C7');
-  wsRes.getCell('B6').value = 'NO ORDER/TICKET';
+  wsRes.getCell('B6').value = 'NO ORDER/TIKET';
   wsRes.mergeCells('D6:D7');
-  wsRes.getCell('D6').value = 'PRIORITY';
+  wsRes.getCell('D6').value = 'PRIORITAS';
   wsRes.mergeCells('E6:E7');
-  wsRes.getCell('E6').value = 'LOCATION';
+  wsRes.getCell('E6').value = 'LOKASI';
   wsRes.mergeCells('F6:F7');
-  wsRes.getCell('F6').value = 'START ORDER\n(DATE : HOUR)';
+  wsRes.getCell('F6').value = 'MULAI ORDER\n(TANGGAL : JAM)';
   wsRes.getCell('F6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsRes.mergeCells('G6:G7');
-  wsRes.getCell('G6').value = 'FINISH ORDER\n(TARGET: 3 HOURS)\nDATE : HOUR : MINUTES';
+  wsRes.getCell('G6').value = 'SELESAI ORDER\n(TARGET: 3 JAM)\nTANGGAL : JAM : MENIT';
   wsRes.getCell('G6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsRes.mergeCells('H6:H7');
-  wsRes.getCell('H6').value = 'ACTUAL RESOLUTION TIME\n(MINUTES)';
+  wsRes.getCell('H6').value = 'WAKTU RESOLUSI AKTUAL\n(MENIT)';
   wsRes.getCell('H6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsRes.mergeCells('I6:I7');
-  wsRes.getCell('I6').value = 'TARGET\n(MINUTES)';
+  wsRes.getCell('I6').value = 'TARGET\n(MENIT)';
   wsRes.getCell('I6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsRes.mergeCells('J6:J7');
   wsRes.getCell('J6').value = 'COMPLY\nM/TM';
   wsRes.getCell('J6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsRes.mergeCells('K6:K7');
-  wsRes.getCell('K6').value = 'REMARK';
+  wsRes.getCell('K6').value = 'KETERANGAN';
 
   const resCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
   resCols.forEach(col => {
@@ -499,12 +499,12 @@ export async function exportSLAReportToExcel(report: any) {
   wsRes.getCell('A9').alignment = { horizontal: 'right', vertical: 'middle' };
   wsRes.getCell('A9').border = thinBorder;
 
-  wsRes.getCell('H9').value = `${report.actualResolutionTimeMin} minutes`;
+  wsRes.getCell('H9').value = `${report.actualResolutionTimeMin} menit`;
   wsRes.getCell('H9').font = headerFont;
   wsRes.getCell('H9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsRes.getCell('H9').border = thinBorder;
 
-  wsRes.getCell('I9').value = `${report.targetResolutionMin} minutes`;
+  wsRes.getCell('I9').value = `${report.targetResolutionMin} menit`;
   wsRes.getCell('I9').font = headerFont;
   wsRes.getCell('I9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsRes.getCell('I9').border = thinBorder;
@@ -532,19 +532,19 @@ export async function exportSLAReportToExcel(report: any) {
   // ==========================================
   // SHEET 5: EVIDANCE (EMBED PHOTOS!)
   // ==========================================
-  const wsEv = workbook.addWorksheet('Evidance');
+  const wsEv = workbook.addWorksheet('Bukti');
   wsEv.views = [{ showGridLines: true }];
 
   // Column Headers
   const evCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
   wsEv.getRow(6).height = 25;
 
-  wsEv.getCell('A6').value = 'ORDER / TICKET';
-  wsEv.getCell('B6').value = 'RESPONSE TIME';
-  wsEv.getCell('C6').value = 'ENGINEER ONSITE SUPPORT';
+  wsEv.getCell('A6').value = 'ORDER / TIKET';
+  wsEv.getCell('B6').value = 'WAKTU RESPON';
+  wsEv.getCell('C6').value = 'DUKUNGAN TEKNISI ONSITE';
   wsEv.getCell('D6').value = 'ONSITE PRINCIPLE ENGINEER';
-  wsEv.getCell('E6').value = 'RESTORE SERVICE TIME';
-  wsEv.getCell('F6').value = 'RESOLUTION TIME';
+  wsEv.getCell('E6').value = 'WAKTU PEMULIHAN LAYANAN';
+  wsEv.getCell('F6').value = 'WAKTU RESOLUSI';
 
   evCols.slice(0, 6).forEach(col => {
     const cell = wsEv.getCell(`${col}6`);

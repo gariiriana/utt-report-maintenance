@@ -39,7 +39,7 @@ export function DivisionApp() {
         'direksiSDM': 'Direktur SDM',
         'DireksiKeuangan': 'Direktur Keuangan'
     };
-    const directorTitle = directorTitles[userRole || ''] || 'Director';
+    const directorTitle = directorTitles[userRole || ''] || 'Direktur';
 
     const getDivisionDetails = (id: string) => DIVISIONS.find(d => d.id === id);
 
@@ -64,7 +64,7 @@ export function DivisionApp() {
                                     <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-500/15 rounded-full border border-blue-500/25">
                                         <ShieldCheck className="w-3 h-3 text-blue-400" />
                                         <span className="text-[10px] sm:text-xs text-blue-400 font-semibold tracking-wide uppercase">
-                                            {isDirector ? directorTitle : (getDivisionDetails(userRole || '')?.name || 'Division Member')}
+                                            {isDirector ? directorTitle : (getDivisionDetails(userRole || '')?.name || 'Anggota Divisi')}
                                         </span>
                                     </div>
                                 </div>
@@ -73,7 +73,7 @@ export function DivisionApp() {
 
                         <div className="flex items-center gap-3">
                             <div className="hidden sm:block text-right">
-                                <p className="text-xs text-slate-500">Logged as</p>
+                                <p className="text-xs text-slate-500">Masuk sebagai</p>
                                 <p className="text-sm font-medium text-slate-300 truncate max-w-[200px]">
                                     {user?.email}
                                 </p>

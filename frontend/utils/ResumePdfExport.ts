@@ -71,11 +71,11 @@ export async function generateResumePdf(summary: MaintenanceSummary, maintenance
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(16);
         pdf.setTextColor(30, 41, 59);
-        pdf.text(maintenanceName ? maintenanceName.toUpperCase() : 'MAINTENANCE PROGRESS RESUME', pageW / 2, 18, { align: 'center' });
+        pdf.text(maintenanceName ? maintenanceName.toUpperCase() : 'RESUME PROGRES PEMELIHARAAN', pageW / 2, 18, { align: 'center' });
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(100, 116, 139);
-        pdf.text(projectName ? projectName : 'Reporting & Monitoring System - PT United Transworld Trading', pageW / 2, 23, { align: 'center' });
+        pdf.text(projectName ? projectName : 'Sistem Pelaporan & Pemantauan - PT United Transworld Trading', pageW / 2, 23, { align: 'center' });
 
         pdf.setDrawColor(226, 232, 240);
         pdf.line(margin, 30, pageW - margin, 30);
@@ -118,7 +118,7 @@ export async function generateResumePdf(summary: MaintenanceSummary, maintenance
 
     drawCard(0, 'PROGRESS KEMARIN', `${summary.total_yesterday_percent.toFixed(2)}%`, `${summary.total_yesterday_qty.toFixed(2)} unit`);
     drawCard(1, 'TOTAL PROGRESS', `${summary.total_today_percent.toFixed(2)}%`, `${summary.total_today_qty.toFixed(2)} unit`, [0, 89, 156]);
-    drawCard(2, 'DAILY GROWTH', `+${summary.daily_progress.toFixed(2)}%`, 'Peningkatan harian', [16, 185, 129]);
+    drawCard(2, 'PERTUMBUHAN HARIAN', `+${summary.daily_progress.toFixed(2)}%`, 'Peningkatan harian', [16, 185, 129]);
 
     const tableData = summary.category_summaries.map((cat, idx) => [
         `1.${idx + 1}`,
@@ -137,20 +137,20 @@ export async function generateResumePdf(summary: MaintenanceSummary, maintenance
             [
                 { content: 'No', rowSpan: 3, styles: { halign: 'center', valign: 'middle' } },
                 { content: 'DESKRIPSI', rowSpan: 3, styles: { halign: 'center', valign: 'middle' } },
-                { content: 'PLAN', colSpan: 2, styles: { halign: 'center' } },
-                { content: 'PROGRESS', colSpan: 4, styles: { halign: 'center' } }
+                { content: 'RENCANA', colSpan: 2, styles: { halign: 'center' } },
+                { content: 'PROGRES', colSpan: 4, styles: { halign: 'center' } }
             ],
             [
                 { content: 'Qty', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-                { content: 'Weight %', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-                { content: 'Yesterday', colSpan: 2, styles: { halign: 'center' } },
-                { content: 'Today', colSpan: 2, styles: { halign: 'center' } }
+                { content: 'Bobot %', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+                { content: 'Kemarin', colSpan: 2, styles: { halign: 'center' } },
+                { content: 'Hari Ini', colSpan: 2, styles: { halign: 'center' } }
             ],
             [
                 { content: 'Qty', styles: { halign: 'center' } },
-                { content: 'Weight %', styles: { halign: 'center' } },
+                { content: 'Bobot %', styles: { halign: 'center' } },
                 { content: 'Qty', styles: { halign: 'center' } },
-                { content: 'Weight %', styles: { halign: 'center' } }
+                { content: 'Bobot %', styles: { halign: 'center' } }
             ]
         ],
         body: tableData,
@@ -208,7 +208,7 @@ export async function generateResumePdf(summary: MaintenanceSummary, maintenance
         doc.setFontSize(8);
         doc.setTextColor(148, 163, 184);
         doc.text(
-            `PT United Transworld Trading - Maintenance Management System`,
+            `PT United Transworld Trading - Sistem Manajemen Pemeliharaan`,
             margin,
             doc.internal.pageSize.getHeight() - 10
         );

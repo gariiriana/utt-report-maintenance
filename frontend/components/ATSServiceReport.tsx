@@ -193,10 +193,10 @@ interface UploadedPhoto {
 }
 
 const CATEGORY_CONFIG: Record<PhotoCategory, { label: string; description: string; color: string; icon: string }> = {
-  visual_inspection: { label: 'Visual Inspection', description: 'Foto panel ATS, enclosure, wiring, busbar, indicator', color: 'from-blue-500 to-blue-600', icon: '🔍' },
-  power_meter: { label: 'Power Meter', description: 'Foto display digital power meter (voltage, current, power)', color: 'from-amber-500 to-orange-600', icon: '⚡' },
-  thermal: { label: 'Thermal Imager', description: 'Foto thermal imager menunjukkan suhu', color: 'from-red-500 to-rose-600', icon: '🌡️' },
-  grounding: { label: 'Grounding', description: 'Foto measurement grounding resistance', color: 'from-green-500 to-emerald-600', icon: '⏚' },
+  visual_inspection: { label: 'Inspeksi Visual', description: 'Foto panel ATS, enclosure, wiring, busbar, indicator', color: 'from-blue-500 to-blue-600', icon: '🔍' },
+  power_meter: { label: 'Meteran Listrik (Power Meter)', description: 'Foto display digital power meter (voltage, current, power)', color: 'from-amber-500 to-orange-600', icon: '⚡' },
+  thermal: { label: 'Pencitraan Termal', description: 'Foto thermal imager menunjukkan suhu', color: 'from-red-500 to-rose-600', icon: '🌡️' },
+  grounding: { label: 'Pentanahan (Grounding)', description: 'Foto pengukuran resistansi grounding', color: 'from-green-500 to-emerald-600', icon: '⏚' },
 };
 
 interface ATSServiceReportProps {
@@ -500,23 +500,23 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
       </motion.div>
 
       {/* ─── Section: Customer Info ──────────────────────────────── */}
-      <CollapsibleSection title="Customer Information" sectionKey="customer" expanded={expandedSections.customer} toggle={toggleSection} icon="📋" badge="Manual">
+      <CollapsibleSection title="Informasi Pelanggan" sectionKey="customer" expanded={expandedSections.customer} toggle={toggleSection} icon="📋" badge="Manual">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <InputField label="Company Name" value={customerInfo.companyName} onChange={v => setCustomerInfo(p => ({ ...p, companyName: v }))} />
-          <InputField label="Equipment Name" value={customerInfo.equipmentName} onChange={v => setCustomerInfo(p => ({ ...p, equipmentName: v }))} />
-          <InputField label="CI Description" value={customerInfo.ciDescription} onChange={v => setCustomerInfo(p => ({ ...p, ciDescription: v }))} />
-          <InputField label="CI Name" value={customerInfo.ciName} onChange={v => setCustomerInfo(p => ({ ...p, ciName: v }))} />
-          <InputField label="Type" value={customerInfo.type} onChange={v => setCustomerInfo(p => ({ ...p, type: v }))} />
-          <InputField label="Serial No." value={customerInfo.serialNo} onChange={v => setCustomerInfo(p => ({ ...p, serialNo: v }))} />
-          <InputField label="Product Name" value={customerInfo.productName} onChange={v => setCustomerInfo(p => ({ ...p, productName: v }))} />
-          <InputField label="Product Years" value={customerInfo.productYears} onChange={v => setCustomerInfo(p => ({ ...p, productYears: v }))} />
-          <InputField label="Specification" value={customerInfo.specification} onChange={v => setCustomerInfo(p => ({ ...p, specification: v }))} />
-          <InputField label="Location" value={customerInfo.location} onChange={v => setCustomerInfo(p => ({ ...p, location: v }))} />
+          <InputField label="Nama Perusahaan" value={customerInfo.companyName} onChange={v => setCustomerInfo(p => ({ ...p, companyName: v }))} />
+          <InputField label="Nama Perangkat" value={customerInfo.equipmentName} onChange={v => setCustomerInfo(p => ({ ...p, equipmentName: v }))} />
+          <InputField label="Deskripsi CI" value={customerInfo.ciDescription} onChange={v => setCustomerInfo(p => ({ ...p, ciDescription: v }))} />
+          <InputField label="Nama CI" value={customerInfo.ciName} onChange={v => setCustomerInfo(p => ({ ...p, ciName: v }))} />
+          <InputField label="Tipe" value={customerInfo.type} onChange={v => setCustomerInfo(p => ({ ...p, type: v }))} />
+          <InputField label="No. Seri" value={customerInfo.serialNo} onChange={v => setCustomerInfo(p => ({ ...p, serialNo: v }))} />
+          <InputField label="Nama Produk" value={customerInfo.productName} onChange={v => setCustomerInfo(p => ({ ...p, productName: v }))} />
+          <InputField label="Tahun Produk" value={customerInfo.productYears} onChange={v => setCustomerInfo(p => ({ ...p, productYears: v }))} />
+          <InputField label="Spesifikasi" value={customerInfo.specification} onChange={v => setCustomerInfo(p => ({ ...p, specification: v }))} />
+          <InputField label="Lokasi" value={customerInfo.location} onChange={v => setCustomerInfo(p => ({ ...p, location: v }))} />
           <InputField label="Area" value={customerInfo.area} onChange={v => setCustomerInfo(p => ({ ...p, area: v }))} />
-          <InputField label="Map No." value={customerInfo.mapNo} onChange={v => setCustomerInfo(p => ({ ...p, mapNo: v }))} />
-          <InputField label="Quarter" value={customerInfo.quarter} onChange={v => setCustomerInfo(p => ({ ...p, quarter: v }))} placeholder="Q1 / Q2 / Q3 / Q4" />
-          <InputField label="Date" value={customerInfo.date} onChange={v => setCustomerInfo(p => ({ ...p, date: v }))} type="date" />
-          <InputField label="Engineer" value={customerInfo.engineer} onChange={v => setCustomerInfo(p => ({ ...p, engineer: v }))} />
+          <InputField label="No. Peta" value={customerInfo.mapNo} onChange={v => setCustomerInfo(p => ({ ...p, mapNo: v }))} />
+          <InputField label="Kuartal" value={customerInfo.quarter} onChange={v => setCustomerInfo(p => ({ ...p, quarter: v }))} placeholder="Q1 / Q2 / Q3 / Q4" />
+          <InputField label="Tanggal" value={customerInfo.date} onChange={v => setCustomerInfo(p => ({ ...p, date: v }))} type="date" />
+          <InputField label="Teknisi" value={customerInfo.engineer} onChange={v => setCustomerInfo(p => ({ ...p, engineer: v }))} />
         </div>
       </CollapsibleSection>
 
@@ -565,16 +565,16 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
       </CollapsibleSection>
 
       {/* ─── Section: Visual Inspection ──────────────────────────── */}
-      <CollapsibleSection title="Visual Inspection & Check" sectionKey="visual" expanded={expandedSections.visual} toggle={toggleSection} icon="🔍" badge="—">
+      <CollapsibleSection title="Inspeksi & Pemeriksaan Visual" sectionKey="visual" expanded={expandedSections.visual} toggle={toggleSection} icon="🔍" badge="—">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[700px] text-xs">
             <thead>
               <tr className="bg-slate-800/60 text-slate-300">
                 <th className="px-2 py-2 text-left w-8">No</th>
-                <th className="px-2 py-2 text-left">Activity</th>
+                <th className="px-2 py-2 text-left">Aktivitas</th>
                 <th className="px-2 py-2 text-left w-32">Parameter</th>
-                <th className="px-2 py-2 text-center w-24">Condition</th>
-                <th className="px-2 py-2 text-left w-28">Remarks</th>
+                <th className="px-2 py-2 text-center w-24">Kondisi</th>
+                <th className="px-2 py-2 text-left w-28">Keterangan</th>
               </tr>
             </thead>
             <tbody>
@@ -602,8 +602,8 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
                       title="Condition"
                       aria-label="Condition"
                     >
-                      <option value="Good">Good</option>
-                      <option value="Not Good">Not Good</option>
+                      <option value="Good">Baik</option>
+                      <option value="Not Good">Tidak Baik</option>
                     </select>
                   </td>
                   <td className="px-2 py-1.5">
@@ -611,9 +611,9 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
                       value={item.remarks}
                       onChange={e => updateVisualInspection(idx, 'remarks', e.target.value)}
                       className="w-full bg-slate-800/40 border border-slate-700/40 rounded px-1.5 py-1 text-[11px] text-white focus:border-violet-500/50 focus:outline-none"
-                      placeholder="Remarks"
-                      title="Remarks"
-                      aria-label="Remarks"
+                      placeholder="Keterangan"
+                      title="Keterangan"
+                      aria-label="Keterangan"
                     />
                   </td>
                 </tr>
@@ -624,7 +624,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
       </CollapsibleSection>
 
       {/* ─── Section: Digital Power Meter Recording ──────────────── */}
-      <CollapsibleSection title="Digital Power Meter Recording" sectionKey="power" expanded={expandedSections.power} toggle={toggleSection} icon="⚡" badge="—">
+      <CollapsibleSection title="Pencatatan Digital Power Meter" sectionKey="power" expanded={expandedSections.power} toggle={toggleSection} icon="⚡" badge="—">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {(['rs', 'st', 'tr', 'rn', 'sn', 'tn', 'n'] as const).map(wire => (
             <div key={wire} className="space-y-1">
@@ -651,7 +651,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
       </CollapsibleSection>
 
       {/* ─── Section: Voltage & Current Measurement ──────────────── */}
-      <CollapsibleSection title="Voltage & Current Measurement" sectionKey="voltage" expanded={expandedSections.voltage} toggle={toggleSection} icon="🔌" badge="—">
+      <CollapsibleSection title="Pengukuran Tegangan & Arus" sectionKey="voltage" expanded={expandedSections.voltage} toggle={toggleSection} icon="🔌" badge="—">
         <p className="text-[10px] text-slate-500 mb-3">Standard: +5% - 10% from 380V & 220V load deviation 10%</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MeasurementInput label="Voltage R-S" value={reportData.voltage_current.voltage_rs} onChange={v => setReportData(p => ({ ...p, voltage_current: { ...p.voltage_current, voltage_rs: v } }))} />
@@ -670,63 +670,63 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
       </CollapsibleSection>
 
       {/* ─── Section: Thermal Measurement ────────────────────────── */}
-      <CollapsibleSection title="Thermal Measurement" sectionKey="thermal" expanded={expandedSections.thermal} toggle={toggleSection} icon="🌡️" badge="—">
+      <CollapsibleSection title="Pengukuran Termal" sectionKey="thermal" expanded={expandedSections.thermal} toggle={toggleSection} icon="🌡️" badge="—">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <MeasurementInput label="Result Temperature (°C)" value={reportData.thermal_measurement.result_temperature} onChange={v => setReportData(p => ({ ...p, thermal_measurement: { ...p.thermal_measurement, result_temperature: v } }))} />
+          <MeasurementInput label="Suhu Hasil Pengukuran (°C)" value={reportData.thermal_measurement.result_temperature} onChange={v => setReportData(p => ({ ...p, thermal_measurement: { ...p.thermal_measurement, result_temperature: v } }))} />
           <div className="space-y-1">
             <label className="text-[10px] uppercase text-slate-500 font-bold">Standard</label>
             <div className="px-2 py-1.5 bg-slate-800/60 border border-slate-700/40 rounded text-xs text-yellow-400 font-mono">40°C</div>
           </div>
-          <MeasurementInput label="Remarks" value={reportData.thermal_measurement.remarks} onChange={v => setReportData(p => ({ ...p, thermal_measurement: { ...p.thermal_measurement, remarks: v } }))} />
+          <MeasurementInput label="Keterangan" value={reportData.thermal_measurement.remarks} onChange={v => setReportData(p => ({ ...p, thermal_measurement: { ...p.thermal_measurement, remarks: v } }))} />
         </div>
       </CollapsibleSection>
 
       {/* ─── Section: Grounding Resistance ────────────────────────── */}
-      <CollapsibleSection title="Grounding Resistance Measurement" sectionKey="grounding" expanded={expandedSections.grounding} toggle={toggleSection} icon="⏚" badge="—">
+      <CollapsibleSection title="Pengukuran Resistansi Grounding" sectionKey="grounding" expanded={expandedSections.grounding} toggle={toggleSection} icon="⏚" badge="—">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <MeasurementInput label="Result (Ω)" value={reportData.grounding_resistance.result_ohm} onChange={v => setReportData(p => ({ ...p, grounding_resistance: { ...p.grounding_resistance, result_ohm: v } }))} />
+          <MeasurementInput label="Hasil (Ω)" value={reportData.grounding_resistance.result_ohm} onChange={v => setReportData(p => ({ ...p, grounding_resistance: { ...p.grounding_resistance, result_ohm: v } }))} />
           <div className="space-y-1">
             <label className="text-[10px] uppercase text-slate-500 font-bold">Standard</label>
             <div className="px-2 py-1.5 bg-slate-800/60 border border-slate-700/40 rounded text-xs text-yellow-400 font-mono">{'<5 Ω'}</div>
           </div>
-          <MeasurementInput label="Remarks" value={reportData.grounding_resistance.remarks} onChange={v => setReportData(p => ({ ...p, grounding_resistance: { ...p.grounding_resistance, remarks: v } }))} />
+          <MeasurementInput label="Keterangan" value={reportData.grounding_resistance.remarks} onChange={v => setReportData(p => ({ ...p, grounding_resistance: { ...p.grounding_resistance, remarks: v } }))} />
         </div>
       </CollapsibleSection>
 
       {/* ─── Section: Operation Status ────────────────────────────── */}
-      <CollapsibleSection title="Operation Status" sectionKey="operation" expanded={expandedSections.operation} toggle={toggleSection} icon="⚙️" badge="—">
+      <CollapsibleSection title="Status Operasi" sectionKey="operation" expanded={expandedSections.operation} toggle={toggleSection} icon="⚙️" badge="—">
         <div className="space-y-4">
           <div className="flex gap-4">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="radio" checked={reportData.operation_status.is_normal} onChange={() => setReportData(p => ({ ...p, operation_status: { ...p.operation_status, is_normal: true } }))} className="accent-green-500" />
-              <span className="text-sm text-green-400 font-bold">Normal Operation</span>
+              <span className="text-sm text-green-400 font-bold">Operasi Normal</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="radio" checked={!reportData.operation_status.is_normal} onChange={() => setReportData(p => ({ ...p, operation_status: { ...p.operation_status, is_normal: false } }))} className="accent-red-500" />
-              <span className="text-sm text-red-400 font-bold">Abnormal Operation</span>
+              <span className="text-sm text-red-400 font-bold">Operasi Abnormal</span>
             </label>
           </div>
           {reportData.operation_status.is_normal ? (
-            <MeasurementInput label="Remark" value={reportData.operation_status.remark} onChange={v => setReportData(p => ({ ...p, operation_status: { ...p.operation_status, remark: v } }))} />
+            <MeasurementInput label="Keterangan" value={reportData.operation_status.remark} onChange={v => setReportData(p => ({ ...p, operation_status: { ...p.operation_status, remark: v } }))} />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <MeasurementInput label="Fault Symptom" value={reportData.operation_status.fault_symptom} onChange={v => setReportData(p => ({ ...p, operation_status: { ...p.operation_status, fault_symptom: v } }))} />
-              <MeasurementInput label="Fault Analysis" value={reportData.operation_status.fault_analysis} onChange={v => setReportData(p => ({ ...p, operation_status: { ...p.operation_status, fault_analysis: v } }))} />
-              <MeasurementInput label="Work Done / Action Taken" value={reportData.operation_status.work_done} onChange={v => setReportData(p => ({ ...p, operation_status: { ...p.operation_status, work_done: v } }))} />
-              <MeasurementInput label="Fault Part SN" value={reportData.operation_status.fault_part_sn} onChange={v => setReportData(p => ({ ...p, operation_status: { ...p.operation_status, fault_part_sn: v } }))} />
-              <MeasurementInput label="Fault Part Name" value={reportData.operation_status.fault_part_name} onChange={v => setReportData(p => ({ ...p, operation_status: { ...p.operation_status, fault_part_name: v } }))} />
+              <MeasurementInput label="Gejala Kerusakan" value={reportData.operation_status.fault_symptom} onChange={v => setReportData(p => ({ ...p, operation_status: { ...p.operation_status, fault_symptom: v } }))} />
+              <MeasurementInput label="Analisis Kerusakan" value={reportData.operation_status.fault_analysis} onChange={v => setReportData(p => ({ ...p, operation_status: { ...p.operation_status, fault_analysis: v } }))} />
+              <MeasurementInput label="Tindakan / Pekerjaan yang Dilakukan" value={reportData.operation_status.work_done} onChange={v => setReportData(p => ({ ...p, operation_status: { ...p.operation_status, work_done: v } }))} />
+              <MeasurementInput label="No. Seri Komponen Rusak" value={reportData.operation_status.fault_part_sn} onChange={v => setReportData(p => ({ ...p, operation_status: { ...p.operation_status, fault_part_sn: v } }))} />
+              <MeasurementInput label="Nama Komponen Rusak" value={reportData.operation_status.fault_part_name} onChange={v => setReportData(p => ({ ...p, operation_status: { ...p.operation_status, fault_part_name: v } }))} />
             </div>
           )}
         </div>
       </CollapsibleSection>
 
       {/* ─── Section: Time Spent ──────────────────────────────────── */}
-      <CollapsibleSection title="Time Spent" sectionKey="time" expanded={expandedSections.time} toggle={toggleSection} icon="⏱️">
+      <CollapsibleSection title="Waktu Pengerjaan" sectionKey="time" expanded={expandedSections.time} toggle={toggleSection} icon="⏱️">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <InputField label="Date" value={timeSpent.date} onChange={v => setTimeSpent(p => ({ ...p, date: v }))} type="date" />
-          <InputField label="Departure" value={timeSpent.departure} onChange={v => setTimeSpent(p => ({ ...p, departure: v }))} type="time" />
-          <InputField label="Start" value={timeSpent.start} onChange={v => setTimeSpent(p => ({ ...p, start: v }))} type="time" />
-          <InputField label="Finish" value={timeSpent.finish} onChange={v => setTimeSpent(p => ({ ...p, finish: v }))} type="time" />
+          <InputField label="Tanggal" value={timeSpent.date} onChange={v => setTimeSpent(p => ({ ...p, date: v }))} type="date" />
+          <InputField label="Keberangkatan" value={timeSpent.departure} onChange={v => setTimeSpent(p => ({ ...p, departure: v }))} type="time" />
+          <InputField label="Mulai" value={timeSpent.start} onChange={v => setTimeSpent(p => ({ ...p, start: v }))} type="time" />
+          <InputField label="Selesai" value={timeSpent.finish} onChange={v => setTimeSpent(p => ({ ...p, finish: v }))} type="time" />
         </div>
       </CollapsibleSection>
 
@@ -739,7 +739,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
           className="flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-slate-800 text-slate-300 border border-slate-700/50 hover:bg-slate-700 transition-all"
         >
           <Eye className="w-4 h-4" />
-          Preview Service Report
+          Pratinjau Service Report
         </motion.button>
         <motion.button
           whileHover={!isExporting ? { scale: 1.02 } : undefined}

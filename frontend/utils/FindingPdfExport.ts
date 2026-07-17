@@ -86,13 +86,13 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
     currentDoc.text('LAPORAN TEMUAN MAINTENANCE', centerX, headerY + 8, { align: 'center' });
 
     currentDoc.setFontSize(8).setFont('helvetica', 'bold').setTextColor(DARK);
-    currentDoc.text('MAINTENANCE FINDING REPORT', centerX, headerY + 13, { align: 'center' });
+    currentDoc.text('LAPORAN TEMUAN PEMELIHARAAN', centerX, headerY + 13, { align: 'center' });
 
     const now = new Date().toLocaleDateString('id-ID', {
       day: '2-digit', month: 'long', year: 'numeric',
     });
     currentDoc.setFontSize(7).setFont('helvetica', 'normal').setTextColor(GRAY);
-    currentDoc.text(`Generated: ${now}`, centerX, headerY + 17.5, { align: 'center' });
+    currentDoc.text(`Dibuat: ${now}`, centerX, headerY + 17.5, { align: 'center' });
 
     currentDoc.setFontSize(6.5).setFont('helvetica', 'bold').setTextColor(AMBER);
     currentDoc.text(`Total Temuan: ${optimizedFindings.length} item`, centerX, headerY + 21.5, { align: 'center' });
@@ -105,7 +105,7 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
     currentDoc.rect(0, pageHeight - 2.5, pageWidth, 2.5, 'F');
 
     currentDoc.setFontSize(7).setTextColor(GRAY);
-    currentDoc.text('PT DWIMITRA EKATAMA MANDIRI — Maintenance Finding Report', margin, pageHeight - 6);
+    currentDoc.text('PT DWIMITRA EKATAMA MANDIRI — Laporan Temuan Pemeliharaan', margin, pageHeight - 6);
     currentDoc.text(`Halaman ${pg} dari ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
   };
 
@@ -248,7 +248,7 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
             } catch (err) {
               console.error('Error adding image to PDF:', err);
               doc.setFontSize(7).setTextColor(GRAY);
-              doc.text('Image Error', x + photoW / 2, curY + photoH / 2, { align: 'center' });
+              doc.text('Gagal Memuat Gambar', x + photoW / 2, curY + photoH / 2, { align: 'center' });
             }
           }
 

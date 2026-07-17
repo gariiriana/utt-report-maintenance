@@ -91,7 +91,7 @@ export function MainApp() {
             {}
             <div className="hidden md:flex items-center gap-4">
               <div className="text-right">
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Logged as</p>
+                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Masuk sebagai</p>
                 <p className="text-sm font-medium text-slate-300 truncate max-w-[180px]">{user?.email}</p>
               </div>
               <motion.button
