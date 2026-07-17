@@ -1099,65 +1099,7 @@ export function PTWManagement() {
     return ranges;
   };
 
-  const getDynamicWeekRanges = (year: number, month: number, ptwRecords: PTWRecord[]) => {
-    const standardRanges = getWeekRanges(year, month);
-    
-    const parseLocalDate = (dateStr: string) => {
-      const parts = dateStr.split('-');
-      const y = parseInt(parts[0], 10);
-      const m = parseInt(parts[1], 10) - 1;
-      const d = parseInt(parts[2], 10);
-      return new Date(y, m, d);
-    };
-
-    return standardRanges.map(range => {
-      const weekRecords = ptwRecords.filter(r => {
-        if (!r.startDate) return false;
-        return r.startDate >= range.startStr && r.startDate <= range.endStr;
-      });
-
-      if (weekRecords.length === 0) {
-        return range;
-      }
-
-      const dates = weekRecords.map(r => parseLocalDate(r.startDate));
-      const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
-      
-      const endDates = weekRecords.map(r => r.endDate ? parseLocalDate(r.endDate) : parseLocalDate(range.endStr));
-      const maxDate = new Date(Math.max(...endDates.map(d => d.getTime())));
-
-      const minDayStr = String(minDate.getDate()).padStart(2, '0');
-      const maxDayStr = String(maxDate.getDate()).padStart(2, '0');
-
-      const monthNames = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-      ];
-      const shortMonthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
-
-      let newRangeLabel = '';
-      let newShortRange = '';
-
-      if (minDate.getTime() === maxDate.getTime()) {
-        newRangeLabel = `${minDayStr} ${monthNames[minDate.getMonth()]} ${minDate.getFullYear()}`;
-        newShortRange = minDayStr;
-      } else if (minDate.getMonth() === maxDate.getMonth()) {
-        newRangeLabel = `${minDayStr} - ${maxDayStr} ${monthNames[minDate.getMonth()]} ${minDate.getFullYear()}`;
-        newShortRange = `${minDayStr} - ${maxDayStr}`;
-      } else {
-        newRangeLabel = `${minDayStr} ${monthNames[minDate.getMonth()]} ${minDate.getFullYear()} - ${maxDayStr} ${monthNames[maxDate.getMonth()]} ${maxDate.getFullYear()}`;
-        newShortRange = `${minDayStr} ${shortMonthNames[minDate.getMonth()]} - ${maxDayStr} ${shortMonthNames[maxDate.getMonth()]}`;
-      }
-
-      return {
-        ...range,
-        rangeLabel: newRangeLabel,
-        shortRange: newShortRange
-      };
-    });
-  };
-
-  const weekRanges = getDynamicWeekRanges(selectedYear, selectedMonth, records);
+  const weekRanges = getWeekRanges(selectedYear, selectedMonth);
 
   useEffect(() => {
     if (selectedWeek > weekRanges.length) {
@@ -1175,10 +1117,41 @@ export function PTWManagement() {
     const openRecords = activeRecords.filter(r => !r.closingFileName && (!r.endDate || r.endDate >= todayStr));
     const closedRecords = activeRecords.filter(r => !!r.closingFileName || (!!r.endDate && r.endDate < todayStr));
 
+    // Compute dynamic range from actual PTW data
+    let dateRange = week.rangeLabel;
+    let shortRange = week.shortRange;
+
+    if (activeRecords.length > 0) {
+      const parseLocal = (s: string) => {
+        const p = s.split('-');
+        return new Date(parseInt(p[0]), parseInt(p[1]) - 1, parseInt(p[2]));
+      };
+
+      const startDates = activeRecords.map(r => parseLocal(r.startDate));
+      const endDates = activeRecords.map(r => r.endDate ? parseLocal(r.endDate) : parseLocal(r.startDate));
+
+      const minDate = new Date(Math.min(...startDates.map(d => d.getTime())));
+      const maxDate = new Date(Math.max(...endDates.map(d => d.getTime())));
+
+      const minDay = String(minDate.getDate()).padStart(2, '0');
+      const maxDay = String(maxDate.getDate()).padStart(2, '0');
+
+      const monthFull = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+      const monthShort = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+
+      if (minDate.getMonth() === maxDate.getMonth() && minDate.getFullYear() === maxDate.getFullYear()) {
+        dateRange = `${minDay} - ${maxDay} ${monthFull[minDate.getMonth()]} ${minDate.getFullYear()}`;
+        shortRange = `${minDay} - ${maxDay}`;
+      } else {
+        dateRange = `${minDay} ${monthFull[minDate.getMonth()]} - ${maxDay} ${monthFull[maxDate.getMonth()]} ${maxDate.getFullYear()}`;
+        shortRange = `${minDay} ${monthShort[minDate.getMonth()]} - ${maxDay} ${monthShort[maxDate.getMonth()]}`;
+      }
+    }
+
     return {
       weekNum: week.weekNum,
-      dateRange: week.rangeLabel,
-      shortRange: week.shortRange,
+      dateRange,
+      shortRange,
       openCount: openRecords.length,
       closedCount: closedRecords.length,
       totalCount: activeRecords.length,
