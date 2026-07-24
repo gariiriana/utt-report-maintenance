@@ -1228,12 +1228,12 @@ export function PTWManagement() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-      <div className="bg-gradient-to-r from-indigo-900/40 to-blue-900/40 backdrop-blur-xl rounded-2xl p-6 mb-8 border border-indigo-500/30">
+      <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-6 mb-8 border border-sky-100/90 shadow-md text-slate-800">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">PTW Management</h1>
-              <p className="text-indigo-300 text-sm">Kelola data Permit to Work secara terorganisir</p>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">PTW Management</h1>
+              <p className="text-slate-500 text-sm font-medium">Kelola data Permit to Work secara terorganisir</p>
             </div>
           </div>
           {isAdmin && (
@@ -1242,7 +1242,7 @@ export function PTWManagement() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => { resetForm(); setIsAddModalOpen(true); }}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-600/20 transition-all border border-indigo-400/30"
+                className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-lg shadow-blue-600/20 transition-all border border-blue-500 cursor-pointer"
               >
                 <Plus className="w-5 h-5" />
                 Tambah PTW Baru
@@ -1253,13 +1253,13 @@ export function PTWManagement() {
       </div>
 
       {isAdmin && (
-        <div className="flex gap-2 mb-6 bg-slate-900/30 p-1.5 rounded-2xl border border-slate-800/80 w-fit">
+        <div className="flex gap-2 mb-6 bg-white/80 p-1.5 rounded-2xl border border-sky-100 shadow-sm w-fit">
           <button
             onClick={() => setActiveSubTab('list')}
             className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${
               activeSubTab === 'list'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/10'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             Daftar PTW
@@ -1268,8 +1268,8 @@ export function PTWManagement() {
             onClick={() => setActiveSubTab('weekly')}
             className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer ${
               activeSubTab === 'weekly'
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/10'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             Laporan Mingguan (Admin)
@@ -1280,22 +1280,22 @@ export function PTWManagement() {
       {activeSubTab === 'list' && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl p-5 border border-slate-700/50 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
-            <Hash className="w-6 h-6 text-blue-400" />
+        <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-5 border border-sky-100/90 shadow-md text-slate-800 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100">
+            <Hash className="w-6 h-6 text-blue-600" />
           </div>
           <div>
-            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Total PTW</p>
-            <p className="text-2xl font-bold text-white">{records.length}</p>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total PTW</p>
+            <p className="text-2xl font-black text-slate-900">{records.length}</p>
           </div>
         </div>
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl p-5 border border-slate-700/50 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
-            <Calendar className="w-6 h-6 text-purple-400" />
+        <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-5 border border-sky-100/90 shadow-md text-slate-800 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center border border-purple-100">
+            <Calendar className="w-6 h-6 text-purple-600" />
           </div>
           <div>
-            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider">Update Terbaru</p>
-            <p className="text-lg font-bold text-white">
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Update Terbaru</p>
+            <p className="text-lg font-black text-slate-900">
               {records.length > 0 ? new Date(records[0].startDate).toLocaleDateString('id-ID') : '-'}
             </p>
           </div>
@@ -1307,37 +1307,37 @@ export function PTWManagement() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Cari nomor PTW atau alat..."
-            className="w-full h-full pl-12 pr-4 py-4 bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 outline-none transition text-white placeholder-slate-500 shadow-xl"
+            className="w-full h-full pl-12 pr-4 py-4 bg-slate-50/90 border border-slate-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 placeholder-slate-400 shadow-md font-medium"
           />
         </div>
       </div>
 
       {/* Loading State */}
       {loading ? (
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-12 text-center">
-          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin mx-auto mb-2" />
-          <p className="text-slate-400 text-sm">Memuat data...</p>
+        <div className="bg-white/90 backdrop-blur-xl rounded-2xl border border-sky-100/90 p-12 text-center shadow-md">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-2" />
+          <p className="text-slate-500 text-sm font-medium">Memuat data...</p>
         </div>
       ) : filteredRecords.length === 0 ? (
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-slate-700/50 p-12 text-center">
-          <AlertCircle className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-          <p className="text-slate-400">Belum ada data PTW ditemukan</p>
+        <div className="bg-white/90 backdrop-blur-xl rounded-2xl border border-sky-100/90 p-12 text-center shadow-md">
+          <AlertCircle className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+          <p className="text-slate-600 font-medium">Belum ada data PTW ditemukan</p>
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="flex justify-between items-center bg-slate-900/20 px-6 py-4 rounded-2xl border border-slate-800/80">
-            <h2 className="text-sm font-bold text-slate-300">Daftar Dokumen PTW</h2>
+          <div className="flex justify-between items-center bg-white/90 backdrop-blur-xl px-6 py-4 rounded-2xl border border-sky-100/90 shadow-md text-slate-800">
+            <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">Daftar Dokumen PTW</h2>
             <div className="flex gap-2">
               <button
                 onClick={() => exportPTWListToExcel(filteredRecords)}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-xl border border-slate-700/50 text-xs font-bold transition shadow-lg cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 text-xs font-bold transition shadow-sm cursor-pointer"
               >
                 <Download className="w-4 h-4" />
                 Export Excel
               </button>
               <button
                 onClick={() => exportPTWListToPDF(filteredRecords)}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-red-400 rounded-xl border border-slate-700/50 text-xs font-bold transition shadow-lg cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl border border-red-200 text-xs font-bold transition shadow-sm cursor-pointer"
               >
                 <Download className="w-4 h-4" />
                 Export PDF
@@ -1349,19 +1349,19 @@ export function PTWManagement() {
             const isExpanded = !!expandedGroups[code];
             
             return (
-              <div key={code} className="bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-slate-700/50 overflow-hidden shadow-2xl transition-all duration-300">
+              <div key={code} className="bg-white/90 backdrop-blur-xl rounded-2xl border border-sky-100/90 overflow-hidden shadow-lg transition-all duration-300 text-slate-800">
                 {/* Collapsible Header */}
                 <div
                   onClick={() => toggleGroup(code)}
-                  className="w-full flex items-center justify-between p-5 hover:bg-slate-800/20 transition-colors cursor-pointer text-left"
+                  className="w-full flex items-center justify-between p-5 hover:bg-slate-50/80 transition-colors cursor-pointer text-left"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 shadow-md">
-                      <Package className="w-5 h-5 text-indigo-400" />
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center border border-indigo-100 shadow-sm">
+                      <Package className="w-5 h-5 text-indigo-600" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-white tracking-tight uppercase">{code}</h3>
-                      <p className="text-slate-400 text-xs font-semibold">{groupRecords.length} Dokumen PTW</p>
+                      <h3 className="text-lg font-black text-slate-900 tracking-tight uppercase">{code}</h3>
+                      <p className="text-slate-500 text-xs font-semibold">{groupRecords.length} Dokumen PTW</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -1391,109 +1391,110 @@ export function PTWManagement() {
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.25, ease: 'easeInOut' }}
-                      className="border-t border-slate-850 overflow-hidden"
+                      className="border-t border-slate-100 overflow-hidden"
                     >
                       <div className="p-4 sm:p-6 space-y-4">
-                        <div className="hidden md:block overflow-x-auto scrollbar-thin rounded-xl border border-slate-800 bg-slate-950/20 w-full">
+                        <div className="hidden md:block overflow-x-auto scrollbar-thin rounded-xl border border-slate-200/80 bg-slate-50/60 w-full shadow-inner">
                           <table className="w-full min-w-[800px]">
-                            <thead className="bg-slate-800/30 border-b border-slate-800/80">
+                            <thead className="bg-slate-100/90 border-b border-slate-200">
                               <tr>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Nomor PTW</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Quarter</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Masa Berlaku</th>
-                                <th className="px-6 py-4 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Aksi</th>
+                                <th className="px-6 py-3.5 text-left text-xs font-black text-slate-600 uppercase tracking-wider">Nomor PTW</th>
+                                <th className="px-6 py-3.5 text-left text-xs font-black text-slate-600 uppercase tracking-wider">Quarter</th>
+                                <th className="px-6 py-3.5 text-left text-xs font-black text-slate-600 uppercase tracking-wider">Masa Berlaku</th>
+                                <th className="px-6 py-3.5 text-center text-xs font-black text-slate-600 uppercase tracking-wider">Aksi</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-800/50">
+                            <tbody className="divide-y divide-slate-200/70 bg-white">
                               {groupRecords.map((record) => {
                                 const isClosed = !!record.closingFileName || (!!record.endDate && record.endDate < new Date().toISOString().split('T')[0]);
                                 return (
-                                  <tr key={record.id} className="hover:bg-slate-800/10 transition group">
+                                  <tr key={record.id} className="hover:bg-indigo-50/40 transition-colors group">
                                     <td className="px-6 py-4">
                                       <div className="flex items-center gap-2">
-                                        <span className="text-sm font-bold text-white bg-indigo-500/10 px-3 py-1 rounded-lg border border-indigo-500/20">
+                                        <span className="text-sm font-extrabold text-indigo-900 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-200/80 shadow-xs">
                                           {record.ptwNumber}
                                         </span>
                                         {isClosed && (
-                                          <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2.5 py-0.5 rounded-full border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)] animate-pulse">
+                                          <span className="text-[10px] font-black text-red-600 bg-red-50 px-2.5 py-0.5 rounded-full border border-red-200 shadow-xs">
                                             SELESAI
                                           </span>
                                         )}
                                       </div>
                                     </td>
-                                  <td className="px-6 py-4">
-                                    <span className="text-sm text-slate-300 bg-slate-700/30 px-2.5 py-0.5 rounded border border-slate-600/30">
-                                      Q{parseInt(record.quarter)}
-                                    </span>
-                                  </td>
-                                  <td className="px-6 py-4 text-sm text-slate-400">
-                                    <div className="flex flex-col">
-                                      <span className="text-xs text-slate-500 font-bold uppercase tracking-tighter">Masa Berlaku</span>
-                                      <span className="text-white font-medium">
-                                        {new Date(record.startDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} - {new Date(record.endDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                    <td className="px-6 py-4">
+                                      <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200">
+                                        Q{parseInt(record.quarter)}
                                       </span>
-                                    </div>
-                                  </td>
-                                  <td className="px-6 py-4">
-                                    <div className="flex items-center justify-center gap-2">
-                                      {record.fileName && record.totalChunks && (
-                                        <>
-                                          <button
-                                            onClick={() => handlePreview(record)}
-                                            className="p-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 rounded-lg transition border border-indigo-500/20"
-                                            title="Pratinjau PTW"
-                                          >
-                                            <Eye className="w-4 h-4" />
-                                          </button>
-                                          <button
-                                            onClick={() => handleDownload(record)}
-                                            className="p-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition border border-emerald-500/20"
-                                            title="Download Lampiran"
-                                          >
-                                            <Download className="w-4 h-4" />
-                                          </button>
-                                        </>
-                                      )}
-                                      {record.closingFileName && record.closingTotalChunks && (
-                                        <>
-                                          <button
-                                            onClick={() => handlePreviewClosing(record)}
-                                            className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition border border-red-500/20"
-                                            title="Pratinjau Closing PTW"
-                                          >
-                                            <Eye className="w-4 h-4 text-red-400" />
-                                          </button>
-                                          <button
-                                            onClick={() => handleDownloadClosing(record)}
-                                            className="p-2 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 rounded-lg transition border border-rose-500/20"
-                                            title="Download Closing PTW"
-                                          >
-                                            <Download className="w-4 h-4 text-rose-400" />
-                                          </button>
-                                        </>
-                                      )}
-                                      {isAdmin && (
-                                        <>
-                                          <button
-                                            onClick={() => openEditModal(record)}
-                                            className="p-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 rounded-lg transition border border-blue-500/20"
-                                            title="Edit"
-                                          >
-                                            <Edit2 className="w-4 h-4" />
-                                          </button>
-                                          <button
-                                            onClick={() => handleDelete(record)}
-                                            className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition border border-red-500/20"
-                                            title="Hapus"
-                                          >
-                                            <Trash2 className="w-4 h-4" />
-                                          </button>
-                                        </>
-                                      )}
-                                    </div>
-                                  </td>
-                                </tr>
-                               )})}
+                                    </td>
+                                    <td className="px-6 py-4 text-sm">
+                                      <div className="flex flex-col">
+                                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Masa Berlaku</span>
+                                        <span className="text-slate-800 font-bold">
+                                          {new Date(record.startDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} - {new Date(record.endDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                      <div className="flex items-center justify-center gap-1.5">
+                                        {record.fileName && record.totalChunks && (
+                                          <>
+                                            <button
+                                              onClick={() => handlePreview(record)}
+                                              className="p-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-lg transition border border-indigo-200/80 shadow-xs cursor-pointer"
+                                              title="Pratinjau PTW"
+                                            >
+                                              <Eye className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                              onClick={() => handleDownload(record)}
+                                              className="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition border border-emerald-200/80 shadow-xs cursor-pointer"
+                                              title="Download Lampiran"
+                                            >
+                                              <Download className="w-4 h-4" />
+                                            </button>
+                                          </>
+                                        )}
+                                        {record.closingFileName && record.closingTotalChunks && (
+                                          <>
+                                            <button
+                                              onClick={() => handlePreviewClosing(record)}
+                                              className="p-2 bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white rounded-lg transition border border-amber-200/80 shadow-xs cursor-pointer group/btn"
+                                              title="Pratinjau Closing PTW"
+                                            >
+                                              <Eye className="w-4 h-4 text-amber-600 group-hover/btn:text-white" />
+                                            </button>
+                                            <button
+                                              onClick={() => handleDownloadClosing(record)}
+                                              className="p-2 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-lg transition border border-rose-200/80 shadow-xs cursor-pointer group/btn"
+                                              title="Download Closing PTW"
+                                            >
+                                              <Download className="w-4 h-4 text-rose-600 group-hover/btn:text-white" />
+                                            </button>
+                                          </>
+                                        )}
+                                        {isAdmin && (
+                                          <>
+                                            <button
+                                              onClick={() => openEditModal(record)}
+                                              className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg transition border border-blue-200/80 shadow-xs cursor-pointer"
+                                              title="Edit"
+                                            >
+                                              <Edit2 className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                              onClick={() => handleDelete(record)}
+                                              className="p-2 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg transition border border-red-200/80 shadow-xs cursor-pointer"
+                                              title="Hapus"
+                                            >
+                                              <Trash2 className="w-4 h-4" />
+                                            </button>
+                                          </>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                             </tbody>
                           </table>
                         </div>
@@ -1503,90 +1504,91 @@ export function PTWManagement() {
                           {groupRecords.map((record) => {
                             const isClosed = !!record.closingFileName || (!!record.endDate && record.endDate < new Date().toISOString().split('T')[0]);
                             return (
-                            <div key={record.id} className="bg-slate-950/20 rounded-xl border border-slate-800 p-4 shadow-sm">
-                              <div className="flex items-start justify-between mb-3">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-bold text-white bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20">
-                                    {record.ptwNumber}
-                                  </span>
-                                  {isClosed && (
-                                    <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
-                                      SELESAI
+                              <div key={record.id} className="bg-slate-50/80 rounded-xl border border-slate-200 p-4 shadow-sm">
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-extrabold text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-200/80 shadow-xs">
+                                      {record.ptwNumber}
                                     </span>
-                                  )}
-                                </div>
-                                <span className="text-xs text-slate-300 bg-slate-700/40 px-2.5 py-1 rounded-lg border border-slate-600/30 font-bold">
-                                  Q{parseInt(record.quarter)}
-                                </span>
-                              </div>
-                              <div className="space-y-2 mb-4">
-                                <div className="flex items-center gap-2">
-                                  <Calendar className="w-4 h-4 text-slate-500 flex-shrink-0" />
-                                  <span className="text-sm text-slate-400">
-                                    {new Date(record.startDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} - {new Date(record.endDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                    {isClosed && (
+                                      <span className="text-[10px] font-black text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
+                                        SELESAI
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-xs text-slate-700 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 font-bold">
+                                    Q{parseInt(record.quarter)}
                                   </span>
                                 </div>
-                              </div>
-                              {((record.fileName && record.totalChunks) || (record.closingFileName && record.closingTotalChunks) || isAdmin) && (
-                                <div className="flex flex-col gap-2 pt-3 border-t border-slate-800">
-                                  {record.fileName && record.totalChunks && (
-                                    <div className="flex items-center gap-2 w-full">
-                                      <button
-                                        onClick={() => handlePreview(record)}
-                                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 rounded-lg transition border border-indigo-500/20 text-sm font-medium"
-                                      >
-                                        <Eye className="w-4 h-4" />
-                                        Preview
-                                      </button>
-                                      <button
-                                        onClick={() => handleDownload(record)}
-                                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-lg transition border border-emerald-500/20 text-sm font-medium"
-                                      >
-                                        <Download className="w-4 h-4" />
-                                        File
-                                      </button>
-                                    </div>
-                                  )}
-                                  {record.closingFileName && record.closingTotalChunks && (
-                                    <div className="flex items-center gap-2 w-full">
-                                      <button
-                                        onClick={() => handlePreviewClosing(record)}
-                                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition border border-red-500/20 text-sm font-medium"
-                                      >
-                                        <Eye className="w-4 h-4" />
-                                        Preview Closing
-                                      </button>
-                                      <button
-                                        onClick={() => handleDownloadClosing(record)}
-                                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 rounded-lg transition border border-rose-500/20 text-sm font-medium"
-                                      >
-                                        <Download className="w-4 h-4" />
-                                        File Closing
-                                      </button>
-                                    </div>
-                                  )}
-                                  {isAdmin && (
-                                    <div className="flex items-center gap-2 w-full">
-                                      <button
-                                        onClick={() => openEditModal(record)}
-                                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 rounded-lg transition border border-blue-500/20 text-sm font-medium"
-                                      >
-                                        <Edit2 className="w-4 h-4" />
-                                        Edit
-                                      </button>
-                                      <button
-                                        onClick={() => handleDelete(record)}
-                                        className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-lg transition border border-red-500/20 text-sm font-medium"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                        Hapus
-                                      </button>
-                                    </div>
-                                  )}
+                                <div className="space-y-2 mb-4">
+                                  <div className="flex items-center gap-2">
+                                    <Calendar className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                                    <span className="text-sm text-slate-700 font-medium">
+                                      {new Date(record.startDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} - {new Date(record.endDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                    </span>
+                                  </div>
                                 </div>
-                              )}
-                            </div>
-                          )})}
+                                {((record.fileName && record.totalChunks) || (record.closingFileName && record.closingTotalChunks) || isAdmin) && (
+                                  <div className="flex flex-col gap-2 pt-3 border-t border-slate-200">
+                                    {record.fileName && record.totalChunks && (
+                                      <div className="flex items-center gap-2 w-full">
+                                        <button
+                                          onClick={() => handlePreview(record)}
+                                          className="flex-1 flex items-center justify-center gap-2 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white rounded-lg transition border border-indigo-200 text-sm font-semibold cursor-pointer"
+                                        >
+                                          <Eye className="w-4 h-4" />
+                                          Preview
+                                        </button>
+                                        <button
+                                          onClick={() => handleDownload(record)}
+                                          className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white rounded-lg transition border border-emerald-200 text-sm font-semibold cursor-pointer"
+                                        >
+                                          <Download className="w-4 h-4" />
+                                          File
+                                        </button>
+                                      </div>
+                                    )}
+                                    {record.closingFileName && record.closingTotalChunks && (
+                                      <div className="flex items-center gap-2 w-full">
+                                        <button
+                                          onClick={() => handlePreviewClosing(record)}
+                                          className="flex-1 flex items-center justify-center gap-2 py-2 bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white rounded-lg transition border border-amber-200 text-sm font-semibold cursor-pointer"
+                                        >
+                                          <Eye className="w-4 h-4" />
+                                          Preview Closing
+                                        </button>
+                                        <button
+                                          onClick={() => handleDownloadClosing(record)}
+                                          className="flex-1 flex items-center justify-center gap-2 py-2 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-lg transition border border-rose-200 text-sm font-semibold cursor-pointer"
+                                        >
+                                          <Download className="w-4 h-4" />
+                                          File Closing
+                                        </button>
+                                      </div>
+                                    )}
+                                    {isAdmin && (
+                                      <div className="flex items-center gap-2 w-full pt-1">
+                                        <button
+                                          onClick={() => openEditModal(record)}
+                                          className="flex-1 flex items-center justify-center gap-2 py-2 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg transition border border-blue-200 text-sm font-semibold cursor-pointer"
+                                        >
+                                          <Edit2 className="w-4 h-4" />
+                                          Edit
+                                        </button>
+                                        <button
+                                          onClick={() => handleDelete(record)}
+                                          className="flex-1 flex items-center justify-center gap-2 py-2 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-lg transition border border-red-200 text-sm font-semibold cursor-pointer"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                          Hapus
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     </motion.div>
@@ -1603,11 +1605,11 @@ export function PTWManagement() {
       {activeSubTab === 'weekly' && (
         <div className="space-y-8 animate-fadeIn">
           {/* Header Panel with Dropdowns and Export Buttons */}
-          <div className="bg-slate-900/40 backdrop-blur-xl rounded-3xl p-6 mb-2 border border-slate-700/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-6 mb-2 border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
             <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2 bg-slate-800/40 px-4 py-2.5 rounded-2xl border border-slate-700/30">
-                <Calendar className="w-5 h-5 text-indigo-400" />
-                <span className="text-sm font-bold text-white">Filter Periode:</span>
+              <div className="flex items-center gap-2 bg-slate-50 px-4 py-2.5 rounded-2xl border border-slate-200">
+                <Calendar className="w-5 h-5 text-indigo-600" />
+                <span className="text-sm font-bold text-slate-900">Filter Periode:</span>
               </div>
               
               <div className="flex gap-2">
@@ -1618,7 +1620,7 @@ export function PTWManagement() {
                     setSelectedMonth(parseInt(e.target.value));
                     setSelectedWeek(1); // Reset to week 1 when month changes
                   }}
-                  className="bg-slate-800/60 border border-slate-700/50 rounded-2xl px-4 py-2.5 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
+                  className="bg-white border border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-sm"
                 >
                   <option value={1}>Januari</option>
                   <option value={2}>Februari</option>
@@ -1641,7 +1643,7 @@ export function PTWManagement() {
                     setSelectedYear(parseInt(e.target.value));
                     setSelectedWeek(1);
                   }}
-                  className="bg-slate-800/60 border border-slate-700/50 rounded-2xl px-4 py-2.5 text-sm font-bold text-white outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
+                  className="bg-white border border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer shadow-sm"
                 >
                   <option value={2025}>2025</option>
                   <option value={2026}>2026</option>
@@ -1653,14 +1655,14 @@ export function PTWManagement() {
             <div className="flex gap-2 w-full sm:w-auto">
               <button
                 onClick={handleExportExcelReport}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-2xl border border-slate-700/50 text-xs font-bold transition shadow-lg cursor-pointer"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-50 text-emerald-600 rounded-2xl border border-slate-200 text-xs font-bold transition shadow-sm cursor-pointer"
               >
                 <Download className="w-4 h-4" />
                 Excel Laporan
               </button>
               <button
                 onClick={handleExportPdfReport}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-red-400 rounded-2xl border border-slate-700/50 text-xs font-bold transition shadow-lg cursor-pointer"
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-50 text-red-600 rounded-2xl border border-slate-200 text-xs font-bold transition shadow-sm cursor-pointer"
               >
                 <Download className="w-4 h-4" />
                 PDF Laporan
@@ -1683,15 +1685,15 @@ export function PTWManagement() {
                   onClick={() => setSelectedWeek(wd.weekNum)}
                   className={`p-5 rounded-3xl backdrop-blur-xl border cursor-pointer transition-all duration-300 ${
                     isSelected
-                      ? 'bg-gradient-to-br from-indigo-900/40 to-blue-900/30 border-indigo-500/80 shadow-lg shadow-indigo-500/10'
-                      : 'bg-slate-900/40 border-slate-700/50 hover:border-slate-600/80'
+                      ? 'bg-gradient-to-br from-indigo-50 to-blue-50 border-indigo-300 shadow-md'
+                      : 'bg-white/90 border-slate-200 hover:border-slate-300 shadow-sm'
                   }`}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <span className={`text-xs font-bold px-3 py-1 rounded-full ${
                       isSelected 
-                        ? 'bg-indigo-500/20 text-indigo-300' 
-                        : 'bg-slate-800 text-slate-400'
+                        ? 'bg-indigo-100 text-indigo-700' 
+                        : 'bg-slate-100 text-slate-600'
                     }`}>
                       Minggu {wd.weekNum}
                     </span>
@@ -1809,7 +1811,7 @@ export function PTWManagement() {
             </div>
 
             {/* Selected Week Table (Span 7) */}
-            <div className="lg:col-span-7 bg-slate-900/40 backdrop-blur-xl rounded-3xl p-6 border border-slate-700/50 shadow-xl flex flex-col justify-between">
+            <div className="lg:col-span-7 bg-white/90 backdrop-blur-xl rounded-3xl p-6 border border-slate-200 shadow-lg flex flex-col justify-between">
               <div>
                 <div className="flex justify-between items-center mb-6">
                   <div>
@@ -1893,7 +1895,7 @@ export function PTWManagement() {
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
                 onDragEnter={isAddModalOpen ? handleDragEnter : undefined}
-                className={`relative w-full ${isAddModalOpen ? 'max-w-2xl' : 'max-w-lg'} bg-slate-900 rounded-3xl border border-white/10 shadow-2xl overflow-hidden my-auto`}
+                className={`relative w-full ${isAddModalOpen ? 'max-w-2xl' : 'max-w-lg'} bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden my-auto`}
               >
                 <AnimatePresence>
                   {isAddModalOpen && isDragging && (
@@ -2498,7 +2500,7 @@ export function PTWManagement() {
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="relative w-full max-w-md bg-slate-900 rounded-3xl border border-white/10 shadow-2xl p-8 text-center"
+                className="relative w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-2xl p-8 text-center"
               >
                 <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/20">
                   <Trash2 className="w-10 h-10 text-red-500" />
@@ -2511,7 +2513,7 @@ export function PTWManagement() {
                 <div className="flex gap-4">
                   <button
                     onClick={() => setIsDeleteModalOpen(false)}
-                    className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold transition"
+                    className="flex-1 py-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-2xl font-bold transition"
                   >
                     Batal
                   </button>
@@ -2544,7 +2546,7 @@ export function PTWManagement() {
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="relative w-full max-w-md bg-slate-900 rounded-3xl border border-white/10 shadow-2xl p-8 text-center"
+                className="relative w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-2xl p-8 text-center"
               >
                 <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/20">
                   <Trash2 className="w-10 h-10 text-red-500" />
@@ -2557,7 +2559,7 @@ export function PTWManagement() {
                 <div className="flex gap-4">
                   <button
                     onClick={() => setIsDeleteCategoryModalOpen(false)}
-                    className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold transition"
+                    className="flex-1 py-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-2xl font-bold transition"
                   >
                     Batal
                   </button>
@@ -2590,7 +2592,7 @@ export function PTWManagement() {
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="relative w-full max-w-md bg-slate-900 rounded-3xl border border-white/10 shadow-2xl p-8 text-center"
+                className="relative w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-2xl p-8 text-center"
               >
                 <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-amber-500/20">
                   <AlertCircle className="w-10 h-10 text-amber-500" />
@@ -2603,7 +2605,7 @@ export function PTWManagement() {
                   <button
                     type="button"
                     onClick={() => handleConfirmResponse(false)}
-                    className="flex-1 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold transition cursor-pointer"
+                    className="flex-1 py-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-2xl font-bold transition cursor-pointer"
                   >
                     Batal
                   </button>

@@ -600,14 +600,14 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
     return (
         <>
             <div className="space-y-6">
-                <div className="flex justify-between items-center bg-slate-900/40 p-4 rounded-xl border border-slate-700/30 mb-2">
-                    <div className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <div className="flex justify-between items-center bg-gradient-to-r from-emerald-50 via-teal-50 to-sky-50 p-4 rounded-2xl border border-emerald-100 shadow-sm mb-2">
+                    <div className="text-xs font-black text-slate-700 uppercase tracking-widest flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
                         Mode: {editingData ? 'Edit ' : 'Input '}{mode.toUpperCase()}
                     </div>
                     {editingData && (
-                        <button onClick={onClearEdit} className="px-4 py-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30 text-sm font-bold flex items-center gap-2 transition hover:bg-blue-600/30">
-                            <Loader2 className="w-4 h-4" /> Batal Edit
+                        <button onClick={onClearEdit} className="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl border border-blue-200 text-xs font-bold flex items-center gap-2 transition hover:bg-blue-100 shadow-sm cursor-pointer">
+                            <Loader2 className="w-4 h-4 animate-spin" /> Batal Edit
                         </button>
                     )}
                 </div>
@@ -616,19 +616,19 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4 }}
-                    className="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden shadow-2xl"
+                    className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm"
                 >
-                    <div className="px-5 py-4 border-b border-slate-800/60 flex items-center gap-3">
-                        <div className="p-2 bg-green-500/15 rounded-lg">
-                            <ClipboardList className="w-4 h-4 text-green-400" />
+                    <div className="px-5 py-4 bg-slate-50/80 border-b border-slate-200 flex items-center gap-3">
+                        <div className="p-2 bg-emerald-100 rounded-lg">
+                            <ClipboardList className="w-4 h-4 text-emerald-700" />
                         </div>
-                        <h3 className="text-sm font-semibold text-white">Informasi {mode.toUpperCase()}</h3>
+                        <h3 className="text-sm font-bold text-slate-900">Informasi {mode.toUpperCase()}</h3>
                     </div>
                     <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="sm:col-span-2">
-                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                                 <span className="flex items-center gap-1.5">
-                                    <CheckSquare className="w-3.5 h-3.5" /> Inspector HSE
+                                    <CheckSquare className="w-3.5 h-3.5 text-emerald-600" /> Inspector HSE
                                 </span>
                             </label>
                             <input
@@ -636,15 +636,15 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                 value={inspectorK3}
                                 onChange={e => setInspectorK3(e.target.value)}
                                 placeholder="Nama Inspector"
-                                className="w-full px-4 py-3 bg-slate-900/40 border border-slate-700/50 rounded-xl text-white text-sm outline-none focus:border-green-500/40 focus:ring-2 focus:ring-green-500/10 transition"
+                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition shadow-sm"
                             />
                         </div>
 
                         {mode !== 'inspection' && (
                             <div className="sm:col-span-2">
-                                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                                     <span className="flex items-center gap-1.5">
-                                        <Briefcase className="w-3.5 h-3.5" /> Jenis Maintenance
+                                        <Briefcase className="w-3.5 h-3.5 text-emerald-600" /> Jenis Maintenance
                                     </span>
                                 </label>
                                 <input
@@ -652,15 +652,15 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                     value={maintenanceCategory}
                                     onChange={e => setMaintenanceCategory(e.target.value.toUpperCase())}
                                     placeholder="Contoh: PJU, LIFT, GENSET, dll"
-                                    className="w-full px-4 py-3 bg-slate-900/40 border border-slate-700/50 rounded-xl text-white text-sm outline-none focus:border-green-500/40 focus:ring-2 focus:ring-green-500/10 transition uppercase"
+                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition uppercase shadow-sm"
                                 />
                             </div>
                         )}
 
                         <div className="sm:col-span-2">
-                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                                 <span className="flex items-center gap-1.5">
-                                    <Briefcase className="w-3.5 h-3.5" /> {mode === 'inspection' ? 'Aktivitas (Nama Maintenance)' : 'Nama Unit / Peralatan'}
+                                    <Briefcase className="w-3.5 h-3.5 text-emerald-600" /> {mode === 'inspection' ? 'Aktivitas (Nama Maintenance)' : 'Nama Unit / Peralatan'}
                                 </span>
                             </label>
                             <input
@@ -668,14 +668,14 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                 value={aktivitas}
                                 onChange={e => setAktivitas(e.target.value)}
                                 placeholder={mode === 'inspection' ? "Contoh: P.M Maintenance LIFT" : "Contoh: LIFT CAR 1"}
-                                className="w-full px-4 py-3 bg-slate-900/40 border border-slate-700/50 rounded-xl text-white text-sm outline-none focus:border-green-500/40 focus:ring-2 focus:ring-green-500/10 transition"
+                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition shadow-sm"
                             />
                         </div>
 
                         <div className="sm:col-span-2">
-                            <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                                 <span className="flex items-center gap-1.5">
-                                    <MapPin className="w-3.5 h-3.5" /> Lokasi
+                                    <MapPin className="w-3.5 h-3.5 text-emerald-600" /> Lokasi
                                 </span>
                             </label>
                             <input
@@ -683,16 +683,16 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                 value={lokasi}
                                 onChange={e => setLokasi(e.target.value)}
                                 placeholder="Lokasi Pekerjaan"
-                                className="w-full px-4 py-3 bg-slate-900/40 border border-slate-700/50 rounded-xl text-white text-sm outline-none focus:border-green-500/40 focus:ring-2 focus:ring-green-500/10 transition"
+                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition shadow-sm"
                             />
                         </div>
 
                         {mode === 'inspection' && (
                             <>
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                                         <span className="flex items-center gap-1.5">
-                                            <Users className="w-3.5 h-3.5" /> Personil
+                                            <Users className="w-3.5 h-3.5 text-emerald-600" /> Personil
                                         </span>
                                     </label>
                                     <input
@@ -700,13 +700,13 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                         value={personil}
                                         onChange={e => setPersonil(e.target.value)}
                                         placeholder="Contoh: 4 org"
-                                        className="w-full px-4 py-3 bg-slate-900/40 border border-slate-700/50 rounded-xl text-white text-sm outline-none"
+                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition shadow-sm"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                                         <span className="flex items-center gap-1.5">
-                                            <User className="w-3.5 h-3.5" /> PIC
+                                            <User className="w-3.5 h-3.5 text-emerald-600" /> PIC
                                         </span>
                                     </label>
                                     <input
@@ -714,13 +714,13 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                         value={pic}
                                         onChange={e => setPic(e.target.value)}
                                         placeholder="Nama PIC"
-                                        className="w-full px-4 py-3 bg-slate-900/40 border border-slate-700/50 rounded-xl text-white text-sm outline-none"
+                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition shadow-sm"
                                     />
                                 </div>
                                 <div className="sm:col-span-2">
-                                    <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+                                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
                                         <span className="flex items-center gap-1.5">
-                                            <Users className="w-3.5 h-3.5" /> Anggota
+                                            <Users className="w-3.5 h-3.5 text-emerald-600" /> Anggota
                                         </span>
                                     </label>
                                     <input
@@ -728,7 +728,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                         value={anggota}
                                         onChange={e => setAnggota(e.target.value)}
                                         placeholder="Nama anggota (pisahkan koma)"
-                                        className="w-full px-4 py-3 bg-slate-900/40 border border-slate-700/50 rounded-xl text-white text-sm outline-none"
+                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm font-medium outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition shadow-sm"
                                     />
                                 </div>
                             </>
@@ -740,18 +740,18 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                     <motion.div
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden shadow-2xl"
+                        className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm"
                     >
-                        <button onClick={() => setChecklistOpen(v => !v)} className="w-full px-5 py-4 border-b border-slate-800/60 flex items-center justify-between hover:bg-slate-800/20 transition">
+                        <button onClick={() => setChecklistOpen(v => !v)} className="w-full px-5 py-4 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between hover:bg-slate-100/80 transition cursor-pointer">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-emerald-500/15 rounded-lg"><CheckSquare className="w-4 h-4 text-emerald-400" /></div>
-                                <h3 className="text-sm font-semibold text-white">Checklist Keselamatan Kerja</h3>
+                                <div className="p-2 bg-emerald-100 rounded-lg"><CheckSquare className="w-4 h-4 text-emerald-700" /></div>
+                                <h3 className="text-sm font-bold text-slate-900">Checklist Keselamatan Kerja</h3>
                             </div>
                             <div className="flex items-center gap-4">
-                                <div className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
+                                <div className="px-2.5 py-0.5 bg-emerald-50 border border-emerald-200 rounded-lg text-xs font-bold text-emerald-800 uppercase tracking-widest shadow-sm">
                                     {Object.values(checklist).filter(v => v).length}/{Object.keys(checklist).length}
                                 </div>
-                                {checklistOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                                {checklistOpen ? <ChevronUp className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
                             </div>
                         </button>
                         <AnimatePresence>
@@ -760,14 +760,14 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         {HSE_CHECKLIST_LABELS.filter(item => !['safeCondition', 'safeAction'].includes(item.key)).map(item => (
                                             <div key={item.key} className="flex flex-col gap-3">
-                                                <button onClick={() => toggleCheck(item.key)} className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all ${checklist[item.key] ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' : 'bg-slate-800/30 border-slate-700/30 text-slate-500'}`}>
+                                                <button onClick={() => toggleCheck(item.key)} className={`flex items-center justify-between px-4 py-3 rounded-xl border transition-all cursor-pointer ${checklist[item.key] ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold shadow-sm' : 'bg-slate-50/80 border-slate-200 text-slate-700 hover:bg-slate-100'}`}>
                                                     <div className="flex items-center gap-3">
-                                                        <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${checklist[item.key] ? 'bg-emerald-500 text-white' : 'bg-slate-700/50 border border-slate-600/30'}`}>
-                                                            {checklist[item.key] ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+                                                        <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${checklist[item.key] ? 'bg-emerald-600 text-white' : 'bg-white border border-slate-300'}`}>
+                                                            {checklist[item.key] ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5 text-slate-400" />}
                                                         </div>
                                                         <span className="text-xs font-bold tracking-wide uppercase">{item.label}</span>
                                                     </div>
-                                                    <div className={`text-[10px] font-black ${checklist[item.key] ? 'text-emerald-400' : 'text-red-900/40'}`}>
+                                                    <div className={`text-xs font-black ${checklist[item.key] ? 'text-emerald-700' : 'text-slate-400'}`}>
                                                         {checklist[item.key] ? '✓' : 'X'}
                                                     </div>
                                                 </button>
@@ -778,18 +778,18 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                                             initial={{ height: 0, opacity: 0 }}
                                                             animate={{ height: 'auto', opacity: 1 }}
                                                             exit={{ height: 0, opacity: 0 }}
-                                                            className="ml-8 space-y-2 border-l-2 border-slate-800/50 pl-4 py-1 overflow-hidden"
+                                                            className="ml-8 space-y-2 border-l-2 border-emerald-200 pl-4 py-1 overflow-hidden"
                                                         >
                                                             {item.subItems.map(sub => (
                                                                 <button 
                                                                     key={sub.key} 
                                                                     onClick={() => toggleCheck(sub.key)}
-                                                                    className={`flex items-center gap-3 text-left group transition-all ${checklist[sub.key] ? 'text-emerald-400/80' : 'text-slate-500 hover:text-slate-300'}`}
+                                                                    className={`flex items-center gap-3 text-left group transition-all cursor-pointer ${checklist[sub.key] ? 'text-emerald-800 font-bold' : 'text-slate-600 hover:text-slate-900'}`}
                                                                 >
-                                                                    <div className={`w-4 h-4 rounded-full flex items-center justify-center border transition-all ${checklist[sub.key] ? 'bg-emerald-500/20 border-emerald-500/40' : 'bg-slate-800/40 border-slate-700/40 group-hover:border-slate-500'}`}>
-                                                                        {checklist[sub.key] && <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.5)]" />}
+                                                                    <div className={`w-4 h-4 rounded-full flex items-center justify-center border transition-all ${checklist[sub.key] ? 'bg-emerald-600 border-emerald-600' : 'bg-white border-slate-300 group-hover:border-slate-400'}`}>
+                                                                        {checklist[sub.key] && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
                                                                     </div>
-                                                                    <span className="text-[11px] font-medium">{sub.label}</span>
+                                                                    <span className="text-[11px] font-semibold">{sub.label}</span>
                                                                 </button>
                                                             ))}
                                                         </motion.div>
@@ -799,11 +799,11 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                         ))}
                                     </div>
 
-                                    <div className="mt-8 pt-6 border-t border-slate-800/60">
+                                    <div className="mt-8 pt-6 border-t border-slate-200">
                                         <div className="flex items-center justify-center gap-3 mb-6">
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-700/50 to-transparent" />
+                                            <div className="h-[1px] flex-1 bg-slate-200" />
                                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Kesimpulan Pekerjaan</p>
-                                            <div className="h-[1px] flex-1 bg-gradient-to-r from-transparent via-slate-700/50 to-transparent" />
+                                            <div className="h-[1px] flex-1 bg-slate-200" />
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             {['safeCondition', 'safeAction'].map(key => {
@@ -812,11 +812,11 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                                     <button 
                                                         key={key} 
                                                         onClick={() => toggleCheck(key as any)} 
-                                                        className={`flex items-center justify-between px-5 py-4 rounded-2xl border transition-all ${checklist[key as keyof HSEChecklist] ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-slate-900/40 border-slate-800/60 text-slate-600'}`}
+                                                        className={`flex items-center justify-between px-5 py-4 rounded-2xl border transition-all cursor-pointer ${checklist[key as keyof HSEChecklist] ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold shadow-sm' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'}`}
                                                     >
                                                         <div className="flex items-center gap-4">
-                                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${checklist[key as keyof HSEChecklist] ? 'bg-emerald-500 text-white' : 'bg-slate-800'}`}>
-                                                                {checklist[key as keyof HSEChecklist] ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                                                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${checklist[key as keyof HSEChecklist] ? 'bg-emerald-600 text-white' : 'bg-white border border-slate-300'}`}>
+                                                                {checklist[key as keyof HSEChecklist] ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4 text-slate-400" />}
                                                             </div>
                                                             <span className="text-xs font-black uppercase tracking-widest">{label}</span>
                                                         </div>
@@ -835,12 +835,12 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                 <motion.div
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden shadow-2xl"
+                    className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm"
                 >
-                    <div className="px-5 py-4 border-b border-slate-800/60 flex items-center justify-between">
+                    <div className="px-5 py-4 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-500/15 rounded-lg"><Camera className="w-4 h-4 text-blue-400" /></div>
-                            <h3 className="text-sm font-semibold text-white">Dokumentasi {mode.toUpperCase()}</h3>
+                            <div className="p-2 bg-blue-100 rounded-lg"><Camera className="w-4 h-4 text-blue-700" /></div>
+                            <h3 className="text-sm font-bold text-slate-900">Dokumentasi {mode.toUpperCase()}</h3>
                         </div>
                     </div>
                     <div className="p-5">
@@ -850,7 +850,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                     <button
                                         key={label}
                                         onClick={() => { sioLabelRef.current = label; fileInputRef.current?.click(); }}
-                                        className="flex flex-col items-center justify-center gap-2 p-4 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/20 rounded-xl text-blue-400 transition"
+                                        className="flex flex-col items-center justify-center gap-2 p-4 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl text-blue-800 transition font-bold cursor-pointer shadow-sm"
                                     >
                                         <Upload className="w-5 h-5" />
                                         <span className="text-[10px] font-bold">{label}</span>
@@ -862,7 +862,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                         {mode === 'silo' && (
                             <button
                                 onClick={() => { sioLabelRef.current = 'DOKUMEN SILO'; fileInputRef.current?.click(); }}
-                                className="w-full flex items-center justify-center gap-3 p-4 bg-orange-600/10 hover:bg-orange-600/20 border border-orange-500/20 rounded-xl text-orange-400 transition mb-6"
+                                className="w-full flex items-center justify-center gap-3 p-4 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl text-amber-900 transition mb-6 font-bold cursor-pointer shadow-sm"
                             >
                                 <Upload className="w-5 h-5" />
                                 <span className="text-sm font-bold">UNGGAH DOKUMEN SILO</span>
@@ -874,14 +874,14 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                         <div className="space-y-4">
                             <div 
                                 onClick={() => fileInputRef.current?.click()} 
-                                className="group border-2 border-dashed border-slate-800 hover:border-blue-500/50 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all bg-slate-900/20"
+                                className="group border-2 border-dashed border-slate-300 hover:border-emerald-400 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all bg-slate-50/50 hover:bg-emerald-50/30"
                             >
-                                <div className="p-3 bg-slate-800/40 rounded-xl group-hover:scale-110 group-hover:bg-blue-500/10 transition-all">
-                                    <Camera className="w-6 h-6 text-slate-500 group-hover:text-blue-400" />
+                                <div className="p-3 bg-white border border-slate-200 rounded-xl group-hover:scale-110 group-hover:bg-emerald-100 transition-all shadow-sm">
+                                    <Camera className="w-6 h-6 text-slate-500 group-hover:text-emerald-700" />
                                 </div>
                                 <div className="text-center">
-                                    <p className="text-xs font-bold text-slate-300">Tambah Foto Evidence</p>
-                                    <p className="text-[10px] text-slate-500 mt-1">Klik untuk upload file</p>
+                                    <p className="text-xs font-bold text-slate-900">Tambah Foto Evidence</p>
+                                    <p className="text-[10px] text-slate-500 mt-1 font-medium">Klik untuk upload file</p>
                                 </div>
                             </div>
 
@@ -890,19 +890,19 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                     <AnimatePresence mode="popLayout">
                                         {photos.map((photo) => (
                                             <motion.div key={photo.id} layout className="flex flex-col gap-2">
-                                                <div className="relative group rounded-xl overflow-hidden border border-slate-700/40 aspect-[4/3] bg-slate-950">
+                                                <div className="relative group rounded-xl overflow-hidden border border-slate-200 aspect-[4/3] bg-slate-100 shadow-sm">
                                                     <img src={photo.dataUrl} alt="" className="w-full h-full object-cover" />
                                                     {photo.label && (
-                                                        <div className="absolute top-2 left-2 bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-lg">
+                                                        <div className="absolute top-2 left-2 bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded shadow">
                                                             {photo.label}
                                                         </div>
                                                     )}
                                                     <div className="absolute top-2 right-2 flex gap-1 transition">
-                                                        <button onClick={() => setEditingPhoto(photo)} className="p-2 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg shadow-xl backdrop-blur-sm" title="Edit Foto"><Edit2 className="w-3.5 h-3.5" /></button>
-                                                        <button onClick={() => removePhoto(photo.id)} className="p-2 bg-red-600/90 hover:bg-red-600 text-white rounded-lg shadow-xl backdrop-blur-sm" title="Hapus Foto"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                        <button onClick={() => setEditingPhoto(photo)} className="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md cursor-pointer" title="Edit Foto"><Edit2 className="w-3.5 h-3.5" /></button>
+                                                        <button onClick={() => removePhoto(photo.id)} className="p-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg shadow-md cursor-pointer" title="Hapus Foto"><Trash2 className="w-3.5 h-3.5" /></button>
                                                     </div>
                                                 </div>
-                                                <input type="text" value={photo.description} onChange={e => setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, description: e.target.value } : p))} placeholder="Keterangan foto..." className="w-full px-3 py-2 bg-slate-900/40 border border-slate-800/60 rounded-lg text-white text-[11px] outline-none" />
+                                                <input type="text" value={photo.description} onChange={e => setPhotos(prev => prev.map(p => p.id === photo.id ? { ...p, description: e.target.value } : p))} placeholder="Keterangan foto..." className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] font-medium outline-none focus:ring-1 focus:ring-emerald-500 shadow-sm" />
                                             </motion.div>
                                         ))}
 
@@ -919,12 +919,12 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                             >
                                                 <div 
                                                     onClick={() => fileInputRef.current?.click()}
-                                                    className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-800 hover:border-blue-500/50 rounded-xl aspect-[4/3] cursor-pointer transition-all bg-slate-900/20 hover:bg-blue-500/[0.02] group/inline"
+                                                    className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-xl aspect-[4/3] cursor-pointer transition-all bg-slate-50 hover:bg-emerald-50/50 group/inline"
                                                 >
-                                                    <div className="p-2 bg-slate-800/40 rounded-lg group-hover/inline:scale-105 group-hover/inline:bg-blue-500/10 transition-all">
-                                                        <Upload className="w-5 h-5 text-slate-500 group-hover/inline:text-blue-400" />
+                                                    <div className="p-2 bg-white border border-slate-200 rounded-lg group-hover/inline:scale-105 group-hover/inline:bg-emerald-100 transition-all shadow-sm">
+                                                        <Upload className="w-5 h-5 text-slate-500 group-hover/inline:text-emerald-700" />
                                                     </div>
-                                                    <span className="text-[10px] font-bold text-slate-400 group-hover/inline:text-slate-200 uppercase tracking-wider">Tambah Foto</span>
+                                                    <span className="text-[10px] font-bold text-slate-600 group-hover/inline:text-slate-900 uppercase tracking-wider">Tambah Foto</span>
                                                 </div>
                                                 {/* Placeholder matching the height of photo description input to align grid items */}
                                                 <div className="h-[34px] invisible" aria-hidden="true" />
@@ -941,43 +941,43 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                     <motion.div
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden shadow-2xl"
+                        className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm"
                     >
-                        <div className="px-5 py-4 border-b border-slate-800/60 flex items-center gap-3">
-                            <div className="p-2 bg-blue-500/15 rounded-lg"><ShieldCheck className="w-4 h-4 text-blue-400" /></div>
-                            <h3 className="text-sm font-semibold text-white">Data SIO & SILO</h3>
+                        <div className="px-5 py-4 bg-slate-50/80 border-b border-slate-200 flex items-center gap-3">
+                            <div className="p-2 bg-blue-100 rounded-lg"><ShieldCheck className="w-4 h-4 text-blue-700" /></div>
+                            <h3 className="text-sm font-bold text-slate-900">Data SIO & SILO</h3>
                         </div>
                         <div className="p-5 space-y-6">
                             <div className="space-y-4">
-                                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em]">I. DATA SURAT IZIN OPERATOR (SIO)</h4>
+                                <h4 className="text-[10px] font-black text-blue-800 uppercase tracking-[0.2em]">I. DATA SURAT IZIN OPERATOR (SIO)</h4>
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div>
-                                        <label htmlFor="sioOperatorName" className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Nama Operator</label>
-                                        <input id="sioOperatorName" type="text" value={sioOperatorName} onChange={e => setSioOperatorName(e.target.value.toUpperCase())} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-lg text-white text-xs outline-none" placeholder="ZAINAL" title="Nama Operator SIO" />
+                                        <label htmlFor="sioOperatorName" className="block text-[10px] font-bold text-slate-700 uppercase tracking-widest mb-2">Nama Operator</label>
+                                        <input id="sioOperatorName" type="text" value={sioOperatorName} onChange={e => setSioOperatorName(e.target.value.toUpperCase())} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs font-medium outline-none focus:ring-1 focus:ring-blue-500 shadow-sm" placeholder="ZAINAL" title="Nama Operator SIO" />
                                     </div>
                                     <div>
-                                        <label htmlFor="sioNumber" className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">No SIO / Lisensi</label>
-                                        <input id="sioNumber" type="text" value={sioNumber} onChange={e => setSioNumber(e.target.value.toUpperCase())} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-lg text-white text-xs outline-none" placeholder="1234RTYU-BN" title="No SIO / Lisensi" />
+                                        <label htmlFor="sioNumber" className="block text-[10px] font-bold text-slate-700 uppercase tracking-widest mb-2">No SIO / Lisensi</label>
+                                        <input id="sioNumber" type="text" value={sioNumber} onChange={e => setSioNumber(e.target.value.toUpperCase())} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs font-medium outline-none focus:ring-1 focus:ring-blue-500 shadow-sm" placeholder="1234RTYU-BN" title="No SIO / Lisensi" />
                                     </div>
                                     <div>
-                                        <label htmlFor="sioExpiryDate" className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">Masa Berlaku</label>
-                                        <input id="sioExpiryDate" type="date" value={sioExpiryDate} onChange={e => setSioExpiryDate(e.target.value)} className="w-full px-4 py-2.5 bg-slate-950/50 border border-slate-800 rounded-lg text-white text-xs outline-none" title="Masa Berlaku SIO" placeholder="Pilih tanggal masa berlaku" />
+                                        <label htmlFor="sioExpiryDate" className="block text-[10px] font-bold text-slate-700 uppercase tracking-widest mb-2">Masa Berlaku</label>
+                                        <input id="sioExpiryDate" type="date" value={sioExpiryDate} onChange={e => setSioExpiryDate(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-xs font-medium outline-none focus:ring-1 focus:ring-blue-500 shadow-sm" title="Masa Berlaku SIO" placeholder="Pilih tanggal masa berlaku" />
                                     </div>
                                 </div>
 
                                 <div className="mt-4">
-                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Foto Pendukung SIO (KTP/SIM/SIO)</label>
+                                    <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-widest mb-3">Foto Pendukung SIO (KTP/SIM/SIO)</label>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                         {['KTP', 'SIM', 'KARTU SIO', 'LAINNYA'].map(label => {
                                             const photo = sioPhotos.find(p => p.label === label);
                                             return (
                                                 <div key={label} className="flex flex-col gap-2">
-                                                    <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-950 border border-slate-800 group">
+                                                    <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-slate-50 border border-slate-200 group shadow-sm">
                                                         {photo ? (
                                                             <>
                                                                 <img src={photo.dataUrl} className="w-full h-full object-cover" alt={label} />
                                                                 <div className="absolute top-1 left-1 bg-blue-600 text-[8px] font-black px-1.5 py-0.5 rounded text-white">{label}</div>
-                                                                <button onClick={() => setSioPhotos(prev => prev.filter(p => p.label !== label))} className="absolute top-1 right-1 p-1 bg-red-600 rounded text-white transition shadow-lg" title="Hapus Foto SIO"><Trash2 className="w-3.5 h-3.5" /></button>
+                                                                <button onClick={() => setSioPhotos(prev => prev.filter(p => p.label !== label))} className="absolute top-1 right-1 p-1 bg-rose-600 rounded text-white transition shadow-md cursor-pointer" title="Hapus Foto SIO"><Trash2 className="w-3.5 h-3.5" /></button>
                                                             </>
                                                         ) : (
                                                             <button 
@@ -994,7 +994,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                                                     };
                                                                     input.click();
                                                                 }}
-                                                                className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-600 hover:text-blue-400 hover:bg-blue-500/5 transition-all"
+                                                                className="w-full h-full flex flex-col items-center justify-center gap-2 text-slate-500 hover:text-blue-700 hover:bg-blue-50 transition-all cursor-pointer"
                                                             >
                                                                 <Camera className="w-5 h-5" />
                                                                 <span className="text-[8px] font-black uppercase tracking-tighter">{label}</span>
@@ -1007,7 +1007,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                                             value={photo.description || ''} 
                                                             onChange={e => setSioPhotos(prev => prev.map(p => p.label === 'LAINNYA' ? { ...p, description: e.target.value } : p))} 
                                                             placeholder="Keterangan..." 
-                                                            className="w-full px-3 py-1.5 bg-slate-900/40 border border-slate-800/60 rounded-lg text-white text-[11px] outline-none placeholder-slate-600 focus:border-blue-500/30 transition-all"
+                                                            className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-900 text-[11px] font-medium outline-none placeholder-slate-400 focus:border-blue-500 shadow-sm"
                                                         />
                                                     )}
                                                 </div>
@@ -1017,15 +1017,15 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                 </div>
                             </div>
 
-                            <div className="pt-6 border-t border-slate-800/40 space-y-4">
-                                <h4 className="text-[10px] font-black text-orange-400 uppercase tracking-[0.2em]">II. DOKUMEN SURAT IZIN LAYAK OPERASI (SILO)</h4>
+                            <div className="pt-6 border-t border-slate-200 space-y-4">
+                                <h4 className="text-[10px] font-black text-amber-800 uppercase tracking-[0.2em]">II. DOKUMEN SURAT IZIN LAYAK OPERASI (SILO)</h4>
                                 <div className="relative group">
                                     {siloFile || siloPdfUrl ? (
-                                        <div className="p-6 bg-orange-500/5 border border-orange-500/20 rounded-2xl flex flex-col items-center gap-3">
-                                            <div className="p-3 bg-orange-500/10 rounded-xl"><FileDown className="w-6 h-6 text-orange-400" /></div>
+                                        <div className="p-6 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col items-center gap-3 shadow-sm">
+                                            <div className="p-3 bg-amber-100 rounded-xl"><FileDown className="w-6 h-6 text-amber-700" /></div>
                                             <div className="text-center">
-                                                <p className="text-xs font-black text-white uppercase">{siloFile ? siloFile.name : 'DOKUMEN SILO TERSEDIA'}</p>
-                                                <button onClick={() => { setSiloFile(null); setSiloPdfUrl(''); }} className="text-[10px] font-bold text-red-500 hover:underline mt-1">Hapus & Ganti File</button>
+                                                <p className="text-xs font-black text-slate-900 uppercase">{siloFile ? siloFile.name : 'DOKUMEN SILO TERSEDIA'}</p>
+                                                <button onClick={() => { setSiloFile(null); setSiloPdfUrl(''); }} className="text-[10px] font-bold text-rose-600 hover:underline mt-1 cursor-pointer">Hapus & Ganti File</button>
                                             </div>
                                         </div>
                                     ) : (
@@ -1040,12 +1040,12 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                                                 };
                                                 input.click();
                                             }}
-                                            className="p-8 border-2 border-dashed border-slate-800 hover:border-orange-500/40 rounded-2xl flex flex-col items-center gap-3 cursor-pointer bg-slate-950/30 transition-all"
+                                            className="p-8 border-2 border-dashed border-slate-300 hover:border-amber-400 rounded-2xl flex flex-col items-center gap-3 cursor-pointer bg-slate-50/50 hover:bg-amber-50/30 transition-all"
                                         >
-                                            <Upload className="w-6 h-6 text-slate-600" />
+                                            <Upload className="w-6 h-6 text-slate-500" />
                                             <div className="text-center">
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Unggah Dokumen SILO (PDF)</p>
-                                                <p className="text-[9px] text-slate-600 mt-1">Lampiran ini akan digabung ke laporan HSE</p>
+                                                <p className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Unggah Dokumen SILO (PDF)</p>
+                                                <p className="text-[9px] text-slate-500 mt-1 font-medium">Lampiran ini akan digabung ke laporan HSE</p>
                                             </div>
                                         </div>
                                     )}
@@ -1059,7 +1059,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                     <button
                         onClick={() => handleGeneratePdf('utt')}
                         disabled={isSaving || isGeneratingPdf || isExporting}
-                        className="group relative overflow-hidden px-8 py-4 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 rounded-2xl border-b-4 border-emerald-800 disabled:border-slate-900 transition-all active:translate-y-1 active:border-b-0"
+                        className="group relative overflow-hidden px-8 py-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 rounded-2xl border-b-4 border-emerald-800 disabled:border-slate-300 transition-all active:translate-y-1 active:border-b-0 cursor-pointer shadow-md"
                     >
                         <div className="flex items-center justify-center gap-3 text-white">
                             {isGeneratingPdf && isExporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileDown className="w-5 h-5" />}
@@ -1070,7 +1070,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                     <button
                         onClick={() => handleGeneratePdf('neutradc')}
                         disabled={isSaving || isGeneratingPdf || isExporting}
-                        className="group relative overflow-hidden px-8 py-4 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 rounded-2xl border-b-4 border-blue-800 disabled:border-slate-900 transition-all active:translate-y-1 active:border-b-0"
+                        className="group relative overflow-hidden px-8 py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400 rounded-2xl border-b-4 border-blue-800 disabled:border-slate-300 transition-all active:translate-y-1 active:border-b-0 cursor-pointer shadow-md"
                     >
                         <div className="flex items-center justify-center gap-3 text-white">
                             {isGeneratingPdf && isExporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileDown className="w-5 h-5" />}
@@ -1079,11 +1079,11 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                     </button>
                 </div>
 
-                <div className="flex justify-center gap-6">
+                <div className="flex justify-center gap-4 sm:gap-6 pt-2">
                     <button
                         onClick={() => handleSave()}
                         disabled={isSaving || isGeneratingPdf}
-                        className="flex items-center gap-2 px-6 py-2 text-slate-500 hover:text-white transition text-xs font-bold uppercase tracking-widest"
+                        className="flex items-center gap-2 px-6 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl transition text-xs font-bold uppercase tracking-widest shadow-sm cursor-pointer"
                     >
                         {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                         Simpan Draft
@@ -1092,7 +1092,7 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                         <button
                             onClick={handleResetForm}
                             disabled={isSaving || isGeneratingPdf}
-                            className="flex items-center gap-2 px-6 py-2 text-slate-500 hover:text-red-400 hover:bg-red-400/5 rounded-lg border border-transparent hover:border-red-500/10 transition text-xs font-bold uppercase tracking-widest"
+                            className="flex items-center gap-2 px-6 py-2.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-xl transition text-xs font-bold uppercase tracking-widest shadow-sm cursor-pointer"
                         >
                             <Trash2 className="w-4 h-4" />
                             Kosongkan Form

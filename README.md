@@ -1,7 +1,7 @@
-# 🏢 UTT Report Maintenance
+# 🏢 DwimitraSystem
 
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://reactjs.org/)
-[![Go](https://img.shields.io/badge/Go-1.23-00ADD8?style=flat-square&logo=go)](https://go.dev/)
+[![Go](https://img.shields.io/badge/Go-1.24-00ADD8?style=flat-square&logo=go)](https://go.dev/)
 [![NVIDIA NIM](https://img.shields.io/badge/NVIDIA_NIM-AI_Agent-76B900?style=flat-square&logo=nvidia)](https://developer.nvidia.com/)
 [![Meta Llama](https://img.shields.io/badge/Meta_Llama_3-LLM-0460A9?style=flat-square&logo=meta)](https://meta.ai/)
 [![Firebase](https://img.shields.io/badge/Firebase-Cloud-FFCA28?style=flat-square&logo=firebase)](https://firebase.google.com/)
@@ -11,7 +11,7 @@
 [![Firebase](https://img.shields.io/badge/Deployed_on-Firebase-FFCA28?style=flat-square&logo=firebase)](https://firebase.google.com/)
 [![Security](https://img.shields.io/badge/Security-Hardened-brightgreen?style=flat-square&logo=shield)](#-security)
 
-**UTT Report Maintenance** adalah sistem dokumentasi infrastruktur kritikal profesional yang dirancang khusus untuk memfasilitasi pelaporan pemeliharaan data center bagi **PT United Transworld Trading (UTT)**.
+**DwimitraSystem** adalah sistem dokumentasi infrastruktur kritikal profesional yang dirancang khusus untuk memfasilitasi pelaporan pemeliharaan data center bagi **PT Dwimitra Ekatama Mandiri**.
 
 > 🔗 **Live Production**: <https://report-utt.web.app/>
 
@@ -191,11 +191,6 @@ Modul pelaporan K3 terintegrasi dengan photo editor dan export PDF profesional.
 - **Admin Dashboard** — User management, audit logs, analytics
 - **Notification Center** — Real-time notifications
 
-### 📦 Inventory & Borrowing
-
-- **Equipment Borrowing** — Request & approval workflow
-- **Status Tracking** — Borrowing status list dengan approval chain
-
 ---
 
 ## 📁 Project Structure
@@ -242,7 +237,6 @@ utt-report-maintenance/
 │   │   ├── AdminDashboard.tsx     # Admin control panel
 │   │   ├── SiteManagerDashboard.tsx  # Site manager dashboard
 │   │   ├── HSEApp.tsx             # HSE module page
-│   │   ├── InventoryApp.tsx       # Inventory management
 │   │   └── DivisionApp.tsx        # Division-specific views
 │   ├── themes/                   # UI theme configuration
 │   ├── types/                    # TypeScript type definitions
@@ -533,7 +527,7 @@ docker-compose up -d
 | `site_manager` | 🟠 High | Dashboard + maintenance progress |
 | `manager` | 🟠 High | Dashboard + maintenance progress |
 | `engineer` | 🟢 Standard | Report creation + findings |
-| `standby_engineer` | 🟢 Standard | Report creation + inventory borrowing |
+| `standby_engineer` | 🟢 Standard | Report creation |
 | `hse` | 🟡 Module | HSE reports only |
 | `tde` | 🟡 Module | Division-specific access |
 | `cbre` | 🟡 Module | Division-specific access |
@@ -541,7 +535,6 @@ docker-compose up -d
 | `sales` | 🟡 Module | Division-specific access |
 | `presales` | 🟡 Module | Division-specific access |
 | `purchasing` | 🟡 Module | Division-specific access |
-| `inventory` | 🟡 Module | Inventory management |
 | `dirut` | 🟣 Executive | Read-only executive view |
 | `direksiSDM` | 🟣 Executive | Read-only executive view |
 | `DireksiKeuangan` | 🟣 Executive | Read-only executive view |

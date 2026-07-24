@@ -55,10 +55,12 @@ export default defineConfig({
     })
   ],
   server: {
+    host: true,
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+        ws: true,
         timeout: 300000,
         proxyTimeout: 300000,
       },

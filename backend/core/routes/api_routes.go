@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
+	"github.com/gariiriana/DwimitraSystem/backend/pkg/helpers"
 )
 
 func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
@@ -104,6 +104,21 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 	case path == "/api/ai/ats-report" && r.Method == http.MethodPost:
 		heavy(deps.AICtrl.AnalyzeATSReport)(w, r)
 
+	case path == "/api/ai/fcu-report" && r.Method == http.MethodPost:
+		heavy(deps.AICtrl.AnalyzeFCUReport)(w, r)
+
+	case path == "/api/ai/pju-report" && r.Method == http.MethodPost:
+		heavy(deps.AICtrl.AnalyzePJUReport)(w, r)
+
+	case path == "/api/ai/pdu-report" && r.Method == http.MethodPost:
+		heavy(deps.AICtrl.AnalyzePDUReport)(w, r)
+
+	case path == "/api/ai/ct-report" && r.Method == http.MethodPost:
+		heavy(deps.AICtrl.AnalyzeCTReport)(w, r)
+
+	case path == "/api/ai/generator-report" && r.Method == http.MethodPost:
+		heavy(deps.AICtrl.AnalyzeGeneratorReport)(w, r)
+
 	case path == "/api/ai/validate-form" && r.Method == http.MethodPost:
 		heavy(deps.AICtrl.ValidateATSForm)(w, r)
 
@@ -122,6 +137,10 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 
 	case strings.HasPrefix(path, "/api/findings/") && r.Method == http.MethodDelete:
 		heavy(deps.FindingCtrl.DeleteFinding)(w, r)
+
+	// --- Voice Agent WebSocket ---
+	case path == "/api/voice/ws" && r.Method == http.MethodGet:
+		deps.VoiceCtrl.HandleVoiceSession(w, r)
 
 	default:
 		helpers.SendError(w, "route not found", http.StatusNotFound)

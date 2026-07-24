@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/models"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/repositories"
+	"github.com/gariiriana/DwimitraSystem/backend/core/models"
+	"github.com/gariiriana/DwimitraSystem/backend/core/repositories"
 )
 
 type IMaintenanceProgressService interface {

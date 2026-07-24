@@ -2763,20 +2763,20 @@ export function AbsenTBM() {
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-br from-slate-900/80 to-slate-800/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6"
+        className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-6 shadow-lg text-slate-800"
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div>
-              <h1 className="text-xl font-bold text-white">Absensi Checklist & Grafik TBM</h1>
-              <p className="text-sm text-slate-400">Kelola dan analisis data absensi TBM secara real-time</p>
+              <h1 className="text-xl font-black text-slate-900">Absensi Checklist & Grafik TBM</h1>
+              <p className="text-sm font-medium text-slate-600">Kelola dan analisis data absensi TBM secara real-time</p>
             </div>
           </div>
           <button
             onClick={() => setIsPersonnelPanelOpen(!isPersonnelPanelOpen)}
-            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-750 border border-slate-700/50 hover:border-slate-650 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition active:scale-95 animate-none"
+            className="px-4 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 rounded-xl text-xs font-bold flex items-center gap-2 transition active:scale-95 shadow-sm cursor-pointer"
           >
-            <UserPlus className="w-4 h-4 text-pink-400" />
+            <UserPlus className="w-4 h-4 text-pink-600" />
             {isPersonnelPanelOpen ? "Tutup Panel Personil" : "Kelola Personil TBM"}
           </button>
         </div>
@@ -2791,7 +2791,7 @@ export function AbsenTBM() {
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 shadow-lg text-slate-800">
               {/* Left Form */}
               <div className="space-y-4">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
@@ -2807,27 +2807,27 @@ export function AbsenTBM() {
                       value={newPersonName}
                       onChange={e => setNewPersonName(e.target.value)}
                       placeholder="Masukkan nama lengkap..."
-                      className="w-full bg-slate-800/40 border border-slate-700/50 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-pink-500/50"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/20"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 block mb-1">JABATAN</label>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">JABATAN</label>
                     <input
                       type="text"
                       required
                       value={newPersonJabatan}
                       onChange={e => setNewPersonJabatan(e.target.value)}
                       placeholder="Contoh: Teknisi, Shift Engineer..."
-                      className="w-full bg-slate-800/40 border border-slate-700/50 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-pink-500/50"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/20"
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 block mb-1">KATEGORI TIM</label>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">KATEGORI TIM</label>
                     <select
                       value={newPersonCategory}
                       onChange={e => setNewPersonCategory(e.target.value as any)}
                       title="Kategori Tim"
-                      className="w-full bg-slate-800/40 border border-slate-700/50 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-pink-500/50 font-bold font-sans"
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/20 font-bold font-sans"
                     >
                       <option value="UTT Daily">UTT Daily</option>
                       <option value="UTT Mobile">UTT Mobile</option>
@@ -2850,13 +2850,13 @@ export function AbsenTBM() {
                   <span className="w-2 h-2 bg-violet-500 rounded-full" />
                   Daftar Personil Terdaftar ({personnelList.length})
                 </h3>
-                <div className="max-h-[250px] overflow-y-auto border border-slate-800 rounded-xl bg-slate-950/20 font-sans">
+                <div className="max-h-[250px] overflow-y-auto border border-slate-200 rounded-xl bg-white font-sans shadow-sm">
                   {personnelList.length === 0 ? (
-                    <div className="text-center py-8 text-xs text-slate-500">Belum ada data personil.</div>
+                    <div className="text-center py-8 text-xs text-slate-400">Belum ada data personil.</div>
                   ) : (
                     <table className="w-full text-xs text-left">
                       <thead>
-                        <tr className="bg-slate-900/80 border-b border-slate-800 text-slate-400 font-bold uppercase tracking-wider">
+                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
                           <th className="px-3 py-2.5 w-12">No</th>
                           <th className="px-3 py-2.5">Nama</th>
                           <th className="px-3 py-2.5">Jabatan</th>
@@ -2864,11 +2864,11 @@ export function AbsenTBM() {
                           <th className="px-3 py-2.5 text-center w-16">Aksi</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-900/60">
+                      <tbody className="divide-y divide-slate-100">
                         {personnelList.map((p, idx) => {
                           const isEditing = editingPersonnelId === p.id;
                           return (
-                            <tr key={p.id} className="hover:bg-slate-800/10 text-slate-300">
+                            <tr key={p.id} className="hover:bg-blue-50/50 text-slate-700">
                               <td className="px-3 py-2.5 font-mono text-slate-500">{idx + 1}.</td>
                               {isEditing ? (
                                 <>
@@ -2967,47 +2967,47 @@ export function AbsenTBM() {
       </AnimatePresence>
 
       {/* ─── Filters & Actions Bar ──────────────────────────────── */}
-      <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+      <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-6 grid grid-cols-1 md:grid-cols-4 gap-4 items-end shadow-lg text-slate-800">
         <div>
-          <label className="text-xs font-bold text-slate-400 mb-1.5 block">TANGGAL MULAI</label>
+          <label className="text-xs font-bold text-slate-500 mb-1.5 block uppercase tracking-wider">TANGGAL MULAI</label>
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="date"
               value={startDate}
               onChange={e => setStartDate(e.target.value)}
               title="Tanggal Mulai"
               placeholder="Tanggal Mulai"
-              className="w-full bg-slate-800/40 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50"
+              className="w-full bg-slate-50/90 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
             />
           </div>
         </div>
 
         <div>
-          <label className="text-xs font-bold text-slate-400 mb-1.5 block">TANGGAL SELESAI</label>
+          <label className="text-xs font-bold text-slate-500 mb-1.5 block uppercase tracking-wider">TANGGAL SELESAI</label>
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="date"
               value={endDate}
               onChange={e => setEndDate(e.target.value)}
               title="Tanggal Selesai"
               placeholder="Tanggal Selesai"
-              className="w-full bg-slate-800/40 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50"
+              className="w-full bg-slate-50/90 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
             />
           </div>
         </div>
 
         <div>
-          <label className="text-xs font-bold text-slate-400 mb-1.5 block">CARI NAMA / JABATAN</label>
+          <label className="text-xs font-bold text-slate-500 mb-1.5 block uppercase tracking-wider">CARI NAMA / JABATAN</label>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="Cari..."
-              className="w-full bg-slate-800/40 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-pink-500/50 placeholder-slate-500"
+              className="w-full bg-slate-50/90 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 placeholder-slate-400 font-medium"
             />
           </div>
         </div>
@@ -3015,14 +3015,14 @@ export function AbsenTBM() {
         <div className="flex gap-2">
           <button
             onClick={handleExportPDF}
-            className="flex-1 py-2.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95 animate-none"
+            className="flex-1 py-2.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm active:scale-95 animate-none"
           >
             <FileText className="w-4 h-4" />
             Export PDF
           </button>
           <button
             onClick={handleExportExcel}
-            className="flex-1 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition active:scale-95 animate-none"
+            className="flex-1 py-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm active:scale-95 animate-none"
           >
             <FileSpreadsheet className="w-4 h-4" />
             Export Excel
@@ -3035,55 +3035,55 @@ export function AbsenTBM() {
         
         {/* Left Side: Summary Cards */}
         <div className="space-y-4 font-sans">
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex items-center justify-between">
+          <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-5 flex items-center justify-between shadow-lg text-slate-800">
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Record</p>
-              <h3 className="text-2xl font-black text-white mt-1">{stats.total}</h3>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Record</p>
+              <h3 className="text-2xl font-black text-slate-900 mt-1">{stats.total}</h3>
             </div>
-            <div className="p-3 bg-slate-800 rounded-xl text-slate-300">
+            <div className="p-3 bg-blue-50 rounded-xl text-blue-600 border border-blue-100">
               <TrendingUp className="w-6 h-6" />
             </div>
           </div>
 
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex items-center justify-between">
+          <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-5 flex items-center justify-between shadow-lg text-slate-800">
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hadir</p>
-              <h3 className="text-2xl font-black text-emerald-400 mt-1">{stats.hadir}</h3>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Hadir</p>
+              <h3 className="text-2xl font-black text-emerald-600 mt-1">{stats.hadir}</h3>
             </div>
-            <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400">
+            <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600 border border-emerald-100">
               <CheckCircle className="w-6 h-6" />
             </div>
           </div>
 
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex items-center justify-between">
+          <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-5 flex items-center justify-between shadow-lg text-slate-800">
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tidak Hadir</p>
-              <h3 className="text-2xl font-black text-rose-500 mt-1">{stats.tidakHadir}</h3>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Tidak Hadir</p>
+              <h3 className="text-2xl font-black text-rose-600 mt-1">{stats.tidakHadir}</h3>
             </div>
-            <div className="p-3 bg-rose-500/10 rounded-xl text-rose-400">
+            <div className="p-3 bg-rose-50 rounded-xl text-rose-600 border border-rose-100">
               <XCircle className="w-6 h-6" />
             </div>
           </div>
 
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Rasio Kehadiran</p>
+          <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-5 shadow-lg text-slate-800">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Rasio Kehadiran</p>
             <div className="flex items-center gap-3 mt-2">
-              <div className="flex-1 bg-slate-800 rounded-full h-3.5 overflow-hidden border border-slate-700/50">
+              <div className="flex-1 bg-slate-100 rounded-full h-3.5 overflow-hidden border border-slate-200">
                 <div
                   ref={progressRef}
                   className="bg-gradient-to-r from-emerald-500 to-green-400 h-full transition-all duration-500"
                 />
               </div>
-              <span className="text-sm font-black text-white">{stats.rate}%</span>
+              <span className="text-sm font-black text-slate-900">{stats.rate}%</span>
             </div>
           </div>
 
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex items-center justify-between">
+          <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-5 flex items-center justify-between shadow-lg text-slate-800">
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Jam Kerja</p>
-              <h3 className="text-2xl font-black text-sky-400 mt-1">{stats.totalJamKerja}<span className="text-sm font-bold text-slate-500 ml-1">jam</span></h3>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Jam Kerja</p>
+              <h3 className="text-2xl font-black text-sky-600 mt-1">{stats.totalJamKerja}<span className="text-sm font-bold text-slate-500 ml-1">jam</span></h3>
             </div>
-            <div className="p-3 bg-sky-500/10 rounded-xl text-sky-400">
+            <div className="p-3 bg-sky-50 rounded-xl text-sky-600 border border-sky-100">
               <Clock className="w-6 h-6" />
             </div>
           </div>
@@ -3091,19 +3091,19 @@ export function AbsenTBM() {
         </div>
 
         {/* Right Side: Personnel Attendance Rates or Charts */}
-        <div className="lg:col-span-2 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 flex flex-col justify-start gap-4 min-h-[380px]">
+        <div className="lg:col-span-2 bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-6 flex flex-col justify-start gap-4 min-h-[380px] shadow-lg text-slate-800">
           <div className="flex items-center justify-between border-b border-white/5 pb-3">
             <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <span className="w-2 h-2 bg-pink-500 rounded-full shadow-lg shadow-pink-500" />
               Performa & Rasio Kehadiran
             </h2>
-            <div className="flex bg-slate-800/40 p-0.5 rounded-lg border border-slate-700/50">
+            <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
               <button
                 onClick={() => setActiveRightTab('chart')}
                 className={`px-3 py-1 text-xs font-bold rounded-md transition duration-200 ${
                   activeRightTab === 'chart'
                     ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow'
-                    : 'text-slate-400 hover:text-white'
+                    : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
                 Grafik
@@ -3113,7 +3113,7 @@ export function AbsenTBM() {
                 className={`px-3 py-1 text-xs font-bold rounded-md transition duration-200 ${
                   activeRightTab === 'list'
                     ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow'
-                    : 'text-slate-400 hover:text-white'
+                    : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
                 Rasio Personil
@@ -3141,21 +3141,21 @@ export function AbsenTBM() {
                 ) : (
                   stats.personStats.map((person, idx) => (
                     <div key={idx} className="space-y-1.5 w-full">
-                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-300">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
                         <div className="flex items-center gap-2 truncate max-w-[55%]">
-                          <span className="text-slate-500 font-mono text-[9px]">{idx + 1}.</span>
-                          <span className="truncate text-white">{person.nama}</span>
-                          <span className="text-[9px] font-normal text-slate-500 truncate">({person.jabatan})</span>
+                          <span className="text-slate-400 font-mono text-[9px]">{idx + 1}.</span>
+                          <span className="truncate text-slate-900">{person.nama}</span>
+                          <span className="text-[9px] font-normal text-slate-400 truncate">({person.jabatan})</span>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className="text-[8px] font-bold text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded">{person.totalJamKerja}j</span>
-                          <span className="text-[9px] font-normal text-slate-500">({person.hadir}/{person.total})</span>
-                          <span className={person.rate >= 80 ? 'text-emerald-400' : person.rate >= 50 ? 'text-amber-400' : 'text-rose-400'}>
+                          <span className="text-[8px] font-bold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-200">{person.totalJamKerja}j</span>
+                          <span className="text-[9px] font-normal text-slate-400">({person.hadir}/{person.total})</span>
+                          <span className={person.rate >= 80 ? 'text-emerald-600' : person.rate >= 50 ? 'text-amber-600' : 'text-rose-600'}>
                             {person.rate}%
                           </span>
                         </div>
                       </div>
-                      <div className="w-full bg-slate-800/60 rounded-full h-2 overflow-hidden border border-slate-700/30">
+                      <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
                         <div
                           className={`h-full rounded-full transition-all duration-500 ${
                             person.rate >= 80 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : person.rate >= 50 ? 'bg-gradient-to-r from-amber-500 to-amber-400' : 'bg-gradient-to-r from-rose-500 to-rose-400'
@@ -3176,10 +3176,10 @@ export function AbsenTBM() {
       </div>
 
       {/* ─── Form Section: Checklist Absen TBM ───────────────────── */}
-      <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
-          <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <span className="w-2 h-2 bg-violet-500 rounded-full shadow-lg shadow-violet-500" />
+      <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-6 space-y-4 shadow-lg text-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+          <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <span className="w-2 h-2 bg-violet-500 rounded-full shadow-md shadow-violet-500" />
             Checklist Kehadiran Harian TBM
           </h2>
           <div className="flex flex-wrap items-center gap-3">
@@ -3194,7 +3194,7 @@ export function AbsenTBM() {
                   setFormDate(val);
                 }}
                 title="Tanggal Absen"
-                className="bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50"
+                className="bg-slate-50/90 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
               />
             </div>
             <div>
@@ -3203,7 +3203,7 @@ export function AbsenTBM() {
                 value={formCategory}
                 onChange={e => setFormCategory(e.target.value as any)}
                 title="Kategori TBM"
-                className="bg-slate-800/60 border border-slate-700/50 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50 font-bold font-sans"
+                className="bg-slate-50/90 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold font-sans"
               >
                 <option value="Semua">Semua</option>
                 <option value="UTT Daily">UTT Daily</option>
@@ -3219,7 +3219,7 @@ export function AbsenTBM() {
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="bg-slate-800/60 text-slate-300">
+                <tr className="bg-slate-100 text-slate-700 font-bold">
                   <th className="px-3 py-3 text-left w-12">No</th>
                   <th className="px-3 py-3 text-left">Nama Lengkap</th>
                   <th className="px-3 py-3 text-left w-48">Jabatan</th>
@@ -3240,15 +3240,15 @@ export function AbsenTBM() {
                     return (
                       <Fragment key={index}>
                         {isNewCategory && item.category && (
-                          <tr className="bg-slate-800/40 text-slate-300 border-t border-slate-700/50">
-                            <td colSpan={7} className="px-3 py-2 text-[10px] text-pink-400 font-black tracking-wider uppercase bg-slate-900/40">
+                          <tr className="bg-slate-50 text-slate-700 border-t border-slate-200">
+                            <td colSpan={7} className="px-3 py-2 text-[10px] text-pink-600 font-black tracking-wider uppercase bg-slate-100">
                               {item.category}
                             </td>
                           </tr>
                         )}
-                        <tr className="hover:bg-slate-800/20 transition-colors">
-                          <td className="px-3 py-3.5 text-slate-400 font-mono">{index + 1}.</td>
-                          <td className="px-3 py-3.5 font-bold text-white">
+                        <tr className="hover:bg-blue-50/50 transition-colors">
+                           <td className="px-3 py-3.5 text-slate-500 font-mono">{index + 1}.</td>
+                          <td className="px-3 py-3.5 font-bold text-slate-900">
                             {formCategory === 'Manual' ? (
                               <input
                                 type="text"
@@ -3256,13 +3256,13 @@ export function AbsenTBM() {
                                 onChange={e => updateChecklistItem(index, 'nama', e.target.value)}
                                 placeholder="Ketik Nama Karyawan..."
                                 title="Nama"
-                                className="w-full bg-slate-800/40 border border-slate-700/50 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-violet-500/50"
+                                className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
                               />
                             ) : (
                               item.nama
                             )}
                           </td>
-                          <td className="px-3 py-3.5 text-slate-300 font-medium font-sans">
+                          <td className="px-3 py-3.5 text-slate-600 font-medium font-sans">
                             {formCategory === 'Manual' ? (
                               <input
                                 type="text"
@@ -3328,7 +3328,7 @@ export function AbsenTBM() {
                                     className={`px-2 py-1 rounded-lg border text-[9px] font-black transition-all cursor-pointer ${
                                       isChecked
                                         ? 'bg-violet-500/20 text-violet-400 border-violet-500/40 shadow-sm'
-                                        : 'bg-slate-800/40 text-slate-500 border-slate-700/50 hover:border-slate-600 hover:text-slate-400'
+                                        : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:text-slate-700'
                                     }`}
                                   >
                                     {opt.toUpperCase()}
@@ -3348,7 +3348,7 @@ export function AbsenTBM() {
                                 const v = parseFloat(e.target.value);
                                 updateChecklistItem(index, 'jamKerja', isNaN(v) ? 0 : v);
                               }}
-                              className="w-16 bg-slate-800/60 border border-slate-700/50 rounded-lg px-2 py-1 text-center text-xs text-white focus:outline-none focus:border-violet-500/50"
+                              className="w-16 bg-white border border-slate-200 rounded-lg px-2 py-1 text-center text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500/20"
                               disabled={item.kehadiran !== 'Hadir'}
                               placeholder="-"
                               title="Masukkan angka desimal saja (contoh: 8, 8.5)"
@@ -3375,17 +3375,17 @@ export function AbsenTBM() {
             </table>
           </div>
 
-          <div className="p-4 bg-slate-950/20 rounded-xl border border-white/5 space-y-3">
+          <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
             <div>
-              <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                <Camera className="w-4 h-4 text-pink-400" />
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                <Camera className="w-4 h-4 text-pink-600" />
                 Unggah Foto Dokumentasi TBM
               </h4>
-              <p className="text-[10px] text-slate-400 mt-0.5">Unggah bukti foto dokumentasi kehadiran TBM untuk hari ini.</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">Unggah bukti foto dokumentasi kehadiran TBM untuk hari ini.</p>
             </div>
             
             <div className="flex flex-wrap items-center gap-4">
-              <label className="cursor-pointer px-4 py-2.5 bg-slate-800 hover:bg-slate-750 border border-slate-700/50 hover:border-slate-650 rounded-xl text-xs font-bold text-white flex items-center gap-2 transition active:scale-95 animate-none">
+              <label className="cursor-pointer px-4 py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-2 transition active:scale-95 animate-none shadow-sm">
                 <Upload className="w-4 h-4 text-pink-400" />
                 Pilih Berkas Foto
                 <input
@@ -3430,7 +3430,7 @@ export function AbsenTBM() {
                 <button
                   type="button"
                   onClick={addManualRow}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition active:scale-95 animate-none"
+                  className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition active:scale-95 animate-none shadow-sm"
                 >
                   <Plus className="w-4 h-4" />
                   Tambah Baris Manual
@@ -3459,13 +3459,13 @@ export function AbsenTBM() {
       </div>
 
       {/* ─── Table/Folder Section: Records List ────────────────── */}
-      <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 space-y-6">
+      <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-6 space-y-6 shadow-lg text-slate-800">
         
         {/* Navigation Breadcrumb & Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
           <div className="space-y-1">
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <span className="w-2 h-2 bg-emerald-500 rounded-full shadow-lg shadow-emerald-500" />
+            <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full shadow-md shadow-emerald-500" />
               Daftar Log Kehadiran Absen TBM
             </h2>
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
@@ -3503,14 +3503,14 @@ export function AbsenTBM() {
 
           <div className="flex flex-wrap items-center gap-3">
             {/* View Mode Toggle */}
-            <div className="flex bg-slate-950/40 p-0.5 rounded-lg border border-white/5">
+            <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
               <button
                 type="button"
                 onClick={() => setRecordsViewMode('matrix')}
                 className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
                   recordsViewMode === 'matrix'
-                    ? 'bg-emerald-500 text-white shadow-sm font-black'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-emerald-600 text-white shadow-sm font-black'
+                    : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
                 Tabel Matriks
@@ -3520,8 +3520,8 @@ export function AbsenTBM() {
                 onClick={() => setRecordsViewMode('folder')}
                 className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition cursor-pointer ${
                   recordsViewMode === 'folder'
-                    ? 'bg-emerald-500 text-white shadow-sm font-black'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-emerald-600 text-white shadow-sm font-black'
+                    : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
                 Lihat per Folder
@@ -3539,7 +3539,7 @@ export function AbsenTBM() {
                     setSelectedMonth(null);
                   }
                 }}
-                className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-750 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 border border-slate-700/50 transition active:scale-95 animate-none cursor-pointer"
+                className="px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-bold flex items-center gap-1.5 border border-slate-200 transition active:scale-95 animate-none cursor-pointer shadow-sm"
               >
                 <ChevronLeft className="w-4 h-4" />
                 Kembali
@@ -3563,30 +3563,30 @@ export function AbsenTBM() {
             {recordsViewMode === 'matrix' ? (() => {
               const dates = stats.chartData.map(d => d.tanggal);
               return (
-                <div className="overflow-x-auto rounded-xl border border-white/10 max-h-[500px] custom-scrollbar">
+                <div className="overflow-x-auto rounded-xl border border-slate-200 max-h-[500px] custom-scrollbar bg-white shadow-sm">
                   <table className="w-full text-xs text-left border-collapse">
-                    <thead className="bg-slate-800/80 sticky top-0 text-slate-350 z-20">
+                    <thead className="bg-slate-100 sticky top-0 text-slate-700 z-20">
                       <tr>
-                        <th className="px-3 py-2.5 border border-white/5 w-10 text-center bg-slate-850">No</th>
-                        <th className="px-4 py-2.5 border border-white/5 min-w-[150px] sticky left-0 bg-slate-850 z-30">Nama Personil</th>
-                        <th className="px-4 py-2.5 border border-white/5 min-w-[120px] bg-slate-850">Jabatan</th>
+                        <th className="px-3 py-2.5 border border-slate-200 w-10 text-center bg-slate-100">No</th>
+                        <th className="px-4 py-2.5 border border-slate-200 min-w-[150px] sticky left-0 bg-slate-100 z-30">Nama Personil</th>
+                        <th className="px-4 py-2.5 border border-slate-200 min-w-[120px] bg-slate-100">Jabatan</th>
                         {dates.map(date => {
                           const parts = date.split('-');
                           const label = parts.length >= 3 ? `${parts[2]}/${parts[1]}` : date;
                           return (
-                            <th key={date} className="px-2 py-2.5 border border-white/5 text-center min-w-[55px] font-mono bg-slate-850">
+                            <th key={date} className="px-2 py-2.5 border border-slate-200 text-center min-w-[55px] font-mono bg-slate-100">
                               {label}
                             </th>
                           );
                         })}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800 bg-slate-900/40">
+                    <tbody className="divide-y divide-slate-100 bg-white">
                       {stats.personStats.map((person, pIdx) => (
-                        <tr key={person.nama} className="hover:bg-white/5 transition-colors">
-                          <td className="px-3 py-2 border border-white/5 text-center text-slate-500 font-mono">{pIdx + 1}</td>
-                          <td className="px-4 py-2 border border-white/5 font-bold text-white truncate sticky left-0 bg-slate-900/90 backdrop-blur-sm z-10">{person.nama}</td>
-                          <td className="px-4 py-2 border border-white/5 text-slate-400 truncate">{person.jabatan}</td>
+                        <tr key={person.nama} className="hover:bg-blue-50/50 transition-colors">
+                          <td className="px-3 py-2 border border-slate-200 text-center text-slate-500 font-mono">{pIdx + 1}</td>
+                          <td className="px-4 py-2 border border-slate-200 font-bold text-slate-900 truncate sticky left-0 bg-white z-10">{person.nama}</td>
+                          <td className="px-4 py-2 border border-slate-200 text-slate-600 truncate">{person.jabatan}</td>
                           {dates.map(date => {
                             const rec = filteredRecords.find(r => r.nama === person.nama && r.tanggal === date);
                             let symbol = '-';
@@ -3636,14 +3636,14 @@ export function AbsenTBM() {
                         setSelectedMonth(month);
                         setViewLevel('date');
                       }}
-                      className="flex items-center gap-4 p-5 bg-slate-800/40 backdrop-blur-xl border border-slate-700/30 rounded-2xl hover:border-pink-500/30 hover:bg-slate-850/40 transition group text-left w-full animate-none"
+                      className="flex items-center gap-4 p-5 bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl hover:border-pink-400 hover:bg-pink-50/20 transition group text-left w-full animate-none shadow-sm"
                     >
                       <div className="p-3 bg-gradient-to-br from-amber-500/10 to-amber-600/5 rounded-xl border border-amber-500/20 group-hover:scale-105 transition-transform flex-shrink-0 animate-none">
                         <Folder className="w-8 h-8 text-amber-500" />
                       </div>
                       <div className="min-w-0">
-                        <h3 className="text-sm font-bold text-white group-hover:text-pink-400 transition-colors truncate">{month}</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">{count} Log Kehadiran</p>
+                        <h3 className="text-sm font-bold text-slate-900 group-hover:text-pink-600 transition-colors truncate">{month}</h3>
+                        <p className="text-xs text-slate-500 mt-0.5">{count} Log Kehadiran</p>
                       </div>
                     </motion.button>
                   ))}
@@ -3669,7 +3669,7 @@ export function AbsenTBM() {
                     <motion.div
                       key={dateStr}
                       whileHover={{ scale: 1.02, x: 2 }}
-                      className="relative flex items-center justify-between p-5 bg-slate-800/40 backdrop-blur-xl border border-slate-700/30 rounded-2xl hover:border-pink-500/30 hover:bg-slate-850/40 transition group text-left w-full cursor-pointer animate-none"
+                      className="relative flex items-center justify-between p-5 bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl hover:border-pink-400 hover:bg-pink-50/20 transition group text-left w-full cursor-pointer animate-none shadow-sm"
                       onClick={() => {
                         setSelectedDate(dateStr);
                         setViewLevel('records');
@@ -3680,10 +3680,10 @@ export function AbsenTBM() {
                           <Folder className="w-8 h-8 text-pink-400" />
                         </div>
                         <div className="min-w-0">
-                          <h3 className="text-sm font-bold text-white group-hover:text-pink-400 transition-colors truncate">
+                          <h3 className="text-sm font-bold text-slate-900 group-hover:text-pink-600 transition-colors truncate">
                             {formatIndonesianDate(dateStr)}
                           </h3>
-                          <p className="text-xs text-slate-400 mt-0.5">{count} Log Kehadiran</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{count} Log Kehadiran</p>
                         </div>
                       </div>
 
@@ -3711,16 +3711,16 @@ export function AbsenTBM() {
               return (
                 <div className="space-y-6">
                   {/* Photo Documentation Section */}
-                  <div className="bg-slate-950/20 p-5 rounded-2xl border border-slate-800/60 space-y-4">
+                  <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
-                        <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                          <Camera className="w-4 h-4 text-pink-400" />
+                        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                          <Camera className="w-4 h-4 text-pink-600" />
                           Dokumentasi TBM - {formatIndonesianDate(selectedDate || '')}
                         </h3>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Bukti foto TBM untuk hari ini.</p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">Bukti foto TBM untuk hari ini.</p>
                       </div>
-                      <label className="cursor-pointer px-3.5 py-2 bg-slate-800 hover:bg-slate-750 border border-slate-700/50 rounded-xl text-xs font-bold text-white flex items-center gap-1.5 transition active:scale-95 animate-none">
+                      <label className="cursor-pointer px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-1.5 transition active:scale-95 animate-none shadow-sm">
                         <Upload className="w-4 h-4 text-pink-400" />
                         Ganti / Tambah Foto
                         <input
@@ -3766,10 +3766,10 @@ export function AbsenTBM() {
                   </div>
 
                   {/* Attendance Records Table */}
-                  <div className="overflow-x-auto border border-slate-800/85 rounded-2xl bg-slate-900/10">
+                  <div className="overflow-x-auto border border-slate-200 rounded-2xl bg-white shadow-sm">
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="bg-slate-800/50 text-slate-300 font-bold uppercase tracking-wider border-b border-slate-800/60">
+                        <tr className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider border-b border-slate-200">
                           <th className="px-4 py-3 text-left w-12">No</th>
                           <th className="px-4 py-3 text-left">Nama Lengkap</th>
                           <th className="px-4 py-3 text-left">Jabatan</th>
@@ -3779,7 +3779,7 @@ export function AbsenTBM() {
                           <th className="px-4 py-3 text-center w-28">Aksi</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/40 bg-slate-950/5">
+                      <tbody className="divide-y divide-slate-100 bg-white">
                         {(() => {
                           const standardCategories: Array<'UTT Daily' | 'UTT Mobile' | 'DME'> = ['UTT Daily', 'UTT Mobile', 'DME'];
                           const extraCategories = Array.from(new Set(dayRecords.map(r => r.category || 'Lainnya')))
@@ -3793,8 +3793,8 @@ export function AbsenTBM() {
                               if (catPersonnel.length === 0) return null;
                               return (
                                 <Fragment key={cat}>
-                                  <tr className="bg-slate-800/30 border-t border-slate-850">
-                                    <td colSpan={7} className="px-4 py-2 font-black uppercase text-[10px] text-pink-400 tracking-wider">
+                                  <tr className="bg-slate-100 border-t border-slate-200">
+                                    <td colSpan={7} className="px-4 py-2 font-black uppercase text-[10px] text-pink-600 tracking-wider">
                                       Kategori: {cat}
                                     </td>
                                   </tr>
@@ -3802,10 +3802,10 @@ export function AbsenTBM() {
                                     const rec = dayRecords.find(r => r.nama === person.nama);
                                     const isEditing = rec ? editingRecordId === rec.id : (editingRecordId === "new_" + person.id);
                                     return (
-                                      <tr key={person.nama} className="hover:bg-slate-800/20 transition-colors">
+                                      <tr key={person.nama} className="hover:bg-blue-50/50 transition-colors">
                                         <td className="px-4 py-3.5 text-slate-500 font-mono">{index + 1}.</td>
-                                        <td className="px-4 py-3.5 font-bold text-white">{person.nama}</td>
-                                        <td className="px-4 py-3.5 text-slate-300 font-medium font-sans">{person.jabatan}</td>
+                                        <td className="px-4 py-3.5 font-bold text-slate-900">{person.nama}</td>
+                                        <td className="px-4 py-3.5 text-slate-600 font-medium font-sans">{person.jabatan}</td>
                                         <td className="px-4 py-3.5">
                                           {rec || isEditing ? (
                                             isEditing ? (

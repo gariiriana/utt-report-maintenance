@@ -5,8 +5,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/core/models"
-	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
+	"github.com/gariiriana/DwimitraSystem/backend/core/models"
+	"github.com/gariiriana/DwimitraSystem/backend/pkg/helpers"
 )
 
 var startTime = time.Now()

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Send, Loader2, Mic, MicOff, Paperclip, Plus, MessageSquare, Trash2, Copy, Check, Menu } from 'lucide-react';
+import { X, Send, Loader2, Mic, MicOff, Paperclip, Plus, MessageSquare, Trash2, Copy, Check, Menu, AudioLines } from 'lucide-react';
 import { auth } from '@/api/firebase';
 import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
 import robotLogo from '@/assets/robot_assistant.png';
 import { compressImage } from '@/utils/imageCompression';
+import { AIVoiceAgent } from '@/components/AIVoiceAgent';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -78,6 +79,7 @@ export function AIChatWidget() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isVoiceMode, setIsVoiceMode] = useState(false);
 
   // Lock body scroll when chat widget is open
   useEffect(() => {
@@ -315,7 +317,36 @@ export function AIChatWidget() {
 
       const data = await response.json();
       const cleanReply = (data.reply || 'Maaf, saya tidak menerima jawaban kosong.').replace(/\*\*/g, '');
-      updateActiveRoomMessages(prev => [...prev, { role: 'assistant', content: cleanReply }]);
+      
+      let finalReply = cleanReply.replace(/\[ACTION:\s*([^\]]+)\]/gi, '').replace(/\*\*/g, '').trim();
+      const actionMatches = [...cleanReply.matchAll(/\[ACTION:\s*([^\]]+)\]/gi)];
+
+      updateActiveRoomMessages(prev => [...prev, { role: 'assistant', content: finalReply }]);
+
+      for (const match of actionMatches) {
+        const fullAction = match[1].trim();
+        console.log('JARVIS Chat Action Executing:', fullAction);
+
+        if (fullAction.startsWith('NAVIGATE:')) {
+          const targetPage = fullAction.replace('NAVIGATE:', '').trim();
+          window.dispatchEvent(new CustomEvent('voice-agent-command', { detail: { action: 'navigate', page: targetPage } }));
+        } else if (fullAction === 'CREATE_REPORT' || fullAction === 'CREATE_SERVICE_REPORT') {
+          window.dispatchEvent(new CustomEvent('voice-agent-command', { detail: { action: 'create_report' } }));
+        } else if (fullAction.includes('EXPORT_PDF') || fullAction === 'EXPORT_PDF_ATS' || fullAction === 'AUTO_FILL_AND_EXPORT_ATS') {
+          window.dispatchEvent(new CustomEvent('ai-agent-command', { detail: { action: 'EXPORT_PDF_ATS' } }));
+          window.dispatchEvent(new CustomEvent('voice-agent-command', { detail: { action: 'export_pdf' } }));
+        } else if (fullAction.includes('AUTO_FILL')) {
+          window.dispatchEvent(new CustomEvent('ai-agent-command', { detail: { action: 'AUTO_FILL_ATS' } }));
+        } else if (fullAction.includes('REFRESH')) {
+          window.dispatchEvent(new CustomEvent('voice-agent-command', { detail: { action: 'refresh_data' } }));
+        } else if (fullAction.includes('CLOSE_MODAL')) {
+          window.dispatchEvent(new CustomEvent('voice-agent-command', { detail: { action: 'close_modal' } }));
+        } else if (fullAction.startsWith('SEARCH:')) {
+          const query = fullAction.replace('SEARCH:', '').trim();
+          window.dispatchEvent(new CustomEvent('voice-agent-command', { detail: { action: 'navigate', page: 'documents' } }));
+          window.dispatchEvent(new CustomEvent('voice-agent-command', { detail: { action: 'search_reports', query } }));
+        }
+      }
     } catch (err: any) {
       console.error('AI Chat error:', err);
       toast.error('Gagal mengirim pesan ke AI.');
@@ -347,27 +378,27 @@ export function AIChatWidget() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="w-[88vw] sm:w-[500px] h-[78vh] sm:h-[480px] bg-slate-950/95 backdrop-blur-lg border border-slate-800/80 rounded-3xl shadow-2xl shadow-blue-500/5 flex overflow-hidden mb-4 relative"
+              className="w-[88vw] sm:w-[500px] h-[78vh] sm:h-[480px] bg-white/95 backdrop-blur-xl border border-sky-100/90 rounded-3xl shadow-2xl shadow-sky-900/10 flex overflow-hidden mb-4 relative text-slate-800"
             >
               {/* ═══ Backdrop Overlay for Mobile Sidebar ═══ */}
               {isMobileSidebarOpen && (
                 <div
-                  className="absolute inset-0 bg-black/60 z-10 sm:hidden"
+                  className="absolute inset-0 bg-slate-900/40 z-10 sm:hidden"
                   onClick={() => setIsMobileSidebarOpen(false)}
                 />
               )}
 
               {/* ═══ LEFT SIDEBAR — Responsive (Slides overlay on mobile, fixed on desktop) ═══ */}
               <div
-                className={`absolute sm:relative z-20 h-full w-[140px] sm:w-[150px] border-r border-slate-800/80 bg-slate-950 sm:bg-slate-900/40 flex flex-col shrink-0 transition-transform duration-200 ${
+                className={`absolute sm:relative z-20 h-full w-[140px] sm:w-[150px] border-r border-slate-200 bg-slate-50 sm:bg-slate-50/90 flex flex-col shrink-0 transition-transform duration-200 ${
                   isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0'
                 }`}
               >
               {/* Sidebar Header */}
-              <div className="p-3 border-b border-slate-800/60 flex items-center justify-between gap-1">
+              <div className="p-3 border-b border-slate-200 flex items-center justify-between gap-1">
                 <button
                   onClick={handleNewChat}
-                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold rounded-xl transition-all active:scale-[0.97] shadow-lg shadow-blue-500/15"
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl transition-all active:scale-[0.97] shadow-md shadow-blue-500/20"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Chat Baru
@@ -375,7 +406,7 @@ export function AIChatWidget() {
                 <button
                   type="button"
                   onClick={() => setIsMobileSidebarOpen(false)}
-                  className="p-2 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl transition-colors sm:hidden"
+                  className="p-2 hover:bg-slate-200 text-slate-500 hover:text-slate-900 rounded-xl transition-colors sm:hidden"
                   title="Tutup Menu"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -383,14 +414,14 @@ export function AIChatWidget() {
               </div>
 
               {/* Room List */}
-              <div className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+              <div className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5 scrollbar-none">
                 {rooms.map(room => (
                   <div
                     key={room.id}
-                    className={`group flex items-center gap-1.5 px-2.5 py-2 rounded-lg cursor-pointer transition-all ${
+                    className={`group flex items-center gap-1.5 px-2.5 py-2 rounded-xl cursor-pointer transition-all ${
                       room.id === activeRoomId
-                        ? 'bg-blue-600/15 border border-blue-500/25 text-white'
-                        : 'hover:bg-slate-800/50 text-slate-400 hover:text-slate-200 border border-transparent'
+                        ? 'bg-blue-50 border border-blue-200 text-blue-700 font-bold'
+                        : 'hover:bg-slate-200/60 text-slate-600 hover:text-slate-900 border border-transparent'
                     }`}
                     onClick={() => handleSwitchRoom(room.id)}
                   >
@@ -398,7 +429,7 @@ export function AIChatWidget() {
                     <span className="flex-1 text-[11px] leading-tight truncate">{room.title}</span>
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDeleteRoom(room.id); }}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-red-500/20 text-slate-500 hover:text-red-400 rounded transition-all"
+                      className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-red-100 text-slate-400 hover:text-red-600 rounded transition-all"
                       title="Hapus"
                     >
                       <Trash2 className="w-2.5 h-2.5" />
@@ -409,30 +440,30 @@ export function AIChatWidget() {
             </div>
 
             {/* ═══ RIGHT PANEL — Chat Area ═══ */}
-            <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 flex flex-col min-w-0 bg-white/50">
               {/* Chat Header */}
-              <div className="p-3 border-b border-slate-800/80 flex items-center gap-2 bg-slate-900/50">
+              <div className="p-3 border-b border-slate-200 flex items-center gap-2 bg-white/95">
                 <button
                   type="button"
                   onClick={() => setIsMobileSidebarOpen(true)}
-                  className="p-2 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl transition-colors sm:hidden shrink-0"
+                  className="p-2 hover:bg-slate-100 text-slate-500 hover:text-slate-900 rounded-xl transition-colors sm:hidden shrink-0"
                   title="Menu Riwayat"
                 >
                   <Menu className="w-4 h-4" />
                 </button>
-                <div className="w-8 h-8 rounded-xl overflow-hidden border border-slate-800 shrink-0">
+                <div className="w-8 h-8 rounded-xl overflow-hidden border border-slate-200 shrink-0">
                   <img src={robotLogo} alt="Robot Avatar" className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-xs font-bold text-white leading-tight truncate">{activeRoom?.title || 'Chat Baru'}</h3>
+                  <h3 className="text-xs font-bold text-slate-900 leading-tight truncate">{activeRoom?.title || 'Chat Baru'}</h3>
                   <div className="flex items-center gap-1 mt-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider">Online</span>
+                    <span className="text-[9px] text-slate-500 font-semibold uppercase tracking-wider">Online</span>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="p-2 hover:bg-slate-800 text-slate-400 hover:text-white rounded-xl transition-colors"
+                  className="p-2 hover:bg-slate-100 text-slate-500 hover:text-slate-900 rounded-xl transition-colors"
                   title="Tutup Chat"
                 >
                   <X className="w-4 h-4" />
@@ -440,7 +471,7 @@ export function AIChatWidget() {
               </div>
 
               {/* Chat Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-none">
                 {messages.map((msg, idx) => (
                   <div
                     key={idx}
@@ -449,15 +480,15 @@ export function AIChatWidget() {
                     <div
                       className={`relative group/msg max-w-[85%] px-3.5 py-2.5 rounded-2xl text-[13px] leading-relaxed whitespace-pre-wrap ${
                         msg.role === 'user'
-                          ? 'bg-blue-600 text-white rounded-tr-none shadow-md shadow-blue-600/10'
-                          : 'bg-slate-900 text-slate-300 border border-slate-800/80 rounded-tl-none pr-8'
+                          ? 'bg-blue-600 text-white rounded-tr-none shadow-md shadow-blue-600/15'
+                          : 'bg-slate-100 text-slate-800 border border-slate-200 rounded-tl-none pr-8 font-medium'
                       }`}
                     >
                       {msg.image_base64 && (
                         <img
                           src={`data:image/jpeg;base64,${msg.image_base64}`}
                           alt="Uploaded"
-                          className="rounded-xl mb-2 max-h-36 w-auto object-cover border border-white/10"
+                          className="rounded-xl mb-2 max-h-36 w-auto object-cover border border-slate-200"
                         />
                       )}
                       {msg.content !== 'Mengirim gambar...' && msg.content}
@@ -467,11 +498,11 @@ export function AIChatWidget() {
                       {msg.role === 'assistant' && (
                         <button
                           onClick={() => handleCopy(msg.content, idx)}
-                          className="absolute right-2 top-2 p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded transition-all opacity-75 hover:opacity-100"
+                          className="absolute right-2 top-2 p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded transition-all opacity-75 hover:opacity-100"
                           title="Salin jawaban"
                         >
                           {copiedIndex === idx ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-400 animate-scale" />
+                            <Check className="w-3.5 h-3.5 text-emerald-600 animate-scale" />
                           ) : (
                             <Copy className="w-3.5 h-3.5" />
                           )}
@@ -482,8 +513,8 @@ export function AIChatWidget() {
                 ))}
                 {isLoading && (
                   <div className="flex justify-start">
-                    <div className="bg-slate-900 border border-slate-800/80 rounded-2xl rounded-tl-none px-3.5 py-2.5 text-slate-400 text-[13px] flex items-center gap-2">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-500" />
+                    <div className="bg-slate-100 border border-slate-200 rounded-2xl rounded-tl-none px-3.5 py-2.5 text-slate-600 text-[13px] flex items-center gap-2 font-medium">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" />
                       <span>AI sedang berpikir...</span>
                     </div>
                   </div>
@@ -493,9 +524,9 @@ export function AIChatWidget() {
 
               {/* Image Preview */}
               {selectedImage && (
-                <div className="px-3 pt-2 bg-slate-900/30 border-t border-slate-800/80">
+                <div className="px-3 pt-2 bg-slate-50 border-t border-slate-200">
                   <div className="relative inline-block">
-                    <img src={selectedImage} alt="Preview" className="h-16 w-auto rounded-xl border border-slate-700 object-cover" />
+                    <img src={selectedImage} alt="Preview" className="h-16 w-auto rounded-xl border border-slate-200 object-cover" />
                     <button
                       type="button"
                       onClick={removeSelectedImage}
@@ -511,7 +542,7 @@ export function AIChatWidget() {
               {/* Input Form */}
               <form
                 onSubmit={handleSend}
-                className="p-2.5 border-t border-slate-800/80 bg-slate-900/30 flex gap-1 items-center"
+                className="p-2.5 border-t border-slate-200 bg-white/90 flex gap-1 items-center"
               >
                 <input
                   ref={fileInputRef}
@@ -543,13 +574,24 @@ export function AIChatWidget() {
                 >
                   {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setIsVoiceMode(true)}
+                  disabled={isLoading}
+                  className="p-2 text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 rounded-xl transition-colors disabled:opacity-50 relative group/voice"
+                  title="Voice Agent — Bicara dengan AI"
+                >
+                  <AudioLines className="w-4 h-4" />
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full animate-ping opacity-75" />
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-cyan-400 rounded-full" />
+                </button>
                 <input
                   type="text"
                   placeholder={isRecording ? 'Bicara sekarang...' : 'Ketik pertanyaan teknis...'}
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   disabled={isLoading}
-                  className="flex-1 bg-slate-950 border border-slate-800/80 focus:border-blue-500/50 rounded-2xl px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition-colors disabled:opacity-50"
+                  className="flex-1 bg-slate-50 border border-slate-200 focus:bg-white focus:border-blue-500 rounded-2xl px-3 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition-all disabled:opacity-50"
                 />
                 <button
                   type="submit"
@@ -586,6 +628,9 @@ export function AIChatWidget() {
         </motion.button>
       </div>
     </div>
+
+    {/* Voice Agent Modal */}
+    {isVoiceMode && <AIVoiceAgent onClose={() => setIsVoiceMode(false)} />}
   </>
   );
 }

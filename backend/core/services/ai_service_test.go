@@ -6,7 +6,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/core/models"
+	"github.com/gariiriana/DwimitraSystem/backend/core/config"
+	"github.com/gariiriana/DwimitraSystem/backend/core/models"
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -466,4 +467,21 @@ func TestGetNextAPIKey_HeavyLoad(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestAIServiceChatLive(t *testing.T) {
+	// Load actual .env.local variables
+	config.MustLoadDotEnv("../../../.env.local")
+	svc := NewAIService(nil)
+	
+	ctx := context.Background()
+	msgs := []models.ChatMessage{
+		{Role: "user", Content: "Hello. What is the standard temperature of a switchgear connection?"},
+	}
+	
+	reply, err := svc.Chat(ctx, msgs)
+	if err != nil {
+		t.Fatalf("Live Chat error: %v", err)
+	}
+	t.Logf("Reply: %s", reply)
 }

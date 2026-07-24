@@ -1,4 +1,4 @@
-module github.com/gariiriana/utt-report-maintenance
+module github.com/gariiriana/DwimitraSystem
 
 go 1.24.0
 
@@ -7,6 +7,7 @@ require (
 	firebase.google.com/go/v4 v4.13.0
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/swaggo/swag v1.16.6
 	golang.org/x/crypto v0.46.0
 	google.golang.org/api v0.256.0

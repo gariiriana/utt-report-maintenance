@@ -6,7 +6,7 @@ import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import { Footer } from '@/components/Footer';
 import { HSEReportForm } from '@/components/HSEReportForm';
 import { DocumentList } from '@/components/DocumentList';
-import logoUTT from '@/assets/logo_utt.png';
+import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
 export function HSEApp() {
     const { user, logout } = useAuth();
@@ -27,19 +27,19 @@ export function HSEApp() {
     const getTabLabel = () => {
         switch (activeTab) {
             case 'inspection': return 'Laporan Inspeksi HSE';
-            case 'iso': return 'Dokumen ISO HSE';
+            case 'iso': return 'Arsip Dokumen HSE';
             default: return 'HSE Portal';
         }
     };
 
     const navigationItems = [
         { id: 'inspection', label: 'Buat Inspeksi', icon: FileText, color: 'bg-green-600', shadow: 'shadow-green-600/20' },
-        { id: 'iso', label: 'Dokumen ISO', icon: Folder, color: 'bg-emerald-600', shadow: 'shadow-emerald-600/20' },
+        { id: 'iso', label: 'Arsip Dokumen', icon: Folder, color: 'bg-emerald-600', shadow: 'shadow-emerald-600/20' },
     ];
 
     return (
-        <div className="min-h-screen font-geist text-slate-200">
-            {}
+        <div className="min-h-screen font-geist text-slate-800">
+            {/* Mobile Drawer */}
             <AnimatePresence>
                 {sidebarOpen && (
                     <>
@@ -48,21 +48,21 @@ export function HSEApp() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setSidebarOpen(false)}
-                            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] lg:hidden"
+                            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] lg:hidden"
                         />
                         <motion.div
                             initial={{ x: '100%' }}
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="fixed inset-y-0 right-0 w-80 bg-slate-900 border-l border-slate-700/50 z-[70] lg:hidden flex flex-col"
+                            className="fixed inset-y-0 right-0 w-80 bg-white border-l border-slate-200 z-[70] lg:hidden flex flex-col shadow-2xl text-slate-800"
                         >
-                            <div className="p-6 border-b border-slate-700/50 flex items-center justify-between">
+                            <div className="p-6 border-b border-slate-200 flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <img src={logoUTT} alt="UTT" className="w-10 h-10 object-contain" />
-                                    <span className="font-bold text-white text-sm uppercase tracking-wider">Sistem HSE</span>
+                                    <img src={logoDwimitra} alt="Dwimitra" className="w-10 h-10 object-contain" />
+                                    <span className="font-black text-slate-900 text-sm uppercase tracking-wider">Sistem HSE</span>
                                 </div>
-                                <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400" title="Tutup Menu">
+                                <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-900" title="Tutup Menu">
                                     <X className="w-6 h-6" />
                                 </button>
                             </div>
@@ -76,10 +76,10 @@ export function HSEApp() {
                                             setActiveTab(item.id as any);
                                             setSidebarOpen(false);
                                         }}
-                                        className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all duration-300 ${
+                                        className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all duration-300 cursor-pointer ${
                                             activeTab === item.id 
-                                            ? `${item.color} text-white shadow-xl ${item.shadow}` 
-                                            : 'bg-slate-800/30 text-slate-400 hover:bg-slate-800/60'
+                                            ? `${item.color} text-white shadow-lg ${item.shadow}` 
+                                            : 'bg-slate-50 text-slate-700 hover:bg-slate-100 font-bold'
                                         }`}
                                     >
                                         <div className="flex items-center gap-3">
@@ -91,14 +91,14 @@ export function HSEApp() {
                                 ))}
                             </div>
 
-                            <div className="p-4 border-t border-slate-700/50 space-y-4 bg-slate-950/30">
+                            <div className="p-4 border-t border-slate-200 space-y-4 bg-slate-50/50">
                                 <div className="flex items-center gap-3 px-4 py-2">
-                                    <div className="w-10 h-10 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
-                                        <User className="w-5 h-5 text-blue-400" />
+                                    <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center">
+                                        <User className="w-5 h-5 text-blue-600" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-xs text-slate-500 truncate">HSE Officer</p>
-                                        <p className="text-sm font-bold text-white truncate">{user?.email}</p>
+                                        <p className="text-xs text-slate-500 truncate font-medium">HSE Officer</p>
+                                        <p className="text-sm font-bold text-slate-900 truncate">{user?.email}</p>
                                     </div>
                                 </div>
                                 <button
@@ -106,7 +106,7 @@ export function HSEApp() {
                                         setSidebarOpen(false);
                                         setLogoutModalOpen(true);
                                     }}
-                                    className="w-full flex items-center gap-3 p-4 bg-red-600/10 hover:bg-red-600/20 text-red-400 rounded-2xl border border-red-500/20 transition-all font-bold text-sm"
+                                    className="w-full flex items-center gap-3 p-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl border border-red-200 transition-all font-bold text-sm shadow-sm cursor-pointer"
                                 >
                                     <LogOut className="w-5 h-5" />
                                     <span>Keluar dari Sistem</span>
@@ -117,23 +117,24 @@ export function HSEApp() {
                 )}
             </AnimatePresence>
 
-            <div className="bg-slate-900/60 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-50">
+            {/* Top Navbar */}
+            <div className="bg-white/80 backdrop-blur-xl border-b border-sky-100/80 sticky top-0 z-50 shadow-sm text-slate-800">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <img
-                                src={logoUTT}
-                                alt="PT United Transworld Trading"
+                                src={logoDwimitra}
+                                alt="PT Dwimitra Ekatama Mandiri"
                                 className="w-10 h-10 sm:w-16 sm:h-16 flex-shrink-0 object-contain"
                             />
                             <div className="hidden sm:block">
-                                <h1 className="text-sm sm:text-base font-semibold text-white leading-tight">
-                                    PT United Transworld Trading
+                                <h1 className="text-sm sm:text-base font-black text-slate-900 leading-tight">
+                                    PT Dwimitra Ekatama Mandiri
                                 </h1>
                                 <div className="flex items-center gap-1.5 mt-0.5">
-                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-green-500/15 rounded-full border border-green-500/25">
-                                        <ShieldCheck className="w-3 h-3 text-green-400" />
-                                        <span className="text-[10px] sm:text-xs text-green-400 font-semibold tracking-wide">
+                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-green-50 rounded-full border border-green-200">
+                                        <ShieldCheck className="w-3 h-3 text-green-600" />
+                                        <span className="text-[10px] sm:text-xs text-green-700 font-bold tracking-wide">
                                             HSE OFFICER
                                         </span>
                                     </div>
@@ -142,17 +143,16 @@ export function HSEApp() {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            {}
                             <button 
                                 onClick={() => setSidebarOpen(true)}
-                                className="lg:hidden p-2 bg-slate-800/50 rounded-lg border border-slate-700/50 text-slate-300"
+                                className="lg:hidden p-2 bg-slate-100 rounded-lg border border-slate-200 text-slate-700"
                                 title="Buka Menu"
                             >
                                 <Menu className="w-6 h-6" />
                             </button>
                             <div className="hidden lg:block text-right">
-                                <p className="text-xs text-slate-500">Masuk sebagai</p>
-                                <p className="text-sm font-medium text-slate-300 truncate max-w-[200px]">
+                                <p className="text-xs text-slate-500 font-medium">Masuk sebagai</p>
+                                <p className="text-sm font-bold text-slate-800 truncate max-w-[200px]">
                                     {user?.email}
                                 </p>
                             </div>
@@ -160,7 +160,7 @@ export function HSEApp() {
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => setLogoutModalOpen(true)}
-                                className="hidden lg:flex items-center gap-2 px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 rounded-lg border border-slate-700/50 transition text-sm"
+                                className="hidden lg:flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-200 transition text-sm font-bold shadow-sm cursor-pointer"
                             >
                                 <LogOut className="w-4 h-4" />
                                 <span>Keluar</span>
@@ -170,31 +170,32 @@ export function HSEApp() {
                 </div>
             </div>
 
-            <div className="bg-slate-900/40 backdrop-blur-md border-b border-slate-700/30">
+            {/* Subheader Navigation */}
+            <div className="bg-white/90 backdrop-blur-md border-b border-sky-100/80 shadow-sm text-slate-800">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-5">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
-                            <div className="p-2.5 bg-green-500/15 rounded-xl border border-green-500/25">
-                                <HardHat className="w-5 h-5 sm:w-6 sm:h-6 text-green-400" />
+                            <div className="p-2.5 bg-green-50 rounded-xl border border-green-100">
+                                <HardHat className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
                             </div>
                             <div>
-                                <h2 className="text-base sm:text-xl font-bold text-white">
+                                <h2 className="text-base sm:text-xl font-black text-slate-900">
                                     {getTabLabel()}
                                 </h2>
-                                <p className="text-xs sm:text-sm text-slate-400">
+                                <p className="text-xs sm:text-sm font-medium text-slate-600">
                                     Kesehatan, Keselamatan & Lingkungan — UTT Maintenance
                                 </p>
                             </div>
                         </div>
 
-                        <div className="hidden lg:flex flex-wrap gap-2 bg-slate-950/40 p-1.5 rounded-2xl border border-slate-700/30">
+                        <div className="hidden lg:flex flex-wrap gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-200 shadow-sm">
                             {navigationItems.map((item) => (
                                 <button
                                     key={item.id}
                                     onClick={() => setActiveTab(item.id as any)}
-                                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all ${activeTab === item.id
-                                        ? `${item.color} text-white shadow-lg ${item.shadow}`
-                                        : 'text-slate-500 hover:text-slate-300'
+                                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${activeTab === item.id
+                                        ? `${item.color} text-white shadow-md ${item.shadow}`
+                                        : 'text-slate-600 hover:text-slate-900'
                                         }`}
                                 >
                                     <item.icon className="w-3.5 h-3.5" />

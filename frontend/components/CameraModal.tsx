@@ -499,39 +499,39 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md sm:p-8"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md sm:p-8"
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0, y: 30 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.95, opacity: 0, y: 30 }}
-        className="bg-slate-900 border border-slate-700/50 rounded-3xl w-full max-w-lg max-h-[92vh] overflow-hidden shadow-2xl flex flex-col relative z-[10000]"
+        className="bg-white/95 backdrop-blur-xl border border-sky-100/90 rounded-3xl w-full max-w-lg max-h-[92vh] overflow-hidden shadow-2xl flex flex-col relative z-[10000] text-slate-800"
       >
 
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-900">
+        <div className="p-4 border-b border-slate-200 flex items-center justify-between shrink-0 bg-white/95">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/15 rounded-lg">
-              <Camera className="w-5 h-5 text-blue-400" />
+            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">
+              <Camera className="w-5 h-5" />
             </div>
             <div className="flex flex-col">
-              <h3 className="font-bold text-white text-xs tracking-tight">{title}</h3>
+              <h3 className="font-bold text-slate-900 text-xs tracking-tight">{title}</h3>
               {locationData ? (
                 <button
                   onClick={() => fetchLocation(true)}
                   className="flex items-center gap-1 group"
                 >
-                  <MapPin className={`w-2.5 h-2.5 ${locationData.loading ? 'text-blue-400 animate-pulse' : 'text-emerald-500'}`} />
-                  <span className="text-[8px] text-slate-400 truncate max-w-[120px] group-hover:text-white transition-colors">
+                  <MapPin className={`w-2.5 h-2.5 ${locationData.loading ? 'text-blue-500 animate-pulse' : 'text-emerald-600'}`} />
+                  <span className="text-[8px] text-slate-500 truncate max-w-[120px] group-hover:text-slate-800 transition-colors">
                     {locationData.loading ? 'Mencari Lokasi...' : locationData.coords}
                   </span>
                 </button>
               ) : (
                 <button
                   onClick={() => fetchLocation(true)}
-                  className="flex items-center gap-1 px-2 py-0.5 bg-red-500/10 rounded-full border border-red-500/20"
+                  className="flex items-center gap-1 px-2 py-0.5 bg-red-50 rounded-full border border-red-200"
                 >
-                  <AlertCircle className="w-2.5 h-2.5 text-red-400" />
-                  <span className="text-[7px] text-red-400 font-bold uppercase">Aktifkan GPS</span>
+                  <AlertCircle className="w-2.5 h-2.5 text-red-500" />
+                  <span className="text-[7px] text-red-600 font-bold uppercase">Aktifkan GPS</span>
                 </button>
               )}
             </div>
@@ -542,22 +542,22 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
                 {torchSupported && (
                   <button
                     onClick={toggleTorch}
-                    className={`p-2 rounded-xl transition ${isTorchOn ? 'bg-amber-500/20 text-amber-400' : 'text-slate-400 hover:bg-slate-800'}`}
+                    className={`p-2 rounded-xl transition ${isTorchOn ? 'bg-amber-100 text-amber-600' : 'text-slate-500 hover:bg-slate-100'}`}
                     title="Toggle Flash"
                   >
-                    {isTorchOn ? <Zap className="w-5 h-5 fill-amber-400" /> : <ZapOff className="w-5 h-5" />}
+                    {isTorchOn ? <Zap className="w-5 h-5 fill-amber-500" /> : <ZapOff className="w-5 h-5" />}
                   </button>
                 )}
                 <button
                   onClick={startCamera}
-                  className="p-2 hover:bg-slate-800 rounded-xl transition text-slate-400"
+                  className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-500 hover:text-slate-900"
                   title="Refresh Kamera"
                 >
                   <RefreshCw className="w-5 h-5" />
                 </button>
                 <button
                   onClick={() => setFacingMode(prev => prev === 'environment' ? 'user' : 'environment')}
-                  className="p-2 hover:bg-slate-800 rounded-xl transition text-slate-400"
+                  className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-500 hover:text-slate-900"
                   title="Putar Kamera"
                 >
                   <SwitchCamera className="w-5 h-5" />
@@ -566,7 +566,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
             )}
             <button
               onClick={onClose}
-              className="p-2 hover:bg-slate-800 rounded-xl transition text-slate-400"
+              className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-500 hover:text-slate-900"
               title="Tutup"
             >
               <X className="w-6 h-6" />
@@ -575,7 +575,7 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
         </div>
 
 
-        <div className={`relative bg-black overflow-hidden flex items-center justify-center ${capturedImage ? '' : 'aspect-square'}`}>
+        <div className={`relative bg-slate-950 overflow-hidden flex items-center justify-center ${capturedImage ? '' : 'aspect-square'}`}>
           {capturedImage ? (
             <div className="relative w-full overflow-hidden">
               <img
@@ -618,11 +618,11 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
 
               {isReady && !error && (
                 <>
-                  <div className="absolute inset-8 border-2 border-white/5 rounded-2xl pointer-events-none">
-                    <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-white/40 -mt-0.5 -ml-0.5 rounded-tl-lg" />
-                    <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-white/40 -mt-0.5 -mr-0.5 rounded-tr-lg" />
-                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-white/40 -mb-0.5 -ml-0.5 rounded-bl-lg" />
-                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-white/40 -mb-0.5 -mr-0.5 rounded-br-lg" />
+                  <div className="absolute inset-8 border-2 border-white/20 rounded-2xl pointer-events-none">
+                    <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-white/60 -mt-0.5 -ml-0.5 rounded-tl-lg" />
+                    <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-white/60 -mt-0.5 -mr-0.5 rounded-tr-lg" />
+                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-white/60 -mb-0.5 -ml-0.5 rounded-bl-lg" />
+                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-white/60 -mb-0.5 -mr-0.5 rounded-br-lg" />
                   </div>
 
                   {permissionStatus === 'denied' && (
@@ -680,38 +680,38 @@ export function CameraModal({ onCapture, onClose, title = 'Ambil Foto Dokumentas
         </div>
 
 
-        <div className="p-4 sm:p-8 bg-slate-900/50">
+        <div className="p-4 sm:p-6 bg-slate-50/90 border-t border-slate-200">
           <div className="flex items-center justify-center">
             {!capturedImage ? (
               <button
                 onClick={takePhoto}
                 disabled={!isReady || !!error}
-                className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full p-1 border-4 border-slate-700 hover:scale-105 active:scale-95 transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed group"
+                className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full p-1 border-4 border-slate-300 hover:border-blue-500 hover:scale-105 active:scale-95 transition shadow-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed group"
                 title="Ambil Foto"
               >
-                <div className="w-full h-full bg-slate-100 rounded-full flex items-center justify-center group-hover:bg-white transition">
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 border-4 border-slate-900 rounded-full" />
+                <div className="w-full h-full bg-slate-100 rounded-full flex items-center justify-center group-hover:bg-blue-50 transition">
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 border-4 border-slate-800 group-hover:border-blue-600 rounded-full transition" />
                 </div>
               </button>
             ) : (
               <div className="grid grid-cols-3 gap-2 sm:gap-4 w-full">
                 <button
                   onClick={retake}
-                  className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-3 sm:py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl sm:rounded-2xl font-bold transition shadow-xl"
+                  className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-3 sm:py-4 bg-white hover:bg-slate-100 text-slate-700 rounded-xl sm:rounded-2xl font-bold transition border border-slate-200 shadow-sm"
                 >
                   <RefreshCw className="w-4 h-4" />
                   <span className="text-[10px] sm:text-sm">Ulangi</span>
                 </button>
                 <button
                   onClick={downloadCapturedImage}
-                  className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-3 sm:py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl sm:rounded-2xl font-bold transition shadow-xl"
+                  className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-3 sm:py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl sm:rounded-2xl font-bold transition shadow-lg shadow-emerald-600/20"
                 >
                   <Download className="w-4 h-4" />
                   <span className="text-[10px] sm:text-sm">Download</span>
                 </button>
                 <button
                   onClick={handleApply}
-                  className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-3 sm:py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl sm:rounded-2xl font-bold transition shadow-xl shadow-blue-600/20"
+                  className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 py-3 sm:py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl sm:rounded-2xl font-bold transition shadow-lg shadow-blue-600/20"
                 >
                   <Check className="w-4 h-4" />
                   <span className="text-[10px] sm:text-sm text-center leading-tight">Pakai Foto</span>

@@ -6,11 +6,11 @@ import (
 	"net/http"
 
 	firebaseAuth "firebase.google.com/go/v4/auth"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/config"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/controllers"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/middlewares"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/repositories"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/services"
+	"github.com/gariiriana/DwimitraSystem/backend/core/config"
+	"github.com/gariiriana/DwimitraSystem/backend/core/controllers"
+	"github.com/gariiriana/DwimitraSystem/backend/core/middlewares"
+	"github.com/gariiriana/DwimitraSystem/backend/core/repositories"
+	"github.com/gariiriana/DwimitraSystem/backend/core/services"
 )
 
 type AppDeps struct {
@@ -23,6 +23,7 @@ type AppDeps struct {
 	MaintenanceProgressCtrl *controllers.MaintenanceProgressController
 	FindingCtrl             *controllers.FindingController
 	AICtrl                  *controllers.AIController
+	VoiceCtrl               *controllers.VoiceController
 	RateLimiter             *middlewares.RateLimiter // global catch-all
 	ThrottleHeavy           *middlewares.RateLimiter // POST/DELETE — 5 rps, burst 10
 	ThrottleStandard        *middlewares.RateLimiter // GET lists   — 20 rps, burst 40
@@ -61,8 +62,10 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 	auditCtrl := controllers.NewAuditController(auditSvc)
 	maintenanceCtrl := controllers.NewMaintenanceProgressController(maintenanceSvc)
 	findingCtrl := controllers.NewFindingController(findingSvc)
-	aiSvc := services.NewAIService()
+	aiSvc := services.NewAIService(firestoreClient)
 	aiCtrl := controllers.NewAIController(aiSvc)
+	voiceSvc := services.NewVoiceService(firestoreClient)
+	voiceCtrl := controllers.NewVoiceController(voiceSvc)
 
 	rateLimiter := middlewares.NewRateLimiter(20, 40)
 	throttleHeavy := middlewares.NewThrottle(5, 10)   // expensive write/delete ops
@@ -78,6 +81,7 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 		MaintenanceProgressCtrl: maintenanceCtrl,
 		FindingCtrl:             findingCtrl,
 		AICtrl:                  aiCtrl,
+		VoiceCtrl:               voiceCtrl,
 		RateLimiter:             rateLimiter,
 		ThrottleHeavy:           throttleHeavy,
 		ThrottleStandard:        throttleStandard,
@@ -115,6 +119,29 @@ func buildHandler(deps *AppDeps) http.HandlerFunc {
 				path == "/metrics" || path == "/api/metrics" {
 				RouteRequest(w, r, deps)
 				return
+			}
+
+			// WebSocket: auth via query parameter (browsers can't set headers on WS upgrade)
+			if path == "/api/voice/ws" {
+				token := r.URL.Query().Get("token")
+				if token != "" {
+					// Verify the Firebase ID token from query param
+					decoded, err := deps.AuthClient.VerifyIDToken(r.Context(), token)
+					if err == nil {
+						ctx := r.Context()
+						ctx = context.WithValue(ctx, middlewares.ClaimsKeyExported, decoded)
+						ctx = context.WithValue(ctx, middlewares.UserUIDKeyExported, decoded.UID)
+						if email, ok := decoded.Claims["email"].(string); ok {
+							ctx = context.WithValue(ctx, middlewares.UserEmailKeyExported, email)
+						}
+						if role, ok := decoded.Claims["role"].(string); ok {
+							ctx = context.WithValue(ctx, middlewares.UserRoleKeyExported, role)
+						}
+						RouteRequest(w, r.WithContext(ctx), deps)
+						return
+					}
+				}
+				// Fallback: try standard Authorization header
 			}
 
 			// AUTHENTICATION: Enforce Firebase ID Token verification

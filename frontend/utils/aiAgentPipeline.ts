@@ -183,6 +183,13 @@ For condition, use ONLY "Good" or "Not Good" based on what you see in the photos
 
 // ─── NVIDIA API Caller ──────────────────────────────────────────────────────
 
+class RateLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RateLimitError';
+  }
+}
+
 async function callNVIDIA(
   apiKey: string,
   model: string,
@@ -201,7 +208,7 @@ async function callNVIDIA(
     ...extraBody
   };
 
-  const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+  const response = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
@@ -213,15 +220,53 @@ async function callNVIDIA(
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`NVIDIA NIM API error (${response.status}): ${errText}`);
+    // Throw a special RateLimitError for 429 so failover can catch it
+    if (response.status === 429 || errText.includes('RESOURCE_EXHAUSTED')) {
+      throw new RateLimitError(`API rate limit exceeded (${response.status}): ${errText}`);
+    }
+    throw new Error(`AI API error (${response.status}): ${errText}`);
   }
 
   const data = await response.json();
   if (!data.choices || data.choices.length === 0) {
-    throw new Error('NVIDIA NIM API returned no choices');
+    throw new Error('AI API returned no choices');
   }
 
   return data.choices[0].message.content || '';
+}
+
+// callWithFailover tries all API keys on 429 errors before giving up.
+async function callWithFailover(
+  model: string,
+  messages: any[],
+  temperature = 0.0,
+  maxTokens = 4096,
+  extraBody: any = {}
+): Promise<string> {
+  const totalKeys = apiKeys.length;
+  if (totalKeys === 0) {
+    throw new Error('No API keys configured. Please check VITE_NVIDIA_NIM_API_KEYS.');
+  }
+
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < totalKeys; attempt++) {
+    const apiKey = getNextAPIKey();
+    try {
+      return await callNVIDIA(apiKey, model, messages, temperature, maxTokens, extraBody);
+    } catch (error: any) {
+      if (error instanceof RateLimitError) {
+        console.warn(`API key #${(keyIndex - 1) % totalKeys} rate limited (429), trying next key... (attempt ${attempt + 1}/${totalKeys})`);
+        lastError = error;
+        continue;
+      }
+      // Non-429 errors: fail immediately
+      throw error;
+    }
+  }
+
+  // All keys exhausted
+  throw new Error(`Semua API key telah mencapai batas quota harian (1.500 request/key). Quota akan reset jam 07:00 WIB. ${lastError?.message || ''}`);
 }
 
 // ─── Category Vision Worker ──────────────────────────────────────────────────
@@ -233,7 +278,6 @@ async function runCategoryAnalysis(
 ): Promise<string> {
   onProgress(`Analyzing ${category.toUpperCase()} (${photos.length} photos)...`);
 
-  const apiKey = getNextAPIKey();
   const prompt = buildCategoryPrompt(category, photos);
 
   const content: any[] = [{ type: 'text', text: prompt }];
@@ -259,7 +303,7 @@ async function runCategoryAnalysis(
   ];
 
   try {
-    const result = await callNVIDIA(apiKey, visionModel, messages, 0.0, 4096);
+    const result = await callWithFailover(visionModel, messages, 0.0, 4096);
     onProgress(`Finished analyzing ${category.toUpperCase()} successfully.`);
     return result;
   } catch (error: any) {
@@ -411,8 +455,7 @@ RULES:
     };
   }
 
-  const apiKey = getNextAPIKey();
-  let content = await callNVIDIA(apiKey, reasoningModel, messages, 0.2, 16384, extraBody);
+  let content = await callWithFailover(reasoningModel, messages, 0.2, 16384, extraBody);
 
   // Clean raw output (think tags, code fences)
   content = content.trim();

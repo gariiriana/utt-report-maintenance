@@ -63,7 +63,7 @@ export async function exportPTWListToExcel(records: PTWExportRecord[]) {
   const toastId = toast.loading('Sedang membuat berkas Excel...');
   try {
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'PT United Transworld Trading';
+    workbook.creator = 'PT Dwimitra Ekatama Mandiri';
     workbook.lastModifiedBy = 'Data Center Maintenance System';
     workbook.created = new Date();
 
@@ -91,7 +91,7 @@ export async function exportPTWListToExcel(records: PTWExportRecord[]) {
 
     ws.mergeCells('C3:E3');
     const subtitleCell = ws.getCell('C3');
-    subtitleCell.value = 'PT United Transworld Trading — Sistem Pemeliharaan Data Center';
+    subtitleCell.value = 'PT Dwimitra Ekatama Mandiri — Sistem Pemeliharaan Data Center';
     subtitleCell.font = { name: 'Calibri', size: 9, italic: true, color: { argb: '555555' } };
     subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
@@ -280,7 +280,7 @@ export async function exportPTWListToPDF(records: PTWExportRecord[]) {
       pdf.rect(0, pageHeight - 2.5, pageWidth, 2.5, 'F');
 
       pdf.setFontSize(7).setTextColor('#64748b');
-      pdf.text('PT United Transworld Trading — Arsip PTW', margin, pageHeight - 5);
+      pdf.text('PT Dwimitra Ekatama Mandiri — Arsip PTW', margin, pageHeight - 5);
       pdf.text(`Halaman ${pg} dari ${totalPages}`, pageWidth - margin, pageHeight - 5, { align: 'right' });
     };
 
@@ -375,7 +375,7 @@ export async function exportPTWWeeklyReportToExcel(
   const toastId = toast.loading('Sedang membuat laporan Excel...');
   try {
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'PT United Transworld Trading';
+    workbook.creator = 'PT Dwimitra Ekatama Mandiri';
     workbook.lastModifiedBy = 'Data Center Maintenance System';
     workbook.created = new Date();
 
@@ -717,7 +717,7 @@ export async function exportPTWWeeklyReportToPDF(
       pdf.rect(0, pageHeight - 2.5, pageWidth, 2.5, 'F');
 
       pdf.setFontSize(7).setTextColor('#64748b');
-      pdf.text(`PT United Transworld Trading — Laporan PTW ${monthYearLabel}`, margin, pageHeight - 5);
+      pdf.text(`PT Dwimitra Ekatama Mandiri — Laporan PTW ${monthYearLabel}`, margin, pageHeight - 5);
       pdf.text(`Halaman ${pg} dari ${totalPages}`, pageWidth - margin, pageHeight - 5, { align: 'right' });
     };
 

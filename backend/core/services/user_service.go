@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/core/models"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/repositories"
+	"github.com/gariiriana/DwimitraSystem/backend/core/models"
+	"github.com/gariiriana/DwimitraSystem/backend/core/repositories"
 )
 type UserService struct {
 	Repo     *repositories.UserRepository

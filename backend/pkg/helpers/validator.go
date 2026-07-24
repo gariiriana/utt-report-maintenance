@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
-	apperrors "github.com/gariiriana/utt-report-maintenance/backend/pkg/errors"
+	apperrors "github.com/gariiriana/DwimitraSystem/backend/pkg/errors"
 )
 
 var validate *validator.Validate

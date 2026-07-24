@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/models"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/repositories"
-	"github.com/gariiriana/utt-report-maintenance/backend/pkg/logger"
+	"github.com/gariiriana/DwimitraSystem/backend/core/models"
+	"github.com/gariiriana/DwimitraSystem/backend/core/repositories"
+	"github.com/gariiriana/DwimitraSystem/backend/pkg/logger"
 )
 type AuditService struct {
 	Repo *repositories.AuditRepository

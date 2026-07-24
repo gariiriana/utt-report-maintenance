@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	firebaseAuth "firebase.google.com/go/v4/auth"
-	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
-	"github.com/gariiriana/utt-report-maintenance/backend/pkg/logger"
+	"github.com/gariiriana/DwimitraSystem/backend/pkg/helpers"
+	"github.com/gariiriana/DwimitraSystem/backend/pkg/logger"
 )
 type contextKey string
 
@@ -18,6 +18,14 @@ const (
 	userUIDKey   contextKey = "user_uid"
 	userEmailKey contextKey = "user_email"
 	userRoleKey  contextKey = "user_role"
+)
+
+// Exported aliases for use in other packages (e.g., WebSocket auth in routes)
+var (
+	ClaimsKeyExported    = claimsKey
+	UserUIDKeyExported   = userUIDKey
+	UserEmailKeyExported = userEmailKey
+	UserRoleKeyExported  = userRoleKey
 )
 
 // VerifySecret checks the client-provided API secret against the server secret.

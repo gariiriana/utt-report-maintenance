@@ -148,14 +148,14 @@ export function FindingManagement() {
         className="mb-10"
       >
         <div className="flex items-center gap-2 sm:gap-3 mb-2">
-          <div className="p-1.5 sm:p-2 bg-amber-500/10 rounded-lg">
-            <Plus className="w-6 h-6 sm:w-8 sm:h-8 text-amber-500" />
+          <div className="p-1.5 sm:p-2 bg-amber-50 rounded-lg border border-amber-100">
+            <Plus className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" />
           </div>
-          <h1 className="text-xl sm:text-3xl font-extrabold text-white tracking-tight">
+          <h1 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
             Input Temuan Maintenance
           </h1>
         </div>
-        <p className="text-slate-400 text-sm sm:text-lg ml-0 sm:ml-12 lg:ml-14">
+        <p className="text-slate-600 font-medium text-sm sm:text-base ml-0 sm:ml-12 lg:ml-14">
           Dokumentasikan temuan trouble maintenance dengan detail untuk arsip dan pelaporan.
         </p>
       </motion.div>
@@ -164,20 +164,20 @@ export function FindingManagement() {
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.1 }}
-        className="bg-slate-900/40 backdrop-blur-2xl rounded-2xl sm:rounded-3xl border border-white/5 shadow-2xl overflow-hidden"
+        className="bg-white/90 backdrop-blur-2xl rounded-2xl sm:rounded-3xl border border-sky-100/90 shadow-2xl overflow-hidden text-slate-800"
       >
         <form onSubmit={handleSubmit} className="p-5 sm:p-10">
           <div className="flex flex-col lg:flex-row gap-12">
             <div className="flex-1 space-y-8">
-              <div className="flex items-center gap-2 pb-4 border-b border-white/5">
-                <Package className="w-5 h-5 text-amber-500" />
-                <h2 className="text-xl font-bold text-white">Informasi Part & Detail</h2>
+              <div className="flex items-center gap-2 pb-4 border-b border-slate-200">
+                <Package className="w-5 h-5 text-amber-600" />
+                <h2 className="text-xl font-black text-slate-900">Informasi Part & Detail</h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-400 flex items-center gap-2 ml-1">
-                    <Package className="w-4 h-4" /> Nama Part <span className="text-amber-500">*</span>
+                  <label className="text-sm font-bold text-slate-700 flex items-center gap-2 ml-1">
+                    <Package className="w-4 h-4 text-slate-400" /> Nama Part <span className="text-amber-600">*</span>
                   </label>
                   <input
                     required
@@ -185,13 +185,13 @@ export function FindingManagement() {
                     value={formData.partName}
                     onChange={(e) => setFormData({ ...formData, partName: e.target.value })}
                     placeholder="Contoh: Compressor, Motor Fan, etc."
-                    className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-slate-600 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 outline-none transition-all"
+                    className="w-full px-5 py-4 bg-slate-50/90 border border-slate-200 rounded-2xl text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-medium outline-none transition-all"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-400 flex items-center gap-2 ml-1">
-                    <Hash className="w-4 h-4" /> Nomor Part <span className="text-amber-500">*</span>
+                  <label className="text-sm font-bold text-slate-700 flex items-center gap-2 ml-1">
+                    <Hash className="w-4 h-4 text-slate-400" /> Nomor Part <span className="text-amber-600">*</span>
                   </label>
                   <input
                     required
@@ -199,47 +199,47 @@ export function FindingManagement() {
                     value={formData.partNumber}
                     onChange={(e) => setFormData({ ...formData, partNumber: e.target.value })}
                     placeholder="P/N: 12345-ABC-XYZ"
-                    className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-slate-600 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 outline-none transition-all"
+                    className="w-full px-5 py-4 bg-slate-50/90 border border-slate-200 rounded-2xl text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-medium outline-none transition-all"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-400 flex items-center gap-2 ml-1">
-                    <Tag className="w-4 h-4" /> Brand / Merk
+                  <label className="text-sm font-bold text-slate-700 flex items-center gap-2 ml-1">
+                    <Tag className="w-4 h-4 text-slate-400" /> Brand / Merk
                   </label>
                   <input
                     type="text"
                     value={formData.brandName}
                     onChange={(e) => setFormData({ ...formData, brandName: e.target.value })}
                     placeholder="Daikin, Schneider, etc."
-                    className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-slate-600 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 outline-none transition-all"
+                    className="w-full px-5 py-4 bg-slate-50/90 border border-slate-200 rounded-2xl text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-medium outline-none transition-all"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-slate-400 flex items-center gap-2 ml-1">
-                      <Layers className="w-4 h-4" /> Quantity
+                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2 ml-1">
+                      <Layers className="w-4 h-4 text-slate-400" /> Quantity
                     </label>
                     <input
                       type="number"
                       min={0}
                       value={formData.quantity}
                       onChange={(e) => setFormData({ ...formData, quantity: e.target.value === '' ? '' : parseInt(e.target.value) })}
-                      className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 outline-none transition-all"
+                      className="w-full px-5 py-4 bg-slate-50/90 border border-slate-200 rounded-2xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-medium outline-none transition-all"
                       title="Quantity"
                       placeholder="0"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-slate-400 flex items-center gap-2 ml-1">
-                      <CalendarDays className="w-4 h-4" /> Tanggal
+                    <label className="text-sm font-bold text-slate-700 flex items-center gap-2 ml-1">
+                      <CalendarDays className="w-4 h-4 text-slate-400" /> Tanggal
                     </label>
                     <input
                       type="date"
                       value={formData.findingDate}
                       onChange={(e) => setFormData({ ...formData, findingDate: e.target.value })}
-                      className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 outline-none transition-all [color-scheme:dark]"
+                      className="w-full px-5 py-4 bg-slate-50/90 border border-slate-200 rounded-2xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-medium outline-none transition-all"
                       title="Tanggal temuan"
                     />
                   </div>
@@ -247,22 +247,22 @@ export function FindingManagement() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-400 flex items-center gap-2 ml-1">
-                  <MessageSquare className="w-4 h-4" /> Remark / Catatan Temuan
+                <label className="text-sm font-bold text-slate-700 flex items-center gap-2 ml-1">
+                  <MessageSquare className="w-4 h-4 text-slate-400" /> Remark / Catatan Temuan
                 </label>
                 <textarea
                   value={formData.remark}
                   onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
-                  className="w-full px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-slate-600 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 outline-none h-40 resize-none transition-all"
+                  className="w-full px-5 py-4 bg-slate-50/90 border border-slate-200 rounded-2xl text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-medium outline-none h-40 resize-none transition-all"
                   placeholder="Jelaskan detail temuan di sini..."
                 />
               </div>
             </div>
 
             <div className="w-full lg:w-[400px] space-y-8">
-              <div className="flex items-center gap-2 pb-4 border-b border-white/5">
-                <Camera className="w-5 h-5 text-amber-500" />
-                <h2 className="text-xl font-bold text-white">Dokumentasi Foto</h2>
+              <div className="flex items-center gap-2 pb-4 border-b border-slate-200">
+                <Camera className="w-5 h-5 text-amber-600" />
+                <h2 className="text-xl font-black text-slate-900">Dokumentasi Foto</h2>
               </div>
 
               <div className="grid grid-cols-1 gap-4">
@@ -273,7 +273,7 @@ export function FindingManagement() {
                       layout
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className="group relative rounded-2xl overflow-hidden border border-white/10 aspect-square bg-slate-800"
+                      className="group relative rounded-2xl overflow-hidden border border-slate-200 aspect-square bg-slate-100 shadow-sm"
                     >
                       <img
                         src={photo.base64}
@@ -312,11 +312,11 @@ export function FindingManagement() {
                     </motion.div>
                   ))}
 
-                  <div className="relative border-2 border-dashed border-white/10 rounded-2xl aspect-square flex flex-col items-center justify-center hover:border-amber-500/50 hover:bg-amber-500/5 transition-all cursor-pointer group">
-                    <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                      <ImagePlus className="w-6 h-6 text-amber-500" />
+                  <div className="relative border-2 border-dashed border-slate-300 rounded-2xl aspect-square flex flex-col items-center justify-center hover:border-amber-500 hover:bg-amber-50 transition-all cursor-pointer group bg-slate-50/80">
+                    <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <ImagePlus className="w-6 h-6 text-amber-600" />
                     </div>
-                    <span className="text-sm font-medium text-slate-400 group-hover:text-amber-500">Tambah Foto</span>
+                    <span className="text-sm font-bold text-slate-600 group-hover:text-amber-600">Tambah Foto</span>
                     <input
                       type="file"
                       accept="image/*"

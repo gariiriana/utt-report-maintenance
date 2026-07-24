@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/core/middlewares"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/models"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/services"
-	apperrors "github.com/gariiriana/utt-report-maintenance/backend/pkg/errors"
-	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
+	"github.com/gariiriana/DwimitraSystem/backend/core/middlewares"
+	"github.com/gariiriana/DwimitraSystem/backend/core/models"
+	"github.com/gariiriana/DwimitraSystem/backend/core/services"
+	apperrors "github.com/gariiriana/DwimitraSystem/backend/pkg/errors"
+	"github.com/gariiriana/DwimitraSystem/backend/pkg/helpers"
 )
 type AuthController struct {
 	AuthService *services.AuthService

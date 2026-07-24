@@ -20,7 +20,7 @@ const formatExcelDate = (dateStr: string): string => {
 
 export async function exportSLAReportToExcel(report: any) {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'PT United Transworld Trading';
+  workbook.creator = 'PT Dwimitra Ekatama Mandiri';
   workbook.lastModifiedBy = 'Data Center Maintenance System';
   workbook.created = new Date();
   workbook.modified = new Date();

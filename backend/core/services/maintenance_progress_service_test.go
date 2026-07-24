@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"cloud.google.com/go/firestore"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/models"
+	"github.com/gariiriana/DwimitraSystem/backend/core/models"
 )
 
 type mockMaintenanceProgressRepo struct {

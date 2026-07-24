@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/core/models"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/services"
-	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
-	"github.com/gariiriana/utt-report-maintenance/backend/pkg/logger"
+	"github.com/gariiriana/DwimitraSystem/backend/core/models"
+	"github.com/gariiriana/DwimitraSystem/backend/core/services"
+	"github.com/gariiriana/DwimitraSystem/backend/pkg/helpers"
+	"github.com/gariiriana/DwimitraSystem/backend/pkg/logger"
 )
 
 // FindingController handles HTTP requests for findings.

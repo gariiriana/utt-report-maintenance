@@ -8,8 +8,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/core/middlewares"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/routes"
+	"github.com/gariiriana/DwimitraSystem/backend/core/middlewares"
+	"github.com/gariiriana/DwimitraSystem/backend/core/routes"
 )
 
 var (

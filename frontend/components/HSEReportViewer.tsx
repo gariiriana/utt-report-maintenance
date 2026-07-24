@@ -6,7 +6,6 @@ import {
     ShieldCheck, Loader2, AlertTriangle, XCircle,
     HardHat, Calendar, Download, User, Users, ExternalLink
 } from 'lucide-react';
-import logoUTT from '@/assets/logo_utt.png';
 import logoDME from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import { useAuth } from '@/components/AuthContext';
@@ -176,15 +175,15 @@ export function HSEReportViewer({ reportId }: HSEReportViewerProps) {
         : (report.date || new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
 
     const isUTT = report.reportType === 'utt';
-    const companyName = isUTT ? 'PT United Transworld Trading' : 'PT Dwimitra Ekatama Mandiri';
-    const secondaryLogo = isUTT ? logoUTT : logoNeutraDC;
+    const companyName = 'PT Dwimitra Ekatama Mandiri';
+    const secondaryLogo = isUTT ? logoDME : logoNeutraDC;
 
     return (
         <div className="min-h-screen font-sans text-slate-200 flex flex-col relative overflow-hidden">
             <div className="bg-slate-900/80 backdrop-blur-xl border-b border-slate-700/50 sticky top-0 z-50">
                 <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <img src={isUTT ? logoUTT : logoNeutraDC} alt="Logo" className="w-10 h-10 object-contain" />
+                        <img src={isUTT ? logoDME : logoNeutraDC} alt="Logo" className="w-10 h-10 object-contain" />
                         <div className="hidden sm:block">
                             <p className="text-xs text-slate-400 font-medium">{companyName}</p>
                             <div className="flex items-center gap-1 mt-0.5">

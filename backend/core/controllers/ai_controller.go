@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/core/models"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/services"
-	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
-	"github.com/gariiriana/utt-report-maintenance/backend/pkg/logger"
+	"github.com/gariiriana/DwimitraSystem/backend/core/models"
+	"github.com/gariiriana/DwimitraSystem/backend/core/services"
+	"github.com/gariiriana/DwimitraSystem/backend/pkg/helpers"
+	"github.com/gariiriana/DwimitraSystem/backend/pkg/logger"
 )
 
 // AIController handles HTTP requests for AI-powered report generation.
@@ -36,8 +36,8 @@ func (c *AIController) AnalyzeATSReport(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Validate input
-	if len(req.Photos) == 0 {
-		helpers.SendError(w, "At least one photo is required", http.StatusBadRequest)
+	if len(req.Photos) == 0 && req.ReportData == nil {
+		helpers.SendError(w, "At least one photo or report data is required", http.StatusBadRequest)
 		return
 	}
 
@@ -63,6 +63,94 @@ func (c *AIController) AnalyzeATSReport(w http.ResponseWriter, r *http.Request) 
 			"photo_count", len(req.Photos),
 		)
 		helpers.SendError(w, "AI analysis failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	helpers.SendJSON(w, http.StatusOK, result)
+}
+
+// AnalyzeFCUReport handles POST /api/ai/fcu-report
+// Receives photos from the frontend and returns structured FCU service report data.
+func (c *AIController) AnalyzeFCUReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req models.FCUAnalyzeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.SendError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.Photos) == 0 && req.ReportData == nil {
+		helpers.SendError(w, "At least one photo or report data is required", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.Photos) > 30 {
+		helpers.SendError(w, "Maximum 30 photos allowed per request", http.StatusBadRequest)
+		return
+	}
+
+	for i, photo := range req.Photos {
+		if photo.Category == "" {
+			req.Photos[i].Category = "visual_inspection"
+		}
+	}
+
+	result, err := c.service.AnalyzeFCUPhotos(r.Context(), req.Photos, req.ReportData)
+	if err != nil {
+		logger.Error("ai_fcu_analyze_error",
+			"request_id", helpers.ExtractRequestID(r),
+			"error", err.Error(),
+			"photo_count", len(req.Photos),
+		)
+		helpers.SendError(w, "AI FCU analysis failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	helpers.SendJSON(w, http.StatusOK, result)
+}
+
+// AnalyzePJUReport handles POST /api/ai/pju-report
+// Receives photos from the frontend and returns structured PJU service report data.
+func (c *AIController) AnalyzePJUReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req models.PJUAnalyzeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.SendError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.Photos) == 0 && req.ReportData == nil {
+		helpers.SendError(w, "At least one photo or report data is required", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.Photos) > 30 {
+		helpers.SendError(w, "Maximum 30 photos allowed per request", http.StatusBadRequest)
+		return
+	}
+
+	for i, photo := range req.Photos {
+		if photo.Category == "" {
+			req.Photos[i].Category = "visual_inspection"
+		}
+	}
+
+	result, err := c.service.AnalyzePJUPhotos(r.Context(), req.Photos, req.ReportData)
+	if err != nil {
+		logger.Error("ai_pju_analyze_error",
+			"request_id", helpers.ExtractRequestID(r),
+			"error", err.Error(),
+			"photo_count", len(req.Photos),
+		)
+		helpers.SendError(w, "AI PJU analysis failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -163,4 +251,63 @@ func (c *AIController) AnalyzeSingleCard(w http.ResponseWriter, r *http.Request)
 	}
 
 	helpers.SendJSON(w, http.StatusOK, result)
+}
+
+// AnalyzePDUReport handles POST /api/ai/pdu-report
+func (c *AIController) AnalyzePDUReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req models.PDUAnalyzeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.SendError(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	result, err := c.service.AnalyzePDUPhotos(r.Context(), req.Photos, req.ExistingData)
+	if err != nil {
+		logger.Error("ai_pdu_report_error",
+			"request_id", helpers.ExtractRequestID(r),
+			"error", err.Error(),
+		)
+		helpers.SendError(w, "AI PDU report generation failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	helpers.SendJSON(w, http.StatusOK, result)
+}
+
+// AnalyzeCTReport handles POST /api/ai/ct-report
+func (c *AIController) AnalyzeCTReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req models.CTAnalyzeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.SendError(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Simple status response for CT report AI processing
+	helpers.SendJSON(w, http.StatusOK, req.ExistingData)
+}
+
+// AnalyzeGeneratorReport handles POST /api/ai/generator-report
+func (c *AIController) AnalyzeGeneratorReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req models.GeneratorAnalyzeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.SendError(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	helpers.SendJSON(w, http.StatusOK, req.ExistingData)
 }

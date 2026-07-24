@@ -75,7 +75,7 @@ export async function generateResumePdf(summary: MaintenanceSummary, maintenance
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(100, 116, 139);
-        pdf.text(projectName ? projectName : 'Sistem Pelaporan & Pemantauan - PT United Transworld Trading', pageW / 2, 23, { align: 'center' });
+        pdf.text(projectName ? projectName : 'Sistem Pelaporan & Pemantauan - PT Dwimitra Ekatama Mandiri', pageW / 2, 23, { align: 'center' });
 
         pdf.setDrawColor(226, 232, 240);
         pdf.line(margin, 30, pageW - margin, 30);
@@ -208,7 +208,7 @@ export async function generateResumePdf(summary: MaintenanceSummary, maintenance
         doc.setFontSize(8);
         doc.setTextColor(148, 163, 184);
         doc.text(
-            `PT United Transworld Trading - Sistem Manajemen Pemeliharaan`,
+            `PT Dwimitra Ekatama Mandiri - Sistem Manajemen Pemeliharaan`,
             margin,
             doc.internal.pageSize.getHeight() - 10
         );

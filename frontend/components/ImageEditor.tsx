@@ -182,34 +182,34 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md"
         >
             <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-slate-900 border border-slate-700/50 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
+                className="bg-white/95 backdrop-blur-xl border border-sky-100/90 rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl text-slate-800"
             >
-                <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
+                <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white/95">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-500/10 rounded-lg">
-                            <Scissors className="w-5 h-5 text-blue-400" />
+                        <div className="p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">
+                            <Scissors className="w-5 h-5" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-bold text-white leading-none">Edit & Crop Photo</h3>
-                            <p className="text-xs text-slate-500 mt-1">Adjust your photo for the report</p>
+                            <h3 className="text-lg font-bold text-slate-900 leading-none">Edit & Crop Photo</h3>
+                            <p className="text-xs text-slate-500 mt-1 font-medium">Adjust your photo for the report</p>
                         </div>
                     </div>
                     <button
                         onClick={onCancel}
-                        className="p-2 hover:bg-slate-800 rounded-lg transition text-slate-400 hover:text-white"
+                        className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-500 hover:text-slate-900"
                         title="Tutup"
                     >
                         <X className="w-6 h-6" />
                     </button>
                 </div>
 
-                <div className="relative flex-1 min-h-[400px] bg-slate-950 flex items-center justify-center p-8 overflow-hidden">
+                <div className="relative flex-1 min-h-[400px] bg-slate-50 flex items-center justify-center p-8 overflow-hidden">
                     <style>{`
                         .ReactCrop {
                             max-height: 60vh;
@@ -278,15 +278,15 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
                     </div>
                 </div>
 
-                <div className="p-6 bg-slate-900 border-t border-slate-800">
+                <div className="p-6 bg-slate-50/90 border-t border-slate-200">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                                <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
                                     <ZoomIn className="w-4 h-4 text-slate-500" />
                                     Zoom
                                 </label>
-                                <span className="text-xs font-mono text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded-full">
+                                <span className="text-xs font-mono text-blue-600 bg-blue-50 border border-blue-100 font-bold px-2.5 py-0.5 rounded-full">
                                     {zoom.toFixed(1)}x
                                 </span>
                             </div>
@@ -299,17 +299,17 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
                                 title="Zoom"
                                 aria-label="Zoom"
                                 onChange={(e) => setZoom(Number(e.target.value))}
-                                className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                             />
                         </div>
 
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                                <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                                    <RotateCw className="w-4 h-4 text-emerald-500" />
+                                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                    <RotateCw className="w-4 h-4 text-emerald-600" />
                                     Rotation
                                 </label>
-                                <span className="text-xs font-mono text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
+                                <span className="text-xs font-mono text-emerald-600 bg-emerald-50 border border-emerald-100 font-bold px-2.5 py-0.5 rounded-full">
                                     {rotation}°
                                 </span>
                             </div>
@@ -322,7 +322,7 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
                                 title="Rotation"
                                 aria-label="Rotation"
                                 onChange={(e) => setRotation(Number(e.target.value))}
-                                className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
                             />
                         </div>
                     </div>
@@ -330,7 +330,7 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
                     <div className="flex items-center justify-end gap-3 pt-2">
                         <button
                             onClick={handleDownload}
-                            className="px-5 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 rounded-xl font-medium transition flex items-center gap-2 border border-emerald-500/20"
+                            className="px-5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold transition flex items-center gap-2 border border-emerald-200 shadow-sm"
                         >
                             <Download className="w-4 h-4" />
                             Download
@@ -338,7 +338,7 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
                         <div className="flex-1" />
                         <button
                             onClick={onCancel}
-                            className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium transition"
+                            className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition border border-slate-200 shadow-sm"
                         >
                             Cancel
                         </button>
@@ -355,4 +355,3 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
         </motion.div>
     );
 }
-

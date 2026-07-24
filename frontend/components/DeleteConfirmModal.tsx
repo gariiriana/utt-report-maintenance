@@ -69,7 +69,7 @@ export function DeleteConfirmModal({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center px-4"
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center px-4"
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -77,11 +77,11 @@ export function DeleteConfirmModal({
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
               onClick={(e) => e.stopPropagation()}
-              className={`bg-slate-900/95 backdrop-blur-xl rounded-2xl p-6 sm:p-8 border ${isPendingApproval ? 'border-amber-500/30' : 'border-red-500/30'} max-w-md w-full relative overflow-hidden shadow-2xl`}
+              className={`bg-white/95 backdrop-blur-xl rounded-3xl p-6 sm:p-8 border ${isPendingApproval ? 'border-amber-200' : 'border-rose-200'} max-w-md w-full relative overflow-hidden shadow-2xl text-slate-800`}
             >
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 p-1.5 rounded-lg bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white transition"
+                className="absolute top-4 right-4 p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 transition"
                 title="Tutup"
               >
                 <X className="w-5 h-5" />
@@ -99,42 +99,42 @@ export function DeleteConfirmModal({
                       repeat: Infinity,
                       ease: "easeInOut"
                     }}
-                    className={`absolute inset-0 ${isPendingApproval ? 'bg-amber-500/30' : 'bg-red-500/30'} rounded-full blur-xl`}
+                    className={`absolute inset-0 ${isPendingApproval ? 'bg-amber-500/20' : 'bg-rose-500/20'} rounded-full blur-xl`}
                   />
-                  <div className={`relative p-4 ${isPendingApproval ? 'bg-amber-500/10 border-amber-500/30' : 'bg-red-500/10 border-red-500/30'} rounded-full border`}>
-                    <AlertTriangle className={`w-8 h-8 ${isPendingApproval ? 'text-amber-400' : 'text-red-400'}`} />
+                  <div className={`relative p-4 ${isPendingApproval ? 'bg-amber-50 border-amber-200' : 'bg-rose-50 border-rose-200'} rounded-full border`}>
+                    <AlertTriangle className={`w-8 h-8 ${isPendingApproval ? 'text-amber-600' : 'text-rose-600'}`} />
                   </div>
                 </div>
               </div>
 
               <div className="text-center mb-6">
-                <h3 className="text-xl sm:text-2xl font-bold text-white mb-3">
+                <h3 className="text-xl sm:text-2xl font-black text-slate-900 mb-2">
                   {getModalTitle()}
                 </h3>
-                <div className="text-slate-400 text-sm sm:text-base mb-2">
+                <div className="text-slate-600 text-sm sm:text-base mb-2">
                   {getModalDescription()}
                 </div>
-                <p className="text-white font-semibold text-sm sm:text-base bg-slate-800/50 rounded-lg px-4 py-2 mt-3 border border-slate-700/50 truncate">
+                <p className="text-slate-900 font-bold text-sm sm:text-base bg-slate-50 rounded-xl px-4 py-2 mt-3 border border-slate-200 truncate">
                   {documentName}
                 </p>
 
                 {/* Show reason description if admin is reviewing request */}
                 {isPendingApproval && deleteReason && (
-                  <div className="mt-4 text-left bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
-                    <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-1">Alasan Penghapusan:</p>
-                    <p className="text-slate-300 text-sm font-medium italic">"{deleteReason}"</p>
+                  <div className="mt-4 text-left bg-amber-50 border border-amber-200 rounded-xl p-3">
+                    <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-1">Alasan Penghapusan:</p>
+                    <p className="text-slate-700 text-sm font-medium italic">"{deleteReason}"</p>
                   </div>
                 )}
 
                 {/* Show reason input for engineer requesting delete */}
                 {!isAdmin && (
                   <div className="mt-4 text-left">
-                    <label htmlFor="delete-reason" className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
+                    <label htmlFor="delete-reason" className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">
                       Alasan Hapus (Opsional)
                     </label>
                     <textarea
                       id="delete-reason"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white outline-none focus:ring-2 focus:ring-amber-500 text-sm h-20 resize-none placeholder-slate-600 focus:border-amber-500 transition-all"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:bg-white focus:ring-2 focus:ring-amber-500/20 text-sm h-20 resize-none placeholder-slate-400 focus:border-amber-500 transition-all"
                       placeholder="Contoh: Salah upload unit, data report duplikat, dll..."
                       value={reason}
                       onChange={(e) => setReason(e.target.value)}
@@ -142,7 +142,7 @@ export function DeleteConfirmModal({
                   </div>
                 )}
 
-                <p className="text-red-400 text-xs sm:text-sm mt-4">
+                <p className="text-rose-600 font-medium text-xs sm:text-sm mt-4">
                   {isPendingApproval ? '⚠️ Menyetujui tindakan ini tidak dapat dibatalkan' : '⚠️ Tindakan ini tidak dapat dibatalkan'}
                 </p>
               </div>
@@ -155,7 +155,7 @@ export function DeleteConfirmModal({
                     whileTap={{ scale: loading ? 1 : 0.98 }}
                     disabled={loading}
                     onClick={() => onConfirm()}
-                    className="w-full py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-semibold transition shadow-lg shadow-red-500/20 flex items-center justify-center gap-2"
+                    className="w-full py-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white rounded-xl font-bold transition shadow-lg shadow-rose-500/25 flex items-center justify-center gap-2"
                   >
                     {loading && (
                       <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
@@ -169,7 +169,7 @@ export function DeleteConfirmModal({
                     whileTap={{ scale: loading ? 1 : 0.98 }}
                     disabled={loading}
                     onClick={onRejectRequest}
-                    className="w-full py-3 bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white rounded-lg font-semibold transition shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 border border-amber-500/30"
+                    className="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl font-bold transition shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 border border-amber-200"
                   >
                     <Ban className="w-4 h-4" />
                     Tolak Pengajuan (Batal Hapus)
@@ -180,7 +180,7 @@ export function DeleteConfirmModal({
                     whileTap={{ scale: loading ? 1 : 0.98 }}
                     onClick={onClose}
                     disabled={loading}
-                    className="w-full py-3 bg-slate-800/50 hover:bg-slate-700/50 text-white rounded-lg font-semibold transition border border-slate-600/50"
+                    className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition border border-slate-200 shadow-sm"
                   >
                     Batal
                   </motion.button>
@@ -193,7 +193,7 @@ export function DeleteConfirmModal({
                     whileTap={{ scale: loading ? 1 : 0.98 }}
                     onClick={onClose}
                     disabled={loading}
-                    className={`px-6 py-3 bg-slate-800/50 hover:bg-slate-700/50 text-white rounded-lg font-semibold transition border border-slate-600/50 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className={`px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition border border-slate-200 shadow-sm ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     Cancel
                   </motion.button>
@@ -202,7 +202,7 @@ export function DeleteConfirmModal({
                     whileTap={{ scale: loading ? 1 : 0.98 }}
                     disabled={loading}
                     onClick={() => onConfirm(reason)}
-                    className={`px-6 py-3 bg-gradient-to-r ${isAdmin ? 'from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 shadow-red-500/20' : 'from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 shadow-amber-500/20'} text-white rounded-lg font-semibold transition shadow-lg flex items-center justify-center gap-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    className={`px-6 py-3 bg-gradient-to-r ${isAdmin ? 'from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 shadow-rose-500/25' : 'from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 shadow-amber-500/20'} text-white rounded-xl font-bold transition shadow-lg flex items-center justify-center gap-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                   >
                     {loading && (
                       <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />

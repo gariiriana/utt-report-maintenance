@@ -5,7 +5,6 @@ import { MainApp } from '@/pages/MainApp';
 import { HSEApp } from '@/pages/HSEApp';
 import { DivisionApp } from '@/pages/DivisionApp';
 import { SiteManagerDashboard } from '@/pages/SiteManagerDashboard';
-import { InventoryApp } from '@/pages/InventoryApp';
 import { DataCenterBackground } from '@/components/DataCenterBackground';
 import { ServerLoadingIndicator } from '@/components/ServerLoadingIndicator';
 import { HSEReportViewer } from '@/components/HSEReportViewer';
@@ -71,7 +70,6 @@ function AppContent() {
               const isoRoles = ['pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
               if (isoRoles.includes(userRole || '')) return <DivisionApp />;
               if (userRole === 'site_manager' || userRole === 'manager') return <SiteManagerDashboard />;
-              if (userRole === 'inventory') return <InventoryApp />;
               return <MainApp />;
             })()}
             <AIChatWidget />
@@ -93,13 +91,9 @@ function AppContent() {
 }
 
 function AppWithBackground() {
-  const { user, loading } = useAuth();
-  
-  const showVideo = !loading && !user && !PUBLIC_HSE_REPORT_ID;
-
   return (
-    <div className="relative min-h-screen bg-slate-950 overflow-x-hidden">
-      <DataCenterBackground showVideo={showVideo} />
+    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-sky-50 to-blue-100 text-slate-800 overflow-x-hidden">
+      <DataCenterBackground />
       
       {PUBLIC_HSE_REPORT_ID ? (
         <div className="relative z-10">
@@ -109,7 +103,7 @@ function AppWithBackground() {
         <AppContent />
       )}
       
-      <Toaster position="top-center" richColors />
+      <Toaster position="top-center" theme="dark" richColors />
     </div>
   );
 }

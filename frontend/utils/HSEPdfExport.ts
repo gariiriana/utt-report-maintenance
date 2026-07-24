@@ -575,7 +575,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         doc.setFontSize(7.5);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(GRAY);
-        const footerCompany = data.reportType === 'utt' ? 'PT United Transworld Trading' : 'PT Dwimitra Ekatama Mandiri';
+        const footerCompany = 'PT Dwimitra Ekatama Mandiri';
         doc.text(`${footerCompany} — HSE PORTAL`, marginL, pageH - 6);
         doc.text(`Halaman ${pg} dari ${totalPages}`, pageW - marginR, pageH - 6, { align: 'right' });
     }

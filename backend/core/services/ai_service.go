@@ -12,13 +12,17 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/core/config"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/models"
+	"cloud.google.com/go/firestore"
+	"github.com/gariiriana/DwimitraSystem/backend/core/config"
+	"github.com/gariiriana/DwimitraSystem/backend/core/models"
 )
 
 // IAIService defines the contract for AI analysis operations.
 type IAIService interface {
 	AnalyzeATSPhotos(ctx context.Context, photos []models.ATSPhotoInput, existingData *models.ATSReportData) (*models.ATSReportData, error)
+	AnalyzeFCUPhotos(ctx context.Context, photos []models.FCUPhotoInput, existingData *models.FCUReportData) (*models.FCUReportData, error)
+	AnalyzePJUPhotos(ctx context.Context, photos []models.PJUPhotoInput, existingData *models.PJUReportData) (*models.PJUReportData, error)
+	AnalyzePDUPhotos(ctx context.Context, photos []models.PDUPhotoInput, existingData *models.PDUReportData) (*models.PDUReportData, error)
 	Chat(ctx context.Context, messages []models.ChatMessage) (string, error)
 	ValidateATSForm(ctx context.Context, data models.ATSReportData, photos []models.ATSPhotoInput) (*models.FormValidationResponse, error)
 	AnalyzeSingleCard(ctx context.Context, req models.CardAnalyzeRequest) (*models.CardAnalyzeResponse, error)
@@ -33,15 +37,17 @@ type aiService struct {
 	visionModel    string // Stage 2: multimodal vision model
 	reasoningModel string // Stage 3: text-only reasoning model
 	chatModel      string // Fast model for interactive chat
+	firestoreClient *firestore.Client
 }
 
 // NewAIService creates a new AI service with multi-key and multi-model support.
-func NewAIService() IAIService {
+func NewAIService(firestoreClient *firestore.Client) IAIService {
 	svc := &aiService{
 		baseURL:        config.EnvString("NVIDIA_NIM_BASE_URL", "https://integrate.api.nvidia.com/v1/chat/completions"),
 		visionModel:    config.EnvString("NVIDIA_NIM_VISION_MODEL", config.EnvString("NVIDIA_NIM_MODEL", "meta/llama-3.2-11b-vision-instruct")),
 		reasoningModel: config.EnvString("NVIDIA_NIM_REASONING_MODEL", config.EnvString("NVIDIA_NIM_MODEL", "z-ai/glm-5.1")),
-		chatModel:      config.EnvString("NVIDIA_NIM_CHAT_MODEL", "meta/llama-3.1-8b-instruct"),
+		chatModel:      config.EnvString("NVIDIA_NIM_CHAT_MODEL", config.EnvString("NVIDIA_NIM_MODEL", "meta/llama-3.1-8b-instruct")),
+		firestoreClient: firestoreClient,
 	}
 
 	// Load API keys: prefer multi-key pool, fallback to single key
@@ -78,6 +84,59 @@ func (s *aiService) getNextAPIKey() string {
 	}
 	idx := atomic.AddUint64(&s.keyIndex, 1)
 	return s.apiKeys[idx%uint64(len(s.apiKeys))]
+}
+
+// incrementUsedRequest increments the AI usage counter in Firestore and manages daily reset.
+func (s *aiService) incrementUsedRequest(ctx context.Context) {
+	if s.firestoreClient == nil {
+		return
+	}
+
+	// WIB (UTC+7) time for data center operational timezone
+	now := time.Now().UTC().Add(7 * time.Hour)
+	todayStr := now.Format("2006-01-02")
+
+	docRef := s.firestoreClient.Collection("system_status").Doc("ai_limit_tracker")
+
+	err := s.firestoreClient.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
+		snapshot, err := tx.Get(docRef)
+		
+		var data map[string]interface{}
+		if err != nil {
+			// Document does not exist, create it
+			data = map[string]interface{}{
+				"total_limit":     int64(6000),
+				"used_today":      int64(1),
+				"last_reset_date": todayStr,
+			}
+			return tx.Set(docRef, data)
+		}
+
+		lastReset, _ := snapshot.Data()["last_reset_date"].(string)
+		usedToday, _ := snapshot.Data()["used_today"].(int64)
+		totalLimit, _ := snapshot.Data()["total_limit"].(int64)
+		if totalLimit == 0 {
+			totalLimit = 6000
+		}
+
+		if lastReset != todayStr {
+			// Daily reset: it's a new day
+			return tx.Update(docRef, []firestore.Update{
+				{Path: "used_today", Value: int64(1)},
+				{Path: "last_reset_date", Value: todayStr},
+				{Path: "total_limit", Value: totalLimit},
+			})
+		}
+
+		// Increment used request
+		return tx.Update(docRef, []firestore.Update{
+			{Path: "used_today", Value: usedToday + 1},
+		})
+	})
+
+	if err != nil {
+		slog.Error("Failed to increment AI request limit counter in Firestore", "error", err.Error())
+	}
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -216,6 +275,165 @@ RULES:
 
 	return reportData, nil
 }
+
+// AnalyzeFCUPhotos implements the text-based AI Agent pipeline for FCU (Fan Coil Unit) Service Report.
+func (s *aiService) AnalyzeFCUPhotos(ctx context.Context, photos []models.FCUPhotoInput, existingData *models.FCUReportData) (*models.FCUReportData, error) {
+	if len(s.apiKeys) == 0 {
+		return nil, fmt.Errorf("no NVIDIA NIM API keys configured (set NVIDIA_NIM_API_KEYS or NVIDIA_NIM_API_KEY)")
+	}
+
+	pipelineStart := time.Now()
+	slog.Info("FCU AGENT Pipeline started (Text-based parameters)",
+		slog.Int("total_photos", len(photos)),
+		slog.Int("api_keys", len(s.apiKeys)),
+	)
+
+	var sb strings.Builder
+	for idx, p := range photos {
+		sb.WriteString(fmt.Sprintf("Item %d:\n", idx+1))
+		sb.WriteString(fmt.Sprintf("- Category: %s\n", p.Category))
+		sb.WriteString(fmt.Sprintf("- Description/Label: %s\n", p.Label))
+		sb.WriteString(fmt.Sprintf("- Parameter Value/Catatan: %s\n\n", p.Parameter))
+	}
+	itemsText := sb.String()
+
+	var existingDataText string
+	if existingData != nil {
+		dataBytes, _ := json.MarshalIndent(existingData, "", "  ")
+		existingDataText = fmt.Sprintf("\nEXISTING MEASUREMENT DATA (DO NOT OVERWRITE MEASUREMENTS, ONLY POPULATE/IMPROVE REMARKS IN INDONESIAN):\n%s\n", string(dataBytes))
+	}
+
+	prompt := fmt.Sprintf(`You are a precision consolidation AI agent for FCU (Fan Coil Unit) HVAC maintenance reports.
+We have a list of items where the maintenance engineer has provided parameter values, photo descriptions, and notes.
+%s
+Your ONLY job is to compile a complete, structured JSON report matching the FCU schema below.
+
+For each section:
+1. "visual_inspection": Analyze photos & descriptions for all 18 visual items (a to r) — check physical condition, AC enclosure cleanliness, air filter dust, evaporator coil dust/algae, electrical control terminations, drain pipe/pump condition, fanbelt tension, etc. Determine condition ("Good" or "Not good") and write detailed Indonesian remarks (e.g. "Kondisi fisik enclosure bersih dan terawat", "Filter udara telah diperiksa dan bersih dari debu", "Tidak ditemukan korosi atau kerusakan fisik").
+2. "cleaning": Analyze photos & descriptions for all 10 cleaning items (a to j) — evaluate cleanliness of enclosure, air filter, AC components from oil/refrigerant, drain pan, fan motor, return air grille, etc. Set condition ("Good" or "Not good") and write professional Indonesian remarks.
+3. "voltage_current": Assign voltage readings (voltage_rn, voltage_sn, voltage_tn, voltage_rs, voltage_st, voltage_tr) and current readings (current_r, current_s, current_t). Verify if balanced and normal.
+4. "vibration_noise": Vibration standard <= 2.5, Noise standard <= 65 dB. Set condition "Good" or "Not good" and write remarks.
+5. "temp_humidity": Temp standard <= +-25°C, RH standard <= +-60%%. Set condition "Good" or "Not good" and write remarks.
+6. "pipe_pressure": Supply & Return pressure standard 2.5 - 4 Bar. Set condition "Good" or "Not good" and write remarks.
+7. "air_flow": Output air flow standard 2.0 - 8.0 m/s. Set condition "Good" or "Not good" and write remarks.
+8. "operation_status": Set is_normal = true unless anomalies exist (e.g. pressure out of range, temp/vibration high, or any visual/cleaning item is "Not good"). Write comprehensive summary remark.
+
+ENGINEER'S LOGS AND VALUES:
+%s
+
+OUTPUT JSON STRUCTURE:
+{
+  "visual_inspection": [
+    {"no": "a", "activity": "Checked of the AC enclosure cleaness with duster", "parameter": "Clean", "condition": "Good", "remarks": ""},
+    {"no": "b", "activity": "Checked the Air Filter cleaness from dust", "parameter": "Clean", "condition": "Good", "remarks": ""},
+    {"no": "c", "activity": "Checked of mounting, vibration, noise with vibration meter and sound level meter", "parameter": "Normal", "condition": "Good", "remarks": ""},
+    {"no": "d", "activity": "Checked the Evaporator Coil cleaness from dust and algae", "parameter": "clean", "condition": "Good", "remarks": ""},
+    {"no": "e", "activity": "Checked the Electrical control Components", "parameter": "on function", "condition": "Good", "remarks": ""},
+    {"no": "f", "activity": "Checked the termination of Electrical control Components", "parameter": "on function", "condition": "Good", "remarks": ""},
+    {"no": "g", "activity": "Checked the supply and returnt operation pressure", "parameter": "Normal", "condition": "Good", "remarks": ""},
+    {"no": "h", "activity": "Checked the settings point and actual Temperature and Humidity", "parameter": "on function", "condition": "Good", "remarks": ""},
+    {"no": "i", "activity": "Checked the level and cleaning of the flushing and Drain pipes of drain tanks", "parameter": "Clean", "condition": "Good", "remarks": ""},
+    {"no": "j", "activity": "Checked for airflow obstructions or Airflow Blockade", "parameter": "No obstructions", "condition": "Good", "remarks": ""},
+    {"no": "k", "activity": "Checked remote for control unit", "parameter": "on function", "condition": "Good", "remarks": ""},
+    {"no": "l", "activity": "Checked and completed the missing bolt", "parameter": "Complete bolts", "condition": "Good", "remarks": ""},
+    {"no": "m", "activity": "Checked the all support (tray, compressor, pipe refrigerant, fan indoor,fan)", "parameter": "Complete", "condition": "Good", "remarks": ""},
+    {"no": "n", "activity": "Inspection & Checked the Fan indoor main motor (mounting, support)", "parameter": "Normal", "condition": "Good", "remarks": ""},
+    {"no": "o", "activity": "Checked drain pump.", "parameter": "Clean", "condition": "Good", "remarks": ""},
+    {"no": "p", "activity": "Inspection tension of fanbelt unit", "parameter": "Normal", "condition": "Good", "remarks": ""},
+    {"no": "q", "activity": "Check pressure FCU with CHWS", "parameter": "Normal", "condition": "Good", "remarks": ""},
+    {"no": "r", "activity": "Check Pressure FCU With CHWR", "parameter": "Normal", "condition": "Good", "remarks": ""}
+  ],
+  "cleaning": [
+    {"no": "a", "activity": "Cleaning of the AC enclosure cleaness", "parameter": "Clean", "condition": "Good", "remarks": ""},
+    {"no": "b", "activity": "Cleaning the Air Filter cleaness", "parameter": "Clean", "condition": "Good", "remarks": ""},
+    {"no": "c", "activity": "Cleaning the component AC from oil & referigerant", "parameter": "Clean", "condition": "Good", "remarks": ""},
+    {"no": "d", "activity": "Cleaning of the flushing and Drain pipes of drain tanks", "parameter": "Clean", "condition": "Good", "remarks": ""},
+    {"no": "e", "activity": "Cleaning the drain pan, drain pump & drain pipe", "parameter": "Clean", "condition": "Good", "remarks": ""},
+    {"no": "f", "activity": "Cleaning the Evaporator Coil cleaness", "parameter": "Clean", "condition": "Good", "remarks": ""},
+    {"no": "g", "activity": "Cleaning the component AC from oil", "parameter": "Clean", "condition": "Good", "remarks": ""},
+    {"no": "h", "activity": "Cleaning fan motor", "parameter": "Clean", "condition": "Good", "remarks": ""},
+    {"no": "i", "activity": "Cleaning return air grille", "parameter": "Clean", "condition": "Good", "remarks": ""},
+    {"no": "j", "activity": "Checked for airflow obstructions or Airflow Blockade", "parameter": "Clean", "condition": "Good", "remarks": ""}
+  ],
+  "voltage_current": {
+    "voltage_rn": "", "voltage_sn": "", "voltage_tn": "",
+    "voltage_rs": "", "voltage_st": "", "voltage_tr": "",
+    "current_r": "", "current_s": "", "current_t": "",
+    "condition": "Good", "remarks": ""
+  },
+  "vibration_noise": {
+    "vibration": "", "noise": "", "condition": "Good", "remarks": ""
+  },
+  "temp_humidity": {
+    "temp": "", "rh": "", "condition": "Good", "remarks": ""
+  },
+  "pipe_pressure": {
+    "supply": "", "return_val": "", "condition": "Good", "remarks": ""
+  },
+  "air_flow": {
+    "air_flow": "", "condition": "Good", "remarks": ""
+  },
+  "operation_status": {
+    "is_normal": true,
+    "remark": "",
+    "fault_symptom": "",
+    "fault_analysis": "",
+    "work_done": "",
+    "fault_part_sn": "",
+    "fault_part_name": ""
+  }
+}
+
+RULES:
+- Output ONLY the JSON object. No markdown code fences. No explanation text.`, existingDataText, itemsText)
+
+	messages := []map[string]interface{}{
+		{
+			"role":    "system",
+			"content": "You are a precision HVAC data consolidation agent for FCU maintenance reports. Output ONLY valid JSON, no markdown.",
+		},
+		{
+			"role":    "user",
+			"content": prompt,
+		},
+	}
+
+	apiKey := s.getNextAPIKey()
+	respContent, err := s.callNVIDIA(ctx, apiKey, s.reasoningModel, messages, 0.2, 16384, 90*time.Second, nil)
+	if err != nil {
+		return nil, fmt.Errorf("FCU reasoning API call failed: %w", err)
+	}
+
+	reportData, err := s.parseFCUJSONResponse(respContent)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse FCU AI JSON response: %w", err)
+	}
+
+	slog.Info("FCU AGENT Pipeline complete", slog.Duration("total_duration", time.Since(pipelineStart)))
+	return reportData, nil
+}
+
+func (s *aiService) parseFCUJSONResponse(content string) (*models.FCUReportData, error) {
+	slog.Info("RAW FCU RESPONSE", slog.String("content", content))
+	content = strings.TrimSpace(content)
+
+	if idx := strings.Index(content, "</think>"); idx != -1 {
+		content = strings.TrimSpace(content[idx+len("</think>"):])
+	}
+
+	content = strings.TrimPrefix(content, "```json")
+	content = strings.TrimPrefix(content, "```")
+	content = strings.TrimSuffix(content, "```")
+	content = strings.TrimSpace(content)
+
+	var result models.FCUReportData
+	if err := json.Unmarshal([]byte(content), &result); err != nil {
+		return nil, fmt.Errorf("failed to parse FCU JSON: %w (raw: %.500s)", err, content)
+	}
+
+	return &result, nil
+}
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // STAGE 1: PARTITION
@@ -603,7 +821,6 @@ func (s *aiService) callNVIDIA(ctx context.Context, apiKey, model string, messag
 		"stream":      false,
 	}
 
-	// Merge extra body fields (e.g. chat_template_kwargs for deepseek thinking)
 	for k, v := range extraBody {
 		payload[k] = v
 	}
@@ -613,57 +830,93 @@ func (s *aiService) callNVIDIA(ctx context.Context, apiKey, model string, messag
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	reqCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, s.baseURL, bytes.NewReader(body))
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+	maxRetries := len(s.apiKeys)
+	if maxRetries == 0 {
+		maxRetries = 1
 	}
 
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
+	currentKey := apiKey
+	var lastErr error
 
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("NVIDIA NIM API call failed: %w", err)
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		reqCtx, cancel := context.WithTimeout(ctx, timeout)
+		req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, s.baseURL, bytes.NewReader(body))
+		if err != nil {
+			cancel()
+			return "", fmt.Errorf("failed to create request: %w", err)
+		}
+
+		req.Header.Set("Authorization", "Bearer "+currentKey)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			cancel()
+			lastErr = err
+			slog.Warn("NVIDIA API call failed, trying next key", 
+				slog.Int("attempt", attempt+1), 
+				slog.String("error", err.Error()),
+			)
+			currentKey = s.getNextAPIKey()
+			continue
+		}
+
+		respBody, readErr := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		cancel()
+
+		if readErr != nil {
+			lastErr = readErr
+			slog.Warn("Failed to read response body, trying next key", 
+				slog.Int("attempt", attempt+1),
+				slog.String("error", readErr.Error()),
+			)
+			currentKey = s.getNextAPIKey()
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			lastErr = fmt.Errorf("NVIDIA NIM API returned status %d: %s", resp.StatusCode, string(respBody))
+			if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
+				slog.Warn("NVIDIA API returned error status, trying next key", 
+					slog.Int("status_code", resp.StatusCode), 
+					slog.Int("attempt", attempt+1),
+				)
+				currentKey = s.getNextAPIKey()
+				continue
+			}
+			return "", lastErr
+		}
+
+		var chatResp struct {
+			Choices []struct {
+				Message struct {
+					Content string `json:"content"`
+				} `json:"message"`
+			} `json:"choices"`
+		}
+
+		if err := json.Unmarshal(respBody, &chatResp); err != nil {
+			return "", fmt.Errorf("failed to parse API response: %w", err)
+		}
+
+		if len(chatResp.Choices) == 0 {
+			return "", fmt.Errorf("AI model returned no choices")
+		}
+
+		content := chatResp.Choices[0].Message.Content
+		slog.Info("NVIDIA API response received successfully",
+			slog.String("model", model),
+			slog.Int("attempt", attempt+1),
+			slog.Int("content_length", len(content)),
+		)
+		// Increment request usage counter in Firestore asynchronously
+		go s.incrementUsedRequest(context.Background())
+		return content, nil
 	}
-	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("NVIDIA NIM API returned status %d: %s", resp.StatusCode, string(respBody))
-	}
-
-	// Parse chat completion response
-	var chatResp struct {
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
-	}
-
-	if err := json.Unmarshal(respBody, &chatResp); err != nil {
-		return "", fmt.Errorf("failed to parse API response: %w", err)
-	}
-
-	if len(chatResp.Choices) == 0 {
-		return "", fmt.Errorf("AI model returned no choices")
-	}
-
-	content := chatResp.Choices[0].Message.Content
-	slog.Info("NVIDIA API response received",
-		slog.String("model", model),
-		slog.Int("content_length", len(content)),
-	)
-
-	return content, nil
+	return "", fmt.Errorf("all %d API keys exhausted. Last error: %w", maxRetries, lastErr)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -701,25 +954,56 @@ func (s *aiService) Chat(ctx context.Context, messages []models.ChatMessage) (st
 		return "", fmt.Errorf("no NVIDIA NIM API keys configured")
 	}
 
-	baseSystemInstruction := `You are an elite, highly-experienced Data Center M/E & Cooling Principal Engineer. You possess super-intelligent knowledge, extreme technical sharpness, and proactive problem-solving initiative.
+	baseSystemInstruction := `You are JARVIS — an elite AI Co-Pilot and autonomous agent built into the UTT Report Maintenance web application for Tuan Gari Iriana, a senior Data Center engineer.
 
 CREATOR & SYSTEM INFO:
 - You were created by Tuan Gari Iriana.
 - All systems, codebases, and projects here were built by Tuan Gari Iriana.
 - If the user asks who created you or who built the system, ALWAYS state that it is Tuan Gari Iriana.
-- If you provide incorrect or inaccurate information, tell the user to report/give feedback to your Master (Tuan) Gari Iriana.
 
-CRITICAL OUT-OF-SCOPE RULE (NON-NEGOTIABLE):
-- You are strictly forbidden from discussing, explaining, summarizing, or providing general information on any topics outside of Data Center Mechanical, Electrical (M/E), Cooling Systems, and Facility Maintenance.
-- This includes recipes (e.g., gado-gado, food, cooking), general programming/coding, health, finance, pop culture, general conversation, or any non-datacenter topics.
-- NEVER offer to look up general information, NEVER explain or discuss anything outside datacenter maintenance, and NEVER suggest compromises.
-- If the user asks about ANY out-of-scope topic, you must immediately, strictly, and politely refuse by stating EXACTLY:
-  "Mohon maaf, saya hanya dapat membantu menjawab pertanyaan seputar kelistrikan (M/E), cooling system, dan operasional infrastruktur data center. Silakan tanyakan hal-hal terkait topik tersebut."
+=== WEB APPLICATION KNOWLEDGE (UTT REPORT MAINTENANCE) ===
+This is a full-stack web application for managing data center maintenance operations at Sultanah / UTT. You must be able to answer ANY question about this application.
 
-Your expertise covers:
-1. Data center infrastructure, layout design, and operational procedures.
-2. Mechanical & Electrical (M/E): ATS, Transformers, UPS systems, Generators, Distribution Boards, Breakers, and Grounding.
-3. Cooling Systems: PAC, Chillers, CRACs, Cooling Towers, hot/cold aisle containment, and airflow.
+PAGES & MODULES:
+1. Dashboard (Home) — Overview of all active reports, summary stats, and recent activities.
+2. Service Report (ATS) — Create and manage ATS (Automatic Transfer Switch) service reports. Includes visual inspection, digital power meter reading, voltage & current measurement, thermal measurement, grounding resistance, and operation status.
+3. PTW (Permit To Work) — Manage work permit requests and approvals for all maintenance activities.
+4. Documents — Archive and manage official technical documents, reports, and certificates.
+5. Files — File manager for uploaded photos, PDFs, and attachments.
+6. Findings — Log and track technical findings/issues discovered during inspections.
+7. Corrective — Corrective maintenance work orders and task tracking.
+8. Absen TBM (Toolbox Meeting Attendance) — Record attendance for pre-work Toolbox Meetings.
+9. Absen Induction — Record attendance for safety induction sessions.
+10. Admin Panel — User management, system settings, and admin-only configurations.
+
+KEY FEATURES:
+- AI Auto-Fill: Upload photos of equipment → AI analyzes and auto-fills the service report form.
+- PDF Export: Generate and download professional service reports as PDF files (in English).
+- Voice Agent (JARVIS): This voice interface you are currently powering — supports interactive multi-turn conversation and autonomous page navigation.
+- Real-time Updates: Data syncs in real-time across all users using Firebase Firestore.
+- Photo Upload: Attach inspection photos to service reports, organized by category.
+- Search & Filter: Search reports by date range, keyword, or customer name.
+- QR Code: Scan QR codes linked to equipment for quick report lookup.
+
+TECH STACK (for technical questions):
+- Frontend: React + TypeScript + Vite, TailwindCSS, Framer Motion
+- Backend: Go (Golang), Firebase Firestore, Firebase Auth
+- AI: NVIDIA NIM API (Llama/Gemma models) + Google Gemini (for voice agent)
+- PDF Generation: jsPDF + jspdf-autotable
+- Deployment: Backend runs on port 8080, frontend on Vite dev server port 5173
+
+CREATOR & CONTEXT:
+- This system is built for Sultanah / NeutraDC data center operations in Indonesia.
+- All engineers using this system are field technicians managing M/E and cooling infrastructure.
+
+OUT-OF-SCOPE RULE:
+- Refuse only purely off-topic requests completely unrelated to the web app OR data center M/E/Cooling (e.g., cooking recipes, entertainment, random general knowledge). But if the user asks about THIS web app's features, pages, bugs, how to use it, or anything related to it — ALWAYS answer helpfully and fully.
+
+Your technical expertise covers:
+1. This web application (DwimitraSystem) — all features, pages, usage, troubleshooting.
+2. Data center infrastructure, layout design, and operational procedures.
+3. Mechanical & Electrical (M/E): ATS, Transformers, UPS systems, Generators, Distribution Boards, Breakers, and Grounding.
+4. Cooling Systems: PAC, Chillers, CRACs, Cooling Towers, hot/cold aisle containment, and airflow.
 
 RULES & INTERACTIVE STYLE:
 - Actively analyze the context. If there is a problem/alarm, be proactive and provide DIRECT, STEP-BY-STEP, ACTIONABLE SOLUTIONS immediately. Do not delay with filler sentences.
@@ -729,11 +1013,19 @@ RULES & INTERACTIVE STYLE:
 	  1. Format your output beautifully in plain text using clear bullet points (-), numbered lists, and double newlines (\n\n) between main paragraphs and sections so they have clear vertical spacing (breathing space) and are NOT clumped/squished together.
 	  2. DO NOT use markdown headers (no "#", "##", "###"). Use plain CAPITAL letters for section titles (e.g., "DETAIL PENGUKURAN:").
 	  3. DO NOT use markdown tables (no "|" or "-----"). Format all tables/parameters as bullet lists.
-	  4. EACH BULLET POINT/LIST ITEM MUST START ON A NEW LINE (use \n). DO NOT write multiple bullet points on the same line or in a single paragraph. Add a double newline (\n\n) before and after lists to keep them visually distinct. For example, write:
-	     - Parameter 1: Value
-	     - Parameter 2: Value
+	  4. EACH BULLET POINT/LIST ITEM MUST START ON A NEW LINE (use \n). DO NOT write multiple bullet points on the same line or in a single paragraph.
 	  5. DO NOT use asterisks (**) for bolding, blockquotes, or horizontal rules (---).
-	- REFERENSI & LINK VALID: Ketika memberikan rekomendasi teknis, batas keselamatan, atau standar operasional (misal standar grounding PUIL, temperatur cooling ASHRAE, dll.), selalu cantumkan referensi otoritas/standar resmi yang valid (misal: PUIL 2011, ASHRAE TC 9.9, IEEE). Sertakan juga link referensi resmi dan terpercaya yang valid (misal: https://www.bsn.go.id untuk PUIL/SNI, https://www.ashrae.org untuk sistem pendingin data center, https://www.ieee.org untuk standar kelistrikan, atau situs resmi produsen alat seperti https://www.fluke.com and https://www.schneider-electric.com). Pastikan URL ditulis lengkap, aktif, dan valid tanpa menggunakan format markdown hyperlinking (tulis saja URL mentah).`
+
+AI AGENT COMMAND INSTRUCTIONS (CRITICAL & MANDATORY):
+- You are directly integrated as JARVIS (an Autonomous AI Agent Co-Pilot) with the engineer's maintenance dashboard. You MUST execute actions requested by the engineer (navigating, downloading/exporting PDFs, searching archives, filtering dates, auto-filling forms, etc.).
+- NEVER make up excuses or say "sistem sedang mengompilasi" without appending the action token!
+- MANDATORY ACTION TAG RULES:
+  1. When the user asks to export, download, or get PDF file (e.g. from archive, service report, or documents): append " [ACTION: EXPORT_PDF]" at the absolute end.
+  2. When the user asks to navigate/open a page (e.g., ptw, admin, report, documents, files, findings, corrective, etc.): append " [ACTION: NAVIGATE: <page>]" at the absolute end.
+  3. When the user asks to search or filter documents by date/keyword (e.g., "02 juni - 09 juni", "NeutraDC"): append " [ACTION: SEARCH: <query>] [ACTION: EXPORT_PDF]" at the absolute end.
+  4. When the user asks to fill form or read photos: append " [ACTION: AUTO_FILL_ATS]" at the absolute end.
+  5. When the user asks to refresh: append " [ACTION: REFRESH]" at the absolute end.
+- CRITICAL: The action token MUST be the absolute last characters of your entire output. Do not put any text or punctuation after it.`
 
 	visionSystemInstruction := baseSystemInstruction + `
 
@@ -1043,4 +1335,171 @@ Rules:
 	return &models.CardAnalyzeResponse{
 		Parameter: respContent,
 	}, nil
+}
+
+// AnalyzePJUPhotos processes PJU photos and returns structured PJU report data.
+func (s *aiService) AnalyzePJUPhotos(ctx context.Context, photos []models.PJUPhotoInput, existingData *models.PJUReportData) (*models.PJUReportData, error) {
+	report := &models.PJUReportData{}
+	if existingData != nil {
+		*report = *existingData
+	}
+
+	if len(report.VisualInspection) == 0 {
+		report.VisualInspection = []models.PJUInspectionItem{
+			{No: "a.", Activity: "Inspection visual of lamps", Parameter: "Installed", Condition: "Good"},
+			{No: "b.", Activity: "Inspection all lighting fixtures regularly to ensure they are in good working order", Parameter: "Normal function", Condition: "Good"},
+			{No: "c.", Activity: "Inspection wiring and connections to prevent electrical problems", Parameter: "Connection is well established", Condition: "Good"},
+			{No: "d.", Activity: "Inspection lamps with transformers, control gear, and other accessories", Parameter: "Not damaged", Condition: "Good"},
+			{No: "e.", Activity: "Inspection wiring, screws, gaskets, and exterior light hardware", Parameter: "Connection is well established", Condition: "Good"},
+			{No: "f.", Activity: "Make sure to use lights with the same color temperature", Parameter: "Normal function", Condition: "Good"},
+			{No: "g.", Activity: "Make sure every connection on the lamp is well connected and not easily separated.", Parameter: "Connection is well established", Condition: "Good"},
+			{No: "h.", Activity: "battry check on solar street lighting", Parameter: "24 VDC - 27 VDC", Condition: "Good"},
+			{No: "i.", Activity: "Check the RL OPTICA P80 + Soalar Panel C2 to make sure it is not dirty and functions normally.", Parameter: "Normal function", Condition: "Good"},
+			{No: "j.", Activity: "check solar controller carger", Parameter: "30 VDC - 40 VDC", Condition: "Good"},
+			{No: "k.", Activity: "check any water leak indication", Parameter: "Connection is well established", Condition: "Good"},
+			{No: "l.", Activity: "check light sensor", Parameter: "Normal function", Condition: "Good"},
+		}
+	}
+
+	if len(report.Cleaning) == 0 {
+		report.Cleaning = []models.PJUInspectionItem{
+			{No: "a.", Activity: "cleaning lamp house or lamp box", Parameter: "Clean", Condition: "Good"},
+			{No: "b.", Activity: "cleaning light poles for street lighting and garden lights", Parameter: "Clean", Condition: "Good"},
+			{No: "c.", Activity: "cleaning the lamp cover glass to make the lamp light brighter", Parameter: "Clean", Condition: "Good"},
+			{No: "d.", Activity: "cleaning the cable connection area and add protection", Parameter: "Clean", Condition: "Good"},
+			{No: "e.", Activity: "cleaning the solar panel area", Parameter: "Clean", Condition: "Good"},
+			{No: "f.", Activity: "cleaning the control panel", Parameter: "Clean", Condition: "Good"},
+			{No: "g.", Activity: "battry cleaning", Parameter: "Clean", Condition: "Good"},
+			{No: "h.", Activity: "cleaning on the sensor", Parameter: "Clean", Condition: "Good"},
+			{No: "i.", Activity: "cleaning light control panel", Parameter: "Clean", Condition: "Good"},
+		}
+	}
+
+	if len(report.Measurement) == 0 {
+		report.Measurement = []models.PJUMeasurementItem{
+			{No: "a.", Activity: "Measurement of 30 VDC-40 VDC input power supply", Parameter: "30 VDC - 40 VDC", Condition: "Good"},
+			{No: "b.", Activity: "24 VDC output poower suplay measurement", Parameter: "24 VDC - 27 VDC", Condition: "Good"},
+			{No: "c.", Activity: "Battery Charger & battery Voltage/VDC.", Parameter: "24 VDC - 27 VDC", Condition: "Good"},
+		}
+	}
+
+	if len(report.Test) == 0 {
+		report.Test = []models.PJUTestItem{
+			{No: "a.", Activity: "Ensure battery charging when solar panels are exposed to the sun.", Parameter: "25 VDC - 40 VDC", Condition: "Good"},
+			{No: "b.", Activity: "Make sure the power suplay is charging the battery", Parameter: "Input 25 VDC", Condition: "Good"},
+			{No: "c.", Activity: "Test the lamp to make sure it lights up with the same lighting color and load as before.", Parameter: "Lamp on and bright normal", Condition: "Good"},
+		}
+	}
+
+	report.OperationStatus.IsNormal = true
+
+	for _, p := range photos {
+		param := strings.TrimSpace(p.Parameter)
+		label := strings.ToLower(p.Label)
+		if param == "" {
+			continue
+		}
+
+		if strings.Contains(label, "input power") || strings.Contains(label, "30 vdc") {
+			report.Measurement[0].Remarks = param
+		} else if strings.Contains(label, "output poower") || strings.Contains(label, "24 vdc") {
+			report.Measurement[1].Remarks = param
+		} else if strings.Contains(label, "battery charger") || strings.Contains(label, "battery voltage") {
+			report.Measurement[2].Remarks = param
+		} else if strings.Contains(label, "charging when solar") {
+			report.Test[0].Remarks = param
+		} else if strings.Contains(label, "charging the battery") {
+			report.Test[1].Remarks = param
+		} else if strings.Contains(label, "lights up") || strings.Contains(label, "same lighting") {
+			report.Test[2].Remarks = param
+		}
+	}
+
+	return report, nil
+}
+
+// AnalyzePDUPhotos implements the text-based AI Agent pipeline for Panel PDU Service Report.
+func (s *aiService) AnalyzePDUPhotos(ctx context.Context, photos []models.PDUPhotoInput, existingData *models.PDUReportData) (*models.PDUReportData, error) {
+	slog.Info("PDU AGENT Pipeline started (Text-based parameters)",
+		slog.Int("total_photos", len(photos)),
+	)
+
+	report := &models.PDUReportData{
+		InspectionChecking: []models.PDUInspectionItem{
+			{No: 1, Activity: "Inspection unsafe action and unsafe condition before start activity maintenance", Parameter: "Complete personal protective equipment", Condition: "Good"},
+			{No: 2, Activity: "Check cable grounding to act know voltage in body panel. Measurement current and resistance using claim earth", Parameter: "tight", Condition: "Good"},
+			{No: 3, Activity: "Inspection & check visual all support panel like a condition paint panel, pilot lamp, chassis panel, padlock system and cleaning using vacuum cleaner.", Parameter: "does not peel or rust", Condition: "Good"},
+			{No: 4, Activity: "Inspection & check status breaker incoming and outgoing, cable wiring panel, and fuse", Parameter: "The cable terminals are not loose,", Condition: "Good"},
+			{No: 5, Activity: "Inspection relay, power supply unit, measurement voltage", Parameter: "Good Condition", Condition: "Good"},
+			{No: 6, Activity: "Inspection visual tightness all connection cable in terminal cable, label marking, terminal breaker and all mounting nut.", Parameter: "tight", Condition: "Good"},
+			{No: 7, Activity: "Check condition connection cable using thermal imager if the found anomaly like a hot spot on the connection.", Parameter: "Normally <45°C (depending on rating), make sure not to exceed manufacturer standards.", Condition: "Good"},
+			{No: 8, Activity: "Cleaning panel used vacuum cleaner and apply sanpoly to finish it", Parameter: "Good condition & clean", Condition: "Good"},
+			{No: 9, Activity: "Inspection and check visual trafo isotrans with analysis condition temperature operational trafo using thermal imager and measurement noise with sound level", Parameter: "Normally <70 dB(depending on rating), make sure not to exceed manufacturer standards.", Condition: "Good"},
+			{No: 10, Activity: "Cleaning, remove object from top of controller", Parameter: "There are no dangerous foreign objects on the controller panel.", Condition: "Good"},
+			{No: 11, Activity: "Inspection DPM, and ensure measurement on reading in DPM. Take a photo", Parameter: "All parameter ready reading in DPM", Condition: "Good"},
+		},
+		Cleaning: []models.PDUCleaningItem{
+			{No: 1, Activity: "Cleaning support panels using a vacuum cleaner", Parameter: "Clean", Condition: "Clean"},
+			{No: 2, Activity: "Clean the panel with a vacuum and apply sanpoly.", Parameter: "Clean", Condition: "Clean"},
+		},
+		ISOTransTemp: models.PDUISOTransTemp{
+			Standard: "Temperature < 45 °C",
+		},
+		ThermalMeasurement: models.PDUThermalItem{
+			Breaker:  "Main Breaker Panel PDU",
+			Standard: "Temperature < 45 °C",
+		},
+		GroundingResistance: models.PDUGroundingItem{
+			Wire:     "Grounding",
+			Standard: "<5Ω",
+		},
+		NoiseMeasurement: models.PDUNoiseItem{
+			Measurement: "Measurement Noise Sound Level",
+			Standard:    "<75 dB",
+		},
+		AnalysisRemark: models.PDUAnalysisRemark{
+			IsNormal:   true,
+			RemarkText: "Panel PDU beroperasi dengan normal, tegangan, arus, temperatur trafo ISO-Trans, resistansi grounding dan tingkat kebisingan sesuai standar manufaktur.",
+		},
+	}
+
+	if existingData != nil {
+		report.DPMRecording = existingData.DPMRecording
+		report.ISOTransTemp = existingData.ISOTransTemp
+		report.VoltageAmpere = existingData.VoltageAmpere
+		report.ThermalMeasurement = existingData.ThermalMeasurement
+		report.GroundingResistance = existingData.GroundingResistance
+		report.NoiseMeasurement = existingData.NoiseMeasurement
+		if existingData.AnalysisRemark.RemarkText != "" {
+			report.AnalysisRemark = existingData.AnalysisRemark
+		}
+	}
+
+	// Map parameter inputs from photo cards
+	for _, p := range photos {
+		param := strings.TrimSpace(p.Parameter)
+		label := strings.ToLower(p.Label)
+		if param == "" {
+			continue
+		}
+
+		if strings.Contains(label, "grounding") || strings.Contains(label, "<5") || strings.Contains(label, "tahanan") {
+			report.GroundingResistance.Result = param
+		} else if strings.Contains(label, "noise") || strings.Contains(label, "75 db") || strings.Contains(label, "kebisingan") {
+			report.NoiseMeasurement.Result = param
+		} else if strings.Contains(label, "thermal") || strings.Contains(label, "breaker") || strings.Contains(label, "hot spot") {
+			report.ThermalMeasurement.ResultTemp = param
+		} else if strings.Contains(label, "iso-trans") || strings.Contains(label, "trafo") {
+			parts := strings.Split(param, ",")
+			if len(parts) >= 3 {
+				report.ISOTransTemp.RTemp = strings.TrimSpace(parts[0])
+				report.ISOTransTemp.STemp = strings.TrimSpace(parts[1])
+				report.ISOTransTemp.TTemp = strings.TrimSpace(parts[2])
+			} else {
+				report.ISOTransTemp.RTemp = param
+			}
+		}
+	}
+
+	return report, nil
 }

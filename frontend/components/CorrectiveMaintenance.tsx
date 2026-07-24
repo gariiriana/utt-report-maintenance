@@ -538,17 +538,17 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
     if (!readOnly) {
         return (
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
-                <div className="flex justify-between items-center mb-8 border-b border-slate-800 pb-5">
+                <div className="flex justify-between items-center mb-8 border-b border-slate-200 pb-5">
                     <div>
-                        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                        <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                             <PenTool className="w-6 h-6 text-orange-500" />
                             Corrective Maintenance
                         </h1>
-                        <p className="text-slate-400 text-sm mt-1">Form Input SLA / SLG (5-Step)</p>
+                        <p className="text-slate-500 text-sm mt-1">Form Input SLA / SLG (5-Step)</p>
                     </div>
                 </div>
 
-                <div className="bg-slate-800/20 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+                <div className="bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl p-6 shadow-lg">
                     <SLAForm
                         key={formKey}
                         onSuccess={() => {
@@ -565,13 +565,13 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
-            <div className="flex justify-between items-center mb-8 border-b border-slate-800/50 pb-5">
+            <div className="flex justify-between items-center mb-8 border-b border-slate-200 pb-5">
                 <div>
-                    <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                         <PenTool className="w-6 h-6 text-orange-500" />
                         Arsip Corrective Maintenance
                     </h1>
-                    <p className="text-slate-400 text-sm mt-1">Daftar laporan pemeliharaan corrective</p>
+                    <p className="text-slate-500 text-sm mt-1">Daftar laporan pemeliharaan corrective</p>
                 </div>
 
                 {isAuthorizedRole && !showForm && (
@@ -579,7 +579,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={seedDummyData}
-                        className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg flex items-center gap-2 shadow-lg cursor-pointer border border-slate-700/50 text-sm font-semibold"
+                        className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-lg flex items-center gap-2 shadow-sm cursor-pointer border border-slate-200 text-sm font-semibold"
                     >
                         <FileText className="w-4 h-4 text-orange-400" />
                         Isi Data Dummy
@@ -596,7 +596,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                 animate={{ opacity: 1, height: 'auto' }}
                                 exit={{ opacity: 0, height: 0 }}
                                 onSubmit={handleSubmit}
-                                className="bg-slate-800/40 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 overflow-hidden"
+                                className="bg-white/90 backdrop-blur-xl rounded-2xl p-6 border border-slate-200 overflow-hidden shadow-lg"
                             >
                                 <div className="flex items-center justify-between mb-4">
                                     <h2 className="text-lg font-semibold text-white">
@@ -716,7 +716,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                                             alt="Evidence"
                                                             className="h-40 object-contain mx-auto rounded-lg"
                                                         />
-                                                        <div className="absolute inset-0 bg-slate-950/20 opacity-100 transition rounded-lg flex items-center justify-center gap-3">
+                                                        <div className="absolute inset-0 bg-black/20 opacity-100 transition rounded-lg flex items-center justify-center gap-3">
                                                             <button
                                                                 type="button"
                                                                 onClick={() => setEditingPhoto(true)}
@@ -772,7 +772,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                             setReportFormType(null);
                                             setEditingReportId(null);
                                         }}
-                                        className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition cursor-pointer"
+                                        className="px-6 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg font-medium transition cursor-pointer"
                                     >
                                         Cancel
                                     </button>
@@ -817,7 +817,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                 <>
                     {!loading && (
                         /* Glassmorphic Archive Filter & PDF Export Bar */
-                        <div className="mb-6 bg-slate-800/20 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
+                        <div className="mb-6 bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm">
                             <div className="flex flex-col sm:flex-row gap-3 items-center w-full md:w-auto">
                                 {/* Live Search Input */}
                                 <div className="relative w-full sm:w-auto sm:min-w-[240px]">
@@ -827,7 +827,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         title="Cari Laporan"
-                                        className="w-full pl-4 pr-4 py-2.5 bg-slate-900/40 border border-slate-700/80 rounded-xl text-white text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition placeholder-slate-500"
+                                        className="w-full pl-4 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition placeholder-slate-400 shadow-sm"
                                     />
                                 </div>
 
@@ -837,7 +837,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                     onChange={(e) => setSelectedMonth(e.target.value)}
                                     title="Filter Bulan"
                                     aria-label="Filter Bulan"
-                                    className="w-full sm:w-auto px-3.5 py-2.5 bg-slate-900/40 border border-slate-700/80 rounded-xl text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition cursor-pointer"
+                                    className="w-full sm:w-auto px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-orange-500 outline-none transition cursor-pointer shadow-sm"
                                 >
                                     <option value="all">Semua Bulan</option>
                                     {INDO_MONTHS.map((m) => (
@@ -882,10 +882,10 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                             <Loader2 className="w-10 h-10 animate-spin text-orange-500" />
                         </div>
                     ) : filteredReports.length === 0 ? (
-                        <div className="text-center py-16 bg-slate-800/20 rounded-2xl border border-slate-700/50">
-                            <FileText className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                            <h3 className="text-xl font-medium text-white">Laporan Tidak Ditemukan</h3>
-                            <p className="text-slate-400 mt-2">Tidak ada data laporan corrective yang cocok dengan kriteria filter pencarian Anda.</p>
+                        <div className="text-center py-16 bg-white/90 rounded-2xl border border-slate-200 shadow-sm">
+                            <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                            <h3 className="text-xl font-medium text-slate-900">Laporan Tidak Ditemukan</h3>
+                            <p className="text-slate-500 mt-2">Tidak ada data laporan corrective yang cocok dengan kriteria filter pencarian Anda.</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-4">
@@ -894,8 +894,8 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                     key={report.id}
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className={`bg-slate-800/20 backdrop-blur-sm rounded-2xl border overflow-hidden hover:border-slate-600 transition shadow-xl relative ${
-                                        report.reportType === 'SLA' ? 'border-red-500/30' : 'border-slate-700/50'
+                                    className={`bg-white/90 backdrop-blur-sm rounded-2xl border overflow-hidden hover:border-blue-300 transition shadow-lg relative ${
+                                        report.reportType === 'SLA' ? 'border-red-300' : 'border-slate-200'
                                     }`}
                                 >
                                     {report.reportType === 'SLA' ? (
@@ -969,7 +969,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                                                 <div className="lg:col-span-2 space-y-4">
                                                     <div>
-                                                        <h3 className="text-lg font-bold text-white mb-1">{report.ticketName}</h3>
+                                                        <h3 className="text-lg font-bold text-slate-900 mb-1">{report.ticketName}</h3>
                                                         <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
                                                             <MapPin className="w-3.5 h-3.5 text-slate-500" />
                                                             <span>{report.location}</span>
@@ -982,27 +982,27 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                                         </div>
                                                     </div>
 
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-900/40 border border-slate-700/30 rounded-xl p-4">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 border border-slate-200 rounded-xl p-4">
                                                         <div>
                                                             <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">Tindakan Perbaikan (Action)</span>
-                                                            <p className="text-slate-300 text-sm leading-relaxed">{report.actionTaken}</p>
+                                                            <p className="text-slate-700 text-sm leading-relaxed">{report.actionTaken}</p>
                                                         </div>
                                                         <div>
                                                             <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">Keterangan / Remarks</span>
-                                                            <p className="text-slate-300 text-sm leading-relaxed">{report.remark || '-'}</p>
+                                                            <p className="text-slate-700 text-sm leading-relaxed">{report.remark || '-'}</p>
                                                         </div>
                                                     </div>
                                                 </div>
 
                                                 {/* SLA Compliance Grid */}
-                                                <div className="bg-slate-900/60 border border-slate-700/60 rounded-2xl p-4 flex flex-col justify-between">
-                                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 pb-2 mb-3">SLA Metrics Summary</h4>
+                                                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col justify-between">
+                                                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 pb-2 mb-3">SLA Metrics Summary</h4>
                                                     
                                                     <div className="space-y-2.5 flex-1 flex flex-col justify-center">
                                                         <div className="flex items-center justify-between text-xs">
                                                             <span className="text-slate-400">1. Response Time</span>
                                                             <div className="flex items-center gap-2">
-                                                                <span className="font-bold text-slate-300">{report.actualResponseTimeMin} Min</span>
+                                                                <span className="font-bold text-slate-700">{report.actualResponseTimeMin} Min</span>
                                                                 <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
                                                                     report.responseComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                                                                 }`}>{report.responseComply ? 'Comply' : 'No Comply'}</span>
@@ -1052,41 +1052,41 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                                 <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-2">Bukti Dokumentasi SLA (5-Step)</span>
                                                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                                                     {report.photoResponse && (
-                                                        <div className="relative group border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/20">
+                                                        <div className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
                                                             <img src={report.photoResponse} alt="Response Time Evidence" className="w-full h-24 object-cover" />
-                                                            <div className="absolute inset-0 bg-slate-950/60 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
+                                                            <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
                                                                 <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">1. Response</span>
                                                             </div>
                                                         </div>
                                                     )}
                                                     {report.photoEngineerOnsite && (
-                                                        <div className="relative group border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/20">
+                                                        <div className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
                                                             <img src={report.photoEngineerOnsite} alt="Engineer Onsite Evidence" className="w-full h-24 object-cover" />
-                                                            <div className="absolute inset-0 bg-slate-950/60 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
+                                                            <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
                                                                 <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">2. Eng Onsite</span>
                                                             </div>
                                                         </div>
                                                     )}
                                                     {report.photoOnsite && (
-                                                        <div className="relative group border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/20">
+                                                        <div className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
                                                             <img src={report.photoOnsite} alt="Principle Onsite Evidence" className="w-full h-24 object-cover" />
-                                                            <div className="absolute inset-0 bg-slate-950/60 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
+                                                            <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
                                                                 <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">3. Princ Onsite</span>
                                                             </div>
                                                         </div>
                                                     )}
                                                     {report.photoRestore && (
-                                                        <div className="relative group border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/20">
+                                                        <div className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
                                                             <img src={report.photoRestore} alt="Restore Time Evidence" className="w-full h-24 object-cover" />
-                                                            <div className="absolute inset-0 bg-slate-950/60 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
+                                                            <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
                                                                 <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">4. Restore</span>
                                                             </div>
                                                         </div>
                                                     )}
                                                     {report.photoResolution && (
-                                                        <div className="relative group border border-slate-700/50 rounded-xl overflow-hidden bg-slate-900/20">
+                                                        <div className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
                                                             <img src={report.photoResolution} alt="Resolution Time Evidence" className="w-full h-24 object-cover" />
-                                                            <div className="absolute inset-0 bg-slate-950/60 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
+                                                            <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
                                                                 <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">5. Resolusi</span>
                                                             </div>
                                                         </div>
@@ -1205,20 +1205,20 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                             initial={{ scale: 0.9, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-slate-900 border border-slate-700 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative"
+                            className="bg-white border border-slate-200 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative"
                         >
                             <div className="flex flex-col items-center text-center">
-                                <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+                                <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
                                     <Trash2 className="w-6 h-6 text-red-500" />
                                 </div>
-                                <h3 className="text-xl font-bold text-white mb-2">Delete Report?</h3>
-                                <p className="text-slate-400 mb-6">
+                                <h3 className="text-xl font-bold text-slate-900 mb-2">Delete Report?</h3>
+                                <p className="text-slate-500 mb-6">
                                     Are you sure you want to delete this maintenance report? This action cannot be undone.
                                 </p>
                                 <div className="flex gap-3 w-full">
                                     <button
                                         onClick={() => setDeleteId(null)}
-                                        className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition cursor-pointer"
+                                        className="flex-1 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg font-medium transition cursor-pointer"
                                     >
                                         Cancel
                                     </button>

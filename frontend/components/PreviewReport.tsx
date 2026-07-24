@@ -194,7 +194,7 @@ export function PreviewReport({
 
                     <div className="mt-24 border-t-2 border-slate-100 pt-12 pb-6 text-center">
                         <p className="text-[9px] text-slate-400 uppercase tracking-[0.2em] font-black">
-                            PT UNITED TRANSWORLD TRADING • OFFICIAL PM REPORT
+                            PT DWIMITRA EKATAMA MANDIRI • OFFICIAL PM REPORT
                         </p>
                     </div>
                 </div>

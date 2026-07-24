@@ -350,7 +350,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
   ];
 
   return (
-    <div className="bg-slate-800/30 backdrop-blur-xl rounded-3xl p-6 border border-slate-700/50 shadow-2xl overflow-hidden relative">
+    <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-6 border border-slate-200 shadow-xl overflow-hidden relative text-slate-800">
       {/* Step Indicators */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
@@ -388,7 +388,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
       </div>
 
       {/* Mobile-only Step Description */}
-      <div className="mt-4 sm:hidden text-center bg-slate-900/40 border border-slate-700/30 rounded-2xl p-3">
+      <div className="mt-4 sm:hidden text-center bg-slate-50 border border-slate-200 rounded-2xl p-3">
         <span className="text-[10px] text-red-400 uppercase font-extrabold tracking-wider block">Langkah {currentStep} dari 5</span>
         <span className="text-sm font-bold text-white block mt-0.5">{steps[currentStep - 1].title}</span>
         <span className="text-xs text-slate-400 block mt-0.5">{steps[currentStep - 1].desc}</span>
@@ -426,7 +426,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                       value={formData.ticketName}
                       onChange={(e) => setFormData({ ...formData, ticketName: e.target.value })}
                       placeholder="Contoh: Gate Pos patah / Reposisi Lighting"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-900/40 border border-slate-700/80 rounded-xl text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition"
+                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm"
                     />
                   </div>
                 </div>
@@ -441,7 +441,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                       value={formData.location}
                       onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                       placeholder="Contoh: Bravo / Koridor Campus / Rooftop"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-900/40 border border-slate-700/80 rounded-xl text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition"
+                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm"
                     />
                   </div>
                 </div>
@@ -455,7 +455,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                       onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
                       title="Prioritas Gangguan"
                       aria-label="Prioritas Gangguan"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-900/40 border border-slate-700/80 rounded-xl text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition"
+                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm"
                     >
                       <option value="Low">Low (Rendah)</option>
                       <option value="Medium">Medium (Sedang)</option>
@@ -478,7 +478,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                       onChange={(e) => setFormData({ ...formData, timeOrder: e.target.value })}
                       title="Waktu Order Masuk"
                       placeholder="Pilih waktu order masuk"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-900/40 border border-slate-700/80 rounded-xl text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition"
+                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm"
                     />
                   </div>
                 </div>
@@ -494,7 +494,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                       onChange={(e) => setFormData({ ...formData, actualTimeResponse: e.target.value })}
                       title="Waktu Respon Aktual"
                       placeholder="Pilih waktu respon aktual"
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-900/40 border border-slate-700/80 rounded-xl text-white focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition"
+                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm"
                     />
                   </div>
                 </div>
@@ -539,7 +539,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
               {/* Photo Evidence slot */}
               <div>
                 <label className="block text-sm text-slate-400 font-medium mb-2">Bukti Tangkapan Layar (Screenshot) Response Time *</label>
-                <div className="border-2 border-dashed border-slate-700 rounded-2xl p-6 text-center hover:border-red-500 hover:bg-slate-800/10 transition cursor-pointer relative group">
+                <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:border-red-500 hover:bg-slate-50 transition cursor-pointer relative group">
                   {formData.photoResponse ? (
                     <div className="relative inline-block">
                       <img
@@ -656,7 +656,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                     value={formData.timeOrder}
                     title="Waktu Order Masuk"
                     placeholder="Waktu order masuk"
-                    className="w-full px-4 py-2.5 bg-slate-900/20 border border-slate-800 rounded-xl text-slate-500 cursor-not-allowed"
+                    className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed"
                   />
                 </div>
 
@@ -942,53 +942,53 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
               </div>
 
               {/* Comprehensive SLA Review Summary */}
-              <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-5 space-y-4">
-                <h4 className="text-sm font-bold text-white uppercase tracking-wider border-b border-slate-800 pb-2">Ringkasan Nilai &amp; Pencapaian SLA/SLG</h4>
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider border-b border-slate-200 pb-2">Ringkasan Nilai &amp; Pencapaian SLA/SLG</h4>
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-3 bg-slate-800/20 border border-slate-800 rounded-xl text-center">
+                  <div className="p-3 bg-white border border-slate-200 rounded-xl text-center shadow-sm">
                     <span className="text-[10px] text-slate-500 uppercase font-bold block">1. Response Time</span>
-                    <span className="text-base font-extrabold text-white block mt-1">{calcs.responseTimeMin} Menit</span>
+                    <span className="text-base font-extrabold text-slate-900 block mt-1">{calcs.responseTimeMin} Menit</span>
                     <span className={`inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-full mt-2 border ${
                       calcs.responseComply 
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                        : 'bg-red-500/10 text-red-400 border-red-500/20'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                        : 'bg-red-50 text-red-700 border-red-200'
                     }`}>
                       {calcs.responseComply ? 'COMPLY' : 'TM'}
                     </span>
                   </div>
 
-                  <div className="p-3 bg-slate-800/20 border border-slate-800 rounded-xl text-center">
+                  <div className="p-3 bg-white border border-slate-200 rounded-xl text-center shadow-sm">
                     <span className="text-[10px] text-slate-500 uppercase font-bold block">2. Onsite OPE</span>
-                    <span className="text-base font-extrabold text-white block mt-1">{calcs.onsiteTimeMin} Menit</span>
+                    <span className="text-base font-extrabold text-slate-900 block mt-1">{calcs.onsiteTimeMin} Menit</span>
                     <span className={`inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-full mt-2 border ${
                       calcs.onsiteComply 
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                        : 'bg-red-500/10 text-red-400 border-red-500/20'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                        : 'bg-red-50 text-red-700 border-red-200'
                     }`}>
                       {calcs.onsiteComply ? 'COMPLY' : 'TM'}
                     </span>
                   </div>
 
-                  <div className="p-3 bg-slate-800/20 border border-slate-800 rounded-xl text-center">
+                  <div className="p-3 bg-white border border-slate-200 rounded-xl text-center shadow-sm">
                     <span className="text-[10px] text-slate-500 uppercase font-bold block">3. Restore RST</span>
-                    <span className="text-base font-extrabold text-white block mt-1">{calcs.restoreTimeMin} Menit</span>
+                    <span className="text-base font-extrabold text-slate-900 block mt-1">{calcs.restoreTimeMin} Menit</span>
                     <span className={`inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-full mt-2 border ${
                       calcs.restoreComply 
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                        : 'bg-red-500/10 text-red-400 border-red-500/20'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                        : 'bg-red-50 text-red-700 border-red-200'
                     }`}>
                       {calcs.restoreComply ? 'COMPLY' : 'TM'}
                     </span>
                   </div>
 
-                  <div className="p-3 bg-slate-800/20 border border-slate-800 rounded-xl text-center">
+                  <div className="p-3 bg-white border border-slate-200 rounded-xl text-center shadow-sm">
                     <span className="text-[10px] text-slate-500 uppercase font-bold block">4. Resolution RT</span>
-                    <span className="text-base font-extrabold text-white block mt-1">{calcs.resolutionTimeMin} Menit</span>
+                    <span className="text-base font-extrabold text-slate-900 block mt-1">{calcs.resolutionTimeMin} Menit</span>
                     <span className={`inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-full mt-2 border ${
                       calcs.resolutionComply 
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                        : 'bg-red-500/10 text-red-400 border-red-500/20'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                        : 'bg-red-50 text-red-700 border-red-200'
                     }`}>
                       {calcs.resolutionComply ? 'COMPLY' : 'TM'}
                     </span>
@@ -1000,7 +1000,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
         </AnimatePresence>
 
         {/* Action Buttons */}
-        <div className="mt-8 pt-4 border-t border-slate-800 flex justify-between items-center">
+        <div className="mt-8 pt-4 border-t border-slate-200 flex justify-between items-center">
           {currentStep > 1 ? (
             <motion.button
               key="back-btn"
@@ -1008,7 +1008,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
               whileTap={{ scale: 0.98 }}
               type="button"
               onClick={handleBack}
-              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold transition flex items-center gap-2"
+              className="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl font-bold transition flex items-center gap-2 shadow-sm"
             >
               <ArrowLeft className="w-4 h-4" />
               Kembali
@@ -1018,7 +1018,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
               key="cancel-btn"
               type="button"
               onClick={onCancel}
-              className="px-5 py-2.5 bg-slate-800/30 hover:bg-slate-800 text-slate-400 rounded-xl font-bold transition border border-slate-700/30"
+              className="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-600 rounded-xl font-bold transition border border-slate-200 shadow-sm"
             >
               Batal
             </button>

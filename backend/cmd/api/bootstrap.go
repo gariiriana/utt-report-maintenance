@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/core/routes"
+	"github.com/gariiriana/DwimitraSystem/backend/core/routes"
 )
 type App struct {
 	Server *Server

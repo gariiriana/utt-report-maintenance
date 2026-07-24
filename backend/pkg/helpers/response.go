@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/core/models"
-	apperrors "github.com/gariiriana/utt-report-maintenance/backend/pkg/errors"
+	"github.com/gariiriana/DwimitraSystem/backend/core/models"
+	apperrors "github.com/gariiriana/DwimitraSystem/backend/pkg/errors"
 )
 func SendSuccess(w http.ResponseWriter, reportID, collection, message string) {
 	w.Header().Set("Content-Type", "application/json")

@@ -598,7 +598,7 @@ export function AbsenInduction() {
     if (activeRightTab !== 'chart' || !webChartCanvasRef.current) return;
     drawInductionCharts(
       webChartCanvasRef.current,
-      'dark',
+      'light',
       stats,
       startDate,
       endDate,
@@ -1929,65 +1929,65 @@ export function AbsenInduction() {
       {/* ─── Header ─── */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-3">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
             Absen Induction
-          </h2>
-          <p className="text-slate-400 text-sm mt-1">Input dan kelola data absensi induction</p>
+          </h1>
+          <p className="text-slate-600 font-medium text-sm mt-1">Input dan kelola data absensi induction</p>
         </div>
       </div>
 
       {/* ─── Filter & Export Bar ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-5 shadow-lg text-slate-800">
         <div>
-          <label className="text-xs font-bold text-slate-400 mb-1.5 block">TANGGAL MULAI</label>
+          <label className="text-xs font-bold text-slate-500 mb-1.5 block uppercase tracking-wider">TANGGAL MULAI</label>
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="date"
               value={startDate}
               onChange={e => setStartDate(e.target.value)}
               title="Tanggal Mulai"
-              className="w-full bg-slate-800/40 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 font-sans"
+              className="w-full bg-slate-50/90 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-sans font-medium"
             />
           </div>
         </div>
 
         <div>
-          <label className="text-xs font-bold text-slate-400 mb-1.5 block">TANGGAL SELESAI</label>
+          <label className="text-xs font-bold text-slate-500 mb-1.5 block uppercase tracking-wider">TANGGAL SELESAI</label>
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="date"
               value={endDate}
               onChange={e => setEndDate(e.target.value)}
               title="Tanggal Selesai"
-              className="w-full bg-slate-800/40 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 font-sans"
+              className="w-full bg-slate-50/90 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-sans font-medium"
             />
           </div>
         </div>
 
         <div>
-          <label className="text-xs font-bold text-slate-400 mb-1.5 block">CARI PESERTA / KONTRAKTOR</label>
+          <label className="text-xs font-bold text-slate-500 mb-1.5 block uppercase tracking-wider">CARI PESERTA / KONTRAKTOR</label>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="Cari..."
-              className="w-full bg-slate-800/40 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500/50 placeholder-slate-500"
+              className="w-full bg-slate-50/90 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 placeholder-slate-400 font-medium"
             />
           </div>
         </div>
 
         <div className="flex flex-col justify-end">
-          <label className="text-xs font-bold text-slate-400 mb-1.5 block">EXPORT DATA</label>
+          <label className="text-xs font-bold text-slate-500 mb-1.5 block uppercase tracking-wider">EXPORT DATA</label>
           <div className="flex gap-2 w-full">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleExportExcel}
-              className="flex-1 py-2.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95"
+              className="flex-1 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95"
             >
               <FileSpreadsheet className="w-4 h-4" /> Excel
             </motion.button>
@@ -1995,7 +1995,7 @@ export function AbsenInduction() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleExportPDF}
-              className="flex-1 py-2.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95"
+              className="flex-1 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95"
             >
               <FileText className="w-4 h-4" /> PDF
             </motion.button>
@@ -2008,61 +2008,61 @@ export function AbsenInduction() {
         
         {/* Left Side: Summary Cards */}
         <div className="space-y-4 font-sans">
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex items-center justify-between">
+          <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-5 flex items-center justify-between shadow-lg text-slate-800">
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Peserta</p>
-              <h3 className="text-2xl font-black text-white mt-1">{stats.total} orang</h3>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Peserta</p>
+              <h3 className="text-2xl font-black text-slate-900 mt-1">{stats.total} orang</h3>
             </div>
-            <div className="p-3 bg-blue-500/10 rounded-xl text-blue-400">
+            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl border border-blue-100">
               <Users className="w-6 h-6" />
             </div>
           </div>
 
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex items-center justify-between">
+          <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-5 flex items-center justify-between shadow-lg text-slate-800">
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Jumlah Hari</p>
-              <h3 className="text-2xl font-black text-emerald-400 mt-1">{stats.uniqueDates} hari</h3>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Jumlah Hari</p>
+              <h3 className="text-2xl font-black text-emerald-600 mt-1">{stats.uniqueDates} hari</h3>
             </div>
-            <div className="p-3 bg-emerald-500/10 rounded-xl text-emerald-400">
+            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
               <Calendar className="w-6 h-6" />
             </div>
           </div>
 
-          <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex items-center justify-between">
+          <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-5 flex items-center justify-between shadow-lg text-slate-800">
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Kontraktor</p>
-              <h3 className="text-2xl font-black text-purple-400 mt-1">{stats.uniqueCompanies} perusahaan</h3>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Kontraktor</p>
+              <h3 className="text-2xl font-black text-purple-600 mt-1">{stats.uniqueCompanies} perusahaan</h3>
             </div>
-            <div className="p-3 bg-purple-500/10 rounded-xl text-purple-400">
+            <div className="p-3 bg-purple-50 text-purple-600 rounded-xl border border-purple-100">
               <Building2 className="w-6 h-6" />
             </div>
           </div>
         </div>
 
         {/* Right Side: Charts & Leaderboard */}
-        <div className="lg:col-span-2 bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6 flex flex-col justify-start gap-4 min-h-[380px]">
-          <div className="flex items-center justify-between border-b border-white/5 pb-3">
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <span className="w-2 h-2 bg-blue-500 rounded-full shadow-lg shadow-blue-500" />
+        <div className="lg:col-span-2 bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-6 flex flex-col justify-start gap-4 min-h-[380px] shadow-lg text-slate-800">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+              <span className="w-2 h-2 bg-blue-600 rounded-full shadow-lg shadow-blue-500" />
               Performa & Aktivitas Induction
             </h2>
-            <div className="flex bg-slate-800/40 p-0.5 rounded-lg border border-slate-700/50">
+            <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
               <button
                 onClick={() => setActiveRightTab('chart')}
-                className={`px-3 py-1 text-xs font-bold rounded-md transition duration-200 ${
+                className={`px-3 py-1 text-xs font-bold rounded-md transition duration-200 cursor-pointer ${
                   activeRightTab === 'chart'
                     ? 'bg-blue-600 text-white shadow'
-                    : 'text-slate-400 hover:text-white'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Grafik
               </button>
               <button
                 onClick={() => setActiveRightTab('list')}
-                className={`px-3 py-1 text-xs font-bold rounded-md transition duration-200 ${
+                className={`px-3 py-1 text-xs font-bold rounded-md transition duration-200 cursor-pointer ${
                   activeRightTab === 'list'
                     ? 'bg-blue-600 text-white shadow'
-                    : 'text-slate-400 hover:text-white'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Kontraktor
@@ -2102,7 +2102,7 @@ export function AbsenInduction() {
                             <span className="text-blue-400">{pct}%</span>
                           </div>
                         </div>
-                        <div className="w-full bg-slate-800/60 rounded-full h-2 overflow-hidden border border-slate-700/30">
+                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
                           <style dangerouslySetInnerHTML={{ __html: `
                             .progress-bar-ind-${idx} {
                               width: ${pct}%;
@@ -2125,10 +2125,10 @@ export function AbsenInduction() {
       {/* ─── Main Grid: Input Form + Data Browser ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* ─── LEFT: Input Form ─── */}
-        <div className="bg-slate-900/60 border border-slate-800/50 rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 bg-gradient-to-r from-blue-500/10 to-blue-500/5 border-b border-slate-800/50">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Plus className="w-4 h-4 text-blue-400" />
+        <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl overflow-hidden shadow-lg text-slate-800">
+          <div className="px-5 py-4 bg-sky-50/80 border-b border-sky-100">
+            <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <Plus className="w-4 h-4 text-blue-600" />
               Input Data Induction
             </h3>
           </div>
@@ -2142,7 +2142,7 @@ export function AbsenInduction() {
                 value={formDate}
                 onChange={e => setFormDate(e.target.value)}
                 title="Tanggal"
-                className="w-full px-4 py-2.5 bg-slate-800/60 border border-slate-700/50 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                className="w-full px-4 py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium transition-all"
               />
             </div>
 
@@ -2153,7 +2153,7 @@ export function AbsenInduction() {
                 <button
                   type="button"
                   onClick={addRow}
-                  className="text-[10px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
+                  className="text-[10px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors"
                 >
                   <Plus className="w-3 h-3" /> Tambah Baris
                 </button>
@@ -2165,15 +2165,15 @@ export function AbsenInduction() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="bg-slate-800/40 border border-slate-700/30 rounded-xl p-3 space-y-2"
+                  className="bg-slate-50/80 border border-slate-200 rounded-xl p-3 space-y-2"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-blue-400">#{idx + 1}</span>
+                    <span className="text-[10px] font-bold text-blue-600">#{idx + 1}</span>
                     {checklist.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeRow(idx)}
-                        className="text-red-400/60 hover:text-red-400 transition-colors"
+                        className="text-red-400 hover:text-red-600 transition-colors"
                         title="Hapus baris"
                       >
                         <X className="w-3.5 h-3.5" />
@@ -2187,7 +2187,7 @@ export function AbsenInduction() {
                     value={item.nama}
                     onChange={e => updateChecklistItem(idx, 'nama', e.target.value)}
                     placeholder="Nama..."
-                    className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700/40 rounded-lg text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500/40 transition-all"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium transition-all"
                   />
 
                   {/* Perusahaan */}
@@ -2196,7 +2196,7 @@ export function AbsenInduction() {
                     value={item.perusahaan}
                     onChange={e => updateChecklistItem(idx, 'perusahaan', e.target.value)}
                     placeholder="Perusahaan..."
-                    className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700/40 rounded-lg text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500/40 transition-all"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium transition-all"
                   />
 
                   {/* Remark */}
@@ -2205,7 +2205,7 @@ export function AbsenInduction() {
                     value={item.remark}
                     onChange={e => updateChecklistItem(idx, 'remark', e.target.value)}
                     placeholder="Remark / Keterangan..."
-                    className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700/40 rounded-lg text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500/40 transition-all"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium transition-all"
                   />
                 </motion.div>
               ))}
@@ -2214,9 +2214,9 @@ export function AbsenInduction() {
             {/* ─── Foto Kegiatan Induction (Multi-Photo) ─── */}
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5">
-                <Camera className="w-3 h-3" /> Foto Kegiatan Induction (Bisa Upload Lebih dari Satu)
+                <Camera className="w-3 h-3 text-blue-600" /> Foto Kegiatan Induction (Bisa Upload Lebih dari Satu)
               </label>
-              <div className="bg-slate-800/40 border border-slate-700/30 rounded-xl p-3 space-y-3">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
                 <input
                   ref={activityPhotoRef}
                   type="file"
@@ -2230,8 +2230,8 @@ export function AbsenInduction() {
                 {activityPhotos.length > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {activityPhotos.map((p, idx) => (
-                      <div key={idx} className="bg-slate-900/50 border border-slate-800/80 rounded-lg p-2 space-y-2 relative group">
-                        <div className="relative aspect-video rounded-md overflow-hidden bg-slate-950">
+                      <div key={idx} className="bg-white border border-slate-200 rounded-lg p-2 space-y-2 relative group shadow-sm">
+                        <div className="relative aspect-video rounded-md overflow-hidden bg-slate-100">
                           <img
                             src={p.base64}
                             alt={`Foto kegiatan ${idx + 1}`}
@@ -2253,7 +2253,7 @@ export function AbsenInduction() {
                             value={p.description}
                             onChange={e => updatePhotoDescription(idx, e.target.value)}
                             placeholder="Tulis deskripsi foto..."
-                            className="w-full text-[10px] bg-slate-900 border border-slate-700/50 rounded-lg px-2.5 py-1.5 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500/50"
+                            className="w-full text-[10px] bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-500 font-medium"
                           />
                         </div>
                       </div>
@@ -2264,9 +2264,9 @@ export function AbsenInduction() {
                 <button
                   type="button"
                   onClick={() => activityPhotoRef.current?.click()}
-                  className="w-full px-3 py-2.5 bg-slate-900/50 border border-dashed border-slate-650/40 rounded-lg text-xs text-slate-400 hover:text-blue-400 hover:border-blue-500/30 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+                  className="w-full px-3 py-2.5 bg-slate-100/80 border border-dashed border-slate-300 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-200/80 hover:border-blue-500 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
                 >
-                  <Camera className="w-4 h-4 text-blue-400" />
+                  <Camera className="w-4 h-4 text-blue-600" />
                   {activityPhotos.length > 0 ? "Tambah Foto Kegiatan Lain" : "Ambil / Upload Foto Kegiatan"}
                 </button>
               </div>
@@ -2275,9 +2275,9 @@ export function AbsenInduction() {
             {/* ─── PDF Kegiatan Induction (Multi-PDF) ─── */}
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5">
-                <FileText className="w-3 h-3 text-blue-400" /> Dokumen PDF Induction (Bisa Upload Lebih dari Satu)
+                <FileText className="w-3 h-3 text-blue-600" /> Dokumen PDF Induction (Bisa Upload Lebih dari Satu)
               </label>
-              <div className="bg-slate-800/40 border border-slate-700/30 rounded-xl p-3 space-y-3">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-3">
                 <input
                   ref={activityPdfRef}
                   type="file"
@@ -2291,10 +2291,10 @@ export function AbsenInduction() {
                 {activityPdfs.length > 0 && (
                   <div className="space-y-2">
                     {activityPdfs.map((pdf, idx) => (
-                      <div key={idx} className="bg-slate-900/50 border border-slate-800/80 rounded-lg p-2.5 flex items-center justify-between gap-3 relative group">
+                      <div key={idx} className="bg-white border border-slate-200 rounded-lg p-2.5 flex items-center justify-between gap-3 relative group shadow-sm">
                         <div className="flex items-center gap-2 truncate">
-                          <FileText className="w-4 h-4 text-red-400 flex-shrink-0" />
-                          <span className="text-xs text-slate-200 truncate font-medium" title={pdf.name}>
+                          <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
+                          <span className="text-xs text-slate-900 truncate font-bold" title={pdf.name}>
                             {pdf.name}
                           </span>
                         </div>
@@ -2302,7 +2302,7 @@ export function AbsenInduction() {
                           <button
                             type="button"
                             onClick={() => openPdf(pdf)}
-                            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-750 text-slate-200 rounded text-[10px] font-bold transition duration-150 active:scale-95"
+                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded text-[10px] font-bold transition duration-150 active:scale-95 border border-slate-200"
                           >
                             Lihat
                           </button>
@@ -2310,7 +2310,7 @@ export function AbsenInduction() {
                             type="button"
                             onClick={() => removeActivityPdf(idx)}
                             title="Hapus PDF"
-                            className="p-1 hover:bg-red-500/10 text-red-450 rounded transition"
+                            className="p-1 hover:bg-red-50 text-red-600 rounded transition"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -2323,9 +2323,9 @@ export function AbsenInduction() {
                 <button
                   type="button"
                   onClick={() => activityPdfRef.current?.click()}
-                  className="w-full px-3 py-2.5 bg-slate-900/50 border border-dashed border-slate-650/40 rounded-lg text-xs text-slate-400 hover:text-blue-400 hover:border-blue-500/30 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
+                  className="w-full px-3 py-2.5 bg-slate-100/80 border border-dashed border-slate-300 rounded-lg text-xs font-bold text-slate-700 hover:bg-slate-200/80 hover:border-blue-500 flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
                 >
-                  <FileText className="w-4 h-4 text-blue-400" />
+                  <FileText className="w-4 h-4 text-blue-600" />
                   {activityPdfs.length > 0 ? "Tambah File PDF Lain" : "Upload File PDF"}
                 </button>
               </div>
@@ -2351,9 +2351,9 @@ export function AbsenInduction() {
         </div>
 
         {/* ─── RIGHT: Data Browser ─── */}
-        <div className="bg-slate-900/60 border border-slate-800/50 rounded-2xl overflow-hidden">
+        <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl overflow-hidden shadow-lg text-slate-800">
           {/* Browser Header */}
-          <div className="px-5 py-4 bg-gradient-to-r from-slate-800/60 to-slate-800/30 border-b border-slate-800/50">
+          <div className="px-5 py-4 bg-slate-50/90 border-b border-slate-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {viewLevel !== 'month' && (
@@ -2368,13 +2368,13 @@ export function AbsenInduction() {
                       }
                     }}
                     title="Kembali"
-                    className="p-1.5 hover:bg-slate-700/50 rounded-lg text-slate-400 hover:text-white transition-all"
+                    className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-500 hover:text-slate-900 transition-all"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                 )}
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Folder className="w-4 h-4 text-amber-400" />
+                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                  <Folder className="w-4 h-4 text-amber-500" />
                   {viewLevel === 'month' && 'Arsip Bulanan'}
                   {viewLevel === 'date' && (selectedMonth ? getIndonesianMonthYear(selectedMonth + '-01') : '')}
                   {viewLevel === 'records' && (selectedDate ? formatIndonesianDate(selectedDate) : '')}
@@ -2411,14 +2411,14 @@ export function AbsenInduction() {
                       setSelectedMonth(folder.key);
                       setViewLevel('date');
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-3 bg-slate-800/30 hover:bg-slate-800/60 border border-slate-700/20 hover:border-teal-500/20 rounded-xl transition-all group"
+                    className="w-full flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all group shadow-sm cursor-pointer"
                   >
-                    <Folder className="w-5 h-5 text-amber-400 group-hover:text-amber-300" />
+                    <Folder className="w-5 h-5 text-amber-500 group-hover:text-amber-600" />
                     <div className="flex-1 text-left">
-                      <p className="text-sm font-bold text-white">{folder.label}</p>
-                      <p className="text-[10px] text-slate-500">{folder.dateCount} hari · {folder.count} peserta</p>
+                      <p className="text-sm font-bold text-slate-900">{folder.label}</p>
+                      <p className="text-[10px] text-slate-500 font-medium">{folder.dateCount} hari · {folder.count} peserta</p>
                     </div>
-                    <ChevronLeft className="w-4 h-4 text-slate-600 rotate-180" />
+                    <ChevronLeft className="w-4 h-4 text-slate-400 rotate-180" />
                   </motion.button>
                 ))
               )
@@ -2428,7 +2428,7 @@ export function AbsenInduction() {
             {viewLevel === 'date' && (
               dateFolders.length === 0 ? (
                 <div className="text-center py-12">
-                  <Calendar className="w-12 h-12 text-slate-700 mx-auto mb-3" />
+                  <Calendar className="w-12 h-12 text-slate-400 mx-auto mb-3" />
                   <p className="text-sm text-slate-500">Tidak ada data di bulan ini</p>
                 </div>
               ) : (
@@ -2440,18 +2440,18 @@ export function AbsenInduction() {
                         setSelectedDate(folder.date);
                         setViewLevel('records');
                       }}
-                      className="flex-1 flex items-center gap-3 px-4 py-3 bg-slate-800/30 hover:bg-slate-800/60 border border-slate-700/20 hover:border-teal-500/20 rounded-xl transition-all group"
+                      className="flex-1 flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all group shadow-sm cursor-pointer"
                     >
-                      <Calendar className="w-5 h-5 text-teal-400 group-hover:text-teal-300" />
+                      <Calendar className="w-5 h-5 text-teal-600 group-hover:text-teal-700" />
                       <div className="flex-1 text-left">
-                        <p className="text-sm font-bold text-white">{folder.label}</p>
-                        <p className="text-[10px] text-slate-500">{folder.count} peserta</p>
+                        <p className="text-sm font-bold text-slate-900">{folder.label}</p>
+                        <p className="text-[10px] text-slate-500 font-medium">{folder.count} peserta</p>
                       </div>
-                      <ChevronLeft className="w-4 h-4 text-slate-600 rotate-180" />
+                      <ChevronLeft className="w-4 h-4 text-slate-400 rotate-180" />
                     </motion.button>
                     <button
                       onClick={() => handleDeleteEntireDate(folder.date)}
-                      className="p-2 text-red-400/40 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                      className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
                       title="Hapus semua data tanggal ini"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -2465,21 +2465,21 @@ export function AbsenInduction() {
              {viewLevel === 'records' && (
                dateRecords.length === 0 ? (
                  <div className="text-center py-12">
-                   <Users className="w-12 h-12 text-slate-700 mx-auto mb-3" />
+                   <Users className="w-12 h-12 text-slate-400 mx-auto mb-3" />
                    <p className="text-sm text-slate-500">Tidak ada data untuk tanggal ini</p>
                  </div>
                ) : (
                  <div className="space-y-3">
                    {/* Dokumentasi Foto Tanggal */}
                    {selectedDateDoc && selectedDateDoc.photos && selectedDateDoc.photos.length > 0 && (
-                     <div className="bg-slate-800/40 border border-slate-750 rounded-xl p-3 space-y-2 mb-2">
-                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                         <Camera className="w-3.5 h-3.5 text-blue-400" /> Dokumentasi Kegiatan ({selectedDateDoc.photos.length} Foto)
+                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2 mb-2">
+                       <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                         <Camera className="w-3.5 h-3.5 text-blue-600" /> Dokumentasi Kegiatan ({selectedDateDoc.photos.length} Foto)
                        </p>
                        <div className="grid grid-cols-2 gap-2">
                          {selectedDateDoc.photos.map((ph, idx) => (
-                           <div key={idx} className="bg-slate-900/60 rounded-lg p-1.5 border border-slate-800 space-y-1 relative group">
-                             <div className="aspect-video w-full rounded overflow-hidden bg-black">
+                           <div key={idx} className="bg-white rounded-lg p-1.5 border border-slate-200 space-y-1 relative group shadow-sm">
+                             <div className="aspect-video w-full rounded overflow-hidden bg-slate-100">
                                <img
                                  src={ph.base64}
                                  alt={ph.description || `Foto ${idx + 1}`}
@@ -2488,7 +2488,7 @@ export function AbsenInduction() {
                                />
                              </div>
                              {ph.description && (
-                               <p className="text-[9px] text-slate-400 italic truncate px-0.5" title={ph.description}>
+                               <p className="text-[9px] text-slate-500 italic truncate px-0.5" title={ph.description}>
                                  {ph.description}
                                </p>
                              )}
@@ -2500,23 +2500,23 @@ export function AbsenInduction() {
 
                     {/* Dokumentasi PDF Tanggal */}
                     {selectedDateDoc && (selectedDateDoc as any).pdfs && (selectedDateDoc as any).pdfs.length > 0 && (
-                      <div className="bg-slate-800/40 border border-slate-750 rounded-xl p-3 space-y-2 mb-2">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                          <FileText className="w-3.5 h-3.5 text-blue-400" /> Dokumentasi PDF ({(selectedDateDoc as any).pdfs.length} File)
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2 mb-2">
+                        <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-blue-600" /> Dokumentasi PDF ({(selectedDateDoc as any).pdfs.length} File)
                         </p>
                         <div className="space-y-1.5">
                           {(selectedDateDoc as any).pdfs.map((pdf: any, idx: number) => (
-                            <div key={idx} className="bg-slate-900/60 rounded-lg p-2.5 border border-slate-800 flex items-center justify-between gap-3">
+                            <div key={idx} className="bg-white rounded-lg p-2.5 border border-slate-200 flex items-center justify-between gap-3 shadow-sm">
                               <div className="flex items-center gap-2 truncate">
-                                <FileText className="w-4 h-4 text-red-400 flex-shrink-0" />
-                                <span className="text-xs text-white truncate font-medium" title={pdf.name}>
+                                <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
+                                <span className="text-xs text-slate-900 truncate font-bold" title={pdf.name}>
                                   {pdf.name}
                                 </span>
                               </div>
                               <button
                                 type="button"
                                 onClick={() => openPdf(pdf)}
-                                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-[10px] font-bold transition flex items-center gap-1 active:scale-95"
+                                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[10px] font-bold transition flex items-center gap-1 active:scale-95 cursor-pointer"
                               >
                                 Buka PDF
                               </button>
@@ -2534,7 +2534,7 @@ export function AbsenInduction() {
                          initial={{ opacity: 0, y: 5 }}
                          animate={{ opacity: 1, y: 0 }}
                          transition={{ delay: idx * 0.03 }}
-                         className="bg-slate-800/30 border border-slate-700/20 rounded-xl p-3 group"
+                         className="bg-slate-50 border border-slate-200 rounded-xl p-3 group shadow-sm"
                        >
                          {editingRecordId === rec.id ? (
                            /* Edit mode */
@@ -2543,30 +2543,30 @@ export function AbsenInduction() {
                                value={editedNama}
                                onChange={e => setEditedNama(e.target.value)}
                                placeholder="Nama..."
-                               className="w-full px-3 py-1.5 bg-slate-900/50 border border-blue-500/30 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500/40"
+                               className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                              />
                              <input
                                value={editedPerusahaan}
                                onChange={e => setEditedPerusahaan(e.target.value)}
                                placeholder="Perusahaan..."
-                               className="w-full px-3 py-1.5 bg-slate-900/50 border border-blue-500/30 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500/40"
+                               className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                              />
                              <input
                                value={editedRemark}
                                onChange={e => setEditedRemark(e.target.value)}
                                placeholder="Remark..."
-                               className="w-full px-3 py-1.5 bg-slate-900/50 border border-blue-500/30 rounded-lg text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500/40"
+                               className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-blue-500"
                              />
                              <div className="flex gap-2">
                                <button
                                  onClick={() => handleUpdateRecord(rec.id)}
-                                 className="flex-1 py-1.5 bg-blue-600/80 hover:bg-blue-600 text-white text-[10px] font-bold rounded-lg flex items-center justify-center gap-1 transition-all"
+                                 className="flex-1 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer"
                                >
                                  <Save className="w-3 h-3" /> Simpan
                                </button>
                                <button
                                  onClick={() => setEditingRecordId(null)}
-                                 className="px-3 py-1.5 bg-slate-700/50 hover:bg-slate-700 text-slate-300 text-[10px] font-bold rounded-lg transition-all"
+                                 className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-[10px] font-bold rounded-lg transition-all cursor-pointer"
                                >
                                  Batal
                                </button>
@@ -2575,20 +2575,19 @@ export function AbsenInduction() {
                          ) : (
                            /* View mode */
                            <div className="flex items-start gap-3">
-                             {/* Icon placeholder (replacing individual photos) */}
-                             <div className="w-10 h-10 rounded-lg bg-slate-800/60 border border-slate-700/50 flex items-center justify-center flex-shrink-0">
-                               <Users className="w-5 h-5 text-blue-400" />
+                             <div className="w-10 h-10 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
+                               <Users className="w-5 h-5 text-blue-600" />
                              </div>
 
                              {/* Info */}
                              <div className="flex-1 min-w-0">
-                               <p className="text-sm font-bold text-white truncate">{rec.nama || '-'}</p>
-                               <p className="text-[10px] text-blue-400 flex items-center gap-1">
+                               <p className="text-sm font-bold text-slate-900 truncate">{rec.nama || '-'}</p>
+                               <p className="text-[10px] text-blue-600 font-semibold flex items-center gap-1">
                                  <Building2 className="w-3 h-3" />
                                  {rec.perusahaan || '-'}
                                </p>
                                {rec.remark && (
-                                 <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
+                                 <p className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1 font-medium">
                                    <MessageSquare className="w-3 h-3" />
                                    {rec.remark}
                                  </p>
@@ -2599,14 +2598,14 @@ export function AbsenInduction() {
                              <div className="flex items-center gap-1 flex-shrink-0">
                                <button
                                  onClick={() => startEditing(rec)}
-                                 className="p-1.5 hover:bg-slate-700/50 rounded-lg text-slate-400 hover:text-blue-400 transition-all"
+                                 className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-blue-600 transition-all cursor-pointer"
                                  title="Edit"
                                >
                                  <Pencil className="w-3.5 h-3.5" />
                                </button>
                                <button
                                  onClick={() => handleDelete(rec.id)}
-                                 className="p-1.5 hover:bg-red-500/10 rounded-lg text-slate-400 hover:text-red-400 transition-all"
+                                 className="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-all cursor-pointer"
                                  title="Hapus"
                                >
                                  <Trash2 className="w-3.5 h-3.5" />
@@ -2639,18 +2638,18 @@ export function AbsenInduction() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] max-w-2xl max-h-[90vh] bg-slate-900 border border-slate-800 rounded-2xl p-6 z-[110] shadow-2xl flex flex-col font-sans"
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] max-w-2xl max-h-[90vh] bg-white border border-slate-200 rounded-2xl p-6 z-[110] shadow-2xl flex flex-col font-sans"
             >
               {/* Modal Header */}
-              <div className="flex items-center justify-between border-b border-slate-850 pb-4 mb-4">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <Pencil className="w-4 h-4 text-blue-400" />
+              <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-4">
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Pencil className="w-4 h-4 text-blue-600" />
                   Edit Sesi & Dokumentasi
                 </h3>
                 <button
                   onClick={() => setIsEditSessionOpen(false)}
                   disabled={isSavingSession}
-                  className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-all disabled:opacity-50"
+                  className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition-all disabled:opacity-50"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -2660,22 +2659,22 @@ export function AbsenInduction() {
               <div className="flex-1 overflow-y-auto space-y-4 pr-1 custom-scrollbar">
                 {/* Date */}
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1.5">Tanggal Sesi</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1.5">Tanggal Sesi</label>
                   <input
                     type="date"
                     value={editSessionDate}
                     onChange={e => setEditSessionDate(e.target.value)}
                     disabled={isSavingSession}
-                    className="w-full px-4 py-2.5 bg-slate-800/60 border border-slate-700/50 rounded-xl text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all disabled:opacity-50"
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all disabled:opacity-50"
                   />
                 </div>
 
                 {/* Photos */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5">
-                    <Camera className="w-3.5 h-3.5 text-blue-400" /> Foto Dokumentasi
+                  <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                    <Camera className="w-3.5 h-3.5 text-blue-600" /> Foto Dokumentasi
                   </label>
-                  <div className="bg-slate-800/30 border border-slate-800 rounded-xl p-4 space-y-3">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
                     <input
                       ref={editSessionPhotoRef}
                       type="file"
@@ -2689,8 +2688,8 @@ export function AbsenInduction() {
                     {editSessionPhotos.length > 0 && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {editSessionPhotos.map((p, idx) => (
-                          <div key={idx} className="bg-slate-900/60 border border-slate-800 rounded-lg p-2 space-y-2 relative group">
-                            <div className="relative aspect-video rounded overflow-hidden bg-slate-950">
+                          <div key={idx} className="bg-white border border-slate-200 rounded-lg p-2 space-y-2 relative group shadow-sm">
+                            <div className="relative aspect-video rounded overflow-hidden bg-slate-100">
                               <img
                                 src={p.base64}
                                 alt={`Foto edit ${idx + 1}`}
@@ -2712,7 +2711,7 @@ export function AbsenInduction() {
                               onChange={e => updateEditPhotoDescription(idx, e.target.value)}
                               disabled={isSavingSession}
                               placeholder="Deskripsi foto..."
-                              className="w-full text-[10px] bg-slate-900 border border-slate-800 rounded px-2 py-1 text-slate-200 focus:outline-none focus:border-blue-500/50"
+                              className="w-full text-[10px] bg-white border border-slate-200 rounded px-2 py-1 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                             />
                           </div>
                         ))}
@@ -2723,7 +2722,7 @@ export function AbsenInduction() {
                       type="button"
                       onClick={() => editSessionPhotoRef.current?.click()}
                       disabled={isSavingSession || isCompressingEditPhotos}
-                      className="w-full px-3 py-2.5 bg-slate-900/50 border border-dashed border-slate-800 hover:border-blue-500/40 rounded-lg text-xs text-slate-400 hover:text-blue-400 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50"
+                      className="w-full px-3 py-2.5 bg-white border border-dashed border-slate-200 hover:border-blue-500/40 rounded-lg text-xs text-slate-500 hover:text-blue-600 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50 shadow-sm"
                     >
                       <Camera className="w-4 h-4 text-blue-400" />
                       {isCompressingEditPhotos ? "Mengompresi..." : "Upload / Tambah Foto"}
@@ -2733,10 +2732,10 @@ export function AbsenInduction() {
 
                 {/* PDFs */}
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5 text-blue-400" /> Dokumen PDF
+                  <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-blue-600" /> Dokumen PDF
                   </label>
-                  <div className="bg-slate-800/30 border border-slate-800 rounded-xl p-4 space-y-3">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
                     <input
                       ref={editSessionPdfRef}
                       type="file"
@@ -2750,10 +2749,10 @@ export function AbsenInduction() {
                     {editSessionPdfs.length > 0 && (
                       <div className="space-y-2">
                         {editSessionPdfs.map((pdf, idx) => (
-                          <div key={idx} className="bg-slate-900/60 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between gap-3 relative group">
+                          <div key={idx} className="bg-white border border-slate-200 rounded-lg p-2.5 flex items-center justify-between gap-3 relative group shadow-sm">
                             <div className="flex items-center gap-2 truncate">
-                              <FileText className="w-4 h-4 text-red-400 flex-shrink-0" />
-                              <span className="text-xs text-slate-200 truncate font-medium" title={pdf.name}>
+                              <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
+                              <span className="text-xs text-slate-700 truncate font-medium" title={pdf.name}>
                                 {pdf.name}
                               </span>
                             </div>
@@ -2762,7 +2761,7 @@ export function AbsenInduction() {
                               onClick={() => removeEditSessionPdf(idx)}
                               disabled={isSavingSession}
                               title="Hapus PDF"
-                              className="p-1 hover:bg-red-500/10 text-red-450 rounded transition disabled:opacity-50"
+                              className="p-1 hover:bg-red-50 text-red-500 rounded transition disabled:opacity-50"
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -2775,7 +2774,7 @@ export function AbsenInduction() {
                       type="button"
                       onClick={() => editSessionPdfRef.current?.click()}
                       disabled={isSavingSession}
-                      className="w-full px-3 py-2.5 bg-slate-900/50 border border-dashed border-slate-800 hover:border-blue-500/40 rounded-lg text-xs text-slate-400 hover:text-blue-400 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50"
+                      className="w-full px-3 py-2.5 bg-white border border-dashed border-slate-200 hover:border-blue-500/40 rounded-lg text-xs text-slate-500 hover:text-blue-600 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50 shadow-sm"
                     >
                       <FileText className="w-4 h-4 text-blue-400" />
                       Upload / Tambah PDF
@@ -2785,12 +2784,12 @@ export function AbsenInduction() {
               </div>
 
               {/* Modal Footer */}
-              <div className="flex gap-3 border-t border-slate-850 pt-4 mt-4">
+              <div className="flex gap-3 border-t border-slate-200 pt-4 mt-4">
                 <button
                   type="button"
                   onClick={() => setIsEditSessionOpen(false)}
                   disabled={isSavingSession}
-                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-300 rounded-xl text-sm font-bold transition-all disabled:opacity-50 cursor-pointer"
+                  className="flex-1 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-sm font-bold transition-all disabled:opacity-50 cursor-pointer shadow-sm"
                 >
                   Batal
                 </button>
@@ -2827,17 +2826,17 @@ export function AbsenInduction() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm bg-slate-900 border border-red-500/30 rounded-2xl p-6 z-[110] shadow-2xl"
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm bg-white border border-slate-200 rounded-2xl p-6 z-[110] shadow-2xl"
             >
-              <h3 className="text-lg font-bold text-white mb-2">Hapus Data Tanggal</h3>
-              <p className="text-sm text-slate-400 mb-4">
-                Apakah Anda yakin ingin menghapus <span className="text-red-400 font-bold">seluruh data</span> pada tanggal{' '}
-                <span className="text-white font-bold">{formatIndonesianDate(dateToDelete)}</span>?
+              <h3 className="text-lg font-bold text-slate-900 mb-2">Hapus Data Tanggal</h3>
+              <p className="text-sm text-slate-500 mb-4">
+                Apakah Anda yakin ingin menghapus <span className="text-red-500 font-bold">seluruh data</span> pada tanggal{' '}
+                <span className="text-slate-900 font-bold">{formatIndonesianDate(dateToDelete)}</span>?
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => { setDeleteConfirmOpen(false); setDateToDelete(null); }}
-                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-bold transition-all"
+                  className="flex-1 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-sm font-bold transition-all shadow-sm"
                 >
                   Batal
                 </button>
@@ -2877,7 +2876,7 @@ export function AbsenInduction() {
               <button
                 onClick={() => setPreviewPhoto(null)}
                 title="Tutup"
-                className="absolute -top-3 -right-3 p-2 bg-slate-800 rounded-full border border-slate-700 text-white hover:bg-slate-700 transition-all z-10"
+                className="absolute -top-3 -right-3 p-2 bg-white rounded-full border border-slate-200 text-slate-700 hover:bg-slate-100 transition-all z-10 shadow-md"
               >
                 <X className="w-4 h-4" />
               </button>

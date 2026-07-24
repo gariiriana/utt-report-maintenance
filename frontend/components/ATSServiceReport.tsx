@@ -5,8 +5,8 @@ import {
   X, ChevronDown, ChevronUp, Download, Eye, AlertTriangle, Edit2, Save
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { db } from '@/api/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { db, auth } from '@/api/firebase';
+import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
 
 import {
   ATSReportData, ATSCustomerInfo, ATSTimeSpent,
@@ -258,6 +258,107 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
   const [archiveType, setArchiveType] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiLimit, setAiLimit] = useState<{ total: number; used: number } | null>(null);
+
+  useEffect(() => {
+    // Listen to AI request quota in Firestore
+    const unsubscribe = onSnapshot(doc(db, 'system_status', 'ai_limit_tracker'), (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        setAiLimit({
+          total: Number(data.total_limit) || 6000,
+          used: Number(data.used_today) || 0,
+        });
+      } else {
+        setAiLimit({ total: 6000, used: 0 });
+      }
+    }, (error) => {
+      console.error('Failed to listen to AI limit tracker:', error);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const generateReportWithAI = async (
+    currentPhotos: UploadedPhoto[],
+    currentReportData: ATSReportData
+  ) => {
+    setIsGenerating(true);
+    const toastId = toast.loading('✨ AI sedang menyusun Service Report ATS secara lengkap...');
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Silakan login terlebih dahulu');
+
+      const apiBaseUrl = import.meta.env.VITE_API_URL || '';
+      const url = apiBaseUrl.endsWith('/api')
+        ? `${apiBaseUrl}/ai/ats-report`
+        : `${apiBaseUrl}/api/ai/ats-report`;
+
+      // Map photos to the backend model format (Category, Label, Parameter)
+      // We prioritize originalReportCards as they represent the full checklist and inputs
+      const payloadPhotos = originalReportCards.length > 0
+        ? originalReportCards.map(c => {
+            const desc = c.description || '';
+            const d = desc.toLowerCase();
+            let category = 'visual_inspection';
+            if (d.includes('thermal') || d.includes('imager') || d.includes('suhu') || d.includes('temp')) {
+              category = 'thermal';
+            } else if (d.includes('grounding') || d.includes('earth') || d.includes('tahanan')) {
+              category = 'grounding';
+            } else if (
+              d.includes('voltage') || d.includes('ampere') || d.includes('current') || 
+              d.includes('dpm') || d.includes('power') || d.includes('daya') ||
+              d.includes('r-s') || d.includes('s-t') || d.includes('t-r') ||
+              d.includes('r-n') || d.includes('s-n') || d.includes('t-n')
+            ) {
+              category = 'power_meter';
+            }
+            return {
+              category,
+              label: desc,
+              parameter: c.parameter || ''
+            };
+          })
+        : currentPhotos.map(p => ({
+            category: p.category,
+            label: p.label,
+            parameter: p.parameter || ''
+          }));
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          photos: payloadPhotos,
+          report_data: currentReportData
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`AI API error (${response.status}): ${errText}`);
+      }
+
+      const data = await response.json();
+      if (data) {
+        setReportData(data);
+        toast.success('✨ AI berhasil mengisi data, kondisi, dan keterangan laporan!', { id: toastId });
+        return data;
+      } else {
+        throw new Error('AI returned empty response');
+      }
+    } catch (err: any) {
+      console.error('AI Report Generation failed:', err);
+      toast.error(`AI Auto-Fill gagal: ${err.message}`, { id: toastId });
+      return null;
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   // Load draft from draftStorage (IndexedDB)
   useEffect(() => {
@@ -381,15 +482,16 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
       setPhotos(mappedPhotos);
 
       if (prefillData.triggerGenerateData) {
-        setReportData(prev => {
-          const cardsForMapping = prefillData.originalReportCards.map((c, i) => ({
-            id: String(i + 1),
-            photo: null,
-            description: c.description || '',
-            parameter: c.parameter || ''
-          }));
-          return mapCardParametersToReportData(cardsForMapping, prev);
-        });
+        const cardsForMapping = prefillData.originalReportCards.map((c, i) => ({
+          id: String(i + 1),
+          photo: null,
+          description: c.description || '',
+          parameter: c.parameter || ''
+        }));
+        
+        // Map basic parameters first
+        const initialMappedData = mapCardParametersToReportData(cardsForMapping, reportData);
+        setReportData(initialMappedData);
 
         setExpandedSections(prev => ({
           ...prev,
@@ -402,6 +504,9 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
         }));
 
         toast.success('Mengekstrak parameter ke kolom data di bawah!');
+
+        // Trigger AI analysis to generate visual inspection condition and remarks
+        generateReportWithAI(mappedPhotos, initialMappedData);
       }
 
       if (onClearPrefill) {
@@ -411,12 +516,13 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
   }, [prefillData, onClearPrefill]);
 
   // ─── Export PDF ───────────────────────────────────────────────────────
-  const handleExportPDF = async () => {
+  const handleExportPDF = async (overrideReportData?: ATSReportData) => {
     if (isExporting) return;
     setIsExporting(true);
     const toastId = toast.loading('Sedang memproses dan meng-export PDF...');
     try {
-      await generateATSServiceReportPDF(customerInfo, reportData, timeSpent, originalReportCards);
+      const dataToExport = overrideReportData || reportData;
+      await generateATSServiceReportPDF(customerInfo, dataToExport, timeSpent, originalReportCards);
 
       if (archiveId) {
         const effectiveDocType = archiveType || 'pdf';
@@ -425,7 +531,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
         const docRef = doc(db, collectionName, archiveId);
         await updateDoc(docRef, {
           atsCustomerInfo: customerInfo,
-          atsReportData: reportData,
+          atsReportData: dataToExport,
           atsTimeSpent: timeSpent
         });
         toast.success('PDF berhasil diekspor & divalidasi ke arsip!', { id: toastId });
@@ -439,6 +545,36 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
       setIsExporting(false);
     }
   };
+
+  // ─── Listen to AI Agent commands from Chat Widget ───────────────────
+  useEffect(() => {
+    const handleAgentCommand = async (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const action = detail?.action;
+
+      if (action === 'AUTO_FILL_ATS' || action === 'AUTO_FILL_AND_EXPORT_ATS') {
+        // 1. Run AI auto-fill
+        toast.info('🚀 AI Agent: Memulai auto-fill parameter laporan...');
+        const generatedData = await generateReportWithAI(photos, reportData);
+        
+        // 2. If it is both auto-fill AND export
+        if (action === 'AUTO_FILL_AND_EXPORT_ATS' && generatedData) {
+          toast.info('🚀 AI Agent: Menyiapkan ekspor PDF...');
+          setTimeout(() => {
+            handleExportPDF(generatedData);
+          }, 1500);
+        }
+      } else if (action === 'EXPORT_PDF_ATS') {
+        toast.info('🚀 AI Agent: Memulai proses ekspor PDF...');
+        handleExportPDF();
+      }
+    };
+
+    window.addEventListener('ai-agent-command', handleAgentCommand);
+    return () => {
+      window.removeEventListener('ai-agent-command', handleAgentCommand);
+    };
+  }, [photos, reportData, customerInfo, timeSpent, originalReportCards, isExporting, isGenerating]);
 
   // ─── Save to Firestore Archive ─────────────────────────────────────────
   const handleSaveArchive = async () => {
@@ -481,22 +617,39 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-5 sm:space-y-6">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-br from-slate-900/80 to-slate-800/60 backdrop-blur-xl border border-white/10 rounded-2xl p-6"
+        className="bg-white/95 backdrop-blur-xl border border-sky-100/90 rounded-2xl p-4 sm:p-6 shadow-xl shadow-sky-900/5"
       >
-        <div className="flex items-center gap-3 mb-2">
-          <div>
-            <h1 className="text-xl font-bold text-white">Service Report — ATS</h1>
-            <p className="text-sm text-slate-400">Automatic Transfer Switch • Neutra DC Cikarang</p>
-          </div>
+        <div className="mb-2">
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900">Service Report — ATS</h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium">Automatic Transfer Switch • Neutra DC Cikarang</p>
         </div>
         <p className="text-xs text-slate-500 mt-2">
           Laporan pemeliharaan rutin Automatic Transfer Switch (ATS) di Neutra DC Cikarang.
         </p>
+
+        {aiLimit && (
+          <div className="mt-4 pt-3 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] uppercase font-extrabold tracking-wider text-violet-600 bg-violet-50 px-2 py-0.5 rounded border border-violet-200">
+                🤖 Kuota AI Global
+              </span>
+              <span className="text-xs font-mono text-slate-600 font-medium">
+                {Math.max(0, aiLimit.total - aiLimit.used).toLocaleString()} / {aiLimit.total.toLocaleString()} request tersisa hari ini
+              </span>
+            </div>
+            <div className="w-full sm:w-48 bg-slate-100 rounded-full h-1.5 overflow-hidden border border-slate-200">
+              <div
+                className="bg-gradient-to-r from-violet-500 to-indigo-500 h-1.5 transition-all duration-500"
+                style={{ width: `${Math.max(0, Math.min(100, ((aiLimit.total - aiLimit.used) / aiLimit.total) * 100))}%` }}
+              />
+            </div>
+          </div>
+        )}
       </motion.div>
 
       {/* ─── Section: Customer Info ──────────────────────────────── */}
@@ -527,16 +680,16 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
             const cfg = CATEGORY_CONFIG[cat];
             const catPhotos = photos.filter(p => p.category === cat);
             return (
-              <div key={cat} className="bg-slate-800/40 border border-slate-700/30 rounded-xl p-4 space-y-3">
+              <div key={cat} className="bg-slate-50/80 border border-slate-200 rounded-xl p-4 space-y-3 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">{cfg.icon}</span>
                     <div>
-                      <p className="text-sm font-bold text-white">{cfg.label}</p>
-                      <p className="text-[10px] text-slate-500">{cfg.description}</p>
+                      <p className="text-sm font-bold text-slate-900">{cfg.label}</p>
+                      <p className="text-[10px] text-slate-500 font-medium">{cfg.description}</p>
                     </div>
                   </div>
-                  <span className="text-xs font-mono text-slate-500 bg-slate-800 px-2 py-0.5 rounded">{catPhotos.length}</span>
+                  <span className="text-xs font-mono text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded font-bold shadow-sm">{catPhotos.length}</span>
                 </div>
 
                 {/* Photo thumbnails */}
@@ -566,38 +719,38 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
 
       {/* ─── Section: Visual Inspection ──────────────────────────── */}
       <CollapsibleSection title="Inspeksi & Pemeriksaan Visual" sectionKey="visual" expanded={expandedSections.visual} toggle={toggleSection} icon="🔍" badge="—">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-sm">
           <table className="w-full min-w-[700px] text-xs">
             <thead>
-              <tr className="bg-slate-800/60 text-slate-300">
-                <th className="px-2 py-2 text-left w-8">No</th>
-                <th className="px-2 py-2 text-left">Aktivitas</th>
-                <th className="px-2 py-2 text-left w-32">Parameter</th>
-                <th className="px-2 py-2 text-center w-24">Kondisi</th>
-                <th className="px-2 py-2 text-left w-28">Keterangan</th>
+              <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                <th className="px-3 py-2 text-left w-8">No</th>
+                <th className="px-3 py-2 text-left">Aktivitas</th>
+                <th className="px-3 py-2 text-left w-32">Parameter</th>
+                <th className="px-3 py-2 text-center w-24">Kondisi</th>
+                <th className="px-3 py-2 text-left w-28">Keterangan</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100">
               {reportData.visual_inspection.map((item, idx) => (
-                <tr key={item.no} className="border-t border-slate-700/30 hover:bg-slate-800/20">
-                  <td className="px-2 py-1.5 text-slate-400 font-mono">{item.no}.</td>
-                  <td className="px-2 py-1.5 text-slate-300 text-[11px]">{item.activity}</td>
-                  <td className="px-2 py-1.5">
+                <tr key={item.no} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="px-3 py-1.5 text-slate-500 font-bold font-mono">{item.no}.</td>
+                  <td className="px-3 py-1.5 text-slate-900 font-bold text-[11px]">{item.activity}</td>
+                  <td className="px-3 py-1.5">
                     <input
                       value={item.parameter}
                       onChange={e => updateVisualInspection(idx, 'parameter', e.target.value)}
-                      className="w-full bg-slate-800/40 border border-slate-700/40 rounded px-1.5 py-1 text-[11px] text-white focus:border-violet-500/50 focus:outline-none"
+                      className="w-full bg-white border border-slate-200 rounded px-1.5 py-1 text-[11px] text-slate-900 font-medium focus:border-violet-500 focus:outline-none shadow-sm"
                       title="Parameter"
                       placeholder="Parameter"
                       aria-label="Parameter"
                     />
                   </td>
-                  <td className="px-2 py-1.5 text-center">
+                  <td className="px-3 py-1.5 text-center">
                     <select
                       value={item.condition}
                       onChange={e => updateVisualInspection(idx, 'condition', e.target.value)}
-                      className={`w-full bg-slate-800/40 border rounded px-1.5 py-1 text-[11px] font-bold focus:outline-none ${
-                        item.condition === 'Good' ? 'border-green-500/40 text-green-400' : 'border-red-500/40 text-red-400'
+                      className={`w-full bg-white border rounded px-1.5 py-1 text-[11px] font-bold focus:outline-none cursor-pointer shadow-sm ${
+                        item.condition === 'Good' ? 'border-emerald-300 bg-emerald-50/70 text-emerald-800' : 'border-rose-300 bg-rose-50/70 text-rose-800'
                       }`}
                       title="Condition"
                       aria-label="Condition"
@@ -606,11 +759,12 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
                       <option value="Not Good">Tidak Baik</option>
                     </select>
                   </td>
-                  <td className="px-2 py-1.5">
-                    <input
+                  <td className="px-3 py-1.5">
+                    <textarea
                       value={item.remarks}
                       onChange={e => updateVisualInspection(idx, 'remarks', e.target.value)}
-                      className="w-full bg-slate-800/40 border border-slate-700/40 rounded px-1.5 py-1 text-[11px] text-white focus:border-violet-500/50 focus:outline-none"
+                      rows={2}
+                      className="w-full bg-white border border-slate-200 rounded px-1.5 py-1 text-[11px] text-slate-900 font-medium focus:border-violet-500 focus:outline-none resize-none min-h-[36px] shadow-sm"
                       placeholder="Keterangan"
                       title="Keterangan"
                       aria-label="Keterangan"
@@ -628,17 +782,17 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {(['rs', 'st', 'tr', 'rn', 'sn', 'tn', 'n'] as const).map(wire => (
             <div key={wire} className="space-y-1">
-              <label className="text-[10px] uppercase text-slate-500 font-bold">{wire.toUpperCase()} Voltage</label>
+              <label className="text-[10px] uppercase text-slate-700 font-bold">{wire.toUpperCase()} Voltage</label>
               <input
                 value={reportData.power_meter_recording[wire].voltage}
                 onChange={e => updatePowerMeter(wire, e.target.value)}
-                className="w-full bg-slate-800/40 border border-slate-700/40 rounded px-2 py-1.5 text-xs text-white focus:border-amber-500/50 focus:outline-none"
+                className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-xs text-slate-900 font-mono font-medium focus:border-amber-500 focus:outline-none shadow-sm"
                 placeholder="—"
               />
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-slate-700/30">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 pt-3 border-t border-slate-100">
           <MeasurementInput label="KW" value={reportData.power_meter_recording.kw} onChange={v => setReportData(p => ({ ...p, power_meter_recording: { ...p.power_meter_recording, kw: v } }))} />
           <MeasurementInput label="KVA" value={reportData.power_meter_recording.kva} onChange={v => setReportData(p => ({ ...p, power_meter_recording: { ...p.power_meter_recording, kva: v } }))} />
           <MeasurementInput label="KVAR" value={reportData.power_meter_recording.kvar} onChange={v => setReportData(p => ({ ...p, power_meter_recording: { ...p.power_meter_recording, kvar: v } }))} />
@@ -648,11 +802,17 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
           <MeasurementInput label="Ampere T" value={reportData.power_meter_recording.t_ampere} onChange={v => setReportData(p => ({ ...p, power_meter_recording: { ...p.power_meter_recording, t_ampere: v } }))} />
           <MeasurementInput label="Ampere N" value={reportData.power_meter_recording.n_ampere} onChange={v => setReportData(p => ({ ...p, power_meter_recording: { ...p.power_meter_recording, n_ampere: v } }))} />
         </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-100">
+          <MeasurementInput label="Keterangan DPM R-S / KW / R" value={reportData.power_meter_recording.rs.remarks} onChange={v => setReportData(p => ({ ...p, power_meter_recording: { ...p.power_meter_recording, rs: { ...p.power_meter_recording.rs, remarks: v } } }))} />
+          <MeasurementInput label="Keterangan DPM S-T / KVA / S" value={reportData.power_meter_recording.st.remarks} onChange={v => setReportData(p => ({ ...p, power_meter_recording: { ...p.power_meter_recording, st: { ...p.power_meter_recording.st, remarks: v } } }))} />
+          <MeasurementInput label="Keterangan DPM T-R / KVAR / T" value={reportData.power_meter_recording.tr.remarks} onChange={v => setReportData(p => ({ ...p, power_meter_recording: { ...p.power_meter_recording, tr: { ...p.power_meter_recording.tr, remarks: v } } }))} />
+          <MeasurementInput label="Keterangan DPM N / Cos p / Netral" value={reportData.power_meter_recording.n.remarks} onChange={v => setReportData(p => ({ ...p, power_meter_recording: { ...p.power_meter_recording, n: { ...p.power_meter_recording.n, remarks: v } } }))} />
+        </div>
       </CollapsibleSection>
 
       {/* ─── Section: Voltage & Current Measurement ──────────────── */}
       <CollapsibleSection title="Pengukuran Tegangan & Arus" sectionKey="voltage" expanded={expandedSections.voltage} toggle={toggleSection} icon="🔌" badge="—">
-        <p className="text-[10px] text-slate-500 mb-3">Standard: +5% - 10% from 380V & 220V load deviation 10%</p>
+        <p className="text-[10px] text-slate-500 font-medium mb-3">Standard: +5% - 10% from 380V & 220V load deviation 10%</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MeasurementInput label="Voltage R-S" value={reportData.voltage_current.voltage_rs} onChange={v => setReportData(p => ({ ...p, voltage_current: { ...p.voltage_current, voltage_rs: v } }))} />
           <MeasurementInput label="Voltage S-T" value={reportData.voltage_current.voltage_st} onChange={v => setReportData(p => ({ ...p, voltage_current: { ...p.voltage_current, voltage_st: v } }))} />
@@ -662,10 +822,13 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
           <MeasurementInput label="Voltage T-N" value={reportData.voltage_current.voltage_tn} onChange={v => setReportData(p => ({ ...p, voltage_current: { ...p.voltage_current, voltage_tn: v } }))} />
           <MeasurementInput label="Voltage N-G" value={reportData.voltage_current.voltage_ng} onChange={v => setReportData(p => ({ ...p, voltage_current: { ...p.voltage_current, voltage_ng: v } }))} />
         </div>
-        <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-slate-700/30">
+        <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-slate-100">
           <MeasurementInput label="Ampere R" value={reportData.voltage_current.ampere_r} onChange={v => setReportData(p => ({ ...p, voltage_current: { ...p.voltage_current, ampere_r: v } }))} />
           <MeasurementInput label="Ampere S" value={reportData.voltage_current.ampere_s} onChange={v => setReportData(p => ({ ...p, voltage_current: { ...p.voltage_current, ampere_s: v } }))} />
           <MeasurementInput label="Ampere T" value={reportData.voltage_current.ampere_t} onChange={v => setReportData(p => ({ ...p, voltage_current: { ...p.voltage_current, ampere_t: v } }))} />
+        </div>
+        <div className="mt-3 pt-3 border-t border-slate-100">
+          <MeasurementInput label="Keterangan Pengukuran Tegangan & Arus" value={reportData.voltage_current.remarks} onChange={v => setReportData(p => ({ ...p, voltage_current: { ...p.voltage_current, remarks: v } }))} />
         </div>
       </CollapsibleSection>
 
@@ -674,8 +837,8 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <MeasurementInput label="Suhu Hasil Pengukuran (°C)" value={reportData.thermal_measurement.result_temperature} onChange={v => setReportData(p => ({ ...p, thermal_measurement: { ...p.thermal_measurement, result_temperature: v } }))} />
           <div className="space-y-1">
-            <label className="text-[10px] uppercase text-slate-500 font-bold">Standard</label>
-            <div className="px-2 py-1.5 bg-slate-800/60 border border-slate-700/40 rounded text-xs text-yellow-400 font-mono">40°C</div>
+            <label className="text-[10px] uppercase text-slate-700 font-bold">Standard</label>
+            <div className="px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800 font-mono font-bold shadow-sm">40°C</div>
           </div>
           <MeasurementInput label="Keterangan" value={reportData.thermal_measurement.remarks} onChange={v => setReportData(p => ({ ...p, thermal_measurement: { ...p.thermal_measurement, remarks: v } }))} />
         </div>
@@ -686,8 +849,8 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <MeasurementInput label="Hasil (Ω)" value={reportData.grounding_resistance.result_ohm} onChange={v => setReportData(p => ({ ...p, grounding_resistance: { ...p.grounding_resistance, result_ohm: v } }))} />
           <div className="space-y-1">
-            <label className="text-[10px] uppercase text-slate-500 font-bold">Standard</label>
-            <div className="px-2 py-1.5 bg-slate-800/60 border border-slate-700/40 rounded text-xs text-yellow-400 font-mono">{'<5 Ω'}</div>
+            <label className="text-[10px] uppercase text-slate-700 font-bold">Standard</label>
+            <div className="px-2.5 py-1.5 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800 font-mono font-bold shadow-sm">{'<5 Ω'}</div>
           </div>
           <MeasurementInput label="Keterangan" value={reportData.grounding_resistance.remarks} onChange={v => setReportData(p => ({ ...p, grounding_resistance: { ...p.grounding_resistance, remarks: v } }))} />
         </div>
@@ -698,12 +861,12 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
         <div className="space-y-4">
           <div className="flex gap-4">
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" checked={reportData.operation_status.is_normal} onChange={() => setReportData(p => ({ ...p, operation_status: { ...p.operation_status, is_normal: true } }))} className="accent-green-500" />
-              <span className="text-sm text-green-400 font-bold">Operasi Normal</span>
+              <input type="radio" checked={reportData.operation_status.is_normal} onChange={() => setReportData(p => ({ ...p, operation_status: { ...p.operation_status, is_normal: true } }))} className="accent-emerald-600" />
+              <span className="text-sm text-emerald-700 font-bold">Operasi Normal</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input type="radio" checked={!reportData.operation_status.is_normal} onChange={() => setReportData(p => ({ ...p, operation_status: { ...p.operation_status, is_normal: false } }))} className="accent-red-500" />
-              <span className="text-sm text-red-400 font-bold">Operasi Abnormal</span>
+              <input type="radio" checked={!reportData.operation_status.is_normal} onChange={() => setReportData(p => ({ ...p, operation_status: { ...p.operation_status, is_normal: false } }))} className="accent-rose-600" />
+              <span className="text-sm text-rose-700 font-bold">Operasi Abnormal</span>
             </label>
           </div>
           {reportData.operation_status.is_normal ? (
@@ -736,7 +899,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setShowPreview(true)}
-          className="flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-slate-800 text-slate-300 border border-slate-700/50 hover:bg-slate-700 transition-all"
+          className="flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-white text-slate-700 border border-slate-200 shadow-sm hover:bg-slate-50 transition-all cursor-pointer"
         >
           <Eye className="w-4 h-4" />
           Pratinjau Service Report
@@ -744,7 +907,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
         <motion.button
           whileHover={!isExporting ? { scale: 1.02 } : undefined}
           whileTap={!isExporting ? { scale: 0.98 } : undefined}
-          onClick={handleExportPDF}
+          onClick={() => handleExportPDF()}
           disabled={isExporting}
           className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all ${
             isExporting ? 'opacity-60 cursor-not-allowed' : ''
@@ -915,18 +1078,18 @@ function CollapsibleSection({ title, sectionKey, expanded, toggle, icon, badge, 
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden"
+      className="bg-white border border-slate-200 shadow-sm rounded-2xl overflow-hidden"
     >
       <button
         onClick={() => toggle(sectionKey)}
-        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-slate-800/30 transition-colors"
+        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-slate-50/80 transition-colors"
       >
         <div className="flex items-center gap-2.5">
           {icon && <span className="text-base">{icon}</span>}
-          <span className="text-sm font-bold text-white">{title}</span>
+          <span className="text-sm font-bold text-slate-900">{title}</span>
           {badge && (
             <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-              badge.includes('AI') ? 'bg-violet-500/20 text-violet-300' : 'bg-slate-700 text-slate-400'
+              badge.includes('AI') ? 'bg-violet-100 text-violet-800 border border-violet-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
             }`}>{badge}</span>
           )}
         </div>
@@ -939,9 +1102,9 @@ function CollapsibleSection({ title, sectionKey, expanded, toggle, icon, badge, 
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="overflow-hidden"
+            className="overflow-hidden border-t border-slate-100"
           >
-            <div className="px-5 pb-5 pt-1">{children}</div>
+            <div className="px-5 pb-5 pt-3">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -954,13 +1117,13 @@ function InputField({ label, value, onChange, type = 'text', placeholder }: {
 }) {
   return (
     <div className="space-y-1">
-      <label className="text-[10px] uppercase text-slate-500 font-bold tracking-wider">{label}</label>
+      <label className="text-[10px] uppercase text-slate-700 font-bold tracking-wider">{label}</label>
       <input
         type={type}
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder || label}
-        className="w-full bg-slate-800/40 border border-slate-700/40 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:border-violet-500/50 focus:outline-none focus:ring-1 focus:ring-violet-500/20 transition-all"
+        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500 shadow-sm font-medium"
       />
     </div>
   );
@@ -969,15 +1132,32 @@ function InputField({ label, value, onChange, type = 'text', placeholder }: {
 function MeasurementInput({ label, value, onChange }: {
   label: string; value: string; onChange: (v: string) => void;
 }) {
+  const isLongText = label.toLowerCase().includes('keterangan') || 
+                     label.toLowerCase().includes('gejala') || 
+                     label.toLowerCase().includes('analisis') || 
+                     label.toLowerCase().includes('tindakan') ||
+                     label.toLowerCase().includes('remarks') ||
+                     label.toLowerCase().includes('remark');
+
   return (
     <div className="space-y-1">
-      <label className="text-[10px] uppercase text-slate-500 font-bold">{label}</label>
-      <input
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="w-full bg-slate-800/40 border border-slate-700/40 rounded px-2 py-1.5 text-xs text-white font-mono focus:border-amber-500/50 focus:outline-none"
-        placeholder="—"
-      />
+      <label className="text-[10px] uppercase text-slate-700 font-bold">{label}</label>
+      {isLongText ? (
+        <textarea
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          rows={2}
+          className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-xs text-slate-900 focus:border-amber-500 focus:outline-none resize-none min-h-[50px] shadow-sm font-medium"
+          placeholder="—"
+        />
+      ) : (
+        <input
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="w-full bg-white border border-slate-200 rounded px-2 py-1.5 text-xs text-slate-900 font-mono focus:border-amber-500 focus:outline-none shadow-sm font-medium"
+          placeholder="—"
+        />
+      )}
     </div>
   );
 }
@@ -994,7 +1174,7 @@ function PhotoThumbnail({ photo, onPreview, onDelete, onEditLabel }: {
     <div className="flex flex-col items-center gap-1">
       {/* Photo */}
       <div
-        className="relative w-20 h-20 sm:w-16 sm:h-16 rounded-lg overflow-hidden border border-white/10 shadow-md cursor-pointer"
+        className="relative w-20 h-20 sm:w-16 sm:h-16 rounded-xl overflow-hidden border border-slate-200 shadow-sm cursor-pointer"
         onClick={onPreview}
         title={photo.label ? `Deskripsi: ${photo.label}` : 'Klik untuk lihat foto'}
       >
@@ -1004,7 +1184,7 @@ function PhotoThumbnail({ photo, onPreview, onDelete, onEditLabel }: {
       <div className="flex items-center gap-1.5">
         <button
           onClick={(e) => { e.stopPropagation(); onPreview(); }}
-          className="p-1.5 sm:p-1 bg-white/10 hover:bg-white/25 active:bg-white/30 rounded-md transition-colors text-white"
+          className="p-1.5 sm:p-1 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-md transition-colors text-slate-700 border border-slate-200 cursor-pointer"
           title="Lihat foto"
           aria-label="Lihat foto"
         >
@@ -1012,7 +1192,7 @@ function PhotoThumbnail({ photo, onPreview, onDelete, onEditLabel }: {
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onEditLabel(); }}
-          className="p-1.5 sm:p-1 bg-amber-500/20 hover:bg-amber-500/40 active:bg-amber-500/50 rounded-md transition-colors text-amber-300"
+          className="p-1.5 sm:p-1 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 rounded-md transition-colors text-amber-800 border border-amber-200 cursor-pointer"
           title="Edit deskripsi"
           aria-label="Edit deskripsi"
         >
@@ -1020,7 +1200,7 @@ function PhotoThumbnail({ photo, onPreview, onDelete, onEditLabel }: {
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-1.5 sm:p-1 bg-red-500/20 hover:bg-red-500/40 active:bg-red-500/50 rounded-md transition-colors text-red-400"
+          className="p-1.5 sm:p-1 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 rounded-md transition-colors text-rose-700 border border-rose-200 cursor-pointer"
           title="Hapus foto"
           aria-label="Hapus foto"
         >

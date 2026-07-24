@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar } from 'lucide-react';
 import { useAuth } from '@/components/AuthContext';
@@ -12,13 +12,12 @@ import { FindingManagement } from '../components/FindingManagement';
 import { FindingArchive } from '../components/FindingArchive';
 import { Footer } from '@/components/Footer';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
-import { InventoryBorrowing } from '@/components/InventoryBorrowing';
 import { PTWManagement } from '@/components/PTWManagement';
 import { AbsenTBM } from '@/components/AbsenTBM';
 import { AbsenInduction } from '@/components/AbsenInduction';
-import logoUTT from '@/assets/logo_utt.png';
+import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
-type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'inventory' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction';
+type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction';
 
 export function MainApp() {
   const { user, userRole, logout } = useAuth();
@@ -37,7 +36,6 @@ export function MainApp() {
     { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: !isStandby && userRole !== 'DME' },
     { id: 'corrective', label: 'Corrective Maint.', icon: PenTool, color: 'from-red-600 to-red-700', show: userRole !== 'DME' && !isAdmin && userRole !== 'engineer' },
     { id: 'corrective_archive', label: 'Arsip CM', icon: FolderOpen, color: 'from-rose-600 to-rose-700', show: userRole !== 'DME' && !isAdmin && userRole !== 'engineer' },
-    { id: 'inventory', label: 'Peminjaman Alat', icon: Shield, color: 'from-indigo-600 to-indigo-700', show: !isStandby && userRole !== 'DME' },
     { id: 'findings', label: 'Temuan', icon: Search, color: 'from-amber-500 to-orange-600', show: userRole === 'engineer' || isStandby || isAdmin },
     { id: 'finding_archive', label: 'Arsip Temuan', icon: FolderOpen, color: 'from-teal-600 to-teal-700', show: userRole !== 'DME' },
     { id: 'report', label: userRole === 'DME' ? 'Detail Laporan' : 'Buat Laporan', icon: FileText, color: 'from-blue-600 to-blue-700', show: !isStandby && (userRole !== 'DME' || !!editingData) },
@@ -55,6 +53,26 @@ export function MainApp() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
+  // JARVIS Autonomous Voice Command Listener
+  useEffect(() => {
+    const handleVoiceCommand = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { action, page, report_id } = customEvent.detail || {};
+
+      if (action === 'navigate' && page) {
+        setActiveTab(page as Tab);
+      } else if (action === 'create_report') {
+        setEditingData(null);
+        setActiveTab('report');
+      } else if (action === 'open_report' && report_id) {
+        setActiveTab('documents');
+      }
+    };
+
+    window.addEventListener('voice-agent-command', handleVoiceCommand);
+    return () => window.removeEventListener('voice-agent-command', handleVoiceCommand);
+  }, []);
+
   const handleEditReport = (doc: ExcelDocument) => {
     setEditingData(doc);
     setActiveTab('report');
@@ -71,65 +89,64 @@ export function MainApp() {
   return (
     <div className="min-h-screen flex flex-col">
       {}
-      <div className="bg-slate-900/60 backdrop-blur-xl border-b border-slate-800 sticky top-0 z-50">
+      <div className="bg-white/80 backdrop-blur-xl border-b border-sky-100/80 shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 min-w-0">
               <img
-                src={logoUTT}
-                alt="PT UTT"
+                src={logoDwimitra}
+                alt="PT Dwimitra Ekatama Mandiri"
                 className="w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0 object-contain"
               />
               <div className="min-w-0">
-                <h1 className="text-sm sm:text-lg font-bold text-white truncate">
-                  PT United Transworld Trading
+                <h1 className="text-sm sm:text-lg font-bold text-slate-900 truncate">
+                  PT Dwimitra Ekatama Mandiri
                 </h1>
-                <p className="text-[10px] sm:text-xs text-slate-400">Sistem Pemeliharaan Data Center</p>
+                <p className="text-[10px] sm:text-xs text-slate-500 font-medium">Sistem Pemeliharaan Data Center</p>
               </div>
             </div>
 
-            {}
+            {/* Desktop Actions */}
             <div className="hidden md:flex items-center gap-4">
               <div className="text-right">
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Masuk sebagai</p>
-                <p className="text-sm font-medium text-slate-300 truncate max-w-[180px]">{user?.email}</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Masuk sebagai</p>
+                <p className="text-sm font-semibold text-slate-700 truncate max-w-[180px]">{user?.email}</p>
               </div>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setLogoutModalOpen(true)}
-                className="p-2.5 bg-slate-800 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-xl border border-slate-700/50 transition-all"
+                className="p-2.5 bg-slate-100 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl border border-slate-200 transition-all shadow-sm"
               >
                 <LogOut className="w-5 h-5" />
               </motion.button>
             </div>
 
-            {}
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden p-2.5 bg-slate-800 text-slate-300 rounded-xl border border-slate-700/50"
+              className="md:hidden p-2.5 bg-slate-100 text-slate-700 rounded-xl border border-slate-200 shadow-sm"
             >
               <Menu className="w-6 h-6" />
             </motion.button>
           </div>
         </div>
         {/* Desktop Secondary Navigation (Tabs) */}
-      <div className="hidden md:block bg-slate-900/30 border-t border-slate-800/50">
+      <div className="hidden md:block bg-sky-50/60 backdrop-blur-md border-t border-sky-100/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-          <div className="flex items-center justify-safe-center gap-1 md:gap-1.5 whitespace-nowrap overflow-x-auto no-scrollbar">
+          <div className="flex items-center justify-center gap-1 xl:gap-1.5">
             {navItems.filter(i => i.show).map((item) => (
               <motion.button
                 key={item.id}
                 whileHover={{ y: -1, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setActiveTab(item.id as Tab)}
-                className={`flex items-center gap-1 md:gap-1.5 px-2 py-1 md:px-2.5 md:py-1.5 text-xs font-bold transition-all whitespace-nowrap border ${activeTab === item.id
-                  ? `bg-gradient-to-r ${item.color} text-white border-transparent shadow-lg shadow-black/20`
-                  : 'bg-slate-800/40 text-slate-400 border-slate-700/30 hover:bg-slate-800/60 hover:text-slate-200'
+                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] xl:text-xs font-bold transition-all whitespace-nowrap border rounded-xl cursor-pointer ${activeTab === item.id
+                  ? `bg-gradient-to-r ${item.color} text-white border-transparent shadow-md shadow-blue-500/20`
+                  : 'bg-white/80 text-slate-600 border-slate-200/80 hover:bg-white hover:text-slate-900 shadow-sm'
                   }`}
               >
-                <item.icon className="w-3.5 h-3.5" />
+                <item.icon className="w-3.5 h-3.5 flex-shrink-0" />
                 <span>{item.label}</span>
               </motion.button>
             ))}
@@ -138,7 +155,7 @@ export function MainApp() {
       </div>
       </div>
 
-      {}
+      {/* Mobile Menu Drawer */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <>
@@ -147,26 +164,26 @@ export function MainApp() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setMobileMenuOpen(false)}
-              className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] md:hidden"
+              className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] md:hidden"
             />
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 bottom-0 w-[280px] bg-slate-900 border-l border-slate-800 z-[70] md:hidden flex flex-col shadow-2xl"
+              className="fixed top-0 right-0 bottom-0 w-[280px] bg-white/95 backdrop-blur-xl border-l border-sky-100 z-[70] md:hidden flex flex-col shadow-2xl"
             >
-              <div className="p-6 flex items-center justify-between border-b border-slate-800">
-                <span className="font-bold text-white">Menu Navigasi</span>
-                <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-slate-400 hover:text-white" title="Tutup Menu">
+              <div className="p-6 flex items-center justify-between border-b border-slate-200">
+                <span className="font-bold text-slate-900">Menu Navigasi</span>
+                <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-slate-500 hover:text-slate-900" title="Tutup Menu">
                   <X className="w-6 h-6" />
                 </button>
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                <div className="mb-6 p-4 bg-slate-800/30 rounded-2xl border border-white/5">
-                  <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Terhubung sebagai</p>
-                  <p className="text-sm font-medium text-slate-300 truncate">{user?.email}</p>
+                <div className="mb-6 p-4 bg-sky-50/80 rounded-2xl border border-sky-100">
+                  <p className="text-[10px] text-slate-400 uppercase font-bold mb-1">Terhubung sebagai</p>
+                  <p className="text-sm font-semibold text-slate-800 truncate">{user?.email}</p>
                 </div>
 
                 {navItems.filter(i => i.show).map((item) => (
@@ -177,9 +194,9 @@ export function MainApp() {
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl font-bold transition-all border ${activeTab === item.id
-                      ? `bg-gradient-to-r ${item.color} text-white border-transparent shadow-lg shadow-black/20`
-                      : 'bg-slate-800/30 text-slate-400 border-slate-800/50 hover:bg-slate-800/60'
-                      }`}
+                      ? `bg-gradient-to-r ${item.color} text-white border-transparent shadow-md shadow-blue-500/20`
+                      : 'bg-slate-50 text-slate-700 border-slate-200/80 hover:bg-white hover:text-slate-900'
+                    }`}
                   >
                     <item.icon className="w-5 h-5" />
                     <span>{item.label}</span>
@@ -233,8 +250,6 @@ export function MainApp() {
               <CorrectiveMaintenance readOnly={isTDEorCBRE} />
             ) : activeTab === 'corrective_archive' ? (
               <CorrectiveMaintenance readOnly={true} />
-            ) : activeTab === 'inventory' ? (
-              <InventoryBorrowing />
             ) : activeTab === 'findings' ? (
               <FindingManagement />
             ) : activeTab === 'finding_archive' ? (

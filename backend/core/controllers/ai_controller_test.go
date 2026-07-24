@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/core/models"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/services"
+	"github.com/gariiriana/DwimitraSystem/backend/core/models"
+	"github.com/gariiriana/DwimitraSystem/backend/core/services"
 )
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -42,6 +42,18 @@ func (m *mockAIService) AnalyzeSingleCard(_ context.Context, _ models.CardAnalyz
 	return &models.CardAnalyzeResponse{
 		Parameter: "mock parameter value",
 	}, m.err
+}
+
+func (m *mockAIService) AnalyzeFCUPhotos(_ context.Context, _ []models.FCUPhotoInput, _ *models.FCUReportData) (*models.FCUReportData, error) {
+	return nil, m.err
+}
+
+func (m *mockAIService) AnalyzePJUPhotos(_ context.Context, _ []models.PJUPhotoInput, _ *models.PJUReportData) (*models.PJUReportData, error) {
+	return nil, m.err
+}
+
+func (m *mockAIService) AnalyzePDUPhotos(_ context.Context, _ []models.PDUPhotoInput, _ *models.PDUReportData) (*models.PDUReportData, error) {
+	return nil, m.err
 }
 
 // Ensure mockAIService implements IAIService
@@ -382,6 +394,30 @@ func TestAnalyzeSingleCard(t *testing.T) {
 		ctrl.AnalyzeSingleCard(w, req)
 		if w.Code != http.StatusMethodNotAllowed {
 			t.Errorf("expected 405, got %d", w.Code)
+		}
+	})
+}
+
+func TestAnalyzePDUReport_MethodNotAllowed(t *testing.T) {
+	t.Run("GET_returns_405", func(t *testing.T) {
+		ctrl := newTestController(nil, nil)
+		req := httptest.NewRequest(http.MethodGet, "/api/ai/pdu-report", nil)
+		w := httptest.NewRecorder()
+		ctrl.AnalyzePDUReport(w, req)
+		if w.Code != http.StatusMethodNotAllowed {
+			t.Errorf("GET: status = %d, want %d", w.Code, http.StatusMethodNotAllowed)
+		}
+	})
+}
+
+func TestAnalyzePDUReport_InvalidBody(t *testing.T) {
+	t.Run("empty_body_returns_400", func(t *testing.T) {
+		ctrl := newTestController(nil, nil)
+		req := httptest.NewRequest(http.MethodPost, "/api/ai/pdu-report", strings.NewReader(""))
+		w := httptest.NewRecorder()
+		ctrl.AnalyzePDUReport(w, req)
+		if w.Code != http.StatusBadRequest {
+			t.Errorf("Empty body: status = %d, want %d", w.Code, http.StatusBadRequest)
 		}
 	})
 }

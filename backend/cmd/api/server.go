@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/core/routes"
+	"github.com/gariiriana/DwimitraSystem/backend/core/routes"
 )
 type Server struct {
 	httpServer *http.Server

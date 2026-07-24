@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, User, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ClipboardList } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, User, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ClipboardList, FileCheck, Camera, FolderArchive } from 'lucide-react';
 import { collection, query, getDocs, deleteDoc, doc, where, updateDoc, deleteField } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
@@ -13,8 +13,8 @@ import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { generateHSEPdf } from '@/utils/HSEPdfExport';
+import { generateATSServiceReportPDF, generateFCUServiceReportPDF, generatePJUServiceReportPDF, generatePDUServiceReportPDF, generateCTReportPDF, generateGeneratorReportPDF, generateACSplitReportPDF, generateTrafoReportPDF } from '@/service_reports';
 import { getDoc } from 'firebase/firestore';
-import { generateATSServiceReportPDF } from '@/utils/ATSServiceReportPDF';
 
 interface PhotoData {
   index: number;
@@ -41,6 +41,27 @@ export interface ExcelDocument {
   atsCustomerInfo?: any;
   atsReportData?: any;
   atsTimeSpent?: any;
+  fcuCustomerInfo?: any;
+  fcuReportData?: any;
+  fcuTimeSpent?: any;
+  pjuCustomerInfo?: any;
+  pjuReportData?: any;
+  pjuTimeSpent?: any;
+  pduCustomerInfo?: any;
+  pduReportData?: any;
+  pduTimeSpent?: any;
+  ctCustomerInfo?: any;
+  ctReportData?: any;
+  ctTimeSpent?: any;
+  generatorCustomerInfo?: any;
+  generatorReportData?: any;
+  generatorTimeSpent?: any;
+  acSplitCustomerInfo?: any;
+  acSplitReportData?: any;
+  acSplitTimeSpent?: any;
+  trafoCustomerInfo?: any;
+  trafoReportData?: any;
+  trafoTimeSpent?: any;
   deleteRequested?: boolean;
   deleteRequestedBy?: string;
   deleteReason?: string;
@@ -67,6 +88,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
   const [filterType, setFilterType] = useState<'all' | 'excel' | 'pdf' | 'hse'>('all');
+  const [srStatusFilter, setSrStatusFilter] = useState<'all' | 'photos_only' | 'with_sr'>('all');
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<ExcelDocument | null>(null);
@@ -163,6 +185,12 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
               photosWithImage: data.photosWithImage || 0,
               photosData: [], // Optimized: photosData is lazily loaded on edit
               documentType: 'excel',
+              atsCustomerInfo: data.atsCustomerInfo,
+              atsReportData: data.atsReportData,
+              atsTimeSpent: data.atsTimeSpent,
+              fcuCustomerInfo: data.fcuCustomerInfo,
+              fcuReportData: data.fcuReportData,
+              fcuTimeSpent: data.fcuTimeSpent,
               deleteRequested: data.deleteRequested || false,
               deleteRequestedBy: data.deleteRequestedBy || '',
               deleteReason: data.deleteReason || '',
@@ -186,6 +214,12 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
               photosWithImage: data.photosWithImage || 0,
               photosData: [], // Optimized: photosData is lazily loaded on edit
               documentType: 'pdf',
+              atsCustomerInfo: data.atsCustomerInfo,
+              atsReportData: data.atsReportData,
+              atsTimeSpent: data.atsTimeSpent,
+              fcuCustomerInfo: data.fcuCustomerInfo,
+              fcuReportData: data.fcuReportData,
+              fcuTimeSpent: data.fcuTimeSpent,
               deleteRequested: data.deleteRequested || false,
               deleteRequestedBy: data.deleteRequestedBy || '',
               deleteReason: data.deleteReason || '',
@@ -540,7 +574,84 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           docData.atsTimeSpent,
           cards
         );
-        toast.success('PDF Service Report downloaded successfully!', { id: 'download-pdf' });
+        toast.success('PDF Service Report ATS downloaded successfully!', { id: 'download-pdf' });
+        return;
+      }
+
+      if (docData.createdBy === 'fcu@gmail.com' && docData.fcuCustomerInfo && docData.fcuReportData && docData.fcuTimeSpent) {
+        await generateFCUServiceReportPDF(
+          docData.fcuCustomerInfo,
+          docData.fcuReportData,
+          docData.fcuTimeSpent,
+          cards
+        );
+        toast.success('PDF Service Report FCU downloaded successfully!', { id: 'download-pdf' });
+        return;
+      }
+
+      if (docData.createdBy === 'pju@gmail.com' && docData.pjuCustomerInfo && docData.pjuReportData && docData.pjuTimeSpent) {
+        await generatePJUServiceReportPDF(
+          docData.pjuCustomerInfo,
+          docData.pjuReportData,
+          docData.pjuTimeSpent,
+          cards
+        );
+        toast.success('PDF Service Report PJU downloaded successfully!', { id: 'download-pdf' });
+        return;
+      }
+
+      if (docData.createdBy === 'pdu@gmail.com' && docData.pduCustomerInfo && docData.pduReportData && docData.pduTimeSpent) {
+        await generatePDUServiceReportPDF(
+          docData.pduCustomerInfo,
+          docData.pduReportData,
+          docData.pduTimeSpent,
+          cards
+        );
+        toast.success('PDF Service Report PDU downloaded successfully!', { id: 'download-pdf' });
+        return;
+      }
+
+      if (docData.createdBy === 'coolingtower@gmail.com' && docData.ctCustomerInfo && docData.ctReportData && docData.ctTimeSpent) {
+        await generateCTReportPDF(
+          docData.ctCustomerInfo,
+          docData.ctReportData,
+          docData.ctTimeSpent,
+          cards
+        );
+        toast.success('PDF Service Report Cooling Tower downloaded successfully!', { id: 'download-pdf' });
+        return;
+      }
+
+      if (docData.createdBy === 'generator@gmail.com' && docData.generatorCustomerInfo && docData.generatorReportData && docData.generatorTimeSpent) {
+        await generateGeneratorReportPDF(
+          docData.generatorCustomerInfo,
+          docData.generatorReportData,
+          docData.generatorTimeSpent,
+          cards
+        );
+        toast.success('PDF Service Report Generator downloaded successfully!', { id: 'download-pdf' });
+        return;
+      }
+
+      if (docData.createdBy === 'acsplit@gmail.com' && docData.acSplitCustomerInfo && docData.acSplitReportData && docData.acSplitTimeSpent) {
+        await generateACSplitReportPDF(
+          docData.acSplitCustomerInfo,
+          docData.acSplitReportData,
+          docData.acSplitTimeSpent,
+          cards
+        );
+        toast.success('PDF Service Report Split Wall AC downloaded successfully!', { id: 'download-pdf' });
+        return;
+      }
+
+      if (docData.createdBy === 'trafo@gmail.com' && docData.trafoCustomerInfo && docData.trafoReportData && docData.trafoTimeSpent) {
+        await generateTrafoReportPDF(
+          docData.trafoCustomerInfo,
+          docData.trafoReportData,
+          docData.trafoTimeSpent,
+          cards
+        );
+        toast.success('2 File PDF Service Report Transformator downloaded successfully!', { id: 'download-pdf' });
         return;
       }
 
@@ -659,8 +770,53 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       return false;
     }
 
+    const hasSR = Boolean(doc.atsCustomerInfo || doc.fcuCustomerInfo);
+    if (srStatusFilter === 'photos_only' && hasSR) {
+      return false;
+    }
+    if (srStatusFilter === 'with_sr' && !hasSR) {
+      return false;
+    }
+
     return true;
   });
+
+  // JARVIS Autonomous Command Handler in DocumentList
+  useEffect(() => {
+    const handleAgentCommand = async (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { action, query, date_range } = customEvent.detail || {};
+
+      if (action === 'search_reports' || action === 'filter_data') {
+        const searchTerm = query || date_range || '';
+        if (searchTerm) {
+          setSearchQuery(searchTerm);
+          toast.info(`JARVIS: Menyaring dokumen "${searchTerm}"...`);
+        }
+      } else if (action === 'export_pdf' || action === 'download_document') {
+        const targetDoc = filteredDocuments[0] || documents[0];
+        if (targetDoc) {
+          toast.info(`JARVIS: Mengunduh file ${targetDoc.fileName}...`);
+          if (targetDoc.documentType === 'excel') {
+            handleDownload(targetDoc);
+          } else if (targetDoc.documentType === 'hse') {
+            handleDownloadHSE(targetDoc);
+          } else {
+            handleDownloadPDF(targetDoc);
+          }
+        } else {
+          toast.error('JARVIS: Tidak ada dokumen yang dapat diunduh.');
+        }
+      }
+    };
+
+    window.addEventListener('voice-agent-command', handleAgentCommand);
+    window.addEventListener('ai-agent-command', handleAgentCommand);
+    return () => {
+      window.removeEventListener('voice-agent-command', handleAgentCommand);
+      window.removeEventListener('ai-agent-command', handleAgentCommand);
+    };
+  }, [documents, filteredDocuments]);
 
   const renderDmeContent = () => {
     if (dmeLevel === 'account') {
@@ -854,7 +1010,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
     if (currentLevel === 'root') {
       const categories = [
-        { id: 'inspection', name: 'HSE Inspection Report', icon: ClipboardList, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+        { id: 'inspection', name: 'HSE Inspection Report', icon: ClipboardList, color: 'text-blue-600', bg: 'bg-blue-50 border-blue-100' },
       ];
 
       return (
@@ -870,14 +1026,14 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
                   setSelectedCategory(cat.id as any);
                   setCurrentLevel('category');
                 }}
-                className="flex items-center gap-4 p-6 bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl hover:border-blue-500/30 transition-all group text-left"
+                className="flex items-center gap-4 p-6 bg-white border border-slate-200 rounded-2xl hover:border-blue-400 hover:shadow-md transition-all group text-left shadow-sm cursor-pointer"
               >
-                <div className={`p-3 ${cat.bg} rounded-xl border border-blue-500/20 group-hover:scale-110 transition-transform`}>
+                <div className={`p-3 ${cat.bg} rounded-xl border group-hover:scale-110 transition-transform`}>
                   <cat.icon className={`w-8 h-8 ${cat.color}`} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">{cat.name}</h3>
-                  <p className="text-sm text-slate-400">{count} Dokumen</p>
+                  <h3 className="text-lg font-bold text-slate-900">{cat.name}</h3>
+                  <p className="text-sm font-medium text-slate-500">{count} Dokumen</p>
                 </div>
               </motion.button>
             );
@@ -890,7 +1046,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       const backBtn = (
         <button
           onClick={() => setCurrentLevel('root')}
-          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium mb-4"
+          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors text-sm font-semibold mb-4 cursor-pointer"
         >
           <ChevronLeft className="w-4 h-4" /> Kembali ke Root HSE
         </button>
@@ -922,14 +1078,14 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
                     setSelectedMonth(month);
                     setCurrentLevel('month');
                   }}
-                  className="flex items-center gap-4 p-6 bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl hover:border-blue-500/30 transition-all group text-left"
+                  className="flex items-center gap-4 p-6 bg-white border border-slate-200 rounded-2xl hover:border-blue-400 hover:shadow-md transition-all group text-left shadow-sm cursor-pointer"
                 >
-                  <div className="p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
-                    <Folder className="w-8 h-8 text-blue-400" />
+                  <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
+                    <Folder className="w-8 h-8 text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white">{month}</h3>
-                    <p className="text-sm text-slate-400">
+                    <h3 className="text-lg font-bold text-slate-900">{month}</h3>
+                    <p className="text-sm font-medium text-slate-500">
                       {filteredDocuments.filter(d => d.hseType === 'inspection' && getMonthYearString(d.createdAt) === month).length} Laporan
                     </p>
                   </div>
@@ -957,14 +1113,14 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
                     setSelectedMaintenance(type);
                     setCurrentLevel('maintenance');
                   }}
-                  className="flex items-center gap-4 p-6 bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl hover:border-blue-500/30 transition-all group text-left"
+                  className="flex items-center gap-4 p-6 bg-white border border-slate-200 rounded-2xl hover:border-indigo-400 hover:shadow-md transition-all group text-left shadow-sm cursor-pointer"
                 >
-                  <div className="p-3 bg-indigo-500/10 rounded-xl border border-indigo-500/20">
-                    <Folder className="w-8 h-8 text-indigo-400" />
+                  <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+                    <Folder className="w-8 h-8 text-indigo-600" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white uppercase">{type}</h3>
-                    <p className="text-sm text-slate-400">
+                    <h3 className="text-lg font-bold text-slate-900 uppercase">{type}</h3>
+                    <p className="text-sm font-medium text-slate-500">
                       {filteredDocuments.filter(d => d.hseType === selectedCategory && d.maintenanceType === type).length} Dokumen
                     </p>
                   </div>
@@ -985,7 +1141,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         <div className="space-y-4">
           <button
             onClick={() => setCurrentLevel('category')}
-            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium mb-2"
+            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors text-sm font-semibold mb-2 cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Bulan
           </button>
@@ -999,14 +1155,14 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
                   setSelectedWeek(week);
                   setCurrentLevel('week');
                 }}
-                className="flex items-center gap-4 p-6 bg-slate-900/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl hover:border-blue-500/30 transition-all group text-left"
+                className="flex items-center gap-4 p-6 bg-white border border-slate-200 rounded-2xl hover:border-emerald-400 hover:shadow-md transition-all group text-left shadow-sm cursor-pointer"
               >
-                <div className="p-3 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
-                  <Folder className="w-8 h-8 text-emerald-400" />
+                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+                  <Folder className="w-8 h-8 text-emerald-600" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white">Minggu ke-{week}</h3>
-                  <p className="text-sm text-slate-400">
+                  <h3 className="text-lg font-bold text-slate-900">Minggu ke-{week}</h3>
+                  <p className="text-sm font-medium text-slate-500">
                     {monthDocs.filter(d => getWeekOfMonth(d.createdAt) === week).length} Laporan
                   </p>
                 </div>
@@ -1025,7 +1181,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       <div className="space-y-4">
         <button
           onClick={() => setCurrentLevel(selectedCategory === 'inspection' ? 'month' : 'category')}
-          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium mb-2"
+          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors text-sm font-semibold mb-2 cursor-pointer"
         >
           <ChevronLeft className="w-4 h-4" /> Kembali
         </button>
@@ -1044,20 +1200,20 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.2, delay: index * 0.05 }}
-      className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-4 sm:p-5 border border-slate-700/50 hover:border-blue-500/30 transition group"
+      className="bg-white/90 backdrop-blur-xl rounded-2xl p-4 sm:p-5 border border-sky-100/90 hover:border-blue-300 shadow-md text-slate-800 transition group"
     >
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-        <div className="p-2.5 sm:p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/20 flex-shrink-0">
+        <div className="p-2.5 sm:p-3 bg-emerald-50 rounded-lg border border-emerald-200 flex-shrink-0">
           {document.documentType === 'pdf' ? (
-            <FileType className="w-5 h-5 sm:w-6 sm:h-6 text-red-400" />
+            <FileType className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
           ) : (
-            <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
+            <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
           )}
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="text-base sm:text-lg font-semibold text-white truncate">
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">
               {document.maintenanceName}
             </h3>
             <span className={`px-2 py-0.5 rounded text-xs font-medium ${document.documentType === 'pdf'
@@ -1066,13 +1222,13 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
               }`}>
               {document.documentType.toUpperCase()}
             </span>
-            {document.createdBy === 'ats@gmail.com' && (
+            {(document.createdBy === 'ats@gmail.com' || document.createdBy === 'fcu@gmail.com' || document.atsCustomerInfo || document.fcuCustomerInfo) && (
               <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                document.atsCustomerInfo
+                (document.atsCustomerInfo || document.fcuCustomerInfo)
                   ? 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30'
                   : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
               }`}>
-                {document.atsCustomerInfo ? 'SERVICE REPORT' : 'DOKUMENTASI REPORT'}
+                {(document.atsCustomerInfo || document.fcuCustomerInfo) ? 'FOTO + SR' : 'FOTO SAJA'}
               </span>
             )}
             {document.hseType && (
@@ -1216,51 +1372,46 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 relative z-10">
       {}
-      <div className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-4 sm:p-6 mb-4 sm:mb-6 border border-slate-700/50">
-        <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-          <div className="p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
-            <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />
-          </div>
-          <div>
-            <h1 className="text-lg sm:text-2xl font-bold text-white">Document Archive</h1>
-            <p className="text-xs sm:text-sm text-slate-400">Semua dokumen Excel & PDF maintenance yang telah diekspor</p>
-          </div>
+      <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-4 sm:p-6 mb-4 sm:mb-6 border border-sky-100/90 shadow-xl shadow-sky-900/5 text-slate-800">
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-lg sm:text-2xl font-black text-slate-900">Arsip Dokumen & Laporan</h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium">Semua dokumen Excel, PDF & Service Report maintenance yang telah diekspor</p>
         </div>
 
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
   
           <div className="relative">
-            <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
+            <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari nama maintenance..."
-              className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white placeholder-slate-500 text-sm sm:text-base"
+              className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 placeholder-slate-400 text-sm sm:text-base font-medium"
             />
           </div>
 
   
           <div className="flex gap-2 items-center">
             <div className="relative flex-1">
-              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full pl-8 pr-1 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white text-xs sm:text-sm"
+                className="w-full pl-8 pr-1 py-2 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 text-xs sm:text-sm font-medium"
                 title="Dari tanggal"
               />
             </div>
             <span className="text-slate-500 text-xs font-semibold">s/d</span>
             <div className="relative flex-1">
-              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full pl-8 pr-1 py-2 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white text-xs sm:text-sm"
+                className="w-full pl-8 pr-1 py-2 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 text-xs sm:text-sm font-medium"
                 title="Sampai tanggal"
               />
             </div>
@@ -1268,11 +1419,11 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
   
           <div className="relative">
-            <Filter className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
+            <Filter className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest')}
-              className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white appearance-none cursor-pointer text-sm sm:text-base"
+              className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-sm sm:text-base font-medium"
               title="Urutkan dokumen"
             >
               <option value="newest">Terbaru</option>
@@ -1282,11 +1433,11 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
   
           <div className="relative">
-            <FileType className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-500" />
+            <FileType className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value as any)}
-              className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white appearance-none cursor-pointer text-sm sm:text-base"
+              className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-sm sm:text-base font-medium"
               title="Filter tipe dokumen"
             >
               <option value="all">{isAdmin ? 'Semua Pengajuan' : 'Semua Tipe'}</option>
@@ -1297,25 +1448,73 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           </div>
         </div>
 
+        {/* Status Filter Tabs (Foto Saja vs Foto + Service Report) - Hidden in HSE Role */}
+        {filterOverride !== 'hse_utt' && (
+          <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-200 text-xs font-semibold overflow-x-auto pb-1">
+            <button
+              onClick={() => setSrStatusFilter('all')}
+              className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 whitespace-nowrap ${
+                srStatusFilter === 'all'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20 font-bold'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 border border-slate-200'
+              }`}
+            >
+              <FolderArchive className="w-4 h-4 text-blue-600" />
+              <span>Semua Dokumen</span>
+              <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px] font-bold">{documents.length}</span>
+            </button>
+
+            <button
+              onClick={() => setSrStatusFilter('photos_only')}
+              className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 whitespace-nowrap ${
+                srStatusFilter === 'photos_only'
+                  ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20 font-bold'
+                  : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
+              }`}
+            >
+              <Camera className="w-4 h-4 text-amber-600" />
+              <span>Dokumentasi Foto Saja (Belum SR)</span>
+              <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                {documents.filter(d => !(d.atsCustomerInfo || d.fcuCustomerInfo || d.pjuCustomerInfo || d.pduCustomerInfo)).length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setSrStatusFilter('with_sr')}
+              className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 whitespace-nowrap ${
+                srStatusFilter === 'with_sr'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                  : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
+              }`}
+            >
+              <FileCheck className="w-4 h-4 text-indigo-600" />
+              <span>Dokumen Lengkap (Foto + SR)</span>
+              <span className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full text-[10px] font-bold">
+                {documents.filter(d => Boolean(d.atsCustomerInfo || d.fcuCustomerInfo || d.pjuCustomerInfo || d.pduCustomerInfo)).length}
+              </span>
+            </button>
+          </div>
+        )}
+
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-4">
-          <div className="bg-slate-800/30 rounded-lg p-3 border border-slate-700/30">
-            <p className="text-xs text-slate-500">Total Dokumen</p>
-            <p className="text-lg sm:text-xl font-bold text-white">{documents.length}</p>
+          <div className="bg-white/80 rounded-xl p-3 border border-sky-100 shadow-sm">
+            <p className="text-xs text-slate-500 font-medium">Total Dokumen</p>
+            <p className="text-lg sm:text-xl font-black text-slate-900">{documents.length}</p>
           </div>
-          <div className="bg-slate-800/30 rounded-lg p-3 border border-slate-700/30">
-            <p className="text-xs text-slate-500">Hasil Filter</p>
-            <p className="text-lg sm:text-xl font-bold text-blue-400">{filteredDocuments.length}</p>
+          <div className="bg-white/80 rounded-xl p-3 border border-sky-100 shadow-sm">
+            <p className="text-xs text-slate-500 font-medium">Hasil Filter</p>
+            <p className="text-lg sm:text-xl font-black text-blue-600">{filteredDocuments.length}</p>
           </div>
-          <div className="bg-slate-800/30 rounded-lg p-3 border border-slate-700/30">
-            <p className="text-xs text-slate-500">Total Size</p>
-            <p className="text-lg sm:text-xl font-bold text-emerald-400">
+          <div className="bg-white/80 rounded-xl p-3 border border-sky-100 shadow-sm">
+            <p className="text-xs text-slate-500 font-medium">Total Size</p>
+            <p className="text-lg sm:text-xl font-black text-emerald-600">
               {(documents.reduce((sum, doc) => sum + doc.fileSize, 0) / (1024 * 1024)).toFixed(2)} MB
             </p>
           </div>
-          <div className="bg-slate-800/30 rounded-lg p-3 border border-slate-700/30">
-            <p className="text-xs text-slate-500">Filter Aktif</p>
-            <p className="text-lg sm:text-xl font-bold text-purple-400">
+          <div className="bg-white/80 rounded-xl p-3 border border-sky-100 shadow-sm">
+            <p className="text-xs text-slate-500 font-medium">Filter Aktif</p>
+            <p className="text-lg sm:text-xl font-black text-purple-600">
               {(searchQuery || startDate || endDate || filterType !== 'all') ? 'Yes' : 'No'}
             </p>
           </div>
@@ -1346,12 +1545,12 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           </button>
         </div>
       ) : filteredDocuments.length === 0 ? (
-        <div className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-8 sm:p-12 border border-slate-700/50 text-center">
-          <FileSpreadsheet className="w-12 h-12 sm:w-16 sm:h-16 text-slate-600 mx-auto mb-4" />
-          <h3 className="text-lg sm:text-xl font-semibold text-slate-300 mb-2">
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-8 sm:p-12 border border-sky-100/90 shadow-md text-center">
+          <FileSpreadsheet className="w-12 h-12 sm:w-16 sm:h-16 text-slate-400 mx-auto mb-4" />
+          <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">
             {documents.length === 0 ? 'Belum ada dokumen' : 'Tidak ada hasil'}
           </h3>
-          <p className="text-sm sm:text-base text-slate-500">
+          <p className="text-sm sm:text-base text-slate-500 font-medium">
             {documents.length === 0
               ? 'Mulai ekspor report untuk membuat dokumen pertama Anda'
               : 'Coba ubah filter pencarian Anda'}

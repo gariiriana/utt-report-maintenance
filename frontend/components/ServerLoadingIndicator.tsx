@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import logoUTT from '@/assets/logo_utt.png';
+import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
 export function ServerLoadingIndicator() {
   return (
@@ -13,8 +13,8 @@ export function ServerLoadingIndicator() {
           className="mb-8"
         >
           <img
-            src={logoUTT}
-            alt="PT United Transworld Trading"
+            src={logoDwimitra}
+            alt="PT Dwimitra Ekatama Mandiri"
             className="w-32 h-32 sm:w-40 sm:h-40 mx-auto object-contain"
           />
         </motion.div>

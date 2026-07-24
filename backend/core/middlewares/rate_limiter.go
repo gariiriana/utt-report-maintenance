@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/pkg/helpers"
-	"github.com/gariiriana/utt-report-maintenance/backend/pkg/logger"
+	"github.com/gariiriana/DwimitraSystem/backend/pkg/helpers"
+	"github.com/gariiriana/DwimitraSystem/backend/pkg/logger"
 )
 
 type bucket struct {

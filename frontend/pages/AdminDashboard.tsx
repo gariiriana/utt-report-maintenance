@@ -498,16 +498,16 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-3 sm:p-4 border border-slate-700/50"
+          className="bg-white/90 backdrop-blur-xl rounded-2xl p-3 sm:p-4 border border-sky-100/90 shadow-md text-slate-800"
         >
           <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
-            <Database className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
-            <p className="text-[10px] sm:text-xs text-slate-400">Total Dokumen</p>
+            <Database className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+            <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider">Total Dokumen</p>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-white">{stats.totalDocuments}</p>
+          <p className="text-xl sm:text-2xl font-black text-slate-900">{stats.totalDocuments}</p>
           <div className="flex items-center gap-1 mt-0.5 sm:mt-1">
-            <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-400" />
-            <p className="text-[10px] sm:text-xs text-emerald-400">Sepanjang waktu</p>
+            <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-emerald-600" />
+            <p className="text-[10px] sm:text-xs text-emerald-600 font-bold">Sepanjang waktu</p>
           </div>
         </motion.div>
 
@@ -515,46 +515,46 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-3 sm:p-4 border border-slate-700/50"
+          className="bg-white/90 backdrop-blur-xl rounded-2xl p-3 sm:p-4 border border-sky-100/90 shadow-md text-slate-800"
         >
           <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
-            <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
-            <p className="text-[10px] sm:text-xs text-slate-400">File Excel</p>
+            <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600" />
+            <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider">File Excel</p>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-white">{stats.totalExcel}</p>
-          <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1">Dokumen</p>
+          <p className="text-xl sm:text-2xl font-black text-slate-900">{stats.totalExcel}</p>
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1 font-medium">Dokumen</p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-3 sm:p-4 border border-slate-700/50"
+          className="bg-white/90 backdrop-blur-xl rounded-2xl p-3 sm:p-4 border border-sky-100/90 shadow-md text-slate-800"
         >
           <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
-            <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" />
-            <p className="text-[10px] sm:text-xs text-slate-400">File PDF</p>
+            <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
+            <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider">File PDF</p>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-white">{stats.totalPDF}</p>
-          <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1">Dokumen</p>
+          <p className="text-xl sm:text-2xl font-black text-slate-900">{stats.totalPDF}</p>
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1 font-medium">Dokumen</p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-3 sm:p-4 border border-slate-700/50"
+          className="bg-white/90 backdrop-blur-xl rounded-2xl p-3 sm:p-4 border border-sky-100/90 shadow-md text-slate-800"
         >
           <div className="flex items-center gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
-            <User className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-            <p className="text-[10px] sm:text-xs text-slate-400">Pengguna Aktif</p>
+            <User className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
+            <p className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-wider">Pengguna Aktif</p>
           </div>
-          <p className="text-xl sm:text-2xl font-bold text-white">{stats.totalUsers}</p>
-          <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1">Kontributor</p>
+          <p className="text-xl sm:text-2xl font-black text-slate-900">{stats.totalUsers}</p>
+          <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1 font-medium">Kontributor</p>
         </motion.div>
       </div>
 
-      <div className="bg-slate-900/40 backdrop-blur-xl rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 border border-slate-700/50">
+      <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-3 sm:p-4 mb-4 sm:mb-6 border border-sky-100/90 shadow-md text-slate-800">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
@@ -563,7 +563,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Cari dokumen..."
-              className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white placeholder-slate-500 text-sm"
+              className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 placeholder-slate-400 text-sm font-medium"
             />
           </div>
 
@@ -573,7 +573,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
               value={filterType}
               onChange={(e) => setFilterType(e.target.value as 'all' | 'excel' | 'pdf')}
               title="Filter Tipe Dokumen"
-              className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition text-white appearance-none cursor-pointer text-sm"
+              className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-sm font-medium"
             >
               <option value="all">Semua Dokumen</option>
               <option value="excel">Excel Saja</option>
@@ -594,7 +594,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
                 }
               }}
               title="Filter Rentang Waktu"
-              className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 outline-none transition text-white appearance-none cursor-pointer text-sm"
+              className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-sm font-medium"
             >
               <option value="all">Semua Waktu</option>
               <option value="today">Hari Ini</option>
@@ -606,13 +606,13 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         </div>
 
         {dateFilter === 'custom' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-700/30">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-200">
             <div className="relative">
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 outline-none transition text-white text-sm"
+                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition text-slate-900 text-sm font-medium"
                 placeholder="Tanggal Mulai"
               />
             </div>
@@ -621,7 +621,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-800/50 border border-slate-700/50 rounded-lg focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 outline-none transition text-white text-sm"
+                className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none transition text-slate-900 text-sm font-medium"
                 placeholder="Tanggal Selesai"
               />
             </div>
@@ -629,59 +629,59 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         )}
       </div>
 
-      <div className="bg-slate-900/40 backdrop-blur-xl rounded-xl border border-slate-700/50 overflow-hidden">
+      <div className="bg-white/95 backdrop-blur-xl rounded-2xl border border-sky-100/90 shadow-xl overflow-hidden text-slate-800">
         <div className="block md:hidden">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Activity className="w-8 h-8 text-blue-400 animate-spin" />
+              <Activity className="w-8 h-8 text-blue-600 animate-spin" />
             </div>
           ) : filteredDocuments.length === 0 ? (
             <div className="text-center py-12 px-4">
-              <Database className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <p className="text-slate-400 text-sm">Tidak ada dokumen ditemukan</p>
+              <Database className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+              <p className="text-slate-500 text-sm font-medium">Tidak ada dokumen ditemukan</p>
             </div>
           ) : (
-            <div className="divide-y divide-slate-700/30">
+            <div className="divide-y divide-slate-100">
               {filteredDocuments.map((doc) => (
                 <motion.div
                   key={doc.id}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="p-4 hover:bg-slate-800/30 transition"
+                  className="p-4 hover:bg-slate-50/80 transition"
                 >
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       {doc.type === 'excel' ? (
-                        <FileSpreadsheet className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                        <FileSpreadsheet className="w-5 h-5 text-emerald-600 flex-shrink-0" />
                       ) : (
-                        <FileText className="w-5 h-5 text-red-400 flex-shrink-0" />
+                        <FileText className="w-5 h-5 text-red-600 flex-shrink-0" />
                       )}
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-white truncate">{doc.fileName}</p>
-                        <p className="text-xs text-slate-400 truncate">{doc.maintenanceName}</p>
+                        <p className="text-sm font-bold text-slate-900 truncate">{doc.fileName}</p>
+                        <p className="text-xs text-slate-500 truncate font-medium">{doc.maintenanceName}</p>
                       </div>
                     </div>
-                    <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-slate-700/50 text-slate-300 uppercase flex-shrink-0">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 uppercase flex-shrink-0">
                       {doc.type}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs mb-3">
                     <div>
-                      <p className="text-slate-500">Dibuat Oleh</p>
-                      <p className="text-slate-300 truncate">{doc.createdBy}</p>
+                      <p className="text-slate-500 font-medium">Dibuat Oleh</p>
+                      <p className="text-slate-800 font-bold truncate">{doc.createdBy}</p>
                     </div>
                     <div>
-                      <p className="text-slate-500">Tanggal</p>
-                      <p className="text-slate-300">{doc.createdAt.toDate().toLocaleDateString('id-ID')}</p>
+                      <p className="text-slate-500 font-medium">Tanggal</p>
+                      <p className="text-slate-800 font-bold">{doc.createdAt.toDate().toLocaleDateString('id-ID')}</p>
                     </div>
                     <div>
-                      <p className="text-slate-500">Foto</p>
-                      <p className="text-slate-300">{doc.photosWithImage}/{doc.totalPhotos}</p>
+                      <p className="text-slate-500 font-medium">Foto</p>
+                      <p className="text-slate-800 font-bold">{doc.photosWithImage}/{doc.totalPhotos}</p>
                     </div>
                     <div>
-                      <p className="text-slate-500">Detail</p>
-                      <p className="text-slate-300 truncate">{doc.specificDetail || '-'}</p>
+                      <p className="text-slate-500 font-medium">Detail</p>
+                      <p className="text-slate-800 font-bold truncate">{doc.specificDetail || '-'}</p>
                     </div>
                   </div>
 
@@ -690,7 +690,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => handleRegenerate(doc)}
-                      className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition border border-blue-500/30 text-sm font-medium"
+                      className="flex-1 flex items-center justify-center gap-2 p-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition border border-blue-200 text-sm font-bold"
                     >
                       <Download className="w-4 h-4" />
                       Download {doc.type.toUpperCase()}
@@ -700,7 +700,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => handleEditClick(doc)}
-                        className="p-2.5 bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-blue-400 rounded-lg border border-slate-700/50 transition"
+                        className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-blue-600 rounded-xl border border-slate-200 transition"
                         title="Edit Report"
                       >
                         <Pencil className="w-4 h-4" />
@@ -715,9 +715,9 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
 
         <div className="hidden md:block">
           {!loading && filteredDocuments.length > 0 && showRightScroll && (
-            <div className="flex items-center gap-1.5 text-[10px] text-blue-400 font-bold tracking-[0.12em] uppercase animate-pulse mb-3 px-4 pt-4">
-              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full shadow-lg shadow-blue-500" />
-              <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+            <div className="flex items-center gap-1.5 text-[10px] text-blue-600 font-bold tracking-[0.12em] uppercase animate-pulse mb-3 px-4 pt-4">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full shadow-md shadow-blue-500" />
+              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
               <span>Geser horizontal untuk detail kolom lainnya</span>
             </div>
           )}
@@ -725,115 +725,115 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
           <div className="relative group">
             {/* Left scroll chevron and overlay */}
             <div 
-              className={`absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-slate-950 via-slate-950/40 to-transparent pointer-events-none transition-all duration-300 flex items-center justify-start pl-3 z-10 ${
+              className={`absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-white via-white/40 to-transparent pointer-events-none transition-all duration-300 flex items-center justify-start pl-3 z-10 ${
                 showLeftScroll ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'
               }`}
             >
               <button 
                 onClick={() => scrollTable('left')}
-                className="pointer-events-auto bg-slate-900/90 border border-slate-700/50 p-2 rounded-full shadow-2xl hover:bg-slate-800 hover:border-slate-500 transition-all cursor-pointer backdrop-blur-md"
+                className="pointer-events-auto bg-white/95 border border-slate-200 p-2 rounded-full shadow-lg hover:bg-slate-100 transition-all cursor-pointer backdrop-blur-md"
                 title="Scroll left"
               >
-                <ChevronLeft className="w-4 h-4 text-blue-400" />
+                <ChevronLeft className="w-4 h-4 text-blue-600" />
               </button>
             </div>
 
             {/* Right scroll chevron and overlay */}
             <div 
-              className={`absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-slate-950 via-slate-950/40 to-transparent pointer-events-none transition-all duration-300 flex items-center justify-end pr-3 z-10 ${
+              className={`absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-white via-white/40 to-transparent pointer-events-none transition-all duration-300 flex items-center justify-end pr-3 z-10 ${
                 showRightScroll ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
               }`}
             >
               <button 
                 onClick={() => scrollTable('right')}
-                className="pointer-events-auto bg-slate-900/90 border border-slate-700/50 p-2 rounded-full shadow-2xl hover:bg-slate-800 hover:border-slate-500 transition-all cursor-pointer backdrop-blur-md"
+                className="pointer-events-auto bg-white/95 border border-slate-200 p-2 rounded-full shadow-lg hover:bg-slate-100 transition-all cursor-pointer backdrop-blur-md"
                 title="Scroll right"
               >
-                <ChevronRight className="w-4 h-4 text-blue-400" />
+                <ChevronRight className="w-4 h-4 text-blue-600" />
               </button>
             </div>
 
             <div 
               ref={containerRef}
               onScroll={checkScroll}
-              className="overflow-x-auto scrollbar-thin w-full"
+              className="overflow-x-auto scrollbar-none w-full"
             >
               {loading ? (
                 <div className="flex items-center justify-center py-12">
-                  <Activity className="w-8 h-8 text-blue-400 animate-spin" />
+                  <Activity className="w-8 h-8 text-blue-600 animate-spin" />
                 </div>
               ) : filteredDocuments.length === 0 ? (
                 <div className="text-center py-12">
-                  <Database className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                  <p className="text-slate-400">Tidak ada dokumen ditemukan</p>
+                  <Database className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+                  <p className="text-slate-500 font-medium">Tidak ada dokumen ditemukan</p>
                 </div>
               ) : (
                 <table className="w-full min-w-[1000px]">
-                  <thead className="bg-slate-800/50 border-b border-slate-700/50">
+                  <thead className="bg-slate-50/90 border-b border-slate-200">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Type</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">File Name</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Maintenance</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Detail</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Created By</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Date</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-300 uppercase">Photos</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-slate-300 uppercase">Actions</th>
+                      <th className="px-4 py-3.5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Type</th>
+                      <th className="px-4 py-3.5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">File Name</th>
+                      <th className="px-4 py-3.5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Maintenance</th>
+                      <th className="px-4 py-3.5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Detail</th>
+                      <th className="px-4 py-3.5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Created By</th>
+                      <th className="px-4 py-3.5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Date</th>
+                      <th className="px-4 py-3.5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Photos</th>
+                      <th className="px-4 py-3.5 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-700/30">
+                  <tbody className="divide-y divide-slate-100">
                     {filteredDocuments.map((doc) => (
                       <motion.tr
                         key={doc.id}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="hover:bg-slate-800/30 transition"
+                        className="hover:bg-slate-50/80 transition"
                       >
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2">
                             {doc.type === 'excel' ? (
-                              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+                              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
                             ) : (
-                              <FileText className="w-4 h-4 text-red-400" />
+                              <FileText className="w-4 h-4 text-red-600" />
                             )}
-                            <span className="text-xs font-medium text-slate-300 uppercase">{doc.type}</span>
+                            <span className="text-xs font-bold text-slate-700 uppercase">{doc.type}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
-                          <p className="text-sm text-white font-medium truncate max-w-[200px]" title={doc.fileName}>{doc.fileName}</p>
+                        <td className="px-4 py-3.5">
+                          <p className="text-sm text-slate-900 font-bold truncate max-w-[200px]" title={doc.fileName}>{doc.fileName}</p>
                         </td>
-                        <td className="px-4 py-3">
-                          <p className="text-sm text-slate-300 truncate max-w-[150px]" title={doc.maintenanceName}>{doc.maintenanceName}</p>
+                        <td className="px-4 py-3.5">
+                          <p className="text-sm text-slate-700 font-semibold truncate max-w-[150px]" title={doc.maintenanceName}>{doc.maintenanceName}</p>
                         </td>
-                        <td className="px-4 py-3">
-                          <p className="text-sm text-slate-400 truncate max-w-[150px]" title={doc.specificDetail || '-'}>{doc.specificDetail || '-'}</p>
+                        <td className="px-4 py-3.5">
+                          <p className="text-sm text-slate-500 font-medium truncate max-w-[150px]" title={doc.specificDetail || '-'}>{doc.specificDetail || '-'}</p>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2">
-                            <User className="w-3 h-3 text-slate-500" />
-                            <p className="text-sm text-slate-400 truncate max-w-[130px]" title={doc.createdBy}>{doc.createdBy}</p>
+                            <User className="w-3.5 h-3.5 text-slate-400" />
+                            <p className="text-sm text-slate-600 font-medium truncate max-w-[130px]" title={doc.createdBy}>{doc.createdBy}</p>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2">
-                            <Calendar className="w-3 h-3 text-slate-500" />
-                            <p className="text-sm text-slate-400">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                            <p className="text-sm text-slate-600 font-medium">
                               {doc.createdAt.toDate().toLocaleDateString('id-ID')}
                             </p>
                           </div>
                         </td>
-                        <td className="px-4 py-3">
-                          <p className="text-sm text-slate-300">
+                        <td className="px-4 py-3.5">
+                          <p className="text-sm text-slate-800 font-bold">
                             {doc.photosWithImage}/{doc.totalPhotos}
                           </p>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3.5">
                           <div className="flex items-center justify-center gap-2">
                             <motion.button
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
                               onClick={() => handleRegenerate(doc)}
-                              className="p-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition border border-blue-500/30"
+                              className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition border border-blue-200 shadow-sm"
                               title="Download"
                             >
                               <Download className="w-4 h-4" />

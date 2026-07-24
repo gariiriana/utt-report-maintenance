@@ -4,7 +4,7 @@ import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
 import { Lock, Mail, Eye, EyeOff, LogIn } from 'lucide-react';
 
-import logoUTT from '@/assets/logo_utt.png';
+import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -46,79 +46,80 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen font-geist text-slate-200 flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 h-screen h-[100dvh] w-screen font-geist text-slate-800 flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-hidden touch-none select-none z-50">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className="w-full max-w-md relative z-10"
+        initial={{ opacity: 0, y: 15, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+        className="w-[92%] sm:w-full max-w-sm md:max-w-lg lg:max-w-xl relative z-10 mx-auto my-auto"
       >
-        <div className="bg-slate-900/5 backdrop-blur-sm rounded-xl sm:rounded-2xl shadow-2xl border border-white/5">
-          <div className="h-1 bg-gradient-to-r from-indigo-600/50 via-indigo-500/50 to-purple-500/50" />
+        <div className="bg-white/70 backdrop-blur-2xl rounded-3xl md:rounded-[2rem] shadow-2xl shadow-sky-900/15 border border-white/90 overflow-hidden">
+          <div className="h-1.5 md:h-2 bg-gradient-to-r from-blue-600 via-cyan-500 to-teal-500" />
 
-          <div className="p-6 sm:p-8">
-            <div className="text-center mb-6 sm:mb-8">
+          <div className="p-5 sm:p-7 md:p-10">
+            <div className="text-center mb-5 sm:mb-7 md:mb-8">
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.5 }}
-                className="inline-flex items-center justify-center mb-2 sm:mb-3"
+                transition={{ delay: 0.1, duration: 0.35 }}
+                className="inline-flex items-center justify-center mb-2 md:mb-3"
               >
                 <img
-                  src={logoUTT}
-                  alt="PT United Transworld Trading"
-                  className="w-40 h-40 sm:w-56 sm:h-56 object-contain"
+                  src={logoDwimitra}
+                  alt="PT Dwimitra Ekatama Mandiri"
+                  className="h-16 sm:h-24 md:h-32 w-auto object-contain drop-shadow-sm transition-all"
                 />
               </motion.div>
 
-              <h1 className="text-lg sm:text-2xl font-semibold text-white sm:mb-2 tracking-tight">
-                PT United Transworld Trading
+              <h1 className="text-base sm:text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-snug">
+                PT Dwimitra Ekatama Mandiri
               </h1>
-              <p className="text-xs sm:text-sm text-slate-400 font-light">Data Center Maintenance System</p>
-
+              <p className="text-[11px] sm:text-xs md:text-sm text-slate-600 font-semibold mt-1">
+                Data Center Maintenance System
+              </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 md:space-y-6">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
+                <label htmlFor="email" className="block text-[11px] sm:text-xs md:text-sm font-bold text-slate-700 mb-1.5">
                   Alamat Email
                 </label>
                 <div className="relative group">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] sm:w-5 sm:h-5 text-slate-500 group-focus-within:text-indigo-400 transition" />
+                  <Mail className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-slate-500 group-focus-within:text-blue-600 transition z-10 pointer-events-none" />
                   <input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-11 sm:pl-12 pr-4 py-3 sm:py-3.5 bg-slate-800/20 border border-slate-700/30 rounded-lg focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 outline-none transition text-white placeholder-slate-500 text-[15px] sm:text-base"
+                    className="w-full pl-10 sm:pl-11 md:pl-12 pr-4 py-2.5 sm:py-3 md:py-3.5 bg-white/90 backdrop-blur-md border border-slate-200/90 rounded-xl md:rounded-2xl focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500 focus:bg-white outline-none transition text-slate-900 placeholder-slate-400 text-xs sm:text-sm md:text-base font-medium shadow-sm"
                     placeholder="user@perusahaan.com"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
+                <label htmlFor="password" className="block text-[11px] sm:text-xs md:text-sm font-bold text-slate-700 mb-1.5">
                   Kata Sandi
                 </label>
                 <div className="relative group">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] sm:w-5 sm:h-5 text-slate-500 group-focus-within:text-indigo-400 transition" />
+                  <Lock className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-slate-500 group-focus-within:text-blue-600 transition z-10 pointer-events-none" />
                   <input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-11 sm:pl-12 pr-11 sm:pr-12 py-3 sm:py-3.5 bg-slate-800/20 border border-slate-700/30 rounded-lg focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 outline-none transition text-white placeholder-slate-500 text-[15px] sm:text-base"
+                    className="w-full pl-10 sm:pl-11 md:pl-12 pr-10 sm:pr-11 md:pr-12 py-2.5 sm:py-3 md:py-3.5 bg-white/90 backdrop-blur-md border border-slate-200/90 rounded-xl md:rounded-2xl focus:ring-4 focus:ring-blue-500/15 focus:border-blue-500 focus:bg-white outline-none transition text-slate-900 placeholder-slate-400 text-xs sm:text-sm md:text-base font-medium shadow-sm"
                     placeholder="Masukkan kata sandi Anda"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition"
+                    className="absolute right-3 sm:right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition cursor-pointer p-1 z-10"
                   >
                     {showPassword ? (
-                      <EyeOff className="w-[18px] h-[18px] sm:w-5 sm:h-5" />
+                      <EyeOff className="w-4 h-4 md:w-5 md:h-5" />
                     ) : (
-                      <Eye className="w-[18px] h-[18px] sm:w-5 sm:h-5" />
+                      <Eye className="w-4 h-4 md:w-5 md:h-5" />
                     )}
                   </button>
                 </div>
@@ -126,24 +127,23 @@ export function Login() {
 
               <motion.button
                 whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
+                whileTap={{ scale: 0.98 }}
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 text-white py-3 sm:py-3.5 rounded-lg font-medium shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-6 text-[15px] sm:text-base"
+                className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white py-2.5 sm:py-3 md:py-3.5 rounded-xl md:rounded-2xl font-bold shadow-lg shadow-blue-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4 sm:mt-5 text-xs sm:text-sm md:text-base cursor-pointer"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-4 h-4 md:w-5 md:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Sedang Masuk...
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
-                    <LogIn className="w-[18px] h-[18px]" />
+                    <LogIn className="w-4 h-4 md:w-5 md:h-5" />
                     Masuk
                   </span>
                 )}
               </motion.button>
-
             </form>
           </div>
         </div>

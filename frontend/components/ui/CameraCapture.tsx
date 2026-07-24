@@ -120,17 +120,17 @@ export function CameraCapture({ onCapture, placeholder = "Ambil Foto Wajah" }: C
 
   return (
     <div className="space-y-3 w-full">
-      <div className="relative group overflow-hidden rounded-2xl border-2 border-slate-800 bg-slate-950 aspect-square max-w-[240px] mx-auto shadow-inner ring-1 ring-white/5">
+      <div className="relative group overflow-hidden rounded-2xl border-2 border-sky-100 bg-white aspect-square max-w-[240px] mx-auto shadow-md ring-1 ring-sky-100">
         {!isCameraActive && !preview && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-             <div className="p-4 bg-blue-500/10 rounded-full text-blue-500 animate-pulse">
+             <div className="p-4 bg-blue-50 rounded-full text-blue-600 animate-pulse border border-blue-100">
                 <User className="w-8 h-8" />
              </div>
              <Button
                 type="button"
                 variant="outline"
                 onClick={startCamera}
-                className="bg-slate-900 border-slate-800 text-slate-400 hover:text-white"
+                className="bg-slate-100 border-slate-200 text-slate-700 hover:bg-white hover:text-slate-900"
              >
                 Aktifkan Kamera
              </Button>

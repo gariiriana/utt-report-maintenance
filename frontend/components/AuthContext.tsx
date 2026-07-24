@@ -13,12 +13,12 @@ import { doc, setDoc, serverTimestamp, getDoc, onSnapshot } from 'firebase/fires
 interface UserData {
   email: string;
   uid: string;
-  role: 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'inventory' | 'DME';
+  role: 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME';
   companyType?: 'neutra' | 'bri';
   createdAt: any;
 }
 
-const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'inventory' | 'DME' => {
+const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' => {
   if (!email) return 'engineer';
   const lowerEmail = email.toLowerCase();
   if (lowerEmail.includes('admin')) return 'admin';
@@ -27,7 +27,6 @@ const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby
   if (lowerEmail.includes('cbre')) return 'cbre';
   if (lowerEmail.includes('site_manager') || lowerEmail.includes('sitemanager')) return 'site_manager';
   if (lowerEmail.includes('manager')) return 'manager';
-  if (lowerEmail.includes('inventory')) return 'inventory';
   if (lowerEmail.includes('pmo')) return 'pmo';
   if (lowerEmail.includes('sales')) return 'sales';
   if (lowerEmail.includes('presales')) return 'presales';
@@ -40,7 +39,7 @@ const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby
 
 interface AuthContextType {
   user: User | null;
-  userRole: 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'inventory' | 'DME' | null;
+  userRole: 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | null;
   companyType: 'neutra' | 'bri' | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -51,7 +50,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'inventory' | 'DME' | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | null>(null);
   const [companyType, setCompanyType] = useState<'neutra' | 'bri' | null>(null);
   const [loading, setLoading] = useState(true);
 

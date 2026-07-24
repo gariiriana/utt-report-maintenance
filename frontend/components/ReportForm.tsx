@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, Save, ChevronLeft, ChevronRight, X, Eye, Download, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, Save, ChevronLeft, ChevronRight, X, Eye, Download, Sparkles, Loader2, Languages } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { ExcelDocument } from '@/components/DocumentList';
 import { ImageEditor } from '@/components/ImageEditor';
@@ -25,6 +25,13 @@ import { PreviewReport } from '@/components/PreviewReport';
 import { CameraModal } from '@/components/CameraModal';
 import { draftStorage } from '@/utils/draftStorage';
 import { ATSServiceReport } from '@/components/ATSServiceReport';
+import { FCUServiceReport } from '@/components/FCUServiceReport';
+import { PJUServiceReport } from '@/components/PJUServiceReport';
+import { PDUServiceReport } from '@/components/PDUServiceReport';
+import { CTServiceReport } from '@/components/CTServiceReport';
+import { GeneratorServiceReport } from '@/components/GeneratorServiceReport';
+import { ACSplitServiceReport } from '@/components/ACSplitServiceReport';
+import { TrafoServiceReport } from '@/components/TrafoServiceReport';
 
 import imgStatusWld from '@/assets/Wld/status.jpeg';
 import imgTestPingWld from '@/assets/Wld/test_ping.jpeg';
@@ -112,7 +119,24 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [analyzingCardId, setAnalyzingCardId] = useState<string | null>(null);
   const [isBulkAnalyzing, setIsBulkAnalyzing] = useState(false);
+  const [translatingCardId, setTranslatingCardId] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<{ src: string; title: string } | null>(null);
+
+  const [fcuPrefillData, setFcuPrefillData] = useState<any>(null);
+  const [pjuPrefillData, setPjuPrefillData] = useState<any>(null);
+  const [pduPrefillData, setPduPrefillData] = useState<any>(null);
+  const [ctPrefillData, setCtPrefillData] = useState<any>(null);
+  const [generatorPrefillData, setGeneratorPrefillData] = useState<any>(null);
+  const [acSplitPrefillData, setAcSplitPrefillData] = useState<any>(null);
+  const [trafoPrefillData, setTrafoPrefillData] = useState<any>(null);
+
+  const [fcuData, setFcuData] = useState<any>(null);
+  const [pjuData, setPjuData] = useState<any>(null);
+  const [pduData, setPduData] = useState<any>(null);
+  const [ctData, setCtData] = useState<any>(null);
+  const [generatorData, setGeneratorData] = useState<any>(null);
+  const [acSplitData, setAcSplitData] = useState<any>(null);
+  const [trafoData, setTrafoData] = useState<any>(null);
 
 
   const activeUnit = units.find(u => u.id === activeUnitId) || null;
@@ -177,7 +201,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         template = VRV_TEMPLATE.indoor;
       } else if (lowerEmail === 'ahhu@utt.com') {
         template = AHHU_TEMPLATE.indoor;
-      } else if (['lv@gmail.com', 'ats@gmail.com', 'trafo@gmail.com'].includes(lowerEmail)) {
+      } else if (['lv@gmail.com', 'ats@gmail.com'].includes(lowerEmail)) {
         template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
       } else {
         template = REPORT_TEMPLATES[lowerEmail];
@@ -270,7 +294,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               let template: string[] | null = null;
               if (lowerEmail === 'vrv@gmail.com') {
 
-              } else if (['lv@gmail.com', 'ats@gmail.com', 'trafo@gmail.com'].includes(lowerEmail)) {
+              } else if (['lv@gmail.com', 'ats@gmail.com'].includes(lowerEmail)) {
                 template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
               } else {
                 template = REPORT_TEMPLATES[lowerEmail] || (lowerEmail.includes('dock') || lowerEmail.includes('leveler') ? REPORT_TEMPLATES['dock'] : null);
@@ -689,6 +713,54 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     setCards(prev => prev.map(c => c.id === id ? { ...c, parameter } : c));
   };
 
+  const handleTranslateCardDescription = async (cardId: string) => {
+    const card = cards.find(c => c.id === cardId);
+    if (!card || !card.description) {
+      toast.error('Masukkan deskripsi foto terlebih dahulu untuk diterjemahkan');
+      return;
+    }
+
+    setTranslatingCardId(cardId);
+    const toastId = toast.loading('Menerjemahkan deskripsi dengan AI...');
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const apiBaseUrl = import.meta.env.VITE_API_URL || '';
+      const url = apiBaseUrl ? (apiBaseUrl.endsWith('/api') ? `${apiBaseUrl}/ai/chat` : `${apiBaseUrl}/api/ai/chat`) : '/api/ai/chat';
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'user',
+              content: `Translate the following maintenance photo description to English if it is in Indonesian, or to Indonesian if it is in English. Return ONLY the translation text without quotes or explanations:\n"${card.description}"`
+            }
+          ]
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.reply) {
+        const translatedText = data.reply.trim().replace(/^["']|["']$/g, '');
+        handleDescriptionChange(cardId, translatedText);
+        toast.success('Deskripsi berhasil diterjemahkan!', { id: toastId });
+      } else {
+        toast.error(data.error || 'Gagal menerjemahkan deskripsi', { id: toastId });
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Gagal terhubung ke layanan penerjemah', { id: toastId });
+    } finally {
+      setTranslatingCardId(null);
+    }
+  };
+
   const handleDownloadPhoto = (base64: string, description: string, index: number) => {
     const link = document.createElement('a');
     link.href = base64;
@@ -822,6 +894,34 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         reportData.atsCustomerInfo = atsData.customerInfo;
         reportData.atsReportData = atsData.reportData;
         reportData.atsTimeSpent = atsData.timeSpent;
+      } else if (user?.email === 'fcu@gmail.com' && fcuData) {
+        reportData.fcuCustomerInfo = fcuData.customerInfo;
+        reportData.fcuReportData = fcuData.reportData;
+        reportData.fcuTimeSpent = fcuData.timeSpent;
+      } else if (user?.email === 'pju@gmail.com' && pjuData) {
+        reportData.pjuCustomerInfo = pjuData.customerInfo;
+        reportData.pjuReportData = pjuData.reportData;
+        reportData.pjuTimeSpent = pjuData.timeSpent;
+      } else if (user?.email === 'pdu@gmail.com' && pduData) {
+        reportData.pduCustomerInfo = pduData.customerInfo;
+        reportData.pduReportData = pduData.reportData;
+        reportData.pduTimeSpent = pduData.timeSpent;
+      } else if (user?.email === 'coolingtower@gmail.com' && ctData) {
+        reportData.ctCustomerInfo = ctData.customerInfo;
+        reportData.ctReportData = ctData.reportData;
+        reportData.ctTimeSpent = ctData.timeSpent;
+      } else if (user?.email === 'generator@gmail.com' && generatorData) {
+        reportData.generatorCustomerInfo = generatorData.customerInfo;
+        reportData.generatorReportData = generatorData.reportData;
+        reportData.generatorTimeSpent = generatorData.timeSpent;
+      } else if (user?.email === 'acsplit@gmail.com' && acSplitData) {
+        reportData.acSplitCustomerInfo = acSplitData.customerInfo;
+        reportData.acSplitReportData = acSplitData.reportData;
+        reportData.acSplitTimeSpent = acSplitData.timeSpent;
+      } else if (user?.email === 'trafo@gmail.com' && trafoData) {
+        reportData.trafoCustomerInfo = trafoData.customerInfo;
+        reportData.trafoReportData = trafoData.reportData;
+        reportData.trafoTimeSpent = trafoData.timeSpent;
       }
 
       if (!editingData) {
@@ -1272,7 +1372,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       }
 
       toast.success('Sukses mengumpulkan parameter. AI Service Report siap di bawah!', { id: toastId });
-      setAtsPrefillData({
+      const prefillPayload = {
         maintenanceName,
         maintenanceTime,
         specificDetail,
@@ -1282,7 +1382,25 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         triggerGenerateData: true,
         archiveId: editingData?.id,
         archiveType: editingData?.documentType,
-      });
+      };
+
+      if (user?.email === 'fcu@gmail.com') {
+        setFcuPrefillData(prefillPayload);
+      } else if (user?.email === 'pju@gmail.com') {
+        setPjuPrefillData(prefillPayload);
+      } else if (user?.email === 'pdu@gmail.com') {
+        setPduPrefillData(prefillPayload);
+      } else if (user?.email === 'coolingtower@gmail.com') {
+        setCtPrefillData(prefillPayload);
+      } else if (user?.email === 'generator@gmail.com') {
+        setGeneratorPrefillData(prefillPayload);
+      } else if (user?.email === 'acsplit@gmail.com') {
+        setAcSplitPrefillData(prefillPayload);
+      } else if (user?.email === 'trafo@gmail.com') {
+        setTrafoPrefillData(prefillPayload);
+      } else {
+        setAtsPrefillData(prefillPayload);
+      }
     } catch (err: any) {
       console.error(err);
       toast.error('Gagal memproses foto: ' + err.message, { id: toastId });
@@ -1302,7 +1420,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           template = VRV_TEMPLATE.indoor;
         } else if (lowerEmail === 'ahhu@utt.com') {
           template = AHHU_TEMPLATE.indoor;
-        } else if (['lv@gmail.com', 'ats@gmail.com', 'trafo@gmail.com'].includes(lowerEmail)) {
+        } else if (['lv@gmail.com', 'ats@gmail.com'].includes(lowerEmail)) {
           template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
         } else {
           template = REPORT_TEMPLATES[lowerEmail];
@@ -1358,27 +1476,27 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           <motion.div key="form" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div className="flex gap-4">
-                <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-700/50 min-w-[120px]">
-                  <p className="text-xs text-slate-500 uppercase font-bold">Foto</p>
-                  <p className="text-xl font-bold text-white">{uploadedCount} / {cards.length}</p>
+                <div className="bg-white/80 backdrop-blur-xl p-4 rounded-2xl border border-sky-100/80 shadow-md shadow-sky-900/5 min-w-[120px]">
+                  <p className="text-xs text-slate-400 uppercase font-bold">Foto</p>
+                  <p className="text-xl font-black text-slate-900">{uploadedCount} / {cards.length}</p>
                 </div>
-                <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-700/50 min-w-[120px]">
-                  <p className="text-xs text-slate-500 uppercase font-bold">Template</p>
-                  <p className="text-xl font-bold text-blue-400 uppercase">{companyType}</p>
+                <div className="bg-white/80 backdrop-blur-xl p-4 rounded-2xl border border-sky-100/80 shadow-md shadow-sky-900/5 min-w-[120px]">
+                  <p className="text-xs text-slate-400 uppercase font-bold">Template</p>
+                  <p className="text-xl font-black text-blue-600 uppercase">{companyType}</p>
                 </div>
               </div>
               {editingData && (
-                <button onClick={onClearEdit} className="px-4 py-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30 text-sm font-bold flex items-center gap-2 hover:bg-blue-600/30 transition-all">
+                <button onClick={onClearEdit} className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl border border-blue-200 text-sm font-bold flex items-center gap-2 hover:bg-blue-100 transition-all shadow-sm">
                   <RefreshCw className="w-4 h-4" /> Batal Edit
                 </button>
               )}
             </div>
 
-            <div className="bg-slate-900/60 p-6 rounded-2xl border border-slate-700/50 mb-6 font-geist">
+            <div className="bg-white/90 backdrop-blur-xl p-6 rounded-3xl border border-sky-100/90 shadow-xl shadow-sky-900/5 mb-6 font-geist">
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <div>
-                  <label htmlFor="maintenance-name" className="block text-sm font-medium text-slate-400 mb-2">Nama Maintenance</label>
+                  <label htmlFor="maintenance-name" className="block text-sm font-bold text-slate-700 mb-2">Nama Maintenance</label>
                   <input
                     id="maintenance-name"
                     title="Nama Maintenance"
@@ -1386,12 +1504,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     value={maintenanceName}
                     onChange={e => setMaintenanceName(e.target.value)}
                     disabled={isDME}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-3 text-slate-900 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition placeholder-slate-400 disabled:opacity-70 disabled:cursor-not-allowed"
                     placeholder="cth. Maintenance Bulanan"
                   />
                 </div>
                 <div>
-                  <label htmlFor="specific-detail" className="block text-sm font-medium text-slate-400 mb-2">Detail Unit Maintenance</label>
+                  <label htmlFor="specific-detail" className="block text-sm font-bold text-slate-700 mb-2">Detail Unit Maintenance</label>
                   <input
                     id="specific-detail"
                     title="Detail Unit Maintenance"
@@ -1399,12 +1517,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     value={specificDetail}
                     onChange={(e) => setSpecificDetail(e.target.value)}
                     disabled={isDME}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-blue-400 font-bold outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-3 text-blue-600 font-bold outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition placeholder-slate-400 disabled:opacity-70 disabled:cursor-not-allowed"
                     placeholder="cth. FCU-01 / VRV-02"
                   />
                 </div>
                 <div>
-                  <label htmlFor="maintenance-time" className="block text-sm font-medium text-slate-400 mb-2">Waktu Maintenance</label>
+                  <label htmlFor="maintenance-time" className="block text-sm font-bold text-slate-700 mb-2">Waktu Maintenance</label>
                   <input
                     id="maintenance-time"
                     title="Waktu Maintenance"
@@ -1413,18 +1531,18 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     value={maintenanceTime}
                     onChange={(e) => setMaintenanceTime(e.target.value)}
                     disabled={isDME}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-3 text-slate-900 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition disabled:opacity-70 disabled:cursor-not-allowed"
                   />
                 </div>
                 <div>
-                  <label htmlFor="company-type" className="block text-sm font-medium text-slate-400 mb-2">Situs / Proyek</label>
+                  <label htmlFor="company-type" className="block text-sm font-bold text-slate-700 mb-2">Situs / Proyek</label>
                   <select
                     id="company-type"
                     title="Situs / Proyek"
                     value={companyType}
                     onChange={e => setCompanyType(e.target.value as 'neutra' | 'bri')}
                     disabled={isDME}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-3 text-white outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer pr-10 disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-3 text-slate-900 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer pr-10 disabled:opacity-70 disabled:cursor-not-allowed transition"
                   >
                     <option value="neutra">NeutraDC</option>
                     <option value="bri">Bank BRI</option>
@@ -1435,10 +1553,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
               <div className="mt-8 select-none">
                 {/* Desktop Tab Bar */}
-                <div className="hidden md:flex items-center bg-slate-950/50 backdrop-blur-md border border-slate-800/50 rounded-t-xl overflow-hidden h-10 shadow-2xl">
-                  <div className="flex items-center px-2 border-r border-slate-800/50 gap-1 shrink-0">
-                    <button onClick={() => scrollTabs('left')} title="Geser Tab Kiri" aria-label="Geser tab ke kiri" className="p-1.5 hover:bg-white/5 transition-colors rounded-lg text-slate-500 hover:text-blue-400"><ChevronLeft className="w-4 h-4" /></button>
-                    <button onClick={() => scrollTabs('right')} title="Geser Tab Kanan" aria-label="Geser tab ke kanan" className="p-1.5 hover:bg-white/5 transition-colors rounded-lg text-slate-500 hover:text-blue-400"><ChevronRight className="w-4 h-4" /></button>
+                <div className="hidden md:flex items-center bg-slate-100/90 backdrop-blur-md border border-slate-200 rounded-t-xl overflow-hidden h-10 shadow-sm">
+                  <div className="flex items-center px-2 border-r border-slate-200 gap-1 shrink-0">
+                    <button onClick={() => scrollTabs('left')} title="Geser Tab Kiri" aria-label="Geser tab ke kiri" className="p-1.5 hover:bg-slate-200 transition-colors rounded-lg text-slate-600 hover:text-blue-600"><ChevronLeft className="w-4 h-4" /></button>
+                    <button onClick={() => scrollTabs('right')} title="Geser Tab Kanan" aria-label="Geser tab ke kanan" className="p-1.5 hover:bg-slate-200 transition-colors rounded-lg text-slate-600 hover:text-blue-600"><ChevronRight className="w-4 h-4" /></button>
                   </div>
                   
                   <div ref={tabContainerRef} className="flex-1 flex items-end overflow-x-auto no-scrollbar h-full scroll-smooth">
@@ -1446,10 +1564,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       <div
                         key={unit.id}
                         onClick={() => setActiveUnitId(unit.id)}
-                        className={`group relative flex items-center min-w-[110px] sm:min-w-[140px] h-full px-3 sm:px-5 cursor-pointer transition-all duration-200 border-r border-slate-800/50 shrink-0 ${
+                        className={`group relative flex items-center min-w-[110px] sm:min-w-[140px] h-full px-3 sm:px-5 cursor-pointer transition-all duration-200 border-r border-slate-200 shrink-0 ${
                           activeUnitId === unit.id 
-                            ? 'bg-slate-900/80 z-10 shadow-[inset_0_-2px_10px_rgba(0,0,0,0.5)]' 
-                            : 'bg-transparent hover:bg-white/5'
+                            ? 'bg-white z-10 shadow-sm' 
+                            : 'bg-transparent hover:bg-slate-200/50'
                         }`}
                       >
                         {activeUnitId === unit.id ? (
@@ -1460,7 +1578,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                               value={tabName}
                               onChange={(e) => setTabName(e.target.value)}
                               disabled={isDME}
-                              className="bg-transparent border-none outline-none text-blue-400 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider w-full disabled:cursor-not-allowed"
+                              className="bg-transparent border-none outline-none text-blue-600 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider w-full disabled:cursor-not-allowed"
                               placeholder="NAMA UNIT..."
                             />
                             {!isDME && units.length > 1 && (
@@ -1479,7 +1597,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                                 }}
                                 title="Hapus Unit"
                                 aria-label="Hapus unit ini"
-                                className="p-1 text-slate-600 hover:text-red-400 transition-colors shrink-0"
+                                className="p-1 text-slate-400 hover:text-red-600 transition-colors shrink-0"
                               >
                                 <X className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
                               </button>
@@ -1487,24 +1605,24 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 w-full">
-                            <span className="text-slate-500 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider truncate group-hover:text-slate-300">
+                            <span className="text-slate-600 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider truncate group-hover:text-slate-900">
                               {unit.tabName || `Unit ${idx + 1}`}
                             </span>
                           </div>
                         )}
                         
                         {activeUnitId === unit.id && (
-                          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.5)]" />
                         )}
                       </div>
                     ))}
                   </div>
 
                   {!isDME && (
-                    <div className="flex items-center px-1 border-l border-slate-800/50 shrink-0 bg-slate-900/40">
+                    <div className="flex items-center px-1 border-l border-slate-200 shrink-0 bg-slate-100">
                       <button
                         onClick={() => addNewUnit(`Unit ${units.length + 1}`)}
-                        className="p-2 hover:bg-blue-600/10 text-blue-500/60 hover:text-blue-400 flex items-center justify-center transition-all rounded-lg"
+                        className="p-2 hover:bg-blue-100 text-blue-600 flex items-center justify-center transition-all rounded-lg"
                         title="Tambah Unit Baru"
                       >
                         <Plus className="w-5 h-5" />
@@ -1514,19 +1632,19 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 </div>
 
                 {/* Mobile Dropdown & Edit Block */}
-                <div className="block md:hidden space-y-4 bg-slate-950/40 backdrop-blur-md p-4 rounded-xl border border-slate-800/50 shadow-2xl">
+                <div className="block md:hidden space-y-4 bg-white/90 backdrop-blur-md p-4 rounded-xl border border-slate-200 shadow-lg">
                   <div>
-                    <label htmlFor="mobile-unit-select" className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                    <label htmlFor="mobile-unit-select" className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
                       Pilih Unit Maintenance
                     </label>
                     <select
                       id="mobile-unit-select"
                       value={activeUnitId || ''}
                       onChange={(e) => setActiveUnitId(e.target.value)}
-                      className="w-full bg-slate-800 border border-slate-700 text-white font-bold rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer text-xs"
+                      className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-bold rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer text-xs"
                     >
                       {units.map((unit, idx) => (
-                        <option key={unit.id} value={unit.id} className="bg-slate-900">
+                        <option key={unit.id} value={unit.id} className="bg-white">
                           {unit.tabName || `Unit ${idx + 1}`}
                         </option>
                       ))}
@@ -1538,7 +1656,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       <button
                         type="button"
                         onClick={() => addNewUnit(`Unit ${units.length + 1}`)}
-                        className="flex-1 py-2.5 px-4 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 rounded-xl font-bold transition flex items-center justify-center gap-1.5 text-xs shadow-md"
+                        className="flex-1 py-2.5 px-4 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 rounded-xl font-bold transition flex items-center justify-center gap-1.5 text-xs shadow-sm"
                       >
                         <Plus className="w-4 h-4" />
                         Tambah Unit
@@ -1559,7 +1677,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                             toast.error('Minimal harus ada 1 unit');
                           }
                         }}
-                        className="flex-1 py-2.5 px-4 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-xl font-bold transition flex items-center justify-center gap-1.5 text-xs shadow-md"
+                        className="flex-1 py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl font-bold transition flex items-center justify-center gap-1.5 text-xs shadow-sm"
                       >
                         <Trash2 className="w-4 h-4" />
                         Hapus Unit
@@ -1568,8 +1686,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   )}
 
                   {!isDME && (
-                    <div className="pt-3 border-t border-slate-800/50">
-                      <label htmlFor="mobile-unit-rename" className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                    <div className="pt-3 border-t border-slate-200">
+                      <label htmlFor="mobile-unit-rename" className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
                         Ubah Nama Unit Aktif
                       </label>
                       <input
@@ -1577,37 +1695,37 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                         type="text"
                         value={tabName}
                         onChange={(e) => setTabName(e.target.value)}
-                        className="w-full bg-slate-800 border border-slate-700 text-blue-400 font-bold rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 text-xs"
+                        className="w-full bg-slate-50 border border-slate-200 text-blue-600 font-bold rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 text-xs"
                         placeholder="Masukkan nama unit..."
                       />
                     </div>
                   )}
                 </div>
 
-                <div className="h-1 bg-slate-900/40 border-b border-slate-800/50 mb-10 shadow-sm" />
+                <div className="h-1 bg-slate-200/60 border-b border-slate-200 mb-10 shadow-sm" />
               </div>
 
 
             {activeUnit && (
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 px-2 gap-4">
                 <div className="flex-1 flex flex-wrap items-center gap-3 sm:gap-4">
-                  <h2 className="text-base sm:text-lg md:text-xl font-black text-white tracking-tight flex items-center gap-2 sm:gap-3">
-                    <span className="px-1.5 py-0.5 bg-blue-600 text-[9px] rounded flex items-center justify-center font-mono">#{units.findIndex(u => u.id === activeUnitId) + 1}</span>
+                  <h2 className="text-base sm:text-lg md:text-xl font-black text-slate-900 tracking-tight flex items-center gap-2 sm:gap-3">
+                    <span className="px-2 py-0.5 bg-blue-600 text-white text-[10px] rounded-md flex items-center justify-center font-mono font-bold">#{units.findIndex(u => u.id === activeUnitId) + 1}</span>
                     <span className="whitespace-nowrap">DOKUMENTASI:</span> 
-                    <span className="text-blue-500 truncate max-w-[150px] sm:max-w-none ml-1">{activeUnit.specificDetail || '(Tanpa Nama Unit)'}</span>
+                    <span className="text-blue-600 truncate max-w-[150px] sm:max-w-none ml-1">{activeUnit.specificDetail || '(Tanpa Nama Unit)'}</span>
                   </h2>
 
                   {(user?.email?.toLowerCase() === 'ahhu@utt.com' || user?.email?.toLowerCase() === 'vrv@gmail.com') && (
-                    <div className="flex gap-1 bg-slate-950/50 p-1 rounded-lg border border-slate-800/50">
+                    <div className="flex gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
                       <button 
                         onClick={() => setTemplateMode('indoor')}
-                        className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${activeUnit?.templateMode === 'indoor' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${activeUnit?.templateMode === 'indoor' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-600 hover:text-slate-900'}`}
                       >
                         INDOOR
                       </button>
                       <button 
                         onClick={() => setTemplateMode('outdoor')}
-                        className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${activeUnit?.templateMode === 'outdoor' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-500 hover:text-slate-300'}`}
+                        className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${activeUnit?.templateMode === 'outdoor' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-600 hover:text-slate-900'}`}
                       >
                         OUTDOOR
                       </button>
@@ -1616,9 +1734,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 </div>
                 {userRole !== 'engineer' && userRole !== 'standby_engineer' && (
                   <div className="flex items-center gap-3 self-start sm:self-auto">
-                    <div className="px-3 py-1.5 bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-full flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">SEDANG DIEDIT</span>
+                    <div className="px-3 py-1.5 bg-white/80 backdrop-blur-md border border-slate-200 rounded-full flex items-center gap-2 shadow-sm">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse shadow-[0_0_8px_rgba(37,99,235,0.5)]" />
+                      <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">SEDANG DIEDIT</span>
                     </div>
                   </div>
                 )}
@@ -1628,11 +1746,11 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
             {!isDME && (
               <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <button onClick={() => document.getElementById('bulk')?.click()} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20">
+                <button onClick={() => document.getElementById('bulk')?.click()} className="flex-1 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white p-3.5 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20">
                   <Upload className="w-5 h-5" /> Unggah Banyak Foto Sekaligus
                 </button>
                 <input id="bulk" title="Unggah banyak foto" type="file" multiple accept="image/*" className="hidden" onChange={handleBulkPhotoUpload} />
-                <button onClick={() => setAddCardModalOpen(true)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20">
+                <button onClick={() => setAddCardModalOpen(true)} className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white p-3.5 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20">
                   <Plus className="w-5 h-5" /> Tambah Kartu Manual
                 </button>
               </div>
@@ -1643,10 +1761,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 <div 
                   key={card.id} 
                   onClick={() => setFocusedCardId(card.id)}
-                  className={`bg-slate-800/50 p-2.5 sm:p-4 rounded-xl border relative group transition-all duration-300 ${
+                  className={`bg-white p-3 sm:p-4 rounded-2xl border relative group transition-all duration-300 shadow-md ${
                     focusedCardId === card.id 
-                    ? 'border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.2)] ring-1 ring-blue-500/50' 
-                    : 'border-slate-700/50 hover:border-blue-500/30'
+                    ? 'border-blue-500 shadow-blue-500/10 ring-2 ring-blue-500/30' 
+                    : 'border-sky-100 hover:border-blue-300 hover:shadow-lg'
                   }`}
                 >
                   <div className="flex justify-between items-center mb-2 sm:mb-3">
@@ -1655,7 +1773,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       <button onClick={() => removeCard(card.id)} className="text-slate-500 hover:text-red-400 transition" title="Hapus Card"><Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
                     )}
                   </div>
-                  <div className="aspect-video bg-slate-900 rounded-lg mb-2 sm:mb-4 overflow-hidden relative border border-slate-700/50">
+                  <div className="aspect-video bg-slate-100 rounded-lg mb-2 sm:mb-4 overflow-hidden relative border border-slate-200">
                     {card.photoBase64 ? (
                       <>
                         <img src={card.photoBase64} alt={card.description || `Foto dokumentasi ${idx + 1}`} title={card.description || `Foto dokumentasi ${idx + 1}`} className="w-full h-full object-cover" />
@@ -1710,39 +1828,56 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                         </div>
                       </>
                     ) : (
-                      <div className="w-full h-full bg-slate-950 flex transition-all">
+                      <div className="w-full h-full bg-slate-50 border border-dashed border-sky-200 rounded-lg flex transition-all">
                         {isDME ? (
                           <div className="w-full h-full flex flex-col items-center justify-center gap-1">
-                            <span className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-tight">Tidak ada foto</span>
+                            <span className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-tight">Tidak ada foto</span>
                           </div>
                         ) : (!userRole || userRole === 'engineer' || userRole === 'standby_engineer') ? (
                           <>
                             <button 
                               onClick={() => setActiveCameraCardId(card.id)}
-                              className="flex-1 flex flex-col items-center justify-center gap-1 sm:gap-2 hover:bg-blue-600/10 transition-colors group/camera border-r border-slate-800/50"
+                              className="flex-1 flex flex-col items-center justify-center gap-1 sm:gap-2 hover:bg-blue-100/60 transition-colors group/camera border-r border-sky-200/80"
                             >
-                              <Camera className="w-5.5 h-5.5 sm:w-7 sm:h-7 text-slate-600 group-hover/camera:text-blue-400 transition-colors" />
-                              <span className="text-[8px] sm:text-[9px] text-slate-500 font-bold uppercase tracking-tight group-hover/camera:text-slate-300">Ambil Foto</span>
+                              <Camera className="w-5.5 h-5.5 sm:w-7 sm:h-7 text-slate-500 group-hover/camera:text-blue-600 transition-colors" />
+                              <span className="text-[8px] sm:text-[9px] text-slate-600 font-bold uppercase tracking-tight group-hover/camera:text-blue-600">Ambil Foto</span>
                             </button>
                             
-                            <label className="flex-1 flex flex-col items-center justify-center gap-1 sm:gap-2 cursor-pointer hover:bg-emerald-600/10 transition-colors group/upload">
-                              <Upload className="w-5.5 h-5.5 sm:w-7 sm:h-7 text-slate-600 group-hover/upload:text-emerald-400 transition-colors" />
-                              <span className="text-[8px] sm:text-[9px] text-slate-500 font-bold uppercase tracking-tight group-hover/upload:text-slate-300 font-medium">Unggah Foto</span>
+                            <label className="flex-1 flex flex-col items-center justify-center gap-1 sm:gap-2 cursor-pointer hover:bg-emerald-100/60 transition-colors group/upload">
+                              <Upload className="w-5.5 h-5.5 sm:w-7 sm:h-7 text-slate-500 group-hover/upload:text-emerald-600 transition-colors" />
+                              <span className="text-[8px] sm:text-[9px] text-slate-600 font-bold uppercase tracking-tight group-hover/upload:text-emerald-600">Unggah Foto</span>
                               <input type="file" className="hidden" accept="image/*" onChange={e => handlePhotoChange(card.id, e.target.files?.[0] || null)} />
                             </label>
                           </>
                         ) : (
-                          <label className="w-full h-full flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-slate-800/80 transition-colors group/upload">
-                            <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-slate-700 group-hover/upload:text-blue-500 transition-colors" />
-                            <span className="text-[8px] sm:text-[10px] text-slate-600 font-bold uppercase mt-1 group-hover/upload:text-slate-400">Unggah Foto</span>
+                          <label className="w-full h-full flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-sky-100/80 transition-colors group/upload">
+                            <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-slate-500 group-hover/upload:text-blue-600 transition-colors" />
+                            <span className="text-[8px] sm:text-[10px] text-slate-600 font-bold uppercase mt-1 group-hover/upload:text-blue-600">Unggah Foto</span>
                             <input type="file" className="hidden" accept="image/*" onChange={e => handlePhotoChange(card.id, e.target.files?.[0] || null)} />
                           </label>
                         )}
                       </div>
                     )}
                   </div>
-                  <textarea title="Deskripsi Foto" value={card.description} onChange={e => handleDescriptionChange(card.id, e.target.value)} disabled={isDME} className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg p-2 sm:p-3 text-xs sm:text-sm text-white outline-none focus:ring-1 focus:ring-blue-500 transition placeholder:text-slate-700 disabled:opacity-75 disabled:cursor-not-allowed" rows={2} placeholder="Masukkan deskripsi dokumentasi..." />
-                  {user?.email === 'ats@gmail.com' && (
+                  <div className="relative w-full">
+                    <textarea title="Deskripsi Foto" value={card.description} onChange={e => handleDescriptionChange(card.id, e.target.value)} disabled={isDME || translatingCardId === card.id} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 pr-9 sm:p-3 sm:pr-10 text-xs sm:text-sm text-slate-900 font-medium outline-none focus:bg-white focus:border-blue-500 transition placeholder:text-slate-400 disabled:opacity-75 disabled:cursor-not-allowed" rows={2} placeholder="Masukkan deskripsi dokumentasi..." />
+                    {(user?.email === 'ats@gmail.com' || user?.email === 'fcu@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com' || user?.email === 'trafo@gmail.com') && (
+                      <button
+                        type="button"
+                        onClick={() => handleTranslateCardDescription(card.id)}
+                        disabled={isDME || translatingCardId !== null || !card.description}
+                        className="absolute top-2 right-2 p-1.5 bg-blue-50 border border-blue-200 text-blue-600 hover:text-white hover:bg-blue-600 rounded-md transition active:scale-95 disabled:opacity-30 cursor-pointer flex items-center gap-1 shadow-sm"
+                        title="Translate Deskripsi (EN ⇄ ID)"
+                      >
+                        {translatingCardId === card.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Languages className="w-3.5 h-3.5 text-blue-600 hover:text-white" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  {(user?.email === 'ats@gmail.com' || user?.email === 'fcu@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com' || user?.email === 'trafo@gmail.com') && (
                     <div className="relative flex items-center mt-1.5 w-full">
                       <input
                         type="text"
@@ -1750,7 +1885,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                         value={card.parameter || ''}
                         onChange={e => handleParameterChange(card.id, e.target.value)}
                         disabled={isDME || analyzingCardId === card.id}
-                        className="w-full bg-slate-950/80 border border-slate-800 rounded-lg p-2 pr-9 text-xs text-emerald-400 outline-none focus:ring-1 focus:ring-emerald-500 transition placeholder:text-slate-600 disabled:opacity-75 disabled:cursor-not-allowed font-mono"
+                        className="w-full bg-emerald-50/60 border border-emerald-200 rounded-xl p-2 pr-9 text-xs text-emerald-800 font-bold outline-none focus:bg-white focus:border-emerald-500 transition placeholder:text-slate-400 disabled:opacity-75 disabled:cursor-not-allowed font-mono"
                         placeholder="Nilai parameter (contoh: 395 V, 31 °C, 0.35 Ω)..."
                       />
                       {(card.photoBase64 || card.photo) && (
@@ -1758,7 +1893,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                           type="button"
                           onClick={() => handleAnalyzeSingleCard(card.id)}
                           disabled={isDME || analyzingCardId !== null}
-                          className="absolute right-2.5 p-1 bg-violet-600/20 border border-violet-500/30 text-violet-400 hover:text-white rounded transition active:scale-95 disabled:opacity-50"
+                          className="absolute right-2.5 p-1 bg-violet-50 border border-violet-200 text-violet-600 hover:bg-violet-600 hover:text-white rounded transition active:scale-95 disabled:opacity-50 shadow-sm"
                           title="Generate parameter dari foto dengan AI"
                         >
                           {analyzingCardId === card.id ? (
@@ -1774,17 +1909,17 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               ))}
             </div>
 
-            <div className="grid grid-cols-2 sm:flex sm:flex-row sm:flex-wrap lg:flex-nowrap items-stretch justify-center gap-2 sm:gap-3 mt-12 bg-slate-900/40 p-4 sm:p-5 rounded-[2rem] border border-slate-700/30 backdrop-blur-xl w-full">
+            <div className="grid grid-cols-2 sm:flex sm:flex-row sm:flex-wrap lg:flex-nowrap items-stretch justify-center gap-2 sm:gap-3 mt-12 bg-white/90 backdrop-blur-xl p-4 sm:p-5 rounded-[2rem] border border-sky-100/90 shadow-2xl shadow-sky-900/10 w-full">
               {!isDME && (
                 <button 
                   onClick={handleManualSave} 
                   disabled={isSaving || isExporting}
-                  className={`col-span-1 sm:flex-1 sm:min-w-[150px] py-3.5 sm:py-4 px-1.5 sm:px-2 bg-blue-600/20 text-blue-400 rounded-xl font-bold flex flex-col items-center justify-center gap-1.5 border border-blue-500/30 transition shadow-xl active:scale-95 text-[10px] sm:text-xs md:text-sm group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600/30'}`}
+                  className={`col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 hover:border-slate-300 rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-sm transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {isSaving ? (
-                    <RefreshCw className="w-4 h-4 sm:w-5 h-5 animate-spin" />
+                    <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-slate-600" />
                   ) : (
-                    <Save className="w-4 h-4 sm:w-5 h-5 group-active:scale-90 transition-transform" /> 
+                    <Save className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 group-active:scale-90 transition-transform" /> 
                   )}
                   <span className="text-center leading-tight">SIMPAN KE ARSIP</span>
                 </button>
@@ -1793,23 +1928,23 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               <button 
                 onClick={() => setShowPreview(true)} 
                 disabled={isSaving || isExporting}
-                className={`col-span-1 sm:flex-1 sm:min-w-[150px] py-3.5 sm:py-4 px-1.5 sm:px-2 bg-emerald-600/20 text-emerald-400 rounded-xl font-bold flex flex-col items-center justify-center gap-1.5 border border-emerald-500/30 transition shadow-xl active:scale-95 text-[10px] sm:text-xs md:text-sm group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-emerald-600/30'}`}
+                className={`col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-emerald-50 border border-emerald-200 text-emerald-900 hover:bg-emerald-100 rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-sm transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <Eye className="w-4 h-4 sm:w-5 h-5 group-active:scale-90 transition-transform" />
+                <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 group-active:scale-90 transition-transform" />
                 <span className="text-center leading-tight">PREVIEW DOKUMENTASI</span>
               </button>
 
-              {user?.email === 'ats@gmail.com' && (
+              {(user?.email === 'ats@gmail.com' || user?.email === 'fcu@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com') && (
                 <>
                   <button 
                     onClick={handleBulkAnalyzeAtsParameters} 
                     disabled={isSaving || isExporting || isBulkAnalyzing}
-                    className={`col-span-1 sm:flex-1 sm:min-w-[150px] py-3.5 sm:py-4 px-1.5 sm:px-2 bg-violet-600/20 text-violet-400 rounded-xl font-bold flex flex-col items-center justify-center gap-1.5 border border-violet-500/30 transition shadow-xl active:scale-95 text-[10px] sm:text-xs md:text-sm group ${(isSaving || isExporting || isBulkAnalyzing) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-violet-600/30'}`}
+                    className={`col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-purple-50 border border-purple-200 text-purple-900 hover:bg-purple-100 rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-sm transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer ${(isSaving || isExporting || isBulkAnalyzing) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {isBulkAnalyzing ? (
-                      <Loader2 className="w-4 h-4 sm:w-5 h-5 animate-spin" />
+                      <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-purple-700" />
                     ) : (
-                      <Sparkles className="w-4 h-4 sm:w-5 h-5 group-active:scale-90 transition-transform" />
+                      <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-700 group-active:scale-90 transition-transform" />
                     )}
                     <span className="text-center leading-tight">
                       {isBulkAnalyzing ? 'MENGANALISIS...' : 'GENERATE AI PARAMETER'}
@@ -1818,10 +1953,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   <button 
                     onClick={handleTriggerAtsData} 
                     disabled={isSaving || isExporting || isBulkAnalyzing}
-                    className={`col-span-1 sm:flex-1 sm:min-w-[150px] py-3.5 sm:py-4 px-1.5 sm:px-2 bg-slate-800/80 text-slate-300 rounded-xl font-bold flex flex-col items-center justify-center gap-1.5 border border-slate-700/50 transition shadow-xl active:scale-95 text-[10px] sm:text-xs md:text-sm group ${(isSaving || isExporting || isBulkAnalyzing) ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-700'}`}
+                    className={`col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-sky-50 border border-sky-200 text-sky-900 hover:bg-sky-100 rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-sm transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer ${(isSaving || isExporting || isBulkAnalyzing) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    <RefreshCw className="w-4 h-4 sm:w-5 h-5 group-active:scale-90 transition-transform animate-none hover:rotate-180 duration-500" />
-                    <span className="text-center leading-tight">SINKRONISASI KE ATS</span>
+                    <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 text-sky-700 group-active:scale-90 transition-transform hover:rotate-180 duration-500" />
+                    <span className="text-center leading-tight">
+                      {user?.email === 'fcu@gmail.com' ? 'SINKRONISASI KE FCU' : user?.email === 'pju@gmail.com' ? 'SINKRONISASI KE PJU' : user?.email === 'pdu@gmail.com' ? 'SINKRONISASI KE PDU' : user?.email === 'coolingtower@gmail.com' ? 'SINKRONISASI KE COOLING TOWER' : user?.email === 'generator@gmail.com' ? 'SINKRONISASI KE GENERATOR' : user?.email === 'acsplit@gmail.com' ? 'SINKRONISASI KE SPLIT WALL AC' : (user?.email as string) === 'trafo@gmail.com' ? 'SINKRONISASI KE TRANSFORMATOR (TRAFO)' : 'SINKRONISASI KE ATS'}
+                    </span>
                   </button>
                 </>
               )}
@@ -1829,12 +1966,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               <button 
                 onClick={() => handleExportPDF()} 
                 disabled={isSaving || isExporting}
-                className={`col-span-2 sm:col-span-1 sm:flex-1 sm:min-w-[150px] py-3.5 sm:py-4 px-1.5 sm:px-2 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-2xl transition active:scale-95 text-[10px] sm:text-xs md:text-sm group ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : 'hover:from-red-700 hover:to-rose-700'}`}
+                className={`col-span-2 sm:col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-md shadow-blue-600/20 transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {isExporting ? (
-                  <RefreshCw className="w-4 h-4 sm:w-5 h-5 animate-spin" />
+                  <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
                 ) : (
-                  <FileType className="w-4 h-4 sm:w-5 h-5 group-active:scale-90 transition-transform" />
+                  <FileType className="w-4 h-4 sm:w-5 sm:h-5 group-active:scale-90 transition-transform" />
                 )}
                 <span className="text-center leading-tight">
                   {isExporting ? 'EXPORTING...' : 'EXPORT DOKUMENTASI (PDF)'}
@@ -1861,14 +1998,14 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       <AnimatePresence>
         {addCardModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" onClick={() => setAddCardModalOpen(false)}>
-            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} onClick={e => e.stopPropagation()} className="bg-slate-900 p-8 rounded-3xl border border-slate-700 w-full max-w-sm shadow-2xl">
-              <h3 className="text-xl font-bold text-white mb-2 text-center">Add Multiple Cards</h3>
-              <p className="text-xs text-slate-500 text-center mb-6">How many documentation slots to add?</p>
-              <input type="number" title="Jumlah kartu yang ingin ditambahkan" placeholder="Masukkan angka" value={numberOfCardsToAdd} onChange={e => setNumberOfCardsToAdd(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-2xl p-4 text-white text-center text-4xl font-bold mb-6 outline-none focus:ring-2 focus:ring-blue-500 shadow-inner" min="1" max="50" autoFocus />
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md" onClick={() => setAddCardModalOpen(false)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }} onClick={e => e.stopPropagation()} className="bg-white/95 backdrop-blur-xl p-8 rounded-3xl border border-sky-100 w-full max-w-sm shadow-2xl text-slate-800">
+              <h3 className="text-xl font-black text-slate-900 mb-2 text-center">Tambah Kartu Foto</h3>
+              <p className="text-xs text-slate-500 text-center mb-6 font-medium">Berapa banyak slot foto yang ingin ditambahkan?</p>
+              <input type="number" title="Jumlah kartu yang ingin ditambahkan" placeholder="Masukkan angka" value={numberOfCardsToAdd} onChange={e => setNumberOfCardsToAdd(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-slate-900 text-center text-4xl font-black mb-6 outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all" min="1" max="50" autoFocus />
               <div className="flex gap-4">
-                <button onClick={() => setAddCardModalOpen(false)} className="flex-1 bg-slate-800 text-slate-400 p-3 rounded-xl font-bold hover:bg-slate-700 transition">Cancel</button>
-                <button onClick={confirmAddCards} className="flex-1 bg-blue-600 text-white p-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-600/20">Add Slots</button>
+                <button onClick={() => setAddCardModalOpen(false)} className="flex-1 bg-slate-100 text-slate-600 p-3 rounded-xl font-bold hover:bg-slate-200 transition border border-slate-200">Batal</button>
+                <button onClick={confirmAddCards} className="flex-1 bg-blue-600 text-white p-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-600/20">Tambah Slot</button>
               </div>
             </motion.div>
           </div>
@@ -1947,6 +2084,76 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             prefillData={atsPrefillData} 
             onClearPrefill={() => setAtsPrefillData(null)} 
             onChange={setAtsData}
+          />
+        </div>
+      )}
+
+      {user?.email === 'fcu@gmail.com' && (
+        <div className="mt-12 border-t border-slate-800 pt-12">
+          <FCUServiceReport 
+            prefillData={fcuPrefillData} 
+            onClearPrefill={() => setFcuPrefillData(null)} 
+            onChange={setFcuData}
+          />
+        </div>
+      )}
+
+      {user?.email === 'pju@gmail.com' && (
+        <div className="mt-12 border-t border-slate-800 pt-12">
+          <PJUServiceReport 
+            prefillData={pjuPrefillData} 
+            onClearPrefill={() => setPjuPrefillData(null)} 
+            onChange={setPjuData}
+          />
+        </div>
+      )}
+
+      {user?.email === 'pdu@gmail.com' && (
+        <div className="mt-12 border-t border-slate-800 pt-12">
+          <PDUServiceReport 
+            prefillData={pduPrefillData} 
+            onClearPrefill={() => setPduPrefillData(null)} 
+            onChange={setPduData}
+          />
+        </div>
+      )}
+
+      {user?.email === 'coolingtower@gmail.com' && (
+        <div className="mt-12 border-t border-slate-800 pt-12">
+          <CTServiceReport 
+            prefillData={ctPrefillData} 
+            onClearPrefill={() => setCtPrefillData(null)} 
+            onChange={setCtData}
+          />
+        </div>
+      )}
+
+      {user?.email === 'generator@gmail.com' && (
+        <div className="mt-12 border-t border-slate-800 pt-12">
+          <GeneratorServiceReport 
+            prefillData={generatorPrefillData} 
+            onClearPrefill={() => setGeneratorPrefillData(null)} 
+            onChange={setGeneratorData}
+          />
+        </div>
+      )}
+
+      {user?.email === 'acsplit@gmail.com' && (
+        <div className="mt-12 border-t border-slate-800 pt-12">
+          <ACSplitServiceReport 
+            prefillData={acSplitPrefillData} 
+            onClearPrefill={() => setAcSplitPrefillData(null)} 
+            onChange={setAcSplitData}
+          />
+        </div>
+      )}
+
+      {user?.email === 'trafo@gmail.com' && (
+        <div className="mt-12 border-t border-slate-800 pt-12">
+          <TrafoServiceReport 
+            prefillData={trafoPrefillData} 
+            onClearPrefill={() => setTrafoPrefillData(null)} 
+            onChange={setTrafoData}
           />
         </div>
       )}

@@ -4,10 +4,10 @@ import (
 	"context"
 	"log"
 
-	"github.com/gariiriana/utt-report-maintenance/backend/core/config"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/models"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/repositories"
-	"github.com/gariiriana/utt-report-maintenance/backend/core/services"
+	"github.com/gariiriana/DwimitraSystem/backend/core/config"
+	"github.com/gariiriana/DwimitraSystem/backend/core/models"
+	"github.com/gariiriana/DwimitraSystem/backend/core/repositories"
+	"github.com/gariiriana/DwimitraSystem/backend/core/services"
 )
 
 func main() {
