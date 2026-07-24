@@ -2,18 +2,18 @@
 
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://reactjs.org/)
 [![Go](https://img.shields.io/badge/Go-1.24-00ADD8?style=flat-square&logo=go)](https://go.dev/)
-[![NVIDIA NIM](https://img.shields.io/badge/NVIDIA_NIM-AI_Agent-76B900?style=flat-square&logo=nvidia)](https://developer.nvidia.com/)
-[![Meta Llama](https://img.shields.io/badge/Meta_Llama_3-LLM-0460A9?style=flat-square&logo=meta)](https://meta.ai/)
+[![Cloudflare](https://img.shields.io/badge/Cloudflare-WAF_&_CDN-F38020?style=flat-square&logo=cloudflare)](https://cloudflare.com/)
+[![Google Gemini AI](https://img.shields.io/badge/Google_Gemini-3.1_Flash-4285F4?style=flat-square&logo=googlegemini)](https://ai.google.dev/)
 [![Firebase](https://img.shields.io/badge/Firebase-Cloud-FFCA28?style=flat-square&logo=firebase)](https://firebase.google.com/)
 [![Tailwind](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-007ACC?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?style=flat-square&logo=vite)](https://vitejs.dev/)
-[![Firebase](https://img.shields.io/badge/Deployed_on-Firebase-FFCA28?style=flat-square&logo=firebase)](https://firebase.google.com/)
-[![Security](https://img.shields.io/badge/Security-Hardened-brightgreen?style=flat-square&logo=shield)](#-security)
+[![Security](https://img.shields.io/badge/Security-Enterprise_Shield-brightgreen?style=flat-square&logo=shield)](#-security)
 
-**DwimitraSystem** adalah sistem dokumentasi infrastruktur kritikal profesional yang dirancang khusus untuk memfasilitasi pelaporan pemeliharaan data center bagi **PT Dwimitra Ekatama Mandiri**.
+**DwimitraSystem** adalah sistem dokumentasi dan pemeliharaan infrastruktur kritikal profesional yang dirancang khusus untuk memfasilitasi pelaporan operasional & maintenance data center bagi **PT Dwimitra Ekatama Mandiri**.
 
-> 🔗 **Live Production**: <https://report-utt.web.app/>
+> 🔗 **Live Primary Domain**: <https://dwimitrasystem.com/>  
+> 🔄 **Fallback/Legacy URL**: <https://report-utt.web.app/> *(Auto-redirect ke custom domain)*
 
 ---
 
@@ -114,25 +114,28 @@
 
 | Technology | Purpose |
 | :--- | :--- |
+| **Custom Domain** | `dwimitrasystem.com` & `www.dwimitrasystem.com` |
+| **Cloudflare CDN & DNS** | High-performance DNS, global edge caching & Brotli compression |
+| **Cloudflare WAF** | Enterprise Shield 4-Layer Security (Geo-blocking, Bot Management, Direct IP Protection) |
 | **Firebase Authentication** | User auth & session management |
 | **Cloud Firestore** | NoSQL real-time database |
 | **Firebase Security Rules** | Database-level access control |
-| **Firebase Hosting** | CI/CD, SSL, & hosting |
-| **Firebase App Check** | Request verification & anti-abuse |
-| **PWA Cache Strategy** | Network-First strategy for reliable API data |
+| **Firebase Hosting** | Static hosting, SSL auto-provisioning & edge deployment |
+| **PWA Cache Strategy** | NetworkFirst strategy for reliable API & offline support |
 
 ---
 
 ## 🚀 Features
 
-### 🤖 AI-Powered Assistant & Chat Copilot
+### 🤖 AI-Powered Service Report, Chat Copilot & Voice Agent
 
-Sistem asisten AI interaktif tingkat korporat yang terintegrasi penuh untuk membantu teknisi data center:
+Sistem asisten AI interaktif tingkat korporat berbasis **Google Gemini 3.1 Flash** yang terintegrasi penuh:
 
-- **Interactive DC Chatbot** — Floating widget chat (`AIChatWidget.tsx`) dengan dukungan render markdown penuh, suggestion chip kontekstual, riwayat percakapan, dan fitur upload gambar.
+- **AI Service Report Generator** — Pembuatan laporan service maintenance otomatis berakurasi tinggi (ATS, AC Split, CT, FCU, Generator, PDU, PJU, Trafo) lengkap dengan ringkasan temuan teknis, tindakan korektif, dan saran pencegahan.
+- **AI Voice Agent & Controls** — Fitur interaksi suara hands-free (`AIVoiceAgent.tsx` & `useVoiceAgent.ts`) untuk navigasi, penginputan parameter maintenance via perintah suara, dan asistensi teknis langsung di lapangan.
+- **Interactive DC Chatbot** — Floating widget chat (`AIChatWidget.tsx`) dengan dukungan render markdown penuh, suggestion chip kontekstual, riwayat percakapan, dan fitur upload foto.
 - **Multimodal Visual Analyzer** — Analisis visual cerdas panel listrik, grounding, dan thermal hotspot menggunakan model **`models/gemini-3.1-flash-lite`**.
-- **Telemetry Validator & Consolidator** — Pengenalan otomatis parameter teknis dan pembuatan remarks (dalam Bahasa Indonesia) menggunakan model penalaran tingkat tinggi **`models/gemini-3.1-flash-lite`**.
-- **Dynamic Load Balancing** — Algoritma *round-robin key pool* kustom pada backend Go (`ai_service.go`) untuk mengatasi pembatasan rate limit API Google Gemini.
+- **Dynamic Load Balancing & Multi-Key Failover** — Algoritma *round-robin key pool* kustom pada backend Go (`ai_service.go`) untuk menjamin zero-downtime dan mengatasi rate limit API.
 
 ### 📷 Smart Camera & Watermarking
 
@@ -347,13 +350,22 @@ All API endpoints (except health checks) require authentication via one of:
 
 ## 🔒 Security
 
+### Cloudflare WAF Enterprise Shield (4-Layer Protection)
+
+Sistem pertahanan keamanan perimeter tingkat tinggi yang beroperasi langsung di Cloudflare Edge Server:
+
+- **Layer 1 — Geolocation Defense (`ip.src.country ne "ID"`)**: Memasang *Managed Challenge* otomatis untuk semua permintaan yang berasal dari luar wilayah Indonesia.
+- **Layer 2 — Known Bots & Automated Scrapers (`cf.client.bot`)**: Mencegah dan menantang bot otomatis, penambang data, dan alat scanning liar.
+- **Layer 3 — Empty User-Agent Filtering (`http.user_agent eq ""`)**: Menolak permintaan mencurigakan tanpa User-Agent header (ciri khas bot spammer/exploit kit).
+- **Layer 4 — Host Header & Direct IP Protection (`http.host ne "dwimitrasystem.com" and http.host ne "www.dwimitrasystem.com"`)**: Menangkal serangan penembakan IP langsung (*Direct IP Scraping*) dan *Host Header Spoofing*.
+
 ### Authentication & Authorization
 
-- **Strict Authentication** — Mandatory Firebase ID Token validation for all sensitive operations.
-- **Role-Based Access Control (RBAC)** — 16+ roles with granular Firestore & Storage security rules.
-- **Infrastructure Hardening** — Deprecated legacy `X-API-Secret` bypass to prevent unauthorized API access.
-- **Anti-Enumeration** — Transitioned to high-entropy UUIDs for critical maintenance records.
-- **Resource Protection** — Semaphore-based Worker Pools (Concurrent Limit: 5) to prevent function timeouts and database exhaustion.
+- **Strict Authentication** — Mandatory Firebase ID Token validation untuk semua operasi sensitif.
+- **Role-Based Access Control (RBAC)** — 16+ role dengan aturan keamanan granular pada Firestore & Firebase Storage.
+- **Infrastructure Hardening** — Deprecated legacy `X-API-Secret` bypass untuk mencegah akses API tanpa izin.
+- **Anti-Enumeration** — Transisi ke high-entropy UUIDs untuk seluruh data pemeliharaan kritikal.
+- **Resource Protection** — Semaphore-based Worker Pools (Concurrent Limit: 5) untuk mencegah database exhaustion.
 - **Scoped Data Deletion** — Pengamanan proses penghapusan data massal (Batch Operations) untuk menjaga integritas database.
 
 ### Security Headers
