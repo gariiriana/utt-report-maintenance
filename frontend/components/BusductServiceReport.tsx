@@ -130,7 +130,7 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={handleAIAnalysis}
+            onClick={() => handleAIAnalysis()}
             disabled={isAnalyzing}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-medium text-xs rounded-lg transition-all shadow-lg hover:shadow-cyan-500/20 disabled:opacity-50"
           >
