@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Eye, Zap, Sparkles } from 'lucide-react';
+import { Eye, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   BusductCustomerInfo,
@@ -13,7 +13,6 @@ import {
   DEFAULT_BUSDUCT_TIME_SPENT,
 } from '@/types/busductReportTypes';
 import { generateBusductReportPDF } from '@/service_reports/busduct/generateBusductReportPDF';
-import { analyzeBusductReportAI } from '@/utils/aiAgentPipeline';
 
 interface UploadedPhoto {
   id: string;
@@ -42,7 +41,9 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
   });
   const [timeSpent, setTimeSpent] = useState<BusductTimeSpent>(DEFAULT_BUSDUCT_TIME_SPENT);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<'visual' | 'cleaning' | 'thermal' | 'analysis' | 'customer' | 'time' | 'photos'>('visual');
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Sync state with parent
   useEffect(() => {
@@ -51,15 +52,11 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
     }
   }, [customerInfo, reportData, timeSpent, onChange]);
 
-  // Load from prefill
+  // Load from prefill or sinkronisasi
   useEffect(() => {
     if (prefillData) {
-      let mappedPhotos: UploadedPhoto[] = [];
-      if (prefillData.customerInfo) setCustomerInfo(prefillData.customerInfo);
-      if (prefillData.reportData) setReportData(prefillData.reportData);
-      if (prefillData.timeSpent) setTimeSpent(prefillData.timeSpent);
       if (prefillData.photos) {
-        mappedPhotos = prefillData.photos.map((p: any, i: number) => ({
+        const mappedPhotos: UploadedPhoto[] = prefillData.photos.map((p: any, i: number) => ({
           id: `busduct-p-${i}-${Date.now()}`,
           base64: p.base64 || '',
           preview: p.preview || (p.base64 ? `data:image/jpeg;base64,${p.base64}` : ''),
@@ -69,36 +66,31 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
         }));
         setPhotos(mappedPhotos);
       }
-      if (mappedPhotos.length > 0) {
-        handleAIAnalysis(mappedPhotos);
-      }
+
+      if (prefillData.customerInfo) setCustomerInfo(prefillData.customerInfo);
+      if (prefillData.reportData) setReportData(prefillData.reportData);
+      if (prefillData.timeSpent) setTimeSpent(prefillData.timeSpent);
+
+      toast.success('Mengekstrak data foto & parameter ke Service Report Panel Busduct!');
+
       if (onClearPrefill) onClearPrefill();
     }
   }, [prefillData, onClearPrefill]);
 
-  // AI Auto-Fill Handler
-  const handleAIAnalysis = async (overridePhotos?: UploadedPhoto[]) => {
-    const targetPhotos = overridePhotos || photos;
-    try {
-      setIsAnalyzing(true);
-      toast.loading('AI Agent sedang menganalisis foto & parameter Panel Busduct...', { id: 'busduct-ai-toast' });
-      const photoPayload = targetPhotos.map((p) => ({
-        base64: p.base64,
-        category: p.category,
-        label: p.label,
-        parameter: p.parameter,
-      }));
+  const updateVisualItem = (idx: number, field: string, val: any) => {
+    setReportData((prev) => {
+      const updated = [...prev.visualInspection];
+      updated[idx] = { ...updated[idx], [field]: val };
+      return { ...prev, visualInspection: updated };
+    });
+  };
 
-      const res = await analyzeBusductReportAI(photoPayload, reportData);
-      if (res) {
-        toast.success('Analisis AI Busduct selesai! Form terisi otomatis.', { id: 'busduct-ai-toast' });
-      }
-    } catch (err: any) {
-      console.error('Busduct AI analysis error', err);
-      toast.error(`AI Analysis Error: ${err.message || 'Gagal menganalisis'}`, { id: 'busduct-ai-toast' });
-    } finally {
-      setIsAnalyzing(false);
-    }
+  const updateCleaningItem = (idx: number, field: string, val: any) => {
+    setReportData((prev) => {
+      const updated = [...prev.cleaning];
+      updated[idx] = { ...updated[idx], [field]: val };
+      return { ...prev, cleaning: updated };
+    });
   };
 
   const handleExportPDF = async () => {
@@ -118,254 +110,438 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto p-4 bg-slate-900 text-slate-100 rounded-xl border border-slate-800 shadow-2xl">
+    <div className="bg-white/95 backdrop-blur-xl border border-sky-100 rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl shadow-sky-900/10 text-slate-800">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-blue-900/60 to-slate-800 p-6 rounded-lg border border-blue-500/30">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
         <div>
-          <div className="flex items-center gap-2">
-            <Zap className="w-6 h-6 text-blue-400 animate-pulse" />
-            <h2 className="text-xl font-bold text-white tracking-wide">SERVICE REPORT PANEL BUSDUCT</h2>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-lg border border-blue-200 uppercase tracking-widest">
+              SERVICE REPORT — PANEL BUSDUCT
+            </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">PT. DWI MITRA EKATAMA MANDIRI — NeutraDC Cikarang</p>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2">
+            <Zap className="w-6 h-6 text-blue-600" />
+            Laporan Pemeliharaan Panel Busduct
+          </h2>
+          <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
+            PT. DWI MITRA EKATAMA MANDIRI — Neutra DC Cikarang
+          </p>
         </div>
-        <div className="flex items-center gap-3">
+        <button
+          onClick={handleExportPDF}
+          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-600/20 transition-all cursor-pointer"
+        >
+          <Eye className="w-4 h-4" />
+          Preview & Export PDF
+        </button>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-4 border-b border-slate-200 mb-6">
+        {[
+          { id: 'visual', label: 'Visual Inspection (10 Items)' },
+          { id: 'cleaning', label: 'Cleaning (2 Items)' },
+          { id: 'thermal', label: 'Thermal Joint' },
+          { id: 'analysis', label: 'Analysis & Remark' },
+          { id: 'customer', label: 'Customer Info' },
+          { id: 'time', label: 'Time Spent' },
+          { id: 'photos', label: `Dokumentasi (${photos.length})` },
+        ].map((tab) => (
           <button
-            onClick={() => handleAIAnalysis()}
-            disabled={isAnalyzing}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-medium text-xs rounded-lg transition-all shadow-lg hover:shadow-cyan-500/20 disabled:opacity-50"
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`px-4 py-2.5 rounded-xl font-bold text-xs whitespace-nowrap transition cursor-pointer ${
+              activeTab === tab.id
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
           >
-            <Sparkles className="w-4 h-4 text-cyan-200" />
-            {isAnalyzing ? 'Menganalisis...' : 'Analisis AI Auto-Fill'}
+            {tab.label}
           </button>
-          <button
-            onClick={handleExportPDF}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-lg transition-all shadow-lg hover:shadow-emerald-500/20"
-          >
-            <Eye className="w-4 h-4" />
-            Preview & Download PDF
-          </button>
-        </div>
+        ))}
       </div>
 
-      {/* Customer Info Form */}
-      <div className="bg-slate-800/60 p-5 rounded-lg border border-slate-700/60 space-y-4">
-        <h3 className="text-sm font-semibold text-blue-400 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-blue-400"></span> Informasi Customer & Equipment
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+      {/* TAB 1: VISUAL INSPECTION */}
+      {activeTab === 'visual' && (
+        <div className="space-y-6">
           <div>
-            <label className="text-slate-400">Company Name</label>
-            <input
-              type="text"
-              value={customerInfo.companyName}
-              onChange={(e) => setCustomerInfo({ ...customerInfo, companyName: e.target.value })}
-              className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 mt-1 focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="text-slate-400">Equipment Name</label>
-            <input
-              type="text"
-              value={customerInfo.equipmentName}
-              onChange={(e) => setCustomerInfo({ ...customerInfo, equipmentName: e.target.value })}
-              className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 mt-1 focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="text-slate-400">Type</label>
-            <input
-              type="text"
-              value={customerInfo.type}
-              onChange={(e) => setCustomerInfo({ ...customerInfo, type: e.target.value })}
-              className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 mt-1 focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="text-slate-400">Specification</label>
-            <input
-              type="text"
-              value={customerInfo.specification}
-              onChange={(e) => setCustomerInfo({ ...customerInfo, specification: e.target.value })}
-              className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 mt-1 focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="text-slate-400">Serial No</label>
-            <input
-              type="text"
-              value={customerInfo.serialNo}
-              onChange={(e) => setCustomerInfo({ ...customerInfo, serialNo: e.target.value })}
-              className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 mt-1 focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="text-slate-400">MOP No</label>
-            <input
-              type="text"
-              value={customerInfo.mopNo}
-              onChange={(e) => setCustomerInfo({ ...customerInfo, mopNo: e.target.value })}
-              className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 mt-1 focus:border-blue-500"
-            />
+            <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+              Visual Inspection & Maintenance (10 Items)
+            </h3>
+            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200">
+                  <tr>
+                    <th className="p-3 w-12 text-center">No</th>
+                    <th className="p-3">Activity</th>
+                    <th className="p-3 w-64">Parameter</th>
+                    <th className="p-3 w-32 text-center">Condition</th>
+                    <th className="p-3 w-48">Remarks (2-5 Kata)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {reportData.visualInspection.map((item, idx) => (
+                    <tr key={`v-${idx}`} className="hover:bg-slate-50 transition">
+                      <td className="p-3 font-bold text-center text-slate-400">{item.no}</td>
+                      <td className="p-3 text-slate-800 font-medium">{item.activity}</td>
+                      <td className="p-3 text-slate-500">{item.parameter}</td>
+                      <td className="p-3 text-center">
+                        <select
+                          value={item.isGood ? 'OK' : item.isNotGood ? 'NOK' : 'OK'}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            updateVisualItem(idx, 'isGood', val === 'OK');
+                            updateVisualItem(idx, 'isNotGood', val === 'NOK');
+                          }}
+                          className="w-full border border-slate-200 font-bold rounded-lg p-1.5 outline-none text-center bg-white"
+                        >
+                          <option value="OK">Good (√)</option>
+                          <option value="NOK">Not Good (×)</option>
+                        </select>
+                      </td>
+                      <td className="p-3">
+                        <input
+                          type="text"
+                          value={item.remarks}
+                          onChange={(e) => updateVisualItem(idx, 'remarks', e.target.value)}
+                          placeholder="Catatan..."
+                          className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Visual Inspection Table */}
-      <div className="bg-slate-800/60 p-5 rounded-lg border border-slate-700/60 space-y-3">
-        <h3 className="text-sm font-semibold text-blue-400 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-blue-400"></span> Visual Inspection & Maintenance (10 Items)
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-900 text-slate-300 border-b border-slate-700">
-                <th className="p-2 w-12 text-center">No</th>
-                <th className="p-2">Activity</th>
-                <th className="p-2">Parameter</th>
-                <th className="p-2 w-24 text-center">Condition</th>
-                <th className="p-2">Remarks (2-5 Kata)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reportData.visualInspection.map((item, idx) => (
-                <tr key={idx} className="border-b border-slate-800 hover:bg-slate-800/40">
-                  <td className="p-2 text-center font-mono text-slate-400">{item.no}</td>
-                  <td className="p-2 text-slate-200">{item.activity}</td>
-                  <td className="p-2 text-slate-400">{item.parameter}</td>
-                  <td className="p-2 text-center">
-                    <button
-                      onClick={() => {
-                        const updated = [...reportData.visualInspection];
-                        updated[idx].isGood = !updated[idx].isGood;
-                        updated[idx].isNotGood = !updated[idx].isGood;
-                        setReportData({ ...reportData, visualInspection: updated });
-                      }}
-                      className={`px-2 py-1 rounded text-xs font-semibold ${
-                        item.isGood ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'
-                      }`}
-                    >
-                      {item.isGood ? 'Good ✓' : 'Not Good ✗'}
-                    </button>
-                  </td>
-                  <td className="p-2">
-                    <input
-                      type="text"
-                      value={item.remarks}
-                      onChange={(e) => {
-                        const updated = [...reportData.visualInspection];
-                        updated[idx].remarks = e.target.value;
-                        setReportData({ ...reportData, visualInspection: updated });
-                      }}
-                      className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:border-blue-500"
-                    />
-                  </td>
-                </tr>
+      {/* TAB 2: CLEANING */}
+      {activeTab === 'cleaning' && (
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+              Cleaning & Maintenance (2 Items)
+            </h3>
+            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-slate-200">
+                  <tr>
+                    <th className="p-3 w-12 text-center">No</th>
+                    <th className="p-3">Activity</th>
+                    <th className="p-3 w-64">Parameter</th>
+                    <th className="p-3 w-32 text-center">Condition</th>
+                    <th className="p-3 w-48">Remarks (2-5 Kata)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {reportData.cleaning.map((item, idx) => (
+                    <tr key={`c-${idx}`} className="hover:bg-slate-50 transition">
+                      <td className="p-3 font-bold text-center text-slate-400">{item.no}</td>
+                      <td className="p-3 text-slate-800 font-medium">{item.activity}</td>
+                      <td className="p-3 text-slate-500">{item.parameter}</td>
+                      <td className="p-3 text-center">
+                        <select
+                          value={item.isGood ? 'OK' : item.isNotGood ? 'NOK' : 'OK'}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            updateCleaningItem(idx, 'isGood', val === 'OK');
+                            updateCleaningItem(idx, 'isNotGood', val === 'NOK');
+                          }}
+                          className="w-full border border-slate-200 font-bold rounded-lg p-1.5 outline-none text-center bg-white"
+                        >
+                          <option value="OK">Good (√)</option>
+                          <option value="NOK">Not Good (×)</option>
+                        </select>
+                      </td>
+                      <td className="p-3">
+                        <input
+                          type="text"
+                          value={item.remarks}
+                          onChange={(e) => updateCleaningItem(idx, 'remarks', e.target.value)}
+                          placeholder="Catatan..."
+                          className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: THERMAL JOINT */}
+      {activeTab === 'thermal' && (
+        <div className="space-y-6">
+          <div>
+            <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+              Thermal Measurement Joint
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-5 bg-slate-50/80 rounded-2xl border border-slate-200">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Breaker / Joint</label>
+                <input
+                  type="text"
+                  value={reportData.thermal.breaker}
+                  onChange={(e) => setReportData({ ...reportData, thermal: { ...reportData.thermal, breaker: e.target.value } })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 font-medium outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Result Temperature Joint (°C)</label>
+                <input
+                  type="text"
+                  value={reportData.thermal.resultTemp}
+                  onChange={(e) => setReportData({ ...reportData, thermal: { ...reportData.thermal, resultTemp: e.target.value } })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 font-medium outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Standard</label>
+                <input
+                  type="text"
+                  disabled
+                  value={reportData.thermal.standard}
+                  className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-500 font-bold"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Remarks</label>
+                <input
+                  type="text"
+                  value={reportData.thermal.remarks}
+                  onChange={(e) => setReportData({ ...reportData, thermal: { ...reportData.thermal, remarks: e.target.value } })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 font-medium outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: ANALYSIS & REMARK */}
+      {activeTab === 'analysis' && (
+        <div className="space-y-6">
+          <div className="p-5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-4">
+            <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wider flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+              Normal Operation
+            </h3>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Remark :</label>
+              <textarea
+                rows={3}
+                value={reportData.analysis.remark}
+                onChange={(e) => setReportData({ ...reportData, analysis: { ...reportData.analysis, remark: e.target.value } })}
+                className="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-900 outline-none focus:border-blue-500"
+                placeholder="Catatan operasi normal..."
+              />
+            </div>
+          </div>
+
+          <div className="p-5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-4">
+            <h3 className="text-sm font-bold text-rose-700 uppercase tracking-wider flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-rose-600"></span>
+              Abnormal Operation (Optional)
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Fault Symptom</label>
+                <input
+                  type="text"
+                  value={reportData.analysis.faultSymptom}
+                  onChange={(e) => setReportData({ ...reportData, analysis: { ...reportData.analysis, faultSymptom: e.target.value } })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Fault Analysis</label>
+                <input
+                  type="text"
+                  value={reportData.analysis.faultAnalysis}
+                  onChange={(e) => setReportData({ ...reportData, analysis: { ...reportData.analysis, faultAnalysis: e.target.value } })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Work Done / Action Taken</label>
+                <input
+                  type="text"
+                  value={reportData.analysis.workDone}
+                  onChange={(e) => setReportData({ ...reportData, analysis: { ...reportData.analysis, workDone: e.target.value } })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Fault Part SN</label>
+                <input
+                  type="text"
+                  value={reportData.analysis.faultPartSN}
+                  onChange={(e) => setReportData({ ...reportData, analysis: { ...reportData.analysis, faultPartSN: e.target.value } })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: CUSTOMER INFO */}
+      {activeTab === 'customer' && (
+        <div className="p-5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-4 text-xs">
+          <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wider flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+            Informasi Customer & Equipment
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Company Name</label>
+              <input
+                type="text"
+                value={customerInfo.companyName}
+                onChange={(e) => setCustomerInfo({ ...customerInfo, companyName: e.target.value })}
+                className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Equipment Name</label>
+              <input
+                type="text"
+                value={customerInfo.equipmentName}
+                onChange={(e) => setCustomerInfo({ ...customerInfo, equipmentName: e.target.value })}
+                className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Type</label>
+              <input
+                type="text"
+                value={customerInfo.type}
+                onChange={(e) => setCustomerInfo({ ...customerInfo, type: e.target.value })}
+                className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Specification</label>
+              <input
+                type="text"
+                value={customerInfo.specification}
+                onChange={(e) => setCustomerInfo({ ...customerInfo, specification: e.target.value })}
+                className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Serial No</label>
+              <input
+                type="text"
+                value={customerInfo.serialNo}
+                onChange={(e) => setCustomerInfo({ ...customerInfo, serialNo: e.target.value })}
+                className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">MOP No</label>
+              <input
+                type="text"
+                value={customerInfo.mopNo}
+                onChange={(e) => setCustomerInfo({ ...customerInfo, mopNo: e.target.value })}
+                className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: TIME SPENT */}
+      {activeTab === 'time' && (
+        <div className="p-5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-4 text-xs">
+          <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wider flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+            Waktu Pelaksanaan (Time Spent)
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Date</label>
+              <input
+                type="date"
+                value={timeSpent.date}
+                onChange={(e) => setTimeSpent({ ...timeSpent, date: e.target.value })}
+                className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Departure</label>
+              <input
+                type="time"
+                value={timeSpent.departure}
+                onChange={(e) => setTimeSpent({ ...timeSpent, departure: e.target.value })}
+                className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Start</label>
+              <input
+                type="time"
+                value={timeSpent.start}
+                onChange={(e) => setTimeSpent({ ...timeSpent, start: e.target.value })}
+                className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Finish</label>
+              <input
+                type="time"
+                value={timeSpent.finish}
+                onChange={(e) => setTimeSpent({ ...timeSpent, finish: e.target.value })}
+                className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 7: PHOTOS */}
+      {activeTab === 'photos' && (
+        <div className="p-5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-4">
+          <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wider flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+            Dokumentasi Foto ({photos.length})
+          </h3>
+          {photos.length === 0 ? (
+            <p className="text-xs text-slate-400 italic">Belum ada foto yang disinkronkan dari kartu atas.</p>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {photos.map((p, idx) => (
+                <div key={idx} className="p-2 bg-white rounded-xl border border-slate-200 shadow-sm space-y-2">
+                  <img
+                    src={p.preview}
+                    alt={p.label}
+                    onClick={() => setPreviewImage(p.preview)}
+                    className="w-full h-32 object-cover rounded-lg cursor-pointer hover:opacity-90 transition"
+                  />
+                  <p className="text-[10px] font-bold text-slate-700 truncate">{p.label}</p>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
-      {/* Cleaning Table */}
-      <div className="bg-slate-800/60 p-5 rounded-lg border border-slate-700/60 space-y-3">
-        <h3 className="text-sm font-semibold text-blue-400 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-blue-400"></span> Cleaning & Maintenance (2 Items)
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-900 text-slate-300 border-b border-slate-700">
-                <th className="p-2 w-12 text-center">No</th>
-                <th className="p-2">Activity</th>
-                <th className="p-2">Parameter</th>
-                <th className="p-2 w-24 text-center">Condition</th>
-                <th className="p-2">Remarks (2-5 Kata)</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reportData.cleaning.map((item, idx) => (
-                <tr key={idx} className="border-b border-slate-800 hover:bg-slate-800/40">
-                  <td className="p-2 text-center font-mono text-slate-400">{item.no}</td>
-                  <td className="p-2 text-slate-200">{item.activity}</td>
-                  <td className="p-2 text-slate-400">{item.parameter}</td>
-                  <td className="p-2 text-center">
-                    <button
-                      onClick={() => {
-                        const updated = [...reportData.cleaning];
-                        updated[idx].isGood = !updated[idx].isGood;
-                        updated[idx].isNotGood = !updated[idx].isGood;
-                        setReportData({ ...reportData, cleaning: updated });
-                      }}
-                      className={`px-2 py-1 rounded text-xs font-semibold ${
-                        item.isGood ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-rose-950 text-rose-400 border border-rose-800'
-                      }`}
-                    >
-                      {item.isGood ? 'Good ✓' : 'Not Good ✗'}
-                    </button>
-                  </td>
-                  <td className="p-2">
-                    <input
-                      type="text"
-                      value={item.remarks}
-                      onChange={(e) => {
-                        const updated = [...reportData.cleaning];
-                        updated[idx].remarks = e.target.value;
-                        setReportData({ ...reportData, cleaning: updated });
-                      }}
-                      className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:border-blue-500"
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Preview Modal */}
+      {previewImage && (
+        <div
+          onClick={() => setPreviewImage(null)}
+          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-pointer"
+        >
+          <img src={previewImage} alt="Preview" className="max-w-full max-h-[85vh] rounded-2xl shadow-2xl" />
         </div>
-      </div>
-
-      {/* Thermal Measurement */}
-      <div className="bg-slate-800/60 p-5 rounded-lg border border-slate-700/60 space-y-3">
-        <h3 className="text-sm font-semibold text-blue-400 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-blue-400"></span> Thermal Measurement Joint
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-          <div>
-            <label className="text-slate-400">Breaker / Joint</label>
-            <input
-              type="text"
-              value={reportData.thermal.breaker}
-              onChange={(e) => setReportData({ ...reportData, thermal: { ...reportData.thermal, breaker: e.target.value } })}
-              className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 mt-1"
-            />
-          </div>
-          <div>
-            <label className="text-slate-400">Result Temp Joint (°C)</label>
-            <input
-              type="text"
-              value={reportData.thermal.resultTemp}
-              onChange={(e) => setReportData({ ...reportData, thermal: { ...reportData.thermal, resultTemp: e.target.value } })}
-              className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 mt-1"
-            />
-          </div>
-          <div>
-            <label className="text-slate-400">Standard</label>
-            <input
-              type="text"
-              disabled
-              value={reportData.thermal.standard}
-              className="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-slate-400 mt-1"
-            />
-          </div>
-          <div>
-            <label className="text-slate-400">Remarks</label>
-            <input
-              type="text"
-              value={reportData.thermal.remarks}
-              onChange={(e) => setReportData({ ...reportData, thermal: { ...reportData.thermal, remarks: e.target.value } })}
-              className="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 mt-1"
-            />
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -1868,7 +1868,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   </div>
                   <div className="relative w-full">
                     <textarea title="Deskripsi Foto" value={card.description} onChange={e => handleDescriptionChange(card.id, e.target.value)} disabled={isDME || translatingCardId === card.id} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 pr-9 sm:p-3 sm:pr-10 text-xs sm:text-sm text-slate-900 font-medium outline-none focus:bg-white focus:border-blue-500 transition placeholder:text-slate-400 disabled:opacity-75 disabled:cursor-not-allowed" rows={2} placeholder="Masukkan deskripsi dokumentasi..." />
-                    {(user?.email === 'ats@gmail.com' || user?.email === 'fcu@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com' || user?.email === 'trafo@gmail.com') && (
+                    {(user?.email === 'ats@gmail.com' || user?.email === 'fcu@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com') && (
                       <button
                         type="button"
                         onClick={() => handleTranslateCardDescription(card.id)}
@@ -1941,7 +1941,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 <span className="text-center leading-tight">PREVIEW DOKUMENTASI</span>
               </button>
 
-              {(user?.email === 'ats@gmail.com' || user?.email === 'fcu@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com') && (
+              {(user?.email === 'ats@gmail.com' || user?.email === 'fcu@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com') && (
                 <>
                   <button 
                     onClick={handleBulkAnalyzeAtsParameters} 
@@ -1964,7 +1964,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   >
                     <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 text-sky-700 group-active:scale-90 transition-transform hover:rotate-180 duration-500" />
                     <span className="text-center leading-tight">
-                      {user?.email === 'fcu@gmail.com' ? 'SINKRONISASI KE FCU' : user?.email === 'pju@gmail.com' ? 'SINKRONISASI KE PJU' : user?.email === 'pdu@gmail.com' ? 'SINKRONISASI KE PDU' : user?.email === 'coolingtower@gmail.com' ? 'SINKRONISASI KE COOLING TOWER' : user?.email === 'generator@gmail.com' ? 'SINKRONISASI KE GENERATOR' : user?.email === 'acsplit@gmail.com' ? 'SINKRONISASI KE SPLIT WALL AC' : (user?.email as string) === 'trafo@gmail.com' ? 'SINKRONISASI KE TRANSFORMATOR (TRAFO)' : 'SINKRONISASI KE ATS'}
+                      {user?.email === 'fcu@gmail.com' ? 'SINKRONISASI KE FCU' : user?.email === 'pju@gmail.com' ? 'SINKRONISASI KE PJU' : user?.email === 'pdu@gmail.com' ? 'SINKRONISASI KE PDU' : user?.email === 'coolingtower@gmail.com' ? 'SINKRONISASI KE COOLING TOWER' : user?.email === 'generator@gmail.com' ? 'SINKRONISASI KE GENERATOR' : user?.email === 'acsplit@gmail.com' ? 'SINKRONISASI KE SPLIT WALL AC' : user?.email === 'trafo@gmail.com' ? 'SINKRONISASI KE TRANSFORMATOR (TRAFO)' : user?.email === 'busduct@gmail.com' ? 'SINKRONISASI KE PANEL BUSDUCT' : 'SINKRONISASI KE ATS'}
                     </span>
                   </button>
                 </>
