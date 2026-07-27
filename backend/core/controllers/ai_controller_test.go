@@ -56,6 +56,26 @@ func (m *mockAIService) AnalyzePDUPhotos(_ context.Context, _ []models.PDUPhotoI
 	return nil, m.err
 }
 
+func (m *mockAIService) AnalyzeCTPhotos(_ context.Context, _ []models.CTPhotoInput, _ any) (any, error) {
+	return nil, m.err
+}
+
+func (m *mockAIService) AnalyzeGeneratorPhotos(_ context.Context, _ []models.GeneratorPhotoInput, _ any) (any, error) {
+	return nil, m.err
+}
+
+func (m *mockAIService) AnalyzeTrafoPhotos(_ context.Context, _ []models.TrafoPhotoInput, _ any) (any, error) {
+	return nil, m.err
+}
+
+func (m *mockAIService) AnalyzeACSplitPhotos(_ context.Context, _ []models.ACSplitPhotoInput, _ any) (any, error) {
+	return nil, m.err
+}
+
+func (m *mockAIService) AnalyzeBusductPhotos(_ context.Context, _ []models.BusductPhotoInput, _ any) (any, error) {
+	return nil, m.err
+}
+
 // Ensure mockAIService implements IAIService
 var _ services.IAIService = (*mockAIService)(nil)
 

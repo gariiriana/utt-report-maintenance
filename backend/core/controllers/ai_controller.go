@@ -292,8 +292,14 @@ func (c *AIController) AnalyzeCTReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Simple status response for CT report AI processing
-	helpers.SendJSON(w, http.StatusOK, req.ExistingData)
+	result, err := c.service.AnalyzeCTPhotos(r.Context(), req.Photos, req.ExistingData)
+	if err != nil {
+		logger.Error("ai_ct_analyze_error", "error", err.Error())
+		helpers.SendError(w, "AI CT analysis failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	helpers.SendJSON(w, http.StatusOK, result)
 }
 
 // AnalyzeGeneratorReport handles POST /api/ai/generator-report
@@ -309,5 +315,83 @@ func (c *AIController) AnalyzeGeneratorReport(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	helpers.SendJSON(w, http.StatusOK, req.ExistingData)
+	result, err := c.service.AnalyzeGeneratorPhotos(r.Context(), req.Photos, req.ExistingData)
+	if err != nil {
+		logger.Error("ai_generator_analyze_error", "error", err.Error())
+		helpers.SendError(w, "AI Generator analysis failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	helpers.SendJSON(w, http.StatusOK, result)
 }
+
+// AnalyzeTrafoReport handles POST /api/ai/trafo-report
+func (c *AIController) AnalyzeTrafoReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req models.TrafoAnalyzeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.SendError(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	result, err := c.service.AnalyzeTrafoPhotos(r.Context(), req.Photos, req.ExistingData)
+	if err != nil {
+		logger.Error("ai_trafo_analyze_error", "error", err.Error())
+		helpers.SendError(w, "AI Trafo analysis failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	helpers.SendJSON(w, http.StatusOK, result)
+}
+
+// AnalyzeACSplitReport handles POST /api/ai/acsplit-report
+func (c *AIController) AnalyzeACSplitReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req models.ACSplitAnalyzeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.SendError(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	result, err := c.service.AnalyzeACSplitPhotos(r.Context(), req.Photos, req.ExistingData)
+	if err != nil {
+		logger.Error("ai_acsplit_analyze_error", "error", err.Error())
+		helpers.SendError(w, "AI AC Split analysis failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	helpers.SendJSON(w, http.StatusOK, result)
+}
+
+// AnalyzeBusductReport handles POST /api/ai/busduct-report
+func (c *AIController) AnalyzeBusductReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req models.BusductAnalyzeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.SendError(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	result, err := c.service.AnalyzeBusductPhotos(r.Context(), req.Photos, req.ExistingData)
+	if err != nil {
+		logger.Error("ai_busduct_analyze_error", "error", err.Error())
+		helpers.SendError(w, "AI Busduct analysis failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	helpers.SendJSON(w, http.StatusOK, result)
+}
+
+

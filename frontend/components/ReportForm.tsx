@@ -32,6 +32,8 @@ import { CTServiceReport } from '@/components/CTServiceReport';
 import { GeneratorServiceReport } from '@/components/GeneratorServiceReport';
 import { ACSplitServiceReport } from '@/components/ACSplitServiceReport';
 import { TrafoServiceReport } from '@/components/TrafoServiceReport';
+import { BusductServiceReport } from '@/components/BusductServiceReport';
+
 
 import imgStatusWld from '@/assets/Wld/status.jpeg';
 import imgTestPingWld from '@/assets/Wld/test_ping.jpeg';
@@ -2157,6 +2159,13 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           />
         </div>
       )}
+
+      {user?.email === 'busduct@gmail.com' && (
+        <div className="mt-12 border-t border-slate-800 pt-12">
+          <BusductServiceReport />
+        </div>
+      )}
     </div>
   );
 }
+

@@ -43,3 +43,5 @@ wasm-pack.tar.gz
 node_modules
 scratch/
 utt-report-maintenance/
+.agents/
+

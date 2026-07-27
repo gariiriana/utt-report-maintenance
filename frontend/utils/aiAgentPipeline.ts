@@ -472,3 +472,62 @@ RULES:
     throw new Error(`Consolidation parsing failed: ${error.message}`);
   }
 }
+
+// ─── Service Report AI Triggers for Trafo, AC Split, CT, Generator ──────────
+
+export async function analyzeTrafoReportAI(photos: any[], existingData?: any) {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+  const response = await fetch(`${apiUrl}/ai/trafo-report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ photos, existing_data: existingData }),
+  });
+  if (!response.ok) throw new Error(`Trafo AI failed: ${response.statusText}`);
+  return response.json();
+}
+
+export async function analyzeACSplitReportAI(photos: any[], existingData?: any) {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+  const response = await fetch(`${apiUrl}/ai/acsplit-report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ photos, existing_data: existingData }),
+  });
+  if (!response.ok) throw new Error(`AC Split AI failed: ${response.statusText}`);
+  return response.json();
+}
+
+export async function analyzeCTReportAI(photos: any[], existingData?: any) {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+  const response = await fetch(`${apiUrl}/ai/ct-report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ photos, existing_data: existingData }),
+  });
+  if (!response.ok) throw new Error(`CT AI failed: ${response.statusText}`);
+  return response.json();
+}
+
+export async function analyzeGeneratorReportAI(photos: any[], existingData?: any) {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+  const response = await fetch(`${apiUrl}/ai/generator-report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ photos, existing_data: existingData }),
+  });
+  if (!response.ok) throw new Error(`Generator AI failed: ${response.statusText}`);
+  return response.json();
+}
+
+export async function analyzeBusductReportAI(photos: any[], existingData?: any) {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+  const response = await fetch(`${apiUrl}/ai/busduct-report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ photos, existing_data: existingData }),
+  });
+  if (!response.ok) throw new Error(`Busduct AI failed: ${response.statusText}`);
+  return response.json();
+}
+
+

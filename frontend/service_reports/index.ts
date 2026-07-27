@@ -6,4 +6,6 @@ export { generateCTReportPDF } from './ct/generateCTReportPDF';
 export { generateGeneratorReportPDF } from './generator/generateGeneratorReportPDF';
 export { generateACSplitReportPDF } from './acsplit/generateACSplitReportPDF';
 export { generateTrafoReportPDF } from './trafo/generateTrafoReportPDF';
+export { generateBusductReportPDF } from './busduct/generateBusductReportPDF';
 export { getPDFTemplateByAccount, PDF_TEMPLATE_REGISTRY } from '@/config/pdfTemplateRegistry';
+

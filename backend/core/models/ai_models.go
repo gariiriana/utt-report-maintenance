@@ -398,6 +398,49 @@ type GeneratorAnalyzeRequest struct {
 	ExistingData any                   `json:"existing_data,omitempty"`
 }
 
+// ─── AI Service Report Trafo (Transformator) ─────────────────────────────
+
+type TrafoPhotoInput struct {
+	Base64    string `json:"base64"`
+	Category  string `json:"category"`
+	Label     string `json:"label"`
+	Parameter string `json:"parameter"`
+}
+
+type TrafoAnalyzeRequest struct {
+	Photos       []TrafoPhotoInput `json:"photos"`
+	ExistingData any               `json:"existing_data,omitempty"`
+}
+
+// ─── AI Service Report AC Split Wall ─────────────────────────────────────
+
+type ACSplitPhotoInput struct {
+	Base64    string `json:"base64"`
+	Category  string `json:"category"`
+	Label     string `json:"label"`
+	Parameter string `json:"parameter"`
+}
+
+type ACSplitAnalyzeRequest struct {
+	Photos       []ACSplitPhotoInput `json:"photos"`
+	ExistingData any                 `json:"existing_data,omitempty"`
+}
+
+// ─── AI Service Report Panel Busduct ─────────────────────────────────────
+
+type BusductPhotoInput struct {
+	Base64    string `json:"base64"`
+	Category  string `json:"category"`
+	Label     string `json:"label"`
+	Parameter string `json:"parameter"`
+}
+
+type BusductAnalyzeRequest struct {
+	Photos       []BusductPhotoInput `json:"photos"`
+	ExistingData any                 `json:"existing_data,omitempty"`
+}
+
+
 // ChatMessage represents a single message in a chat history.
 type ChatMessage struct {
 	Role        string `json:"role"`    // "system", "user", "assistant"
@@ -407,6 +450,6 @@ type ChatMessage struct {
 
 // AIChatRequest represents the body of the AI chat room API request.
 type AIChatRequest struct {
-	
 	Messages []ChatMessage `json:"messages"`
 }
+

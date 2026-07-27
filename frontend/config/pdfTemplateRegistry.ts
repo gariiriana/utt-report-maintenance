@@ -76,6 +76,14 @@ export const PDF_TEMPLATE_REGISTRY: Record<string, PDFTemplateConfig> = {
     maintenanceType: 'Transformator',
     description: 'Template PDF Service Report khusus Transformator (2 Berkas PDF) Neutra DC Cikarang',
   },
+  'busduct@gmail.com': {
+    accountEmail: 'busduct@gmail.com',
+    templateName: 'Service Report Panel Busduct',
+    templateFileName: 'busduct@gmail.com.pdf',
+    templatePath: '/templates/pdf_service_reports/busduct@gmail.com.pdf',
+    maintenanceType: 'Busduct',
+    description: 'Template PDF Service Report khusus Panel Busduct Neutra DC Cikarang',
+  },
 };
 
 /**
