@@ -927,6 +927,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         reportData.trafoCustomerInfo = trafoData.customerInfo;
         reportData.trafoReportData = trafoData.reportData;
         reportData.trafoTimeSpent = trafoData.timeSpent;
+      } else if (user?.email === 'busduct@gmail.com' && busductData) {
+        reportData.busductCustomerInfo = busductData.customerInfo;
+        reportData.busductReportData = busductData.reportData;
+        reportData.busductTimeSpent = busductData.timeSpent;
       }
 
       if (!editingData) {
