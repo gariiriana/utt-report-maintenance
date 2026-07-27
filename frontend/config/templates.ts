@@ -13,6 +13,21 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Measurement Ampere S',
     'Measurement Ampere T'
   ],
+  'busduct@gmail.com': [
+    'Inspection & Checked of door movement',
+    'Inspection & Checked of signs of waer, rust, dents, and damageon door tracks',
+    'Inspection & Checked door tracks are aligned and not sagging',
+    'Inspection & Checked of door parts for any signs of damage (spring, motor, frame, cover)',
+    'Inspection & Checked of Bumper , Rubber Lip and Lip hinge',
+    'Inspection & Checked of Controller Swicth button',
+    'Check Motor Condition, Check motor body for overheating, Listen for abnormal sound, Check cable connection',
+    'Check Base Frame, Shaft & Door Alignment Base Frame',
+    'Motor & Gearbox Inspection',
+    'Check Roller Shutter Kit',
+    'Cleaning Of Electrical Panel & Electrrical Swicth button',
+    'Clean the door tracks from dust, dirt, and debris using a brush or cloth',
+    'Thermal Measurement Joint (<40°C)'
+  ],
   'mv@gmail.com': [
     'NAMEPLAT',
     'MEASUREMENT SUMMARY ON DPM',
@@ -252,10 +267,6 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Pengujian Temperatur & Embusan Air Flow',
     'Pemeriksaan Remote Control & Controller Unit',
     'Reinstall Body Cover & Final Cleanness'
-  ],
-  'busduct@gmail.com': [
-    'Visual inspect busduct', 'Cleaning busduct', 'Cleaning busduct',
-    'Cleaning busduct', 'Cleaning busduct', 'Thermal on joint conection',
   ],
   'lightingsystem@gmail.com': [
     'Nameplate', 'measurement voltage', 'measurement ampere',

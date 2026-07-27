@@ -54,11 +54,12 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
   // Load from prefill
   useEffect(() => {
     if (prefillData) {
+      let mappedPhotos: UploadedPhoto[] = [];
       if (prefillData.customerInfo) setCustomerInfo(prefillData.customerInfo);
       if (prefillData.reportData) setReportData(prefillData.reportData);
       if (prefillData.timeSpent) setTimeSpent(prefillData.timeSpent);
       if (prefillData.photos) {
-        const mappedPhotos: UploadedPhoto[] = prefillData.photos.map((p: any, i: number) => ({
+        mappedPhotos = prefillData.photos.map((p: any, i: number) => ({
           id: `busduct-p-${i}-${Date.now()}`,
           base64: p.base64 || '',
           preview: p.preview || (p.base64 ? `data:image/jpeg;base64,${p.base64}` : ''),
@@ -68,17 +69,20 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
         }));
         setPhotos(mappedPhotos);
       }
+      if (mappedPhotos.length > 0) {
+        handleAIAnalysis(mappedPhotos);
+      }
       if (onClearPrefill) onClearPrefill();
     }
   }, [prefillData, onClearPrefill]);
 
-
   // AI Auto-Fill Handler
-  const handleAIAnalysis = async () => {
+  const handleAIAnalysis = async (overridePhotos?: UploadedPhoto[]) => {
+    const targetPhotos = overridePhotos || photos;
     try {
       setIsAnalyzing(true);
       toast.loading('AI Agent sedang menganalisis foto & parameter Panel Busduct...', { id: 'busduct-ai-toast' });
-      const photoPayload = photos.map((p) => ({
+      const photoPayload = targetPhotos.map((p) => ({
         base64: p.base64,
         category: p.category,
         label: p.label,

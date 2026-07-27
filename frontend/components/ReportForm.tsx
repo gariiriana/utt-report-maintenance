@@ -131,6 +131,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [generatorPrefillData, setGeneratorPrefillData] = useState<any>(null);
   const [acSplitPrefillData, setAcSplitPrefillData] = useState<any>(null);
   const [trafoPrefillData, setTrafoPrefillData] = useState<any>(null);
+  const [busductPrefillData, setBusductPrefillData] = useState<any>(null);
 
   const [fcuData, setFcuData] = useState<any>(null);
   const [pjuData, setPjuData] = useState<any>(null);
@@ -139,6 +140,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [generatorData, setGeneratorData] = useState<any>(null);
   const [acSplitData, setAcSplitData] = useState<any>(null);
   const [trafoData, setTrafoData] = useState<any>(null);
+  const [busductData, setBusductData] = useState<any>(null);
+
 
 
   const activeUnit = units.find(u => u.id === activeUnitId) || null;
@@ -1400,6 +1403,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         setAcSplitPrefillData(prefillPayload);
       } else if (user?.email === 'trafo@gmail.com') {
         setTrafoPrefillData(prefillPayload);
+      } else if (user?.email === 'busduct@gmail.com') {
+        setBusductPrefillData(prefillPayload);
       } else {
         setAtsPrefillData(prefillPayload);
       }
@@ -2162,7 +2167,11 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       {user?.email === 'busduct@gmail.com' && (
         <div className="mt-12 border-t border-slate-800 pt-12">
-          <BusductServiceReport />
+          <BusductServiceReport 
+            prefillData={busductPrefillData} 
+            onClearPrefill={() => setBusductPrefillData(null)} 
+            onChange={setBusductData}
+          />
         </div>
       )}
     </div>
