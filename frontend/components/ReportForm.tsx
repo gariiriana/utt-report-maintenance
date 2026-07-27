@@ -552,6 +552,62 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           archiveId: editingData.id,
           archiveType: editingData.documentType,
         });
+      } else if (user?.email === 'fcu@gmail.com') {
+        setFcuPrefillData({
+          fcuCustomerInfo: (editingData as any).fcuCustomerInfo,
+          fcuReportData: (editingData as any).fcuReportData,
+          fcuTimeSpent: (editingData as any).fcuTimeSpent,
+          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
+        });
+      } else if (user?.email === 'pju@gmail.com') {
+        setPjuPrefillData({
+          pjuCustomerInfo: (editingData as any).pjuCustomerInfo,
+          pjuReportData: (editingData as any).pjuReportData,
+          pjuTimeSpent: (editingData as any).pjuTimeSpent,
+          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
+        });
+      } else if (user?.email === 'pdu@gmail.com') {
+        setPduPrefillData({
+          pduCustomerInfo: (editingData as any).pduCustomerInfo,
+          pduReportData: (editingData as any).pduReportData,
+          pduTimeSpent: (editingData as any).pduTimeSpent,
+          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
+        });
+      } else if (user?.email === 'coolingtower@gmail.com') {
+        setCtPrefillData({
+          ctCustomerInfo: (editingData as any).ctCustomerInfo,
+          ctReportData: (editingData as any).ctReportData,
+          ctTimeSpent: (editingData as any).ctTimeSpent,
+          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
+        });
+      } else if (user?.email === 'generator@gmail.com') {
+        setGeneratorPrefillData({
+          generatorCustomerInfo: (editingData as any).generatorCustomerInfo,
+          generatorReportData: (editingData as any).generatorReportData,
+          generatorTimeSpent: (editingData as any).generatorTimeSpent,
+          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
+        });
+      } else if (user?.email === 'acsplit@gmail.com') {
+        setAcSplitPrefillData({
+          acSplitCustomerInfo: (editingData as any).acSplitCustomerInfo,
+          acSplitReportData: (editingData as any).acSplitReportData,
+          acSplitTimeSpent: (editingData as any).acSplitTimeSpent,
+          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
+        });
+      } else if (user?.email === 'trafo@gmail.com') {
+        setTrafoPrefillData({
+          trafoCustomerInfo: (editingData as any).trafoCustomerInfo,
+          trafoReportData: (editingData as any).trafoReportData,
+          trafoTimeSpent: (editingData as any).trafoTimeSpent,
+          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
+        });
+      } else if (user?.email === 'busduct@gmail.com') {
+        setBusductPrefillData({
+          customerInfo: (editingData as any).busductCustomerInfo,
+          reportData: (editingData as any).busductReportData,
+          timeSpent: (editingData as any).busductTimeSpent,
+          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
+        });
       }
     }
   }, [editingData]);
