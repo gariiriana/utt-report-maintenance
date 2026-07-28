@@ -908,7 +908,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => generateATSReportExcel(customerInfo, reportData, timeSpent, photos)}
+          onClick={() => generateATSReportExcel(customerInfo, reportData, timeSpent, photos.map(p => ({ photoBase64: p.preview, description: p.label })))}
           className="flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all"
         >
           <FileType className="w-4 h-4" />
