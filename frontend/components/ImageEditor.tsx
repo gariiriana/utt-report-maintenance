@@ -24,7 +24,6 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
     const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
         const { width, height } = e.currentTarget;
         
-
         const initialCrop = centerCrop(
             {
                 unit: '%',
@@ -36,7 +35,6 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
         );
         
         setCrop(initialCrop);
-
 
         const pc: PixelCrop = {
             unit: 'px',
@@ -182,37 +180,37 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-md"
         >
             <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-white/95 backdrop-blur-xl border border-sky-100/90 rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl text-slate-800"
+                className="bg-white/95 backdrop-blur-xl border border-sky-100/90 rounded-2xl sm:rounded-3xl w-full max-w-4xl max-h-[96dvh] sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl text-slate-800 my-auto"
             >
-                <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white/95">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">
-                            <Scissors className="w-5 h-5" />
+                <div className="p-3 sm:p-4 border-b border-slate-200 flex items-center justify-between bg-white/95">
+                    <div className="flex items-center gap-2.5 sm:gap-3">
+                        <div className="p-1.5 sm:p-2 bg-blue-50 text-blue-600 rounded-lg border border-blue-100">
+                            <Scissors className="w-4 h-4 sm:w-5 sm:h-5" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-bold text-slate-900 leading-none">Edit & Crop Photo</h3>
-                            <p className="text-xs text-slate-500 mt-1 font-medium">Adjust your photo for the report</p>
+                            <h3 className="text-sm sm:text-lg font-bold text-slate-900 leading-none">Edit & Crop Photo</h3>
+                            <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5 sm:mt-1 font-medium">Adjust your photo for the report</p>
                         </div>
                     </div>
                     <button
                         onClick={onCancel}
-                        className="p-2 hover:bg-slate-100 rounded-xl transition text-slate-500 hover:text-slate-900"
+                        className="p-1.5 sm:p-2 hover:bg-slate-100 rounded-xl transition text-slate-500 hover:text-slate-900"
                         title="Tutup"
                     >
-                        <X className="w-6 h-6" />
+                        <X className="w-5 h-5 sm:w-6 sm:h-6" />
                     </button>
                 </div>
 
-                <div className="relative flex-1 min-h-[400px] bg-slate-50 flex items-center justify-center p-8 overflow-hidden">
+                <div className="relative flex-1 min-h-[160px] sm:min-h-[260px] md:min-h-[320px] bg-slate-900/90 flex items-center justify-center p-2 sm:p-6 overflow-hidden">
                     <style>{`
                         .ReactCrop {
-                            max-height: 60vh;
+                            max-height: 45vh;
                         }
                         .ReactCrop__crop-selection {
                             border: 2px solid #3b82f6 !important;
@@ -230,15 +228,15 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
                         .ReactCrop__drag-handle.ord-ne,
                         .ReactCrop__drag-handle.ord-sw,
                         .ReactCrop__drag-handle.ord-se {
-                            width: 24px !important;
-                            height: 24px !important;
+                            width: 20px !important;
+                            height: 20px !important;
                             background-color: transparent !important;
                             border: none !important;
                         }
-                        .ReactCrop__drag-handle.ord-nw { border-top: 4px solid #3b82f6 !important; border-left: 4px solid #3b82f6 !important; }
-                        .ReactCrop__drag-handle.ord-ne { border-top: 4px solid #3b82f6 !important; border-right: 4px solid #3b82f6 !important; }
-                        .ReactCrop__drag-handle.ord-sw { border-bottom: 4px solid #3b82f6 !important; border-left: 4px solid #3b82f6 !important; }
-                        .ReactCrop__drag-handle.ord-se { border-bottom: 4px solid #3b82f6 !important; border-right: 4px solid #3b82f6 !important; }
+                        .ReactCrop__drag-handle.ord-nw { border-top: 3px solid #3b82f6 !important; border-left: 3px solid #3b82f6 !important; }
+                        .ReactCrop__drag-handle.ord-ne { border-top: 3px solid #3b82f6 !important; border-right: 3px solid #3b82f6 !important; }
+                        .ReactCrop__drag-handle.ord-sw { border-bottom: 3px solid #3b82f6 !important; border-left: 3px solid #3b82f6 !important; }
+                        .ReactCrop__drag-handle.ord-se { border-bottom: 3px solid #3b82f6 !important; border-right: 3px solid #3b82f6 !important; }
 
                         .ReactCrop__drag-handle::after {
                             display: none !important;
@@ -262,31 +260,31 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
                                 src={image}
                                 alt="Crop me"
                                 onLoad={onImageLoad}
-                                className="max-w-full max-h-[60vh] object-contain select-none shadow-2xl rounded-lg origin-center"
+                                className="max-w-full max-h-[30vh] sm:max-h-[42vh] md:max-h-[50vh] object-contain select-none shadow-2xl rounded-lg origin-center"
                             />
                         </ReactCrop>
                     </div>
                     
-                    <div className="absolute top-4 right-4 z-10">
+                    <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10">
                          <button
                             onClick={handleReset}
-                            className="p-2 bg-slate-800/80 hover:bg-slate-700 backdrop-blur-sm rounded-lg text-slate-300 transition-colors shadow-lg"
+                            className="p-1.5 sm:p-2 bg-slate-800/80 hover:bg-slate-700 backdrop-blur-sm rounded-lg text-slate-300 transition-colors shadow-lg"
                             title="Reset"
                         >
-                            <RefreshCcw className="w-5 h-5" />
+                            <RefreshCcw className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
                     </div>
                 </div>
 
-                <div className="p-6 bg-slate-50/90 border-t border-slate-200">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
-                        <div className="space-y-3">
+                <div className="p-3 sm:p-5 bg-slate-50/95 border-t border-slate-200 overflow-y-auto shrink-0 space-y-3 sm:space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-6">
+                        <div className="space-y-1 sm:space-y-2">
                             <div className="flex items-center justify-between">
-                                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                                    <ZoomIn className="w-4 h-4 text-slate-500" />
+                                <label className="text-xs sm:text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                                    <ZoomIn className="w-3.5 h-3.5 text-slate-500" />
                                     Zoom
                                 </label>
-                                <span className="text-xs font-mono text-blue-600 bg-blue-50 border border-blue-100 font-bold px-2.5 py-0.5 rounded-full">
+                                <span className="text-[10px] sm:text-xs font-mono text-blue-600 bg-blue-50 border border-blue-100 font-bold px-2 py-0.5 rounded-full">
                                     {zoom.toFixed(1)}x
                                 </span>
                             </div>
@@ -303,13 +301,13 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
                             />
                         </div>
 
-                        <div className="space-y-3">
+                        <div className="space-y-1 sm:space-y-2">
                             <div className="flex items-center justify-between">
-                                <label className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                                    <RotateCw className="w-4 h-4 text-emerald-600" />
+                                <label className="text-xs sm:text-sm font-bold text-slate-700 flex items-center gap-1.5">
+                                    <RotateCw className="w-3.5 h-3.5 text-emerald-600" />
                                     Rotation
                                 </label>
-                                <span className="text-xs font-mono text-emerald-600 bg-emerald-50 border border-emerald-100 font-bold px-2.5 py-0.5 rounded-full">
+                                <span className="text-[10px] sm:text-xs font-mono text-emerald-600 bg-emerald-50 border border-emerald-100 font-bold px-2 py-0.5 rounded-full">
                                     {rotation}°
                                 </span>
                             </div>
@@ -327,26 +325,26 @@ export function ImageEditor({ image, onSave, onCancel, description, maintenanceN
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-end gap-3 pt-2">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-end gap-2 sm:gap-3 pt-1 border-t border-slate-200/60 sm:border-0">
                         <button
                             onClick={handleDownload}
-                            className="px-5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl font-bold transition flex items-center gap-2 border border-emerald-200 shadow-sm"
+                            className="px-3 sm:px-5 py-2 sm:py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1.5 border border-emerald-200 shadow-sm"
                         >
-                            <Download className="w-4 h-4" />
+                            <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             Download
                         </button>
-                        <div className="flex-1" />
+                        <div className="hidden sm:block flex-1" />
                         <button
                             onClick={onCancel}
-                            className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition border border-slate-200 shadow-sm"
+                            className="px-4 sm:px-6 py-2 sm:py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs sm:text-sm font-bold transition border border-slate-200 shadow-sm"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleSave}
-                            className="px-8 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold transition shadow-lg shadow-blue-500/20 flex items-center gap-2"
+                            className="flex-1 sm:flex-initial px-5 sm:px-8 py-2 sm:py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs sm:text-sm font-bold transition shadow-md shadow-blue-500/20 flex items-center justify-center gap-1.5"
                         >
-                            <Check className="w-5 h-5" />
+                            <Check className="w-4 h-4 sm:w-5 sm:h-5" />
                             Apply Changes
                         </button>
                     </div>

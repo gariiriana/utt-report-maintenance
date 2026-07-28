@@ -1597,33 +1597,33 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 relative z-10">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-5 relative z-10">
       <AnimatePresence mode="wait">
         {!showPreview ? (
           <motion.div key="form" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div className="flex gap-4">
-                <div className="bg-white/80 backdrop-blur-xl p-4 rounded-2xl border border-sky-100/80 shadow-md shadow-sky-900/5 min-w-[120px]">
-                  <p className="text-xs text-slate-400 uppercase font-bold">Foto</p>
-                  <p className="text-xl font-black text-slate-900">{uploadedCount} / {cards.length}</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-5">
+              <div className="flex gap-3">
+                <div className="bg-white/80 backdrop-blur-xl p-2.5 sm:p-3 rounded-xl border border-sky-100/80 shadow-sm min-w-[100px]">
+                  <p className="text-[10px] text-slate-400 uppercase font-bold">Foto</p>
+                  <p className="text-base sm:text-lg font-black text-slate-900">{uploadedCount} / {cards.length}</p>
                 </div>
-                <div className="bg-white/80 backdrop-blur-xl p-4 rounded-2xl border border-sky-100/80 shadow-md shadow-sky-900/5 min-w-[120px]">
-                  <p className="text-xs text-slate-400 uppercase font-bold">Template</p>
-                  <p className="text-xl font-black text-blue-600 uppercase">{companyType}</p>
+                <div className="bg-white/80 backdrop-blur-xl p-2.5 sm:p-3 rounded-xl border border-sky-100/80 shadow-sm min-w-[100px]">
+                  <p className="text-[10px] text-slate-400 uppercase font-bold">Template</p>
+                  <p className="text-base sm:text-lg font-black text-blue-600 uppercase">{companyType}</p>
                 </div>
               </div>
               {editingData && (
-                <button onClick={onClearEdit} className="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl border border-blue-200 text-sm font-bold flex items-center gap-2 hover:bg-blue-100 transition-all shadow-sm">
-                  <RefreshCw className="w-4 h-4" /> Batal Edit
+                <button onClick={onClearEdit} className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-200 text-xs font-bold flex items-center gap-1.5 hover:bg-blue-100 transition-all shadow-sm">
+                  <RefreshCw className="w-3.5 h-3.5" /> Batal Edit
                 </button>
               )}
             </div>
 
-            <div className="bg-white/90 backdrop-blur-xl p-6 rounded-3xl border border-sky-100/90 shadow-xl shadow-sky-900/5 mb-6 font-geist">
+            <div className="bg-white/90 backdrop-blur-xl p-4 sm:p-6 rounded-2xl border border-sky-100/90 shadow-lg shadow-sky-900/5 mb-5 font-geist">
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
                 <div>
-                  <label htmlFor="maintenance-name" className="block text-sm font-bold text-slate-700 mb-2">Nama Maintenance</label>
+                  <label htmlFor="maintenance-name" className="block text-xs font-bold text-slate-700 mb-1">Nama Maintenance</label>
                   <input
                     id="maintenance-name"
                     title="Nama Maintenance"
@@ -1631,12 +1631,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     value={maintenanceName}
                     onChange={e => setMaintenanceName(e.target.value)}
                     disabled={isDME}
-                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-3 text-slate-900 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition placeholder-slate-400 disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-2 sm:p-2.5 text-xs sm:text-sm text-slate-900 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition placeholder-slate-400 disabled:opacity-70 disabled:cursor-not-allowed"
                     placeholder="cth. Maintenance Bulanan"
                   />
                 </div>
                 <div>
-                  <label htmlFor="specific-detail" className="block text-sm font-bold text-slate-700 mb-2">Detail Unit Maintenance</label>
+                  <label htmlFor="specific-detail" className="block text-xs font-bold text-slate-700 mb-1">Detail Unit Maintenance</label>
                   <input
                     id="specific-detail"
                     title="Detail Unit Maintenance"
@@ -1644,7 +1644,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     value={specificDetail}
                     onChange={(e) => setSpecificDetail(e.target.value)}
                     disabled={isDME}
-                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-3 text-blue-600 font-bold outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition placeholder-slate-400 disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-2 sm:p-2.5 text-xs sm:text-sm text-blue-600 font-bold outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition placeholder-slate-400 disabled:opacity-70 disabled:cursor-not-allowed"
                     placeholder="cth. FCU-01 / VRV-02"
                   />
                 </div>
