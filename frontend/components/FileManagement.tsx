@@ -70,7 +70,7 @@ const MAINTENANCE_TYPES = [
     'Cooling Tower',
     'ATS',
     'Cooling pump',
-    'Transformer',
+    'Transformer / Trafo',
     'Generator & Fuel system',
     'MV and RMU panel',
     'LV Panel',
@@ -877,9 +877,14 @@ export function FileManagement({
                 ) : !searchQuery && selectedFolder && selectedQuarter && !selectedMType && ['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder) ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                         {MAINTENANCE_TYPES.map((type) => {
-                            const typeFiles = filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && f.maintenanceType === type);
+                            const isTypeMatch = (fMType?: string) => {
+                                if (!fMType) return false;
+                                if (fMType === type) return true;
+                                if ((type.includes('Transformer') || type.includes('Trafo')) && (fMType.includes('Transformer') || fMType.includes('Trafo'))) return true;
+                                return false;
+                            };
+                            const typeFiles = filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && isTypeMatch(f.maintenanceType));
                             const fileCount = typeFiles.length;
-                            if (fileCount === 0 && !canDelete) return null;
 
                             return (
                                 <motion.div
@@ -909,7 +914,9 @@ export function FileManagement({
                             : filteredFiles.filter(f =>
                                 f.category === selectedFolder &&
                                 f.quarter === selectedQuarter &&
-                                (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true)
+                                (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '')
+                                    ? (selectedMType && (f.maintenanceType === selectedMType || ((selectedMType.includes('Transformer') || selectedMType.includes('Trafo')) && (f.maintenanceType?.includes('Transformer') || f.maintenanceType?.includes('Trafo')))))
+                                    : true)
                             )
                         ).length === 0 ? (
                             <div className="text-center py-12">
