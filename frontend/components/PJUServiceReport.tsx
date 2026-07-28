@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Eye } from 'lucide-react';
+import { Eye, FileType } from 'lucide-react';
 import { toast } from 'sonner';
+import { generatePJUServiceReportPDF } from '@/service_reports/pju/generatePJUReportPDF';
 
 import {
   PJUReportData, PJUCustomerInfo, PJUTimeSpent,
@@ -629,6 +630,21 @@ export function PJUServiceReport({ prefillData, onClearPrefill, onChange }: PJUS
             </div>
           </div>
         )}
+
+        {/* Bottom Action Footer for Service Report & Documentation PDF Generation */}
+        <div className="mt-10 pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-xs text-slate-500 font-medium">
+            * Laporan Service Report & Dokumentasi PDF akan digenerasi secara lengkap sesuai standar resmi PT. Dwi Mitra Ekatama Mandiri
+          </div>
+          <button
+            type="button"
+            onClick={() => generatePJUServiceReportPDF(customerInfo, reportData, timeSpent, photos.map(p => ({ photoBase64: p.base64, description: p.label })))}
+            className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xl shadow-blue-600/30 transition active:scale-95 flex items-center justify-center gap-2.5 cursor-pointer"
+          >
+            <FileType className="w-4 h-4" />
+            GENERATE SERVICE REPORT & DOKUMENTASI (PDF)
+          </button>
+        </div>
       </div>
 
       {/* Photo Preview Modal */}

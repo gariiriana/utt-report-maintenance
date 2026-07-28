@@ -11,16 +11,18 @@ import (
 	"github.com/gariiriana/DwimitraSystem/backend/pkg/helpers"
 )
 type AuthController struct {
-	AuthService *services.AuthService
-	UserService *services.UserService
-	AuditSvc    *services.AuditService
+	AuthService  *services.AuthService
+	UserService  *services.UserService
+	AuditSvc     *services.AuditService
+	TurnstileSvc *services.TurnstileService
 }
-func NewAuthController(auth *services.AuthService, user *services.UserService, audit *services.AuditService) *AuthController {
-	return &AuthController{AuthService: auth, UserService: user, AuditSvc: audit}
+func NewAuthController(auth *services.AuthService, user *services.UserService, audit *services.AuditService, turnstile *services.TurnstileService) *AuthController {
+	return &AuthController{AuthService: auth, UserService: user, AuditSvc: audit, TurnstileSvc: turnstile}
 }
 func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		IDToken string `json:"id_token"`
+		IDToken        string `json:"id_token"`
+		TurnstileToken string `json:"turnstile_token"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.IDToken == "" {
 		helpers.SendAppError(w, apperrors.BadRequest("id_token is required"))
@@ -28,6 +30,16 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+
+	// Optional/Conditional Turnstile token verification
+	if body.TurnstileToken != "" && c.TurnstileSvc != nil {
+		clientIP := helpers.GetClientIP(r)
+		valid, err := c.TurnstileSvc.Verify(ctx, body.TurnstileToken, clientIP)
+		if err != nil || !valid {
+			helpers.SendAppError(w, apperrors.New(apperrors.ErrCodeUnauthorized, "turnstile security verification failed"))
+			return
+		}
+	}
 	token, err := c.AuthService.VerifyIDToken(ctx, body.IDToken)
 	if err != nil {
 		helpers.SendAppError(w, apperrors.New(apperrors.ErrCodeInvalidToken, "invalid or expired ID token"))

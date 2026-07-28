@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  X, ChevronDown, ChevronUp, Download, Eye, AlertTriangle, Edit2, Save
+  X, ChevronDown, ChevronUp, Eye, AlertTriangle, Edit2, Save, FileType
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db, auth } from '@/api/firebase';
@@ -923,8 +923,8 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
             </>
           ) : (
             <>
-              <Download className="w-4 h-4" />
-              Export PDF SR & Dokumentasi
+              <FileType className="w-4 h-4" />
+              GENERATE SERVICE REPORT & DOKUMENTASI (PDF)
             </>
           )}
         </motion.button>

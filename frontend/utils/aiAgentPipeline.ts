@@ -530,4 +530,48 @@ export async function analyzeBusductReportAI(photos: any[], existingData?: any) 
   return response.json();
 }
 
+export async function analyzeDocklevelerReportAI(photos: any[], existingData?: any) {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+  const response = await fetch(`${apiUrl}/ai/dockleveler-report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ photos, existing_data: existingData }),
+  });
+  if (!response.ok) throw new Error(`Dock Leveler AI failed: ${response.statusText}`);
+  return response.json();
+}
+
+export async function analyzeDoorReportAI(photos: any[], existingData?: any) {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+  const response = await fetch(`${apiUrl}/ai/door-report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ photos, existing_data: existingData }),
+  });
+  if (!response.ok) throw new Error(`Door AI failed: ${response.statusText}`);
+  return response.json();
+}
+
+export async function analyzeCapacitorbankReportAI(photos: any[], existingData?: any) {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+  const response = await fetch(`${apiUrl}/ai/capacitorbank-report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ photos, existing_data: existingData }),
+  });
+  if (!response.ok) throw new Error(`Capacitor Bank AI failed: ${response.statusText}`);
+  return response.json();
+}
+
+export async function analyzeLdbrdbReportAI(photos: any[], existingData?: any) {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+  const response = await fetch(`${apiUrl}/ai/ldbrdb-report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ photos, existing_data: existingData }),
+  });
+  if (!response.ok) throw new Error(`Panel LDB & RDB AI failed: ${response.statusText}`);
+  return response.json();
+}
+
 

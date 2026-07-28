@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Eye, Zap } from 'lucide-react';
+import { Eye, Zap, FileType } from 'lucide-react';
 import { toast } from 'sonner';
+import { generateCTReportPDF } from '@/service_reports/ct/generateCTReportPDF';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '@/api/firebase';
 import {
@@ -714,6 +715,21 @@ export function CTServiceReport({ prefillData, onClearPrefill, onChange }: CTSer
           )}
         </div>
       )}
+
+      {/* Bottom Action Footer for Service Report & Documentation PDF Generation */}
+      <div className="mt-10 pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="text-xs text-slate-500 font-medium">
+          * Laporan Service Report & Dokumentasi PDF akan digenerasi secara lengkap sesuai standar resmi PT. Dwi Mitra Ekatama Mandiri
+        </div>
+        <button
+          type="button"
+          onClick={() => generateCTReportPDF(customerInfo, reportData, timeSpent, photos.map(p => ({ id: p.id, photoBase64: p.preview, description: p.label })))}
+          className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xl shadow-blue-600/30 transition active:scale-95 flex items-center justify-center gap-2.5 cursor-pointer"
+        >
+          <FileType className="w-4 h-4" />
+          GENERATE SERVICE REPORT & DOKUMENTASI (PDF)
+        </button>
+      </div>
 
       {/* Image Preview Modal */}
       {previewImage && (

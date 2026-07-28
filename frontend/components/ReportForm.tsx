@@ -33,6 +33,10 @@ import { GeneratorServiceReport } from '@/components/GeneratorServiceReport';
 import { ACSplitServiceReport } from '@/components/ACSplitServiceReport';
 import { TrafoServiceReport } from '@/components/TrafoServiceReport';
 import { BusductServiceReport } from '@/components/BusductServiceReport';
+import { DocklevelerServiceReport } from '@/components/DocklevelerServiceReport';
+import { DoorServiceReport } from '@/components/DoorServiceReport';
+import { CapacitorbankServiceReport } from '@/components/CapacitorbankServiceReport';
+import { LdbrdbServiceReport } from '@/components/LdbrdbServiceReport';
 
 
 import imgStatusWld from '@/assets/Wld/status.jpeg';
@@ -132,6 +136,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [acSplitPrefillData, setAcSplitPrefillData] = useState<any>(null);
   const [trafoPrefillData, setTrafoPrefillData] = useState<any>(null);
   const [busductPrefillData, setBusductPrefillData] = useState<any>(null);
+  const [docklevelerPrefillData, setDocklevelerPrefillData] = useState<any>(null);
+  const [doorPrefillData, setDoorPrefillData] = useState<any>(null);
+  const [capacitorbankPrefillData, setCapacitorbankPrefillData] = useState<any>(null);
+  const [ldbrdbPrefillData, setLdbrdbPrefillData] = useState<any>(null);
 
   const [fcuData, setFcuData] = useState<any>(null);
   const [pjuData, setPjuData] = useState<any>(null);
@@ -141,6 +149,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [acSplitData, setAcSplitData] = useState<any>(null);
   const [trafoData, setTrafoData] = useState<any>(null);
   const [busductData, setBusductData] = useState<any>(null);
+  const [docklevelerData, setDocklevelerData] = useState<any>(null);
+  const [doorData, setDoorData] = useState<any>(null);
+  const [capacitorbankData, setCapacitorbankData] = useState<any>(null);
+  const [ldbrdbData, setLdbrdbData] = useState<any>(null);
 
 
 
@@ -212,6 +224,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         template = REPORT_TEMPLATES[lowerEmail];
         if (!template && (lowerEmail.includes('dock') || lowerEmail.includes('leveler'))) {
           template = REPORT_TEMPLATES['dock'];
+        }
+        if (!template && (lowerEmail.includes('ldb') || lowerEmail.includes('rdb'))) {
+          template = REPORT_TEMPLATES['ldbrdb@gmail.com'];
         }
       }
 
@@ -608,6 +623,27 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           timeSpent: (editingData as any).busductTimeSpent,
           photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
         });
+      } else if (user?.email === 'dockleveler@gmail.com') {
+        setDocklevelerPrefillData({
+          customerInfo: (editingData as any).docklevelerCustomerInfo,
+          reportData: (editingData as any).docklevelerReportData,
+          timeSpent: (editingData as any).docklevelerTimeSpent,
+          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
+        });
+      } else if (user?.email === 'door@gmail.com') {
+        setDoorPrefillData({
+          customerInfo: (editingData as any).doorCustomerInfo,
+          reportData: (editingData as any).doorReportData,
+          timeSpent: (editingData as any).doorTimeSpent,
+          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
+        });
+      } else if (user?.email === 'capacitorbank@gmail.com') {
+        setCapacitorbankPrefillData({
+          customerInfo: (editingData as any).capacitorbankCustomerInfo,
+          reportData: (editingData as any).capacitorbankReportData,
+          timeSpent: (editingData as any).capacitorbankTimeSpent,
+          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
+        });
       }
     }
   }, [editingData]);
@@ -987,6 +1023,22 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         reportData.busductCustomerInfo = busductData.customerInfo;
         reportData.busductReportData = busductData.reportData;
         reportData.busductTimeSpent = busductData.timeSpent;
+      } else if (user?.email === 'dockleveler@gmail.com' && docklevelerData) {
+        reportData.docklevelerCustomerInfo = docklevelerData.customerInfo;
+        reportData.docklevelerReportData = docklevelerData.reportData;
+        reportData.docklevelerTimeSpent = docklevelerData.timeSpent;
+      } else if (user?.email === 'door@gmail.com' && doorData) {
+        reportData.doorCustomerInfo = doorData.customerInfo;
+        reportData.doorReportData = doorData.reportData;
+        reportData.doorTimeSpent = doorData.timeSpent;
+      } else if (user?.email === 'capacitorbank@gmail.com' && capacitorbankData) {
+        reportData.capacitorbankCustomerInfo = capacitorbankData.customerInfo;
+        reportData.capacitorbankReportData = capacitorbankData.reportData;
+        reportData.capacitorbankTimeSpent = capacitorbankData.timeSpent;
+      } else if ((user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') && ldbrdbData) {
+        reportData.ldbrdbCustomerInfo = ldbrdbData.customerInfo;
+        reportData.ldbrdbReportData = ldbrdbData.reportData;
+        reportData.ldbrdbTimeSpent = ldbrdbData.timeSpent;
       }
 
       if (!editingData) {
@@ -1465,6 +1517,14 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         setTrafoPrefillData(prefillPayload);
       } else if (user?.email === 'busduct@gmail.com') {
         setBusductPrefillData(prefillPayload);
+      } else if (user?.email === 'dockleveler@gmail.com') {
+        setDocklevelerPrefillData(prefillPayload);
+      } else if (user?.email === 'door@gmail.com') {
+        setDoorPrefillData(prefillPayload);
+      } else if (user?.email === 'capacitorbank@gmail.com') {
+        setCapacitorbankPrefillData(prefillPayload);
+      } else if (user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') {
+        setLdbrdbPrefillData(prefillPayload);
       } else {
         setAtsPrefillData(prefillPayload);
       }
@@ -1928,7 +1988,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   </div>
                   <div className="relative w-full">
                     <textarea title="Deskripsi Foto" value={card.description} onChange={e => handleDescriptionChange(card.id, e.target.value)} disabled={isDME || translatingCardId === card.id} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 pr-9 sm:p-3 sm:pr-10 text-xs sm:text-sm text-slate-900 font-medium outline-none focus:bg-white focus:border-blue-500 transition placeholder:text-slate-400 disabled:opacity-75 disabled:cursor-not-allowed" rows={2} placeholder="Masukkan deskripsi dokumentasi..." />
-                    {(user?.email === 'ats@gmail.com' || user?.email === 'fcu@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com') && (
+                    {(user?.email === 'ats@gmail.com' || user?.email === 'fcu@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com' || user?.email === 'dockleveler@gmail.com' || user?.email === 'door@gmail.com' || user?.email === 'capacitorbank@gmail.com' || user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') && (
                       <button
                         type="button"
                         onClick={() => handleTranslateCardDescription(card.id)}
@@ -1944,7 +2004,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       </button>
                     )}
                   </div>
-                  {(user?.email === 'ats@gmail.com' || user?.email === 'fcu@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com' || user?.email === 'trafo@gmail.com') && (
+                  {(user?.email === 'ats@gmail.com' || user?.email === 'fcu@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com' || user?.email === 'dockleveler@gmail.com' || user?.email === 'door@gmail.com' || user?.email === 'capacitorbank@gmail.com' || user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') && (
                     <div className="relative flex items-center mt-1.5 w-full">
                       <input
                         type="text"
@@ -2001,7 +2061,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 <span className="text-center leading-tight">PREVIEW DOKUMENTASI</span>
               </button>
 
-              {(user?.email === 'ats@gmail.com' || user?.email === 'fcu@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com') && (
+              {(user?.email === 'ats@gmail.com' || user?.email === 'fcu@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com' || user?.email === 'dockleveler@gmail.com' || user?.email === 'door@gmail.com' || user?.email === 'capacitorbank@gmail.com' || user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') && (
                 <>
                   <button 
                     onClick={handleBulkAnalyzeAtsParameters} 
@@ -2024,7 +2084,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   >
                     <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 text-sky-700 group-active:scale-90 transition-transform hover:rotate-180 duration-500" />
                     <span className="text-center leading-tight">
-                      {user?.email === 'fcu@gmail.com' ? 'SINKRONISASI KE FCU' : user?.email === 'pju@gmail.com' ? 'SINKRONISASI KE PJU' : user?.email === 'pdu@gmail.com' ? 'SINKRONISASI KE PDU' : user?.email === 'coolingtower@gmail.com' ? 'SINKRONISASI KE COOLING TOWER' : user?.email === 'generator@gmail.com' ? 'SINKRONISASI KE GENERATOR' : user?.email === 'acsplit@gmail.com' ? 'SINKRONISASI KE SPLIT WALL AC' : user?.email === 'trafo@gmail.com' ? 'SINKRONISASI KE TRANSFORMATOR (TRAFO)' : user?.email === 'busduct@gmail.com' ? 'SINKRONISASI KE PANEL BUSDUCT' : 'SINKRONISASI KE ATS'}
+                      {user?.email === 'fcu@gmail.com' ? 'SINKRONISASI KE FCU' : user?.email === 'pju@gmail.com' ? 'SINKRONISASI KE PJU' : user?.email === 'pdu@gmail.com' ? 'SINKRONISASI KE PDU' : user?.email === 'coolingtower@gmail.com' ? 'SINKRONISASI KE COOLING TOWER' : user?.email === 'generator@gmail.com' ? 'SINKRONISASI KE GENERATOR' : user?.email === 'acsplit@gmail.com' ? 'SINKRONISASI KE SPLIT WALL AC' : user?.email === 'trafo@gmail.com' ? 'SINKRONISASI KE TRANSFORMATOR (TRAFO)' : user?.email === 'busduct@gmail.com' ? 'SINKRONISASI KE PANEL BUSDUCT' : user?.email === 'dockleveler@gmail.com' ? 'SINKRONISASI KE DOCK LEVELER' : user?.email === 'door@gmail.com' ? 'SINKRONISASI KE DOOR / ROLLING DOOR' : user?.email === 'capacitorbank@gmail.com' ? 'SINKRONISASI KE PANEL APFCR (CAPACITOR BANK)' : (user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') ? 'SINKRONISASI KE PANEL LDB & RDB' : 'SINKRONISASI KE ATS'}
                     </span>
                   </button>
                 </>
@@ -2041,7 +2101,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   <FileType className="w-4 h-4 sm:w-5 sm:h-5 group-active:scale-90 transition-transform" />
                 )}
                 <span className="text-center leading-tight">
-                  {isExporting ? 'EXPORTING...' : 'EXPORT DOKUMENTASI (PDF)'}
+                  {isExporting ? 'EXPORTING...' : 'EXPORT DOKUMENTASI (FOTO)'}
                 </span>
               </button>
             </div>
@@ -2231,6 +2291,46 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             prefillData={busductPrefillData} 
             onClearPrefill={() => setBusductPrefillData(null)} 
             onChange={setBusductData}
+          />
+        </div>
+      )}
+
+      {user?.email === 'dockleveler@gmail.com' && (
+        <div className="mt-12 border-t border-slate-800 pt-12">
+          <DocklevelerServiceReport 
+            prefillData={docklevelerPrefillData} 
+            onClearPrefill={() => setDocklevelerPrefillData(null)} 
+            onChange={setDocklevelerData}
+          />
+        </div>
+      )}
+
+      {user?.email === 'door@gmail.com' && (
+        <div className="mt-12 border-t border-slate-800 pt-12">
+          <DoorServiceReport 
+            prefillData={doorPrefillData} 
+            onClearPrefill={() => setDoorPrefillData(null)} 
+            onChange={setDoorData}
+          />
+        </div>
+      )}
+
+      {user?.email === 'capacitorbank@gmail.com' && (
+        <div className="mt-12 border-t border-slate-800 pt-12">
+          <CapacitorbankServiceReport 
+            prefillData={capacitorbankPrefillData} 
+            onClearPrefill={() => setCapacitorbankPrefillData(null)} 
+            onChange={setCapacitorbankData}
+          />
+        </div>
+      )}
+
+      {(user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') && (
+        <div className="mt-12 border-t border-slate-800 pt-12">
+          <LdbrdbServiceReport 
+            prefillData={ldbrdbPrefillData} 
+            onClearPrefill={() => setLdbrdbPrefillData(null)} 
+            onChange={setLdbrdbData}
           />
         </div>
       )}

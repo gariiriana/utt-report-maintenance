@@ -84,6 +84,46 @@ export const PDF_TEMPLATE_REGISTRY: Record<string, PDFTemplateConfig> = {
     maintenanceType: 'Busduct',
     description: 'Template PDF Service Report khusus Panel Busduct Neutra DC Cikarang',
   },
+  'dockleveler@gmail.com': {
+    accountEmail: 'dockleveler@gmail.com',
+    templateName: 'Service Report Dock Leveler',
+    templateFileName: 'dockleveler@gmail.com.pdf',
+    templatePath: '/templates/pdf_service_reports/dockleveler@gmail.com.pdf',
+    maintenanceType: 'Dock Leveler',
+    description: 'Template PDF Service Report khusus Dock Leveler Neutra DC Cikarang',
+  },
+  'door@gmail.com': {
+    accountEmail: 'door@gmail.com',
+    templateName: 'Service Report Door / Rolling Door',
+    templateFileName: 'door@gmail.com.pdf',
+    templatePath: '/templates/pdf_service_reports/door@gmail.com.pdf',
+    maintenanceType: 'Door',
+    description: 'Template PDF Service Report khusus Door / Rolling Door Neutra DC Cikarang',
+  },
+  'capacitorbank@gmail.com': {
+    accountEmail: 'capacitorbank@gmail.com',
+    templateName: 'Service Report Panel APFCR (Capacitor Bank)',
+    templateFileName: 'capacitorbank@gmail.com.pdf',
+    templatePath: '/templates/pdf_service_reports/capacitorbank@gmail.com.pdf',
+    maintenanceType: 'Capacitor Bank',
+    description: 'Template PDF Service Report khusus Panel APFCR / Capacitor Bank Neutra DC Cikarang',
+  },
+  'ldbrdb@gmail.com': {
+    accountEmail: 'ldbrdb@gmail.com',
+    templateName: 'Service Report Panel LDB & RDB',
+    templateFileName: 'ldbrdb@gmail.com.pdf',
+    templatePath: '/templates/pdf_service_reports/ldbrdb@gmail.com.pdf',
+    maintenanceType: 'Panel LDB & RDB',
+    description: 'Template PDF Service Report khusus Panel LDB & RDB Neutra DC Cikarang',
+  },
+  'ldb/rdb@gmail.com': {
+    accountEmail: 'ldb/rdb@gmail.com',
+    templateName: 'Service Report Panel LDB & RDB',
+    templateFileName: 'ldbrdb@gmail.com.pdf',
+    templatePath: '/templates/pdf_service_reports/ldbrdb@gmail.com.pdf',
+    maintenanceType: 'Panel LDB & RDB',
+    description: 'Template PDF Service Report khusus Panel LDB & RDB Neutra DC Cikarang',
+  },
 };
 
 /**

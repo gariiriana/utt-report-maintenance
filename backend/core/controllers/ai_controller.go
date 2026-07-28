@@ -394,4 +394,98 @@ func (c *AIController) AnalyzeBusductReport(w http.ResponseWriter, r *http.Reque
 	helpers.SendJSON(w, http.StatusOK, result)
 }
 
+// AnalyzeDocklevelerReport handles POST /api/ai/dockleveler-report
+func (c *AIController) AnalyzeDocklevelerReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req models.DocklevelerAnalyzeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.SendError(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	result, err := c.service.AnalyzeDocklevelerPhotos(r.Context(), req.Photos, req.ExistingData)
+	if err != nil {
+		logger.Error("ai_dockleveler_analyze_error", "error", err.Error())
+		helpers.SendError(w, "AI Dock Leveler analysis failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	helpers.SendJSON(w, http.StatusOK, result)
+}
+
+// AnalyzeDoorReport handles POST /api/ai/door-report
+func (c *AIController) AnalyzeDoorReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req models.DoorAnalyzeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.SendError(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	result, err := c.service.AnalyzeDoorPhotos(r.Context(), req.Photos, req.ExistingData)
+	if err != nil {
+		logger.Error("ai_door_analyze_error", "error", err.Error())
+		helpers.SendError(w, "AI Door analysis failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	helpers.SendJSON(w, http.StatusOK, result)
+}
+
+// AnalyzeCapacitorbankReport handles POST /api/ai/capacitorbank-report
+func (c *AIController) AnalyzeCapacitorbankReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req models.CapacitorbankAnalyzeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.SendError(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	result, err := c.service.AnalyzeCapacitorbankPhotos(r.Context(), req.Photos, req.ExistingData)
+	if err != nil {
+		logger.Error("ai_capacitorbank_analyze_error", "error", err.Error())
+		helpers.SendError(w, "AI Capacitor Bank analysis failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	helpers.SendJSON(w, http.StatusOK, result)
+}
+
+// AnalyzeLdbrdbReport handles POST /api/ai/ldbrdb-report
+func (c *AIController) AnalyzeLdbrdbReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req models.LdbrdbAnalyzeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.SendError(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	result, err := c.service.AnalyzeLdbrdbPhotos(r.Context(), req.Photos, req.ExistingData)
+	if err != nil {
+		logger.Error("ai_ldbrdb_analyze_error", "error", err.Error())
+		helpers.SendError(w, "AI Panel LDB & RDB analysis failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	helpers.SendJSON(w, http.StatusOK, result)
+}
+
+
+
 

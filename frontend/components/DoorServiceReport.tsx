@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react';
-import { FileType, Zap } from 'lucide-react';
+import { FileType, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  BusductCustomerInfo,
-  BusductReportData,
-  BusductTimeSpent,
-  DEFAULT_BUSDUCT_CUSTOMER_INFO,
-  DEFAULT_BUSDUCT_VISUAL_ITEMS,
-  DEFAULT_BUSDUCT_CLEANING_ITEMS,
-  DEFAULT_BUSDUCT_THERMAL,
-  DEFAULT_BUSDUCT_ANALYSIS,
-  DEFAULT_BUSDUCT_TIME_SPENT,
-} from '@/types/busductReportTypes';
-import { generateBusductReportPDF } from '@/service_reports/busduct/generateBusductReportPDF';
+  DoorCustomerInfo,
+  DoorReportData,
+  DoorTimeSpent,
+  DEFAULT_DOOR_CUSTOMER_INFO,
+  DEFAULT_DOOR_VISUAL_ITEMS,
+  DEFAULT_DOOR_CLEANING_ITEMS,
+  DEFAULT_DOOR_VOLTAGE_AMPERE,
+  DEFAULT_DOOR_NOISE,
+  DEFAULT_DOOR_GROUNDING,
+  DEFAULT_DOOR_ANALYSIS,
+  DEFAULT_DOOR_TIME_SPENT,
+} from '@/types/doorReportTypes';
+import { generateDoorReportPDF } from '@/service_reports/door/generateDoorReportPDF';
 
 interface UploadedPhoto {
   id: string;
@@ -23,26 +25,28 @@ interface UploadedPhoto {
   parameter?: string;
 }
 
-interface BusductServiceReportProps {
+interface DoorServiceReportProps {
   prefillData?: any;
   onClearPrefill?: () => void;
-  onChange?: (data: { customerInfo: BusductCustomerInfo; reportData: BusductReportData; timeSpent: BusductTimeSpent }) => void;
+  onChange?: (data: { customerInfo: DoorCustomerInfo; reportData: DoorReportData; timeSpent: DoorTimeSpent }) => void;
 }
 
-export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: BusductServiceReportProps) {
-  const [customerInfo, setCustomerInfo] = useState<BusductCustomerInfo>(DEFAULT_BUSDUCT_CUSTOMER_INFO);
-  const [reportData, setReportData] = useState<BusductReportData>({
-    customerInfo: DEFAULT_BUSDUCT_CUSTOMER_INFO,
-    visualInspection: DEFAULT_BUSDUCT_VISUAL_ITEMS,
-    cleaning: DEFAULT_BUSDUCT_CLEANING_ITEMS,
-    thermal: DEFAULT_BUSDUCT_THERMAL,
-    analysis: DEFAULT_BUSDUCT_ANALYSIS,
-    timeSpent: DEFAULT_BUSDUCT_TIME_SPENT,
+export function DoorServiceReport({ prefillData, onClearPrefill, onChange }: DoorServiceReportProps) {
+  const [customerInfo, setCustomerInfo] = useState<DoorCustomerInfo>(DEFAULT_DOOR_CUSTOMER_INFO);
+  const [reportData, setReportData] = useState<DoorReportData>({
+    customerInfo: DEFAULT_DOOR_CUSTOMER_INFO,
+    visualInspection: DEFAULT_DOOR_VISUAL_ITEMS,
+    cleaning: DEFAULT_DOOR_CLEANING_ITEMS,
+    voltageAmpere: DEFAULT_DOOR_VOLTAGE_AMPERE,
+    noise: DEFAULT_DOOR_NOISE,
+    grounding: DEFAULT_DOOR_GROUNDING,
+    analysis: DEFAULT_DOOR_ANALYSIS,
+    timeSpent: DEFAULT_DOOR_TIME_SPENT,
   });
-  const [timeSpent, setTimeSpent] = useState<BusductTimeSpent>(DEFAULT_BUSDUCT_TIME_SPENT);
+  const [timeSpent, setTimeSpent] = useState<DoorTimeSpent>(DEFAULT_DOOR_TIME_SPENT);
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'visual' | 'cleaning' | 'thermal' | 'analysis' | 'customer' | 'time' | 'photos'>('visual');
+  const [activeTab, setActiveTab] = useState<'visual' | 'cleaning' | 'measurements' | 'analysis' | 'customer' | 'time' | 'photos'>('visual');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Sync state with parent
@@ -57,11 +61,11 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
     if (prefillData) {
       if (prefillData.photos) {
         const mappedPhotos: UploadedPhoto[] = prefillData.photos.map((p: any, i: number) => ({
-          id: `busduct-p-${i}-${Date.now()}`,
+          id: `door-p-${i}-${Date.now()}`,
           base64: p.base64 || '',
           preview: p.preview || (p.base64 ? `data:image/jpeg;base64,${p.base64}` : ''),
-          category: p.category || 'busduct',
-          label: p.label || 'Foto Busduct',
+          category: p.category || 'door',
+          label: p.label || 'Foto Door',
           parameter: p.parameter || '',
         }));
         setPhotos(mappedPhotos);
@@ -71,7 +75,7 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
       if (prefillData.reportData) setReportData(prefillData.reportData);
       if (prefillData.timeSpent) setTimeSpent(prefillData.timeSpent);
 
-      toast.success('Mengekstrak data foto & parameter ke Service Report Panel Busduct!');
+      toast.success('Mengekstrak data foto & parameter ke Service Report Door!');
 
       if (onClearPrefill) onClearPrefill();
     }
@@ -95,17 +99,17 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
 
   const handleExportPDF = async () => {
     try {
-      toast.loading('Generating PDF Busduct Service Report...', { id: 'busduct-pdf-toast' });
-      await generateBusductReportPDF(
+      toast.loading('Generating PDF Door Service Report...', { id: 'door-pdf-toast' });
+      await generateDoorReportPDF(
         customerInfo,
         reportData,
         timeSpent,
-        photos.map((p) => ({ photoBase64: p.base64, description: p.label || 'Foto Dokumen Busduct' }))
+        photos.map((p) => ({ photoBase64: p.base64, description: p.label || 'Foto Door' }))
       );
-      toast.success('PDF Service Report Busduct berhasil dibuat!', { id: 'busduct-pdf-toast' });
+      toast.success('PDF Service Report Door berhasil dibuat!', { id: 'door-pdf-toast' });
     } catch (err: any) {
       console.error('PDF export error', err);
-      toast.error(`Gagal membuat PDF: ${err.message}`, { id: 'busduct-pdf-toast' });
+      toast.error(`Gagal membuat PDF: ${err.message}`, { id: 'door-pdf-toast' });
     }
   };
 
@@ -116,12 +120,12 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-bold rounded-lg border border-blue-200 uppercase tracking-widest">
-              SERVICE REPORT — PANEL BUSDUCT
+              SERVICE REPORT — DOOR / ROLLING DOOR
             </span>
           </div>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2">
-            <Zap className="w-6 h-6 text-blue-600" />
-            Laporan Pemeliharaan Panel Busduct
+            <ShieldCheck className="w-6 h-6 text-blue-600" />
+            Laporan Pemeliharaan Pintu / Rolling Door
           </h2>
           <p className="text-slate-500 text-xs sm:text-sm mt-0.5">
             PT. DWI MITRA EKATAMA MANDIRI — Neutra DC Cikarang
@@ -133,8 +137,8 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
       <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-4 border-b border-slate-200 mb-6">
         {[
           { id: 'visual', label: 'Visual Inspection (10 Items)' },
-          { id: 'cleaning', label: 'Cleaning (2 Items)' },
-          { id: 'thermal', label: 'Thermal Joint' },
+          { id: 'cleaning', label: 'Cleaning (5 Items)' },
+          { id: 'measurements', label: 'Voltage, Ampere, Noise & Grounding' },
           { id: 'analysis', label: 'Analysis & Remark' },
           { id: 'customer', label: 'Customer Info' },
           { id: 'time', label: 'Time Spent' },
@@ -160,7 +164,7 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
           <div>
             <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wider mb-3 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-              Visual Inspection & Maintenance (10 Items)
+              Visual inspection & Maintenance (10 Items)
             </h3>
             <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
               <table className="w-full text-xs text-left">
@@ -168,9 +172,8 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
                   <tr>
                     <th className="p-3 w-12 text-center">No</th>
                     <th className="p-3">Activity</th>
-                    <th className="p-3 w-64">Parameter</th>
+                    <th className="p-3 w-72">Parameter</th>
                     <th className="p-3 w-32 text-center">Condition</th>
-                    <th className="p-3 w-48">Remarks (2-5 Kata)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -193,15 +196,6 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
                           <option value="NOK">Not Good (×)</option>
                         </select>
                       </td>
-                      <td className="p-3">
-                        <input
-                          type="text"
-                          value={item.remarks}
-                          onChange={(e) => updateVisualItem(idx, 'remarks', e.target.value)}
-                          placeholder="Catatan..."
-                          className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                        />
-                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -217,7 +211,7 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
           <div>
             <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wider mb-3 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-              Cleaning & Maintenance (2 Items)
+              Cleaning & Maintenance (5 Items)
             </h3>
             <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
               <table className="w-full text-xs text-left">
@@ -225,9 +219,8 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
                   <tr>
                     <th className="p-3 w-12 text-center">No</th>
                     <th className="p-3">Activity</th>
-                    <th className="p-3 w-64">Parameter</th>
+                    <th className="p-3 w-72">Parameter</th>
                     <th className="p-3 w-32 text-center">Condition</th>
-                    <th className="p-3 w-48">Remarks (2-5 Kata)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -250,15 +243,6 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
                           <option value="NOK">Not Good (×)</option>
                         </select>
                       </td>
-                      <td className="p-3">
-                        <input
-                          type="text"
-                          value={item.remarks}
-                          onChange={(e) => updateCleaningItem(idx, 'remarks', e.target.value)}
-                          placeholder="Catatan..."
-                          className="w-full bg-white border border-slate-200 rounded-lg p-1.5 text-xs text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                        />
-                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -268,50 +252,144 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
         </div>
       )}
 
-      {/* TAB 3: THERMAL JOINT */}
-      {activeTab === 'thermal' && (
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+      {/* TAB 3: MEASUREMENTS (Voltage, Ampere, Noise & Grounding) */}
+      {activeTab === 'measurements' && (
+        <div className="space-y-6 text-xs">
+          {/* Voltage & Ampere */}
+          <div className="p-5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-4">
+            <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wider flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-              Thermal Measurement Joint
+              Voltage & Ampere Measurement
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-5 bg-slate-50/80 rounded-2xl border border-slate-200">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Breaker / Joint</label>
+                <label className="block font-bold text-slate-700 mb-1">R - S (Volt)</label>
                 <input
                   type="text"
-                  value={reportData.thermal.breaker}
-                  onChange={(e) => setReportData({ ...reportData, thermal: { ...reportData.thermal, breaker: e.target.value } })}
-                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 font-medium outline-none focus:border-blue-500"
+                  value={reportData.voltageAmpere.voltageRS}
+                  onChange={(e) => setReportData({ ...reportData, voltageAmpere: { ...reportData.voltageAmpere, voltageRS: e.target.value } })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Result Temperature Joint (°C)</label>
+                <label className="block font-bold text-slate-700 mb-1">S - T (Volt)</label>
                 <input
                   type="text"
-                  value={reportData.thermal.resultTemp}
-                  onChange={(e) => setReportData({ ...reportData, thermal: { ...reportData.thermal, resultTemp: e.target.value } })}
-                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 font-medium outline-none focus:border-blue-500"
+                  value={reportData.voltageAmpere.voltageST}
+                  onChange={(e) => setReportData({ ...reportData, voltageAmpere: { ...reportData.voltageAmpere, voltageST: e.target.value } })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Standard</label>
+                <label className="block font-bold text-slate-700 mb-1">T - R (Volt)</label>
                 <input
                   type="text"
-                  disabled
-                  value={reportData.thermal.standard}
-                  className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-500 font-bold"
+                  value={reportData.voltageAmpere.voltageTR}
+                  onChange={(e) => setReportData({ ...reportData, voltageAmpere: { ...reportData.voltageAmpere, voltageTR: e.target.value } })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Remarks</label>
+                <label className="block font-bold text-slate-700 mb-1">N - G (Volt)</label>
                 <input
                   type="text"
-                  value={reportData.thermal.remarks}
-                  onChange={(e) => setReportData({ ...reportData, thermal: { ...reportData.thermal, remarks: e.target.value } })}
-                  className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-xs text-slate-900 font-medium outline-none focus:border-blue-500"
+                  value={reportData.voltageAmpere.voltageNG}
+                  onChange={(e) => setReportData({ ...reportData, voltageAmpere: { ...reportData.voltageAmpere, voltageNG: e.target.value } })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-blue-500"
                 />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Ampere R (A)</label>
+                <input
+                  type="text"
+                  value={reportData.voltageAmpere.ampereR}
+                  onChange={(e) => setReportData({ ...reportData, voltageAmpere: { ...reportData.voltageAmpere, ampereR: e.target.value } })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Ampere S (A)</label>
+                <input
+                  type="text"
+                  value={reportData.voltageAmpere.ampereS}
+                  onChange={(e) => setReportData({ ...reportData, voltageAmpere: { ...reportData.voltageAmpere, ampereS: e.target.value } })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Ampere T (A)</label>
+                <input
+                  type="text"
+                  value={reportData.voltageAmpere.ampereT}
+                  onChange={(e) => setReportData({ ...reportData, voltageAmpere: { ...reportData.voltageAmpere, ampereT: e.target.value } })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Ampere N (A)</label>
+                <input
+                  type="text"
+                  value={reportData.voltageAmpere.ampereN}
+                  onChange={(e) => setReportData({ ...reportData, voltageAmpere: { ...reportData.voltageAmpere, ampereN: e.target.value } })}
+                  className="w-full bg-white border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Noise & Grounding */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-3">
+              <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                Noise / Sound Level Measurement
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Result dB(A)</label>
+                  <input
+                    type="text"
+                    value={reportData.noise.unitResult}
+                    onChange={(e) => setReportData({ ...reportData, noise: { ...reportData.noise, unitResult: e.target.value } })}
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Standard</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={reportData.noise.standard}
+                    className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-500 font-bold"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-3">
+              <h3 className="text-sm font-bold text-blue-700 uppercase tracking-wider flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                Grounding Resistance Measurement
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Result (Ω)</label>
+                  <input
+                    type="text"
+                    value={reportData.grounding.groundingResult}
+                    onChange={(e) => setReportData({ ...reportData, grounding: { ...reportData.grounding, groundingResult: e.target.value } })}
+                    className="w-full bg-white border border-slate-200 rounded-xl p-2 text-slate-900 outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Standard</label>
+                  <input
+                    type="text"
+                    disabled
+                    value={reportData.grounding.standard}
+                    className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-500 font-bold"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -412,6 +490,24 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
               />
             </div>
             <div>
+              <label className="block font-bold text-slate-700 mb-1">CI Description</label>
+              <input
+                type="text"
+                value={customerInfo.ciDescription}
+                onChange={(e) => setCustomerInfo({ ...customerInfo, ciDescription: e.target.value })}
+                className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">CI Name</label>
+              <input
+                type="text"
+                value={customerInfo.ciName}
+                onChange={(e) => setCustomerInfo({ ...customerInfo, ciName: e.target.value })}
+                className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
               <label className="block font-bold text-slate-700 mb-1">Type</label>
               <input
                 type="text"
@@ -421,29 +517,11 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
               />
             </div>
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Specification</label>
-              <input
-                type="text"
-                value={customerInfo.specification}
-                onChange={(e) => setCustomerInfo({ ...customerInfo, specification: e.target.value })}
-                className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
-              />
-            </div>
-            <div>
               <label className="block font-bold text-slate-700 mb-1">Serial No</label>
               <input
                 type="text"
                 value={customerInfo.serialNo}
                 onChange={(e) => setCustomerInfo({ ...customerInfo, serialNo: e.target.value })}
-                className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">MOP No</label>
-              <input
-                type="text"
-                value={customerInfo.mopNo}
-                onChange={(e) => setCustomerInfo({ ...customerInfo, mopNo: e.target.value })}
                 className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 outline-none focus:border-blue-500"
               />
             </div>

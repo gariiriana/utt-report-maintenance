@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
 import { Lock, Mail, Eye, EyeOff, LogIn } from 'lucide-react';
+import { Turnstile } from '@marsidev/react-turnstile';
 
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
@@ -11,6 +12,7 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const { login } = useAuth();
 
@@ -19,6 +21,11 @@ export function Login() {
 
     if (!email || !password) {
       toast.error('Mohon isi semua field');
+      return;
+    }
+
+    if (!turnstileToken) {
+      toast.error('Mohon selesaikan verifikasi keamanan Turnstile terlebih dahulu');
       return;
     }
 
@@ -40,6 +47,7 @@ export function Login() {
       }
 
       toast.error(errorMessage);
+      setTurnstileToken(null);
     } finally {
       setLoading(false);
     }
@@ -125,12 +133,22 @@ export function Login() {
                 </div>
               </div>
 
+              <div className="pt-1 pb-1 flex justify-center items-center cf-turnstile" data-action="turnstile-spin-v2">
+                <Turnstile
+                  siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAAD_fWrDH129FQ_Rm'}
+                  onSuccess={(token) => setTurnstileToken(token)}
+                  onExpire={() => setTurnstileToken(null)}
+                  onError={() => setTurnstileToken(null)}
+                  options={{ action: 'turnstile-spin-v2', theme: 'light', size: 'normal' }}
+                />
+              </div>
+
               <motion.button
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={{ scale: turnstileToken && !loading ? 1.01 : 1 }}
+                whileTap={{ scale: turnstileToken && !loading ? 0.98 : 1 }}
                 type="submit"
-                disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white py-2.5 sm:py-3 md:py-3.5 rounded-xl md:rounded-2xl font-bold shadow-lg shadow-blue-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-4 sm:mt-5 text-xs sm:text-sm md:text-base cursor-pointer"
+                disabled={loading || !turnstileToken}
+                className="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white py-2.5 sm:py-3 md:py-3.5 rounded-xl md:rounded-2xl font-bold shadow-lg shadow-blue-600/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2 sm:mt-3 text-xs sm:text-sm md:text-base cursor-pointer"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">

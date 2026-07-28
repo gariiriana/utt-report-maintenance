@@ -128,6 +128,21 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 	case path == "/api/ai/busduct-report" && r.Method == http.MethodPost:
 		heavy(deps.AICtrl.AnalyzeBusductReport)(w, r)
 
+	case path == "/api/ai/dockleveler-report" && r.Method == http.MethodPost:
+		heavy(deps.AICtrl.AnalyzeDocklevelerReport)(w, r)
+
+	case path == "/api/ai/door-report" && r.Method == http.MethodPost:
+		heavy(deps.AICtrl.AnalyzeDoorReport)(w, r)
+
+	case path == "/api/ai/capacitorbank-report" && r.Method == http.MethodPost:
+		heavy(deps.AICtrl.AnalyzeCapacitorbankReport)(w, r)
+
+	case path == "/api/ai/ldbrdb-report" && r.Method == http.MethodPost:
+		heavy(deps.AICtrl.AnalyzeLdbrdbReport)(w, r)
+
+
+
+
 
 
 	case path == "/api/ai/validate-form" && r.Method == http.MethodPost:

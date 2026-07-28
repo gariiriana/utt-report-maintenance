@@ -440,6 +440,55 @@ type BusductAnalyzeRequest struct {
 	ExistingData any                 `json:"existing_data,omitempty"`
 }
 
+// ─── AI Service Report Dock Leveler ─────────────────────────────────────
+
+type DocklevelerPhotoInput struct {
+	Base64    string `json:"base64"`
+	Category  string `json:"category"`
+	Label     string `json:"label"`
+	Parameter string `json:"parameter"`
+}
+
+type DocklevelerAnalyzeRequest struct {
+	Photos       []DocklevelerPhotoInput `json:"photos"`
+	ExistingData any                     `json:"existing_data,omitempty"`
+}
+
+// ─── AI Service Report Door ─────────────────────────────────────────────
+
+type DoorPhotoInput struct {
+	Base64    string `json:"base64"`
+	Category  string `json:"category"`
+	Label     string `json:"label"`
+	Parameter string `json:"parameter"`
+}
+
+type DoorAnalyzeRequest struct {
+	Photos       []DoorPhotoInput `json:"photos"`
+	ExistingData any              `json:"existing_data,omitempty"`
+}
+
+type CapacitorbankPhotoInput struct {
+	Base64 string `json:"base64"`
+	Label  string `json:"label"`
+}
+
+type CapacitorbankAnalyzeRequest struct {
+	Photos       []CapacitorbankPhotoInput `json:"photos"`
+	ExistingData any                      `json:"existing_data,omitempty"`
+}
+
+type LdbrdbPhotoInput struct {
+	Base64 string `json:"base64"`
+	Label  string `json:"label"`
+}
+
+type LdbrdbAnalyzeRequest struct {
+	Photos       []LdbrdbPhotoInput `json:"photos"`
+	ExistingData any                `json:"existing_data,omitempty"`
+}
+
+
 
 // ChatMessage represents a single message in a chat history.
 type ChatMessage struct {
