@@ -756,8 +756,8 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
                       title="Condition"
                       aria-label="Condition"
                     >
-                      <option value="Good">Baik</option>
-                      <option value="Not Good">Tidak Baik</option>
+                      <option value="Good">Good</option>
+                      <option value="Not Good">Not Good</option>
                     </select>
                   </td>
                   <td className="px-3 py-1.5">
