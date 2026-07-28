@@ -1152,30 +1152,30 @@ export function FileManagement({
                             className="bg-white rounded-2xl p-8 max-w-sm w-full border border-slate-200 text-center shadow-2xl relative overflow-hidden"
                             onClick={(e) => e.stopPropagation()}
                         >
-                            <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl" />
-                            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl" />
+                            <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl" />
+                            <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-sky-500/10 rounded-full blur-3xl" />
 
                             <div className="relative z-10">
-                                <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-emerald-500/30">
+                                <div className="w-20 h-20 bg-blue-50 border border-blue-200/80 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xs">
                                     <motion.div
                                         initial={{ scale: 0 }}
                                         animate={{ scale: 1 }}
                                         transition={{ type: "spring", stiffness: 200, damping: 10, delay: 0.2 }}
                                     >
-                                        <svg className="w-10 h-10 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg className="w-10 h-10 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                         </svg>
                                     </motion.div>
                                 </div>
 
-                                <h3 className="text-2xl font-bold text-white mb-2">Upload Berhasil!</h3>
-                                <p className="text-slate-400 mb-6 px-4">
-                                    <span className="text-emerald-400 font-medium">{uploadedFilesCount} file(s)</span> telah berhasil disimpan ke sistem.
+                                <h3 className="text-2xl font-black text-slate-900 mb-2">Upload Berhasil!</h3>
+                                <p className="text-slate-600 text-sm mb-6 px-2 font-medium">
+                                    <span className="text-blue-600 font-bold">{uploadedFilesCount} file(s)</span> telah berhasil disimpan ke sistem.
                                 </p>
 
                                 <button
                                     onClick={() => setShowSuccessModal(false)}
-                                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl transition-all shadow-lg hover:shadow-emerald-500/20 active:scale-[0.98]"
+                                    className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold rounded-xl transition-all shadow-md shadow-blue-500/20 active:scale-[0.98]"
                                 >
                                     Selesai
                                 </button>
