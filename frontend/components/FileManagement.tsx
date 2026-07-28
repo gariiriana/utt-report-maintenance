@@ -74,7 +74,7 @@ const MAINTENANCE_TYPES = [
     'ATS',
     'Cooling pump',
     'Transformer / Trafo',
-    'Generator & Fuel system',
+    'Generator',
     'MV and RMU panel',
     'LV Panel',
     'PDU Panel',
@@ -884,6 +884,7 @@ export function FileManagement({
                                 if (!fMType) return false;
                                 if (fMType === type) return true;
                                 if ((type.includes('Transformer') || type.includes('Trafo')) && (fMType.includes('Transformer') || fMType.includes('Trafo'))) return true;
+                                if (type === 'Generator' && (fMType.includes('Generator') || fMType.includes('Genset'))) return true;
                                 return false;
                             };
                             const typeFiles = filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && isTypeMatch(f.maintenanceType));
@@ -920,7 +921,8 @@ export function FileManagement({
                                 (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '')
                                     ? (selectedMType && (
                                         f.maintenanceType === selectedMType ||
-                                        ((selectedMType.includes('Transformer') || selectedMType.includes('Trafo')) && (f.maintenanceType?.includes('Transformer') || f.maintenanceType?.includes('Trafo')))
+                                        ((selectedMType.includes('Transformer') || selectedMType.includes('Trafo')) && (f.maintenanceType?.includes('Transformer') || f.maintenanceType?.includes('Trafo'))) ||
+                                        (selectedMType === 'Generator' && (f.maintenanceType?.includes('Generator') || f.maintenanceType?.includes('Genset')))
                                       ))
                                     : true)
                             )
