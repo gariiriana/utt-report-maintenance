@@ -11,12 +11,12 @@ export async function generateATSReportExcel(
     title: 'Service Report Automatic Transfer Switch (ATS)',
     equipmentLabel: 'ATS Panel',
     customerInfo: {
-      companyName: customerInfo.company_name, equipmentName: customerInfo.equipment_name,
-      ciDescription: customerInfo.ci_description, ciName: customerInfo.ci_name,
-      type: customerInfo.type, serialNo: customerInfo.serial_no,
-      productName: customerInfo.product_name, productYears: customerInfo.product_years,
+      companyName: customerInfo.companyName, equipmentName: customerInfo.equipmentName,
+      ciDescription: customerInfo.ciDescription, ciName: customerInfo.ciName,
+      type: customerInfo.type, serialNo: customerInfo.serialNo,
+      productName: customerInfo.productName, productYears: customerInfo.productYears,
       specification: customerInfo.specification, location: customerInfo.location,
-      area: customerInfo.area, mopNo: customerInfo.map_no,
+      area: customerInfo.area, mopNo: customerInfo.mapNo,
       quarter: customerInfo.quarter, date: customerInfo.date, engineer: customerInfo.engineer,
     },
     timeSpent,
@@ -25,24 +25,24 @@ export async function generateATSReportExcel(
       condition: i.condition, remarks: i.remarks,
     })),
     operationStatus: {
-      is_normal: reportData.operation_status.is_normal,
-      remark: reportData.operation_status.remark,
-      fault_symptom: reportData.operation_status.fault_symptom,
-      fault_analysis: reportData.operation_status.fault_analysis,
-      work_done: reportData.operation_status.work_done,
-      fault_part_sn: reportData.operation_status.fault_part_sn,
+      is_normal: reportData.operation_status?.is_normal ?? true,
+      remark: reportData.operation_status?.remark || '',
+      fault_symptom: reportData.operation_status?.fault_symptom || '',
+      fault_analysis: reportData.operation_status?.fault_analysis || '',
+      work_done: reportData.operation_status?.work_done || '',
+      fault_part_sn: reportData.operation_status?.fault_part_sn || '',
     },
     photos,
-    fileName: `Service_Report_ATS_${customerInfo.serial_no || 'Draft'}`,
+    fileName: `Service_Report_ATS_${customerInfo.serialNo || 'Draft'}`,
     writeMeasurements: (ws, startRow) => {
       let row = startRow;
-      const pm = reportData.power_meter_recording || {};
-      row = writeMeasurementTable(ws, row, 'PENGUKURAN DIGITAL POWER METER & TEGANGAN/ARUS',
+      const vc = reportData.voltage_current || {};
+      row = writeMeasurementTable(ws, row, 'PENGUKURAN TEGANGAN & ARUS',
         ['Parameter', 'Hasil'],
         [
-          ['V R-S', pm.voltage_rs], ['V S-T', pm.voltage_st], ['V T-R', pm.voltage_tr],
-          ['V R-N', pm.voltage_rn], ['V S-N', pm.voltage_sn], ['V T-N', pm.voltage_tn], ['V N-G', pm.voltage_ng],
-          ['I R', pm.current_r], ['I S', pm.current_s], ['I T', pm.current_t], ['I N', pm.current_n],
+          ['V R-S', vc.voltage_rs], ['V S-T', vc.voltage_st], ['V T-R', vc.voltage_tr],
+          ['V R-N', vc.voltage_rn], ['V S-N', vc.voltage_sn], ['V T-N', vc.voltage_tn], ['V N-G', vc.voltage_ng],
+          ['I R', vc.ampere_r], ['I S', vc.ampere_s], ['I T', vc.ampere_t],
         ]
       );
       row++;
