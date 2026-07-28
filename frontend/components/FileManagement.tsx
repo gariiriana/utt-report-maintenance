@@ -59,6 +59,7 @@ const MAINTENANCE_TYPES = [
     'Rolling Door',
     'Lobby Door',
     'Fuel Leak',
+    'Fuel System',
     'PJU',
     'Hydrant System',
     'Gate',
