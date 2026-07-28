@@ -37,7 +37,6 @@ const FILE_CATEGORIES = [
     'Laporan Bulanan',
     'Checklist Alat',
     'Checklist APD',
-    'PTW',
     'JSEA',
     'MOP',
     'Risk Register',
@@ -48,7 +47,7 @@ const FILE_CATEGORIES = [
     'Monthly'
 ];
 
-const ENGINEER_CATEGORIES = ['MOP', 'PTW', 'Risk Register', 'D-DAY'];
+const ENGINEER_CATEGORIES = ['MOP', 'Risk Register', 'D-DAY'];
 
 const MAINTENANCE_TYPES = [
     'Water Leak',
