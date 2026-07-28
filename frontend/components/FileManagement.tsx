@@ -137,8 +137,8 @@ export function FileManagement({
     const isHSE = userRole === 'hse';
     const canUpload = propAllowUpload !== undefined
         ? propAllowUpload
-        : (userRole === 'admin' || userRole === collectionName || (collectionName === 'files' && (userRole === 'engineer' || userRole === 'standby_engineer')));
-    const canDelete = isAdmin || isTDEorCBRE || isHSE || userRole === 'engineer' || userRole === 'standby_engineer';
+        : (userRole === 'admin' || (collectionName !== 'files' && userRole === collectionName));
+    const canDelete = isAdmin || isTDEorCBRE || isHSE;
     const isEngineer = userRole === 'engineer' || userRole === 'standby_engineer';
 
     useEffect(() => {
@@ -713,7 +713,7 @@ export function FileManagement({
                                 className="w-full pl-9 pr-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl text-slate-900 text-sm sm:text-base font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer outline-none transition"
                             >
                                 <option value="All">Semua Kategori</option>
-                                {((isEngineer ? ENGINEER_CATEGORIES : FILE_CATEGORIES).filter((cat) => cat !== 'Custom')).map((cat) => (
+                                {(FILE_CATEGORIES.filter((cat) => cat !== 'Custom')).map((cat) => (
                                     <option key={cat} value={cat}>
                                         {cat}
                                     </option>
