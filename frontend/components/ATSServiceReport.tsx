@@ -14,7 +14,9 @@ import {
   VisualInspectionItem
 } from '@/types/atsReportTypes';
 import { ATSServiceReportPreview } from './ATSServiceReportPreview';
-import { generateATSServiceReportPDF } from '@/utils/ATSServiceReportPDF';
+import { generateATSServiceReportPDF } from '@/service_reports/ats/generateATSReportPDF';
+import { generateATSReportExcel } from '@/service_reports/ats/generateATSReportExcel';
+import { formatAIError } from '@/utils/aiErrorUtils';
 import { draftStorage } from '@/utils/draftStorage';
 
 // Helper to map card parameters to ATSServiceReport form fields
@@ -353,7 +355,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
       }
     } catch (err: any) {
       console.error('AI Report Generation failed:', err);
-      toast.error(`AI Auto-Fill gagal: ${err.message}`, { id: toastId });
+      toast.error(`AI Auto-Fill gagal: ${formatAIError(err)}`, { id: toastId });
       return null;
     } finally {
       setIsGenerating(false);
@@ -902,6 +904,15 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
         >
           <Eye className="w-4 h-4" />
           Pratinjau Service Report
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => generateATSReportExcel(customerInfo, reportData, timeSpent, photos)}
+          className="flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all"
+        >
+          <FileType className="w-4 h-4" />
+          EXPORT EXCEL
         </motion.button>
         <motion.button
           whileHover={!isExporting ? { scale: 1.02 } : undefined}

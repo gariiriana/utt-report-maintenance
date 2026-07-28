@@ -840,15 +840,21 @@ func (s *aiService) callNVIDIA(ctx context.Context, apiKey, model string, messag
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	maxRetries := len(s.apiKeys)
-	if maxRetries == 0 {
-		maxRetries = 1
+	// Total attempts: at least 3 attempts per key to handle transient 429 rate limits gracefully
+	keyCount := len(s.apiKeys)
+	if keyCount == 0 {
+		keyCount = 1
+	}
+	totalAttempts := keyCount * 3
+	if totalAttempts < 3 {
+		totalAttempts = 3
 	}
 
 	currentKey := apiKey
 	var lastErr error
+	var isRateLimitError bool
 
-	for attempt := 0; attempt < maxRetries; attempt++ {
+	for attempt := 0; attempt < totalAttempts; attempt++ {
 		reqCtx, cancel := context.WithTimeout(ctx, timeout)
 		req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, s.baseURL, bytes.NewReader(body))
 		if err != nil {
@@ -864,11 +870,12 @@ func (s *aiService) callNVIDIA(ctx context.Context, apiKey, model string, messag
 		if err != nil {
 			cancel()
 			lastErr = err
-			slog.Warn("NVIDIA API call failed, trying next key", 
+			slog.Warn("AI API call failed, trying next key", 
 				slog.Int("attempt", attempt+1), 
 				slog.String("error", err.Error()),
 			)
 			currentKey = s.getNextAPIKey()
+			time.Sleep(1 * time.Second)
 			continue
 		}
 
@@ -887,13 +894,32 @@ func (s *aiService) callNVIDIA(ctx context.Context, apiKey, model string, messag
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			lastErr = fmt.Errorf("NVIDIA NIM API returned status %d: %s", resp.StatusCode, string(respBody))
-			if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500 {
-				slog.Warn("NVIDIA API returned error status, trying next key", 
+			bodyStr := string(respBody)
+			if resp.StatusCode == http.StatusTooManyRequests || strings.Contains(bodyStr, "RESOURCE_EXHAUSTED") || strings.Contains(bodyStr, "429") {
+				isRateLimitError = true
+				lastErr = fmt.Errorf("Layanan AI Google Gemini sedang padat (Batas Kuota 15 request/menit tercapai). Silakan tunggu ~30 detik lalu coba lagi")
+				slog.Warn("AI API 429 Rate Limit hit, applying retry backoff", 
+					slog.Int("attempt", attempt+1),
+					slog.Int("max_attempts", totalAttempts),
+				)
+				// Backoff delay before retrying: 2s, 4s, 6s...
+				sleepDuration := time.Duration(attempt+1) * 2 * time.Second
+				if sleepDuration > 6*time.Second {
+					sleepDuration = 6 * time.Second
+				}
+				time.Sleep(sleepDuration)
+				currentKey = s.getNextAPIKey()
+				continue
+			}
+
+			lastErr = fmt.Errorf("AI API error (%d): %s", resp.StatusCode, bodyStr)
+			if resp.StatusCode >= 500 {
+				slog.Warn("AI API returned server error status, retrying", 
 					slog.Int("status_code", resp.StatusCode), 
 					slog.Int("attempt", attempt+1),
 				)
 				currentKey = s.getNextAPIKey()
+				time.Sleep(1500 * time.Millisecond)
 				continue
 			}
 			return "", lastErr
@@ -916,7 +942,7 @@ func (s *aiService) callNVIDIA(ctx context.Context, apiKey, model string, messag
 		}
 
 		content := chatResp.Choices[0].Message.Content
-		slog.Info("NVIDIA API response received successfully",
+		slog.Info("AI API response received successfully",
 			slog.String("model", model),
 			slog.Int("attempt", attempt+1),
 			slog.Int("content_length", len(content)),
@@ -926,7 +952,11 @@ func (s *aiService) callNVIDIA(ctx context.Context, apiKey, model string, messag
 		return content, nil
 	}
 
-	return "", fmt.Errorf("all %d API keys exhausted. Last error: %w", maxRetries, lastErr)
+	if isRateLimitError {
+		return "", fmt.Errorf("Layanan AI Google Gemini sedang padat (Batas Kuota 15 request/menit). Silakan tunggu ~30 detik lalu coba lagi.")
+	}
+
+	return "", fmt.Errorf("layanan AI tidak merespons setelah %d percobaan: %v", totalAttempts, lastErr)
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

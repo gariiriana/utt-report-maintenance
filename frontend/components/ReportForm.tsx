@@ -30,6 +30,7 @@ import { PJUServiceReport } from '@/components/PJUServiceReport';
 import { PDUServiceReport } from '@/components/PDUServiceReport';
 import { CTServiceReport } from '@/components/CTServiceReport';
 import { GeneratorServiceReport } from '@/components/GeneratorServiceReport';
+import { formatAIError } from '@/utils/aiErrorUtils';
 import { ACSplitServiceReport } from '@/components/ACSplitServiceReport';
 import { TrafoServiceReport } from '@/components/TrafoServiceReport';
 import { BusductServiceReport } from '@/components/BusductServiceReport';
@@ -1292,7 +1293,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       }
     } catch (err: any) {
       console.error(err);
-      toast.error(`Analisis AI gagal: ${err.message}`, { id: toastId });
+      toast.error(`Analisis AI gagal: ${formatAIError(err)}`, { id: toastId });
     } finally {
       setAnalyzingCardId(null);
     }
@@ -1349,8 +1350,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       let successCount = 0;
       const failureMsgs: string[] = [];
 
-      // Process in small parallel chunks (size 3) with a short delay to balance speed and rate limits
-      const chunkSize = 3;
+      // Process in small parallel chunks (size 2) with 2s delay between chunks to stay within rate limits
+      const chunkSize = 2;
       for (let i = 0; i < cardsWithPhotos.length; i += chunkSize) {
         const chunk = cardsWithPhotos.slice(i, i + chunkSize);
         toast.loading(`Menganalisis foto ${i + 1} - ${Math.min(i + chunkSize, cardsWithPhotos.length)} dari ${cardsWithPhotos.length}...`, { id: toastId });
@@ -1408,13 +1409,13 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
         // Delay between chunks to respect the 15 RPM limit
         if (i + chunkSize < cardsWithPhotos.length) {
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
 
       if (successCount === 0 && cardsWithPhotos.length > 0) {
         const uniqueErrors = Array.from(new Set(failureMsgs));
-        throw new Error(`Semua foto gagal dianalisis. Detail: ${uniqueErrors.join(', ')}`);
+        throw new Error(uniqueErrors[0] || 'Semua foto gagal dianalisis.');
       }
 
       setCards(prev => prev.map(c => {
@@ -1435,7 +1436,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
     } catch (err: any) {
       console.error(err);
-      toast.error(`Gagal analisis massal: ${err.message}`, { id: toastId });
+      toast.error(`Analisis AI gagal: ${formatAIError(err)}`, { id: toastId });
     } finally {
       setIsBulkAnalyzing(false);
     }
