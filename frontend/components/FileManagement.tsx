@@ -8,7 +8,6 @@ import {
     Trash2,
     X,
     Loader2,
-    FolderOpen,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
