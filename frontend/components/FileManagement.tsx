@@ -57,6 +57,7 @@ const MAINTENANCE_TYPES = [
     'Dock Leveler',
     'Door',
     'Rolling Door',
+    'Lobby Door',
     'Fuel Leak',
     'PJU',
     'Hydrant System',
