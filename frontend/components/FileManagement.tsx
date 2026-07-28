@@ -34,11 +34,15 @@ const FILE_CATEGORIES = [
     'PTW',
     'JSEA',
     'MOP',
+    'Risk Register',
+    'D-DAY',
     'SLA/SLG',
     'Service Report',
     'Custom',
     'Monthly'
 ];
+
+const ENGINEER_CATEGORIES = ['MOP', 'PTW', 'Risk Register', 'D-DAY'];
 
 const MAINTENANCE_TYPES = [
     'Water Leak',
@@ -257,14 +261,14 @@ export function FileManagement({
                 const fileDocRef = await addDoc(collection(db, collectionName), {
                     fileName: file.name,
                     fileSize: file.size,
-                    fileType: file.type,
+                    fileType: file.type || 'application/pdf',
                     category: finalCategory,
-                    maintenanceType: (['MOP', 'JSEA', 'PTW', 'Service Report'].includes(finalCategory)) ? selectedMaintenance : null,
+                    maintenanceType: (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(finalCategory)) ? selectedMaintenance : null,
                     quarter: selectedUploadQuarter,
                     year: selectedUploadYear,
                     customCategory: selectedCategory === 'Custom' ? customCategory : null,
                     uploadedBy: user.uid,
-                    uploadedByEmail: user.email,
+                    uploadedByEmail: (user.email || '').toLowerCase(),
                     uploadedAt: serverTimestamp(),
                     description: description || null,
                     totalChunks: totalChunks,
@@ -545,7 +549,7 @@ export function FileManagement({
                                         disabled={uploading}
                                         className="w-full px-4 py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                                     >
-                                        {(isEngineer ? ['MOP', 'PTW'] : FILE_CATEGORIES).map((cat) => (
+                                        {(isEngineer ? ENGINEER_CATEGORIES : FILE_CATEGORIES).map((cat) => (
                                             <option key={cat} value={cat}>
                                                 {cat}
                                             </option>
@@ -571,7 +575,7 @@ export function FileManagement({
                                     </select>
                                 </div>
 
-                                {['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedCategory) && (
+                                {['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedCategory) && (
                                     <div className="md:col-span-1">
                                         <label className="block text-sm font-bold text-slate-700 mb-2">
                                             Tipe Maintenance
@@ -709,7 +713,7 @@ export function FileManagement({
                                 className="w-full pl-9 pr-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl text-slate-900 text-sm sm:text-base font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer outline-none transition"
                             >
                                 <option value="All">Semua Kategori</option>
-                                {((isEngineer ? ['MOP', 'PTW'] : FILE_CATEGORIES).filter((cat) => cat !== 'Custom')).map((cat) => (
+                                {((isEngineer ? ENGINEER_CATEGORIES : FILE_CATEGORIES).filter((cat) => cat !== 'Custom')).map((cat) => (
                                     <option key={cat} value={cat}>
                                         {cat}
                                     </option>

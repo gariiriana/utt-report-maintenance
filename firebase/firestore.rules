@@ -220,7 +220,8 @@ service cloud.firestore {
     }
     
     match /files/{fileId} {
-      allow create: if request.auth != null && (isAdminSafe() || isEngineer())
+      allow create: if request.auth != null 
+                    && (isAdminSafe() || isEngineer() || isPrivilegedRole() || isDME() || request.auth.uid != null)
                     && request.resource.data.keys().hasAll([
                       'fileName',
                       'fileSize',
@@ -232,26 +233,25 @@ service cloud.firestore {
                     ])
                     && hasAcceptableFieldCount(request.resource.data, 20)
                     && request.resource.data.uploadedBy == request.auth.uid
-                    && request.resource.data.uploadedByEmail == getEmail()
                     && isValidString(request.resource.data.fileName, 500)
                     && isValidString(request.resource.data.fileType, 100);
       
       allow read: if request.auth != null;
       
       allow update: if request.auth != null 
-                    && isAdminSafe()
+                    && (isAdminSafe() || isEngineer() || isPrivilegedRole() || resource.data.uploadedBy == request.auth.uid)
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
       
-      allow delete: if request.auth != null && isAdminSafe();
+      allow delete: if request.auth != null && (isAdminSafe() || isEngineer() || isPrivilegedRole() || resource.data.uploadedBy == request.auth.uid);
 
       match /chunks/{chunkId} {
         allow create: if request.auth != null 
-                      && (isAdminSafe() || isEngineer())
+                      && (isAdminSafe() || isEngineer() || isPrivilegedRole() || isDME() || request.auth.uid != null)
                       && hasAcceptableFieldCount(request.resource.data, 10);
         
         allow read: if request.auth != null;
         
-        allow delete: if request.auth != null && isAdminSafe();
+        allow delete: if request.auth != null && (isAdminSafe() || isEngineer() || isPrivilegedRole() || resource.data.uploadedBy == request.auth.uid);
       }
     }
 
@@ -332,27 +332,32 @@ service cloud.firestore {
     match /{division}/{fileId} {
       allow create: if request.auth != null 
                     && division in ['pmo', 'sales', 'presales', 'purchasing']
-                    && (isAdminSafe() || isDivision(division))
+                    && (isAdminSafe() || isDivision(division) || isPrivilegedRole())
                     && request.resource.data.keys().hasAll(['fileName', 'fileSize', 'fileType', 'uploadedBy', 'uploadedAt'])
                     && hasAcceptableFieldCount(request.resource.data, 20);
       
       allow read: if request.auth != null 
                   && division in ['pmo', 'sales', 'presales', 'purchasing']
-                  && (isAdminSafe() || isDivision(division) || isDirector());
+                  && (isAdminSafe() || isDivision(division) || isDirector() || isPrivilegedRole());
       
-      allow delete: if request.auth != null && isAdminSafe();
+      allow update: if request.auth != null
+                    && division in ['pmo', 'sales', 'presales', 'purchasing']
+                    && (isAdminSafe() || isDivision(division) || resource.data.uploadedBy == request.auth.uid)
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+
+      allow delete: if request.auth != null && (isAdminSafe() || isDivision(division) || resource.data.uploadedBy == request.auth.uid);
 
       match /chunks/{chunkId} {
         allow create: if request.auth != null 
                       && division in ['pmo', 'sales', 'presales', 'purchasing']
-                      && (isAdminSafe() || isDivision(division))
+                      && (isAdminSafe() || isDivision(division) || isPrivilegedRole())
                       && hasAcceptableFieldCount(request.resource.data, 10);
         
         allow read: if request.auth != null 
                     && division in ['pmo', 'sales', 'presales', 'purchasing']
-                    && (isAdminSafe() || isDivision(division) || isDirector());
+                    && (isAdminSafe() || isDivision(division) || isDirector() || isPrivilegedRole());
         
-        allow delete: if request.auth != null && isAdminSafe();
+        allow delete: if request.auth != null && (isAdminSafe() || isDivision(division) || resource.data.uploadedBy == request.auth.uid);
       }
     }
 
