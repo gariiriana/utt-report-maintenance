@@ -459,9 +459,6 @@ export function FileManagement({
     };
 
     const filteredFiles = files.filter((file) => {
-        if (isEngineer && file.category && !['MOP', 'PTW'].includes(file.category)) {
-            return false;
-        }
         const matchesSearch = file.fileName
             .toLowerCase()
             .includes(searchQuery.toLowerCase());
@@ -820,7 +817,7 @@ export function FileManagement({
 
                 {!searchQuery && !selectedFolder ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                        {[...new Set(filteredFiles.map(f => f.category))]
+                        {[...new Set([...FILE_CATEGORIES.filter(c => c !== 'Custom'), ...filteredFiles.map(f => f.category)])]
                             .filter(category => category && !MAINTENANCE_TYPES.includes(category))
                             .sort()
                             .map((category) => {
