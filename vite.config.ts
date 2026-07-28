@@ -4,6 +4,9 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Paksa buka browser Chrome saat dev server dijalankan
+process.env.BROWSER = 'chrome'
+
 export default defineConfig({
   plugins: [
     react(),
@@ -55,6 +58,7 @@ export default defineConfig({
     })
   ],
   server: {
+    open: true,
     host: true,
     proxy: {
       '/api': {
