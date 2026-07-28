@@ -24,6 +24,36 @@ interface PJUServiceReportProps {
   onChange?: (data: { customerInfo: PJUCustomerInfo; reportData: PJUReportData; timeSpent: PJUTimeSpent }) => void;
 }
 
+// Helper to map card parameters to PJUServiceReport form fields
+function mapCardParametersToPJUReportData(
+  originalReportCards: Array<{ description: string; parameter?: string }>,
+  currentReportData: PJUReportData
+): PJUReportData {
+  const data = JSON.parse(JSON.stringify(currentReportData)) as PJUReportData;
+
+  originalReportCards.forEach(card => {
+    const desc = (card.description || '').toLowerCase();
+    const val = (card.parameter || '').trim();
+    if (!val) return;
+
+    if (desc.includes('input power') || desc.includes('30 vdc') || desc.includes('input voltage') || desc.includes('30vdc')) {
+      if (data.measurement[0]) data.measurement[0].remarks = val;
+    } else if (desc.includes('output power') || desc.includes('output poower') || desc.includes('24 vdc') || desc.includes('output voltage') || desc.includes('24vdc')) {
+      if (data.measurement[1]) data.measurement[1].remarks = val;
+    } else if (desc.includes('battery charger') || desc.includes('battery voltage') || desc.includes('battery vdc')) {
+      if (data.measurement[2]) data.measurement[2].remarks = val;
+    } else if (desc.includes('charging when solar') || desc.includes('solar panel charging')) {
+      if (data.test[0]) data.test[0].remarks = val;
+    } else if (desc.includes('charging the battery') || desc.includes('power supply charging')) {
+      if (data.test[1]) data.test[1].remarks = val;
+    } else if (desc.includes('lights up') || desc.includes('same lighting') || desc.includes('lamp on') || desc.includes('light color')) {
+      if (data.test[2]) data.test[2].remarks = val;
+    }
+  });
+
+  return data;
+}
+
 export function PJUServiceReport({ prefillData, onClearPrefill, onChange }: PJUServiceReportProps) {
   const [customerInfo, setCustomerInfo] = useState<PJUCustomerInfo>(DEFAULT_PJU_CUSTOMER_INFO);
   const [reportData, setReportData] = useState<PJUReportData>(DEFAULT_PJU_REPORT_DATA);
@@ -55,6 +85,14 @@ export function PJUServiceReport({ prefillData, onClearPrefill, onChange }: PJUS
           parameter: p.parameter || '',
         }));
         setPhotos(mappedPhotos);
+
+        // Instantly map photo parameters to PJU measurement and test tables
+        const cardsForMapping = mappedPhotos.map(p => ({
+          description: p.label,
+          parameter: p.parameter,
+        }));
+        const initialMappedData = mapCardParametersToPJUReportData(cardsForMapping, reportData);
+        setReportData(initialMappedData);
       }
 
       if (prefillData.pjuCustomerInfo) {

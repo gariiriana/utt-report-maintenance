@@ -1410,18 +1410,18 @@ func (s *aiService) AnalyzePJUPhotos(ctx context.Context, photos []models.PJUPho
 			continue
 		}
 
-		if strings.Contains(label, "input power") || strings.Contains(label, "30 vdc") {
-			report.Measurement[0].Remarks = param
-		} else if strings.Contains(label, "output poower") || strings.Contains(label, "24 vdc") {
-			report.Measurement[1].Remarks = param
-		} else if strings.Contains(label, "battery charger") || strings.Contains(label, "battery voltage") {
-			report.Measurement[2].Remarks = param
-		} else if strings.Contains(label, "charging when solar") {
-			report.Test[0].Remarks = param
-		} else if strings.Contains(label, "charging the battery") {
-			report.Test[1].Remarks = param
-		} else if strings.Contains(label, "lights up") || strings.Contains(label, "same lighting") {
-			report.Test[2].Remarks = param
+		if strings.Contains(label, "input power") || strings.Contains(label, "30 vdc") || strings.Contains(label, "input voltage") || strings.Contains(label, "30vdc") {
+			if len(report.Measurement) > 0 { report.Measurement[0].Remarks = param }
+		} else if strings.Contains(label, "output poower") || strings.Contains(label, "output power") || strings.Contains(label, "24 vdc") || strings.Contains(label, "output voltage") || strings.Contains(label, "24vdc") {
+			if len(report.Measurement) > 1 { report.Measurement[1].Remarks = param }
+		} else if strings.Contains(label, "battery charger") || strings.Contains(label, "battery voltage") || strings.Contains(label, "battery vdc") {
+			if len(report.Measurement) > 2 { report.Measurement[2].Remarks = param }
+		} else if strings.Contains(label, "charging when solar") || strings.Contains(label, "solar panel charging") {
+			if len(report.Test) > 0 { report.Test[0].Remarks = param }
+		} else if strings.Contains(label, "charging the battery") || strings.Contains(label, "power supply charging") {
+			if len(report.Test) > 1 { report.Test[1].Remarks = param }
+		} else if strings.Contains(label, "lights up") || strings.Contains(label, "same lighting") || strings.Contains(label, "lamp on") || strings.Contains(label, "light color") {
+			if len(report.Test) > 2 { report.Test[2].Remarks = param }
 		}
 	}
 
