@@ -181,6 +181,12 @@ export function FileManagement({
     const [uploadedFilesCount, setUploadedFilesCount] = useState(0);
 
     useEffect(() => {
+        if (!user) {
+            setFiles([]);
+            setLoading(false);
+            return;
+        }
+
         const q = query(collection(db, collectionName), orderBy('uploadedAt', 'desc'));
 
         const unsubscribe = onSnapshot(
@@ -193,15 +199,17 @@ export function FileManagement({
                 setFiles(filesData);
                 setLoading(false);
             },
-            (error) => {
+            (error: any) => {
                 console.error('Error loading files:', error);
-                toast.error('Gagal memuat file');
+                if (error?.code !== 'permission-denied') {
+                    toast.error('Gagal memuat file');
+                }
                 setLoading(false);
             }
         );
 
         return () => unsubscribe();
-    }, []);
+    }, [user, collectionName]);
 
     const chunkToBase64 = (blob: Blob): Promise<string> => {
         return new Promise((resolve, reject) => {
