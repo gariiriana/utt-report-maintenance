@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Eye, FileType } from 'lucide-react';
 import { toast } from 'sonner';
 import { generatePDUServiceReportPDF } from '@/service_reports/pdu/generatePDUReportPDF';
+import { generatePDUReportExcel } from '@/service_reports/pdu/generatePDUReportExcel';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db, auth } from '@/api/firebase';
 import {
@@ -546,14 +547,24 @@ export function PDUServiceReport({ prefillData, onClearPrefill, onChange }: PDUS
           <div className="text-xs text-slate-500 font-medium">
             * Laporan Service Report & Dokumentasi PDF akan digenerasi secara lengkap sesuai standar resmi PT. Dwi Mitra Ekatama Mandiri
           </div>
-          <button
-            type="button"
-            onClick={() => generatePDUServiceReportPDF(customerInfo, reportData, timeSpent, photos.map(p => ({ id: p.id, photoBase64: p.preview, description: p.label })))}
-            className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xl shadow-blue-600/30 transition active:scale-95 flex items-center justify-center gap-2.5 cursor-pointer"
-          >
-            <FileType className="w-4 h-4" />
-            GENERATE SERVICE REPORT & DOKUMENTASI (PDF)
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => generatePDUReportExcel(customerInfo, reportData, timeSpent, photos.map(p => ({ photoBase64: p.preview, description: p.label })))}
+              className="w-full sm:w-auto px-5 py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xl shadow-emerald-600/30 transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <FileType className="w-4 h-4" />
+              EXPORT EXCEL
+            </button>
+            <button
+              type="button"
+              onClick={() => generatePDUServiceReportPDF(customerInfo, reportData, timeSpent, photos.map(p => ({ id: p.id, photoBase64: p.preview, description: p.label })))}
+              className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xl shadow-blue-600/30 transition active:scale-95 flex items-center justify-center gap-2.5 cursor-pointer"
+            >
+              <FileType className="w-4 h-4" />
+              GENERATE SERVICE REPORT & DOKUMENTASI (PDF)
+            </button>
+          </div>
         </div>
       </div>
 

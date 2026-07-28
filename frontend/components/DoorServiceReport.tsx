@@ -15,6 +15,7 @@ import {
   DEFAULT_DOOR_TIME_SPENT,
 } from '@/types/doorReportTypes';
 import { generateDoorReportPDF } from '@/service_reports/door/generateDoorReportPDF';
+import { generateDoorReportExcel } from '@/service_reports/door/generateDoorReportExcel';
 
 interface UploadedPhoto {
   id: string;
@@ -609,14 +610,24 @@ export function DoorServiceReport({ prefillData, onClearPrefill, onChange }: Doo
         <div className="text-xs text-slate-500 font-medium">
           * Laporan Service Report & Dokumentasi PDF akan digenerasi secara lengkap sesuai standar resmi PT. Dwi Mitra Ekatama Mandiri
         </div>
-        <button
-          type="button"
-          onClick={handleExportPDF}
-          className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xl shadow-blue-600/30 transition active:scale-95 flex items-center justify-center gap-2.5 cursor-pointer"
-        >
-          <FileType className="w-4 h-4" />
-          GENERATE SERVICE REPORT & DOKUMENTASI (PDF)
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => generateDoorReportExcel(reportData.customerInfo, reportData, reportData.timeSpent, photos.map(p => ({ photoBase64: p.preview, description: p.label })))}
+            className="w-full sm:w-auto px-5 py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xl shadow-emerald-600/30 transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <FileType className="w-4 h-4" />
+            EXPORT EXCEL
+          </button>
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            className="w-full sm:w-auto px-6 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xl shadow-blue-600/30 transition active:scale-95 flex items-center justify-center gap-2.5 cursor-pointer"
+          >
+            <FileType className="w-4 h-4" />
+            GENERATE SERVICE REPORT & DOKUMENTASI (PDF)
+          </button>
+        </div>
       </div>
 
       {/* Preview Modal */}

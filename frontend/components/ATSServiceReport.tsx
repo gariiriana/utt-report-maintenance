@@ -114,7 +114,7 @@ function mapCardParametersToReportData(
       if (sn) data.power_meter_recording.sn.voltage = sn;
       if (tn) data.power_meter_recording.tn.voltage = tn;
       if (n) data.power_meter_recording.n.voltage = n;
-      
+
       if (!rs && !st && !tr && !rn && !sn && !tn) {
         const parts = val.split(/[,;\s]+/);
         if (parts.length >= 3) {
@@ -299,32 +299,32 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
       // We prioritize originalReportCards as they represent the full checklist and inputs
       const payloadPhotos = originalReportCards.length > 0
         ? originalReportCards.map(c => {
-            const desc = c.description || '';
-            const d = desc.toLowerCase();
-            let category = 'visual_inspection';
-            if (d.includes('thermal') || d.includes('imager') || d.includes('suhu') || d.includes('temp')) {
-              category = 'thermal';
-            } else if (d.includes('grounding') || d.includes('earth') || d.includes('tahanan')) {
-              category = 'grounding';
-            } else if (
-              d.includes('voltage') || d.includes('ampere') || d.includes('current') || 
-              d.includes('dpm') || d.includes('power') || d.includes('daya') ||
-              d.includes('r-s') || d.includes('s-t') || d.includes('t-r') ||
-              d.includes('r-n') || d.includes('s-n') || d.includes('t-n')
-            ) {
-              category = 'power_meter';
-            }
-            return {
-              category,
-              label: desc,
-              parameter: c.parameter || ''
-            };
-          })
+          const desc = c.description || '';
+          const d = desc.toLowerCase();
+          let category = 'visual_inspection';
+          if (d.includes('thermal') || d.includes('imager') || d.includes('suhu') || d.includes('temp')) {
+            category = 'thermal';
+          } else if (d.includes('grounding') || d.includes('earth') || d.includes('tahanan')) {
+            category = 'grounding';
+          } else if (
+            d.includes('voltage') || d.includes('ampere') || d.includes('current') ||
+            d.includes('dpm') || d.includes('power') || d.includes('daya') ||
+            d.includes('r-s') || d.includes('s-t') || d.includes('t-r') ||
+            d.includes('r-n') || d.includes('s-n') || d.includes('t-n')
+          ) {
+            category = 'power_meter';
+          }
+          return {
+            category,
+            label: desc,
+            parameter: c.parameter || ''
+          };
+        })
         : currentPhotos.map(p => ({
-            category: p.category,
-            label: p.label,
-            parameter: p.parameter || ''
-          }));
+          category: p.category,
+          label: p.label,
+          parameter: p.parameter || ''
+        }));
 
       const response = await fetch(url, {
         method: 'POST',
@@ -454,7 +454,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
           quarter: computedQuarter || prev.quarter,
         }));
       }
-      
+
       if (prefillData.atsTimeSpent) {
         setTimeSpent(prefillData.atsTimeSpent);
       } else {
@@ -488,7 +488,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
           description: c.description || '',
           parameter: c.parameter || ''
         }));
-        
+
         // Map basic parameters first
         const initialMappedData = mapCardParametersToReportData(cardsForMapping, reportData);
         setReportData(initialMappedData);
@@ -556,7 +556,7 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
         // 1. Run AI auto-fill
         toast.info('🚀 AI Agent: Memulai auto-fill parameter laporan...');
         const generatedData = await generateReportWithAI(photos, reportData);
-        
+
         // 2. If it is both auto-fill AND export
         if (action === 'AUTO_FILL_AND_EXPORT_ATS' && generatedData) {
           toast.info('🚀 AI Agent: Menyiapkan ekspor PDF...');
@@ -749,9 +749,8 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
                     <select
                       value={item.condition}
                       onChange={e => updateVisualInspection(idx, 'condition', e.target.value)}
-                      className={`w-full bg-white border rounded px-1.5 py-1 text-[11px] font-bold focus:outline-none cursor-pointer shadow-sm ${
-                        item.condition === 'Good' ? 'border-emerald-300 bg-emerald-50/70 text-emerald-800' : 'border-rose-300 bg-rose-50/70 text-rose-800'
-                      }`}
+                      className={`w-full bg-white border rounded px-1.5 py-1 text-[11px] font-bold focus:outline-none cursor-pointer shadow-sm ${item.condition === 'Good' ? 'border-emerald-300 bg-emerald-50/70 text-emerald-800' : 'border-rose-300 bg-rose-50/70 text-rose-800'
+                        }`}
                       title="Condition"
                       aria-label="Condition"
                     >
@@ -909,9 +908,8 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
           whileTap={!isExporting ? { scale: 0.98 } : undefined}
           onClick={() => handleExportPDF()}
           disabled={isExporting}
-          className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all ${
-            isExporting ? 'opacity-60 cursor-not-allowed' : ''
-          }`}
+          className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all ${isExporting ? 'opacity-60 cursor-not-allowed' : ''
+            }`}
         >
           {isExporting ? (
             <>
@@ -934,9 +932,8 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
             whileTap={!isSaving ? { scale: 0.98 } : undefined}
             onClick={handleSaveArchive}
             disabled={isSaving}
-            className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all ${
-              isSaving ? 'opacity-60 cursor-not-allowed' : ''
-            }`}
+            className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all ${isSaving ? 'opacity-60 cursor-not-allowed' : ''
+              }`}
           >
             {isSaving ? (
               <>
@@ -1088,9 +1085,8 @@ function CollapsibleSection({ title, sectionKey, expanded, toggle, icon, badge, 
           {icon && <span className="text-base">{icon}</span>}
           <span className="text-sm font-bold text-slate-900">{title}</span>
           {badge && (
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-              badge.includes('AI') ? 'bg-violet-100 text-violet-800 border border-violet-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
-            }`}>{badge}</span>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${badge.includes('AI') ? 'bg-violet-100 text-violet-800 border border-violet-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
+              }`}>{badge}</span>
           )}
         </div>
         {expanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
@@ -1132,12 +1128,12 @@ function InputField({ label, value, onChange, type = 'text', placeholder }: {
 function MeasurementInput({ label, value, onChange }: {
   label: string; value: string; onChange: (v: string) => void;
 }) {
-  const isLongText = label.toLowerCase().includes('keterangan') || 
-                     label.toLowerCase().includes('gejala') || 
-                     label.toLowerCase().includes('analisis') || 
-                     label.toLowerCase().includes('tindakan') ||
-                     label.toLowerCase().includes('remarks') ||
-                     label.toLowerCase().includes('remark');
+  const isLongText = label.toLowerCase().includes('keterangan') ||
+    label.toLowerCase().includes('gejala') ||
+    label.toLowerCase().includes('analisis') ||
+    label.toLowerCase().includes('tindakan') ||
+    label.toLowerCase().includes('remarks') ||
+    label.toLowerCase().includes('remark');
 
   return (
     <div className="space-y-1">
