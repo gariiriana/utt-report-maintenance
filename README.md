@@ -2,13 +2,14 @@
 
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)](https://reactjs.org/)
 [![Go](https://img.shields.io/badge/Go-1.24-00ADD8?style=flat-square&logo=go)](https://go.dev/)
-[![Cloudflare](https://img.shields.io/badge/Cloudflare-WAF_&_CDN-F38020?style=flat-square&logo=cloudflare)](https://cloudflare.com/)
+[![Cloudflare Turnstile](https://img.shields.io/badge/Cloudflare-Turnstile_CAPTCHA-F38020?style=flat-square&logo=cloudflare)](https://cloudflare.com/)
 [![Google Gemini AI](https://img.shields.io/badge/Google_Gemini-3.1_Flash-4285F4?style=flat-square&logo=googlegemini)](https://ai.google.dev/)
-[![Firebase](https://img.shields.io/badge/Firebase-Cloud-FFCA28?style=flat-square&logo=firebase)](https://firebase.google.com/)
+[![Firebase](https://img.shields.io/badge/Firebase-Cloud_Firestore-FFCA28?style=flat-square&logo=firebase)](https://firebase.google.com/)
+[![ExcelJS](https://img.shields.io/badge/ExcelJS-Dual--Sheet_Export-217346?style=flat-square&logo=microsoft-excel)](https://github.com/exceljs/exceljs)
 [![Tailwind](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-007ACC?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.0-646CFF?style=flat-square&logo=vite)](https://vitejs.dev/)
-[![Security](https://img.shields.io/badge/Security-Enterprise_Shield-brightgreen?style=flat-square&logo=shield)](#-security)
+[![Security](https://img.shields.io/badge/Security-Firestore_Rules_&_Turnstile-brightgreen?style=flat-square&logo=shield)](#-security)
 
 **DwimitraSystem** adalah sistem dokumentasi dan pemeliharaan infrastruktur kritikal profesional yang dirancang khusus untuk memfasilitasi pelaporan operasional & maintenance data center bagi **PT Dwimitra Ekatama Mandiri**.
 
@@ -131,11 +132,14 @@
 
 Sistem asisten AI interaktif tingkat korporat berbasis **Google Gemini 3.1 Flash** yang terintegrasi penuh:
 
-- **AI Service Report Generator** — Pembuatan laporan service maintenance otomatis berakurasi tinggi (ATS, AC Split, CT, FCU, Generator, PDU, PJU, Trafo) lengkap dengan ringkasan temuan teknis, tindakan korektif, dan saran pencegahan.
+- **AI Service Report Generator (13 Akun Maintenance)** — Pembuatan laporan service maintenance otomatis berakurasi tinggi untuk **13 jenis peralatan** (*ATS, FCU, PJU, PDU, Cooling Tower, Generator, ACSplit, Trafo, Busduct, Dock Leveler, Door, Capacitor Bank, LDB/RDB*) dengan ringkasan temuan teknis, tindakan korektif, dan saran pencegahan.
+- **Aturan Remarks AI 2–5 Kata Max** — Algoritma pembuatan remark AI dipatok 2–5 kata (mis. *"Kondisi bersih & terawat"*) untuk menjamin kerapian layout PDF & Excel saat di-export.
+- **Pratinjau (Preview) Service Report & Dokumentasi** — Fitur interaktif `ServiceReportPreviewShell.tsx` untuk menampilkan pratinjau penuh A4 Service Report + galeri foto dokumentasi sebelum di-export.
+- **Dual-Format Export (PDF & ExcelJS)** — Pembuatan laporan dalam format PDF (A4 auto-pagination) dan Excel (`.xlsx`) 2-sheet (Service Report & Dokumentasi) dengan layout, warna, border, dan indikator (✓ / ✗) identik.
 - **AI Voice Agent & Controls** — Fitur interaksi suara hands-free (`AIVoiceAgent.tsx` & `useVoiceAgent.ts`) untuk navigasi, penginputan parameter maintenance via perintah suara, dan asistensi teknis langsung di lapangan.
 - **Interactive DC Chatbot** — Floating widget chat (`AIChatWidget.tsx`) dengan dukungan render markdown penuh, suggestion chip kontekstual, riwayat percakapan, dan fitur upload foto.
 - **Multimodal Visual Analyzer** — Analisis visual cerdas panel listrik, grounding, dan thermal hotspot menggunakan model **`models/gemini-3.1-flash-lite`**.
-- **Dynamic Load Balancing & Multi-Key Failover** — Algoritma *round-robin key pool* kustom pada backend Go (`ai_service.go`) untuk menjamin zero-downtime dan mengatasi rate limit API.
+- **Dynamic Load Balancing & Multi-Key Failover** — Algoritma *round-robin key pool* kustom pada backend Go (`ai_service.go`) untuk menjamin zero-downtime dan mengelola kuota 6.000 req/hari di Firestore `system_status/ai_limit_tracker`.
 
 ### 📷 Smart Camera & Watermarking
 
@@ -350,14 +354,22 @@ All API endpoints (except health checks) require authentication via one of:
 
 ## 🔒 Security
 
-### Cloudflare WAF Enterprise Shield (4-Layer Protection)
+### Cloudflare Turnstile & WAF Enterprise Shield
 
-Sistem pertahanan keamanan perimeter tingkat tinggi yang beroperasi langsung di Cloudflare Edge Server:
+Sistem pertahanan keamanan perimeter tingkat tinggi yang beroperasi langsung di Cloudflare Edge Server & Backend:
 
+- **Cloudflare Turnstile CAPTCHA** — Proteksi bot cerdas tanpa tantangan puzzle yang terintegrasi pada halaman Login & API backend Go (`turnstile_service.go`).
 - **Layer 1 — Geolocation Defense (`ip.src.country ne "ID"`)**: Memasang *Managed Challenge* otomatis untuk semua permintaan yang berasal dari luar wilayah Indonesia.
 - **Layer 2 — Known Bots & Automated Scrapers (`cf.client.bot`)**: Mencegah dan menantang bot otomatis, penambang data, dan alat scanning liar.
-- **Layer 3 — Empty User-Agent Filtering (`http.user_agent eq ""`)**: Menolak permintaan mencurigakan tanpa User-Agent header (ciri khas bot spammer/exploit kit).
+- **Layer 3 — Empty User-Agent Filtering (`http.user_agent eq ""`)**: Menolak permintaan mencurigakan tanpa User-Agent header.
 - **Layer 4 — Host Header & Direct IP Protection (`http.host ne "dwimitrasystem.com" and http.host ne "www.dwimitrasystem.com"`)**: Menangkal serangan penembakan IP langsung (*Direct IP Scraping*) dan *Host Header Spoofing*.
+
+### Firestore Security Rules Audit
+
+Pemberlakuan aturan keamanan database `firestore.rules` tingkat tinggi:
+- **No Unauthenticated Access** — Blokir total pembacaan & penulisan tanpa autentikasi Firebase.
+- **Collection-Level RBAC** — Hak akses terisolasi untuk `pdf_documents`, `excel_documents`, `hse`, `ptw_management`, `findings`, dan `maintenance_progress`.
+- **System Quota Tracker Protection** — Pembatasan akses baca/tulis dokumen `system_status/ai_limit_tracker` hanya untuk backend/admin terverifikasi.
 
 ### Authentication & Authorization
 
@@ -441,6 +453,7 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
 VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
 VITE_RECAPTCHA_SITE_KEY=your_recaptcha_site_key
+VITE_TURNSTILE_SITE_KEY=your_turnstile_site_key
 VITE_API_URL=http://localhost:8080/api
 ```
 
