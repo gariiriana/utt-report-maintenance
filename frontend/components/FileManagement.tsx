@@ -55,7 +55,8 @@ const MAINTENANCE_TYPES = [
     'FCU',
     'Lift Units',
     'Dock Leveler',
-    'Door / Rolling Door',
+    'Door',
+    'Rolling Door',
     'Fuel Leak',
     'PJU',
     'Hydrant System',
@@ -881,7 +882,6 @@ export function FileManagement({
                                 if (!fMType) return false;
                                 if (fMType === type) return true;
                                 if ((type.includes('Transformer') || type.includes('Trafo')) && (fMType.includes('Transformer') || fMType.includes('Trafo'))) return true;
-                                if ((type.includes('Door') || type.includes('Rolling Door')) && (fMType.includes('Door') || fMType.includes('Rolling Door'))) return true;
                                 return false;
                             };
                             const typeFiles = filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && isTypeMatch(f.maintenanceType));
@@ -918,8 +918,7 @@ export function FileManagement({
                                 (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '')
                                     ? (selectedMType && (
                                         f.maintenanceType === selectedMType ||
-                                        ((selectedMType.includes('Transformer') || selectedMType.includes('Trafo')) && (f.maintenanceType?.includes('Transformer') || f.maintenanceType?.includes('Trafo'))) ||
-                                        ((selectedMType.includes('Door') || selectedMType.includes('Rolling Door')) && (f.maintenanceType?.includes('Door') || f.maintenanceType?.includes('Rolling Door')))
+                                        ((selectedMType.includes('Transformer') || selectedMType.includes('Trafo')) && (f.maintenanceType?.includes('Transformer') || f.maintenanceType?.includes('Trafo')))
                                       ))
                                     : true)
                             )
