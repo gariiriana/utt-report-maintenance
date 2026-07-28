@@ -103,7 +103,7 @@ function AppWithBackground() {
         <AppContent />
       )}
       
-      <Toaster position="top-center" theme="dark" richColors />
+      <Toaster position="top-center" theme="light" richColors />
     </div>
   );
 }
