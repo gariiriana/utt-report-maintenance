@@ -24,7 +24,12 @@ import {
     getDocs,
     writeBatch
 } from 'firebase/firestore';
-import { useAuth } from './AuthContext';
+const YellowFolderIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2.5 7C2.5 5.61929 3.61929 4.5 5 4.5H9.17157C9.83464 4.5 10.4705 4.76339 10.9393 5.23223L12.4142 6.70711C12.5549 6.84776 12.7456 6.92678 12.9445 6.92678H19C20.3807 6.92678 21.5 8.04607 21.5 9.42678V17C21.5 18.3807 20.3807 19.5 19 19.5H5C3.61929 19.5 2.5 18.3807 2.5 17V7Z" fill="#F59E0B" stroke="#D97706" strokeWidth="1"/>
+        <path d="M2.5 9.5H21.5V17C21.5 18.3807 20.3807 19.5 19 19.5H5C3.61929 19.5 2.5 18.3807 2.5 17V9.5Z" fill="#FBBF24" stroke="#D97706" strokeWidth="1"/>
+    </svg>
+);
 
 const FILE_CATEGORIES = [
     'Laporan Harian',
@@ -748,55 +753,62 @@ export function FileManagement({
                 transition={{ delay: 0.2 }}
                 className="bg-white/90 backdrop-blur-xl rounded-2xl p-6 border border-sky-100/90 shadow-lg text-slate-800"
             >
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
-                    <h2 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2 min-w-0">
-                        {searchQuery ? (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6 pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2 text-sm sm:text-base font-semibold text-slate-800 flex-wrap min-w-0">
+                        <YellowFolderIcon className="w-5 h-5 flex-shrink-0" />
+                        <span 
+                            onClick={() => { setSelectedFolder(null); setSelectedQuarter(null); setSelectedMType(null); }}
+                            className={`hover:text-amber-600 transition-colors ${selectedFolder ? 'cursor-pointer text-slate-500 hover:underline' : 'text-slate-900 font-bold'}`}
+                        >
+                            Folder Utama
+                        </span>
+                        {selectedFolder && (
                             <>
-                                <Search className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                                <span className="truncate">Hasil Pencarian ({filteredFiles.length})</span>
-                            </>
-                        ) : selectedMType ? (
-                            <>
-                                <FolderOpen className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                                <span className="truncate">{selectedFolder} / {selectedQuarter} / {selectedMType} ({filteredFiles.filter(a => a.category === selectedFolder && a.quarter === selectedQuarter && a.maintenanceType === selectedMType).length})</span>
-                            </>
-                        ) : selectedQuarter ? (
-                            <>
-                                <FolderOpen className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                                <span className="truncate">{selectedFolder} / {selectedQuarter}</span>
-                            </>
-                        ) : selectedFolder ? (
-                            <>
-                                <FolderOpen className="w-5 h-5 text-blue-600 flex-shrink-0" />
-                                <span className="truncate">{selectedFolder}</span>
-                            </>
-                        ) : (
-                            <>
-                                <FolderOpen className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                                <span>Kategori ({[...new Set(files.map(f => f.category))].length})</span>
+                                <span className="text-slate-300 font-normal">/</span>
+                                <span 
+                                    onClick={() => { setSelectedQuarter(null); setSelectedMType(null); }}
+                                    className={`hover:text-amber-600 transition-colors ${selectedQuarter ? 'cursor-pointer text-slate-500 hover:underline' : 'text-slate-900 font-bold'}`}
+                                >
+                                    {selectedFolder}
+                                </span>
                             </>
                         )}
-                    </h2>
+                        {selectedQuarter && (
+                            <>
+                                <span className="text-slate-300 font-normal">/</span>
+                                <span 
+                                    onClick={() => setSelectedMType(null)}
+                                    className={`hover:text-amber-600 transition-colors ${selectedMType ? 'cursor-pointer text-slate-500 hover:underline' : 'text-slate-900 font-bold'}`}
+                                >
+                                    {selectedQuarter}
+                                </span>
+                            </>
+                        )}
+                        {selectedMType && (
+                            <>
+                                <span className="text-slate-300 font-normal">/</span>
+                                <span className="text-amber-700 font-bold">{selectedMType}</span>
+                            </>
+                        )}
+                    </div>
 
                     {(selectedFolder || selectedQuarter || selectedMType) && !searchQuery && (
-                        <div className="flex items-center gap-3 self-end sm:self-auto">
-                            <button
-                                onClick={() => {
-                                    if (selectedMType) setSelectedMType(null);
-                                    else if (selectedQuarter) setSelectedQuarter(null);
-                                    else setSelectedFolder(null);
-                                }}
-                                className="text-sm text-blue-600 hover:text-blue-700 font-bold flex items-center gap-1.5 transition-colors whitespace-nowrap"
-                            >
-                                <X className="w-4 h-4" />
-                                Kembali ke {selectedMType ? 'Tipe Maintenance' : selectedQuarter ? 'Kuartal' : 'Folder'}
-                            </button>
-                        </div>
+                        <button
+                            onClick={() => {
+                                if (selectedMType) setSelectedMType(null);
+                                else if (selectedQuarter) setSelectedQuarter(null);
+                                else setSelectedFolder(null);
+                            }}
+                            className="text-xs sm:text-sm text-slate-600 hover:text-amber-700 font-semibold flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-amber-50 border border-slate-200 rounded-lg transition-all shadow-2xs"
+                        >
+                            <X className="w-4 h-4" />
+                            Kembali ke {selectedMType ? 'Kuartal' : selectedQuarter ? 'Folder' : 'Utama'}
+                        </button>
                     )}
                 </div>
 
                 {!searchQuery && !selectedFolder ? (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                         {[...new Set(filteredFiles.map(f => f.category))]
                             .filter(category => category && !MAINTENANCE_TYPES.includes(category))
                             .sort()
@@ -805,61 +817,57 @@ export function FileManagement({
                                 return (
                                     <motion.div
                                         key={category}
-                                        whileHover={{ scale: 1.02 }}
-                                        whileTap={{ scale: 0.98 }}
+                                        whileHover={{ x: 2, scale: 1.01 }}
+                                        whileTap={{ scale: 0.99 }}
                                         onClick={() => setSelectedFolder(category)}
-                                        className="bg-slate-50/80 hover:bg-slate-100 rounded-2xl p-5 border border-slate-200 cursor-pointer transition-all group shadow-sm text-slate-800"
+                                        className="flex items-center gap-3.5 px-4 py-3 bg-white hover:bg-amber-50/60 border border-slate-200/90 hover:border-amber-400/80 rounded-xl cursor-pointer transition-all group shadow-2xs hover:shadow-xs"
                                     >
-                                        <div className="flex flex-col items-center text-center">
-                                            <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl mb-3 group-hover:bg-blue-100 transition-colors">
-                                                <FolderOpen className="w-10 h-10 text-blue-600" />
-                                            </div>
-                                            <h3 className="text-slate-900 font-bold truncate w-full px-2">
+                                        <YellowFolderIcon className="w-7 h-7 flex-shrink-0" />
+                                        <div className="min-w-0 flex-1">
+                                            <h3 className="text-slate-900 font-bold text-sm truncate group-hover:text-amber-900 transition-colors">
                                                 {category}
                                             </h3>
-                                            <p className="text-xs text-slate-500 mt-1 font-medium">
+                                            <span className="text-[11px] text-slate-500 font-medium block">
                                                 {fileCount} {fileCount === 1 ? 'file' : 'files'}
-                                            </p>
+                                            </span>
                                         </div>
                                     </motion.div>
                                 );
                             })}
                         {filteredFiles.length === 0 && (
                             <div className="col-span-full text-center py-12">
-                                <FolderOpen className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-                                <p className="text-slate-500 font-medium">No files found for this filter</p>
+                                <YellowFolderIcon className="w-12 h-12 mx-auto opacity-40 mb-3" />
+                                <p className="text-slate-500 font-medium">Tidak ada folder ditemukan</p>
                             </div>
                         )}
                     </div>
                 ) : !searchQuery && selectedFolder && !selectedQuarter ? (
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         {QUARTERS.map((quarter) => {
                             const fileCount = filteredFiles.filter(f => f.category === selectedFolder && f.quarter === quarter).length;
                             return (
                                 <motion.div
                                     key={quarter}
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
+                                    whileHover={{ x: 2, scale: 1.01 }}
+                                    whileTap={{ scale: 0.99 }}
                                     onClick={() => setSelectedQuarter(quarter)}
-                                    className="bg-slate-50/80 hover:bg-slate-100 rounded-2xl p-5 border border-slate-200 cursor-pointer transition-all group shadow-sm text-slate-800"
+                                    className="flex items-center gap-3.5 px-4 py-3 bg-white hover:bg-amber-50/60 border border-slate-200/90 hover:border-amber-400/80 rounded-xl cursor-pointer transition-all group shadow-2xs hover:shadow-xs"
                                 >
-                                    <div className="flex flex-col items-center text-center">
-                                        <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl mb-3 group-hover:bg-emerald-100 transition-colors">
-                                            <FolderOpen className="w-10 h-10 text-emerald-600" />
-                                        </div>
-                                        <h3 className="text-slate-900 font-bold">
+                                    <YellowFolderIcon className="w-7 h-7 flex-shrink-0" />
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="text-slate-900 font-bold text-sm group-hover:text-amber-900 transition-colors">
                                             {quarter}
                                         </h3>
-                                        <p className="text-xs text-slate-500 mt-1 font-medium">
+                                        <span className="text-[11px] text-slate-500 font-medium block">
                                             {fileCount} {fileCount === 1 ? 'file' : 'files'}
-                                        </p>
+                                        </span>
                                     </div>
                                 </motion.div>
                             );
                         })}
                     </div>
-                ) : !searchQuery && selectedFolder && selectedQuarter && !selectedMType && ['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedFolder) ? (
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                ) : !searchQuery && selectedFolder && selectedQuarter && !selectedMType && ['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder) ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                         {MAINTENANCE_TYPES.map((type) => {
                             const typeFiles = filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && f.maintenanceType === type);
                             const fileCount = typeFiles.length;
@@ -868,21 +876,19 @@ export function FileManagement({
                             return (
                                 <motion.div
                                     key={type}
-                                    whileHover={{ scale: 1.02 }}
-                                    whileTap={{ scale: 0.98 }}
+                                    whileHover={{ x: 2, scale: 1.01 }}
+                                    whileTap={{ scale: 0.99 }}
                                     onClick={() => setSelectedMType(type)}
-                                    className="bg-slate-50/80 hover:bg-slate-100 rounded-2xl p-5 border border-slate-200 cursor-pointer transition-all group shadow-sm text-slate-800"
+                                    className="flex items-center gap-3.5 px-4 py-3 bg-white hover:bg-amber-50/60 border border-slate-200/90 hover:border-amber-400/80 rounded-xl cursor-pointer transition-all group shadow-2xs hover:shadow-xs"
                                 >
-                                    <div className="flex flex-col items-center text-center">
-                                        <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl mb-3 group-hover:bg-blue-100 transition-colors">
-                                            <FolderOpen className="w-10 h-10 text-blue-600" />
-                                        </div>
-                                        <h3 className="text-slate-900 font-bold text-xs truncate w-full">
+                                    <YellowFolderIcon className="w-7 h-7 flex-shrink-0" />
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="text-slate-900 font-bold text-xs truncate group-hover:text-amber-900 transition-colors">
                                             {type}
                                         </h3>
-                                        <p className="text-[10px] text-slate-500 mt-1 font-medium">
+                                        <span className="text-[10px] text-slate-500 font-medium block">
                                             {fileCount} {fileCount === 1 ? 'file' : 'files'}
-                                        </p>
+                                        </span>
                                     </div>
                                 </motion.div>
                             );
@@ -895,7 +901,7 @@ export function FileManagement({
                             : filteredFiles.filter(f =>
                                 f.category === selectedFolder &&
                                 f.quarter === selectedQuarter &&
-                                (['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true)
+                                (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true)
                             )
                         ).length === 0 ? (
                             <div className="text-center py-12">
@@ -910,11 +916,11 @@ export function FileManagement({
                                             <input
                                                 type="checkbox"
                                                 checked={
-                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).length > 0 &&
-                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).every(f => selectedFileIds.includes(f.id))
+                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).length > 0 &&
+                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).every(f => selectedFileIds.includes(f.id))
                                                 }
                                                 onChange={(e) => {
-                                                    const currentFiles = searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true));
+                                                    const currentFiles = searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true));
                                                     if (e.target.checked) {
                                                         const allIds = currentFiles.map(f => f.id);
                                                         setSelectedFileIds(prev => [...new Set([...prev, ...allIds])]);
