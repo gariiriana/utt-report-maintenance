@@ -73,7 +73,44 @@ export const CapacitorbankServiceReport: React.FC<CapacitorbankServiceReportProp
         if (rd.analysis) setAnalysis(rd.analysis);
       }
       if (prefillData.timeSpent) setTimeSpent((prev) => ({ ...prev, ...prefillData.timeSpent }));
-      if (prefillData.photos) setPhotos(prefillData.photos);
+      if (prefillData.photos) {
+        setPhotos(prefillData.photos);
+
+        // Auto parse measurement parameters from photo cards when synced
+        prefillData.photos.forEach((p: any) => {
+          const label = (p.label || p.description || '').toLowerCase();
+          const param = (p.parameter || '').trim();
+          if (!param) return;
+
+          if (label.includes('phase-to-phase') || label.includes('fasa-fasa') || label.includes('r-s')) {
+            const vals = param.replace(/[^0-9.,]/g, ' ').trim().split(/[\s,]+/);
+            if (vals[0]) setVoltageAmpere(prev => ({ ...prev, voltageRS: vals[0] }));
+            if (vals[1]) setVoltageAmpere(prev => ({ ...prev, voltageST: vals[1] }));
+            if (vals[2]) setVoltageAmpere(prev => ({ ...prev, voltageTR: vals[2] }));
+          } else if (label.includes('phase-to-neutral') || label.includes('fasa-netral') || label.includes('r-n')) {
+            const vals = param.replace(/[^0-9.,]/g, ' ').trim().split(/[\s,]+/);
+            if (vals[0]) setVoltageAmpere(prev => ({ ...prev, voltageRN: vals[0] }));
+            if (vals[1]) setVoltageAmpere(prev => ({ ...prev, voltageSN: vals[1] }));
+            if (vals[2]) setVoltageAmpere(prev => ({ ...prev, voltageTN: vals[2] }));
+            if (vals[3]) setVoltageAmpere(prev => ({ ...prev, voltageNG: vals[3] }));
+          } else if (label.includes('current') || label.includes('ampere') || label.includes('arus')) {
+            const vals = param.replace(/[^0-9.,]/g, ' ').trim().split(/[\s,]+/);
+            if (vals[0]) setVoltageAmpere(prev => ({ ...prev, ampereR: vals[0] }));
+            if (vals[1]) setVoltageAmpere(prev => ({ ...prev, ampereS: vals[1] }));
+            if (vals[2]) setVoltageAmpere(prev => ({ ...prev, ampereT: vals[2] }));
+            if (vals[3]) setVoltageAmpere(prev => ({ ...prev, ampereN: vals[3] }));
+          } else if (label.includes('thermal') || label.includes('suhu') || label.includes('breaker')) {
+            const match = param.match(/([0-9.]+)/);
+            if (match) setThermal(prev => ({ ...prev, breakerResult: match[1] }));
+          } else if (label.includes('grounding') || label.includes('tahanan')) {
+            const match = param.match(/([0-9.]+)/);
+            if (match) setGrounding(prev => ({ ...prev, groundingResult: match[1] }));
+          } else if (label.includes('capacitance') || label.includes('kapasitansi') || label.includes('uf')) {
+            const match = param.match(/([0-9.]+)/);
+            if (match) setCapacitance(prev => ({ ...prev, capacitanceResult: match[1] }));
+          }
+        });
+      }
     }
   }, [prefillData]);
 

@@ -322,10 +322,12 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Clean the operating mechanism of dust and dirt',
     'Clean the surface of the busbar from dust using dry cloth or vacuum',
     'Clean the fan and ventilation grill using vacuum cleaner',
-    'Voltage & Ampere Measurement',
+    'Voltage Phase-to-Phase Measurement (V: R-S, S-T, T-R)',
+    'Voltage Phase-to-Neutral Measurement (V: R-N, S-N, T-N, N-G)',
+    'Current / Ampere Measurement (A: Ampere R, S, T, N)',
     'Thermal Measurement (<40°C)',
     'Grounding Resistance Measurement (<5 Ω)',
-    'Capacitance Measurement'
+    'Capacitance Measurement (uF)'
   ],
   'ldbrdb@gmail.com': [
     'Inspection of support levelness used water pass to analysis positioning support panel',
