@@ -508,6 +508,7 @@ export interface HSEChecklist {
   mop: boolean;
   jsa: boolean;
   ptw: boolean;
+  loto: boolean;
   ppe: boolean;
   toolsBertagging: boolean;
   logMaintenance: boolean;
@@ -537,6 +538,7 @@ export const INITIAL_HSE_CHECKLIST: HSEChecklist = {
   mop: false,
   jsa: false,
   ptw: false,
+  loto: false,
   ppe: false,
   toolsBertagging: false,
   logMaintenance: false,
@@ -566,6 +568,7 @@ export const HSE_CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string; sub
   { key: 'mop', label: 'MOP' },
   { key: 'jsa', label: 'JSA' },
   { key: 'ptw', label: 'PTW' },
+  { key: 'loto', label: 'LOTO' },
   { key: 'ppe', label: 'PPE Mandatory' },
   {
       key: 'ppeKhusus',

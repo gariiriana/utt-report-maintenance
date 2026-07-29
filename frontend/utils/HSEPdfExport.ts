@@ -98,6 +98,7 @@ export interface HSEChecklist {
     mop: boolean;
     jsa: boolean;
     ptw: boolean;
+    loto?: boolean;
     ppe: boolean;
     toolsBertagging: boolean;
     logMaintenance: boolean;
@@ -300,6 +301,7 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
             { key: 'mop', label: 'MOP' },
             { key: 'jsa', label: 'JSA' },
             { key: 'ptw', label: 'PTW' },
+            { key: 'loto', label: 'LOTO' },
             { key: 'ppe', label: 'PPE Mandatory' },
             {
                 key: 'ppeKhusus',
