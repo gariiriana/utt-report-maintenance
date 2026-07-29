@@ -647,9 +647,9 @@ export const CapacitorbankServiceReport: React.FC<CapacitorbankServiceReportProp
 
         {/* Tab 7: Customer Info */}
         {activeTab === 'info' && (
-          <div className="space-y-4 max-w-4xl">
+          <div className="space-y-4 max-w-5xl">
             <h3 className="text-sm font-bold text-slate-900 mb-3">Customer Information Header</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-6 rounded-2xl border border-slate-200">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 bg-slate-50 p-6 rounded-2xl border border-slate-200">
               <div>
                 <label className="text-xs font-bold text-slate-700">Company Name</label>
                 <input
@@ -678,6 +678,26 @@ export const CapacitorbankServiceReport: React.FC<CapacitorbankServiceReportProp
                 />
               </div>
               <div>
+                <label className="text-xs font-bold text-slate-700">CI Name</label>
+                <input
+                  type="text"
+                  value={customerInfo.ciName}
+                  onChange={(e) => setCustomerInfo((prev) => ({ ...prev, ciName: e.target.value }))}
+                  className="w-full mt-1 bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900"
+                  placeholder="Utility Panel APFCR"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700">Type</label>
+                <input
+                  type="text"
+                  value={customerInfo.type}
+                  onChange={(e) => setCustomerInfo((prev) => ({ ...prev, type: e.target.value }))}
+                  className="w-full mt-1 bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900"
+                  placeholder="APFCR 400kVAR"
+                />
+              </div>
+              <div>
                 <label className="text-xs font-bold text-slate-700">Serial No.</label>
                 <input
                   type="text"
@@ -687,21 +707,93 @@ export const CapacitorbankServiceReport: React.FC<CapacitorbankServiceReportProp
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-700">Type / Product Name</label>
+                <label className="text-xs font-bold text-slate-700">Product Name</label>
                 <input
                   type="text"
-                  value={customerInfo.type}
-                  onChange={(e) => setCustomerInfo((prev) => ({ ...prev, type: e.target.value }))}
+                  value={customerInfo.productName}
+                  onChange={(e) => setCustomerInfo((prev) => ({ ...prev, productName: e.target.value }))}
                   className="w-full mt-1 bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900"
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-700">Location / Area</label>
+                <label className="text-xs font-bold text-slate-700">Prod. Year</label>
+                <input
+                  type="text"
+                  value={customerInfo.productYears}
+                  onChange={(e) => setCustomerInfo((prev) => ({ ...prev, productYears: e.target.value }))}
+                  className="w-full mt-1 bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900"
+                  placeholder="2023"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700">Specification</label>
+                <input
+                  type="text"
+                  value={customerInfo.specification}
+                  onChange={(e) => setCustomerInfo((prev) => ({ ...prev, specification: e.target.value }))}
+                  className="w-full mt-1 bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-blue-700">MOP No. (Template)</label>
+                <input
+                  type="text"
+                  value={customerInfo.mopNo}
+                  onChange={(e) => setCustomerInfo((prev) => ({ ...prev, mopNo: e.target.value }))}
+                  className="w-full mt-1 bg-blue-50/80 border border-blue-300 rounded-xl p-2.5 text-xs font-bold text-blue-900"
+                  placeholder="DME-TDE/MOP/APCR/03 1206/26"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700">Quarter</label>
+                <select
+                  value={customerInfo.quarter}
+                  onChange={(e) => setCustomerInfo((prev) => ({ ...prev, quarter: e.target.value }))}
+                  className="w-full mt-1 bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-900 outline-none"
+                >
+                  <option value="Q1">Q1</option>
+                  <option value="Q2">Q2</option>
+                  <option value="Q3">Q3</option>
+                  <option value="Q4">Q4</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700">Location</label>
                 <input
                   type="text"
                   value={customerInfo.location}
                   onChange={(e) => setCustomerInfo((prev) => ({ ...prev, location: e.target.value }))}
                   className="w-full mt-1 bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900"
+                  placeholder="Utility Building"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700">Area</label>
+                <input
+                  type="text"
+                  value={customerInfo.area}
+                  onChange={(e) => setCustomerInfo((prev) => ({ ...prev, area: e.target.value }))}
+                  className="w-full mt-1 bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900"
+                  placeholder="Panel Room"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700">Date</label>
+                <input
+                  type="date"
+                  value={customerInfo.date}
+                  onChange={(e) => setCustomerInfo((prev) => ({ ...prev, date: e.target.value }))}
+                  className="w-full mt-1 bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-700">Engineer</label>
+                <input
+                  type="text"
+                  value={customerInfo.engineer}
+                  onChange={(e) => setCustomerInfo((prev) => ({ ...prev, engineer: e.target.value }))}
+                  className="w-full mt-1 bg-white border border-slate-200 rounded-xl p-2.5 text-xs font-medium text-slate-900"
+                  placeholder="Nama Teknisi"
                 />
               </div>
             </div>

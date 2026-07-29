@@ -13,7 +13,7 @@ import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { generateHSEPdf } from '@/utils/HSEPdfExport';
-import { generateATSServiceReportPDF, generateFCUServiceReportPDF, generatePJUServiceReportPDF, generatePDUServiceReportPDF, generateCTReportPDF, generateGeneratorReportPDF, generateACSplitReportPDF, generateTrafoReportPDF } from '@/service_reports';
+import { generateATSServiceReportPDF, generateFCUServiceReportPDF, generatePJUServiceReportPDF, generatePDUServiceReportPDF, generateCTReportPDF, generateGeneratorReportPDF, generateACSplitReportPDF, generateTrafoReportPDF, generateCapacitorbankReportPDF } from '@/service_reports';
 import { getDoc } from 'firebase/firestore';
 
 interface PhotoData {
@@ -62,6 +62,9 @@ export interface ExcelDocument {
   trafoCustomerInfo?: any;
   trafoReportData?: any;
   trafoTimeSpent?: any;
+  capacitorbankCustomerInfo?: any;
+  capacitorbankReportData?: any;
+  capacitorbankTimeSpent?: any;
   deleteRequested?: boolean;
   deleteRequestedBy?: string;
   deleteReason?: string;
@@ -652,6 +655,17 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
           cards
         );
         toast.success('2 File PDF Service Report Transformator downloaded successfully!', { id: 'download-pdf' });
+        return;
+      }
+
+      if (docData.createdBy === 'capacitorbank@gmail.com' && docData.capacitorbankCustomerInfo && docData.capacitorbankReportData && docData.capacitorbankTimeSpent) {
+        await generateCapacitorbankReportPDF(
+          docData.capacitorbankCustomerInfo,
+          docData.capacitorbankReportData,
+          docData.capacitorbankTimeSpent,
+          cards
+        );
+        toast.success('PDF Service Report Panel APFCR (Capacitor Bank) downloaded successfully!', { id: 'download-pdf' });
         return;
       }
 

@@ -99,8 +99,8 @@ export const DEFAULT_CAPACITORBANK_CUSTOMER_INFO: CapacitorbankCustomerInfo = {
   specification: '',
   location: '',
   area: '',
-  mopNo: '',
-  quarter: 'Q1',
+  mopNo: 'DME-TDE/MOP/APCR/03 1206/26',
+  quarter: 'Q3',
   date: '',
   engineer: '',
 };
