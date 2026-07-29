@@ -11,7 +11,8 @@ import {
     FileText,
     Scissors,
     Calendar,
-    User
+    User,
+    Clock
 } from 'lucide-react';
 import { ImageEditor } from './ImageEditor';
 import { toast } from 'sonner';
@@ -29,6 +30,8 @@ import {
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { SLAForm } from './SLAForm';
+import { CMReportFormModal } from './CMReportFormModal';
+import { generateCMReportPDF } from '@/utils/CMReportPdfExport';
 import { exportSLAReportToExcel } from '../utils/excelExport';
 import { exportMonthlyPDF } from '../utils/pdfExport';
 
@@ -535,22 +538,96 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
         }
     };
 
+    const [activeFormTab, setActiveFormTab] = useState<'cm_pdf' | 'sla'>('cm_pdf');
+
+    // Helper: Export single report card to 3-page CM PDF
+    const handleExportSingleCMPDF = async (report: any) => {
+        const cmData = {
+            incidentName: report.ticketName || report.issue || 'AC VRV Error Code U9-01',
+            location: report.location || 'Organic Room',
+            incidentDate: report.reportedAt?.toDate?.()?.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) || '24-Juli-2026',
+            incidentId: report.id?.slice(0, 8) || 'N/A',
+
+            equipmentName: report.equipmentName || 'DAIKIN VRV',
+            brand: report.brand || 'DAIKIN',
+            serialNumber: report.serialNumber || 'N/A',
+            installationDate: report.installationDate || 'N/A',
+
+            correctiveAction: report.actionTaken || report.correctiveAction || '⚫ Melakukan pengecekan unit ac vrv berdasarkan laporan dari tim FMA\n⚫ Melakukan reset system melalui remote control dan panel unit untuk memulihkan koneksi transmisi',
+            repairTimeStart: report.repairTimeStart || report.timeOrder || '12:49',
+            repairTimeEnd: report.repairTimeEnd || report.actualTimeResponse || '14:56',
+            result: report.result || report.remark || 'Status error berhasil terhapus, komunikasi antar unit kembali normal dan VRV sudah beroperasi dengan baik',
+
+            visualInspectionChecking: report.visualInspectionChecking || report.issue || 'Ditemukan kode error U9-01 pada remote ac VRV yang mengindikasikan gangguan pada system komunikasi transmisi pada indoor dan outdoor',
+            cleaningPreventiveMethod: report.cleaningPreventiveMethod || 'N/A',
+            summaryProblemAnalysis: report.summaryProblemAnalysis || report.issue || 'Ac VRV pada ruang organik menimbulkan kode error U9-01 pada remote ac. Pada saat pengecekan secara langsung unit indoor beroperasi sedangkan unit outdoor di temukan tidak beroperasi. Yang menyebabkan ac tidak beroperasi dengan maksimal dikarenakan terjadi gangguan pada system komunikasi indoor dan outdoor.',
+
+            spareparts: report.spareparts || [
+                { name: '-', brand: '-', qty: '-' },
+                { name: '-', brand: '-', qty: '-' }
+            ],
+
+            photos: report.photos || (report.photoBase64 ? [{ photoBase64: report.photoBase64 }] : report.photoResponse ? [{ photoBase64: report.photoResponse }] : []),
+
+            authorName: report.authorName || report.reportedByEmail || 'Rizki Novri Yanda – Data Center Operation',
+            preparedByName: report.preparedByName || 'Salman',
+            preparedByTitle: report.preparedByTitle || '(Electrical Engineer)',
+            reviewedByName: report.reviewedByName || 'Arif Budiman',
+            reviewedByTitle: report.reviewedByTitle || '(Technical Manager)',
+            acknowledgedBy1Name: report.acknowledgedBy1Name || 'Andrean Bima Pratama',
+            acknowledgedBy1Title: report.acknowledgedBy1Title || '(Chief Engineer)',
+            acknowledgedBy2Name: report.acknowledgedBy2Name || 'Supriyatno',
+            acknowledgedBy2Title: report.acknowledgedBy2Title || '(Facility manager)',
+            approvedByName: report.approvedByName || 'Budi Susanto',
+            approvedByTitle: report.approvedByTitle || '(Assistant manager HDC Facility Management)'
+        };
+
+        await generateCMReportPDF(cmData);
+    };
+
     if (!readOnly) {
         return (
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
-                <div className="flex justify-between items-center mb-8 border-b border-slate-200 pb-5">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 border-b border-slate-200 pb-5 gap-4">
                     <div>
                         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                            <PenTool className="w-6 h-6 text-orange-500" />
-                            Corrective Maintenance
+                            <PenTool className="w-6 h-6 text-red-600" />
+                            Corrective Maintenance (CM)
                         </h1>
-                        <p className="text-slate-500 text-sm mt-1">Form Input SLA / SLG (5-Step)</p>
+                        <p className="text-slate-500 text-sm mt-1">Pembuatan Laporan Pemeliharaan Corrective Standby Engineer</p>
+                    </div>
+
+                    <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 self-stretch sm:self-auto">
+                        <button
+                            type="button"
+                            onClick={() => setActiveFormTab('cm_pdf')}
+                            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2 ${
+                                activeFormTab === 'cm_pdf'
+                                    ? 'bg-red-600 text-white shadow-md'
+                                    : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                        >
+                            <FileText className="w-4 h-4" />
+                            Report CM PDF (3-Halaman)
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveFormTab('sla')}
+                            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2 ${
+                                activeFormTab === 'sla'
+                                    ? 'bg-red-600 text-white shadow-md'
+                                    : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                        >
+                            <Clock className="w-4 h-4" />
+                            Form SLA / SLG (5-Step)
+                        </button>
                     </div>
                 </div>
 
-                <div className="bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl p-6 shadow-lg">
-                    <SLAForm
-                        key={formKey}
+                {activeFormTab === 'cm_pdf' ? (
+                    <CMReportFormModal
+                        key={`cm_${formKey}`}
                         onSuccess={() => {
                             setFormKey(prev => prev + 1);
                         }}
@@ -558,7 +635,19 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                             setFormKey(prev => prev + 1);
                         }}
                     />
-                </div>
+                ) : (
+                    <div className="bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl p-6 shadow-lg">
+                        <SLAForm
+                            key={`sla_${formKey}`}
+                            onSuccess={() => {
+                                setFormKey(prev => prev + 1);
+                            }}
+                            onCancel={() => {
+                                setFormKey(prev => prev + 1);
+                            }}
+                        />
+                    </div>
+                )}
             </div>
         );
     }
@@ -934,11 +1023,19 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                                                 toast.error(`Gagal mengunduh Excel: ${err.message || err}`, { id: toastId });
                                                             }
                                                         }}
-                                                        className="px-3.5 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-xl flex items-center gap-2 text-xs font-bold transition shadow-lg shadow-emerald-500/5 cursor-pointer"
+                                                        className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-xl flex items-center gap-1.5 text-xs font-bold transition shadow-lg shadow-emerald-500/5 cursor-pointer"
                                                         title="Export to Excel"
                                                     >
-                                                        <FileText className="w-4 h-4" />
-                                                        Export Excel
+                                                        <FileText className="w-3.5 h-3.5" />
+                                                        Excel
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleExportSingleCMPDF(report)}
+                                                        className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl flex items-center gap-1.5 text-xs font-bold transition shadow-lg shadow-red-500/5 cursor-pointer"
+                                                        title="Export to CM PDF 3-Halaman"
+                                                    >
+                                                        <FileText className="w-3.5 h-3.5" />
+                                                        PDF CM (3-Hal)
                                                     </button>
                                                     {isAuthorizedRole && (report.reportedBy === user?.uid || userRole === 'admin') && (
                                                         <button
@@ -1126,6 +1223,14 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                                     </div>
 
                                                     <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
+                                                        <button
+                                                            onClick={() => handleExportSingleCMPDF(report)}
+                                                            className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl flex items-center gap-1.5 text-xs font-bold transition shadow-lg shadow-red-500/5 cursor-pointer"
+                                                            title="Export to CM PDF 3-Halaman"
+                                                        >
+                                                            <FileText className="w-3.5 h-3.5" />
+                                                            PDF CM (3-Hal)
+                                                        </button>
                                                         {isAuthorizedRole && (report.reportedBy === user?.uid || userRole === 'admin') && (
                                                             <button
                                                                 onClick={() => {

@@ -1039,7 +1039,7 @@ export function FileManagement({
                                                         </div>
                                                     </div>
                                                     {file.description && (
-                                                        <p className="text-xs text-slate-600 mt-2.5 italic line-clamp-1 border-l-2 border-blue-400 pl-2.5 bg-blue-50/40 py-1 rounded-r">
+                                                        <p className="text-xs text-red-600 mt-2.5 italic line-clamp-1 border-l-2 border-red-400 pl-2.5 bg-red-50/40 py-1 rounded-r">
                                                             "{file.description}"
                                                         </p>
                                                     )}

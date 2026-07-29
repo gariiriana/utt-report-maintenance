@@ -1051,13 +1051,15 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         reportData.doorReportData = doorData.reportData;
         reportData.doorTimeSpent = doorData.timeSpent;
       } else if (user?.email === 'capacitorbank@gmail.com' && capacitorbankData) {
-        reportData.capacitorbankCustomerInfo = capacitorbankData.customerInfo;
-        reportData.capacitorbankReportData = capacitorbankData.reportData;
-        reportData.capacitorbankTimeSpent = capacitorbankData.timeSpent;
+        const { customerInfo: cbCustInfo, timeSpent: cbTime, ...cbReportFields } = capacitorbankData;
+        reportData.capacitorbankCustomerInfo = cbCustInfo;
+        reportData.capacitorbankReportData = cbReportFields;
+        reportData.capacitorbankTimeSpent = cbTime;
       } else if ((user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') && ldbrdbData) {
-        reportData.ldbrdbCustomerInfo = ldbrdbData.customerInfo;
-        reportData.ldbrdbReportData = ldbrdbData.reportData;
-        reportData.ldbrdbTimeSpent = ldbrdbData.timeSpent;
+        const { customerInfo: ldbCustInfo, timeSpent: ldbTime, ...ldbReportFields } = ldbrdbData;
+        reportData.ldbrdbCustomerInfo = ldbCustInfo;
+        reportData.ldbrdbReportData = ldbReportFields;
+        reportData.ldbrdbTimeSpent = ldbTime;
       }
 
       if (!editingData) {
