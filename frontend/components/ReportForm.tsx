@@ -86,7 +86,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [companyType, setCompanyType] = useState<'neutra' | 'bri'>('neutra');
   const [maintenanceName, setMaintenanceName] = useState('');
   const [maintenanceTime, setMaintenanceTime] = useState('');
-  
+
 
   const [units, setUnits] = useState<ReportUnit[]>([]);
   const [atsPrefillData, setAtsPrefillData] = useState<{
@@ -182,8 +182,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       if (u.id === activeUnitId) {
 
         const isDefaultTab = !u.tabName || /^Unit \d+$/i.test(u.tabName);
-        return { 
-          ...u, 
+        return {
+          ...u,
           specificDetail: val,
           tabName: isDefaultTab ? (val || u.tabName) : u.tabName
         };
@@ -207,14 +207,14 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
   const addNewUnit = async (name: string = '') => {
     const newId = Math.random().toString(36).substr(2, 9);
-    
+
 
     let initialCards = createDefaultCards(11);
-    
+
     if (user?.email) {
       const lowerEmail = user.email.toLowerCase();
       let template: string[] | null = null;
-      
+
       if (lowerEmail === 'vrv@gmail.com') {
         template = VRV_TEMPLATE.indoor;
       } else if (lowerEmail === 'ahhu@utt.com') {
@@ -253,7 +253,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       templateMode: 'indoor',
       cards: initialCards.length > 0 ? initialCards : createDefaultCards(11)
     };
-    
+
     setUnits(prev => [...prev, newUnit]);
     setActiveUnitId(newId);
     return newId;
@@ -286,7 +286,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
     const loadDraft = async () => {
       let saved = await draftStorage.get('report_form_draft_v2');
-      
+
 
       if (!saved) {
         const legacySaved = localStorage.getItem('report_form_draft_v2');
@@ -324,7 +324,25 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               const processedUnits = await Promise.all(draft.units.map(async (u: any) => {
                 let unitCards = u.cards.map((c: any) => ({ ...c, photo: null }));
                 if (template) {
-                  if (lowerEmail === 'wld@gmail.com' || lowerEmail === 'fld@gmail.com') {
+                  if (lowerEmail === 'capacitorbank@gmail.com') {
+                    const hasOldCards = unitCards.some((c: any) => 
+                      c.description === 'Voltage & Ampere Measurement' || 
+                      c.description === 'Phase-to-Phase Voltage (V)' ||
+                      c.description?.startsWith('Voltage Phase-to-Phase')
+                    );
+                    if (hasOldCards || unitCards.length !== template.length) {
+                      unitCards = template.map((desc, idx) => {
+                        const existing = unitCards.find((c: any) => c.description === desc);
+                        return {
+                          id: `${idx + 1}`,
+                          photo: null,
+                          photoBase64: existing?.photoBase64 || undefined,
+                          description: desc,
+                          parameter: existing?.parameter || ''
+                        };
+                      });
+                    }
+                  } else if (lowerEmail === 'wld@gmail.com' || lowerEmail === 'fld@gmail.com') {
                     const hasOldCards = unitCards.some((c: any) => c.description === 'Voltage Measurement' || c.description === 'Current Measurement');
                     if (hasOldCards && lowerEmail === 'wld@gmail.com') {
                       unitCards = unitCards.filter((c: any) => c.description !== 'Voltage Measurement' && c.description !== 'Current Measurement');
@@ -351,27 +369,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       }
                       return c;
                     }));
-                  }
-
-                  if (lowerEmail === 'capacitorbank@gmail.com') {
-                    const oldIdx = unitCards.findIndex((c: any) => c.description === 'Voltage & Ampere Measurement');
-                    if (oldIdx !== -1) {
-                      const newCards = [
-                        { id: '', photo: null, description: 'Voltage Phase-to-Phase Measurement (V: R-S, S-T, T-R)', parameter: '' },
-                        { id: '', photo: null, description: 'Voltage Phase-to-Neutral Measurement (V: R-N, S-N, T-N, N-G)', parameter: '' },
-                        { id: '', photo: null, description: 'Current / Ampere Measurement (A: Ampere R, S, T, N)', parameter: '' }
-                      ];
-                      unitCards.splice(oldIdx, 1, ...newCards);
-                    }
-                    const seenDescs = new Set<string>();
-                    unitCards = unitCards.filter((c: any) => {
-                      if (seenDescs.has(c.description) && !c.photoBase64 && !c.parameter) {
-                        return false;
-                      }
-                      seenDescs.add(c.description);
-                      return true;
-                    });
-                    unitCards = unitCards.map((c: any, idx: number) => ({ ...c, id: `${idx + 1}` }));
                   }
                   const allEmpty = unitCards.every((c: any) => !c.description && !c.photoBase64);
                   if (allEmpty) {
@@ -443,9 +440,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             photoBase64: cardToCopy.photoBase64,
             description: cardToCopy.description
           });
-          toast.success('Kartu disalin ke clipboard', { 
+          toast.success('Kartu disalin ke clipboard', {
             icon: '📋',
-            duration: 1500 
+            duration: 1500
           });
         }
       }
@@ -453,7 +450,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       if (e.ctrlKey && e.key === 'v') {
         if (!focusedCardId || !cardClipboard) return;
-        
+
         setCards(prev => prev.map(c => {
           if (c.id === focusedCardId) {
             return {
@@ -464,10 +461,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           }
           return c;
         }));
-        
-        toast.success('Konten kartu ditempel', { 
+
+        toast.success('Konten kartu ditempel', {
           icon: '📥',
-          duration: 1500 
+          duration: 1500
         });
       }
     };
@@ -550,13 +547,13 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         finalVrv = rest.join(' - ');
       }
 
-      const photos = (editingData.photosData?.length > 0) 
+      const photos = (editingData.photosData?.length > 0)
         ? editingData.photosData.map((p: any) => ({
-            id: `${p.index}`,
-            photo: null,
-            photoBase64: p.photoBase64 || null,
-            description: p.description || ''
-          }))
+          id: `${p.index}`,
+          photo: null,
+          photoBase64: p.photoBase64 || null,
+          description: p.description || ''
+        }))
         : createDefaultCards(11);
 
 
@@ -680,7 +677,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         maintenanceTime,
         companyType,
         units: units
-          .filter(u => !u.isExported) 
+          .filter(u => !u.isExported)
           .map(u => ({
             ...u,
             cards: u.cards.map(c => ({
@@ -742,7 +739,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
     try {
       const results: { file: File; base64: string }[] = [];
-      
+
 
       const batchSize = 3;
       for (let i = 0; i < files.length; i += batchSize) {
@@ -761,7 +758,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             failCount++;
           }
         }));
-        
+
         const totalProcessed = successCount + failCount;
         toast.loading(`Memproses: ${totalProcessed} / ${files.length} foto...`, { id: toastId });
       }
@@ -774,10 +771,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
           for (let i = 0; i < newCards.length && resultIdx < results.length; i++) {
             if (!newCards[i].photoBase64 && !newCards[i].photo) {
-              newCards[i] = { 
-                ...newCards[i], 
-                photo: results[resultIdx].file, 
-                photoBase64: results[resultIdx].base64 
+              newCards[i] = {
+                ...newCards[i],
+                photo: results[resultIdx].file,
+                photoBase64: results[resultIdx].base64
               };
               resultIdx++;
             }
@@ -800,9 +797,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       }
 
       if (failCount > 0) {
-        toast.error(`${successCount} berhasil, ${failCount} gagal (Pastikan ukuran file < 20MB)`, { 
-          id: toastId, 
-          duration: 5000 
+        toast.error(`${successCount} berhasil, ${failCount} gagal (Pastikan ukuran file < 20MB)`, {
+          id: toastId,
+          duration: 5000
         });
       } else if (successCount > 0) {
         toast.success(`Berhasil mengunggah ${successCount} foto!`, { id: toastId });
@@ -1097,7 +1094,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         const photosRef = collection(db, `${collectionName}/${docId}/photos`);
         const existingPhotos = await getDocs(photosRef);
         if (!existingPhotos.empty) {
-          await Promise.all(existingPhotos.docs.map(photoDoc => 
+          await Promise.all(existingPhotos.docs.map(photoDoc =>
             deleteDoc(doc(db, `${collectionName}/${docId}/photos`, photoDoc.id))
           ));
         }
@@ -1110,12 +1107,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       if (cardsToSave.length > 0) {
         const photosRef = collection(db, `${effectiveDocId ? collectionName : 'pdf_documents'}/${docId}/photos`);
         const chunks = chunkArray(cardsToSave, 3);
-        
+
         for (let batchIdx = 0; batchIdx < chunks.length; batchIdx++) {
           const batch = chunks[batchIdx];
           const startIdx = batchIdx * 3 + 1;
           const endIdx = startIdx + batch.length - 1;
-          
+
           if (toastId) {
             toast.loading(`Menyimpan foto ${startIdx}-${endIdx} dari ${cardsToSave.length}...`, { id: toastId });
           }
@@ -1124,7 +1121,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             const currentIdx = startIdx + i;
             try {
               let b64 = card.photoBase64 || '';
-              
+
               if (b64) {
                 const sizeInKB = (b64.length * 3) / 4 / 1024;
                 // Aggressive compression: if > 600KB or if it fails once, we compress more
@@ -1164,7 +1161,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       if (error.code === 'permission-denied') errorMsg = 'Gagal simpan: Akses ditolak (Cek Login)';
       else if (error.code === 'resource-exhausted') errorMsg = 'Gagal simpan: File terlalu besar (Limit Firestore)';
       else if (error.message?.includes('too large')) errorMsg = 'Gagal simpan: Ukuran dokumen melebihi 1MB';
-      
+
       toast.error(errorMsg, { id: toastId });
       return null;
     } finally {
@@ -1177,14 +1174,14 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const handleExportPDF = async (unit?: ReportUnit) => {
     const targetUnit = unit || activeUnit;
     if (!targetUnit) return toast.error('Unit tidak terpilih');
-    
+
     setIsExporting(true);
     const toastId = toast.loading(isDME ? 'Memproses export PDF...' : 'Memproses export PDF & Menyimpan data...');
     try {
       const result = await generatePDFDocument(targetUnit);
       if (result) {
         const { doc, fileName } = result;
-        
+
         if (isDME) {
           doc.save(fileName);
           toast.success("Laporan berhasil diekspor!", { id: toastId });
@@ -1193,33 +1190,33 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           if (saveResult) {
             if (onClearEdit) onClearEdit();
             doc.save(fileName);
-            
+
             setUnits(prev => {
-                const newUnits = prev.map(u => u.id === targetUnit.id ? { ...u, isExported: true } : u);
-                
-                const draft = {
-                  userEmail: user?.email,
-                  maintenanceName,
-                  maintenanceTime,
-                  companyType,
-                  units: newUnits
-                    .filter(u => !u.isExported)
-                    .map(u => ({
-                      ...u,
-                      cards: u.cards.map(c => ({
-                        id: c.id,
-                        description: c.description,
-                        photoBase64: c.photoBase64,
-                        parameter: c.parameter || ''
-                      }))
-                    })),
-                  timestamp: new Date().getTime()
-                };
-                draftStorage.set('report_form_draft_v2', draft).catch(console.error);
-                
-                return newUnits;
+              const newUnits = prev.map(u => u.id === targetUnit.id ? { ...u, isExported: true } : u);
+
+              const draft = {
+                userEmail: user?.email,
+                maintenanceName,
+                maintenanceTime,
+                companyType,
+                units: newUnits
+                  .filter(u => !u.isExported)
+                  .map(u => ({
+                    ...u,
+                    cards: u.cards.map(c => ({
+                      id: c.id,
+                      description: c.description,
+                      photoBase64: c.photoBase64,
+                      parameter: c.parameter || ''
+                    }))
+                  })),
+                timestamp: new Date().getTime()
+              };
+              draftStorage.set('report_form_draft_v2', draft).catch(console.error);
+
+              return newUnits;
             });
-            
+
             toast.success("Laporan berhasil diekspor & disimpan!", { id: toastId });
           } else {
             toast.error("Gagal menyimpan data ke database. PDF tidak diunduh.", { id: toastId });
@@ -1270,7 +1267,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       } else if (desc.includes('grounding') || desc.includes('earth') || desc.includes('tahanan')) {
         category = 'grounding';
       } else if (
-        desc.includes('voltage') || desc.includes('ampere') || desc.includes('current') || 
+        desc.includes('voltage') || desc.includes('ampere') || desc.includes('current') ||
         desc.includes('dpm') || desc.includes('power') || desc.includes('daya') ||
         desc.includes('r-s') || desc.includes('s-t') || desc.includes('t-r') ||
         desc.includes('r-n') || desc.includes('s-n') || desc.includes('t-n')
@@ -1301,7 +1298,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         try {
           const errData = await response.json();
           errMsg = errData.error || errData.message || '';
-        } catch (_) {}
+        } catch (_) { }
         throw new Error(errMsg || `Analyze failed (Status: ${response.status})`);
       }
 
@@ -1338,7 +1335,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
     setIsBulkAnalyzing(true);
     const toastId = toast.loading(`Menganalisis ${cardsWithPhotos.length} foto parameter secara paralel...`);
-    
+
     try {
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error('Not authenticated');
@@ -1358,7 +1355,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         } else if (d.includes('grounding') || d.includes('earth') || d.includes('tahanan')) {
           return 'grounding';
         } else if (
-          d.includes('voltage') || d.includes('ampere') || d.includes('current') || 
+          d.includes('voltage') || d.includes('ampere') || d.includes('current') ||
           d.includes('dpm') || d.includes('power') || d.includes('daya') ||
           d.includes('r-s') || d.includes('s-t') || d.includes('t-r') ||
           d.includes('r-n') || d.includes('s-n') || d.includes('t-n')
@@ -1410,7 +1407,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               try {
                 const errData = await response.json();
                 errMsg = errData.error || errData.message || '';
-              } catch (_) {}
+              } catch (_) { }
               throw new Error(errMsg || `Analyze failed (Status: ${response.status})`);
             }
           } catch (err: any) {
@@ -1449,7 +1446,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       } else {
         toast.success(`Berhasil menganalisis semua ${cardsWithPhotos.length} foto parameter! ⚡`, { id: toastId });
       }
-      
+
       // Auto trigger collect parameter data to populate ATS Service Report at the bottom
       setTimeout(() => {
         handleTriggerAtsData();
@@ -1475,7 +1472,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           if (!base64Data && card.photo) {
             base64Data = await fileToBase64(card.photo);
           }
-          
+
           const rawBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
           const fullBase64Prefix = base64Data.includes(',') ? base64Data : (base64Data ? `data:image/jpeg;base64,${base64Data}` : '');
 
@@ -1486,7 +1483,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           } else if (desc.includes('grounding') || desc.includes('earth') || desc.includes('tahanan')) {
             category = 'grounding';
           } else if (
-            desc.includes('voltage') || desc.includes('ampere') || desc.includes('current') || 
+            desc.includes('voltage') || desc.includes('ampere') || desc.includes('current') ||
             desc.includes('dpm') || desc.includes('power') || desc.includes('daya') ||
             desc.includes('r-s') || desc.includes('s-t') || desc.includes('t-r') ||
             desc.includes('r-n') || desc.includes('s-n') || desc.includes('t-n')
@@ -1707,21 +1704,20 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     <button onClick={() => scrollTabs('left')} title="Geser Tab Kiri" aria-label="Geser tab ke kiri" className="p-1.5 hover:bg-slate-200 transition-colors rounded-lg text-slate-600 hover:text-blue-600"><ChevronLeft className="w-4 h-4" /></button>
                     <button onClick={() => scrollTabs('right')} title="Geser Tab Kanan" aria-label="Geser tab ke kanan" className="p-1.5 hover:bg-slate-200 transition-colors rounded-lg text-slate-600 hover:text-blue-600"><ChevronRight className="w-4 h-4" /></button>
                   </div>
-                  
+
                   <div ref={tabContainerRef} className="flex-1 flex items-end overflow-x-auto no-scrollbar h-full scroll-smooth">
                     {units.map((unit, idx) => (
                       <div
                         key={unit.id}
                         onClick={() => setActiveUnitId(unit.id)}
-                        className={`group relative flex items-center min-w-[110px] sm:min-w-[140px] h-full px-3 sm:px-5 cursor-pointer transition-all duration-200 border-r border-slate-200 shrink-0 ${
-                          activeUnitId === unit.id 
-                            ? 'bg-white z-10 shadow-sm' 
+                        className={`group relative flex items-center min-w-[110px] sm:min-w-[140px] h-full px-3 sm:px-5 cursor-pointer transition-all duration-200 border-r border-slate-200 shrink-0 ${activeUnitId === unit.id
+                            ? 'bg-white z-10 shadow-sm'
                             : 'bg-transparent hover:bg-slate-200/50'
-                        }`}
+                          }`}
                       >
                         {activeUnitId === unit.id ? (
                           <div className="flex items-center gap-2 sm:gap-3 w-full">
-                             <input
+                            <input
                               autoFocus
                               title="Nama Unit"
                               value={tabName}
@@ -1759,7 +1755,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                             </span>
                           </div>
                         )}
-                        
+
                         {activeUnitId === unit.id && (
                           <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.5)]" />
                         )}
@@ -1855,42 +1851,42 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               </div>
 
 
-            {activeUnit && (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 px-2 gap-4">
-                <div className="flex-1 flex flex-wrap items-center gap-3 sm:gap-4">
-                  <h2 className="text-base sm:text-lg md:text-xl font-black text-slate-900 tracking-tight flex items-center gap-2 sm:gap-3">
-                    <span className="px-2 py-0.5 bg-blue-600 text-white text-[10px] rounded-md flex items-center justify-center font-mono font-bold">#{units.findIndex(u => u.id === activeUnitId) + 1}</span>
-                    <span className="whitespace-nowrap">DOKUMENTASI:</span> 
-                    <span className="text-blue-600 truncate max-w-[150px] sm:max-w-none ml-1">{activeUnit.specificDetail || '(Tanpa Nama Unit)'}</span>
-                  </h2>
+              {activeUnit && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 px-2 gap-4">
+                  <div className="flex-1 flex flex-wrap items-center gap-3 sm:gap-4">
+                    <h2 className="text-base sm:text-lg md:text-xl font-black text-slate-900 tracking-tight flex items-center gap-2 sm:gap-3">
+                      <span className="px-2 py-0.5 bg-blue-600 text-white text-[10px] rounded-md flex items-center justify-center font-mono font-bold">#{units.findIndex(u => u.id === activeUnitId) + 1}</span>
+                      <span className="whitespace-nowrap">DOKUMENTASI:</span>
+                      <span className="text-blue-600 truncate max-w-[150px] sm:max-w-none ml-1">{activeUnit.specificDetail || '(Tanpa Nama Unit)'}</span>
+                    </h2>
 
-                  {(user?.email?.toLowerCase() === 'ahhu@utt.com' || user?.email?.toLowerCase() === 'vrv@gmail.com') && (
-                    <div className="flex gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
-                      <button 
-                        onClick={() => setTemplateMode('indoor')}
-                        className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${activeUnit?.templateMode === 'indoor' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-600 hover:text-slate-900'}`}
-                      >
-                        INDOOR
-                      </button>
-                      <button 
-                        onClick={() => setTemplateMode('outdoor')}
-                        className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${activeUnit?.templateMode === 'outdoor' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-600 hover:text-slate-900'}`}
-                      >
-                        OUTDOOR
-                      </button>
+                    {(user?.email?.toLowerCase() === 'ahhu@utt.com' || user?.email?.toLowerCase() === 'vrv@gmail.com') && (
+                      <div className="flex gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+                        <button
+                          onClick={() => setTemplateMode('indoor')}
+                          className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${activeUnit?.templateMode === 'indoor' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-600 hover:text-slate-900'}`}
+                        >
+                          INDOOR
+                        </button>
+                        <button
+                          onClick={() => setTemplateMode('outdoor')}
+                          className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${activeUnit?.templateMode === 'outdoor' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-600 hover:text-slate-900'}`}
+                        >
+                          OUTDOOR
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {userRole !== 'engineer' && userRole !== 'standby_engineer' && (
+                    <div className="flex items-center gap-3 self-start sm:self-auto">
+                      <div className="px-3 py-1.5 bg-white/80 backdrop-blur-md border border-slate-200 rounded-full flex items-center gap-2 shadow-sm">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse shadow-[0_0_8px_rgba(37,99,235,0.5)]" />
+                        <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">SEDANG DIEDIT</span>
+                      </div>
                     </div>
                   )}
                 </div>
-                {userRole !== 'engineer' && userRole !== 'standby_engineer' && (
-                  <div className="flex items-center gap-3 self-start sm:self-auto">
-                    <div className="px-3 py-1.5 bg-white/80 backdrop-blur-md border border-slate-200 rounded-full flex items-center gap-2 shadow-sm">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse shadow-[0_0_8px_rgba(37,99,235,0.5)]" />
-                      <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">SEDANG DIEDIT</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+              )}
             </div>
 
             {!isDME && (
@@ -1907,14 +1903,13 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
               {cards.map((card, idx) => (
-                <div 
-                  key={card.id} 
+                <div
+                  key={card.id}
                   onClick={() => setFocusedCardId(card.id)}
-                  className={`bg-white p-3 sm:p-4 rounded-2xl border relative group transition-all duration-300 shadow-md ${
-                    focusedCardId === card.id 
-                    ? 'border-blue-500 shadow-blue-500/10 ring-2 ring-blue-500/30' 
-                    : 'border-sky-100 hover:border-blue-300 hover:shadow-lg'
-                  }`}
+                  className={`bg-white p-3 sm:p-4 rounded-2xl border relative group transition-all duration-300 shadow-md ${focusedCardId === card.id
+                      ? 'border-blue-500 shadow-blue-500/10 ring-2 ring-blue-500/30'
+                      : 'border-sky-100 hover:border-blue-300 hover:shadow-lg'
+                    }`}
                 >
                   <div className="flex justify-between items-center mb-2 sm:mb-3">
                     <span className="text-[10px] sm:text-xs font-bold text-slate-500 tracking-wider uppercase">Doc #{idx + 1}</span>
@@ -1926,48 +1921,48 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     {card.photoBase64 ? (
                       <>
                         <img src={card.photoBase64} alt={card.description || `Foto dokumentasi ${idx + 1}`} title={card.description || `Foto dokumentasi ${idx + 1}`} className="w-full h-full object-cover" />
-                        <div 
+                        <div
                           onClick={() => setPreviewImage({ src: card.photoBase64!, title: card.description || `Doc #${idx + 1}` })}
                           className="absolute inset-0 bg-black/20 flex items-center justify-center gap-1.5 sm:gap-3 opacity-100 transition-opacity cursor-zoom-in"
                         >
-                          <button 
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
                               setPreviewImage({ src: card.photoBase64!, title: card.description || `Doc #${idx + 1}` });
-                            }} 
-                            className="p-1.5 sm:p-2.5 bg-blue-600/20 backdrop-blur-md rounded-lg hover:bg-blue-600/30 transition shadow-xl" 
+                            }}
+                            className="p-1.5 sm:p-2.5 bg-blue-600/20 backdrop-blur-md rounded-lg hover:bg-blue-600/30 transition shadow-xl"
                             title="Detail Foto"
                           >
                             <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
                           </button>
-                          <button 
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDownloadPhoto(card.photoBase64!, card.description, idx);
-                            }} 
-                            className="p-1.5 sm:p-2.5 bg-emerald-600/20 backdrop-blur-md rounded-lg hover:bg-emerald-600/30 transition shadow-xl" 
+                            }}
+                            className="p-1.5 sm:p-2.5 bg-emerald-600/20 backdrop-blur-md rounded-lg hover:bg-emerald-600/30 transition shadow-xl"
                             title="Download Foto"
                           >
                             <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
                           </button>
                           {!isDME && (
                             <>
-                              <button 
+                              <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setEditingCardId(card.id);
-                                }} 
-                                className="p-1.5 sm:p-2.5 bg-white/20 backdrop-blur-md rounded-lg hover:bg-white/30 transition shadow-xl" 
+                                }}
+                                className="p-1.5 sm:p-2.5 bg-white/20 backdrop-blur-md rounded-lg hover:bg-white/30 transition shadow-xl"
                                 title="Edit/Crop"
                               >
                                 <Scissors className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
                               </button>
-                              <button 
+                              <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePhotoChange(card.id, null);
-                                }} 
-                                className="p-1.5 sm:p-2.5 bg-red-600/20 backdrop-blur-md rounded-lg hover:bg-red-600/30 transition shadow-xl" 
+                                }}
+                                className="p-1.5 sm:p-2.5 bg-red-600/20 backdrop-blur-md rounded-lg hover:bg-red-600/30 transition shadow-xl"
                                 title="Hapus Foto"
                               >
                                 <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" />
@@ -1984,14 +1979,14 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                           </div>
                         ) : (!userRole || userRole === 'engineer' || userRole === 'standby_engineer') ? (
                           <>
-                            <button 
+                            <button
                               onClick={() => setActiveCameraCardId(card.id)}
                               className="flex-1 flex flex-col items-center justify-center gap-1 sm:gap-2 hover:bg-blue-100/60 transition-colors group/camera border-r border-sky-200/80"
                             >
                               <Camera className="w-5.5 h-5.5 sm:w-7 sm:h-7 text-slate-500 group-hover/camera:text-blue-600 transition-colors" />
                               <span className="text-[8px] sm:text-[9px] text-slate-600 font-bold uppercase tracking-tight group-hover/camera:text-blue-600">Ambil Foto</span>
                             </button>
-                            
+
                             <label className="flex-1 flex flex-col items-center justify-center gap-1 sm:gap-2 cursor-pointer hover:bg-emerald-100/60 transition-colors group/upload">
                               <Upload className="w-5.5 h-5.5 sm:w-7 sm:h-7 text-slate-500 group-hover/upload:text-emerald-600 transition-colors" />
                               <span className="text-[8px] sm:text-[9px] text-slate-600 font-bold uppercase tracking-tight group-hover/upload:text-emerald-600">Unggah Foto</span>
@@ -2035,7 +2030,20 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                         onChange={e => handleParameterChange(card.id, e.target.value)}
                         disabled={isDME || analyzingCardId === card.id}
                         className="w-full bg-emerald-50/60 border border-emerald-200 rounded-xl p-2 pr-9 text-xs text-emerald-800 font-bold outline-none focus:bg-white focus:border-emerald-500 transition placeholder:text-slate-400 disabled:opacity-75 disabled:cursor-not-allowed font-mono"
-                        placeholder="Nilai parameter (contoh: 395 V, 31 °C, 0.35 Ω)..."
+                        placeholder={
+                          card.description.includes('R-S') ? '395 V' :
+                          card.description.includes('S-T') ? '396 V' :
+                          card.description.includes('T-R') ? '395 V' :
+                          card.description.includes('R-N') ? '228 V' :
+                          card.description.includes('S-N') ? '229 V' :
+                          card.description.includes('T-N') ? '228 V' :
+                          card.description.includes('N-G') ? '1.2 V' :
+                          card.description.includes('Ampere R') ? '42.5 A' :
+                          card.description.includes('Ampere S') ? '43.1 A' :
+                          card.description.includes('Ampere T') ? '42.0 A' :
+                          card.description.includes('Ampere N') ? '0.4 A' :
+                          "Nilai parameter (contoh: 395 V, 31 °C, 0.35 Ω)..."
+                        }
                       />
                       {(card.photoBase64 || card.photo) && (
                         <button
@@ -2060,22 +2068,22 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
             <div className="grid grid-cols-2 sm:flex sm:flex-row sm:flex-wrap lg:flex-nowrap items-stretch justify-center gap-2 sm:gap-3 mt-12 bg-white/90 backdrop-blur-xl p-4 sm:p-5 rounded-[2rem] border border-sky-100/90 shadow-2xl shadow-sky-900/10 w-full">
               {!isDME && (
-                <button 
-                  onClick={handleManualSave} 
+                <button
+                  onClick={handleManualSave}
                   disabled={isSaving || isExporting}
                   className={`col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 hover:border-slate-300 rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-sm transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {isSaving ? (
                     <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-slate-600" />
                   ) : (
-                    <Save className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 group-active:scale-90 transition-transform" /> 
+                    <Save className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 group-active:scale-90 transition-transform" />
                   )}
                   <span className="text-center leading-tight">SIMPAN KE ARSIP</span>
                 </button>
               )}
 
-              <button 
-                onClick={() => setShowPreview(true)} 
+              <button
+                onClick={() => setShowPreview(true)}
                 disabled={isSaving || isExporting}
                 className={`col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-emerald-50 border border-emerald-200 text-emerald-900 hover:bg-emerald-100 rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-sm transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
@@ -2085,8 +2093,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
               {(user?.email === 'ats@gmail.com' || user?.email === 'fcu@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com' || user?.email === 'dockleveler@gmail.com' || user?.email === 'door@gmail.com' || user?.email === 'capacitorbank@gmail.com' || user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') && (
                 <>
-                  <button 
-                    onClick={handleBulkAnalyzeAtsParameters} 
+                  <button
+                    onClick={handleBulkAnalyzeAtsParameters}
                     disabled={isSaving || isExporting || isBulkAnalyzing}
                     className={`col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-purple-50 border border-purple-200 text-purple-900 hover:bg-purple-100 rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-sm transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer ${(isSaving || isExporting || isBulkAnalyzing) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
@@ -2099,8 +2107,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       {isBulkAnalyzing ? 'MENGANALISIS...' : 'GENERATE AI PARAMETER'}
                     </span>
                   </button>
-                  <button 
-                    onClick={handleTriggerAtsData} 
+                  <button
+                    onClick={handleTriggerAtsData}
                     disabled={isSaving || isExporting || isBulkAnalyzing}
                     className={`col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-sky-50 border border-sky-200 text-sky-900 hover:bg-sky-100 rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-sm transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer ${(isSaving || isExporting || isBulkAnalyzing) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
@@ -2112,8 +2120,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 </>
               )}
 
-              <button 
-                onClick={() => handleExportPDF()} 
+              <button
+                onClick={() => handleExportPDF()}
                 disabled={isSaving || isExporting}
                 className={`col-span-2 sm:col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-md shadow-blue-600/20 transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
@@ -2229,9 +2237,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       {user?.email === 'ats@gmail.com' && (
         <div className="mt-12 border-t border-slate-800 pt-12">
-          <ATSServiceReport 
-            prefillData={atsPrefillData} 
-            onClearPrefill={() => setAtsPrefillData(null)} 
+          <ATSServiceReport
+            prefillData={atsPrefillData}
+            onClearPrefill={() => setAtsPrefillData(null)}
             onChange={setAtsData}
           />
         </div>
@@ -2239,9 +2247,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       {user?.email === 'fcu@gmail.com' && (
         <div className="mt-12 border-t border-slate-800 pt-12">
-          <FCUServiceReport 
-            prefillData={fcuPrefillData} 
-            onClearPrefill={() => setFcuPrefillData(null)} 
+          <FCUServiceReport
+            prefillData={fcuPrefillData}
+            onClearPrefill={() => setFcuPrefillData(null)}
             onChange={setFcuData}
           />
         </div>
@@ -2249,9 +2257,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       {user?.email === 'pju@gmail.com' && (
         <div className="mt-12 border-t border-slate-800 pt-12">
-          <PJUServiceReport 
-            prefillData={pjuPrefillData} 
-            onClearPrefill={() => setPjuPrefillData(null)} 
+          <PJUServiceReport
+            prefillData={pjuPrefillData}
+            onClearPrefill={() => setPjuPrefillData(null)}
             onChange={setPjuData}
           />
         </div>
@@ -2259,9 +2267,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       {user?.email === 'pdu@gmail.com' && (
         <div className="mt-12 border-t border-slate-800 pt-12">
-          <PDUServiceReport 
-            prefillData={pduPrefillData} 
-            onClearPrefill={() => setPduPrefillData(null)} 
+          <PDUServiceReport
+            prefillData={pduPrefillData}
+            onClearPrefill={() => setPduPrefillData(null)}
             onChange={setPduData}
           />
         </div>
@@ -2269,9 +2277,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       {user?.email === 'coolingtower@gmail.com' && (
         <div className="mt-12 border-t border-slate-800 pt-12">
-          <CTServiceReport 
-            prefillData={ctPrefillData} 
-            onClearPrefill={() => setCtPrefillData(null)} 
+          <CTServiceReport
+            prefillData={ctPrefillData}
+            onClearPrefill={() => setCtPrefillData(null)}
             onChange={setCtData}
           />
         </div>
@@ -2279,9 +2287,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       {user?.email === 'generator@gmail.com' && (
         <div className="mt-12 border-t border-slate-800 pt-12">
-          <GeneratorServiceReport 
-            prefillData={generatorPrefillData} 
-            onClearPrefill={() => setGeneratorPrefillData(null)} 
+          <GeneratorServiceReport
+            prefillData={generatorPrefillData}
+            onClearPrefill={() => setGeneratorPrefillData(null)}
             onChange={setGeneratorData}
           />
         </div>
@@ -2289,9 +2297,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       {user?.email === 'acsplit@gmail.com' && (
         <div className="mt-12 border-t border-slate-800 pt-12">
-          <ACSplitServiceReport 
-            prefillData={acSplitPrefillData} 
-            onClearPrefill={() => setAcSplitPrefillData(null)} 
+          <ACSplitServiceReport
+            prefillData={acSplitPrefillData}
+            onClearPrefill={() => setAcSplitPrefillData(null)}
             onChange={setAcSplitData}
           />
         </div>
@@ -2299,9 +2307,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       {user?.email === 'trafo@gmail.com' && (
         <div className="mt-12 border-t border-slate-800 pt-12">
-          <TrafoServiceReport 
-            prefillData={trafoPrefillData} 
-            onClearPrefill={() => setTrafoPrefillData(null)} 
+          <TrafoServiceReport
+            prefillData={trafoPrefillData}
+            onClearPrefill={() => setTrafoPrefillData(null)}
             onChange={setTrafoData}
           />
         </div>
@@ -2309,9 +2317,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       {user?.email === 'busduct@gmail.com' && (
         <div className="mt-12 border-t border-slate-800 pt-12">
-          <BusductServiceReport 
-            prefillData={busductPrefillData} 
-            onClearPrefill={() => setBusductPrefillData(null)} 
+          <BusductServiceReport
+            prefillData={busductPrefillData}
+            onClearPrefill={() => setBusductPrefillData(null)}
             onChange={setBusductData}
           />
         </div>
@@ -2319,9 +2327,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       {user?.email === 'dockleveler@gmail.com' && (
         <div className="mt-12 border-t border-slate-800 pt-12">
-          <DocklevelerServiceReport 
-            prefillData={docklevelerPrefillData} 
-            onClearPrefill={() => setDocklevelerPrefillData(null)} 
+          <DocklevelerServiceReport
+            prefillData={docklevelerPrefillData}
+            onClearPrefill={() => setDocklevelerPrefillData(null)}
             onChange={setDocklevelerData}
           />
         </div>
@@ -2329,9 +2337,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       {user?.email === 'door@gmail.com' && (
         <div className="mt-12 border-t border-slate-800 pt-12">
-          <DoorServiceReport 
-            prefillData={doorPrefillData} 
-            onClearPrefill={() => setDoorPrefillData(null)} 
+          <DoorServiceReport
+            prefillData={doorPrefillData}
+            onClearPrefill={() => setDoorPrefillData(null)}
             onChange={setDoorData}
           />
         </div>
@@ -2339,9 +2347,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       {user?.email === 'capacitorbank@gmail.com' && (
         <div className="mt-12 border-t border-slate-800 pt-12">
-          <CapacitorbankServiceReport 
-            prefillData={capacitorbankPrefillData} 
-            onClearPrefill={() => setCapacitorbankPrefillData(null)} 
+          <CapacitorbankServiceReport
+            prefillData={capacitorbankPrefillData}
+            onClearPrefill={() => setCapacitorbankPrefillData(null)}
             onChange={setCapacitorbankData}
           />
         </div>
@@ -2349,9 +2357,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       {(user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') && (
         <div className="mt-12 border-t border-slate-800 pt-12">
-          <LdbrdbServiceReport 
-            prefillData={ldbrdbPrefillData} 
-            onClearPrefill={() => setLdbrdbPrefillData(null)} 
+          <LdbrdbServiceReport
+            prefillData={ldbrdbPrefillData}
+            onClearPrefill={() => setLdbrdbPrefillData(null)}
             onChange={setLdbrdbData}
           />
         </div>
