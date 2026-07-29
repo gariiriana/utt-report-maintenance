@@ -84,34 +84,25 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Pelumasan Moving Parts', 'Pengecekan Safety Features', 'Test Operasional'
   ],
   'pdu@gmail.com': [
-    // Inspection / Checking (1 - 11)
-    'Inspection unsafe action and unsafe condition before start activity maintenance',
-    'Check cable grounding to act know voltage in body panel. Measurement current and resistance using claim earth',
-    'Inspection & check visual all support panel like a condition paint panel, pilot lamp, chassis panel, padlock system and cleaning using vacuum cleaner.',
-    'Inspection & check status breaker incoming and outgoing, cable wiring panel, and fuse',
-    'Inspection relay, power supply unit, measurement voltage',
-    'Inspection visual tightness all connection cable in terminal cable, label marking, terminal breaker and all mounting nut.',
-    'Check condition connection cable using thermal imager if the found anomaly like a hot spot on the connection.',
-    'Cleaning panel used vacuum cleaner and apply sanpoly to finish it',
-    'Inspection and check visual trafo isotrans with analysis condition temperature operational trafo using thermal imager and measurement noise with sound level',
-    'Cleaning, remove object from top of controller',
-    'Inspection DPM, and ensure measurement on reading in DPM. Take a photo',
-    // Cleaning (1 - 2)
-    'Cleaning support panels using a vacuum cleaner',
-    'Clean the panel with a vacuum and apply sanpoly.',
-    // Digital Power Meter (DPM) Recording
-    'Digital Power Meter Ampere R, S, T, N',
-    'Digital Power Meter Power KW, KVA, KVAR, Cos p',
-    'Digital Power Meter Voltage R-S, S-T, T-R',
-    'Digital Power Meter Voltage R-N, S-N, T-N, N-G',
-    // Temperature Monitoring ISO-Trans
-    'Temperature Monitoring ISO-Trans R, S, T (°C)',
-    // Voltage & Ampere Measurement
-    'Voltage & Ampere Measurement Voltage R-S, S-T, T-R, R-N, S-N, T-N, N-G',
-    'Voltage & Ampere Measurement Ampere R, S, T, N',
-    // Thermal Measurement
-    'Thermal Measurement Breaker Temperature (°C)',
-    'Thermal Measurement Terminal Cable Temperature (°C)'
+    'Name Plate',
+    'Cleaning Panels menggunakan vacuum cleaner',
+    'Measurement Panel',
+    'Pengecekan Digital Power Meter (KW)',
+    'Pengecekan Digital Power Meter (Volt)',
+    'Pengecekan Digital Power Meter (Volt)',
+    'Pengecekan Digital Power Meter (Ampere)',
+    'Measurement Voltage R-S',
+    'Measurement Voltage S-T',
+    'Measurement Voltage T-R',
+    'Measurement Voltage R-N',
+    'Measurement Voltage S-N',
+    'Measurement Voltage T-N',
+    'Measurement N-G',
+    'Measurement Ampere (R)',
+    'Measurement Ampere (S)',
+    'Measurement Ampere (T)',
+    'Measurement Ampere (N)',
+    'Measurement Grounding'
   ],
   'coolingtower@gmail.com': [
     // Visual Inspection & Maintenance - CT Devices
