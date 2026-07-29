@@ -352,6 +352,27 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       return c;
                     }));
                   }
+
+                  if (lowerEmail === 'capacitorbank@gmail.com') {
+                    const oldIdx = unitCards.findIndex((c: any) => c.description === 'Voltage & Ampere Measurement');
+                    if (oldIdx !== -1) {
+                      const newCards = [
+                        { id: '', photo: null, description: 'Voltage Phase-to-Phase Measurement (V: R-S, S-T, T-R)', parameter: '' },
+                        { id: '', photo: null, description: 'Voltage Phase-to-Neutral Measurement (V: R-N, S-N, T-N, N-G)', parameter: '' },
+                        { id: '', photo: null, description: 'Current / Ampere Measurement (A: Ampere R, S, T, N)', parameter: '' }
+                      ];
+                      unitCards.splice(oldIdx, 1, ...newCards);
+                    }
+                    const seenDescs = new Set<string>();
+                    unitCards = unitCards.filter((c: any) => {
+                      if (seenDescs.has(c.description) && !c.photoBase64 && !c.parameter) {
+                        return false;
+                      }
+                      seenDescs.add(c.description);
+                      return true;
+                    });
+                    unitCards = unitCards.map((c: any, idx: number) => ({ ...c, id: `${idx + 1}` }));
+                  }
                   const allEmpty = unitCards.every((c: any) => !c.description && !c.photoBase64);
                   if (allEmpty) {
                     unitCards = await Promise.all(template.map(async (desc, idx) => {
