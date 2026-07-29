@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, Save, ChevronLeft, ChevronRight, X, Eye, Download, Sparkles, Loader2, Languages } from 'lucide-react';
+import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, Save, ChevronLeft, ChevronRight, X, Eye, Download, Loader2, Languages } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { ExcelDocument } from '@/components/DocumentList';
 import { ImageEditor } from '@/components/ImageEditor';
@@ -24,20 +24,6 @@ import { compressImage, compressBase64Image } from '@/utils/imageCompression';
 import { PreviewReport } from '@/components/PreviewReport';
 import { CameraModal } from '@/components/CameraModal';
 import { draftStorage } from '@/utils/draftStorage';
-import { ATSServiceReport } from '@/components/ATSServiceReport';
-import { FCUServiceReport } from '@/components/FCUServiceReport';
-import { PJUServiceReport } from '@/components/PJUServiceReport';
-import { PDUServiceReport } from '@/components/PDUServiceReport';
-import { CTServiceReport } from '@/components/CTServiceReport';
-import { GeneratorServiceReport } from '@/components/GeneratorServiceReport';
-import { formatAIError } from '@/utils/aiErrorUtils';
-import { ACSplitServiceReport } from '@/components/ACSplitServiceReport';
-import { TrafoServiceReport } from '@/components/TrafoServiceReport';
-import { BusductServiceReport } from '@/components/BusductServiceReport';
-import { DocklevelerServiceReport } from '@/components/DocklevelerServiceReport';
-import { DoorServiceReport } from '@/components/DoorServiceReport';
-import { CapacitorbankServiceReport } from '@/components/CapacitorbankServiceReport';
-import { LdbrdbServiceReport } from '@/components/LdbrdbServiceReport';
 
 
 import imgStatusWld from '@/assets/Wld/status.jpeg';
@@ -89,22 +75,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
 
   const [units, setUnits] = useState<ReportUnit[]>([]);
-  const [atsPrefillData, setAtsPrefillData] = useState<{
-    maintenanceName: string;
-    maintenanceTime: string;
-    specificDetail: string;
-    photos: Array<{ base64: string; category: string; label: string; preview: string; parameter?: string }>;
-    originalReportCards: Array<{ photoBase64?: string; description: string; parameter?: string }>;
-    autoTrigger?: boolean;
-    triggerGenerateData?: boolean;
-    atsCustomerInfo?: any;
-    atsReportData?: any;
-    atsTimeSpent?: any;
-    archiveId?: string;
-    archiveType?: string;
-  } | null>(null);
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
-  const [atsData, setAtsData] = useState<{ customerInfo: any; reportData: any; timeSpent: any } | null>(null);
   const tabContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollTabs = (direction: 'left' | 'right') => {
@@ -124,36 +95,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [cardClipboard, setCardClipboard] = useState<{ photoBase64?: string, description: string } | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [analyzingCardId, setAnalyzingCardId] = useState<string | null>(null);
-  const [isBulkAnalyzing, setIsBulkAnalyzing] = useState(false);
   const [translatingCardId, setTranslatingCardId] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<{ src: string; title: string } | null>(null);
-
-  const [fcuPrefillData, setFcuPrefillData] = useState<any>(null);
-  const [pjuPrefillData, setPjuPrefillData] = useState<any>(null);
-  const [pduPrefillData, setPduPrefillData] = useState<any>(null);
-  const [ctPrefillData, setCtPrefillData] = useState<any>(null);
-  const [generatorPrefillData, setGeneratorPrefillData] = useState<any>(null);
-  const [acSplitPrefillData, setAcSplitPrefillData] = useState<any>(null);
-  const [trafoPrefillData, setTrafoPrefillData] = useState<any>(null);
-  const [busductPrefillData, setBusductPrefillData] = useState<any>(null);
-  const [docklevelerPrefillData, setDocklevelerPrefillData] = useState<any>(null);
-  const [doorPrefillData, setDoorPrefillData] = useState<any>(null);
-  const [capacitorbankPrefillData, setCapacitorbankPrefillData] = useState<any>(null);
-  const [ldbrdbPrefillData, setLdbrdbPrefillData] = useState<any>(null);
-
-  const [fcuData, setFcuData] = useState<any>(null);
-  const [pjuData, setPjuData] = useState<any>(null);
-  const [pduData, setPduData] = useState<any>(null);
-  const [ctData, setCtData] = useState<any>(null);
-  const [generatorData, setGeneratorData] = useState<any>(null);
-  const [acSplitData, setAcSplitData] = useState<any>(null);
-  const [trafoData, setTrafoData] = useState<any>(null);
-  const [busductData, setBusductData] = useState<any>(null);
-  const [docklevelerData, setDocklevelerData] = useState<any>(null);
-  const [doorData, setDoorData] = useState<any>(null);
-  const [capacitorbankData, setCapacitorbankData] = useState<any>(null);
-  const [ldbrdbData, setLdbrdbData] = useState<any>(null);
 
 
 
@@ -203,46 +146,43 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       description: '',
       parameter: ''
     }));
+  };  const getAccountTemplate = (email: string | undefined | null): string[] | null => {
+    if (!email) return null;
+    const lowerEmail = email.toLowerCase().trim();
+    if (lowerEmail === 'vrv@gmail.com') return VRV_TEMPLATE.indoor;
+    if (lowerEmail === 'ahhu@utt.com') return AHHU_TEMPLATE.indoor;
+    if (REPORT_TEMPLATES[lowerEmail]) return REPORT_TEMPLATES[lowerEmail];
+    if (lowerEmail.includes('dock') || lowerEmail.includes('leveler')) {
+      return REPORT_TEMPLATES['dockleveler@gmail.com'] || REPORT_TEMPLATES['dock'] || null;
+    }
+    if (lowerEmail.includes('ldb') || lowerEmail.includes('rdb')) {
+      return REPORT_TEMPLATES['ldbrdb@gmail.com'] || null;
+    }
+    if (lowerEmail === 'lv@gmail.com') {
+      return LV_ATS_TRAFO_TEMPLATE(lowerEmail);
+    }
+    return null;
   };
 
   const addNewUnit = async (name: string = '') => {
     const newId = Math.random().toString(36).substr(2, 9);
+    let initialCards: PhotoCard[] = [];
 
-
-    let initialCards = createDefaultCards(11);
-
-    if (user?.email) {
-      const lowerEmail = user.email.toLowerCase();
-      let template: string[] | null = null;
-
-      if (lowerEmail === 'vrv@gmail.com') {
-        template = VRV_TEMPLATE.indoor;
-      } else if (lowerEmail === 'ahhu@utt.com') {
-        template = AHHU_TEMPLATE.indoor;
-      } else if (['lv@gmail.com', 'ats@gmail.com'].includes(lowerEmail)) {
-        template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
+    const template = getAccountTemplate(user?.email);
+    if (template && template.length > 0) {
+      const lowerEmail = user?.email?.toLowerCase() || '';
+      if (lowerEmail === 'wld@gmail.com' || lowerEmail === 'fld@gmail.com') {
+        initialCards = await Promise.all(template.map(async (desc, idx) => {
+          let defaultUrl = WLD_DEFAULT_PHOTOS[desc];
+          if (lowerEmail === 'fld@gmail.com' && desc === 'Test Ping') defaultUrl = imgTesPingFld;
+          let b64 = defaultUrl ? await loadLogoBase64(defaultUrl) : undefined;
+          return { id: `${idx + 1}`, photo: null, photoBase64: b64, description: desc, parameter: '' };
+        }));
       } else {
-        template = REPORT_TEMPLATES[lowerEmail];
-        if (!template && (lowerEmail.includes('dock') || lowerEmail.includes('leveler'))) {
-          template = REPORT_TEMPLATES['dock'];
-        }
-        if (!template && (lowerEmail.includes('ldb') || lowerEmail.includes('rdb'))) {
-          template = REPORT_TEMPLATES['ldbrdb@gmail.com'];
-        }
+        initialCards = template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc, parameter: '' }));
       }
-
-      if (template) {
-        if (lowerEmail === 'wld@gmail.com' || lowerEmail === 'fld@gmail.com') {
-          initialCards = await Promise.all(template.map(async (desc, idx) => {
-            let defaultUrl = WLD_DEFAULT_PHOTOS[desc];
-            if (lowerEmail === 'fld@gmail.com' && desc === 'Test Ping') defaultUrl = imgTesPingFld;
-            let b64 = defaultUrl ? await loadLogoBase64(defaultUrl) : undefined;
-            return { id: `${idx + 1}`, photo: null, photoBase64: b64, description: desc, parameter: '' };
-          }));
-        } else {
-          initialCards = template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc, parameter: '' }));
-        }
-      }
+    } else {
+      initialCards = createDefaultCards(11);
     }
 
     const newUnit: ReportUnit = {
@@ -251,7 +191,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       specificDetail: '',
       vrvUnitDetail: '',
       templateMode: 'indoor',
-      cards: initialCards.length > 0 ? initialCards : createDefaultCards(11)
+      cards: initialCards
     };
 
     setUnits(prev => [...prev, newUnit]);
@@ -261,11 +201,11 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
 
   useEffect(() => {
-    if (isDraftLoading || editingData) return;
+    if (isDraftLoading || editingData || !user?.email) return;
     if (units.length === 0) {
       addNewUnit(`Unit 1`);
     }
-  }, [isDraftLoading, units.length, editingData]);
+  }, [isDraftLoading, units.length, editingData, user?.email]);
 
   useEffect(() => {
     if (authCompanyType) {
@@ -287,13 +227,11 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const loadDraft = async () => {
       let saved = await draftStorage.get('report_form_draft_v2');
 
-
       if (!saved) {
         const legacySaved = localStorage.getItem('report_form_draft_v2');
         if (legacySaved) {
           try {
             saved = JSON.parse(legacySaved);
-
             await draftStorage.set('report_form_draft_v2', saved);
             localStorage.removeItem('report_form_draft_v2');
             console.log('Draft migrated from localStorage to IndexedDB');
@@ -306,116 +244,59 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       if (saved) {
         try {
           const draft = typeof saved === 'string' ? JSON.parse(saved) : saved;
-          if (draft.userEmail === user.email) {
+          if (draft.userEmail?.toLowerCase() === user.email?.toLowerCase() && draft.units && draft.units.length > 0) {
             setMaintenanceName(draft.maintenanceName || '');
             setMaintenanceTime(draft.maintenanceTime || '');
             if (draft.companyType) setCompanyType(draft.companyType);
-            if (draft.units && draft.units.length > 0) {
-              const lowerEmail = user?.email?.toLowerCase() || '';
-              let template: string[] | null = null;
-              if (lowerEmail === 'vrv@gmail.com') {
 
-              } else if (['lv@gmail.com', 'ats@gmail.com'].includes(lowerEmail)) {
-                template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
-              } else {
-                template = REPORT_TEMPLATES[lowerEmail] || (lowerEmail.includes('dock') || lowerEmail.includes('leveler') ? REPORT_TEMPLATES['dock'] : null);
+            const template = getAccountTemplate(user?.email);
+
+            const processedUnits = await Promise.all(draft.units.map(async (u: any) => {
+              let unitCards = u.cards.map((c: any) => ({ ...c, photo: null }));
+              if (template && template.length > 0) {
+                unitCards = template.map((desc, idx) => {
+                  const existing = unitCards.find((c: any) => c.description === desc) || unitCards[idx];
+                  return {
+                    id: `${idx + 1}`,
+                    photo: null,
+                    photoBase64: existing?.photoBase64 || undefined,
+                    description: desc,
+                    parameter: existing?.parameter || ''
+                  };
+                });
               }
+              return { ...u, cards: unitCards };
+            }));
 
-              const processedUnits = await Promise.all(draft.units.map(async (u: any) => {
-                let unitCards = u.cards.map((c: any) => ({ ...c, photo: null }));
-                if (template) {
-                  if (lowerEmail === 'capacitorbank@gmail.com') {
-                    const hasOldCards = unitCards.some((c: any) => 
-                      c.description === 'Voltage & Ampere Measurement' || 
-                      c.description === 'Phase-to-Phase Voltage (V)' ||
-                      c.description?.startsWith('Voltage Phase-to-Phase')
-                    );
-                    if (hasOldCards || unitCards.length !== template.length) {
-                      unitCards = template.map((desc, idx) => {
-                        const existing = unitCards.find((c: any) => c.description === desc);
-                        return {
-                          id: `${idx + 1}`,
-                          photo: null,
-                          photoBase64: existing?.photoBase64 || undefined,
-                          description: desc,
-                          parameter: existing?.parameter || ''
-                        };
-                      });
-                    }
-                  } else if (lowerEmail === 'wld@gmail.com' || lowerEmail === 'fld@gmail.com') {
-                    const hasOldCards = unitCards.some((c: any) => c.description === 'Voltage Measurement' || c.description === 'Current Measurement');
-                    if (hasOldCards && lowerEmail === 'wld@gmail.com') {
-                      unitCards = unitCards.filter((c: any) => c.description !== 'Voltage Measurement' && c.description !== 'Current Measurement');
-                      if (!unitCards.some((c: any) => c.description === 'Fg Map')) {
-                        unitCards.push({
-                          id: `${unitCards.length + 1}`,
-                          photo: null,
-                          description: 'Fg Map',
-                          parameter: ''
-                        });
-                      }
-                      unitCards = unitCards.map((c: any, idx: number) => ({ ...c, id: `${idx + 1}` }));
-                    }
-
-                    // Force override with the new static photos
-                    unitCards = await Promise.all(unitCards.map(async (c: any) => {
-                      let defaultUrl = WLD_DEFAULT_PHOTOS[c.description];
-                      if (lowerEmail === 'fld@gmail.com' && c.description === 'Test Ping') {
-                        defaultUrl = imgTesPingFld;
-                      }
-                      if (defaultUrl) {
-                        const b64 = await loadLogoBase64(defaultUrl);
-                        return { ...c, photoBase64: b64 || c.photoBase64 };
-                      }
-                      return c;
-                    }));
-                  }
-                  const allEmpty = unitCards.every((c: any) => !c.description && !c.photoBase64);
-                  if (allEmpty) {
-                    unitCards = await Promise.all(template.map(async (desc, idx) => {
-                      let defaultUrl = WLD_DEFAULT_PHOTOS[desc];
-                      if (lowerEmail === 'fld@gmail.com' && desc === 'Test Ping') {
-                        defaultUrl = imgTesPingFld;
-                      }
-                      let b64 = defaultUrl ? await loadLogoBase64(defaultUrl) : undefined;
-                      return {
-                        id: `${idx + 1}`,
-                        photo: null,
-                        photoBase64: b64,
-                        description: desc,
-                        parameter: ''
-                      };
-                    }));
-                  } else if (unitCards.length < template.length) {
-                    const missing = template.slice(unitCards.length);
-                    const appended = await Promise.all(missing.map(async (desc, i) => {
-                      let defaultUrl = WLD_DEFAULT_PHOTOS[desc];
-                      if (lowerEmail === 'fld@gmail.com' && desc === 'Test Ping') {
-                        defaultUrl = imgTesPingFld;
-                      }
-                      let b64 = defaultUrl ? await loadLogoBase64(defaultUrl) : undefined;
-                      return {
-                        id: `${unitCards.length + i + 1}`,
-                        photo: null,
-                        photoBase64: b64,
-                        description: desc,
-                        parameter: ''
-                      };
-                    }));
-                    unitCards = [...unitCards, ...appended];
-                  }
-                }
-                return { ...u, cards: unitCards };
-              }));
-
-              setUnits(processedUnits);
-              setActiveUnitId(draft.units[0].id);
-            }
+            setUnits(processedUnits);
+            setActiveUnitId(draft.units[0].id);
+            setIsDraftLoading(false);
+            return;
           }
         } catch (err) {
           console.error('Failed to process draft:', err);
         }
       }
+
+      const template = getAccountTemplate(user?.email);
+      let initialCards: PhotoCard[] = [];
+      if (template && template.length > 0) {
+        initialCards = template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc, parameter: '' }));
+      } else {
+        initialCards = createDefaultCards(11);
+      }
+
+      const initialUnit: ReportUnit = {
+        id: Math.random().toString(36).substr(2, 9),
+        tabName: 'Unit 1',
+        specificDetail: '',
+        vrvUnitDetail: '',
+        templateMode: 'indoor',
+        cards: initialCards
+      };
+
+      setUnits([initialUnit]);
+      setActiveUnitId(initialUnit.id);
       setIsDraftLoading(false);
     };
 
@@ -569,101 +450,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
       setUnits([editUnit]);
       setActiveUnitId(editUnit.id);
-
-      if (user?.email === 'ats@gmail.com') {
-        setAtsPrefillData({
-          maintenanceName: editingData.maintenanceName,
-          maintenanceTime: editingData.maintenanceTime,
-          specificDetail: editingData.specificDetail || '',
-          originalReportCards: photos.map((p: any) => ({
-            description: p.description || '',
-            photoBase64: p.photoBase64 || '',
-          })),
-          photos: [],
-          atsCustomerInfo: (editingData as any).atsCustomerInfo,
-          atsReportData: (editingData as any).atsReportData,
-          atsTimeSpent: (editingData as any).atsTimeSpent,
-          archiveId: editingData.id,
-          archiveType: editingData.documentType,
-        });
-      } else if (user?.email === 'fcu@gmail.com') {
-        setFcuPrefillData({
-          fcuCustomerInfo: (editingData as any).fcuCustomerInfo,
-          fcuReportData: (editingData as any).fcuReportData,
-          fcuTimeSpent: (editingData as any).fcuTimeSpent,
-          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
-        });
-      } else if (user?.email === 'pju@gmail.com') {
-        setPjuPrefillData({
-          pjuCustomerInfo: (editingData as any).pjuCustomerInfo,
-          pjuReportData: (editingData as any).pjuReportData,
-          pjuTimeSpent: (editingData as any).pjuTimeSpent,
-          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
-        });
-      } else if (user?.email === 'pdu@gmail.com') {
-        setPduPrefillData({
-          pduCustomerInfo: (editingData as any).pduCustomerInfo,
-          pduReportData: (editingData as any).pduReportData,
-          pduTimeSpent: (editingData as any).pduTimeSpent,
-          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
-        });
-      } else if (user?.email === 'coolingtower@gmail.com') {
-        setCtPrefillData({
-          ctCustomerInfo: (editingData as any).ctCustomerInfo,
-          ctReportData: (editingData as any).ctReportData,
-          ctTimeSpent: (editingData as any).ctTimeSpent,
-          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
-        });
-      } else if (user?.email === 'generator@gmail.com') {
-        setGeneratorPrefillData({
-          generatorCustomerInfo: (editingData as any).generatorCustomerInfo,
-          generatorReportData: (editingData as any).generatorReportData,
-          generatorTimeSpent: (editingData as any).generatorTimeSpent,
-          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
-        });
-      } else if (user?.email === 'acsplit@gmail.com') {
-        setAcSplitPrefillData({
-          acSplitCustomerInfo: (editingData as any).acSplitCustomerInfo,
-          acSplitReportData: (editingData as any).acSplitReportData,
-          acSplitTimeSpent: (editingData as any).acSplitTimeSpent,
-          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
-        });
-      } else if (user?.email === 'trafo@gmail.com') {
-        setTrafoPrefillData({
-          trafoCustomerInfo: (editingData as any).trafoCustomerInfo,
-          trafoReportData: (editingData as any).trafoReportData,
-          trafoTimeSpent: (editingData as any).trafoTimeSpent,
-          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
-        });
-      } else if (user?.email === 'busduct@gmail.com') {
-        setBusductPrefillData({
-          customerInfo: (editingData as any).busductCustomerInfo,
-          reportData: (editingData as any).busductReportData,
-          timeSpent: (editingData as any).busductTimeSpent,
-          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
-        });
-      } else if (user?.email === 'dockleveler@gmail.com') {
-        setDocklevelerPrefillData({
-          customerInfo: (editingData as any).docklevelerCustomerInfo,
-          reportData: (editingData as any).docklevelerReportData,
-          timeSpent: (editingData as any).docklevelerTimeSpent,
-          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
-        });
-      } else if (user?.email === 'door@gmail.com') {
-        setDoorPrefillData({
-          customerInfo: (editingData as any).doorCustomerInfo,
-          reportData: (editingData as any).doorReportData,
-          timeSpent: (editingData as any).doorTimeSpent,
-          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
-        });
-      } else if (user?.email === 'capacitorbank@gmail.com') {
-        setCapacitorbankPrefillData({
-          customerInfo: (editingData as any).capacitorbankCustomerInfo,
-          reportData: (editingData as any).capacitorbankReportData,
-          timeSpent: (editingData as any).capacitorbankTimeSpent,
-          photos: photos.map((p: any) => ({ base64: p.photoBase64, label: p.description })),
-        });
-      }
     }
   }, [editingData]);
 
@@ -825,9 +611,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     setCards(prev => prev.map(c => c.id === id ? { ...c, description } : c));
   };
 
-  const handleParameterChange = (id: string, parameter: string) => {
-    setCards(prev => prev.map(c => c.id === id ? { ...c, parameter } : c));
-  };
+
 
   const handleTranslateCardDescription = async (cardId: string) => {
     const card = cards.find(c => c.id === cardId);
@@ -1003,64 +787,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         updatedAt: serverTimestamp(),
         totalPhotos: cardsToSave.length,
         photosWithImage,
-        fileSize: pdfData?.doc ? pdfData.doc.output('arraybuffer').byteLength : 0,
       };
-
-      if (user?.email === 'ats@gmail.com' && atsData) {
-        reportData.atsCustomerInfo = atsData.customerInfo;
-        reportData.atsReportData = atsData.reportData;
-        reportData.atsTimeSpent = atsData.timeSpent;
-      } else if (user?.email === 'fcu@gmail.com' && fcuData) {
-        reportData.fcuCustomerInfo = fcuData.customerInfo;
-        reportData.fcuReportData = fcuData.reportData;
-        reportData.fcuTimeSpent = fcuData.timeSpent;
-      } else if (user?.email === 'pju@gmail.com' && pjuData) {
-        reportData.pjuCustomerInfo = pjuData.customerInfo;
-        reportData.pjuReportData = pjuData.reportData;
-        reportData.pjuTimeSpent = pjuData.timeSpent;
-      } else if (user?.email === 'pdu@gmail.com' && pduData) {
-        reportData.pduCustomerInfo = pduData.customerInfo;
-        reportData.pduReportData = pduData.reportData;
-        reportData.pduTimeSpent = pduData.timeSpent;
-      } else if (user?.email === 'coolingtower@gmail.com' && ctData) {
-        reportData.ctCustomerInfo = ctData.customerInfo;
-        reportData.ctReportData = ctData.reportData;
-        reportData.ctTimeSpent = ctData.timeSpent;
-      } else if (user?.email === 'generator@gmail.com' && generatorData) {
-        reportData.generatorCustomerInfo = generatorData.customerInfo;
-        reportData.generatorReportData = generatorData.reportData;
-        reportData.generatorTimeSpent = generatorData.timeSpent;
-      } else if (user?.email === 'acsplit@gmail.com' && acSplitData) {
-        reportData.acSplitCustomerInfo = acSplitData.customerInfo;
-        reportData.acSplitReportData = acSplitData.reportData;
-        reportData.acSplitTimeSpent = acSplitData.timeSpent;
-      } else if (user?.email === 'trafo@gmail.com' && trafoData) {
-        reportData.trafoCustomerInfo = trafoData.customerInfo;
-        reportData.trafoReportData = trafoData.reportData;
-        reportData.trafoTimeSpent = trafoData.timeSpent;
-      } else if (user?.email === 'busduct@gmail.com' && busductData) {
-        reportData.busductCustomerInfo = busductData.customerInfo;
-        reportData.busductReportData = busductData.reportData;
-        reportData.busductTimeSpent = busductData.timeSpent;
-      } else if (user?.email === 'dockleveler@gmail.com' && docklevelerData) {
-        reportData.docklevelerCustomerInfo = docklevelerData.customerInfo;
-        reportData.docklevelerReportData = docklevelerData.reportData;
-        reportData.docklevelerTimeSpent = docklevelerData.timeSpent;
-      } else if (user?.email === 'door@gmail.com' && doorData) {
-        reportData.doorCustomerInfo = doorData.customerInfo;
-        reportData.doorReportData = doorData.reportData;
-        reportData.doorTimeSpent = doorData.timeSpent;
-      } else if (user?.email === 'capacitorbank@gmail.com' && capacitorbankData) {
-        const { customerInfo: cbCustInfo, timeSpent: cbTime, ...cbReportFields } = capacitorbankData;
-        reportData.capacitorbankCustomerInfo = cbCustInfo;
-        reportData.capacitorbankReportData = cbReportFields;
-        reportData.capacitorbankTimeSpent = cbTime;
-      } else if ((user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') && ldbrdbData) {
-        const { customerInfo: ldbCustInfo, timeSpent: ldbTime, ...ldbReportFields } = ldbrdbData;
-        reportData.ldbrdbCustomerInfo = ldbCustInfo;
-        reportData.ldbrdbReportData = ldbReportFields;
-        reportData.ldbrdbTimeSpent = ldbTime;
-      }
 
       if (!editingData) {
         reportData.createdBy = user?.email?.toLowerCase();
@@ -1233,327 +960,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }
   };
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
 
-  const handleAnalyzeSingleCard = async (cardId: string) => {
-    const card = cards.find(c => c.id === cardId);
-    if (!card) return;
-    if (!card.photoBase64 && !card.photo) {
-      toast.error('Unggah foto terlebih dahulu untuk dianalisis.');
-      return;
-    }
 
-    setAnalyzingCardId(cardId);
-    const toastId = toast.loading(`Asisten AI sedang menganalisis foto...`);
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) throw new Error('Not authenticated');
-
-      let base64 = card.photoBase64 || '';
-      if (!base64 && card.photo) {
-        base64 = await fileToBase64(card.photo);
-      }
-      const rawBase64 = base64.includes(',') ? base64.split(',')[1] : base64;
-
-      const desc = (card.description || '').toLowerCase();
-      let category = 'visual_inspection';
-      if (desc.includes('thermal') || desc.includes('imager') || desc.includes('suhu') || desc.includes('temp')) {
-        category = 'thermal';
-      } else if (desc.includes('grounding') || desc.includes('earth') || desc.includes('tahanan')) {
-        category = 'grounding';
-      } else if (
-        desc.includes('voltage') || desc.includes('ampere') || desc.includes('current') ||
-        desc.includes('dpm') || desc.includes('power') || desc.includes('daya') ||
-        desc.includes('r-s') || desc.includes('s-t') || desc.includes('t-r') ||
-        desc.includes('r-n') || desc.includes('s-n') || desc.includes('t-n')
-      ) {
-        category = 'power_meter';
-      }
-
-      const apiBaseUrl = import.meta.env.VITE_API_URL || '';
-      const url = apiBaseUrl.endsWith('/api')
-        ? `${apiBaseUrl}/ai/analyze-card`
-        : `${apiBaseUrl}/api/ai/analyze-card`;
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          photo_base64: rawBase64,
-          description: card.description || '',
-          category
-        })
-      });
-
-      if (!response.ok) {
-        let errMsg = '';
-        try {
-          const errData = await response.json();
-          errMsg = errData.error || errData.message || '';
-        } catch (_) { }
-        throw new Error(errMsg || `Analyze failed (Status: ${response.status})`);
-      }
-
-      const data = await response.json();
-      if (data && data.parameter) {
-        handleParameterChange(cardId, data.parameter);
-        toast.success(`Parameter berhasil diisi: ${data.parameter}`, { id: toastId });
-      } else {
-        toast.error('AI tidak menemukan parameter di foto.', { id: toastId });
-      }
-    } catch (err: any) {
-      console.error(err);
-      toast.error(`Analisis AI gagal: ${formatAIError(err)}`, { id: toastId });
-    } finally {
-      setAnalyzingCardId(null);
-    }
-  };
-
-  const handleBulkAnalyzeAtsParameters = async () => {
-    // Skip cards whose description is visual-only (no numeric parameter to extract)
-    const visualOnlyKeywords = ['condition', 'cleaning', 'visual', 'inspeksi'];
-    const isVisualOnly = (desc: string) => {
-      const d = desc.toLowerCase();
-      return visualOnlyKeywords.some(kw => d.includes(kw));
-    };
-
-    const cardsWithPhotos = cards.filter(c =>
-      (c.photoBase64 || c.photo) && !c.parameter && !isVisualOnly(c.description || '')
-    );
-    if (cardsWithPhotos.length === 0) {
-      toast.error('Tidak ada card berfoto (dengan data parameter) yang perlu dianalisis.');
-      return;
-    }
-
-    setIsBulkAnalyzing(true);
-    const toastId = toast.loading(`Menganalisis ${cardsWithPhotos.length} foto parameter secara paralel...`);
-
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) throw new Error('Not authenticated');
-
-      const apiBaseUrl = import.meta.env.VITE_API_URL || '';
-      const url = apiBaseUrl.endsWith('/api')
-        ? `${apiBaseUrl}/ai/analyze-card`
-        : `${apiBaseUrl}/api/ai/analyze-card`;
-
-      const updatedCardsMap = new Map<string, string>();
-
-      // Helper: determine category from description
-      const getCategory = (desc: string): string => {
-        const d = desc.toLowerCase();
-        if (d.includes('thermal') || d.includes('imager') || d.includes('suhu') || d.includes('temp')) {
-          return 'thermal';
-        } else if (d.includes('grounding') || d.includes('earth') || d.includes('tahanan')) {
-          return 'grounding';
-        } else if (
-          d.includes('voltage') || d.includes('ampere') || d.includes('current') ||
-          d.includes('dpm') || d.includes('power') || d.includes('daya') ||
-          d.includes('r-s') || d.includes('s-t') || d.includes('t-r') ||
-          d.includes('r-n') || d.includes('s-n') || d.includes('t-n')
-        ) {
-          return 'power_meter';
-        }
-        return 'visual_inspection';
-      };
-
-      let successCount = 0;
-      const failureMsgs: string[] = [];
-
-      // Process in small parallel chunks (size 2) with 2s delay between chunks to stay within rate limits
-      const chunkSize = 2;
-      for (let i = 0; i < cardsWithPhotos.length; i += chunkSize) {
-        const chunk = cardsWithPhotos.slice(i, i + chunkSize);
-        toast.loading(`Menganalisis foto ${i + 1} - ${Math.min(i + chunkSize, cardsWithPhotos.length)} dari ${cardsWithPhotos.length}...`, { id: toastId });
-
-        const chunkPromises = chunk.map(async (card) => {
-          try {
-            let base64 = card.photoBase64 || '';
-            if (!base64 && card.photo) {
-              base64 = await fileToBase64(card.photo);
-            }
-            const rawBase64 = base64.includes(',') ? base64.split(',')[1] : base64;
-            const category = getCategory(card.description || '');
-
-            const response = await fetch(url, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({
-                photo_base64: rawBase64,
-                description: card.description || '',
-                category
-              })
-            });
-
-            if (response.ok) {
-              const data = await response.json();
-              if (data && data.parameter) {
-                return { id: card.id, parameter: data.parameter };
-              }
-              throw new Error('AI tidak menemukan parameter di foto.');
-            } else {
-              let errMsg = '';
-              try {
-                const errData = await response.json();
-                errMsg = errData.error || errData.message || '';
-              } catch (_) { }
-              throw new Error(errMsg || `Analyze failed (Status: ${response.status})`);
-            }
-          } catch (err: any) {
-            throw new Error(`${card.description || 'Foto'}: ${err.message || 'Error'}`);
-          }
-        });
-
-        const chunkResults = await Promise.allSettled(chunkPromises);
-        for (const res of chunkResults) {
-          if (res.status === 'fulfilled' && res.value) {
-            updatedCardsMap.set(res.value.id, res.value.parameter);
-            successCount++;
-          } else if (res.status === 'rejected') {
-            failureMsgs.push(res.reason.message || 'Unknown error');
-          }
-        }
-
-        // Delay between chunks to respect the 15 RPM limit
-        if (i + chunkSize < cardsWithPhotos.length) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-      }
-
-      if (successCount === 0 && cardsWithPhotos.length > 0) {
-        const uniqueErrors = Array.from(new Set(failureMsgs));
-        throw new Error(uniqueErrors[0] || 'Semua foto gagal dianalisis.');
-      }
-
-      setCards(prev => prev.map(c => {
-        const pVal = updatedCardsMap.get(c.id);
-        return pVal ? { ...c, parameter: pVal } : c;
-      }));
-
-      if (successCount < cardsWithPhotos.length) {
-        toast.success(`Selesai memproses! ${successCount} berhasil, ${cardsWithPhotos.length - successCount} gagal. ⚡`, { id: toastId });
-      } else {
-        toast.success(`Berhasil menganalisis semua ${cardsWithPhotos.length} foto parameter! ⚡`, { id: toastId });
-      }
-
-      // Auto trigger collect parameter data to populate ATS Service Report at the bottom
-      setTimeout(() => {
-        handleTriggerAtsData();
-      }, 500);
-
-    } catch (err: any) {
-      console.error(err);
-      toast.error(`Analisis AI gagal: ${formatAIError(err)}`, { id: toastId });
-    } finally {
-      setIsBulkAnalyzing(false);
-    }
-  };
-
-  const handleTriggerAtsData = async () => {
-    const toastId = toast.loading('Mengumpulkan parameter dokumentasi...');
-    try {
-      const collectedPhotos: Array<{ base64: string; category: string; label: string; preview: string; parameter: string }> = [];
-      const originalReportCards: Array<{ photoBase64?: string; description: string; parameter: string }> = [];
-
-      for (const unit of units) {
-        for (const card of unit.cards) {
-          let base64Data = card.photoBase64 || '';
-          if (!base64Data && card.photo) {
-            base64Data = await fileToBase64(card.photo);
-          }
-
-          const rawBase64 = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
-          const fullBase64Prefix = base64Data.includes(',') ? base64Data : (base64Data ? `data:image/jpeg;base64,${base64Data}` : '');
-
-          const desc = (card.description || '').toLowerCase();
-          let category = 'visual_inspection';
-          if (desc.includes('thermal') || desc.includes('imager') || desc.includes('suhu') || desc.includes('temp')) {
-            category = 'thermal';
-          } else if (desc.includes('grounding') || desc.includes('earth') || desc.includes('tahanan')) {
-            category = 'grounding';
-          } else if (
-            desc.includes('voltage') || desc.includes('ampere') || desc.includes('current') ||
-            desc.includes('dpm') || desc.includes('power') || desc.includes('daya') ||
-            desc.includes('r-s') || desc.includes('s-t') || desc.includes('t-r') ||
-            desc.includes('r-n') || desc.includes('s-n') || desc.includes('t-n')
-          ) {
-            category = 'power_meter';
-          }
-
-          collectedPhotos.push({
-            base64: rawBase64,
-            category,
-            label: card.description || 'Inspection Photo',
-            preview: fullBase64Prefix,
-            parameter: card.parameter || ''
-          });
-
-          originalReportCards.push({
-            photoBase64: fullBase64Prefix || undefined,
-            description: `${unit.tabName} - ${card.description || 'Dokumentasi'}`,
-            parameter: card.parameter || ''
-          });
-        }
-      }
-
-      toast.success('Sukses mengumpulkan parameter. AI Service Report siap di bawah!', { id: toastId });
-      const prefillPayload = {
-        maintenanceName,
-        maintenanceTime,
-        specificDetail,
-        photos: collectedPhotos,
-        originalReportCards,
-        autoTrigger: false,
-        triggerGenerateData: true,
-        archiveId: editingData?.id,
-        archiveType: editingData?.documentType,
-      };
-
-      if (user?.email === 'fcu@gmail.com') {
-        setFcuPrefillData(prefillPayload);
-      } else if (user?.email === 'pju@gmail.com') {
-        setPjuPrefillData(prefillPayload);
-      } else if (user?.email === 'pdu@gmail.com') {
-        setPduPrefillData(prefillPayload);
-      } else if (user?.email === 'coolingtower@gmail.com') {
-        setCtPrefillData(prefillPayload);
-      } else if (user?.email === 'generator@gmail.com') {
-        setGeneratorPrefillData(prefillPayload);
-      } else if (user?.email === 'acsplit@gmail.com') {
-        setAcSplitPrefillData(prefillPayload);
-      } else if (user?.email === 'trafo@gmail.com') {
-        setTrafoPrefillData(prefillPayload);
-      } else if (user?.email === 'busduct@gmail.com') {
-        setBusductPrefillData(prefillPayload);
-      } else if (user?.email === 'dockleveler@gmail.com') {
-        setDocklevelerPrefillData(prefillPayload);
-      } else if (user?.email === 'door@gmail.com') {
-        setDoorPrefillData(prefillPayload);
-      } else if (user?.email === 'capacitorbank@gmail.com') {
-        setCapacitorbankPrefillData(prefillPayload);
-      } else if (user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') {
-        setLdbrdbPrefillData(prefillPayload);
-      } else {
-        setAtsPrefillData(prefillPayload);
-      }
-    } catch (err: any) {
-      console.error(err);
-      toast.error('Gagal memproses foto: ' + err.message, { id: toastId });
-    }
-  };
 
   const handleManualSave = async () => {
     if (!activeUnit) return;
@@ -1561,32 +969,18 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     if (result) {
       if (onClearEdit) onClearEdit();
       let freshCards = createDefaultCards(11);
-      if (user?.email) {
-        const lowerEmail = user.email.toLowerCase();
-        let template: string[] | null = null;
-        if (lowerEmail === 'vrv@gmail.com') {
-          template = VRV_TEMPLATE.indoor;
-        } else if (lowerEmail === 'ahhu@utt.com') {
-          template = AHHU_TEMPLATE.indoor;
-        } else if (['lv@gmail.com', 'ats@gmail.com'].includes(lowerEmail)) {
-          template = LV_ATS_TRAFO_TEMPLATE(lowerEmail);
+      const template = getAccountTemplate(user?.email);
+      if (template && template.length > 0) {
+        const lowerEmail = user?.email?.toLowerCase() || '';
+        if (lowerEmail === 'wld@gmail.com' || lowerEmail === 'fld@gmail.com') {
+          freshCards = await Promise.all(template.map(async (desc, idx) => {
+            let defaultUrl = WLD_DEFAULT_PHOTOS[desc];
+            if (lowerEmail === 'fld@gmail.com' && desc === 'Test Ping') defaultUrl = imgTesPingFld;
+            let b64 = defaultUrl ? await loadLogoBase64(defaultUrl) : undefined;
+            return { id: `${idx + 1}`, photo: null, photoBase64: b64, description: desc, parameter: '' };
+          }));
         } else {
-          template = REPORT_TEMPLATES[lowerEmail];
-          if (!template && (lowerEmail.includes('dock') || lowerEmail.includes('leveler'))) {
-            template = REPORT_TEMPLATES['dock'];
-          }
-        }
-        if (template) {
-          if (lowerEmail === 'wld@gmail.com' || lowerEmail === 'fld@gmail.com') {
-            freshCards = await Promise.all(template.map(async (desc, idx) => {
-              let defaultUrl = WLD_DEFAULT_PHOTOS[desc];
-              if (lowerEmail === 'fld@gmail.com' && desc === 'Test Ping') defaultUrl = imgTesPingFld;
-              let b64 = defaultUrl ? await loadLogoBase64(defaultUrl) : undefined;
-              return { id: `${idx + 1}`, photo: null, photoBase64: b64, description: desc, parameter: '' };
-            }));
-          } else {
-            freshCards = template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc, parameter: '' }));
-          }
+          freshCards = template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc, parameter: '' }));
         }
       }
 
@@ -2023,47 +1417,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       </button>
                     )}
                   </div>
-                  {(user?.email === 'ats@gmail.com' || user?.email === 'fcu@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com' || user?.email === 'dockleveler@gmail.com' || user?.email === 'door@gmail.com' || user?.email === 'capacitorbank@gmail.com' || user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') && (
-                    <div className="relative flex items-center mt-1.5 w-full">
-                      <input
-                        type="text"
-                        title="Parameter Pengukuran"
-                        value={card.parameter || ''}
-                        onChange={e => handleParameterChange(card.id, e.target.value)}
-                        disabled={isDME || analyzingCardId === card.id}
-                        className="w-full bg-emerald-50/60 border border-emerald-200 rounded-xl p-2 pr-9 text-xs text-emerald-800 font-bold outline-none focus:bg-white focus:border-emerald-500 transition placeholder:text-slate-400 disabled:opacity-75 disabled:cursor-not-allowed font-mono"
-                        placeholder={
-                          card.description.includes('R-S') ? '395 V' :
-                          card.description.includes('S-T') ? '396 V' :
-                          card.description.includes('T-R') ? '395 V' :
-                          card.description.includes('R-N') ? '228 V' :
-                          card.description.includes('S-N') ? '229 V' :
-                          card.description.includes('T-N') ? '228 V' :
-                          card.description.includes('N-G') ? '1.2 V' :
-                          card.description.includes('Ampere R') ? '42.5 A' :
-                          card.description.includes('Ampere S') ? '43.1 A' :
-                          card.description.includes('Ampere T') ? '42.0 A' :
-                          card.description.includes('Ampere N') ? '0.4 A' :
-                          "Nilai parameter (contoh: 395 V, 31 °C, 0.35 Ω)..."
-                        }
-                      />
-                      {(card.photoBase64 || card.photo) && (
-                        <button
-                          type="button"
-                          onClick={() => handleAnalyzeSingleCard(card.id)}
-                          disabled={isDME || analyzingCardId !== null}
-                          className="absolute right-2.5 p-1 bg-violet-50 border border-violet-200 text-violet-600 hover:bg-violet-600 hover:text-white rounded transition active:scale-95 disabled:opacity-50 shadow-sm"
-                          title="Generate parameter dari foto dengan AI"
-                        >
-                          {analyzingCardId === card.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <Sparkles className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  )}
+
                 </div>
               ))}
             </div>
@@ -2093,34 +1447,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 <span className="text-center leading-tight">PREVIEW DOKUMENTASI</span>
               </button>
 
-              {(user?.email === 'ats@gmail.com' || user?.email === 'fcu@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com' || user?.email === 'dockleveler@gmail.com' || user?.email === 'door@gmail.com' || user?.email === 'capacitorbank@gmail.com' || user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') && (
-                <>
-                  <button
-                    onClick={handleBulkAnalyzeAtsParameters}
-                    disabled={isSaving || isExporting || isBulkAnalyzing}
-                    className={`col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-purple-50 border border-purple-200 text-purple-900 hover:bg-purple-100 rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-sm transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer ${(isSaving || isExporting || isBulkAnalyzing) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    {isBulkAnalyzing ? (
-                      <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-purple-700" />
-                    ) : (
-                      <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-700 group-active:scale-90 transition-transform" />
-                    )}
-                    <span className="text-center leading-tight">
-                      {isBulkAnalyzing ? 'MENGANALISIS...' : 'GENERATE AI PARAMETER'}
-                    </span>
-                  </button>
-                  <button
-                    onClick={handleTriggerAtsData}
-                    disabled={isSaving || isExporting || isBulkAnalyzing}
-                    className={`col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-sky-50 border border-sky-200 text-sky-900 hover:bg-sky-100 rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-sm transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer ${(isSaving || isExporting || isBulkAnalyzing) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 text-sky-700 group-active:scale-90 transition-transform hover:rotate-180 duration-500" />
-                    <span className="text-center leading-tight">
-                      {user?.email === 'fcu@gmail.com' ? 'SINKRONISASI KE FCU' : user?.email === 'pju@gmail.com' ? 'SINKRONISASI KE PJU' : user?.email === 'pdu@gmail.com' ? 'SINKRONISASI KE PDU' : user?.email === 'coolingtower@gmail.com' ? 'SINKRONISASI KE COOLING TOWER' : user?.email === 'generator@gmail.com' ? 'SINKRONISASI KE GENERATOR' : user?.email === 'acsplit@gmail.com' ? 'SINKRONISASI KE SPLIT WALL AC' : user?.email === 'trafo@gmail.com' ? 'SINKRONISASI KE TRANSFORMATOR (TRAFO)' : user?.email === 'busduct@gmail.com' ? 'SINKRONISASI KE PANEL BUSDUCT' : user?.email === 'dockleveler@gmail.com' ? 'SINKRONISASI KE DOCK LEVELER' : user?.email === 'door@gmail.com' ? 'SINKRONISASI KE DOOR / ROLLING DOOR' : user?.email === 'capacitorbank@gmail.com' ? 'SINKRONISASI KE PANEL APFCR (CAPACITOR BANK)' : (user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') ? 'SINKRONISASI KE PANEL LDB & RDB' : 'SINKRONISASI KE ATS'}
-                    </span>
-                  </button>
-                </>
-              )}
+
 
               <button
                 onClick={() => handleExportPDF()}
@@ -2237,135 +1564,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         )}
       </AnimatePresence>
 
-      {user?.email === 'ats@gmail.com' && (
-        <div className="mt-12 border-t border-slate-800 pt-12">
-          <ATSServiceReport
-            prefillData={atsPrefillData}
-            onClearPrefill={() => setAtsPrefillData(null)}
-            onChange={setAtsData}
-          />
-        </div>
-      )}
 
-      {user?.email === 'fcu@gmail.com' && (
-        <div className="mt-12 border-t border-slate-800 pt-12">
-          <FCUServiceReport
-            prefillData={fcuPrefillData}
-            onClearPrefill={() => setFcuPrefillData(null)}
-            onChange={setFcuData}
-          />
-        </div>
-      )}
-
-      {user?.email === 'pju@gmail.com' && (
-        <div className="mt-12 border-t border-slate-800 pt-12">
-          <PJUServiceReport
-            prefillData={pjuPrefillData}
-            onClearPrefill={() => setPjuPrefillData(null)}
-            onChange={setPjuData}
-          />
-        </div>
-      )}
-
-      {user?.email === 'pdu@gmail.com' && (
-        <div className="mt-12 border-t border-slate-800 pt-12">
-          <PDUServiceReport
-            prefillData={pduPrefillData}
-            onClearPrefill={() => setPduPrefillData(null)}
-            onChange={setPduData}
-          />
-        </div>
-      )}
-
-      {user?.email === 'coolingtower@gmail.com' && (
-        <div className="mt-12 border-t border-slate-800 pt-12">
-          <CTServiceReport
-            prefillData={ctPrefillData}
-            onClearPrefill={() => setCtPrefillData(null)}
-            onChange={setCtData}
-          />
-        </div>
-      )}
-
-      {user?.email === 'generator@gmail.com' && (
-        <div className="mt-12 border-t border-slate-800 pt-12">
-          <GeneratorServiceReport
-            prefillData={generatorPrefillData}
-            onClearPrefill={() => setGeneratorPrefillData(null)}
-            onChange={setGeneratorData}
-          />
-        </div>
-      )}
-
-      {user?.email === 'acsplit@gmail.com' && (
-        <div className="mt-12 border-t border-slate-800 pt-12">
-          <ACSplitServiceReport
-            prefillData={acSplitPrefillData}
-            onClearPrefill={() => setAcSplitPrefillData(null)}
-            onChange={setAcSplitData}
-          />
-        </div>
-      )}
-
-      {user?.email === 'trafo@gmail.com' && (
-        <div className="mt-12 border-t border-slate-800 pt-12">
-          <TrafoServiceReport
-            prefillData={trafoPrefillData}
-            onClearPrefill={() => setTrafoPrefillData(null)}
-            onChange={setTrafoData}
-          />
-        </div>
-      )}
-
-      {user?.email === 'busduct@gmail.com' && (
-        <div className="mt-12 border-t border-slate-800 pt-12">
-          <BusductServiceReport
-            prefillData={busductPrefillData}
-            onClearPrefill={() => setBusductPrefillData(null)}
-            onChange={setBusductData}
-          />
-        </div>
-      )}
-
-      {user?.email === 'dockleveler@gmail.com' && (
-        <div className="mt-12 border-t border-slate-800 pt-12">
-          <DocklevelerServiceReport
-            prefillData={docklevelerPrefillData}
-            onClearPrefill={() => setDocklevelerPrefillData(null)}
-            onChange={setDocklevelerData}
-          />
-        </div>
-      )}
-
-      {user?.email === 'door@gmail.com' && (
-        <div className="mt-12 border-t border-slate-800 pt-12">
-          <DoorServiceReport
-            prefillData={doorPrefillData}
-            onClearPrefill={() => setDoorPrefillData(null)}
-            onChange={setDoorData}
-          />
-        </div>
-      )}
-
-      {user?.email === 'capacitorbank@gmail.com' && (
-        <div className="mt-12 border-t border-slate-800 pt-12">
-          <CapacitorbankServiceReport
-            prefillData={capacitorbankPrefillData}
-            onClearPrefill={() => setCapacitorbankPrefillData(null)}
-            onChange={setCapacitorbankData}
-          />
-        </div>
-      )}
-
-      {(user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') && (
-        <div className="mt-12 border-t border-slate-800 pt-12">
-          <LdbrdbServiceReport
-            prefillData={ldbrdbPrefillData}
-            onClearPrefill={() => setLdbrdbPrefillData(null)}
-            onChange={setLdbrdbData}
-          />
-        </div>
-      )}
     </div>
   );
 }

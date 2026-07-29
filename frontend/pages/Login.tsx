@@ -39,7 +39,7 @@ export function Login() {
       let errorMessage = 'Login gagal. Silakan coba lagi.';
 
       if (error.code === 'auth/network-request-failed') {
-        errorMessage = 'Koneksi gagal. Jika kamu pakai VPN atau Adblocker, coba matikan dulu ya bray!';
+        errorMessage = 'Koneksi jaringan ke server gagal. Pastikan internet Anda lancar dan tidak terhalang AdBlocker/Firewall/DNS lokal.';
       } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
         errorMessage = 'Email atau password salah';
       } else if (error.code === 'auth/too-many-requests') {

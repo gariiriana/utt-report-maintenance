@@ -63,3 +63,12 @@ func (s *AuthService) DeleteUser(ctx context.Context, uid string) error {
 	}
 	return nil
 }
+
+func (s *AuthService) CreateCustomToken(ctx context.Context, uid string) (string, error) {
+	token, err := s.AuthClient.CustomToken(ctx, uid)
+	if err != nil {
+		return "", fmt.Errorf("AuthService.CreateCustomToken(%s): %w", uid, err)
+	}
+	return token, nil
+}
+

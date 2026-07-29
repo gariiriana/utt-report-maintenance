@@ -43,37 +43,17 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'CLEANING PANEL'
   ],
   'pju@gmail.com': [
-    // Visual Inspection & Maintenance (a - l)
-    'Inspection visual of lamps',
-    'Inspection all lighting fixtures regularly to ensure they are in good working order',
-    'Inspection wiring and connections to prevent electrical problems',
-    'Inspection lamps with transformers, control gear, and other accessories',
-    'Inspection wiring, screws, gaskets, and exterior light hardware',
-    'Make sure to use lights with the same color temperature',
-    'Make sure every connection on the lamp is well connected and not easily separated',
-    'Battery check on solar street lighting (24 VDC - 27 VDC)',
-    'Check the RL OPTICA P80 + Solar Panel C2 to make sure it is not dirty and functions normally',
-    'Check solar controller charger (30 VDC - 40 VDC)',
-    'Check any water leak indication',
-    'Check light sensor',
-    // Cleaning (a - i)
-    'Cleaning lamp house or lamp box',
-    'Cleaning light poles for street lighting and garden lights',
-    'Cleaning the lamp cover glass to make the lamp light brighter',
-    'Cleaning the cable connection area and add protection',
-    'Cleaning the solar panel area',
-    'Cleaning the control panel',
-    'Battery cleaning',
-    'Cleaning on the sensor',
-    'Cleaning light control panel',
-    // Measurement (a - c)
-    'Measurement of 30 VDC-40 VDC input power supply',
-    'Measurement of 24 VDC output power supply',
-    'Battery Charger & battery Voltage/VDC (24 VDC - 27 VDC)',
-    // Test (a - c)
-    'Ensure battery charging when solar panels are exposed to the sun (25 VDC - 40 VDC)',
-    'Make sure the power supply is charging the battery (Input 25 VDC)',
-    'Test the lamp to make sure it lights up with the same lighting color and load as before',
+    'Cleaning Panel PJU dan Batrai',
+    'Tightening',
+    'Cleaning Solar Cell',
+    'Check Tegangan Batrai 1',
+    'Check Tegangan Batrai 2',
+    'Check Tegangan 2 Batrai',
+    'Check Tegangan Solar Cell',
+    'Tightening Sambungan Kabel',
+    'Check Visual Lampu LED',
+    'Cleaning LED Lampu Box LED',
+    'Measurement lux lamp'
   ],
   'fcu@gmail.com': [
     // Visual Inspection & Maintenance
@@ -413,6 +393,44 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Ampere S',
     'Ampere T',
     'Ampere N'
+  ],
+  'trafo@gmail.com': [
+    'Nameplate / Unit ID Transformator',
+    'Inspeksi Enclosure & Tank Trafo (Baut/Karet/Bushing)',
+    'Inspeksi Winding HV/LV & Terminals',
+    'Inspeksi Level Minyak & Temperature Gauge (Oil Type)',
+    'Inspeksi Relai Proteksi (DGPT/Temperature Control)',
+    'Cleaning Enclosure, Tank & Cooling Fan',
+    'Pengukuran Arus Ampere R, S, T, N',
+    'Pengukuran Tegangan Voltage Fasa-Fasa (RS, ST, TR)',
+    'Pengukuran Tegangan Voltage Fasa-Netral (RN, SN, TN, NG)',
+    'Pengukuran TTR (Turn Test Ratio) & Dielectric Winding',
+    'Pengukuran Grounding Resistance (Ohm)',
+    'Pengukuran Noise Sound Level (dB - SNI 04-0204-1989)',
+    'Pengujian Thermal Imager (Kamera Termal Hotspot)',
+    'Pengaturan Temp Sensor & Setting Modul (Fan On/Off, Alarm, Trip)',
+    'Pengujian Proteksi & Dissolved Gas Analysis (DGA)'
+  ],
+  'ats@gmail.com': [
+    'Condition Panel',
+    'Cleaning panel',
+    'Check Thermal Imager',
+    'Measurement Grounding',
+    'Measurement Voltage R - S',
+    'Measurement Voltage S - T',
+    'Measurement Voltage T - R',
+    'Measurement Voltage R - N',
+    'Measurement Voltage S - N',
+    'Measurement Voltage T - N',
+    'Measurement Voltage N - G',
+    'Measurement Ampere R',
+    'Measurement Ampere S',
+    'Measurement Ampere T',
+    'Measurement Ampere N',
+    'Measurement Voltage DPM',
+    'Measurement Voltage DPM',
+    'Measurement Ampere DPM',
+    'Measurement Daya DPM'
   ]
 };
 
@@ -462,23 +480,6 @@ export const AHHU_TEMPLATE = {
     'MEASUREMENT HUMIDITY',
     'MEASUREMENT AIR FLOW',
     'MEASUREMENT NOISE'
-  ],
-  'trafo@gmail.com': [
-    'Nameplate / Unit ID Transformator',
-    'Inspeksi Enclosure & Tank Trafo (Baut/Karet/Bushing)',
-    'Inspeksi Winding HV/LV & Terminals',
-    'Inspeksi Level Minyak & Temperature Gauge (Oil Type)',
-    'Inspeksi Relai Proteksi (DGPT/Temperature Control)',
-    'Cleaning Enclosure, Tank & Cooling Fan',
-    'Pengukuran Arus Ampere R, S, T, N',
-    'Pengukuran Tegangan Voltage Fasa-Fasa (RS, ST, TR)',
-    'Pengukuran Tegangan Voltage Fasa-Netral (RN, SN, TN, NG)',
-    'Pengukuran TTR (Turn Test Ratio) & Dielectric Winding',
-    'Pengukuran Grounding Resistance (Ohm)',
-    'Pengukuran Noise Sound Level (dB - SNI 04-0204-1989)',
-    'Pengujian Thermal Imager (Kamera Termal Hotspot)',
-    'Pengaturan Temp Sensor & Setting Modul (Fan On/Off, Alarm, Trip)',
-    'Pengujian Proteksi & Dissolved Gas Analysis (DGA)'
   ]
 };
 
@@ -495,12 +496,24 @@ export const LV_ATS_TRAFO_TEMPLATE = (email: string) => {
 
   return [
     'Condition Panel',
-    'Check Thermal Imager', 'Measurement Grounding', 'Measurement Voltage R - S',
-    'Measurement Voltage S - T', 'Measurement Voltage T - R', 'Measurement Voltage R - N',
-    'Measurement Voltage S - N', 'Measurement Voltage T - N', 'Measurement Voltage N - G',
-    'Measurement Ampere R', 'Measurement Ampere S', 'Measurement Ampere T',
-    'Measurement Ampere N', 'Measurement Voltage DPM', 'Measurement Voltage DPM',
-    'Measurement Ampere DPM', 'Measurement Daya DPM'
+    'Cleaning panel',
+    'Check Thermal Imager',
+    'Measurement Grounding',
+    'Measurement Voltage R - S',
+    'Measurement Voltage S - T',
+    'Measurement Voltage T - R',
+    'Measurement Voltage R - N',
+    'Measurement Voltage S - N',
+    'Measurement Voltage T - N',
+    'Measurement Voltage N - G',
+    'Measurement Ampere R',
+    'Measurement Ampere S',
+    'Measurement Ampere T',
+    'Measurement Ampere N',
+    'Measurement Voltage DPM',
+    'Measurement Voltage DPM',
+    'Measurement Ampere DPM',
+    'Measurement Daya DPM'
   ];
 };
 
@@ -571,61 +584,61 @@ export const HSE_CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string; sub
   { key: 'loto', label: 'LOTO' },
   { key: 'ppe', label: 'PPE Mandatory' },
   {
-      key: 'ppeKhusus',
-      label: 'PPE Khusus',
-      subItems: [
-          { key: 'bodyHarness', label: 'Body Harness' },
-          { key: 'sarungTanganKaretHighVoltage', label: 'Sarung Tangan Karet High Voltage Resistance' },
-          { key: 'sarungTanganKaretChemical', label: 'Sarung Tangan Karet Chemical Resistance' },
-          { key: 'apron', label: 'Apron' },
-          { key: 'kedokLas', label: 'Kedok Las' },
-          { key: 'coverShoes', label: 'Cover Shoes' },
-          { key: 'respirator', label: 'Respirator' },
-          { key: 'sarungTanganCutResistance', label: 'Sarung Tangan Cut Resistance' },
-          { key: 'pelindungMata', label: 'Pelindung Mata' },
-      ]
+    key: 'ppeKhusus',
+    label: 'PPE Khusus',
+    subItems: [
+      { key: 'bodyHarness', label: 'Body Harness' },
+      { key: 'sarungTanganKaretHighVoltage', label: 'Sarung Tangan Karet High Voltage Resistance' },
+      { key: 'sarungTanganKaretChemical', label: 'Sarung Tangan Karet Chemical Resistance' },
+      { key: 'apron', label: 'Apron' },
+      { key: 'kedokLas', label: 'Kedok Las' },
+      { key: 'coverShoes', label: 'Cover Shoes' },
+      { key: 'respirator', label: 'Respirator' },
+      { key: 'sarungTanganCutResistance', label: 'Sarung Tangan Cut Resistance' },
+      { key: 'pelindungMata', label: 'Pelindung Mata' },
+    ]
   },
   {
-      key: 'dokumen',
-      label: 'Dokumen',
-      subItems: [
-          { key: 'msds', label: 'MSDS' },
-      ]
+    key: 'dokumen',
+    label: 'Dokumen',
+    subItems: [
+      { key: 'msds', label: 'MSDS' },
+    ]
   },
   { key: 'toolsBertagging', label: 'Tools Bertagging & sdh di-checklist' },
   { key: 'logMaintenance', label: 'Log Maintenance' },
   { key: 'housekeeping', label: 'Housekeeping Area Kerja' },
   {
-      key: 'safetySign',
-      label: 'Safety Sign',
-      subItems: [
-          { key: 'pitaBaricade', label: 'Pita Baricade' },
-          { key: 'safetyCone', label: 'Safety Cone' },
-          { key: 'stikBariket', label: 'Stik Bariket' },
-          { key: 'underMaintenance', label: 'Under Maintenance' },
-      ]
+    key: 'safetySign',
+    label: 'Safety Sign',
+    subItems: [
+      { key: 'pitaBaricade', label: 'Pita Baricade' },
+      { key: 'safetyCone', label: 'Safety Cone' },
+      { key: 'stikBariket', label: 'Stik Bariket' },
+      { key: 'underMaintenance', label: 'Under Maintenance' },
+    ]
   },
   { key: 'safeCondition', label: 'Safe Condition' },
   { key: 'safeAction', label: 'Safe Action' },
 ];
 
 export const HSE_REPORT_TYPES = {
-    INSPECTION: 'inspection',
-    SIO: 'sio',
-    SILO: 'silo'
+  INSPECTION: 'inspection',
+  SIO: 'sio',
+  SILO: 'silo'
 } as const;
 
 export type HSEReportType = typeof HSE_REPORT_TYPES[keyof typeof HSE_REPORT_TYPES];
 
 export const MAINTENANCE_CATEGORIES = [
-    'LIFT',
-    'FIRE ALARM',
-    'FIRE HYDRANT',
-    'GENSET',
-    'TRAFO',
-    'PUMP',
-    'HVAC',
-    'ELECTRICAL',
-    'OTHER'
+  'LIFT',
+  'FIRE ALARM',
+  'FIRE HYDRANT',
+  'GENSET',
+  'TRAFO',
+  'PUMP',
+  'HVAC',
+  'ELECTRICAL',
+  'OTHER'
 ];
 

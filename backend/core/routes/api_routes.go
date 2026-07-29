@@ -29,6 +29,9 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 	case path == "/api/auth/login" && r.Method == http.MethodPost:
 		deps.AuthCtrl.Login(w, r)
 
+	case path == "/api/auth/proxy-login" && r.Method == http.MethodPost:
+		deps.AuthCtrl.ProxyLogin(w, r)
+
 	case path == "/api/auth/logout" && r.Method == http.MethodPost:
 		deps.AuthCtrl.Logout(w, r)
 

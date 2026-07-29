@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   User,
   signInWithEmailAndPassword,
+  signInWithCustomToken,
   signOut,
   onAuthStateChanged,
   setPersistence,
@@ -117,6 +118,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         );
       } else {
+        // Check fallback session if Firebase Auth state is null
+        try {
+          const rawSession = localStorage.getItem('dwimitra_fallback_session');
+          if (rawSession) {
+            const parsed = JSON.parse(rawSession);
+            if (parsed && parsed.uid && (Date.now() - parsed.timestamp < 7 * 24 * 60 * 60 * 1000)) {
+              const fallbackUser = {
+                uid: parsed.uid,
+                email: parsed.email,
+                emailVerified: true,
+                isAnonymous: false,
+                metadata: {},
+                providerData: [],
+                refreshToken: '',
+                tenantId: null,
+                delete: async () => {},
+                getIdToken: async () => '',
+                getIdTokenResult: async () => ({ token: '' }),
+                reload: async () => {},
+                toJSON: () => ({ uid: parsed.uid, email: parsed.email }),
+                displayName: null,
+                phoneNumber: null,
+                photoURL: null,
+                providerId: 'firebase'
+              } as unknown as User;
+
+              setUser(fallbackUser);
+              setUserRole(getRoleFromEmail(parsed.email));
+              setCompanyType('neutra');
+              setLoading(false);
+              return;
+            }
+          }
+        } catch (e) {}
+
         setUserRole(null);
         setCompanyType(null);
         setLoading(false);
@@ -135,33 +171,127 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!navigator.onLine) {
       throw new Error('Login memerlukan koneksi internet untuk verifikasi keamanan pertama kali.');
     }
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
 
-    try {
-      if (userCredential.user) {
-        const userDocRef = doc(db, 'users', userCredential.user.uid);
+    const syncUserDoc = async (uid: string, userEmail: string | null) => {
+      try {
+        const userDocRef = doc(db, 'users', uid);
         const userDoc = await getDoc(userDocRef);
-
         if (!userDoc.exists()) {
-          const initialRole = getRoleFromEmail(userCredential.user.email);
+          const initialRole = getRoleFromEmail(userEmail);
           await setDoc(userDocRef, {
-            email: userCredential.user.email,
-            uid: userCredential.user.uid,
+            email: userEmail,
+            uid: uid,
             role: initialRole,
             companyType: 'neutra',
             createdAt: serverTimestamp(),
           });
         }
+      } catch (error) {
+        console.warn('Error during background user doc sync:', error);
       }
-    } catch (error) {
-      console.warn('Error during background user doc sync:', error);
+    };
+
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      if (userCredential.user) {
+        await syncUserDoc(userCredential.user.uid, userCredential.user.email);
+        localStorage.removeItem('dwimitra_fallback_session');
+      }
+    } catch (primaryError: any) {
+      console.warn('Primary Firebase login failed, attempting backend proxy fallback:', primaryError);
+
+      if (
+        primaryError.code === 'auth/network-request-failed' ||
+        primaryError.code === 'auth/internal-error' ||
+        primaryError.message?.includes('fetch')
+      ) {
+        try {
+          const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+          const resp = await fetch(`${apiBaseUrl}/auth/proxy-login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+          });
+
+          if (!resp.ok) {
+            const errData = await resp.json().catch(() => ({}));
+            const msg = errData.message || 'Email atau password salah';
+            const err = new Error(msg) as any;
+            err.code = errData.code || 'auth/invalid-credential';
+            throw err;
+          }
+
+          const data = await resp.json();
+          if (data.customToken) {
+            try {
+              const userCred = await signInWithCustomToken(auth, data.customToken);
+              if (userCred.user) {
+                await syncUserDoc(userCred.user.uid, userCred.user.email);
+                localStorage.removeItem('dwimitra_fallback_session');
+                return;
+              }
+            } catch (customTokenError) {
+              console.warn('signInWithCustomToken also blocked by client network, activating fallback session:', customTokenError);
+            }
+          }
+
+          if (data.uid) {
+            const fallbackUser = {
+              uid: data.uid,
+              email: data.email || email,
+              emailVerified: true,
+              isAnonymous: false,
+              metadata: {},
+              providerData: [],
+              refreshToken: data.refreshToken || '',
+              tenantId: null,
+              delete: async () => {},
+              getIdToken: async () => data.idToken || '',
+              getIdTokenResult: async () => ({ token: data.idToken || '' }),
+              reload: async () => {},
+              toJSON: () => ({ uid: data.uid, email: data.email }),
+              displayName: null,
+              phoneNumber: null,
+              photoURL: null,
+              providerId: 'firebase'
+            } as unknown as User;
+
+            setUser(fallbackUser);
+            const initialRole = getRoleFromEmail(data.email || email);
+            setUserRole(initialRole);
+            setCompanyType('neutra');
+            setLoading(false);
+
+            try {
+              localStorage.setItem('dwimitra_fallback_session', JSON.stringify({
+                uid: data.uid,
+                email: data.email || email,
+                timestamp: Date.now()
+              }));
+            } catch (e) {}
+
+            return;
+          }
+        } catch (fallbackErr: any) {
+          console.error('Backend proxy login fallback failed:', fallbackErr);
+          throw fallbackErr;
+        }
+      }
+
+      throw primaryError;
     }
   };
 
   const logout = async () => {
-    await signOut(auth);
+    try {
+      localStorage.removeItem('dwimitra_fallback_session');
+    } catch (e) {}
+    try {
+      await signOut(auth);
+    } catch (e) {}
     setUserRole(null);
     setCompanyType(null);
+    setUser(null);
   };
 
   const value = {

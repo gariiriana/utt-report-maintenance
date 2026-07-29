@@ -75,30 +75,6 @@ export const CapacitorbankServiceReport: React.FC<CapacitorbankServiceReportProp
       if (prefillData.timeSpent) setTimeSpent((prev) => ({ ...prev, ...prefillData.timeSpent }));
       if (prefillData.photos) {
         setPhotos(prefillData.photos);
-
-        // Auto parse measurement parameters from photo cards when synced
-        prefillData.photos.forEach((p: any) => {
-          const label = (p.label || p.description || '').toLowerCase();
-          const param = (p.parameter || '').trim();
-          if (!param) return;
-
-          const num = param.match(/([0-9.]+)/)?.[1] || param;
-
-          if (label.includes('r-s')) setVoltageAmpere(prev => ({ ...prev, voltageRS: num }));
-          else if (label.includes('s-t')) setVoltageAmpere(prev => ({ ...prev, voltageST: num }));
-          else if (label.includes('t-r')) setVoltageAmpere(prev => ({ ...prev, voltageTR: num }));
-          else if (label.includes('r-n')) setVoltageAmpere(prev => ({ ...prev, voltageRN: num }));
-          else if (label.includes('s-n')) setVoltageAmpere(prev => ({ ...prev, voltageSN: num }));
-          else if (label.includes('t-n')) setVoltageAmpere(prev => ({ ...prev, voltageTN: num }));
-          else if (label.includes('n-g')) setVoltageAmpere(prev => ({ ...prev, voltageNG: num }));
-          else if (label.includes('ampere r')) setVoltageAmpere(prev => ({ ...prev, ampereR: num }));
-          else if (label.includes('ampere s')) setVoltageAmpere(prev => ({ ...prev, ampereS: num }));
-          else if (label.includes('ampere t')) setVoltageAmpere(prev => ({ ...prev, ampereT: num }));
-          else if (label.includes('ampere n')) setVoltageAmpere(prev => ({ ...prev, ampereN: num }));
-          else if (label.includes('thermal') || label.includes('suhu') || label.includes('breaker')) setThermal(prev => ({ ...prev, breakerResult: num }));
-          else if (label.includes('grounding') || label.includes('tahanan')) setGrounding(prev => ({ ...prev, groundingResult: num }));
-          else if (label.includes('capacitance') || label.includes('kapasitansi') || label.includes('uf')) setCapacitance(prev => ({ ...prev, capacitanceResult: num }));
-        });
       }
     }
   }, [prefillData]);
