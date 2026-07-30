@@ -350,7 +350,7 @@ export function FileManagement({
                     fileType: file.type || 'application/pdf',
                     category: finalCategory,
                     maintenanceType: (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(finalCategory)) ? selectedMaintenance : null,
-                    quarter: selectedUploadQuarter,
+                    quarter: finalCategory === 'SLD' ? 'N/A' : selectedUploadQuarter,
                     year: selectedUploadYear,
                     customCategory: selectedCategory === 'Custom' ? customCategory : null,
                     uploadedBy: user.uid,
@@ -657,23 +657,25 @@ export function FileManagement({
                                     </select>
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">
-                                        Quarter
-                                    </label>
-                                    <select
-                                        value={selectedUploadQuarter}
-                                        onChange={(e) => setSelectedUploadQuarter(e.target.value)}
-                                        disabled={uploading}
-                                        className="w-full px-4 py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                                    >
-                                        {QUARTERS.map((q) => (
-                                            <option key={q} value={q}>
-                                                {q}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
+                                {selectedCategory !== 'SLD' && (
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">
+                                            Quarter
+                                        </label>
+                                        <select
+                                            value={selectedUploadQuarter}
+                                            onChange={(e) => setSelectedUploadQuarter(e.target.value)}
+                                            disabled={uploading}
+                                            className="w-full px-4 py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                        >
+                                            {QUARTERS.map((q) => (
+                                                <option key={q} value={q}>
+                                                    {q}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
 
                                 {['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedCategory) && (
                                     <div className="md:col-span-1">
@@ -942,7 +944,7 @@ export function FileManagement({
                             </div>
                         )}
                     </div>
-                ) : !searchQuery && selectedFolder && !selectedQuarter ? (
+                ) : !searchQuery && selectedFolder && !selectedQuarter && selectedFolder !== 'SLD' ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         {QUARTERS.map((quarter) => {
                             const fileCount = filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && f.quarter === quarter).length;
@@ -1007,7 +1009,7 @@ export function FileManagement({
                             ? filteredFiles
                             : filteredFiles.filter(f =>
                                 matchCategory(f.category, selectedFolder) &&
-                                f.quarter === selectedQuarter &&
+                                (selectedFolder === 'SLD' ? true : f.quarter === selectedQuarter) &&
                                 (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '')
                                     ? (selectedMType && (
                                         f.maintenanceType === selectedMType ||
@@ -1029,11 +1031,11 @@ export function FileManagement({
                                             <input
                                                 type="checkbox"
                                                 checked={
-                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).length > 0 &&
-                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).every(f => selectedFileIds.includes(f.id))
+                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && (selectedFolder === 'SLD' ? true : f.quarter === selectedQuarter) && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).length > 0 &&
+                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && (selectedFolder === 'SLD' ? true : f.quarter === selectedQuarter) && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).every(f => selectedFileIds.includes(f.id))
                                                 }
                                                 onChange={(e) => {
-                                                    const currentFiles = searchQuery ? filteredFiles : filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true));
+                                                    const currentFiles = searchQuery ? filteredFiles : filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && (selectedFolder === 'SLD' ? true : f.quarter === selectedQuarter) && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true));
                                                     if (e.target.checked) {
                                                         const allIds = currentFiles.map(f => f.id);
                                                         setSelectedFileIds(prev => [...new Set([...prev, ...allIds])]);
@@ -1070,7 +1072,7 @@ export function FileManagement({
                                     ? filteredFiles
                                     : filteredFiles.filter(f =>
                                         matchCategory(f.category, selectedFolder) &&
-                                        f.quarter === selectedQuarter &&
+                                        (selectedFolder === 'SLD' ? true : f.quarter === selectedQuarter) &&
                                         (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true)
                                     )
                                 ).map((file) => (
