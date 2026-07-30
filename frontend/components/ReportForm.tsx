@@ -150,7 +150,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     if (!email) return null;
     const lowerEmail = email.toLowerCase().trim();
     if (lowerEmail === 'vrv@gmail.com') return VRV_TEMPLATE.indoor;
-    if (lowerEmail === 'ahhu@utt.com') return AHHU_TEMPLATE.indoor;
+    if (lowerEmail === 'ahhu@utt.com' || lowerEmail === 'ahu@gmail.com' || lowerEmail.includes('ahu') || lowerEmail.includes('ahhu')) return AHHU_TEMPLATE.indoor;
     if (REPORT_TEMPLATES[lowerEmail]) return REPORT_TEMPLATES[lowerEmail];
     if (lowerEmail.includes('dock') || lowerEmail.includes('leveler')) {
       return REPORT_TEMPLATES['dockleveler@gmail.com'] || REPORT_TEMPLATES['dock'] || null;
@@ -393,8 +393,11 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   };
 
   useEffect(() => {
-    const lowerEmail = user?.email?.toLowerCase() || '';
-    if (editingData || (lowerEmail !== 'vrv@gmail.com' && lowerEmail !== 'ahhu@utt.com') || isDraftLoading) return;
+    const lowerEmail = user?.email?.toLowerCase().trim() || '';
+    const isAHHU = lowerEmail === 'ahu@gmail.com' || lowerEmail === 'ahhu@utt.com' || lowerEmail.includes('ahu') || lowerEmail.includes('ahhu');
+    const isVRV = lowerEmail === 'vrv@gmail.com';
+
+    if (editingData || (!isVRV && !isAHHU) || isDraftLoading) return;
 
     const hasExistingPhotos = cards.some(c => c.photoBase64);
     if (hasExistingPhotos) return;
@@ -403,9 +406,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const isOutdoor = currentMode === 'outdoor';
     let template: string[] | null = null;
 
-    if (lowerEmail === 'vrv@gmail.com') {
+    if (isVRV) {
       template = isOutdoor ? VRV_TEMPLATE.outdoor : VRV_TEMPLATE.indoor;
-    } else if (lowerEmail === 'ahhu@utt.com') {
+    } else if (isAHHU) {
       template = isOutdoor ? AHHU_TEMPLATE.outdoor : AHHU_TEMPLATE.indoor;
     }
 
@@ -1256,22 +1259,28 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       <span className="text-blue-600 truncate max-w-[150px] sm:max-w-none ml-1">{activeUnit.specificDetail || '(Tanpa Nama Unit)'}</span>
                     </h2>
 
-                    {(user?.email?.toLowerCase() === 'ahhu@utt.com' || user?.email?.toLowerCase() === 'vrv@gmail.com') && (
-                      <div className="flex gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
-                        <button
-                          onClick={() => setTemplateMode('indoor')}
-                          className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${activeUnit?.templateMode === 'indoor' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-600 hover:text-slate-900'}`}
-                        >
-                          INDOOR
-                        </button>
-                        <button
-                          onClick={() => setTemplateMode('outdoor')}
-                          className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${activeUnit?.templateMode === 'outdoor' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-600 hover:text-slate-900'}`}
-                        >
-                          OUTDOOR
-                        </button>
-                      </div>
-                    )}
+                    {(() => {
+                      const lowerEmail = user?.email?.toLowerCase().trim() || '';
+                      const isDualMode = lowerEmail === 'vrv@gmail.com' || lowerEmail === 'ahu@gmail.com' || lowerEmail === 'ahhu@utt.com' || lowerEmail.includes('ahu') || lowerEmail.includes('ahhu');
+                      return isDualMode && (
+                        <div className="flex gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+                          <button
+                            type="button"
+                            onClick={() => setTemplateMode('indoor')}
+                            className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${activeUnit?.templateMode === 'indoor' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-600 hover:text-slate-900'}`}
+                          >
+                            INDOOR
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTemplateMode('outdoor')}
+                            className={`px-3 py-1 text-[9px] font-bold rounded-md transition-all ${activeUnit?.templateMode === 'outdoor' ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' : 'text-slate-600 hover:text-slate-900'}`}
+                          >
+                            OUTDOOR
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
                   {userRole !== 'engineer' && userRole !== 'standby_engineer' && (
                     <div className="flex items-center gap-3 self-start sm:self-auto">

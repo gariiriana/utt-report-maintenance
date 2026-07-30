@@ -233,42 +233,53 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
   };
 
   const handleNext = () => {
-    // Basic Validation per step
-    if (currentStep === 1) {
-      if (!formData.location) {
-        toast.error('Mohon lengkapi Lokasi');
-        return;
-      }
-      if (!formData.timeOrder || !formData.actualTimeResponse) {
-        toast.error('Mohon isi Waktu Order dan Waktu Respon Aktual');
-        return;
-      }
-      if (!formData.photoResponse) {
-        toast.error('Mohon unggah Bukti Foto Response Time');
-        return;
-      }
-    } else if (currentStep === 2) {
-      if (!formData.photoEngineerOnsite) {
-        toast.error('Mohon unggah Bukti Foto Engineer Onsite Support');
-        return;
-      }
-    } else if (currentStep === 3) {
-      if (!formData.actualTimeOnsite) {
-        toast.error('Mohon isi Waktu Aktual Onsite');
-        return;
-      }
-      if (!formData.photoOnsite) {
-        toast.error('Mohon unggah Bukti Foto Onsite Principle Engineer');
-        return;
-      }
-    } else if (currentStep === 4) {
-      if (!formData.startOrder || !formData.finishOrder) {
-        toast.error('Mohon isi Waktu Mulai dan Selesai Order');
-        return;
-      }
-      if (!formData.photoRestore) {
-        toast.error('Mohon unggah Bukti Foto Restore Service Time');
-        return;
+    const isLocalhost = import.meta.env.DEV || (
+      typeof window !== 'undefined' && (
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname.startsWith('192.168.') ||
+        window.location.hostname.endsWith('.local')
+      )
+    );
+
+    // Basic Validation per step (Bypassed on localhost for dev convenience)
+    if (!isLocalhost) {
+      if (currentStep === 1) {
+        if (!formData.location) {
+          toast.error('Mohon lengkapi Lokasi');
+          return;
+        }
+        if (!formData.timeOrder || !formData.actualTimeResponse) {
+          toast.error('Mohon isi Waktu Order dan Waktu Respon Aktual');
+          return;
+        }
+        if (!formData.photoResponse) {
+          toast.error('Mohon unggah Bukti Foto Response Time');
+          return;
+        }
+      } else if (currentStep === 2) {
+        if (!formData.photoEngineerOnsite) {
+          toast.error('Mohon unggah Bukti Foto Engineer Onsite Support');
+          return;
+        }
+      } else if (currentStep === 3) {
+        if (!formData.actualTimeOnsite) {
+          toast.error('Mohon isi Waktu Aktual Onsite');
+          return;
+        }
+        if (!formData.photoOnsite) {
+          toast.error('Mohon unggah Bukti Foto Onsite Principle Engineer');
+          return;
+        }
+      } else if (currentStep === 4) {
+        if (!formData.startOrder || !formData.finishOrder) {
+          toast.error('Mohon isi Waktu Mulai dan Selesai Order');
+          return;
+        }
+        if (!formData.photoRestore) {
+          toast.error('Mohon unggah Bukti Foto Restore Service Time');
+          return;
+        }
       }
     }
 
@@ -287,7 +298,16 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
     }
     if (!user) return;
 
-    if (!formData.photoResolution) {
+    const isLocalhost = import.meta.env.DEV || (
+      typeof window !== 'undefined' && (
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname.startsWith('192.168.') ||
+        window.location.hostname.endsWith('.local')
+      )
+    );
+
+    if (!isLocalhost && !formData.photoResolution) {
       toast.error('Mohon unggah Bukti Foto Resolution Time pada Step 5');
       return;
     }

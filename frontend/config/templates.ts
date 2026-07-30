@@ -439,11 +439,11 @@ export const VRV_TEMPLATE = {
 export const AHHU_TEMPLATE = {
   outdoor: [
     'MEASUREMENT VOLTAGE R-S',
-    'MEASUREMENT VOLTAGE R-T',
     'MEASUREMENT VOLTAGE S-T',
+    'MEASUREMENT VOLTAGE T-R',
     'MEASUREMENT VOLTAGE R-N',
-    'MEASUREMENT VOLTAGE T-N',
     'MEASUREMENT VOLTAGE S-N',
+    'MEASUREMENT VOLTAGE T-N',
     'MEASUREMENT VOLTAGE N-G',
     'MEASUREMENT CURRENT R',
     'MEASUREMENT CURRENT S',
@@ -453,20 +453,20 @@ export const AHHU_TEMPLATE = {
   ],
   indoor: [
     'MEASUREMENT VOLTAGE R-S',
-    'MEASUREMENT VOLTAGE R-T',
     'MEASUREMENT VOLTAGE S-T',
+    'MEASUREMENT VOLTAGE T-R',
     'MEASUREMENT VOLTAGE R-N',
-    'MEASUREMENT VOLTAGE T-N',
     'MEASUREMENT VOLTAGE S-N',
+    'MEASUREMENT VOLTAGE T-N',
     'MEASUREMENT VOLTAGE N-G',
     'MEASUREMENT CURRENT R',
     'MEASUREMENT CURRENT S',
     'MEASUREMENT CURRENT T',
     'MEASUREMENT VIBRATION',
     'MEASUREMENT TEMPERATURE',
-    'MEASUREMENT HUMIDITY',
     'MEASUREMENT AIR FLOW',
-    'MEASUREMENT NOISE'
+    'MEASUREMENT NOISE',
+    'MEASUREMENT HUMIDITY'
   ]
 };
 
@@ -509,6 +509,8 @@ export interface HSEChecklist {
   jsa: boolean;
   ptw: boolean;
   loto: boolean;
+  lockOut: boolean;
+  tagOut: boolean;
   ppe: boolean;
   toolsBertagging: boolean;
   logMaintenance: boolean;
@@ -539,6 +541,8 @@ export const INITIAL_HSE_CHECKLIST: HSEChecklist = {
   jsa: false,
   ptw: false,
   loto: false,
+  lockOut: false,
+  tagOut: false,
   ppe: false,
   toolsBertagging: false,
   logMaintenance: false,
@@ -568,7 +572,14 @@ export const HSE_CHECKLIST_LABELS: { key: keyof HSEChecklist; label: string; sub
   { key: 'mop', label: 'MOP' },
   { key: 'jsa', label: 'JSA' },
   { key: 'ptw', label: 'PTW' },
-  { key: 'loto', label: 'LOTO' },
+  {
+    key: 'loto',
+    label: 'LOTO',
+    subItems: [
+      { key: 'lockOut', label: 'Lock Out' },
+      { key: 'tagOut', label: 'Tag Out' },
+    ]
+  },
   { key: 'ppe', label: 'PPE Mandatory' },
   {
     key: 'ppeKhusus',

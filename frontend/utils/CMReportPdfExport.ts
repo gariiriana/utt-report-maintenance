@@ -45,15 +45,16 @@ export async function generateCMReportPDF(data: CMReportData) {
     try { logoRight = await loadImageBase64(logoNeutraDC); } catch { /* ignore */ }
 
     // Compress photos if any
-    let processedPhotos: string[] = [];
+    let processedPhotos: { base64: string; description: string }[] = [];
     if (data.photos && data.photos.length > 0) {
       processedPhotos = await Promise.all(
         data.photos.map(async (p) => {
-          if (!p.photoBase64) return '';
+          if (!p.photoBase64) return { base64: '', description: '' };
           try {
-            return await compressBase64Image(p.photoBase64, { maxWidth: 900, quality: 0.7 });
+            const compressed = await compressBase64Image(p.photoBase64, { maxWidth: 900, quality: 0.7 });
+            return { base64: compressed, description: p.description || '' };
           } catch {
-            return p.photoBase64;
+            return { base64: p.photoBase64, description: p.description || '' };
           }
         })
       );
@@ -344,50 +345,138 @@ export async function generateCMReportPDF(data: CMReportData) {
     const photoBoxH = 155;
     doc.rect(margin, y, contentW, photoBoxH, 'D');
 
-    // Draw photos inside photo box (up to 2 side-by-side or stacked grid)
-    if (processedPhotos.length > 0) {
-      const activePhotos = processedPhotos.filter(Boolean).slice(0, 4);
-      const numPhotos = activePhotos.length;
+    // Draw photos inside photo box (up to 10 photos in grid across pages if >6)
+    const validPhotos = processedPhotos.filter(p => p.base64).slice(0, 10);
+    let currentPageIndex = 2;
 
-      if (numPhotos === 1) {
-        // Single photo centered
-        const imgW = 120;
-        const imgH = 135;
-        const imgX = margin + (contentW - imgW) / 2;
-        const imgY = y + 10;
-        doc.addImage(activePhotos[0], 'JPEG', imgX, imgY, imgW, imgH);
-      } else if (numPhotos === 2) {
-        // Two photos side-by-side matching screenshot
-        const gap = 4;
-        const availW = contentW - 10;
-        const singleW = (availW - gap) / 2;
-        const singleH = 138;
-        const imgY = y + 8;
+    if (validPhotos.length > 0) {
+      const page1Photos = validPhotos.slice(0, Math.min(validPhotos.length, 6));
+      const page2Photos = validPhotos.length > 6 ? validPhotos.slice(6, 10) : [];
 
-        doc.addImage(activePhotos[0], 'JPEG', margin + 5, imgY, singleW, singleH);
-        doc.addImage(activePhotos[1], 'JPEG', margin + 5 + singleW + gap, imgY, singleW, singleH);
-      } else {
-        // 3 or 4 photos grid (2x2)
-        const gap = 4;
-        const availW = contentW - 10;
-        const singleW = (availW - gap) / 2;
-        const singleH = 68;
+      // Helper function to draw a grid of photos on current page
+      const renderPhotoGrid = (photos: { base64: string; description: string }[], boxY: number) => {
+        const numPhotos = photos.length;
+        if (numPhotos === 1) {
+          const imgW = 120;
+          const imgH = 125;
+          const imgX = margin + (contentW - imgW) / 2;
+          const imgY = boxY + 8;
+          doc.addImage(photos[0].base64, 'JPEG', imgX, imgY, imgW, imgH);
+          if (photos[0].description) {
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.5);
+            doc.setTextColor(50, 50, 50);
+            doc.text(`Ket: ${photos[0].description}`, pageW / 2, imgY + imgH + 5, { align: 'center', maxWidth: imgW });
+          }
+        } else if (numPhotos === 2) {
+          const gap = 4;
+          const availW = contentW - 10;
+          const singleW = (availW - gap) / 2;
+          const singleH = 125;
+          const imgY = boxY + 8;
 
-        activePhotos.forEach((img, idx) => {
-          const row = Math.floor(idx / 2);
-          const col = idx % 2;
-          const imgX = margin + 5 + col * (singleW + gap);
-          const imgY = y + 6 + row * (singleH + gap);
-          doc.addImage(img, 'JPEG', imgX, imgY, singleW, singleH);
-        });
+          photos.forEach((item, idx) => {
+            const imgX = margin + 5 + idx * (singleW + gap);
+            doc.addImage(item.base64, 'JPEG', imgX, imgY, singleW, singleH);
+            if (item.description) {
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(8);
+              doc.setTextColor(50, 50, 50);
+              doc.text(`Ket: ${item.description}`, imgX + singleW / 2, imgY + singleH + 5, { align: 'center', maxWidth: singleW });
+            }
+          });
+        } else if (numPhotos <= 4) {
+          const gap = 4;
+          const availW = contentW - 10;
+          const singleW = (availW - gap) / 2;
+          const singleH = 58;
+
+          photos.forEach((item, idx) => {
+            const row = Math.floor(idx / 2);
+            const col = idx % 2;
+            const imgX = margin + 5 + col * (singleW + gap);
+            const imgY = boxY + 6 + row * (singleH + 12);
+            doc.addImage(item.base64, 'JPEG', imgX, imgY, singleW, singleH);
+            if (item.description) {
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(7.5);
+              doc.setTextColor(50, 50, 50);
+              doc.text(`Ket: ${item.description}`, imgX + singleW / 2, imgY + singleH + 4, { align: 'center', maxWidth: singleW });
+            }
+          });
+        } else {
+          // 5 to 6 photos in 2x3 grid
+          const gap = 4;
+          const availW = contentW - 10;
+          const singleW = (availW - gap) / 2;
+          const singleH = 38;
+
+          photos.forEach((item, idx) => {
+            const row = Math.floor(idx / 2);
+            const col = idx % 2;
+            const imgX = margin + 5 + col * (singleW + gap);
+            const imgY = boxY + 5 + row * (singleH + 10);
+            doc.addImage(item.base64, 'JPEG', imgX, imgY, singleW, singleH);
+            if (item.description) {
+              doc.setFont('helvetica', 'normal');
+              doc.setFontSize(7);
+              doc.setTextColor(50, 50, 50);
+              doc.text(`Ket: ${item.description}`, imgX + singleW / 2, imgY + singleH + 3.5, { align: 'center', maxWidth: singleW });
+            }
+          });
+        }
+      };
+
+      // Draw first page of photos (Page 2)
+      renderPhotoGrid(page1Photos, y);
+
+      // Page 2 Footer
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(120, 120, 120);
+      doc.text(currentPageIndex.toString(), pageW / 2, pageH - 8, { align: 'center' });
+
+      // If photos 7-10 exist, add continuation page
+      if (page2Photos.length > 0) {
+        currentPageIndex++;
+        doc.addPage();
+        drawHeaderLogos();
+        let contY = 28;
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(50, 50, 50);
+        doc.text('SUPPORTING DOCUMENTATION (LANJUTAN)', margin, contY);
+
+        contY += 5;
+
+        doc.setFillColor(...HEADER_FILL);
+        doc.setDrawColor(...BORDER_COLOR);
+        doc.setLineWidth(0.2);
+        doc.rect(margin, contY, contentW, 6, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8.5);
+        doc.setTextColor(0, 0, 0);
+        doc.text('VISUAL INSPECTION & CHECKING (SAMBUNGAN FOTO 7-10)', margin + 2, contY + 4.2);
+
+        contY += 6;
+        doc.rect(margin, contY, contentW, photoBoxH, 'D');
+
+        renderPhotoGrid(page2Photos, contY);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        doc.text(currentPageIndex.toString(), pageW / 2, pageH - 8, { align: 'center' });
       }
+    } else {
+      // Page 2 Footer if no photos
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(120, 120, 120);
+      doc.text(currentPageIndex.toString(), pageW / 2, pageH - 8, { align: 'center' });
     }
-
-    // Page 2 Footer
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(120, 120, 120);
-    doc.text('2', pageW / 2, pageH - 8, { align: 'center' });
 
 
     // ==========================================

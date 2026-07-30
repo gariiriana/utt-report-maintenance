@@ -15,6 +15,8 @@ const CHECKLIST_LABELS = [
     { key: 'jsa', label: 'JSA' },
     { key: 'ptw', label: 'PTW' },
     { key: 'loto', label: 'LOTO' },
+    { key: 'lockOut', label: 'Lock Out (LOTO Sub)' },
+    { key: 'tagOut', label: 'Tag Out (LOTO Sub)' },
     { key: 'ppe', label: 'PPE Mandatory' },
     { key: 'toolsBertagging', label: 'Tools Bertagging & sdh di-checklist' },
     { key: 'logMaintenance', label: 'Log Maintenance' },

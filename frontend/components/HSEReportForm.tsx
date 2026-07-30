@@ -248,6 +248,9 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
         setChecklist(prev => {
             const next = { ...prev, [key]: !prev[key] };
 
+            if (key === 'loto' && !next.loto) {
+                next.lockOut = next.tagOut = false;
+            }
             if (key === 'ppeKhusus' && !next.ppeKhusus) {
                 next.bodyHarness = next.sarungTanganKaretHighVoltage = next.sarungTanganKaretChemical = next.apron = next.kedokLas = next.coverShoes = next.respirator = next.sarungTanganCutResistance = next.pelindungMata = false;
             }
@@ -258,6 +261,10 @@ export function HSEReportForm({ editingData, onClearEdit, mode = 'inspection' }:
                 next.msds = false;
             }
 
+            const lotoChildren = ['lockOut', 'tagOut'];
+            if (lotoChildren.includes(key as string) && next[key as keyof HSEChecklist]) {
+                next.loto = true;
+            }
             const ppeChildren = ['bodyHarness', 'sarungTanganKaretHighVoltage', 'sarungTanganKaretChemical', 'apron', 'kedokLas', 'coverShoes', 'respirator', 'sarungTanganCutResistance', 'pelindungMata'];
             if (ppeChildren.includes(key as string) && next[key as keyof HSEChecklist]) {
                 next.ppeKhusus = true;

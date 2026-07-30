@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import { db } from '@/api/firebase';
 import { collection, addDoc, serverTimestamp, getDoc, doc, updateDoc } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
-import { CMReportData, CMSparepartItem } from '@/types/correctiveReportTypes';
+import { CMReportData, CMSparepartItem, CMPhotoItem } from '@/types/correctiveReportTypes';
 import { generateCMReportPDF } from '@/utils/CMReportPdfExport';
 import { ImageEditor } from './ImageEditor';
 
@@ -125,60 +125,87 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     }
   }, [formData, currentStep, editId]);
 
-  // Handle Photo Upload
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle Multi Photo Upload
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    if (formData.photos.length >= 4) {
-      toast.error('Maksimal 4 foto dokumentasi');
+    const remainingSlots = 10 - formData.photos.length;
+    if (remainingSlots <= 0) {
+      toast.error('Maksimal 10 foto dokumentasi');
       return;
     }
 
-    const file = files[0];
-    if (file.size > 20 * 1024 * 1024) {
-      toast.error('Ukuran foto maksimal 20MB');
-      return;
-    }
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
 
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-
-        const MAX_WIDTH = 900;
-        const MAX_HEIGHT = 900;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height = (height * MAX_WIDTH) / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width = (width * MAX_HEIGHT) / height;
-            height = MAX_HEIGHT;
-          }
+    const processFile = (file: File): Promise<CMPhotoItem> => {
+      return new Promise((resolve) => {
+        if (file.size > 20 * 1024 * 1024) {
+          toast.error(`Ukuran file ${file.name} melebihi 20MB`);
+          resolve({ photoBase64: '', description: '' });
+          return;
         }
 
-        canvas.width = width;
-        canvas.height = height;
-        ctx?.drawImage(img, 0, 0, width, height);
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+          const img = new Image();
+          img.src = event.target?.result as string;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
 
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
-        setFormData(prev => ({
-          ...prev,
-          photos: [...prev.photos, { photoBase64: compressedBase64 }]
-        }));
-        toast.success('Foto berhasil ditambahkan');
-      };
+            const MAX_WIDTH = 900;
+            const MAX_HEIGHT = 900;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > MAX_WIDTH) {
+                height = (height * MAX_WIDTH) / width;
+                width = MAX_WIDTH;
+              }
+            } else {
+              if (height > MAX_HEIGHT) {
+                width = (width * MAX_HEIGHT) / height;
+                height = MAX_HEIGHT;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            ctx?.drawImage(img, 0, 0, width, height);
+
+            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
+            resolve({
+              photoBase64: compressedBase64,
+              description: ''
+            });
+          };
+          img.onerror = () => resolve({ photoBase64: '', description: '' });
+        };
+        reader.onerror = () => resolve({ photoBase64: '', description: '' });
+      });
     };
+
+    const newPhotoItems = await Promise.all(filesToProcess.map(processFile));
+    const validPhotoItems = newPhotoItems.filter((p: CMPhotoItem) => p.photoBase64 !== '');
+
+    if (validPhotoItems.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        photos: [...prev.photos, ...validPhotoItems]
+      }));
+      toast.success(`${validPhotoItems.length} foto berhasil ditambahkan`);
+    }
+  };
+
+  const updatePhotoDescription = (index: number, description: string) => {
+    setFormData(prev => {
+      const updated = [...prev.photos];
+      updated[index] = { ...updated[index], description };
+      return { ...prev, photos: updated };
+    });
   };
 
   const removePhoto = (index: number) => {
@@ -232,7 +259,17 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-    if (!formData.incidentName || !formData.location) {
+
+    const isLocalhost = import.meta.env.DEV || (
+      typeof window !== 'undefined' && (
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname.startsWith('192.168.') ||
+        window.location.hostname.endsWith('.local')
+      )
+    );
+
+    if (!isLocalhost && (!formData.incidentName || !formData.location)) {
       toast.error('Mohon lengkapi Nama Incident & Lokasi');
       return;
     }
@@ -594,46 +631,65 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                 </div>
               </div>
 
-              {/* PHOTOS DOKUMENTASI (Max 4, side by side layout di PDF) */}
+              {/* PHOTOS DOKUMENTASI (Max 10, layout grid di PDF) */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-bold text-slate-700">FOTO DOKUMENTASI VISUAL INSPECTION (Maks 4 Foto)</label>
-                  <span className="text-xs text-slate-500">{formData.photos.length} / 4 Foto Uploaded</span>
+                  <label className="block text-xs font-bold text-slate-700">FOTO DOKUMENTASI VISUAL INSPECTION (Maks 10 Foto)</label>
+                  <span className="text-xs text-slate-500">{formData.photos.length} / 10 Foto Uploaded</span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {formData.photos.map((photo, idx) => (
-                    <div key={idx} className="relative group border border-slate-300 rounded-xl overflow-hidden bg-slate-100 aspect-3/4">
-                      <img src={photo.photoBase64} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/40 opacity-100 group-hover:opacity-100 flex items-center justify-center gap-2 transition">
-                        <button
-                          type="button"
-                          onClick={() => setEditingPhotoIndex(idx)}
-                          className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                          title="Crop/Edit Foto"
-                        >
-                          <Scissors className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removePhoto(idx)}
-                          className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
-                          title="Hapus Foto"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                    <div key={idx} className="bg-white border border-slate-300 rounded-xl p-2.5 shadow-xs space-y-2">
+                      <div className="relative group border border-slate-200 rounded-lg overflow-hidden bg-slate-100 aspect-4/3">
+                        <img src={photo.photoBase64} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition">
+                          <button
+                            type="button"
+                            onClick={() => setEditingPhotoIndex(idx)}
+                            className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                            title="Crop/Edit Foto"
+                          >
+                            <Scissors className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(idx)}
+                            className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                            title="Hapus Foto"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold rounded-md">
+                          Foto {idx + 1}
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wider">
+                          Deskripsi Foto {idx + 1}
+                        </label>
+                        <input
+                          type="text"
+                          value={photo.description || ''}
+                          onChange={(e) => updatePhotoDescription(idx, e.target.value)}
+                          placeholder="Contoh: Kondisi fisik unit sebelum perbaikan..."
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 focus:ring-1 focus:ring-red-500 focus:bg-white outline-none transition"
+                        />
                       </div>
                     </div>
                   ))}
 
-                  {formData.photos.length < 4 && (
-                    <label className="border-2 border-dashed border-slate-300 hover:border-red-500 bg-slate-50 hover:bg-red-50/20 rounded-xl aspect-3/4 flex flex-col items-center justify-center cursor-pointer transition p-4 text-center">
+                  {formData.photos.length < 10 && (
+                    <label className="border-2 border-dashed border-slate-300 hover:border-red-500 bg-slate-50 hover:bg-red-50/20 rounded-xl aspect-4/3 flex flex-col items-center justify-center cursor-pointer transition p-4 text-center">
                       <Camera className="w-8 h-8 text-slate-400 mb-1" />
-                      <span className="text-xs font-bold text-slate-600">Tambah Foto</span>
-                      <span className="text-[10px] text-slate-400 mt-0.5">Click / Upload</span>
+                      <span className="text-xs font-bold text-slate-600">Pilih Foto (Bisa Banyak)</span>
+                      <span className="text-[10px] text-slate-400 mt-0.5">Tekan &amp; pilih lebih dari 1 foto sekaligus (Maks 10)</span>
                       <input
                         type="file"
                         accept="image/*"
+                        multiple
                         onChange={handlePhotoUpload}
                         className="hidden"
                       />

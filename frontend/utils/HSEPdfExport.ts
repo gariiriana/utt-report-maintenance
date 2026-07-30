@@ -99,6 +99,8 @@ export interface HSEChecklist {
     jsa: boolean;
     ptw: boolean;
     loto?: boolean;
+    lockOut?: boolean;
+    tagOut?: boolean;
     ppe: boolean;
     toolsBertagging: boolean;
     logMaintenance: boolean;
@@ -301,7 +303,14 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
             { key: 'mop', label: 'MOP' },
             { key: 'jsa', label: 'JSA' },
             { key: 'ptw', label: 'PTW' },
-            { key: 'loto', label: 'LOTO' },
+            {
+                key: 'loto',
+                label: 'LOTO',
+                subItems: [
+                    { key: 'lockOut', label: 'Lock Out' },
+                    { key: 'tagOut', label: 'Tag Out' },
+                ]
+            },
             { key: 'ppe', label: 'PPE Mandatory' },
             {
                 key: 'ppeKhusus',
