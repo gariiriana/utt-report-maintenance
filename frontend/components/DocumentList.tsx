@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, User, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive } from 'lucide-react';
 import { collection, query, getDocs, deleteDoc, doc, where, updateDoc, deleteField } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
@@ -1446,10 +1446,6 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
                     : d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
                 })()}
               </span>
-            </div>
-            <div className="flex items-center gap-1.5 min-w-0">
-              <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-              <span className="truncate">{document.createdBy}</span>
             </div>
             {document.documentType !== 'hse' && (
               <div className="flex items-center gap-1.5">

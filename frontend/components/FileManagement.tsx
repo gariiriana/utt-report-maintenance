@@ -1138,10 +1138,6 @@ export function FileManagement({
                                                             <span className="text-slate-600 font-semibold">
                                                                 {file.uploadedAt?.toDate?.()?.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) || 'N/A'}
                                                             </span>
-                                                            <span className="hidden sm:inline text-slate-300">•</span>
-                                                            <span className="hidden sm:inline truncate max-w-[180px] italic text-slate-500 font-normal">
-                                                                {file.uploadedByEmail}
-                                                            </span>
                                                         </div>
                                                     </div>
                                                     {file.description && (
