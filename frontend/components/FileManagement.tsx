@@ -223,14 +223,25 @@ export function FileManagement({
             setLoading(false);
         };
 
-        const qISO = query(collection(db, collectionName), orderBy('uploadedAt', 'desc'));
+        const qISO = query(collection(db, collectionName));
         const unsubscribeISO = onSnapshot(
             qISO,
             (snapshot) => {
-                isoFiles = snapshot.docs.map((doc) => ({
-                    id: doc.id,
-                    ...doc.data(),
-                })) as FileData[];
+                isoFiles = snapshot.docs
+                    .map((doc) => ({
+                        id: doc.id,
+                        ...doc.data(),
+                    }))
+                    .sort((a: any, b: any) => {
+                        const getMillis = (val: any) => {
+                            if (!val) return Date.now();
+                            if (typeof val.toMillis === 'function') return val.toMillis();
+                            if (val.seconds) return val.seconds * 1000;
+                            if (val instanceof Date) return val.getTime();
+                            return Date.now();
+                        };
+                        return getMillis(b.uploadedAt) - getMillis(a.uploadedAt);
+                    }) as FileData[];
                 updateAllFiles();
             },
             (error: any) => {
@@ -361,6 +372,7 @@ export function FileManagement({
                     status: 'uploading'
                 });
 
+                const chunkPromises = [];
                 for (let i = 0; i < totalChunks; i++) {
                     const start = i * CHUNK_SIZE;
                     const end = Math.min(start + CHUNK_SIZE, file.size);
@@ -371,16 +383,15 @@ export function FileManagement({
                         chunkBase64 = `data:${file.type};base64,${chunkBase64}`;
                     }
 
-                    await addDoc(collection(db, collectionName, fileDocRef.id, 'chunks'), {
-                        index: i,
-                        data: chunkBase64
-                    });
-
-                    await new Promise(resolve => setTimeout(resolve, 50));
-
-                    const overallProgress = ((completedCount + ((i + 1) / totalChunks)) / selectedFiles.length) * 100;
-                    setUploadProgress(Math.min(overallProgress, 99));
+                    chunkPromises.push(
+                        addDoc(collection(db, collectionName, fileDocRef.id, 'chunks'), {
+                            index: i,
+                            data: chunkBase64
+                        })
+                    );
                 }
+
+                await Promise.all(chunkPromises);
 
                 await updateDoc(doc(db, collectionName, fileDocRef.id), { status: 'completed' });
 
