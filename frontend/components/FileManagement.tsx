@@ -23,6 +23,8 @@ import {
     getDocs,
     writeBatch
 } from 'firebase/firestore';
+import { exportSLAReportToExcel } from '@/utils/excelExport';
+import { generateCMReportPDF } from '@/utils/CMReportPdfExport';
 import { useAuth } from './AuthContext';
 
 const YellowFolderIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
@@ -41,13 +43,15 @@ const FILE_CATEGORIES = [
     'MOP',
     'Risk Register',
     'D-DAY',
+    'Report CM',
+    'Form SLA/SLG',
     'SLA/SLG',
     'Service Report',
     'Custom',
     'Monthly'
 ];
 
-const ENGINEER_CATEGORIES = ['MOP', 'Risk Register', 'D-DAY'];
+const ENGINEER_CATEGORIES = ['MOP', 'Risk Register', 'D-DAY', 'Report CM', 'Form SLA/SLG'];
 
 const MAINTENANCE_TYPES = [
     'Water Leak',
@@ -124,6 +128,9 @@ interface FileData {
     description?: string;
     totalChunks: number;
     maintenanceType?: string;
+    isCorrectiveReport?: boolean;
+    reportType?: string;
+    originalReport?: any;
 }
 
 interface FileManagementProps {
@@ -131,13 +138,17 @@ interface FileManagementProps {
     allowUpload?: boolean;
     divisionName?: string;
     simpleMode?: boolean;
+    initialFolder?: string | null;
+    onBackToRoot?: () => void;
 }
 
 export function FileManagement({
     collectionName = 'files',
     allowUpload: propAllowUpload,
     divisionName,
-    simpleMode = false
+    simpleMode = false,
+    initialFolder = null,
+    onBackToRoot,
 }: FileManagementProps = {}) {
     const { user, userRole } = useAuth();
     const isAdmin = userRole === 'admin';
@@ -172,10 +183,23 @@ export function FileManagement({
     const [searchQuery, setSearchQuery] = useState('');
     const [filterCategory, setFilterCategory] = useState('All');
     const [filterYear, setFilterYear] = useState('All');
-    const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+    const [selectedFolder, setSelectedFolder] = useState<string | null>(initialFolder);
     const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null);
     const [selectedMType, setSelectedMType] = useState<string | null>(null);
     const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
+
+    useEffect(() => {
+        setSelectedFolder(initialFolder || null);
+        setSelectedQuarter(null);
+        setSelectedMType(null);
+    }, [initialFolder]);
+
+    const matchCategory = (fCategory: string, targetFolder: string | null) => {
+        if (!targetFolder) return true;
+        if (fCategory === targetFolder) return true;
+        if ((targetFolder === 'Report CM & SLA' || targetFolder === 'Report CM') && (fCategory === 'Report CM' || fCategory === 'Form SLA/SLG' || fCategory === 'SLA/SLG')) return true;
+        return false;
+    };
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [fileToDelete, setFileToDelete] = useState<FileData | null>(null);
@@ -190,17 +214,23 @@ export function FileManagement({
             return;
         }
 
-        const q = query(collection(db, collectionName), orderBy('uploadedAt', 'desc'));
+        let isoFiles: FileData[] = [];
+        let correctiveFiles: FileData[] = [];
 
-        const unsubscribe = onSnapshot(
-            q,
+        const updateAllFiles = () => {
+            setFiles([...isoFiles, ...correctiveFiles]);
+            setLoading(false);
+        };
+
+        const qISO = query(collection(db, collectionName), orderBy('uploadedAt', 'desc'));
+        const unsubscribeISO = onSnapshot(
+            qISO,
             (snapshot) => {
-                const filesData = snapshot.docs.map((doc) => ({
+                isoFiles = snapshot.docs.map((doc) => ({
                     id: doc.id,
                     ...doc.data(),
                 })) as FileData[];
-                setFiles(filesData);
-                setLoading(false);
+                updateAllFiles();
             },
             (error: any) => {
                 console.error('Error loading files:', error);
@@ -211,7 +241,46 @@ export function FileManagement({
             }
         );
 
-        return () => unsubscribe();
+        const qCorrective = query(collection(db, 'corrective_reports'), orderBy('reportedAt', 'desc'));
+        const unsubscribeCorrective = onSnapshot(
+            qCorrective,
+            (snapshot) => {
+                correctiveFiles = snapshot.docs.map((docSnap) => {
+                    const report = docSnap.data();
+                    const isSLA = report.reportType === 'SLA';
+                    const repDate = report.reportedAt?.toDate ? report.reportedAt.toDate() : (report.reportedAt ? new Date(report.reportedAt) : new Date());
+                    const qtr = report.quarter || `Q${Math.floor(repDate.getMonth() / 3) + 1}`;
+                    const yr = report.year || repDate.getFullYear().toString();
+                    return {
+                        id: `cm_${docSnap.id}`,
+                        fileName: isSLA
+                            ? (report.ticketName || report.issue || 'Form SLA/SLG')
+                            : (report.incidentName || report.issue || 'Report CM PDF'),
+                        fileSize: 1024,
+                        fileType: isSLA ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/pdf',
+                        category: isSLA ? 'Form SLA/SLG' : 'Report CM',
+                        quarter: qtr,
+                        year: yr,
+                        uploadedBy: report.reportedBy || '',
+                        uploadedByEmail: report.reportedByEmail || 'Standby Engineer',
+                        uploadedAt: report.reportedAt || report.createdAt,
+                        totalChunks: 1,
+                        isCorrectiveReport: true,
+                        reportType: report.reportType || 'CM_PDF',
+                        originalReport: { id: docSnap.id, ...report }
+                    } as FileData;
+                });
+                updateAllFiles();
+            },
+            (error: any) => {
+                console.error('Error loading corrective reports for file manager:', error);
+            }
+        );
+
+        return () => {
+            unsubscribeISO();
+            unsubscribeCorrective();
+        };
     }, [user, collectionName]);
 
     const chunkToBase64 = (blob: Blob): Promise<string> => {
@@ -405,6 +474,23 @@ export function FileManagement({
     };
 
     const handleDownload = async (file: FileData) => {
+        if (file.isCorrectiveReport) {
+            const toastId = toast.loading('Menyiapkan unduhan...');
+            try {
+                if (file.reportType === 'SLA') {
+                    await exportSLAReportToExcel(file.originalReport);
+                    toast.success('Berhasil mengunduh Laporan SLA Excel!', { id: toastId });
+                } else {
+                    await generateCMReportPDF(file.originalReport);
+                    toast.success('Berhasil mengunduh Report CM PDF!', { id: toastId });
+                }
+            } catch (err: any) {
+                console.error('Failed to export corrective report:', err);
+                toast.error('Gagal mengunduh laporan', { id: toastId });
+            }
+            return;
+        }
+
         try {
             const toastId = toast.loading('Menyiapkan unduhan...');
 
@@ -765,7 +851,12 @@ export function FileManagement({
                     <div className="flex items-center gap-2 text-sm sm:text-base font-semibold text-slate-800 flex-wrap min-w-0">
                         <YellowFolderIcon className="w-5 h-5 flex-shrink-0" />
                         <span 
-                            onClick={() => { setSelectedFolder(null); setSelectedQuarter(null); setSelectedMType(null); }}
+                            onClick={() => {
+                                setSelectedFolder(null);
+                                setSelectedQuarter(null);
+                                setSelectedMType(null);
+                                if (onBackToRoot) onBackToRoot();
+                            }}
                             className={`hover:text-amber-600 transition-colors ${selectedFolder ? 'cursor-pointer text-slate-500 hover:underline' : 'text-slate-900 font-bold'}`}
                         >
                             Folder Utama
@@ -803,14 +894,15 @@ export function FileManagement({
                     {(selectedFolder || selectedQuarter || selectedMType) && !searchQuery && (
                         <button
                             onClick={() => {
-                                if (selectedMType) setSelectedMType(null);
-                                else if (selectedQuarter) setSelectedQuarter(null);
-                                else setSelectedFolder(null);
+                                setSelectedMType(null);
+                                setSelectedQuarter(null);
+                                setSelectedFolder(null);
+                                if (onBackToRoot) onBackToRoot();
                             }}
-                            className="text-xs sm:text-sm text-slate-600 hover:text-amber-700 font-semibold flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-amber-50 border border-slate-200 rounded-lg transition-all shadow-2xs"
+                            className="text-xs sm:text-sm text-slate-600 hover:text-amber-700 font-semibold flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-amber-50 border border-slate-200 rounded-lg transition-all shadow-2xs cursor-pointer"
                         >
                             <X className="w-4 h-4" />
-                            Kembali ke {selectedMType ? 'Kuartal' : selectedQuarter ? 'Folder' : 'Utama'}
+                            Kembali ke Folder Utama
                         </button>
                     )}
                 </div>
@@ -852,7 +944,7 @@ export function FileManagement({
                 ) : !searchQuery && selectedFolder && !selectedQuarter ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         {QUARTERS.map((quarter) => {
-                            const fileCount = filteredFiles.filter(f => f.category === selectedFolder && f.quarter === quarter).length;
+                            const fileCount = filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && f.quarter === quarter).length;
                             return (
                                 <motion.div
                                     key={quarter}
@@ -884,7 +976,7 @@ export function FileManagement({
                                 if (type === 'Generator' && (fMType.includes('Generator') || fMType.includes('Genset'))) return true;
                                 return false;
                             };
-                            const typeFiles = filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && isTypeMatch(f.maintenanceType));
+                            const typeFiles = filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && f.quarter === selectedQuarter && isTypeMatch(f.maintenanceType));
                             const fileCount = typeFiles.length;
 
                             return (
@@ -913,7 +1005,7 @@ export function FileManagement({
                         {(searchQuery
                             ? filteredFiles
                             : filteredFiles.filter(f =>
-                                f.category === selectedFolder &&
+                                matchCategory(f.category, selectedFolder) &&
                                 f.quarter === selectedQuarter &&
                                 (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '')
                                     ? (selectedMType && (
@@ -936,11 +1028,11 @@ export function FileManagement({
                                             <input
                                                 type="checkbox"
                                                 checked={
-                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).length > 0 &&
-                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).every(f => selectedFileIds.includes(f.id))
+                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).length > 0 &&
+                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).every(f => selectedFileIds.includes(f.id))
                                                 }
                                                 onChange={(e) => {
-                                                    const currentFiles = searchQuery ? filteredFiles : filteredFiles.filter(f => f.category === selectedFolder && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true));
+                                                    const currentFiles = searchQuery ? filteredFiles : filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && f.quarter === selectedQuarter && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true));
                                                     if (e.target.checked) {
                                                         const allIds = currentFiles.map(f => f.id);
                                                         setSelectedFileIds(prev => [...new Set([...prev, ...allIds])]);
@@ -976,9 +1068,9 @@ export function FileManagement({
                                 {(searchQuery
                                     ? filteredFiles
                                     : filteredFiles.filter(f =>
-                                        f.category === selectedFolder &&
+                                        matchCategory(f.category, selectedFolder) &&
                                         f.quarter === selectedQuarter &&
-                                        (['MOP', 'JSEA', 'PTW', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true)
+                                        (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true)
                                     )
                                 ).map((file) => (
                                     <motion.div

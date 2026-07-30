@@ -129,6 +129,7 @@
   }
 
   html {
+    zoom: 80%;
     font-size: var(--font-size);
   }
 

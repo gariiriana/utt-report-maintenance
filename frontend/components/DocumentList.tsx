@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, User, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ClipboardList, FileCheck, Camera, FolderArchive } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, User, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive } from 'lucide-react';
 import { collection, query, getDocs, deleteDoc, doc, where, updateDoc, deleteField } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
@@ -12,6 +12,7 @@ import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { FileManagement } from './FileManagement';
 import { generateHSEPdf } from '@/utils/HSEPdfExport';
 import { generateATSServiceReportPDF, generateFCUServiceReportPDF, generatePJUServiceReportPDF, generatePDUServiceReportPDF, generateCTReportPDF, generateGeneratorReportPDF, generateACSplitReportPDF, generateTrafoReportPDF, generateCapacitorbankReportPDF } from '@/service_reports';
 import { getDoc } from 'firebase/firestore';
@@ -78,7 +79,7 @@ interface DocumentListProps {
 export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   const { user, userRole, companyType } = useAuth();
   const isAdmin = userRole === 'admin';
-  const isPrivileged = isAdmin || userRole === 'manager' || userRole === 'site_manager' || userRole === 'hse' || 
+  const isPrivileged = isAdmin || userRole === 'manager' || userRole === 'site_manager' || userRole === 'hse' ||
     userRole === 'dirut' || userRole === 'direksiSDM' || userRole === 'DireksiKeuangan';
   const isEngineer = userRole === 'engineer' || userRole === 'standby_engineer' || userRole === 'tde' || userRole === 'cbre';
   const canDelete = isPrivileged || isEngineer;
@@ -96,17 +97,20 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<ExcelDocument | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
-  
+
   const [currentLevel, setCurrentLevel] = useState<'root' | 'category' | 'maintenance' | 'month' | 'week'>('root');
   const [selectedCategory, setSelectedCategory] = useState<'inspection' | 'sio' | 'silo' | null>(null);
   const [selectedMaintenance, setSelectedMaintenance] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
 
-  const [dmeLevel, setDmeLevel] = useState<'account' | 'month' | 'date' | 'documents'>('account');
+  const [dmeLevel, setDmeLevel] = useState<'root' | 'account' | 'month' | 'date' | 'documents' | 'management_files'>('root');
+  const [dmeSelectedFolder, setDmeSelectedFolder] = useState<string | null>(null);
   const [dmeSelectedAccount, setDmeSelectedAccount] = useState<string | null>(null);
   const [dmeSelectedMonth, setDmeSelectedMonth] = useState<string | null>(null);
   const [dmeSelectedDate, setDmeSelectedDate] = useState<string | null>(null);
+  const [managementFilesCount, setManagementFilesCount] = useState(0);
+  const [managementFilesSize, setManagementFilesSize] = useState(0);
 
   const getMonthYearString = (date: Date) => {
     return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
@@ -266,6 +270,22 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         });
 
         setDocuments(allDocs);
+
+        if (userRole === 'DME') {
+          try {
+            const [filesSnap, correctiveSnap] = await Promise.all([
+              getDocs(query(collection(db, 'files'))),
+              getDocs(query(collection(db, 'corrective_reports')))
+            ]);
+            let fSize = 0;
+            filesSnap.forEach(d => { fSize += (d.data().fileSize || 0); });
+            fSize += correctiveSnap.size * 1024;
+            setManagementFilesCount(filesSnap.size + correctiveSnap.size);
+            setManagementFilesSize(fSize);
+          } catch (err) {
+            console.error('Error fetching management files count:', err);
+          }
+        }
       };
 
       await Promise.race([fetchAll(), timeoutPromise]);
@@ -340,14 +360,14 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       setBulkDeleting(true);
       const toastId = toast.loading('Menolak pengajuan hapus...');
       const collectionName = documentToDelete.documentType === 'hse' ? 'hse' : documentToDelete.documentType + '_documents';
-      
+
       const docRef = doc(db, collectionName, documentToDelete.id);
       await updateDoc(docRef, {
         deleteRequested: deleteField(),
         deleteRequestedBy: deleteField(),
         deleteReason: deleteField()
       });
-      
+
       toast.success('Pengajuan hapus ditolak', { id: toastId });
       setDeleteModalOpen(false);
       setDocumentToDelete(null);
@@ -833,34 +853,158 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   }, [documents, filteredDocuments]);
 
   const renderDmeContent = () => {
-    if (dmeLevel === 'account') {
-      const uniqueAccounts = Array.from(new Set(filteredDocuments.map(d => d.createdBy))).sort();
+    const uniqueAccounts = Array.from(new Set(filteredDocuments.map(d => d.createdBy))).sort();
+
+    const managementFolders = [
+      { name: 'D-DAY', desc: 'Dokumen D-DAY & Prosedur Operational' },
+      { name: 'Laporan Harian', desc: 'Laporan Harian Maintenance Data Center' },
+      { name: 'MOP', desc: 'Method of Procedure (MOP) Standar' },
+      { name: 'Monthly', desc: 'Laporan Rekap Bulanan Project' },
+      { name: 'Risk Register', desc: 'Matriks & Analisa Risiko Operasional' },
+      { name: 'JSEA', desc: 'Job Safety Environment Analysis' },
+      { name: 'Report CM & SLA', desc: 'Laporan CM & Form SLA/SLG Corrective' },
+    ];
+
+    if (dmeLevel === 'root') {
       return (
-        <div className="bg-slate-950/20 p-4 rounded-2xl border border-slate-800/40 w-full max-w-6xl">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-2 mb-3">Daftar Akun Maintenance</div>
+        <div className="bg-white/90 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 shadow-xl w-full max-w-6xl space-y-5">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200">
+                <Folder className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Arsip Dokumen</h3>
+                <p className="text-xs text-slate-500 font-medium">Pilih folder utama untuk melihat arsip laporan & dokumentasi maintenance</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* PM Folder Card */}
+            <motion.button
+              whileHover={{ y: -2, scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              onClick={() => setDmeLevel('account')}
+              className="flex items-center gap-3.5 p-3.5 bg-white hover:bg-amber-50/60 border border-slate-200 hover:border-amber-400 rounded-xl transition-all text-left group shadow-xs hover:shadow-md cursor-pointer"
+            >
+              <div className="p-2.5 bg-amber-50 rounded-xl group-hover:bg-amber-100 transition-colors shrink-0">
+                <Folder className="w-5 h-5 text-amber-600" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-sm font-bold text-slate-900 group-hover:text-amber-900 transition-colors truncate block">
+                  Folder PM (Preventive Maintenance)
+                </span>
+                <span className="text-xs font-medium text-slate-500 block mt-0.5">
+                  {uniqueAccounts.length} Akun Maintenance
+                </span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-amber-600 transition-colors shrink-0" />
+            </motion.button>
+
+            {/* Management File Folders */}
+            {managementFolders.map((folder) => (
+              <motion.button
+                key={folder.name}
+                whileHover={{ y: -2, scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                onClick={() => {
+                  setDmeSelectedFolder(folder.name);
+                  setDmeLevel('management_files');
+                }}
+                className="flex items-center gap-3.5 p-3.5 bg-white hover:bg-amber-50/60 border border-slate-200 hover:border-amber-400 rounded-xl transition-all text-left group shadow-xs hover:shadow-md cursor-pointer"
+              >
+                <div className="p-2.5 bg-amber-50 rounded-xl group-hover:bg-amber-100 transition-colors shrink-0">
+                  <Folder className="w-5 h-5 text-amber-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-sm font-bold text-slate-900 group-hover:text-amber-900 transition-colors truncate block">
+                    {folder.name}
+                  </span>
+                  <span className="text-xs font-medium text-slate-500 block mt-0.5 truncate">
+                    {folder.desc}
+                  </span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-amber-600 transition-colors shrink-0" />
+              </motion.button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (dmeLevel === 'management_files') {
+      return (
+        <div className="space-y-4 w-full max-w-6xl">
+          <div className="bg-white/90 backdrop-blur-xl p-4 rounded-2xl border border-slate-200 shadow-xl flex items-center justify-between">
+            <button
+              onClick={() => {
+                setDmeSelectedFolder(null);
+                setDmeLevel('root');
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg transition-colors text-xs font-bold cursor-pointer border border-slate-200"
+            >
+              <ChevronLeft className="w-4 h-4" /> Kembali ke Folder Utama
+            </button>
+            <div className="text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1 rounded-lg border border-amber-200">
+              {dmeSelectedFolder ? `Folder: ${dmeSelectedFolder}` : 'Manajemen File & Dokumentasi'}
+            </div>
+          </div>
+          <FileManagement allowUpload={false} initialFolder={dmeSelectedFolder} onBackToRoot={() => { setDmeSelectedFolder(null); setDmeLevel('root'); }} />
+        </div>
+      );
+    }
+
+    if (dmeLevel === 'account') {
+      return (
+        <div className="bg-white/90 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 shadow-xl w-full max-w-6xl">
+          <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-100 flex-wrap gap-3">
+            <button
+              onClick={() => setDmeLevel('root')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg transition-colors text-xs font-bold cursor-pointer border border-slate-200"
+            >
+              <ChevronLeft className="w-4 h-4" /> Kembali ke Folder Utama
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Folder: Report PM</span>
+              <span className="px-2.5 py-0.5 bg-amber-50 text-amber-700 text-xs font-bold rounded-full border border-amber-200">
+                {uniqueAccounts.length} Akun
+              </span>
+            </div>
+          </div>
+
           {uniqueAccounts.length === 0 ? (
-            <div className="text-center py-8 text-sm text-slate-500">Tidak ada dokumen ditemukan</div>
+            <div className="text-center py-12 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <Folder className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-slate-600">Tidak ada dokumen ditemukan</p>
+            </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {uniqueAccounts.map((account) => {
                 const count = filteredDocuments.filter(d => d.createdBy === account).length;
                 return (
                   <motion.button
                     key={account}
-                    whileHover={{ x: 3 }}
+                    whileHover={{ y: -2, scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
                     onClick={() => {
                       setDmeSelectedAccount(account);
                       setDmeLevel('month');
                     }}
-                    className="flex items-center gap-3 py-2 px-3 hover:bg-slate-800/30 rounded-lg transition text-left group border border-transparent"
+                    className="flex items-center gap-3.5 p-3.5 bg-white hover:bg-amber-50/60 border border-slate-200 hover:border-amber-400 rounded-xl transition-all text-left group shadow-xs hover:shadow-md cursor-pointer"
                   >
-                    <Folder className="w-4 h-4 text-amber-500 group-hover:scale-105 transition-transform flex-shrink-0" />
-                    <span className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors truncate">
-                      {account}
-                    </span>
-                    <span className="ml-auto text-xs text-slate-500 font-medium whitespace-nowrap pl-2">
-                      {count} Laporan
-                    </span>
+                    <div className="p-2.5 bg-amber-50 rounded-xl group-hover:bg-amber-100 transition-colors shrink-0">
+                      <Folder className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-sm font-bold text-slate-900 group-hover:text-amber-900 transition-colors truncate block">
+                        {account}
+                      </span>
+                      <span className="text-xs font-medium text-slate-500 block mt-0.5">
+                        {count} Laporan
+                      </span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-amber-600 transition-colors shrink-0" />
                   </motion.button>
                 );
               })}
@@ -880,42 +1024,55 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       });
 
       return (
-        <div className="space-y-4 bg-slate-950/20 p-4 rounded-2xl border border-slate-800/40 w-full max-w-6xl">
-          <button
-            onClick={() => {
-              setDmeSelectedAccount(null);
-              setDmeLevel('account');
-            }}
-            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium px-1"
-          >
-            <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Akun
-          </button>
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-2">
-            Folder: {dmeSelectedAccount}
+        <div className="bg-white/90 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 shadow-xl w-full max-w-6xl space-y-5">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-3">
+            <button
+              onClick={() => {
+                setDmeSelectedAccount(null);
+                setDmeLevel('account');
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg transition-colors text-xs font-bold cursor-pointer border border-slate-200"
+            >
+              <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Akun
+            </button>
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <span>Folder:</span>
+              <span className="px-2.5 py-1 bg-amber-50 text-amber-800 rounded-md border border-amber-200">{dmeSelectedAccount}</span>
+            </div>
           </div>
+
           {sortedMonths.length === 0 ? (
-            <div className="text-center py-8 text-sm text-slate-500">Tidak ada folder bulan</div>
+            <div className="text-center py-12 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <Folder className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-slate-600">Tidak ada folder bulan</p>
+            </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {sortedMonths.map((month) => {
                 const count = accountDocs.filter(d => getMonthYearString(d.createdAt) === month).length;
                 return (
                   <motion.button
                     key={month}
-                    whileHover={{ x: 3 }}
+                    whileHover={{ y: -2, scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
                     onClick={() => {
                       setDmeSelectedMonth(month);
                       setDmeLevel('date');
                     }}
-                    className="flex items-center gap-3 py-2 px-3 hover:bg-slate-800/30 rounded-lg transition text-left group border border-transparent"
+                    className="flex items-center gap-3.5 p-3.5 bg-white hover:bg-amber-50/60 border border-slate-200 hover:border-amber-400 rounded-xl transition-all text-left group shadow-xs hover:shadow-md cursor-pointer"
                   >
-                    <Folder className="w-4 h-4 text-amber-500 group-hover:scale-105 transition-transform flex-shrink-0" />
-                    <span className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">
-                      {month}
-                    </span>
-                    <span className="ml-auto text-xs text-slate-500 font-medium whitespace-nowrap pl-2">
-                      {count} Laporan
-                    </span>
+                    <div className="p-2.5 bg-amber-50 rounded-xl group-hover:bg-amber-100 transition-colors shrink-0">
+                      <Folder className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-sm font-bold text-slate-900 group-hover:text-amber-900 transition-colors truncate block">
+                        {month}
+                      </span>
+                      <span className="text-xs font-medium text-slate-500 block mt-0.5">
+                        {count} Laporan
+                      </span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-amber-600 transition-colors shrink-0" />
                   </motion.button>
                 );
               })}
@@ -939,42 +1096,57 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       });
 
       return (
-        <div className="space-y-4 bg-slate-950/20 p-4 rounded-2xl border border-slate-800/40 w-full max-w-6xl">
-          <button
-            onClick={() => {
-              setDmeSelectedMonth(null);
-              setDmeLevel('month');
-            }}
-            className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium px-1"
-          >
-            <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Bulan
-          </button>
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-2">
-            Folder: {dmeSelectedAccount} / {dmeSelectedMonth}
+        <div className="bg-white/90 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 shadow-xl w-full max-w-6xl space-y-5">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-3">
+            <button
+              onClick={() => {
+                setDmeSelectedMonth(null);
+                setDmeLevel('month');
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg transition-colors text-xs font-bold cursor-pointer border border-slate-200"
+            >
+              <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Bulan
+            </button>
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider flex-wrap">
+              <span>Folder:</span>
+              <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200">{dmeSelectedAccount}</span>
+              <span>/</span>
+              <span className="px-2 py-0.5 bg-amber-50 text-amber-800 rounded border border-amber-200">{dmeSelectedMonth}</span>
+            </div>
           </div>
+
           {sortedDates.length === 0 ? (
-            <div className="text-center py-8 text-sm text-slate-500">Tidak ada folder tanggal</div>
+            <div className="text-center py-12 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+              <Folder className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-slate-600">Tidak ada folder tanggal</p>
+            </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {sortedDates.map((dateStr) => {
                 const count = monthDocs.filter(d => getFullDateString(d.createdAt) === dateStr).length;
                 return (
                   <motion.button
                     key={dateStr}
-                    whileHover={{ x: 3 }}
+                    whileHover={{ y: -2, scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
                     onClick={() => {
                       setDmeSelectedDate(dateStr);
                       setDmeLevel('documents');
                     }}
-                    className="flex items-center gap-3 py-2 px-3 hover:bg-slate-800/30 rounded-lg transition text-left group border border-transparent"
+                    className="flex items-center gap-3.5 p-3.5 bg-white hover:bg-amber-50/60 border border-slate-200 hover:border-amber-400 rounded-xl transition-all text-left group shadow-xs hover:shadow-md cursor-pointer"
                   >
-                    <Folder className="w-4 h-4 text-amber-500 group-hover:scale-105 transition-transform flex-shrink-0" />
-                    <span className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">
-                      {dateStr}
-                    </span>
-                    <span className="ml-auto text-xs text-slate-500 font-medium whitespace-nowrap pl-2">
-                      {count} Laporan
-                    </span>
+                    <div className="p-2.5 bg-amber-50 rounded-xl group-hover:bg-amber-100 transition-colors shrink-0">
+                      <Folder className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="text-sm font-bold text-slate-900 group-hover:text-amber-900 transition-colors truncate block">
+                        {dateStr}
+                      </span>
+                      <span className="text-xs font-medium text-slate-500 block mt-0.5">
+                        {count} Laporan
+                      </span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-amber-600 transition-colors shrink-0" />
                   </motion.button>
                 );
               })}
@@ -993,18 +1165,25 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
     const dateDocs = monthDocs.filter(d => getFullDateString(d.createdAt) === dmeSelectedDate);
 
     return (
-      <div className="space-y-4 w-full max-w-4xl bg-slate-950/10 p-4 rounded-2xl border border-slate-800/20">
-        <button
-          onClick={() => {
-            setDmeSelectedDate(null);
-            setDmeLevel('date');
-          }}
-          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors text-sm font-medium px-1"
-        >
-          <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Tanggal
-        </button>
-        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-2">
-          Folder: {dmeSelectedAccount} / {dmeSelectedMonth} / {dmeSelectedDate}
+      <div className="space-y-4 w-full max-w-6xl bg-white/90 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 shadow-xl">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-3">
+          <button
+            onClick={() => {
+              setDmeSelectedDate(null);
+              setDmeLevel('date');
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg transition-colors text-xs font-bold cursor-pointer border border-slate-200"
+          >
+            <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Tanggal
+          </button>
+          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider flex-wrap">
+            <span>Folder:</span>
+            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200">{dmeSelectedAccount}</span>
+            <span>/</span>
+            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200">{dmeSelectedMonth}</span>
+            <span>/</span>
+            <span className="px-2 py-0.5 bg-amber-50 text-amber-800 rounded border border-amber-200">{dmeSelectedDate}</span>
+          </div>
         </div>
         <div className="grid grid-cols-1 gap-4">
           {dateDocs.map((document, index) => renderDocumentCard(document, index))}
@@ -1071,7 +1250,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         filteredDocuments
           .filter(d => d.hseType === 'inspection')
           .forEach(doc => monthGroups.add(getMonthYearString(doc.createdAt)));
-        
+
         const sortedMonths = Array.from(monthGroups).sort((a, b) => {
           const [, yearA] = a.split(' ');
           const [, yearB] = b.split(' ');
@@ -1187,7 +1366,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       );
     }
 
-    const displayDocs = currentLevel === 'week' 
+    const displayDocs = currentLevel === 'week'
       ? filteredDocuments.filter(d => d.hseType === 'inspection' && getMonthYearString(d.createdAt) === selectedMonth && getWeekOfMonth(d.createdAt) === selectedWeek)
       : filteredDocuments.filter(d => d.hseType === selectedCategory && d.maintenanceType === selectedMaintenance);
 
@@ -1237,11 +1416,10 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
               {document.documentType.toUpperCase()}
             </span>
             {(document.createdBy === 'ats@gmail.com' || document.createdBy === 'fcu@gmail.com' || document.atsCustomerInfo || document.fcuCustomerInfo) && (
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                (document.atsCustomerInfo || document.fcuCustomerInfo)
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${(document.atsCustomerInfo || document.fcuCustomerInfo)
                   ? 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30'
                   : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
-              }`}>
+                }`}>
                 {(document.atsCustomerInfo || document.fcuCustomerInfo) ? 'FOTO + SR' : 'FOTO SAJA'}
               </span>
             )}
@@ -1262,8 +1440,8 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
               <span>
                 {(() => {
                   const d = new Date(document.maintenanceTime);
-                  return isNaN(d.getTime()) 
-                    ? document.maintenanceTime 
+                  return isNaN(d.getTime())
+                    ? document.maintenanceTime
                     : d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
                 })()}
               </span>
@@ -1334,13 +1512,12 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
                 openDeleteModal(document);
               }}
               disabled={document.deleteRequested && !isAdmin}
-              className={`flex-1 sm:flex-initial p-2.5 sm:p-3 rounded-lg transition border ${
-                document.deleteRequested 
-                  ? isAdmin 
-                    ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/30' 
+              className={`flex-1 sm:flex-initial p-2.5 sm:p-3 rounded-lg transition border ${document.deleteRequested
+                  ? isAdmin
+                    ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border-amber-500/30'
                     : 'bg-slate-800 text-slate-500 border-slate-700/50 cursor-not-allowed opacity-50'
                   : 'bg-red-600/10 hover:bg-red-600/20 text-red-400 border-red-500/20'
-              }`}
+                }`}
               title={document.deleteRequested ? isAdmin ? "Tinjau Pengajuan Hapus" : "Menunggu Persetujuan Hapus" : "Delete"}
             >
               <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 mx-auto" />
@@ -1385,7 +1562,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 relative z-10">
-      {}
+      { }
       <div className="bg-white/90 backdrop-blur-xl rounded-3xl p-4 sm:p-6 mb-4 sm:mb-6 border border-sky-100/90 shadow-xl shadow-sky-900/5 text-slate-800">
         <div className="mb-4 sm:mb-6">
           <h1 className="text-lg sm:text-2xl font-black text-slate-900">Arsip Dokumen & Laporan</h1>
@@ -1393,20 +1570,20 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         </div>
 
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-  
+        <div className={`grid grid-cols-1 ${userRole === 'DME' ? 'md:grid-cols-3' : 'md:grid-cols-4'} gap-3 sm:gap-4`}>
+
           <div className="relative">
             <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari nama maintenance..."
+              placeholder={userRole === 'DME' ? "Cari dokumen / file..." : "Cari nama maintenance..."}
               className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 placeholder-slate-400 text-sm sm:text-base font-medium"
             />
           </div>
 
-  
+
           <div className="flex gap-2 items-center">
             <div className="relative flex-1">
               <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
@@ -1431,7 +1608,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
             </div>
           </div>
 
-  
+
           <div className="relative">
             <Filter className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
             <select
@@ -1445,91 +1622,101 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
             </select>
           </div>
 
-  
-          <div className="relative">
-            <FileType className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value as any)}
-              className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-sm sm:text-base font-medium"
-              title="Filter tipe dokumen"
-            >
-              <option value="all">{isAdmin ? 'Semua Pengajuan' : 'Semua Tipe'}</option>
-              <option value="excel">Excel</option>
-              <option value="pdf">PDF</option>
-              <option value="hse">HSE</option>
-            </select>
-          </div>
+          {userRole !== 'DME' && (
+            <div className="relative">
+              <FileType className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as any)}
+                className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-sm sm:text-base font-medium"
+                title="Filter tipe dokumen"
+              >
+                <option value="all">{isAdmin ? 'Semua Pengajuan' : 'Semua Tipe'}</option>
+                <option value="excel">Excel</option>
+                <option value="pdf">PDF</option>
+                <option value="hse">HSE</option>
+              </select>
+            </div>
+          )}
         </div>
 
-        {/* Status Filter Tabs (Foto Saja vs Foto + Service Report) - Hidden in HSE Role */}
-        {filterOverride !== 'hse_utt' && (
-          <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-200 text-xs font-semibold overflow-x-auto pb-1">
-            <button
-              onClick={() => setSrStatusFilter('all')}
-              className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 whitespace-nowrap ${
-                srStatusFilter === 'all'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20 font-bold'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 border border-slate-200'
-              }`}
-            >
-              <FolderArchive className="w-4 h-4 text-blue-600" />
-              <span>Semua Dokumen</span>
-              <span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px] font-bold">{documents.length}</span>
-            </button>
+        {/* Status Filter Tabs (Foto Saja vs Foto + Service Report) - Hidden in HSE Role & DME Role */}
+        {filterOverride !== 'hse_utt' && userRole !== 'DME' && (
+          <div className="mt-4 pt-4 border-t border-slate-200">
+            <div className="inline-flex p-1 bg-slate-100/90 rounded-xl border border-slate-200 text-xs font-semibold gap-1 overflow-x-auto max-w-full">
+              <button
+                onClick={() => setSrStatusFilter('all')}
+                className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-2 whitespace-nowrap text-xs cursor-pointer ${srStatusFilter === 'all'
+                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80 font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-medium'
+                  }`}
+              >
+                <FolderArchive className={`w-3.5 h-3.5 ${srStatusFilter === 'all' ? 'text-amber-600' : 'text-slate-400'}`} />
+                <span>Semua Dokumen</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${srStatusFilter === 'all' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-slate-200/70 text-slate-600'
+                  }`}>
+                  {documents.length}
+                </span>
+              </button>
 
-            <button
-              onClick={() => setSrStatusFilter('photos_only')}
-              className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 whitespace-nowrap ${
-                srStatusFilter === 'photos_only'
-                  ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20 font-bold'
-                  : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
-              }`}
-            >
-              <Camera className="w-4 h-4 text-amber-600" />
-              <span>Dokumentasi Foto Saja (Belum SR)</span>
-              <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                {documents.filter(d => !(d.atsCustomerInfo || d.fcuCustomerInfo || d.pjuCustomerInfo || d.pduCustomerInfo)).length}
-              </span>
-            </button>
+              <button
+                onClick={() => setSrStatusFilter('photos_only')}
+                className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-2 whitespace-nowrap text-xs cursor-pointer ${srStatusFilter === 'photos_only'
+                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80 font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-medium'
+                  }`}
+              >
+                <Camera className={`w-3.5 h-3.5 ${srStatusFilter === 'photos_only' ? 'text-amber-600' : 'text-slate-400'}`} />
+                <span>Dokumentasi Foto Saja (Belum SR)</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${srStatusFilter === 'photos_only' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-slate-200/70 text-slate-600'
+                  }`}>
+                  {documents.filter(d => !(d.atsCustomerInfo || d.fcuCustomerInfo || d.pjuCustomerInfo || d.pduCustomerInfo)).length}
+                </span>
+              </button>
 
-            <button
-              onClick={() => setSrStatusFilter('with_sr')}
-              className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 whitespace-nowrap ${
-                srStatusFilter === 'with_sr'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
-                  : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
-              }`}
-            >
-              <FileCheck className="w-4 h-4 text-indigo-600" />
-              <span>Dokumen Lengkap (Foto + SR)</span>
-              <span className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                {documents.filter(d => Boolean(d.atsCustomerInfo || d.fcuCustomerInfo || d.pjuCustomerInfo || d.pduCustomerInfo)).length}
-              </span>
-            </button>
+              <button
+                onClick={() => setSrStatusFilter('with_sr')}
+                className={`px-3.5 py-2 rounded-lg transition-all flex items-center gap-2 whitespace-nowrap text-xs cursor-pointer ${srStatusFilter === 'with_sr'
+                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200/80 font-bold'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 font-medium'
+                  }`}
+              >
+                <FileCheck className={`w-3.5 h-3.5 ${srStatusFilter === 'with_sr' ? 'text-amber-600' : 'text-slate-400'}`} />
+                <span>Dokumen Lengkap (Foto + SR)</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${srStatusFilter === 'with_sr' ? 'bg-amber-50 text-amber-800 border border-amber-200' : 'bg-slate-200/70 text-slate-600'
+                  }`}>
+                  {documents.filter(d => Boolean(d.atsCustomerInfo || d.fcuCustomerInfo || d.pjuCustomerInfo || d.pduCustomerInfo)).length}
+                </span>
+              </button>
+            </div>
           </div>
         )}
 
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mt-4">
-          <div className="bg-white/80 rounded-xl p-3 border border-sky-100 shadow-sm">
-            <p className="text-xs text-slate-500 font-medium">Total Dokumen</p>
-            <p className="text-lg sm:text-xl font-black text-slate-900">{documents.length}</p>
-          </div>
-          <div className="bg-white/80 rounded-xl p-3 border border-sky-100 shadow-sm">
-            <p className="text-xs text-slate-500 font-medium">Hasil Filter</p>
-            <p className="text-lg sm:text-xl font-black text-blue-600">{filteredDocuments.length}</p>
-          </div>
-          <div className="bg-white/80 rounded-xl p-3 border border-sky-100 shadow-sm">
-            <p className="text-xs text-slate-500 font-medium">Total Size</p>
-            <p className="text-lg sm:text-xl font-black text-emerald-600">
-              {(documents.reduce((sum, doc) => sum + doc.fileSize, 0) / (1024 * 1024)).toFixed(2)} MB
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 mt-4">
+          <div className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-2xs">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Dokumen</p>
+            <p className="text-xl font-bold text-slate-900 mt-1">
+              {userRole === 'DME' ? documents.length + managementFilesCount : documents.length}
             </p>
           </div>
-          <div className="bg-white/80 rounded-xl p-3 border border-sky-100 shadow-sm">
-            <p className="text-xs text-slate-500 font-medium">Filter Aktif</p>
-            <p className="text-lg sm:text-xl font-black text-purple-600">
-              {(searchQuery || startDate || endDate || filterType !== 'all') ? 'Yes' : 'No'}
+          <div className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-2xs">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Hasil Filter</p>
+            <p className="text-xl font-bold text-slate-900 mt-1">
+              {userRole === 'DME' && !(searchQuery || startDate || endDate) ? filteredDocuments.length + managementFilesCount : filteredDocuments.length}
+            </p>
+          </div>
+          <div className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-2xs">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Ukuran</p>
+            <p className="text-xl font-bold text-slate-900 mt-1">
+              {((documents.reduce((sum, doc) => sum + doc.fileSize, 0) + (userRole === 'DME' ? managementFilesSize : 0)) / (1024 * 1024)).toFixed(2)} MB
+            </p>
+          </div>
+          <div className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-2xs">
+            <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status Filter</p>
+            <p className="text-sm font-bold text-slate-700 mt-1.5 flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${(searchQuery || startDate || endDate || (filterType !== 'all' && userRole !== 'DME') || (srStatusFilter !== 'all' && userRole !== 'DME')) ? 'bg-amber-500' : 'bg-slate-300'
+                }`} />
+              {(searchQuery || startDate || endDate || (filterType !== 'all' && userRole !== 'DME') || (srStatusFilter !== 'all' && userRole !== 'DME')) ? 'Filter Aktif' : 'Tidak Ada'}
             </p>
           </div>
         </div>

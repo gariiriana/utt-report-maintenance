@@ -76,31 +76,54 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     approvedByTitle: '(Assistant manager HDC Facility Management)'
   });
 
-  // Load existing report if editing
+  // Load draft or existing report if editing
   useEffect(() => {
-    if (!editId) return;
-    const fetchReport = async () => {
-      try {
-        const docSnap = await getDoc(doc(db, 'corrective_reports', editId));
-        if (docSnap.exists()) {
-          const data = docSnap.data() as any;
-          setFormData({
-            ...formData,
-            ...data,
-            spareparts: data.spareparts || [
-              { name: '-', brand: '-', qty: '-' },
-              { name: '-', brand: '-', qty: '-' }
-            ],
-            photos: data.photos || (data.photoBase64 ? [{ photoBase64: data.photoBase64 }] : [])
-          });
+    if (editId) {
+      const fetchReport = async () => {
+        try {
+          const docSnap = await getDoc(doc(db, 'corrective_reports', editId));
+          if (docSnap.exists()) {
+            const data = docSnap.data() as any;
+            setFormData({
+              ...formData,
+              ...data,
+              spareparts: data.spareparts || [
+                { name: '-', brand: '-', qty: '-' },
+                { name: '-', brand: '-', qty: '-' }
+              ],
+              photos: data.photos || (data.photoBase64 ? [{ photoBase64: data.photoBase64 }] : [])
+            });
+          }
+        } catch (err) {
+          console.error('Failed to fetch CM report:', err);
+          toast.error('Gagal memuat data laporan CM');
         }
-      } catch (err) {
-        console.error('Failed to fetch CM report:', err);
-        toast.error('Gagal memuat data laporan CM');
+      };
+      fetchReport();
+    } else {
+      const savedDraft = localStorage.getItem('cm_report_draft');
+      if (savedDraft) {
+        try {
+          const parsed = JSON.parse(savedDraft);
+          if (parsed.formData) {
+            setFormData(parsed.formData);
+          }
+          if (parsed.currentStep) {
+            setCurrentStep(parsed.currentStep);
+          }
+        } catch (e) {
+          console.error('Failed to parse CM draft', e);
+        }
       }
-    };
-    fetchReport();
+    }
   }, [editId]);
+
+  // Auto-save draft to localStorage whenever form changes (only when not editing)
+  useEffect(() => {
+    if (!editId) {
+      localStorage.setItem('cm_report_draft', JSON.stringify({ formData, currentStep }));
+    }
+  }, [formData, currentStep, editId]);
 
   // Handle Photo Upload
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -199,6 +222,10 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
   // Handle Export PDF
   const handleExportPDF = async () => {
     await generateCMReportPDF(formData);
+    if (!editId) {
+      localStorage.removeItem('cm_report_draft');
+      toast.success('Draf form berhasil diekspor & dibersihkan!');
+    }
   };
 
   // Submit Handler
@@ -225,6 +252,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
         toast.success('Laporan CM berhasil diperbarui!');
       } else {
         await addDoc(collection(db, 'corrective_reports'), reportPayload);
+        localStorage.removeItem('cm_report_draft');
         toast.success('Laporan CM berhasil disimpan!');
       }
       onSuccess();
@@ -239,56 +267,60 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
   return (
     <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xl">
       {/* Header Modal */}
-      <div className="bg-gradient-to-r from-red-600 to-rose-700 p-5 text-white flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-white/10 rounded-xl backdrop-blur-xs">
-            <FileText className="w-6 h-6 text-white" />
+      <div className="bg-gradient-to-r from-red-600 to-rose-700 p-3.5 sm:p-5 text-white flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="p-2 sm:p-2.5 bg-white/10 rounded-xl backdrop-blur-xs shrink-0">
+            <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
-          <div>
-            <h2 className="text-xl font-bold">Form Laporan Corrective Maintenance (CM)</h2>
-            <p className="text-xs text-rose-100 mt-0.5">Sesuai format resmi PDF 3-Halaman Standby Engineer</p>
+          <div className="min-w-0">
+            <h2 className="text-sm sm:text-xl font-bold leading-tight truncate sm:whitespace-normal">Form Laporan Corrective Maintenance (CM)</h2>
+            <p className="text-[10px] sm:text-xs text-rose-100 mt-0.5 truncate sm:whitespace-normal">Sesuai format resmi PDF 3-Halaman Standby Engineer</p>
           </div>
         </div>
 
         <button
           type="button"
           onClick={onCancel}
-          className="p-2 bg-white/10 hover:bg-white/20 rounded-xl text-white transition cursor-pointer"
+          className="p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 rounded-xl text-white transition cursor-pointer shrink-0"
+          title="Tutup Form"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
       </div>
 
       {/* Stepper Navigation */}
-      <div className="bg-slate-50 border-b border-slate-200 p-3 sm:p-4 flex items-center justify-between gap-2 overflow-x-auto">
-        {[
-          { step: 1, label: '1. Incident & Peralatan' },
-          { step: 2, label: '2. Perbaikan & Analisis' },
-          { step: 3, label: '3. Sparepart & Foto' },
-          { step: 4, label: '4. TTD & Export PDF' }
-        ].map((item) => (
-          <button
-            key={item.step}
-            type="button"
-            onClick={() => setCurrentStep(item.step)}
-            className={`px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition whitespace-nowrap cursor-pointer ${
-              currentStep === item.step
-                ? 'bg-red-600 text-white shadow-md shadow-red-500/20'
-                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-            }`}
-          >
-            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] ${
-              currentStep === item.step ? 'bg-white text-red-600 font-extrabold' : 'bg-slate-200 text-slate-700'
-            }`}>
-              {item.step}
-            </span>
-            <span>{item.label}</span>
-          </button>
-        ))}
+      <div className="bg-slate-50 border-b border-slate-200 p-2 sm:p-4">
+        <div className="grid grid-cols-4 sm:flex sm:items-center sm:justify-between gap-1 sm:gap-2">
+          {[
+            { step: 1, label: '1. Incident & Peralatan', shortLabel: '1. Incident' },
+            { step: 2, label: '2. Perbaikan & Analisis', shortLabel: '2. Perbaikan' },
+            { step: 3, label: '3. Sparepart & Foto', shortLabel: '3. Sparepart' },
+            { step: 4, label: '4. TTD & Export PDF', shortLabel: '4. Export' }
+          ].map((item) => (
+            <button
+              key={item.step}
+              type="button"
+              onClick={() => setCurrentStep(item.step)}
+              className={`px-1 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-sm font-bold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition cursor-pointer ${
+                currentStep === item.step
+                  ? 'bg-red-600 text-white shadow-md shadow-red-500/20'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <span className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] shrink-0 ${
+                currentStep === item.step ? 'bg-white text-red-600 font-extrabold' : 'bg-slate-200 text-slate-700'
+              }`}>
+                {item.step}
+              </span>
+              <span className="hidden sm:inline">{item.label}</span>
+              <span className="inline sm:hidden text-[10px] leading-none truncate max-w-full text-center">{item.shortLabel}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Form Content */}
-      <form onSubmit={handleSubmit} className="p-6">
+      <form onSubmit={handleSubmit} className="p-4 sm:p-6">
         <AnimatePresence mode="wait">
           {/* STEP 1: INCIDENT & EQUIPMENT */}
           {currentStep === 1 && (
@@ -775,14 +807,16 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleExportPDF}
-              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer"
-            >
-              <Download className="w-4 h-4 text-red-600" />
-              Preview / Export PDF
-            </button>
+            {currentStep === 4 && (
+              <button
+                type="button"
+                onClick={handleExportPDF}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs"
+              >
+                <Download className="w-4 h-4 text-red-600" />
+                Preview / Export PDF
+              </button>
+            )}
 
             {currentStep < 4 ? (
               <button

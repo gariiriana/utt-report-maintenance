@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-    Camera,
     MapPin,
     PenTool,
     AlertCircle,
@@ -9,24 +8,20 @@ import {
     Trash2,
     Loader2,
     FileText,
-    Scissors,
     Calendar,
     User,
-    Clock
+    Clock,
+    FolderOpen
 } from 'lucide-react';
-import { ImageEditor } from './ImageEditor';
 import { toast } from 'sonner';
-import { db, auth } from '@/api/firebase';
+import { db } from '@/api/firebase';
 import {
     collection,
-    addDoc,
     query,
     orderBy,
     onSnapshot,
-    serverTimestamp,
     deleteDoc,
-    doc,
-    updateDoc
+    doc
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { SLAForm } from './SLAForm';
@@ -103,26 +98,13 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
     const [reports, setReports] = useState<CorrectiveReport[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
-    const [submitting, setSubmitting] = useState(false);
-    const [reportFormType, setReportFormType] = useState<'standard' | 'sla' | null>(null);
+    const [reportFormType, setReportFormType] = useState<'standard' | 'sla' | 'cm_pdf' | null>(null);
     const [formKey, setFormKey] = useState(0);
 
-    const [formData, setFormData] = useState({
-        issue: '',
-        actionTaken: '',
-        spareParts: '',
-        status: 'Open' as 'Open' | 'InProgress' | 'Resolved',
-        location: '',
-        photoBase64: '',
-        photoDescription: '',
-        quarter: 'Q1',
-        year: new Date().getFullYear().toString(),
-    });
-
-    const [editingPhoto, setEditingPhoto] = useState(false);
     const [editingReportId, setEditingReportId] = useState<string | null>(null);
 
     // Filters State
+    const [archiveFolder, setArchiveFolder] = useState<'cm_pdf' | 'sla'>('cm_pdf');
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [selectedMonth, setSelectedMonth] = useState<string>('all');
     const [selectedYear, setSelectedYear] = useState<string>('all');
@@ -157,157 +139,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
         return () => unsubscribe();
     }, [user]);
 
-    const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        if (file.size > 20 * 1024 * 1024) {
-            toast.error('Max photo size is 20MB');
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target?.result as string;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-
-                const MAX_WIDTH = 800;
-                const MAX_HEIGHT = 800;
-                let width = img.width;
-                let height = img.height;
-
-                if (width > height) {
-                    if (width > MAX_WIDTH) {
-                        height = (height * MAX_WIDTH) / width;
-                        width = MAX_WIDTH;
-                    }
-                } else {
-                    if (height > MAX_HEIGHT) {
-                        width = (width * MAX_HEIGHT) / height;
-                        height = MAX_HEIGHT;
-                    }
-                }
-
-                canvas.width = width;
-                canvas.height = height;
-                ctx?.drawImage(img, 0, 0, width, height);
-
-                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-                setFormData({ ...formData, photoBase64: compressedBase64 });
-            };
-        };
-    };
-
-    const handleApplyEdit = (editedBase64: string) => {
-        setFormData({ ...formData, photoBase64: editedBase64 });
-        setEditingPhoto(false);
-        toast.success('Photo updated');
-    };
-
-    const saveReportViaAPI = async (apiUrl: string, reportData: any) => {
-        try {
-            const token = await auth.currentUser?.getIdToken();
-            if (!token) throw new Error('Not authenticated');
-
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    collection: 'corrective_reports',
-                    ...reportData,
-                    processedBy: 'golang_api',
-                }),
-            });
-
-            if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
-            const result = await response.json();
-            return result.reportId;
-        } catch (error) {
-            console.error('API Save Error:', error);
-            return null;
-        }
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!user) return;
-        if (!formData.issue || !formData.actionTaken || !formData.location) {
-            toast.error('Please fill in required fields (Issue, Action, Location)');
-            return;
-        }
-        if (!formData.photoBase64) {
-            toast.error('Please upload 1 evidence photo');
-            return;
-        }
-
-        setSubmitting(true);
-        try {
-            const reportData = {
-                ...formData,
-                category: 'CM',
-                reportedBy: user.uid,
-                reportedByEmail: user.email,
-                reportedAt: serverTimestamp(),
-            };
-
-            if (editingReportId) {
-                await updateDoc(doc(db, 'corrective_reports', editingReportId), reportData);
-                toast.success('Corrective report updated!');
-                setEditingReportId(null);
-                setReportFormType(null);
-            } else {
-                const apiUrl = import.meta.env.VITE_API_URL;
-                if (apiUrl) {
-                    const docIdFromAPI = await saveReportViaAPI(apiUrl, reportData);
-                    if (docIdFromAPI) {
-                        toast.success('Corrective report created (via API)!');
-                        setShowForm(false);
-                        setFormData({
-                            issue: '',
-                            actionTaken: '',
-                            spareParts: '',
-                            status: 'Open',
-                            location: '',
-                            photoBase64: '',
-                            photoDescription: '',
-                            quarter: 'Q1',
-                            year: new Date().getFullYear().toString(),
-                        });
-                        return;
-                    }
-                }
-
-                await addDoc(collection(db, 'corrective_reports'), reportData);
-                toast.success('Corrective report created!');
-            }
-
-            setShowForm(false);
-            setFormData({
-                issue: '',
-                actionTaken: '',
-                spareParts: '',
-                status: 'Open',
-                location: '',
-                photoBase64: '',
-                photoDescription: '',
-                quarter: 'Q1',
-                year: new Date().getFullYear().toString(),
-            });
-        } catch (error) {
-            console.error('Error saving report:', error);
-            toast.error('Failed to save report');
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
     const handleDeleteClick = (id: string) => {
@@ -336,9 +167,14 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
 
     // Filter Logic
     const filteredReports = reports.filter((report) => {
-        // Tab check
+        // Folder filter in Arsip Standby
         if (readOnly) {
-            // Under Archive, show all reports normally, but we filter them dynamically
+            if (archiveFolder === 'cm_pdf' && report.reportType === 'SLA') {
+                return false;
+            }
+            if (archiveFolder === 'sla' && report.reportType !== 'SLA') {
+                return false;
+            }
         }
 
         // Date check
@@ -373,149 +209,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
         return true;
     });
 
-    const seedDummyData = async () => {
-        if (!user) {
-            toast.error('Anda harus login terlebih dahulu!');
-            return;
-        }
 
-        toast.loading('Menambahkan data dummy...', { id: 'seeding' });
-        try {
-            // Helper: generate a visible colored placeholder image via Canvas
-            const generatePlaceholderImage = (label: string, bgColor: string, textColor: string = '#ffffff'): string => {
-                const canvas = document.createElement('canvas');
-                canvas.width = 200;
-                canvas.height = 200;
-                const ctx = canvas.getContext('2d')!;
-
-                // Background
-                ctx.fillStyle = bgColor;
-                ctx.fillRect(0, 0, 200, 200);
-
-                // Diagonal stripes for texture
-                ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-                ctx.lineWidth = 12;
-                for (let i = -200; i < 400; i += 30) {
-                    ctx.beginPath();
-                    ctx.moveTo(i, 0);
-                    ctx.lineTo(i + 200, 200);
-                    ctx.stroke();
-                }
-
-                // Center circle
-                ctx.beginPath();
-                ctx.arc(100, 85, 40, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255,255,255,0.2)';
-                ctx.fill();
-
-                // Camera icon (simple)
-                ctx.fillStyle = textColor;
-                ctx.font = 'bold 28px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('📷', 100, 85);
-
-                // Label text
-                ctx.fillStyle = textColor;
-                ctx.font = 'bold 14px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(label, 100, 150);
-
-                // Sub-label
-                ctx.fillStyle = 'rgba(255,255,255,0.7)';
-                ctx.font = '10px Arial';
-                ctx.fillText('DUMMY EVIDENCE', 100, 170);
-
-                return canvas.toDataURL('image/jpeg', 0.8);
-            };
-
-            const photoResponse = generatePlaceholderImage('1. RESPONSE TIME', '#2563eb');
-            const photoEngineerOnsite = generatePlaceholderImage('2. ENG ONSITE', '#7c3aed');
-            const photoOnsite = generatePlaceholderImage('3. PRINC ONSITE', '#0891b2');
-            const photoRestore = generatePlaceholderImage('4. RESTORE', '#059669');
-            const photoResolution = generatePlaceholderImage('5. RESOLUTION', '#dc2626');
-            const photoStandard = generatePlaceholderImage('EVIDENCE FOTO', '#ea580c');
-
-            const dummySlaReport = {
-                reportType: 'SLA',
-                ticketName: 'Alarm WLD Air AC netes',
-                location: 'Staging Room Bravo',
-                priority: 'Medium',
-                picDME: 'Ardian',
-                picTDE: 'FMA - CBRE',
-                remark: 'Team melaksanakan perbaikan corrective dengan melakukan cleaning drain pipe AC dan merapikan sensor WLD.',
-
-                // Core calculations mapping
-                issue: '[SLA / SLG] Alarm WLD Air AC netes (Medium)',
-                actionTaken: 'Team melaksanakan perbaikan corrective dengan melakukan cleaning drain pipe AC dan merapikan sensor WLD.',
-                status: 'Resolved',
-                spareParts: '',
-                quarter: 'Q2',
-                year: '2026',
-
-                // SLA 1: Response Time (comply)
-                timeOrder: new Date(2026, 4, 15, 10, 0, 0).toISOString(),
-                actualTimeResponse: new Date(2026, 4, 15, 10, 8, 0).toISOString(),
-                actualResponseTimeMin: 8,
-                targetResponseMin: 10,
-                responseComply: true,
-                photoResponse,
-
-                // SLA 2: Engineer Onsite photo
-                photoEngineerOnsite,
-
-                // SLA 3: Onsite OPE (comply)
-                actualTimeOnsite: new Date(2026, 4, 15, 11, 30, 0).toISOString(),
-                actualOnsiteTimeMin: 90,
-                targetOnsiteMin: 120,
-                onsiteComply: true,
-                photoOnsite,
-
-                // SLA 4: Restore RST (comply)
-                startOrder: new Date(2026, 4, 15, 10, 0, 0).toISOString(),
-                finishOrder: new Date(2026, 4, 15, 12, 15, 0).toISOString(),
-                actualRestoreTimeMin: 135,
-                targetRestoreMin: 180,
-                restoreComply: true,
-                photoRestore,
-
-                // SLA 5: Resolution RT (comply)
-                actualResolutionTimeMin: 135,
-                targetResolutionMin: 180,
-                resolutionComply: true,
-                photoResolution,
-
-                // Metadata
-                reportedBy: user.uid,
-                reportedByEmail: user.email,
-                reportedAt: serverTimestamp(),
-            };
-
-            const dummyStandardReport = {
-                issue: 'Gate Bravo Pos Patah tertabrak mobil supplier',
-                actionTaken: 'Team melakukan pengelasan besi engsel gate bravo agar bisa menutup normal.',
-                spareParts: 'Engsel Pintu Besi, Kawat Las',
-                status: 'Resolved',
-                location: 'Gate Bravo luar',
-                photoBase64: photoStandard,
-                photoDescription: 'Gate bravo yang telah selesai dilas kembali.',
-                quarter: 'Q2',
-                year: '2026',
-                category: 'Civil & Structure',
-                reportedBy: user.uid,
-                reportedByEmail: user.email,
-                reportedAt: serverTimestamp(),
-            };
-
-            await addDoc(collection(db, 'corrective_reports'), dummySlaReport);
-            await addDoc(collection(db, 'corrective_reports'), dummyStandardReport);
-
-            toast.success('Berhasil menambahkan 2 laporan dummy (1 SLA & 1 Standar)!', { id: 'seeding' });
-        } catch (error) {
-            console.error('Error seeding dummy data:', error);
-            toast.error('Gagal menambahkan data dummy', { id: 'seeding' });
-        }
-    };
 
     const handleExportMonthlyPDF = async () => {
         if (filteredReports.length === 0) {
@@ -588,39 +282,39 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
     if (!readOnly) {
         return (
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 border-b border-slate-200 pb-5 gap-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 border-b border-slate-200 pb-5 gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                            <PenTool className="w-6 h-6 text-red-600" />
+                        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
+                            <PenTool className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 shrink-0" />
                             Corrective Maintenance (CM)
                         </h1>
-                        <p className="text-slate-500 text-sm mt-1">Pembuatan Laporan Pemeliharaan Corrective Standby Engineer</p>
+                        <p className="text-slate-500 text-xs sm:text-sm mt-1">Pembuatan Laporan Pemeliharaan Corrective Standby Engineer</p>
                     </div>
 
-                    <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 self-stretch sm:self-auto">
+                    <div className="grid grid-cols-2 sm:flex bg-slate-100 p-1 rounded-xl border border-slate-200 self-stretch sm:self-auto gap-1">
                         <button
                             type="button"
                             onClick={() => setActiveFormTab('cm_pdf')}
-                            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2 ${
+                            className={`px-2.5 sm:px-4 py-2 sm:py-2 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${
                                 activeFormTab === 'cm_pdf'
                                     ? 'bg-red-600 text-white shadow-md'
                                     : 'text-slate-600 hover:text-slate-900'
                             }`}
                         >
-                            <FileText className="w-4 h-4" />
-                            Report CM PDF (3-Halaman)
+                            <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                            <span className="truncate">Report CM PDF (3-Hal)</span>
                         </button>
                         <button
                             type="button"
                             onClick={() => setActiveFormTab('sla')}
-                            className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2 ${
+                            className={`px-2.5 sm:px-4 py-2 sm:py-2 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${
                                 activeFormTab === 'sla'
                                     ? 'bg-red-600 text-white shadow-md'
                                     : 'text-slate-600 hover:text-slate-900'
                             }`}
                         >
-                            <Clock className="w-4 h-4" />
-                            Form SLA / SLG (5-Step)
+                            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                            <span className="truncate">Form SLA / SLG (5-Step)</span>
                         </button>
                     </div>
                 </div>
@@ -654,236 +348,74 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
-            <div className="flex justify-between items-center mb-8 border-b border-slate-200 pb-5">
+            <div className="flex justify-between items-center mb-6 border-b border-slate-200 pb-5">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                        <PenTool className="w-6 h-6 text-orange-500" />
-                        Arsip Corrective Maintenance
+                        <FolderOpen className="w-6 h-6 text-red-600" />
+                        Arsip Standby
                     </h1>
-                    <p className="text-slate-500 text-sm mt-1">Daftar laporan pemeliharaan corrective</p>
+                    <p className="text-slate-500 text-sm mt-1">Daftar laporan pemeliharaan Standby Engineer (Report CM & Form SLA/SLG)</p>
                 </div>
+            </div>
 
-                {isAuthorizedRole && !showForm && (
-                    <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={seedDummyData}
-                        className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-lg flex items-center gap-2 shadow-sm cursor-pointer border border-slate-200 text-sm font-semibold"
-                    >
-                        <FileText className="w-4 h-4 text-orange-400" />
-                        Isi Data Dummy
-                    </motion.button>
-                )}
+            {/* Folder Switcher Tabs */}
+            <div className="flex items-center gap-3 mb-6 border-b border-slate-200 pb-4 overflow-x-auto">
+                <button
+                    type="button"
+                    onClick={() => setArchiveFolder('cm_pdf')}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 transition cursor-pointer border ${
+                        archiveFolder === 'cm_pdf'
+                            ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
+                    }`}
+                >
+                    <FileText className="w-4 h-4" />
+                    Folder Report CM ({reports.filter(r => r.reportType !== 'SLA').length})
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setArchiveFolder('sla')}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 transition cursor-pointer border ${
+                        archiveFolder === 'sla'
+                            ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
+                    }`}
+                >
+                    <Clock className="w-4 h-4" />
+                    Folder Form SLA / SLG ({reports.filter(r => r.reportType === 'SLA').length})
+                </button>
             </div>
 
             <AnimatePresence>
                 {showForm && (
                     <div className="mb-8">
-                        {reportFormType === 'standard' && (
-                            <motion.form
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                exit={{ opacity: 0, height: 0 }}
-                                onSubmit={handleSubmit}
-                                className="bg-white/90 backdrop-blur-xl rounded-2xl p-6 border border-slate-200 overflow-hidden shadow-lg"
-                            >
-                                <div className="flex items-center justify-between mb-4">
-                                    <h2 className="text-lg font-semibold text-white">
-                                        Edit Laporan Corrective (Standard)
-                                    </h2>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm text-slate-400 mb-1">Location / Unit</label>
-                                            <div className="relative">
-                                                <MapPin className="absolute left-3 top-2.5 w-5 h-5 text-slate-500" />
-                                                <input
-                                                    required
-                                                    type="text"
-                                                    value={formData.location}
-                                                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                                    placeholder="e.g. Server Room A, Unit Chiller 1"
-                                                    className="w-full pl-10 pr-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-orange-500 outline-none"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm text-slate-400 mb-1">Issue Description</label>
-                                            <textarea
-                                                required
-                                                value={formData.issue}
-                                                onChange={(e) => setFormData({ ...formData, issue: e.target.value })}
-                                                className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-orange-500 outline-none h-24 resize-none"
-                                                placeholder="Describe the problem..."
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm text-slate-400 mb-1">Action Taken</label>
-                                            <textarea
-                                                required
-                                                value={formData.actionTaken}
-                                                onChange={(e) => setFormData({ ...formData, actionTaken: e.target.value })}
-                                                className="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-orange-500 outline-none h-24 resize-none"
-                                                placeholder="Describe the fix..."
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm text-slate-400 mb-1">Status</label>
-                                                <select
-                                                    value={formData.status}
-                                                    onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                                                    className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-orange-500 outline-none"
-                                                    title="Status"
-                                                >
-                                                    <option value="Open">Open</option>
-                                                    <option value="InProgress">In Progress</option>
-                                                    <option value="Resolved">Resolved</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm text-slate-400 mb-1">Spare Parts (Opt)</label>
-                                                <input
-                                                    type="text"
-                                                    value={formData.spareParts}
-                                                    onChange={(e) => setFormData({ ...formData, spareParts: e.target.value })}
-                                                    placeholder="e.g. Fan Belt, Fuse"
-                                                    className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-orange-500 outline-none"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-sm text-slate-400 mb-1">Quarter *</label>
-                                                <select
-                                                    required
-                                                    value={formData.quarter}
-                                                    onChange={(e) => setFormData({ ...formData, quarter: e.target.value })}
-                                                    className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-orange-500 outline-none"
-                                                    title="Quarter"
-                                                >
-                                                    <option value="Q1">Q1</option>
-                                                    <option value="Q2">Q2</option>
-                                                    <option value="Q3">Q3</option>
-                                                    <option value="Q4">Q4</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm text-slate-400 mb-1">Year *</label>
-                                                <select
-                                                    required
-                                                    value={formData.year}
-                                                    onChange={(e) => setFormData({ ...formData, year: e.target.value })}
-                                                    className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-orange-500 outline-none"
-                                                    title="Year"
-                                                >
-                                                    <option value="2025">2025</option>
-                                                    <option value="2026">2026</option>
-                                                    <option value="2027">2027</option>
-                                                    <option value="2028">2028</option>
-                                                    <option value="2029">2029</option>
-                                                    <option value="2030">2030</option>
-                                                </select>
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm text-slate-400 mb-1">Evidence Photo (Max 1)</label>
-                                            <div className="border-2 border-dashed border-slate-600 rounded-lg p-4 text-center hover:border-orange-500 transition cursor-pointer relative group">
-                                                {formData.photoBase64 ? (
-                                                    <div className="relative">
-                                                        <img
-                                                            src={formData.photoBase64}
-                                                            alt="Evidence"
-                                                            className="h-40 object-contain mx-auto rounded-lg"
-                                                        />
-                                                        <div className="absolute inset-0 bg-black/20 opacity-100 transition rounded-lg flex items-center justify-center gap-3">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setEditingPhoto(true)}
-                                                                className="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition shadow-xl cursor-pointer"
-                                                                title="Edit / Crop Foto"
-                                                            >
-                                                                <Scissors className="w-5 h-5" />
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setFormData({ ...formData, photoBase64: '' })}
-                                                                className="p-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition shadow-xl cursor-pointer"
-                                                                title="Hapus Foto"
-                                                            >
-                                                                <Trash2 className="w-5 h-5" />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <>
-                                                        <Camera className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-                                                        <p className="text-sm text-slate-400">Click to upload photo</p>
-                                                        <input
-                                                            type="file"
-                                                            accept="image/*"
-                                                            onChange={handlePhotoChange}
-                                                            className="absolute inset-0 opacity-0 cursor-pointer"
-                                                            title="Upload foto evidence"
-                                                        />
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm text-slate-400 mb-1">Photo Description</label>
-                                            <input
-                                                type="text"
-                                                value={formData.photoDescription}
-                                                onChange={(e) => setFormData({ ...formData, photoDescription: e.target.value })}
-                                                placeholder="What is in the photo?"
-                                                className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:ring-2 focus:ring-orange-500 outline-none"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="mt-6 flex justify-end gap-3">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setShowForm(false);
-                                            setReportFormType(null);
-                                            setEditingReportId(null);
-                                        }}
-                                        className="px-6 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg font-medium transition cursor-pointer"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={submitting}
-                                        className="px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium transition flex items-center gap-2 disabled:opacity-50 cursor-pointer"
-                                    >
-                                        {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
-                                        Simpan Laporan
-                                    </button>
-                                </div>
-                            </motion.form>
-                        )}
-
-                        {reportFormType === 'sla' && (
+                        {reportFormType === 'sla' ? (
                             <motion.div
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
                             >
                                 <SLAForm 
+                                    editId={editingReportId || undefined}
+                                    onSuccess={() => {
+                                        setShowForm(false);
+                                        setReportFormType(null);
+                                        setEditingReportId(null);
+                                    }}
+                                    onCancel={() => {
+                                        setShowForm(false);
+                                        setReportFormType(null);
+                                        setEditingReportId(null);
+                                    }}
+                                />
+                            </motion.div>
+                        ) : (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                            >
+                                <CMReportFormModal
                                     editId={editingReportId || undefined}
                                     onSuccess={() => {
                                         setShowForm(false);
@@ -940,7 +472,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                     onChange={(e) => setSelectedYear(e.target.value)}
                                     title="Filter Tahun"
                                     aria-label="Filter Tahun"
-                                    className="w-full sm:w-auto px-3.5 py-2.5 bg-slate-900/40 border border-slate-700/80 rounded-xl text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none transition cursor-pointer"
+                                    className="w-full sm:w-auto px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-red-500 outline-none transition cursor-pointer shadow-sm"
                                 >
                                     <option value="all">Semua Tahun</option>
                                     <option value="2025">2025</option>
@@ -1037,7 +569,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                                         <FileText className="w-3.5 h-3.5" />
                                                         PDF CM (3-Hal)
                                                     </button>
-                                                    {isAuthorizedRole && (report.reportedBy === user?.uid || userRole === 'admin') && (
+                                                    {isAuthorizedRole && (
                                                         <button
                                                             onClick={() => {
                                                                 setEditingReportId(report.id);
@@ -1045,7 +577,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                                                 setShowForm(true);
                                                             }}
                                                             className="p-2 bg-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-500/20 border border-blue-500/20 transition cursor-pointer"
-                                                            title="Edit Laporan"
+                                                            title="Edit Laporan SLA"
                                                         >
                                                             <PenTool className="w-4 h-4" />
                                                         </button>
@@ -1231,26 +763,15 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                                             <FileText className="w-3.5 h-3.5" />
                                                             PDF CM (3-Hal)
                                                         </button>
-                                                        {isAuthorizedRole && (report.reportedBy === user?.uid || userRole === 'admin') && (
+                                                        {isAuthorizedRole && (
                                                             <button
                                                                 onClick={() => {
                                                                     setEditingReportId(report.id);
-                                                                    setFormData({
-                                                                        issue: report.issue || '',
-                                                                        actionTaken: report.actionTaken || '',
-                                                                        spareParts: report.spareParts || '',
-                                                                        status: report.status || 'Open',
-                                                                        location: report.location || '',
-                                                                        photoBase64: report.photoBase64 || '',
-                                                                        photoDescription: report.photoDescription || '',
-                                                                        quarter: report.quarter || 'Q1',
-                                                                        year: report.year || new Date().getFullYear().toString(),
-                                                                    });
-                                                                    setReportFormType('standard');
+                                                                    setReportFormType('cm_pdf');
                                                                     setShowForm(true);
                                                                 }}
                                                                 className="p-2 bg-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-500/20 border border-blue-500/20 transition cursor-pointer"
-                                                                title="Edit Laporan"
+                                                                title="Edit Laporan CM"
                                                             >
                                                                 <PenTool className="w-4 h-4" />
                                                             </button>
@@ -1337,16 +858,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                             </div>
                         </motion.div>
                     </motion.div>
-                )}
-            </AnimatePresence>
-
-            <AnimatePresence>
-                {editingPhoto && (
-                    <ImageEditor
-                        image={formData.photoBase64}
-                        onSave={handleApplyEdit}
-                        onCancel={() => setEditingPhoto(false)}
-                    />
                 )}
             </AnimatePresence>
         </div>

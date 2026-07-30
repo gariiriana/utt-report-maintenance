@@ -278,16 +278,16 @@ service cloud.firestore {
     match /corrective_reports/{reportId} {
       allow create: if request.auth != null 
                     && (isStandbyEngineer() || isEngineer() || isAdminSafe())
-                    && hasAcceptableFieldCount(request.resource.data, 45);
+                    && hasAcceptableFieldCount(request.resource.data, 50);
       
       allow read: if request.auth != null;
       
       allow update: if request.auth != null 
-                    && (isAdminSafe() || (isStandbyEngineer() || isEngineer()) && resource.data.reportedBy == request.auth.uid)
-                    && hasAcceptableFieldCount(request.resource.data, 45);
+                    && (isAdminSafe() || isEngineer() || isStandbyEngineer() || resource.data.reportedBy == request.auth.uid)
+                    && hasAcceptableFieldCount(request.resource.data, 50);
       
       allow delete: if request.auth != null 
-                    && (isAdminSafe() || (isStandbyEngineer() || isEngineer()) && resource.data.reportedBy == request.auth.uid);
+                    && (isAdminSafe() || isEngineer() || isStandbyEngineer() || resource.data.reportedBy == request.auth.uid);
     }
     
     match /service_report_templates/{templateId} {
