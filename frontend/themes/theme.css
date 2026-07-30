@@ -124,13 +124,18 @@
     @apply border-border outline-ring/50;
   }
 
-  body {
-    @apply bg-background text-foreground;
+  html {
+    font-size: var(--font-size);
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden;
   }
 
-  html {
+  body {
+    @apply bg-background text-foreground;
     zoom: 80%;
-    font-size: var(--font-size);
+    min-width: 125vw;
+    min-height: 125vh;
   }
 
   h1 {

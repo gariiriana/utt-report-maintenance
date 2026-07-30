@@ -54,7 +54,7 @@ export function Login() {
   };
 
   return (
-    <div className="fixed inset-0 h-screen h-[100dvh] w-screen font-geist text-slate-800 flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-hidden touch-none select-none z-50">
+    <div className="min-h-screen w-full font-geist text-slate-800 flex items-center justify-center p-4 sm:p-6 md:p-8 select-none z-50">
       <motion.div
         initial={{ opacity: 0, y: 15, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
