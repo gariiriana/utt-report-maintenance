@@ -863,6 +863,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       { name: 'Risk Register', desc: 'Matriks & Analisa Risiko Operasional' },
       { name: 'JSEA', desc: 'Job Safety Environment Analysis' },
       { name: 'Report CM & SLA', desc: 'Laporan CM & Form SLA/SLG Corrective' },
+      { name: 'SLD', desc: 'Single Line Diagram Data Center' },
     ];
 
     if (dmeLevel === 'root') {

@@ -46,12 +46,13 @@ const FILE_CATEGORIES = [
     'Report CM',
     'Form SLA/SLG',
     'SLA/SLG',
+    'SLD',
     'Service Report',
     'Custom',
     'Monthly'
 ];
 
-const ENGINEER_CATEGORIES = ['MOP', 'Risk Register', 'D-DAY', 'Report CM', 'Form SLA/SLG'];
+const ENGINEER_CATEGORIES = ['MOP', 'Risk Register', 'D-DAY', 'Report CM', 'Form SLA/SLG', 'SLD'];
 
 const MAINTENANCE_TYPES = [
     'Water Leak',
