@@ -152,7 +152,7 @@ export function HSEApp() {
                             </button>
                             <div className="hidden lg:block text-right">
                                 <p className="text-xs text-slate-500 font-medium">Masuk sebagai</p>
-                                <p className="text-sm font-bold text-slate-800 truncate max-w-[200px]">
+                                <p className="text-sm font-bold text-slate-800 truncate max-w-[260px]">
                                     {user?.email}
                                 </p>
                             </div>

@@ -133,9 +133,9 @@
 
   body {
     @apply bg-background text-foreground;
-    zoom: 80%;
-    min-width: 125vw;
-    min-height: 125vh;
+    zoom: 85%;
+    min-width: 117.65vw;
+    min-height: 117.65vh;
   }
 
   h1 {

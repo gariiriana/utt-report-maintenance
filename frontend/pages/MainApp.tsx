@@ -110,7 +110,7 @@ export function MainApp() {
             <div className="hidden md:flex items-center gap-4">
               <div className="text-right">
                 <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Masuk sebagai</p>
-                <p className="text-sm font-semibold text-slate-700 truncate max-w-[180px]">{user?.email}</p>
+                <p className="text-sm font-semibold text-slate-700 truncate max-w-[260px]">{user?.email}</p>
               </div>
               <motion.button
                 whileHover={{ scale: 1.05 }}
