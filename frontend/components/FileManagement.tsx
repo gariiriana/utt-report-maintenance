@@ -25,6 +25,7 @@ import {
 } from 'firebase/firestore';
 import { exportSLAReportToExcel } from '@/utils/excelExport';
 import { generateCMReportPDF } from '@/utils/CMReportPdfExport';
+import { generatePIRReportPDF } from '@/utils/PIRReportPdfExport';
 import { useAuth } from './AuthContext';
 
 const YellowFolderIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
@@ -45,6 +46,7 @@ const FILE_CATEGORIES = [
     'D-DAY',
     'Report CM',
     'Form SLA/SLG',
+    'Report PIR',
     'SLA/SLG',
     'SLD',
     'Service Report',
@@ -52,7 +54,7 @@ const FILE_CATEGORIES = [
     'Monthly'
 ];
 
-const ENGINEER_CATEGORIES = ['MOP', 'Risk Register', 'D-DAY', 'Report CM', 'Form SLA/SLG', 'SLD'];
+const ENGINEER_CATEGORIES = ['MOP', 'Risk Register', 'D-DAY', 'Report CM', 'Form SLA/SLG', 'Report PIR', 'SLD'];
 
 const MAINTENANCE_TYPES = [
     'Water Leak',
@@ -198,7 +200,7 @@ export function FileManagement({
     const matchCategory = (fCategory: string, targetFolder: string | null) => {
         if (!targetFolder) return true;
         if (fCategory === targetFolder) return true;
-        if ((targetFolder === 'Report CM & SLA' || targetFolder === 'Report CM') && (fCategory === 'Report CM' || fCategory === 'Form SLA/SLG' || fCategory === 'SLA/SLG')) return true;
+        if ((targetFolder === 'Report CM & SLA' || targetFolder === 'Report CM') && (fCategory === 'Report CM' || fCategory === 'Form SLA/SLG' || fCategory === 'SLA/SLG' || fCategory === 'Report PIR')) return true;
         return false;
     };
 
@@ -260,17 +262,31 @@ export function FileManagement({
                 correctiveFiles = snapshot.docs.map((docSnap) => {
                     const report = docSnap.data();
                     const isSLA = report.reportType === 'SLA';
+                    const isPIR = report.reportType === 'PIR';
                     const repDate = report.reportedAt?.toDate ? report.reportedAt.toDate() : (report.reportedAt ? new Date(report.reportedAt) : new Date());
                     const qtr = report.quarter || `Q${Math.floor(repDate.getMonth() / 3) + 1}`;
                     const yr = report.year || repDate.getFullYear().toString();
+
+                    let catName = 'Report CM';
+                    let fileNameStr = report.incidentName || report.issue || 'Report CM PDF';
+                    let fType = 'application/pdf';
+
+                    if (isSLA) {
+                        catName = 'Form SLA/SLG';
+                        fileNameStr = report.ticketName || report.issue || 'Form SLA/SLG';
+                        fType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                    } else if (isPIR) {
+                        catName = 'Report PIR';
+                        fileNameStr = report.incidentName ? `Report PIR (${report.incidentName})` : 'Report PIR PDF';
+                        fType = 'application/pdf';
+                    }
+
                     return {
                         id: `cm_${docSnap.id}`,
-                        fileName: isSLA
-                            ? (report.ticketName || report.issue || 'Form SLA/SLG')
-                            : (report.incidentName || report.issue || 'Report CM PDF'),
+                        fileName: fileNameStr,
                         fileSize: 1024,
-                        fileType: isSLA ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'application/pdf',
-                        category: isSLA ? 'Form SLA/SLG' : 'Report CM',
+                        fileType: fType,
+                        category: catName,
                         quarter: qtr,
                         year: yr,
                         uploadedBy: report.reportedBy || '',
@@ -492,6 +508,9 @@ export function FileManagement({
                 if (file.reportType === 'SLA') {
                     await exportSLAReportToExcel(file.originalReport);
                     toast.success('Berhasil mengunduh Laporan SLA Excel!', { id: toastId });
+                } else if (file.reportType === 'PIR') {
+                    await generatePIRReportPDF(file.originalReport);
+                    toast.success('Berhasil mengunduh Report PIR PDF!', { id: toastId });
                 } else {
                     await generateCMReportPDF(file.originalReport);
                     toast.success('Berhasil mengunduh Report CM PDF!', { id: toastId });
