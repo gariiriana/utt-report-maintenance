@@ -86,7 +86,11 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
   // Save draft on state change
   useEffect(() => {
     if (!editId) {
-      localStorage.setItem('pir_report_draft', JSON.stringify({ formData, currentStep }));
+      try {
+        localStorage.setItem('pir_report_draft', JSON.stringify({ formData, currentStep }));
+      } catch (err) {
+        console.warn('PIR draft auto-save quota exceeded, skipping localStorage:', err);
+      }
     }
   }, [formData, currentStep, editId]);
 

@@ -121,7 +121,11 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
   // Auto-save draft to localStorage whenever form changes (only when not editing)
   useEffect(() => {
     if (!editId) {
-      localStorage.setItem('cm_report_draft', JSON.stringify({ formData, currentStep }));
+      try {
+        localStorage.setItem('cm_report_draft', JSON.stringify({ formData, currentStep }));
+      } catch (err) {
+        console.warn('CM draft auto-save quota exceeded, skipping localStorage:', err);
+      }
     }
   }, [formData, currentStep, editId]);
 

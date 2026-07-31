@@ -125,7 +125,11 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
   // Auto-save draft to localStorage whenever form changes (only when not editing)
   useEffect(() => {
     if (!editId) {
-      localStorage.setItem('sla_form_draft', JSON.stringify({ formData, currentStep }));
+      try {
+        localStorage.setItem('sla_form_draft', JSON.stringify({ formData, currentStep }));
+      } catch (err) {
+        console.warn('SLA draft auto-save quota exceeded, skipping localStorage:', err);
+      }
     }
   }, [formData, currentStep, editId]);
 
