@@ -687,7 +687,7 @@ export function FileManagement({
                                     </select>
                                 </div>
 
-                                {selectedCategory !== 'SLD' && (
+                                {selectedCategory !== 'SLD' && selectedCategory !== 'Report PIR' && (
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-2">
                                             Quarter
@@ -974,7 +974,7 @@ export function FileManagement({
                             </div>
                         )}
                     </div>
-                ) : !searchQuery && selectedFolder && !selectedQuarter && selectedFolder !== 'SLD' ? (
+                ) : !searchQuery && selectedFolder && !selectedQuarter && selectedFolder !== 'SLD' && selectedFolder !== 'Report PIR' ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         {QUARTERS.map((quarter) => {
                             const fileCount = filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && f.quarter === quarter).length;
@@ -1039,7 +1039,7 @@ export function FileManagement({
                             ? filteredFiles
                             : filteredFiles.filter(f =>
                                 matchCategory(f.category, selectedFolder) &&
-                                (selectedFolder === 'SLD' ? true : f.quarter === selectedQuarter) &&
+                                (selectedFolder === 'SLD' || selectedFolder === 'Report PIR' ? true : f.quarter === selectedQuarter) &&
                                 (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '')
                                     ? (selectedMType && (
                                         f.maintenanceType === selectedMType ||
@@ -1061,11 +1061,11 @@ export function FileManagement({
                                             <input
                                                 type="checkbox"
                                                 checked={
-                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && (selectedFolder === 'SLD' ? true : f.quarter === selectedQuarter) && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).length > 0 &&
-                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && (selectedFolder === 'SLD' ? true : f.quarter === selectedQuarter) && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).every(f => selectedFileIds.includes(f.id))
+                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && (selectedFolder === 'SLD' || selectedFolder === 'Report PIR' ? true : f.quarter === selectedQuarter) && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).length > 0 &&
+                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && (selectedFolder === 'SLD' || selectedFolder === 'Report PIR' ? true : f.quarter === selectedQuarter) && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).every(f => selectedFileIds.includes(f.id))
                                                 }
                                                 onChange={(e) => {
-                                                    const currentFiles = searchQuery ? filteredFiles : filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && (selectedFolder === 'SLD' ? true : f.quarter === selectedQuarter) && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true));
+                                                    const currentFiles = searchQuery ? filteredFiles : filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && (selectedFolder === 'SLD' || selectedFolder === 'Report PIR' ? true : f.quarter === selectedQuarter) && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true));
                                                     if (e.target.checked) {
                                                         const allIds = currentFiles.map(f => f.id);
                                                         setSelectedFileIds(prev => [...new Set([...prev, ...allIds])]);
@@ -1102,7 +1102,7 @@ export function FileManagement({
                                     ? filteredFiles
                                     : filteredFiles.filter(f =>
                                         matchCategory(f.category, selectedFolder) &&
-                                        (selectedFolder === 'SLD' ? true : f.quarter === selectedQuarter) &&
+                                        (selectedFolder === 'SLD' || selectedFolder === 'Report PIR' ? true : f.quarter === selectedQuarter) &&
                                         (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true)
                                     )
                                 ).map((file) => (
@@ -1136,7 +1136,11 @@ export function FileManagement({
                                                     {getFileIcon(file.fileType)}
                                                 </div>
                                                 <div className="flex-1 min-w-0 overflow-hidden">
-                                                    <h3 className="text-slate-900 font-extrabold text-sm sm:text-base truncate break-words">
+                                                    <h3
+                                                        onClick={() => handleDownload(file)}
+                                                        className="text-slate-900 font-extrabold text-sm sm:text-base truncate break-words hover:text-blue-600 cursor-pointer transition-colors"
+                                                        title="Klik untuk membuka / mengunduh file"
+                                                    >
                                                         {file.fileName}
                                                     </h3>
                                                     <div className="mt-2 space-y-2">
