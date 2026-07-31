@@ -178,8 +178,97 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
     setFormData((prev) => ({ ...prev, photos: updated }));
   };
 
+  // Validate step navigation
+  const validateStep = (targetStep: number): boolean => {
+    if (targetStep <= currentStep) return true;
+
+    // Step 1 Validation
+    if (targetStep > 1) {
+      if (!formData.incidentName?.trim()) {
+        toast.error('Mohon isi Incident Name di Step 1');
+        setCurrentStep(1);
+        return false;
+      }
+      if (!formData.incidentDate?.trim()) {
+        toast.error('Mohon isi Incident Date di Step 1');
+        setCurrentStep(1);
+        return false;
+      }
+      if (!formData.postmortemOwner?.trim()) {
+        toast.error('Mohon isi Postmortem Owner Name & Title di Step 1');
+        setCurrentStep(1);
+        return false;
+      }
+    }
+
+    // Step 2 Validation
+    if (targetStep > 2) {
+      if (!formData.summary?.trim()) {
+        toast.error('Mohon isi Summary di Step 2');
+        setCurrentStep(2);
+        return false;
+      }
+      if (!formData.rootCause?.trim()) {
+        toast.error('Mohon isi Root Cause di Step 2');
+        setCurrentStep(2);
+        return false;
+      }
+      if (!formData.trigger?.trim()) {
+        toast.error('Mohon isi Trigger di Step 2');
+        setCurrentStep(2);
+        return false;
+      }
+      if (!formData.resolution?.trim()) {
+        toast.error('Mohon isi Resolution di Step 2');
+        setCurrentStep(2);
+        return false;
+      }
+    }
+
+    // Step 3 Validation
+    if (targetStep > 3) {
+      if (!formData.detection?.trim()) {
+        toast.error('Mohon isi Detection di Step 3');
+        setCurrentStep(3);
+        return false;
+      }
+      if (!formData.contributingFactors?.trim()) {
+        toast.error('Mohon isi Contributing Factors di Step 3');
+        setCurrentStep(3);
+        return false;
+      }
+    }
+
+    // Step 4 Validation
+    if (targetStep > 4) {
+      if (!formData.correctiveActions || formData.correctiveActions.length === 0 || !formData.correctiveActions[0]?.actionItem?.trim()) {
+        toast.error('Mohon lengkapi minimal 1 Action Item di Step 4');
+        setCurrentStep(4);
+        return false;
+      }
+    }
+
+    // Step 5 Validation
+    if (targetStep > 5) {
+      if (!formData.photos || formData.photos.length === 0) {
+        toast.error('Mohon unggah minimal 1 Foto Dokumentasi di Step 5');
+        setCurrentStep(5);
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handleStepClick = (targetStep: number) => {
+    if (validateStep(targetStep)) {
+      setCurrentStep(targetStep);
+    }
+  };
+
   // Save to database
   const handleSubmitReport = async () => {
+    if (!validateStep(6)) return;
     setSubmitting(true);
     toast.loading('Menyimpan Laporan PIR...', { id: 'save-pir' });
 
@@ -202,7 +291,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
         toast.success('Laporan PIR berhasil diperbarui!', { id: 'save-pir' });
       } else {
         await addDoc(collection(db, 'corrective_reports'), docPayload);
-        toast.success('Laporan PIR berhasil disimpan ke Database!', { id: 'save-pir' });
+        toast.success('Laporan PIR berhasil disimpan ke Arsip Standby!', { id: 'save-pir' });
         localStorage.removeItem('pir_report_draft');
       }
 
@@ -216,6 +305,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
   };
 
   const handleExportPDFOnly = async () => {
+    if (!validateStep(6)) return;
     await generatePIRReportPDF(formData);
     setSubmitting(true);
     try {
@@ -290,7 +380,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
           <button
             key={item.step}
             type="button"
-            onClick={() => setCurrentStep(item.step)}
+            onClick={() => handleStepClick(item.step)}
             className={`py-2 px-2 rounded-xl text-center font-bold text-[11px] sm:text-xs transition cursor-pointer flex items-center justify-center gap-1.5 ${
               currentStep === item.step
                 ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
@@ -1012,7 +1102,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
           {currentStep < 6 && (
             <button
               type="button"
-              onClick={() => setCurrentStep((prev) => prev + 1)}
+              onClick={() => handleStepClick(currentStep + 1)}
               className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5"
             >
               Lanjut <ArrowRight className="w-4 h-4" />

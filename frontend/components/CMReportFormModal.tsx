@@ -246,8 +246,80 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     }));
   };
 
+  // Validate step navigation
+  const validateStep = (targetStep: number): boolean => {
+    if (targetStep <= currentStep) return true;
+
+    // Step 1 Validation
+    if (targetStep > 1) {
+      if (!formData.incidentName?.trim()) {
+        toast.error('Mohon isi Incident Name di Step 1');
+        setCurrentStep(1);
+        return false;
+      }
+      if (!formData.location?.trim()) {
+        toast.error('Mohon isi Location di Step 1');
+        setCurrentStep(1);
+        return false;
+      }
+      if (!formData.incidentDate?.trim()) {
+        toast.error('Mohon isi Incident Date di Step 1');
+        setCurrentStep(1);
+        return false;
+      }
+      if (!formData.equipmentName?.trim()) {
+        toast.error('Mohon isi Equipment Name di Step 1');
+        setCurrentStep(1);
+        return false;
+      }
+    }
+
+    // Step 2 Validation
+    if (targetStep > 2) {
+      if (!formData.correctiveAction?.trim()) {
+        toast.error('Mohon isi Corrective Action di Step 2');
+        setCurrentStep(2);
+        return false;
+      }
+      if (!formData.repairTimeStart?.trim() || !formData.repairTimeEnd?.trim()) {
+        toast.error('Mohon isi Jam Start & Jam End Repair Time di Step 2');
+        setCurrentStep(2);
+        return false;
+      }
+      if (!formData.result?.trim()) {
+        toast.error('Mohon isi Result (Hasil Akhir) di Step 2');
+        setCurrentStep(2);
+        return false;
+      }
+      if (!formData.summaryProblemAnalysis?.trim()) {
+        toast.error('Mohon isi Problem Analysis Summary di Step 2');
+        setCurrentStep(2);
+        return false;
+      }
+    }
+
+    // Step 3 Validation
+    if (targetStep > 3) {
+      if (!formData.photos || formData.photos.length === 0) {
+        toast.error('Mohon unggah minimal 1 Foto Dokumentasi di Step 3');
+        setCurrentStep(3);
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handleStepClick = (targetStep: number) => {
+    if (validateStep(targetStep)) {
+      setCurrentStep(targetStep);
+    }
+  };
+
   // Handle Export PDF & Auto Save to Standby Archive
   const handleExportPDF = async () => {
+    if (!validateStep(4)) return;
+
     await generateCMReportPDF(formData);
     setSubmitting(true);
     try {
@@ -279,21 +351,8 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
   // Submit Handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateStep(4)) return;
     if (!user) return;
-
-    const isLocalhost = import.meta.env.DEV || (
-      typeof window !== 'undefined' && (
-        window.location.hostname === 'localhost' ||
-        window.location.hostname === '127.0.0.1' ||
-        window.location.hostname.startsWith('192.168.') ||
-        window.location.hostname.endsWith('.local')
-      )
-    );
-
-    if (!isLocalhost && (!formData.incidentName || !formData.location)) {
-      toast.error('Mohon lengkapi Nama Incident & Lokasi');
-      return;
-    }
 
     setSubmitting(true);
     try {
@@ -358,7 +417,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
             <button
               key={item.step}
               type="button"
-              onClick={() => setCurrentStep(item.step)}
+              onClick={() => handleStepClick(item.step)}
               className={`px-1 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-sm font-bold flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 transition cursor-pointer ${
                 currentStep === item.step
                   ? 'bg-red-600 text-white shadow-md shadow-red-500/20'
@@ -898,7 +957,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
             {currentStep < 4 ? (
               <button
                 type="button"
-                onClick={() => setCurrentStep(prev => prev + 1)}
+                onClick={() => handleStepClick(currentStep + 1)}
                 className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-red-500/20 transition cursor-pointer"
               >
                 Lanjut

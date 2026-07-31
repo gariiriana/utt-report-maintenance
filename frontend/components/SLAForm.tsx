@@ -232,58 +232,85 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
     };
   };
 
-  const handleNext = () => {
-    const isLocalhost = import.meta.env.DEV || (
-      typeof window !== 'undefined' && (
-        window.location.hostname === 'localhost' ||
-        window.location.hostname === '127.0.0.1' ||
-        window.location.hostname.startsWith('192.168.') ||
-        window.location.hostname.endsWith('.local')
-      )
-    );
+  const validateStep = (targetStep: number): boolean => {
+    if (targetStep <= currentStep) return true;
 
-    // Basic Validation per step (Bypassed on localhost for dev convenience)
-    if (!isLocalhost) {
-      if (currentStep === 1) {
-        if (!formData.location) {
-          toast.error('Mohon lengkapi Lokasi');
-          return;
-        }
-        if (!formData.timeOrder || !formData.actualTimeResponse) {
-          toast.error('Mohon isi Waktu Order dan Waktu Respon Aktual');
-          return;
-        }
-        if (!formData.photoResponse) {
-          toast.error('Mohon unggah Bukti Foto Response Time');
-          return;
-        }
-      } else if (currentStep === 2) {
-        if (!formData.photoEngineerOnsite) {
-          toast.error('Mohon unggah Bukti Foto Engineer Onsite Support');
-          return;
-        }
-      } else if (currentStep === 3) {
-        if (!formData.actualTimeOnsite) {
-          toast.error('Mohon isi Waktu Aktual Onsite');
-          return;
-        }
-        if (!formData.photoOnsite) {
-          toast.error('Mohon unggah Bukti Foto Onsite Principle Engineer');
-          return;
-        }
-      } else if (currentStep === 4) {
-        if (!formData.startOrder || !formData.finishOrder) {
-          toast.error('Mohon isi Waktu Mulai dan Selesai Order');
-          return;
-        }
-        if (!formData.photoRestore) {
-          toast.error('Mohon unggah Bukti Foto Restore Service Time');
-          return;
-        }
+    // Step 1 Validation
+    if (targetStep > 1) {
+      if (!formData.location?.trim()) {
+        toast.error('Mohon lengkapi Lokasi Gangguan di Step 1');
+        setCurrentStep(1);
+        return false;
+      }
+      if (!formData.timeOrder || !formData.actualTimeResponse) {
+        toast.error('Mohon isi Waktu Order dan Waktu Respon Aktual di Step 1');
+        setCurrentStep(1);
+        return false;
+      }
+      if (!formData.photoResponse) {
+        toast.error('Mohon unggah Bukti Foto Response Time di Step 1');
+        setCurrentStep(1);
+        return false;
       }
     }
 
-    setCurrentStep(prev => prev + 1);
+    // Step 2 Validation
+    if (targetStep > 2) {
+      if (!formData.photoEngineerOnsite) {
+        toast.error('Mohon unggah Bukti Foto Engineer Onsite Support di Step 2');
+        setCurrentStep(2);
+        return false;
+      }
+    }
+
+    // Step 3 Validation
+    if (targetStep > 3) {
+      if (!formData.actualTimeOnsite) {
+        toast.error('Mohon isi Waktu Aktual Onsite di Step 3');
+        setCurrentStep(3);
+        return false;
+      }
+      if (!formData.photoOnsite) {
+        toast.error('Mohon unggah Bukti Foto Onsite Principle Engineer di Step 3');
+        setCurrentStep(3);
+        return false;
+      }
+    }
+
+    // Step 4 Validation
+    if (targetStep > 4) {
+      if (!formData.startOrder || !formData.finishOrder) {
+        toast.error('Mohon isi Waktu Mulai dan Selesai Order di Step 4');
+        setCurrentStep(4);
+        return false;
+      }
+      if (!formData.photoRestore) {
+        toast.error('Mohon unggah Bukti Foto Restore Service Time di Step 4');
+        setCurrentStep(4);
+        return false;
+      }
+    }
+
+    // Step 5 Validation
+    if (targetStep > 5) {
+      if (!formData.photoResolution) {
+        toast.error('Mohon unggah Bukti Foto Resolution Time di Step 5');
+        setCurrentStep(5);
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  const handleStepClick = (targetStep: number) => {
+    if (validateStep(targetStep)) {
+      setCurrentStep(targetStep);
+    }
+  };
+
+  const handleNext = () => {
+    handleStepClick(currentStep + 1);
   };
 
   const handleBack = () => {
@@ -292,10 +319,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentStep < 5) {
-      handleNext();
-      return;
-    }
+    if (!validateStep(5)) return;
     if (!user) return;
 
     const isLocalhost = import.meta.env.DEV || (
@@ -401,7 +425,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
         <div className="flex items-center justify-between">
           {steps.map((step, idx) => (
             <React.Fragment key={idx}>
-              <div className="flex flex-col items-center relative z-10 cursor-pointer" onClick={() => setCurrentStep(idx + 1)}>
+              <div className="flex flex-col items-center relative z-10 cursor-pointer" onClick={() => handleStepClick(idx + 1)}>
                 <motion.div
                   initial={false}
                   animate={{
