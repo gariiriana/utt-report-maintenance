@@ -862,7 +862,7 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
       { name: 'Monthly', desc: 'Laporan Rekap Bulanan Project' },
       { name: 'Risk Register', desc: 'Matriks & Analisa Risiko Operasional' },
       { name: 'JSEA', desc: 'Job Safety Environment Analysis' },
-      { name: 'Report CM & SLA', desc: 'Laporan CM & Form SLA/SLG Corrective' },
+      { name: 'Report CM, SLA & PIR', desc: 'Laporan CM, Form SLA/SLG & Post Incident Report (PIR)' },
       { name: 'SLD', desc: 'Single Line Diagram Data Center' },
     ];
 
