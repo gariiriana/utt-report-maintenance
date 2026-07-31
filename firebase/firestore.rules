@@ -24,9 +24,18 @@ service cloud.firestore {
 
     function isStandbyEngineer() {
       return request.auth != null 
-             && request.auth.uid != null
-             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'standby_engineer';
+             && (
+               (
+                 request.auth.uid != null
+                 && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+                 && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'standby_engineer'
+               )
+               ||
+               (
+                 request.auth.token != null
+                 && (getEmail().matches('.*standby.*') || getEmail().matches('.*dwimitra.*'))
+               )
+             );
     }
 
     function isHSE() {
@@ -56,12 +65,18 @@ service cloud.firestore {
 
     function isEngineer() {
       return request.auth != null 
-             && request.auth.uid != null
-             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-             && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'engineer' || 
-                 get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'standby_engineer' || 
-                 get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'tde' || 
-                 get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'cbre');
+             && (
+               (
+                 request.auth.uid != null
+                 && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+                 && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['engineer', 'standby_engineer', 'tde', 'cbre'])
+               )
+               ||
+               (
+                 request.auth.token != null
+                 && (getEmail().matches('.*standby.*') || getEmail().matches('.*engineer.*') || getEmail().matches('.*dwimitra.*'))
+               )
+             );
     }
 
     function isPrivilegedRole() {
@@ -278,16 +293,16 @@ service cloud.firestore {
     match /corrective_reports/{reportId} {
       allow create: if request.auth != null 
                     && (isStandbyEngineer() || isEngineer() || isAdminSafe())
-                    && hasAcceptableFieldCount(request.resource.data, 50);
+                    && hasAcceptableFieldCount(request.resource.data, 100);
       
       allow read: if request.auth != null;
       
       allow update: if request.auth != null 
-                    && (isAdminSafe() || isEngineer() || isStandbyEngineer() || resource.data.reportedBy == request.auth.uid)
-                    && hasAcceptableFieldCount(request.resource.data, 50);
+                    && (isAdminSafe() || isEngineer() || isStandbyEngineer() || resource.data.reportedBy == request.auth.uid || resource.data.reportedByEmail == getEmail())
+                    && hasAcceptableFieldCount(request.resource.data, 100);
       
       allow delete: if request.auth != null 
-                    && (isAdminSafe() || isEngineer() || isStandbyEngineer() || resource.data.reportedBy == request.auth.uid);
+                    && (isAdminSafe() || isEngineer() || isStandbyEngineer() || resource.data.reportedBy == request.auth.uid || resource.data.reportedByEmail == getEmail());
     }
     
     match /service_report_templates/{templateId} {
