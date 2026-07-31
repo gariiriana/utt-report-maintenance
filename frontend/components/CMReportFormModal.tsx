@@ -34,27 +34,27 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
   const [submitting, setSubmitting] = useState(false);
   const [editingPhotoIndex, setEditingPhotoIndex] = useState<number | null>(null);
 
-  // Form State initialized with realistic default values
+  // Form State initialized with empty guide fields
   const [formData, setFormData] = useState<CMReportData>({
     reportType: 'CM_PDF',
-    incidentName: 'AC VRV Error Code U9-01',
-    location: 'Organic Room',
-    incidentDate: '24-Juli-2026',
-    incidentId: 'N/A',
+    incidentName: '',
+    location: '',
+    incidentDate: '',
+    incidentId: '',
 
-    equipmentName: 'DAIKIN VRV',
-    brand: 'DAIKIN',
-    serialNumber: 'N/A',
-    installationDate: 'N/A',
+    equipmentName: '',
+    brand: '',
+    serialNumber: '',
+    installationDate: '',
 
-    correctiveAction: '⚫ Melakukan pengecekan unit ac vrv berdasarkan laporan dari tim FMA\n⚫ Melakukan reset system melalui remote control dan panel unit untuk memulihkan koneksi transmisi',
-    repairTimeStart: '12:49',
-    repairTimeEnd: '14:56',
-    result: 'Status error berhasil terhapus, komunikasi antar unit kembali normal dan VRV sudah beroperasi dengan baik',
+    correctiveAction: '',
+    repairTimeStart: '',
+    repairTimeEnd: '',
+    result: '',
 
-    visualInspectionChecking: 'Ditemukan kode error U9-01 pada remote ac VRV yang mengindikasikan gangguan pada system komunikasi transmisi pada indoor dan outdoor',
-    cleaningPreventiveMethod: 'N/A',
-    summaryProblemAnalysis: 'Ac VRV pada ruang organik menimbulkan kode error U9-01 pada remote ac. Pada saat pengecekan secara langsung unit indoor beroperasi sedangkan unit outdoor di temukan tidak beroperasi. Yang menyebabkan ac tidak beroperasi dengan maksimal dikarenakan terjadi gangguan pada system komunikasi indoor dan outdoor.',
+    visualInspectionChecking: '',
+    cleaningPreventiveMethod: '',
+    summaryProblemAnalysis: '',
 
     spareparts: [
       { name: '-', brand: '-', qty: '-' },

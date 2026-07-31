@@ -404,20 +404,22 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">INCIDENT NAME</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">INCIDENT NAME *</label>
                 <input
                   type="text"
                   value={formData.incidentName}
                   onChange={(e) => setFormData({ ...formData, incidentName: e.target.value })}
+                  placeholder="Contoh: Issue for VRV drainage"
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">INCIDENT DATE</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">INCIDENT DATE *</label>
                 <input
                   type="text"
                   value={formData.incidentDate}
                   onChange={(e) => setFormData({ ...formData, incidentDate: e.target.value })}
+                  placeholder="Contoh: 13 April 2026"
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>
@@ -427,6 +429,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
                   type="text"
                   value={formData.incidentId}
                   onChange={(e) => setFormData({ ...formData, incidentId: e.target.value })}
+                  placeholder="Contoh: #95369"
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>
@@ -434,11 +437,12 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">POSTMORTEM OWNER NAME & TITLE</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">POSTMORTEM OWNER NAME & TITLE *</label>
                 <input
                   type="text"
                   value={formData.postmortemOwner}
                   onChange={(e) => setFormData({ ...formData, postmortemOwner: e.target.value })}
+                  placeholder="Contoh: Rezki Rahmad Daulay /Mgr Ops. HDC Cikarang"
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>
@@ -448,6 +452,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
                   type="text"
                   value={formData.dateCompleted}
                   onChange={(e) => setFormData({ ...formData, dateCompleted: e.target.value })}
+                  placeholder="Contoh: 14 April 2026"
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>
@@ -455,11 +460,12 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">REPORT AUTHORS</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">REPORT AUTHORS *</label>
                 <input
                   type="text"
                   value={formData.reportAuthors}
                   onChange={(e) => setFormData({ ...formData, reportAuthors: e.target.value })}
+                  placeholder="Contoh: Agil Zakia Rahman"
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>
@@ -469,6 +475,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
                   type="text"
                   value={formData.reportId}
                   onChange={(e) => setFormData({ ...formData, reportId: e.target.value })}
+                  placeholder="Contoh: 13/HDC/06/2026"
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>
@@ -481,6 +488,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
                   type="text"
                   value={formData.linkToIncidentRecording}
                   onChange={(e) => setFormData({ ...formData, linkToIncidentRecording: e.target.value })}
+                  placeholder="Contoh: N/A"
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>
@@ -490,7 +498,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
                   type="text"
                   value={formData.postmortemMeetingDate}
                   onChange={(e) => setFormData({ ...formData, postmortemMeetingDate: e.target.value })}
-                  placeholder="e.g. 14 April 2026"
+                  placeholder="Contoh: 14 April 2026"
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>
@@ -602,11 +610,12 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
       {currentStep === 2 && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
-            <h3 className="font-bold text-slate-900 text-base border-b border-slate-200 pb-2">SUMMARY</h3>
+            <h3 className="font-bold text-slate-900 text-base border-b border-slate-200 pb-2">SUMMARY *</h3>
             <textarea
               rows={4}
               value={formData.summary}
               onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
+              placeholder="Contoh: On April 13, 2026, at 09:42, water leakage was reported from the affected VRV indoor unit..."
               className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-red-500 outline-none"
             />
           </div>
@@ -621,36 +630,40 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
                   rows={3}
                   value={formData.impact}
                   onChange={(e) => setFormData({ ...formData, impact: e.target.value })}
+                  placeholder="Contoh: • Water leakage was observed...\n• Minor water accumulation occurred..."
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">TRIGGER</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">TRIGGER *</label>
                 <textarea
                   rows={2}
                   value={formData.trigger}
                   onChange={(e) => setFormData({ ...formData, trigger: e.target.value })}
+                  placeholder="Contoh: The incident was triggered when water leakage was observed..."
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">ROOT CAUSE</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">ROOT CAUSE *</label>
                 <textarea
                   rows={3}
                   value={formData.rootCause}
                   onChange={(e) => setFormData({ ...formData, rootCause: e.target.value })}
+                  placeholder="Contoh: The condensate drain pipe of the affected VRV indoor unit was clogged..."
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">DETECTION</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">DETECTION *</label>
                 <textarea
                   rows={2}
                   value={formData.detection}
                   onChange={(e) => setFormData({ ...formData, detection: e.target.value })}
+                  placeholder="Contoh: The issue was identified during a routine site inspection..."
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>
@@ -661,16 +674,18 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
                   rows={2}
                   value={formData.response}
                   onChange={(e) => setFormData({ ...formData, response: e.target.value })}
+                  placeholder="Contoh: The site technical team immediately responded by shutting down..."
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">RESOLUTION</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">RESOLUTION *</label>
                 <textarea
                   rows={4}
                   value={formData.resolution}
                   onChange={(e) => setFormData({ ...formData, resolution: e.target.value })}
+                  placeholder="Contoh: Corrective actions were immediately carried out by flushing and cleaning..."
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>
@@ -683,11 +698,12 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
       {currentStep === 3 && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
-            <h3 className="font-bold text-slate-900 text-base border-b border-slate-200 pb-2">CONTRIBUTING FACTORS</h3>
+            <h3 className="font-bold text-slate-900 text-base border-b border-slate-200 pb-2">CONTRIBUTING FACTORS *</h3>
             <textarea
               rows={5}
               value={formData.contributingFactors}
               onChange={(e) => setFormData({ ...formData, contributingFactors: e.target.value })}
+              placeholder="Contoh: • Accumulation of dirt, dust, biofilm...\n• Moisture accumulation inside the drain line..."
               className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-red-500 outline-none"
             />
           </div>
@@ -702,6 +718,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
                   rows={2}
                   value={formData.whatWentWell}
                   onChange={(e) => setFormData({ ...formData, whatWentWell: e.target.value })}
+                  placeholder="Contoh: The issue was detected promptly during routine inspection..."
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
                 />
               </div>
@@ -712,6 +729,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
                   rows={2}
                   value={formData.whatWentPoorly}
                   onChange={(e) => setFormData({ ...formData, whatWentPoorly: e.target.value })}
+                  placeholder="Contoh: Late notification of drainage issue..."
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-rose-500 outline-none"
                 />
               </div>
@@ -722,6 +740,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
                   rows={2}
                   value={formData.whereWereWeLucky}
                   onChange={(e) => setFormData({ ...formData, whereWereWeLucky: e.target.value })}
+                  placeholder="Contoh: No critical equipment was damaged..."
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-blue-500 outline-none"
                 />
               </div>

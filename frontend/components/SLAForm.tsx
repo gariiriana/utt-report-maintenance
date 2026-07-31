@@ -501,6 +501,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                       type="text"
                       value={formData.ticketName}
                       onChange={(e) => setFormData({ ...formData, ticketName: e.target.value })}
+                      placeholder="Contoh: WO-2026-001 / Reset AC VRV"
                       className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm"
                     />
                   </div>
