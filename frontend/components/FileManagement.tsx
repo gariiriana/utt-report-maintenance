@@ -201,7 +201,8 @@ export function FileManagement({
     const matchCategory = (fCategory: string, targetFolder: string | null) => {
         if (!targetFolder) return true;
         if (fCategory === targetFolder) return true;
-        if ((targetFolder === 'Report CM & SLA' || targetFolder === 'Report CM' || targetFolder === 'Report CM, SLA & PIR' || targetFolder === 'Report PIR') && (fCategory === 'Report CM' || fCategory === 'Form SLA/SLG' || fCategory === 'SLA/SLG' || fCategory === 'Report PIR')) return true;
+        if ((targetFolder === 'Form SLA/SLG' || targetFolder === 'SLA/SLG') && (fCategory === 'Form SLA/SLG' || fCategory === 'SLA/SLG')) return true;
+        if (targetFolder === 'Report CM, SLA & PIR' && (fCategory === 'Report CM' || fCategory === 'Form SLA/SLG' || fCategory === 'SLA/SLG' || fCategory === 'Report PIR')) return true;
         return false;
     };
 
