@@ -19,6 +19,7 @@ import {
     onSnapshot,
     updateDoc,
     doc,
+    deleteDoc,
     serverTimestamp,
     getDocs,
     writeBatch
