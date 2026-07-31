@@ -20,8 +20,8 @@ export interface CorrectiveReport {
   reportedByEmail: string;
   reportedAt: any;
 
-  // SLA fields
-  reportType?: 'SLA';
+  // SLA/PIR/CM_PDF fields
+  reportType?: 'SLA' | 'CM_PDF' | 'PIR' | string;
   ticketName?: string;
   priority?: 'Low' | 'Medium' | 'High';
   picDME?: string;

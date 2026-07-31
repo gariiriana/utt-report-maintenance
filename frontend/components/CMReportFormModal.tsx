@@ -246,12 +246,33 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     }));
   };
 
-  // Handle Export PDF
+  // Handle Export PDF & Auto Save to Standby Archive
   const handleExportPDF = async () => {
     await generateCMReportPDF(formData);
-    if (!editId) {
-      localStorage.removeItem('cm_report_draft');
-      toast.success('Draf form berhasil diekspor & dibersihkan!');
+    setSubmitting(true);
+    try {
+      const reportPayload = {
+        ...formData,
+        category: 'CM',
+        reportType: 'CM_PDF',
+        reportedBy: user?.uid || 'system',
+        reportedByEmail: user?.email || 'system',
+        reportedAt: serverTimestamp(),
+      };
+
+      if (editId) {
+        await updateDoc(doc(db, 'corrective_reports', editId), reportPayload);
+        toast.success('Laporan CM berhasil diekspor PDF & diperbarui di Arsip Standby!');
+      } else {
+        await addDoc(collection(db, 'corrective_reports'), reportPayload);
+        localStorage.removeItem('cm_report_draft');
+        toast.success('Laporan CM berhasil diekspor PDF & disimpan ke Arsip Standby!');
+      }
+      onSuccess();
+    } catch (err: any) {
+      console.error('Error saving CM report on export:', err);
+    } finally {
+      setSubmitting(false);
     }
   };
 

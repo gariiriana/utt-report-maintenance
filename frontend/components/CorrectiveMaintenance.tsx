@@ -11,7 +11,8 @@ import {
     Calendar,
     User,
     Clock,
-    FolderOpen
+    FolderOpen,
+    AlertTriangle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -26,9 +27,12 @@ import {
 import { useAuth } from './AuthContext';
 import { SLAForm } from './SLAForm';
 import { CMReportFormModal } from './CMReportFormModal';
+import { PIRReportFormModal } from './PIRReportFormModal';
 import { generateCMReportPDF } from '@/utils/CMReportPdfExport';
+import { generatePIRReportPDF } from '@/utils/PIRReportPdfExport';
 import { exportSLAReportToExcel } from '../utils/excelExport';
 import { exportMonthlyPDF } from '../utils/pdfExport';
+import { INITIAL_PIR_REPORT_DATA } from '@/types/pirReportTypes';
 
 interface CorrectiveReport {
     id: string;
@@ -46,8 +50,10 @@ interface CorrectiveReport {
     reportedByEmail: string;
     reportedAt: any;
 
+    // Report Type discriminator
+    reportType?: 'SLA' | 'CM_PDF' | 'PIR';
+
     // SLA fields
-    reportType?: 'SLA';
     ticketName?: string;
     priority?: 'Low' | 'Medium' | 'High';
     picDME?: string;
@@ -70,6 +76,14 @@ interface CorrectiveReport {
     targetResolutionMin?: number;
     resolutionComply?: boolean;
     photoResolution?: string;
+
+    // PIR fields
+    incidentName?: string;
+    incidentDate?: string;
+    incidentId?: string;
+    postmortemOwner?: string;
+    severityLevel?: string;
+    summary?: string;
 }
 
 interface CorrectiveMaintenanceProps {
@@ -98,13 +112,13 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
     const [reports, setReports] = useState<CorrectiveReport[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
-    const [reportFormType, setReportFormType] = useState<'standard' | 'sla' | 'cm_pdf' | null>(null);
+    const [reportFormType, setReportFormType] = useState<'standard' | 'sla' | 'cm_pdf' | 'pir' | null>(null);
     const [formKey, setFormKey] = useState(0);
 
     const [editingReportId, setEditingReportId] = useState<string | null>(null);
 
     // Filters State
-    const [archiveFolder, setArchiveFolder] = useState<'cm_pdf' | 'sla'>('cm_pdf');
+    const [archiveFolder, setArchiveFolder] = useState<'cm_pdf' | 'sla' | 'pir'>('cm_pdf');
     const [searchQuery, setSearchQuery] = useState<string>('');
     const [selectedMonth, setSelectedMonth] = useState<string>('all');
     const [selectedYear, setSelectedYear] = useState<string>('all');
@@ -169,10 +183,13 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
     const filteredReports = reports.filter((report) => {
         // Folder filter in Arsip Standby
         if (readOnly) {
-            if (archiveFolder === 'cm_pdf' && report.reportType === 'SLA') {
+            if (archiveFolder === 'cm_pdf' && (report.reportType === 'SLA' || report.reportType === 'PIR')) {
                 return false;
             }
             if (archiveFolder === 'sla' && report.reportType !== 'SLA') {
+                return false;
+            }
+            if (archiveFolder === 'pir' && report.reportType !== 'PIR') {
                 return false;
             }
         }
@@ -202,14 +219,13 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
             const actionMatch = report.actionTaken?.toLowerCase().includes(queryText);
             const ticketMatch = report.ticketName?.toLowerCase().includes(queryText);
             const remarkMatch = report.remark?.toLowerCase().includes(queryText);
+            const incidentMatch = report.incidentName?.toLowerCase().includes(queryText);
             
-            return locationMatch || issueMatch || actionMatch || ticketMatch || remarkMatch;
+            return locationMatch || issueMatch || actionMatch || ticketMatch || remarkMatch || incidentMatch;
         }
 
         return true;
     });
-
-
 
     const handleExportMonthlyPDF = async () => {
         if (filteredReports.length === 0) {
@@ -232,7 +248,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
         }
     };
 
-    const [activeFormTab, setActiveFormTab] = useState<'cm_pdf' | 'sla'>('cm_pdf');
+    const [activeFormTab, setActiveFormTab] = useState<'cm_pdf' | 'sla' | 'pir'>('cm_pdf');
 
     // Helper: Export single report card to 3-page CM PDF
     const handleExportSingleCMPDF = async (report: any) => {
@@ -279,6 +295,15 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
         await generateCMReportPDF(cmData);
     };
 
+    // Helper: Export single report card to PIR PDF (10-Page)
+    const handleExportSinglePIRPDF = async (report: any) => {
+        const pirData = {
+            ...INITIAL_PIR_REPORT_DATA,
+            ...report
+        };
+        await generatePIRReportPDF(pirData);
+    };
+
     if (!readOnly) {
         return (
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
@@ -291,7 +316,8 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                         <p className="text-slate-500 text-xs sm:text-sm mt-1">Pembuatan Laporan Pemeliharaan Corrective Standby Engineer</p>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:flex bg-slate-100 p-1 rounded-xl border border-slate-200 self-stretch sm:self-auto gap-1">
+                    {/* 3 Navbar Tabs for Standby Engineer */}
+                    <div className="grid grid-cols-3 sm:flex bg-slate-100 p-1 rounded-xl border border-slate-200 self-stretch sm:self-auto gap-1">
                         <button
                             type="button"
                             onClick={() => setActiveFormTab('cm_pdf')}
@@ -316,6 +342,18 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                             <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                             <span className="truncate">Form SLA / SLG (5-Step)</span>
                         </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveFormTab('pir')}
+                            className={`px-2.5 sm:px-4 py-2 sm:py-2 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${
+                                activeFormTab === 'pir'
+                                    ? 'bg-red-600 text-white shadow-md'
+                                    : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                        >
+                            <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                            <span className="truncate">Report PIR (Postmortem)</span>
+                        </button>
                     </div>
                 </div>
 
@@ -329,7 +367,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                             setFormKey(prev => prev + 1);
                         }}
                     />
-                ) : (
+                ) : activeFormTab === 'sla' ? (
                     <div className="bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl p-6 shadow-lg">
                         <SLAForm
                             key={`sla_${formKey}`}
@@ -341,6 +379,16 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                             }}
                         />
                     </div>
+                ) : (
+                    <PIRReportFormModal
+                        key={`pir_${formKey}`}
+                        onSuccess={() => {
+                            setFormKey(prev => prev + 1);
+                        }}
+                        onCancel={() => {
+                            setFormKey(prev => prev + 1);
+                        }}
+                    />
                 )}
             </div>
         );
@@ -354,11 +402,11 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                         <FolderOpen className="w-6 h-6 text-red-600" />
                         Arsip Standby
                     </h1>
-                    <p className="text-slate-500 text-sm mt-1">Daftar laporan pemeliharaan Standby Engineer (Report CM & Form SLA/SLG)</p>
+                    <p className="text-slate-500 text-sm mt-1">Daftar laporan pemeliharaan Standby Engineer (Report CM, SLA/SLG, & Report PIR)</p>
                 </div>
             </div>
 
-            {/* Folder Switcher Tabs */}
+            {/* Folder Switcher Tabs in Arsip Standby */}
             <div className="flex items-center gap-3 mb-6 border-b border-slate-200 pb-4 overflow-x-auto">
                 <button
                     type="button"
@@ -370,7 +418,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                     }`}
                 >
                     <FileText className="w-4 h-4" />
-                    Folder Report CM ({reports.filter(r => r.reportType !== 'SLA').length})
+                    Folder Report CM ({reports.filter(r => r.reportType !== 'SLA' && r.reportType !== 'PIR').length})
                 </button>
                 <button
                     type="button"
@@ -384,6 +432,18 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                     <Clock className="w-4 h-4" />
                     Folder Form SLA / SLG ({reports.filter(r => r.reportType === 'SLA').length})
                 </button>
+                <button
+                    type="button"
+                    onClick={() => setArchiveFolder('pir')}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 transition cursor-pointer border ${
+                        archiveFolder === 'pir'
+                            ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
+                    }`}
+                >
+                    <AlertTriangle className="w-4 h-4" />
+                    Folder Report PIR ({reports.filter(r => r.reportType === 'PIR').length})
+                </button>
             </div>
 
             <AnimatePresence>
@@ -396,6 +456,26 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                 exit={{ opacity: 0, y: -10 }}
                             >
                                 <SLAForm 
+                                    editId={editingReportId || undefined}
+                                    onSuccess={() => {
+                                        setShowForm(false);
+                                        setReportFormType(null);
+                                        setEditingReportId(null);
+                                    }}
+                                    onCancel={() => {
+                                        setShowForm(false);
+                                        setReportFormType(null);
+                                        setEditingReportId(null);
+                                    }}
+                                />
+                            </motion.div>
+                        ) : reportFormType === 'pir' ? (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                            >
+                                <PIRReportFormModal
                                     editId={editingReportId || undefined}
                                     onSuccess={() => {
                                         setShowForm(false);
@@ -437,10 +517,8 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
             {!showForm && (
                 <>
                     {!loading && (
-                        /* Glassmorphic Archive Filter & PDF Export Bar */
                         <div className="mb-6 bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm">
                             <div className="flex flex-col sm:flex-row gap-3 items-center w-full md:w-auto">
-                                {/* Live Search Input */}
                                 <div className="relative w-full sm:w-auto sm:min-w-[240px]">
                                     <input
                                         type="text"
@@ -452,7 +530,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                     />
                                 </div>
 
-                                {/* Month Filter Dropdown */}
                                 <select
                                     value={selectedMonth}
                                     onChange={(e) => setSelectedMonth(e.target.value)}
@@ -466,7 +543,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                     ))}
                                 </select>
 
-                                {/* Year Filter Dropdown */}
                                 <select
                                     value={selectedYear}
                                     onChange={(e) => setSelectedYear(e.target.value)}
@@ -484,7 +560,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                 </select>
                             </div>
 
-                            {/* Monthly PDF Export Trigger */}
                             <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
@@ -516,13 +591,88 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     className={`bg-white/90 backdrop-blur-sm rounded-2xl border overflow-hidden hover:border-blue-300 transition shadow-lg relative ${
-                                        report.reportType === 'SLA' ? 'border-red-300' : 'border-slate-200'
+                                        report.reportType === 'PIR'
+                                            ? 'border-red-400'
+                                            : report.reportType === 'SLA'
+                                            ? 'border-red-300'
+                                            : 'border-slate-200'
                                     }`}
                                 >
-                                    {report.reportType === 'SLA' ? (
+                                    {report.reportType === 'PIR' ? (
+                                        /* PIR REPORT CARD LAYOUT */
+                                        <div className="p-5 sm:p-6">
+                                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-4 mb-4">
+                                                <div className="flex flex-wrap items-center gap-3">
+                                                    <div className="px-3 py-1 bg-red-100 border border-red-300 rounded-lg text-xs font-bold text-red-700 uppercase tracking-wider flex items-center gap-1.5">
+                                                        <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
+                                                        REPORT PIR (POSTMORTEM)
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                                                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                                                        <span>{report.reportedAt?.toDate?.()?.toLocaleDateString() || report.incidentDate}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                                                        <User className="w-3.5 h-3.5 text-slate-400" />
+                                                        <span>Owner: {report.postmortemOwner || report.reportedBy}</span>
+                                                    </div>
+                                                    <span className="text-[10px] px-2 py-0.5 bg-slate-100 border border-slate-200 rounded-md text-slate-600 font-semibold">
+                                                        {report.reportedByEmail || '-'}
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
+                                                    <button
+                                                        onClick={() => handleExportSinglePIRPDF(report)}
+                                                        className="px-3 py-2 bg-red-600 text-white hover:bg-red-700 rounded-xl flex items-center gap-1.5 text-xs font-bold transition shadow-md cursor-pointer"
+                                                        title="Export to PIR PDF 10-Halaman"
+                                                    >
+                                                        <FileText className="w-3.5 h-3.5" />
+                                                        Export PDF PIR
+                                                    </button>
+                                                    {isAuthorizedRole && (
+                                                        <button
+                                                            onClick={() => {
+                                                                setEditingReportId(report.id);
+                                                                setReportFormType('pir');
+                                                                setShowForm(true);
+                                                            }}
+                                                            className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 border border-blue-200 transition cursor-pointer"
+                                                            title="Edit Laporan PIR"
+                                                        >
+                                                            <PenTool className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                    {isAuthorizedRole && (report.reportedBy === user?.uid || userRole === 'admin') && (
+                                                        <button
+                                                            onClick={() => handleDeleteClick(report.id)}
+                                                            className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-200 transition cursor-pointer"
+                                                            title="Hapus Laporan"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <h3 className="text-lg font-bold text-slate-900">{report.incidentName || report.issue}</h3>
+                                                    <p className="text-xs text-slate-500 mt-0.5">
+                                                        Incident ID: <span className="font-bold text-slate-700">{report.incidentId || report.id?.slice(0, 8)}</span> • Severity Level: <span className="font-bold text-red-600">{report.severityLevel || 'LOW'}</span>
+                                                    </p>
+                                                </div>
+
+                                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                                    <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-1">Ringkasan (Summary)</span>
+                                                    <p className="text-slate-700 text-xs sm:text-sm leading-relaxed line-clamp-3">
+                                                        {report.summary || report.actionTaken}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : report.reportType === 'SLA' ? (
                                         /* SLA REPORT CARD LAYOUT */
                                         <div className="p-5 sm:p-6">
-                                            {/* Card Header */}
                                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-700/50 pb-4 mb-4">
                                                 <div className="flex flex-wrap items-center gap-3">
                                                     <div className="px-2.5 py-1 bg-red-500/10 border border-red-500/30 rounded-lg text-xs font-bold text-red-400 uppercase tracking-wider">
@@ -594,7 +744,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                                 </div>
                                             </div>
 
-                                            {/* Main Grid Info */}
                                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                                                 <div className="lg:col-span-2 space-y-4">
                                                     <div>
@@ -623,7 +772,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                                     </div>
                                                 </div>
 
-                                                {/* SLA Compliance Grid */}
                                                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col justify-between">
                                                     <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 pb-2 mb-3">SLA Metrics Summary</h4>
                                                     
@@ -676,7 +824,6 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                                 </div>
                                             </div>
 
-                                            {/* Multi-Screenshot Evidence Grid */}
                                             <div>
                                                 <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-2">Bukti Dokumentasi SLA (5-Step)</span>
                                                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
@@ -724,7 +871,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                             </div>
                                         </div>
                                     ) : (
-                                        /* STANDARD REPORT CARD LAYOUT */
+                                        /* STANDARD CM REPORT CARD LAYOUT */
                                         <div className="p-4 sm:p-6 flex flex-col md:flex-row gap-6">
                                             {report.photoBase64 && (
                                                 <div className="w-full md:w-64 flex-shrink-0">
@@ -745,19 +892,19 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                                         <div className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(report.status)} mb-2`}>
                                                             {report.status}
                                                         </div>
-                                                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                                        <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                                                             <MapPin className="w-4 h-4 text-slate-400" />
                                                             {report.location}
                                                         </h3>
                                                         <p className="text-xs text-slate-500 mt-1">
-                                                            Reported by <span className="text-slate-300">{report.reportedByEmail}</span> • {report.reportedAt?.toDate?.()?.toLocaleDateString()}
+                                                            Reported by <span className="text-slate-700">{report.reportedByEmail}</span> • {report.reportedAt?.toDate?.()?.toLocaleDateString()}
                                                         </p>
                                                     </div>
 
                                                     <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
                                                         <button
                                                             onClick={() => handleExportSingleCMPDF(report)}
-                                                            className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl flex items-center gap-1.5 text-xs font-bold transition shadow-lg shadow-red-500/5 cursor-pointer"
+                                                            className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-600 rounded-xl flex items-center gap-1.5 text-xs font-bold transition shadow-lg shadow-red-500/5 cursor-pointer"
                                                             title="Export to CM PDF 3-Halaman"
                                                         >
                                                             <FileText className="w-3.5 h-3.5" />
@@ -770,7 +917,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                                                     setReportFormType('cm_pdf');
                                                                     setShowForm(true);
                                                                 }}
-                                                                className="p-2 bg-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-500/20 border border-blue-500/20 transition cursor-pointer"
+                                                                className="p-2 bg-blue-500/10 text-blue-600 rounded-xl hover:bg-blue-500/20 border border-blue-500/20 transition cursor-pointer"
                                                                 title="Edit Laporan CM"
                                                             >
                                                                 <PenTool className="w-4 h-4" />
@@ -779,7 +926,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
                                                         {isAuthorizedRole && (report.reportedBy === user?.uid || userRole === 'admin') && (
                                                             <button
                                                                 onClick={() => handleDeleteClick(report.id)}
-                                                                className="p-2 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 border border-red-500/20 transition cursor-pointer"
+                                                                className="p-2 bg-red-500/10 text-red-600 rounded-lg hover:bg-red-500/20 border border-red-500/20 transition cursor-pointer"
                                                                 title="Hapus Laporan"
                                                             >
                                                                 <Trash2 className="w-4 h-4" />
@@ -790,23 +937,23 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
 
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <div>
-                                                        <h4 className="text-sm font-semibold text-orange-400 mb-1 flex items-center gap-2">
+                                                        <h4 className="text-sm font-semibold text-orange-600 mb-1 flex items-center gap-2">
                                                             <AlertCircle className="w-3 h-3" /> Issue
                                                         </h4>
-                                                        <p className="text-slate-300 text-sm leading-relaxed">{report.issue}</p>
+                                                        <p className="text-slate-700 text-sm leading-relaxed">{report.issue}</p>
                                                     </div>
                                                     <div>
-                                                        <h4 className="text-sm font-semibold text-emerald-400 mb-1 flex items-center gap-2">
+                                                        <h4 className="text-sm font-semibold text-emerald-600 mb-1 flex items-center gap-2">
                                                             <CheckCircle2 className="w-3 h-3" /> Action Taken
                                                         </h4>
-                                                        <p className="text-slate-300 text-sm leading-relaxed">{report.actionTaken}</p>
+                                                        <p className="text-slate-700 text-sm leading-relaxed">{report.actionTaken}</p>
                                                     </div>
                                                 </div>
 
                                                 {report.spareParts && (
-                                                    <div className="mt-4 pt-4 border-t border-slate-700/50">
+                                                    <div className="mt-4 pt-4 border-t border-slate-200">
                                                         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Spare Parts Used:</span>
-                                                        <span className="ml-2 text-sm text-slate-300">{report.spareParts}</span>
+                                                        <span className="ml-2 text-sm text-slate-700">{report.spareParts}</span>
                                                     </div>
                                                 )}
                                             </div>
