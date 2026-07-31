@@ -30,8 +30,8 @@ import { useAuth } from './AuthContext';
 
 const YellowFolderIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M2.5 7C2.5 5.61929 3.61929 4.5 5 4.5H9.17157C9.83464 4.5 10.4705 4.76339 10.9393 5.23223L12.4142 6.70711C12.5549 6.84776 12.7456 6.92678 12.9445 6.92678H19C20.3807 6.92678 21.5 8.04607 21.5 9.42678V17C21.5 18.3807 20.3807 19.5 19 19.5H5C3.61929 19.5 2.5 18.3807 2.5 17V7Z" fill="#F59E0B" stroke="#D97706" strokeWidth="1"/>
-        <path d="M2.5 9.5H21.5V17C21.5 18.3807 20.3807 19.5 19 19.5H5C3.61929 19.5 2.5 18.3807 2.5 17V9.5Z" fill="#FBBF24" stroke="#D97706" strokeWidth="1"/>
+        <path d="M2.5 7C2.5 5.61929 3.61929 4.5 5 4.5H9.17157C9.83464 4.5 10.4705 4.76339 10.9393 5.23223L12.4142 6.70711C12.5549 6.84776 12.7456 6.92678 12.9445 6.92678H19C20.3807 6.92678 21.5 8.04607 21.5 9.42678V17C21.5 18.3807 20.3807 19.5 19 19.5H5C3.61929 19.5 2.5 18.3807 2.5 17V7Z" fill="#F59E0B" stroke="#D97706" strokeWidth="1" />
+        <path d="M2.5 9.5H21.5V17C21.5 18.3807 20.3807 19.5 19 19.5H5C3.61929 19.5 2.5 18.3807 2.5 17V9.5Z" fill="#FBBF24" stroke="#D97706" strokeWidth="1" />
     </svg>
 );
 
@@ -444,20 +444,26 @@ export function FileManagement({
 
         setIsBulkDeleting(true);
         try {
-            const batch = writeBatch(db);
+            if (fileToDelete.isCorrectiveReport) {
+                const reportDocId = fileToDelete.originalReport?.id || fileToDelete.id.replace('cm_', '');
+                await deleteDoc(doc(db, 'corrective_reports', reportDocId));
+                toast.success('Laporan berhasil dihapus!');
+            } else {
+                const batch = writeBatch(db);
 
-            const chunksSnapshot = await getDocs(collection(db, collectionName, fileToDelete.id, 'chunks'));
+                const chunksSnapshot = await getDocs(collection(db, collectionName, fileToDelete.id, 'chunks'));
 
-            chunksSnapshot.docs.forEach((chunkDoc) => {
-                batch.delete(chunkDoc.ref);
-            });
+                chunksSnapshot.docs.forEach((chunkDoc) => {
+                    batch.delete(chunkDoc.ref);
+                });
 
-            const fileRef = doc(db, collectionName, fileToDelete.id);
-            batch.delete(fileRef);
+                const fileRef = doc(db, collectionName, fileToDelete.id);
+                batch.delete(fileRef);
 
-            await batch.commit();
+                await batch.commit();
 
-            toast.success('File berhasil dihapus!');
+                toast.success('File berhasil dihapus!');
+            }
             setDeleteModalOpen(false);
             setFileToDelete(null);
         } catch (error) {
@@ -476,17 +482,22 @@ export function FileManagement({
 
         try {
             for (const fileId of ids) {
-                const batch = writeBatch(db);
+                if (fileId.startsWith('cm_')) {
+                    const realDocId = fileId.replace('cm_', '');
+                    await deleteDoc(doc(db, 'corrective_reports', realDocId));
+                } else {
+                    const batch = writeBatch(db);
 
-                const chunksSnapshot = await getDocs(collection(db, collectionName, fileId, 'chunks'));
+                    const chunksSnapshot = await getDocs(collection(db, collectionName, fileId, 'chunks'));
 
-                chunksSnapshot.docs.forEach((chunkDoc) => {
-                    batch.delete(chunkDoc.ref);
-                });
+                    chunksSnapshot.docs.forEach((chunkDoc) => {
+                        batch.delete(chunkDoc.ref);
+                    });
 
-                batch.delete(doc(db, collectionName, fileId));
+                    batch.delete(doc(db, collectionName, fileId));
 
-                await batch.commit();
+                    await batch.commit();
+                }
             }
 
             toast.success(`Tindakan berhasil diselesaikan!`, { id: toastId });
@@ -883,7 +894,7 @@ export function FileManagement({
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6 pb-3 border-b border-slate-100">
                     <div className="flex items-center gap-2 text-sm sm:text-base font-semibold text-slate-800 flex-wrap min-w-0">
                         <YellowFolderIcon className="w-5 h-5 flex-shrink-0" />
-                        <span 
+                        <span
                             onClick={() => {
                                 setSelectedFolder(null);
                                 setSelectedQuarter(null);
@@ -897,7 +908,7 @@ export function FileManagement({
                         {selectedFolder && (
                             <>
                                 <span className="text-slate-300 font-normal">/</span>
-                                <span 
+                                <span
                                     onClick={() => { setSelectedQuarter(null); setSelectedMType(null); }}
                                     className={`hover:text-amber-600 transition-colors ${selectedQuarter ? 'cursor-pointer text-slate-500 hover:underline' : 'text-slate-900 font-bold'}`}
                                 >
@@ -908,7 +919,7 @@ export function FileManagement({
                         {selectedQuarter && (
                             <>
                                 <span className="text-slate-300 font-normal">/</span>
-                                <span 
+                                <span
                                     onClick={() => setSelectedMType(null)}
                                     className={`hover:text-amber-600 transition-colors ${selectedMType ? 'cursor-pointer text-slate-500 hover:underline' : 'text-slate-900 font-bold'}`}
                                 >
@@ -1045,7 +1056,7 @@ export function FileManagement({
                                         f.maintenanceType === selectedMType ||
                                         ((selectedMType.includes('Transformer') || selectedMType.includes('Trafo')) && (f.maintenanceType?.includes('Transformer') || f.maintenanceType?.includes('Trafo'))) ||
                                         (selectedMType === 'Generator' && (f.maintenanceType?.includes('Generator') || f.maintenanceType?.includes('Genset')))
-                                      ))
+                                    ))
                                     : true)
                             )
                         ).length === 0 ? (
