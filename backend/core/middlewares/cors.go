@@ -8,7 +8,7 @@ import (
 func corsAllowedOrigins() map[string]bool {
 	raw := os.Getenv("ALLOWED_ORIGINS")
 	if raw == "" {
-		raw = "http://localhost:3000,http://localhost:5173,https://report-utt.web.app,https://report-utt.firebaseapp.com"
+		raw = "http://localhost:3000,http://localhost:5173,https://report-utt.web.app,https://report-utt.firebaseapp.com,https://dwimitrasystem.com,https://www.dwimitrasystem.com"
 	}
 	result := make(map[string]bool)
 	for _, o := range strings.Split(raw, ",") {
@@ -20,7 +20,10 @@ func corsAllowedOrigins() map[string]bool {
 }
 func isAllowedOrigin(origin string) bool {
 	allowed := corsAllowedOrigins()
-	return allowed["*"] || allowed[origin]
+	if allowed["*"] || allowed[origin] {
+		return true
+	}
+	return strings.HasSuffix(origin, "dwimitrasystem.com") || strings.HasSuffix(origin, "firebaseapp.com") || strings.HasSuffix(origin, "web.app")
 }
 func CORSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
