@@ -24,6 +24,7 @@ import {
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { ImageEditor } from '@/components/ImageEditor';
+import { sendFileNotification } from '@/utils/notificationService';
 import { FindingPhoto } from '../types/finding';
 
 export function FindingManagement() {
@@ -123,6 +124,15 @@ export function FindingManagement() {
       });
 
       toast.success('Temuan berhasil disimpan!');
+
+      await sendFileNotification({
+        title: `Temuan Baru: ${formData.partName}`,
+        fileName: formData.partName,
+        category: 'Arsip Temuan',
+        uploadedBy: user?.email || 'User DME',
+        targetTab: 'finding_archive',
+        searchQuery: formData.partName
+      });
       setFormData({ 
         partName: '', 
         partNumber: '', 

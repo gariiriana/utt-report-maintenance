@@ -23,6 +23,7 @@ import { db } from '@/api/firebase';
 import { collection, addDoc, serverTimestamp, getDoc, doc, updateDoc } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { exportSLAReportToDocx } from '@/utils/docxReportExport';
+import { sendFileNotification } from '@/utils/notificationService';
 
 interface SLAFormProps {
   onSuccess: () => void;
@@ -406,6 +407,15 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
         await addDoc(collection(db, 'corrective_reports'), finalReport);
         localStorage.removeItem('sla_form_draft');
         toast.success('Laporan SLA/SLG Corrective Maintenance berhasil disimpan!');
+
+        await sendFileNotification({
+          title: `Laporan SLA Baru: ${formData.ticketName || 'Work Order'}`,
+          fileName: formData.ticketName || 'Form SLA/SLG',
+          category: 'Form SLA/SLG',
+          uploadedBy: user?.email || 'Standby Engineer',
+          targetTab: 'corrective_archive',
+          searchQuery: formData.ticketName || ''
+        });
       }
       onSuccess();
     } catch (error) {

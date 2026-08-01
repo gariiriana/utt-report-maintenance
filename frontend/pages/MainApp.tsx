@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 import { ReportForm } from '@/components/ReportForm';
 import { DocumentList } from '@/components/DocumentList';
@@ -15,6 +16,7 @@ import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import { PTWManagement } from '@/components/PTWManagement';
 import { AbsenTBM } from '@/components/AbsenTBM';
 import { AbsenInduction } from '@/components/AbsenInduction';
+import { NotificationCenter, AppNotificationItem } from '@/components/NotificationCenter';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
 type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction';
@@ -52,6 +54,17 @@ export function MainApp() {
   const [activeTab, setActiveTab] = useState<Tab>(getDefaultTab());
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+  const [navSearchQuery, setNavSearchQuery] = useState('');
+
+  const handleSelectNotification = (item: AppNotificationItem) => {
+    if (item.targetTab) {
+      setActiveTab(item.targetTab as Tab);
+    }
+    if (item.searchQuery || item.fileName) {
+      setNavSearchQuery(item.searchQuery || item.fileName);
+    }
+    toast.info(`Membuka: ${item.fileName}`);
+  };
 
   // JARVIS Autonomous Voice Command Listener
   useEffect(() => {
@@ -108,6 +121,7 @@ export function MainApp() {
 
             {/* Desktop Actions */}
             <div className="hidden md:flex items-center gap-4">
+              <NotificationCenter onSelectNotification={handleSelectNotification} />
               <div className="text-right">
                 <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Masuk sebagai</p>
                 <p className="text-sm font-semibold text-slate-700 truncate max-w-[260px]">{user?.email}</p>
@@ -116,19 +130,23 @@ export function MainApp() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setLogoutModalOpen(true)}
-                className="p-2.5 bg-slate-100 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl border border-slate-200 transition-all shadow-sm"
+                className="p-2.5 bg-slate-100 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl border border-slate-200 transition-all shadow-sm cursor-pointer"
+                title="Keluar Sesi"
               >
                 <LogOut className="w-5 h-5" />
               </motion.button>
             </div>
 
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden p-2.5 bg-slate-100 text-slate-700 rounded-xl border border-slate-200 shadow-sm"
-            >
-              <Menu className="w-6 h-6" />
-            </motion.button>
+            <div className="flex items-center gap-2 md:hidden">
+              <NotificationCenter onSelectNotification={handleSelectNotification} />
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setMobileMenuOpen(true)}
+                className="p-2.5 bg-slate-100 text-slate-700 rounded-xl border border-slate-200 shadow-sm cursor-pointer"
+              >
+                <Menu className="w-6 h-6" />
+              </motion.button>
+            </div>
           </div>
         </div>
         {/* Desktop Secondary Navigation (Tabs) */}
@@ -240,7 +258,7 @@ export function MainApp() {
             ) : activeTab === 'ptw' ? (
               <PTWManagement />
             ) : activeTab === 'files' ? (
-              <FileManagement />
+              <FileManagement initialSearchQuery={navSearchQuery} />
             ) : activeTab === 'report' ? (
               <ReportForm 
                 editingData={editingData} 

@@ -10,10 +10,12 @@ import {
     Briefcase,
     HardHat
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 import { FileManagement } from '@/components/FileManagement';
 import { DocumentList } from '@/components/DocumentList';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
+import { NotificationCenter } from '@/components/NotificationCenter';
 import { Footer } from '@/components/Footer';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
@@ -72,6 +74,9 @@ export function DivisionApp() {
                         </div>
 
                         <div className="flex items-center gap-3">
+                            <NotificationCenter onSelectNotification={(item) => {
+                                toast.info(`Membuka: ${item.fileName}`);
+                            }} />
                             <div className="hidden sm:block text-right">
                                 <p className="text-xs text-slate-500 font-medium">Masuk sebagai</p>
                                 <p className="text-sm font-bold text-slate-800 truncate max-w-[260px]">

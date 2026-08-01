@@ -21,6 +21,7 @@ import { useAuth } from './AuthContext';
 import { CMReportData, CMSparepartItem, CMPhotoItem } from '@/types/correctiveReportTypes';
 import { generateCMReportPDF } from '@/utils/CMReportPdfExport';
 import { exportCMReportToDocx } from '@/utils/docxReportExport';
+import { sendFileNotification } from '@/utils/notificationService';
 import { ImageEditor } from './ImageEditor';
 
 interface CMReportFormModalProps {
@@ -392,6 +393,15 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
         await addDoc(collection(db, 'corrective_reports'), reportPayload);
         localStorage.removeItem('cm_report_draft');
         toast.success('Laporan CM berhasil disimpan!');
+
+        await sendFileNotification({
+          title: `Laporan CM Baru: ${formData.incidentName || formData.equipmentName || 'AC VRV'}`,
+          fileName: formData.incidentName || formData.equipmentName || 'Laporan CM',
+          category: 'Report CM',
+          uploadedBy: user.email || 'Standby Engineer',
+          targetTab: 'corrective_archive',
+          searchQuery: formData.incidentName || formData.equipmentName || ''
+        });
       }
       onSuccess();
     } catch (err: any) {

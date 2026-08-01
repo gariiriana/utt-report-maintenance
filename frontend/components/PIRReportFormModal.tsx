@@ -22,6 +22,7 @@ import { useAuth } from './AuthContext';
 import { PIRReportData, INITIAL_PIR_REPORT_DATA, PIRCorrectiveAction, PIRPhoto } from '@/types/pirReportTypes';
 import { generatePIRReportPDF } from '@/utils/PIRReportPdfExport';
 import { exportPIRReportToDocx } from '@/utils/docxReportExport';
+import { sendFileNotification } from '@/utils/notificationService';
 import { ImageEditor } from './ImageEditor';
 
 interface PIRReportFormModalProps {
@@ -298,6 +299,15 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
         await addDoc(collection(db, 'corrective_reports'), docPayload);
         toast.success('Laporan PIR berhasil disimpan ke Arsip Standby!', { id: 'save-pir' });
         localStorage.removeItem('pir_report_draft');
+
+        await sendFileNotification({
+          title: `Report PIR Baru: ${formData.incidentName || 'Postmortem Incident Report'}`,
+          fileName: formData.incidentName || 'Report PIR',
+          category: 'Report PIR',
+          uploadedBy: user?.email || 'Standby Engineer',
+          targetTab: 'corrective_archive',
+          searchQuery: formData.incidentName || ''
+        });
       }
 
       onSuccess();

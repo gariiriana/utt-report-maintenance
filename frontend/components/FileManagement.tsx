@@ -28,6 +28,7 @@ import { exportSLAReportToExcel } from '@/utils/excelExport';
 import { generateCMReportPDF } from '@/utils/CMReportPdfExport';
 import { generatePIRReportPDF } from '@/utils/PIRReportPdfExport';
 import { exportCMReportToDocx, exportSLAReportToDocx, exportPIRReportToDocx } from '@/utils/docxReportExport';
+import { sendFileNotification } from '@/utils/notificationService';
 import { FileText } from 'lucide-react';
 import { useAuth } from './AuthContext';
 
@@ -146,6 +147,7 @@ interface FileManagementProps {
     simpleMode?: boolean;
     initialFolder?: string | null;
     onBackToRoot?: () => void;
+    initialSearchQuery?: string;
 }
 
 export function FileManagement({
@@ -155,6 +157,7 @@ export function FileManagement({
     simpleMode = false,
     initialFolder = null,
     onBackToRoot,
+    initialSearchQuery = '',
 }: FileManagementProps = {}) {
     const { user, userRole } = useAuth();
     const isAdmin = userRole === 'admin';
@@ -186,7 +189,7 @@ export function FileManagement({
     const [selectedUploadQuarter, setSelectedUploadQuarter] = useState('Q1');
     const [selectedUploadYear, setSelectedUploadYear] = useState(new Date().getFullYear().toString());
 
-    const [searchQuery, setSearchQuery] = useState('');
+    const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
     const [filterCategory, setFilterCategory] = useState('All');
     const [filterYear, setFilterYear] = useState('All');
     const [selectedFolder, setSelectedFolder] = useState<string | null>(initialFolder);
@@ -199,6 +202,15 @@ export function FileManagement({
         setSelectedQuarter(null);
         setSelectedMType(null);
     }, [initialFolder]);
+
+    useEffect(() => {
+        if (initialSearchQuery) {
+            setSearchQuery(initialSearchQuery);
+            setSelectedFolder(null);
+            setSelectedQuarter(null);
+            setSelectedMType(null);
+        }
+    }, [initialSearchQuery]);
 
     const matchCategory = (fCategory: string, targetFolder: string | null) => {
         if (!targetFolder) return true;
@@ -414,6 +426,15 @@ export function FileManagement({
                 await Promise.all(chunkPromises);
 
                 await updateDoc(doc(db, collectionName, fileDocRef.id), { status: 'completed' });
+
+                await sendFileNotification({
+                    title: `File Baru: ${file.name}`,
+                    fileName: file.name,
+                    category: finalCategory,
+                    uploadedBy: user?.email || 'User DME',
+                    targetTab: 'files',
+                    searchQuery: file.name
+                });
 
                 completedCount++;
                 setUploadProgress((completedCount / selectedFiles.length) * 100);
