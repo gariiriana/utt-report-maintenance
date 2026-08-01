@@ -579,7 +579,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                     rows={4}
                     value={formData.correctiveAction}
                     onChange={e => setFormData({ ...formData, correctiveAction: e.target.value })}
-                    placeholder="⚫ Melakukan pengecekan unit...\n⚫ Melakukan reset system..."
+                    placeholder="- Melakukan pengecekan unit...\n- Melakukan reset system..."
                     className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-red-500 outline-none resize-y"
                   />
                 </div>

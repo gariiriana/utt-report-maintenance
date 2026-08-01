@@ -28,6 +28,18 @@ async function loadImageBase64(src: string): Promise<string> {
   });
 }
 
+/** Helper to sanitize text strings and prevent font mangling or character spacing bugs in jsPDF */
+function sanitizePdfText(text: string | undefined | null): string {
+  if (!text) return '';
+  return text
+    // Replace mangled bullet combinations (&«) or non-WinAnsi unicode bullets (⚫, •, ▪, ►, etc.) with standard ASCII hyphen
+    .replace(/(?:&«|[\u26AB\u2022\u25AA\u25BA\u25B6\u2043\u25CF\u25C6])/g, '-')
+    // Replace smart quotes and dashes with standard ASCII equivalents
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u2013\u2014]/g, '-');
+}
+
 export async function generateCMReportPDF(data: CMReportData) {
   const toastId = toast.loading('Memproses PDF Corrective Maintenance...');
 
@@ -52,9 +64,9 @@ export async function generateCMReportPDF(data: CMReportData) {
           if (!p.photoBase64) return { base64: '', description: '' };
           try {
             const compressed = await compressBase64Image(p.photoBase64, { maxWidth: 900, quality: 0.7 });
-            return { base64: compressed, description: p.description || '' };
+            return { base64: compressed, description: sanitizePdfText(p.description) };
           } catch {
-            return { base64: p.photoBase64, description: p.description || '' };
+            return { base64: p.photoBase64, description: sanitizePdfText(p.description) };
           }
         })
       );
@@ -94,10 +106,10 @@ export async function generateCMReportPDF(data: CMReportData) {
       margin: { left: margin, right: margin },
       head: [['INCIDENT NAME', 'LOCATION', 'INCIDENT DATE', 'INCIDENT ID']],
       body: [[
-        data.incidentName || 'N/A',
-        data.location || 'N/A',
-        data.incidentDate || 'N/A',
-        data.incidentId || 'N/A'
+        sanitizePdfText(data.incidentName) || 'N/A',
+        sanitizePdfText(data.location) || 'N/A',
+        sanitizePdfText(data.incidentDate) || 'N/A',
+        sanitizePdfText(data.incidentId) || 'N/A'
       ]],
       theme: 'grid',
       headStyles: {
@@ -134,10 +146,10 @@ export async function generateCMReportPDF(data: CMReportData) {
       margin: { left: margin, right: margin },
       head: [['EQUIPMENT NAME', 'BRAND', 'SERIAL NUMBER', 'INSTALATION DATE']],
       body: [[
-        data.equipmentName || 'N/A',
-        data.brand || 'N/A',
-        data.serialNumber || 'N/A',
-        data.installationDate || 'N/A'
+        sanitizePdfText(data.equipmentName) || 'N/A',
+        sanitizePdfText(data.brand) || 'N/A',
+        sanitizePdfText(data.serialNumber) || 'N/A',
+        sanitizePdfText(data.installationDate) || 'N/A'
       ]],
       theme: 'grid',
       headStyles: {
@@ -169,14 +181,18 @@ export async function generateCMReportPDF(data: CMReportData) {
     y = (doc as any).lastAutoTable.finalY + 3;
 
     // TABLE 3: CORRECTIVE ACTION, REPAIR TIME & RESULT
-    const formattedAction = (data.correctiveAction || '-')
+    const rawAction = sanitizePdfText(data.correctiveAction || '-');
+    const formattedAction = rawAction
       .split('\n')
       .map(line => line.trim())
       .filter(Boolean)
-      .map(line => line.startsWith('⚫') || line.startsWith('•') ? line : `⚫  ${line}`)
-      .join('\n');
+      .map(line => {
+        const cleanLine = line.replace(/^(?:-\s*)+/, '').trim();
+        return `-  ${cleanLine}`;
+      })
+      .join('\n') || '-';
 
-    const repairTimeStr = `Start  : ${data.repairTimeStart || '-'}\nEnd   : ${data.repairTimeEnd || '-'}`;
+    const repairTimeStr = `Start  : ${sanitizePdfText(data.repairTimeStart) || '-'}\nEnd   : ${sanitizePdfText(data.repairTimeEnd) || '-'}`;
 
     autoTable(doc, {
       startY: y,
@@ -185,7 +201,7 @@ export async function generateCMReportPDF(data: CMReportData) {
       body: [[
         formattedAction,
         repairTimeStr,
-        data.result || '-'
+        sanitizePdfText(data.result) || '-'
       ]],
       theme: 'grid',
       headStyles: {
@@ -215,7 +231,9 @@ export async function generateCMReportPDF(data: CMReportData) {
     y = (doc as any).lastAutoTable.finalY + 5;
 
     // Helper: Draw Section with Header Bar & Text Box
-    const drawSectionBox = (title: string, contentText: string, minBoxHeight: number) => {
+    const drawSectionBox = (title: string, rawContentText: string, minBoxHeight: number) => {
+      const contentText = sanitizePdfText(rawContentText);
+
       // Header bar
       doc.setFillColor(...HEADER_FILL);
       doc.setDrawColor(...BORDER_COLOR);
@@ -278,9 +296,9 @@ export async function generateCMReportPDF(data: CMReportData) {
     const sparepartRows = (data.spareparts && data.spareparts.length > 0)
       ? data.spareparts.map((sp, idx) => [
           (idx + 1).toString(),
-          sp.name || '-',
-          sp.brand || '-',
-          sp.qty || '-'
+          sanitizePdfText(sp.name) || '-',
+          sanitizePdfText(sp.brand) || '-',
+          sanitizePdfText(sp.qty) || '-'
         ])
       : [
           ['-', '-', '-', '-'],
@@ -491,7 +509,7 @@ export async function generateCMReportPDF(data: CMReportData) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(0, 0, 0);
-    doc.text(`AUTHOR BY, ${data.authorName || 'Rizki Novri Yanda – Data Center Operation'}`, margin, y);
+    doc.text(`AUTHOR BY, ${sanitizePdfText(data.authorName) || 'Rizki Novri Yanda - Data Center Operation'}`, margin, y);
 
     y += 8;
 
@@ -508,17 +526,17 @@ export async function generateCMReportPDF(data: CMReportData) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
     doc.text('PREPARED BY,', margin + sigCellW / 2, y + 5, { align: 'center' });
-    doc.text(data.preparedByName || 'Salman', margin + sigCellW / 2, y + sigBoxH - 7, { align: 'center' });
+    doc.text(sanitizePdfText(data.preparedByName) || 'Salman', margin + sigCellW / 2, y + sigBoxH - 7, { align: 'center' });
     doc.setFont('helvetica', 'normal');
-    doc.text(data.preparedByTitle || '(Electrical Engineer)', margin + sigCellW / 2, y + sigBoxH - 2.5, { align: 'center' });
+    doc.text(sanitizePdfText(data.preparedByTitle) || '(Electrical Engineer)', margin + sigCellW / 2, y + sigBoxH - 2.5, { align: 'center' });
 
     // Box REVIEWED BY
     doc.rect(margin + sigCellW, y, sigCellW, sigBoxH);
     doc.setFont('helvetica', 'bold');
     doc.text('REVIEWED BY,', margin + sigCellW + sigCellW / 2, y + 5, { align: 'center' });
-    doc.text(data.reviewedByName || 'Arif Budiman', margin + sigCellW + sigCellW / 2, y + sigBoxH - 7, { align: 'center' });
+    doc.text(sanitizePdfText(data.reviewedByName) || 'Arif Budiman', margin + sigCellW + sigCellW / 2, y + sigBoxH - 7, { align: 'center' });
     doc.setFont('helvetica', 'normal');
-    doc.text(data.reviewedByTitle || '(Technical Manager)', margin + sigCellW + sigCellW / 2, y + sigBoxH - 2.5, { align: 'center' });
+    doc.text(sanitizePdfText(data.reviewedByTitle) || '(Technical Manager)', margin + sigCellW + sigCellW / 2, y + sigBoxH - 2.5, { align: 'center' });
 
     y += sigBoxH;
 
@@ -528,15 +546,15 @@ export async function generateCMReportPDF(data: CMReportData) {
     doc.text('ACKNOWLEDGED BY,', pageW / 2, y + 5, { align: 'center' });
 
     // Acknowledged 1 (Left)
-    doc.text(data.acknowledgedBy1Name || 'Andrean Bima Pratama', margin + sigCellW / 2, y + sigBoxH - 7, { align: 'center' });
+    doc.text(sanitizePdfText(data.acknowledgedBy1Name) || 'Andrean Bima Pratama', margin + sigCellW / 2, y + sigBoxH - 7, { align: 'center' });
     doc.setFont('helvetica', 'normal');
-    doc.text(data.acknowledgedBy1Title || '(Chief Engineer)', margin + sigCellW / 2, y + sigBoxH - 2.5, { align: 'center' });
+    doc.text(sanitizePdfText(data.acknowledgedBy1Title) || '(Chief Engineer)', margin + sigCellW / 2, y + sigBoxH - 2.5, { align: 'center' });
 
     // Acknowledged 2 (Right)
     doc.setFont('helvetica', 'bold');
-    doc.text(data.acknowledgedBy2Name || 'Supriyatno', margin + sigCellW + sigCellW / 2, y + sigBoxH - 7, { align: 'center' });
+    doc.text(sanitizePdfText(data.acknowledgedBy2Name) || 'Supriyatno', margin + sigCellW + sigCellW / 2, y + sigBoxH - 7, { align: 'center' });
     doc.setFont('helvetica', 'normal');
-    doc.text(data.acknowledgedBy2Title || '(Facility manager)', margin + sigCellW + sigCellW / 2, y + sigBoxH - 2.5, { align: 'center' });
+    doc.text(sanitizePdfText(data.acknowledgedBy2Title) || '(Facility manager)', margin + sigCellW + sigCellW / 2, y + sigBoxH - 2.5, { align: 'center' });
 
     y += sigBoxH;
 
@@ -547,9 +565,9 @@ export async function generateCMReportPDF(data: CMReportData) {
     doc.rect(appX, y, appW, sigBoxH);
     doc.setFont('helvetica', 'bold');
     doc.text('APPROVED BY,', appX + appW / 2, y + 5, { align: 'center' });
-    doc.text(data.approvedByName || 'Budi Susanto', appX + appW / 2, y + sigBoxH - 7, { align: 'center' });
+    doc.text(sanitizePdfText(data.approvedByName) || 'Budi Susanto', appX + appW / 2, y + sigBoxH - 7, { align: 'center' });
     doc.setFont('helvetica', 'normal');
-    doc.text(data.approvedByTitle || '(Assistant manager HDC Facility Management)', appX + appW / 2, y + sigBoxH - 2.5, { align: 'center' });
+    doc.text(sanitizePdfText(data.approvedByTitle) || '(Assistant manager HDC Facility Management)', appX + appW / 2, y + sigBoxH - 2.5, { align: 'center' });
 
     // Page 3 Footer
     doc.setFont('helvetica', 'normal');

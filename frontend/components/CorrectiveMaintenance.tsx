@@ -263,7 +263,7 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
             serialNumber: report.serialNumber || 'N/A',
             installationDate: report.installationDate || 'N/A',
 
-            correctiveAction: report.actionTaken || report.correctiveAction || '⚫ Melakukan pengecekan unit ac vrv berdasarkan laporan dari tim FMA\n⚫ Melakukan reset system melalui remote control dan panel unit untuk memulihkan koneksi transmisi',
+            correctiveAction: report.actionTaken || report.correctiveAction || '- Melakukan pengecekan unit ac vrv berdasarkan laporan dari tim FMA\n- Melakukan reset system melalui remote control dan panel unit untuk memulihkan koneksi transmisi',
             repairTimeStart: report.repairTimeStart || report.timeOrder || '12:49',
             repairTimeEnd: report.repairTimeEnd || report.actualTimeResponse || '14:56',
             result: report.result || report.remark || 'Status error berhasil terhapus, komunikasi antar unit kembali normal dan VRV sudah beroperasi dengan baik',
