@@ -20,6 +20,7 @@ import { collection, addDoc, serverTimestamp, getDoc, doc, updateDoc } from 'fir
 import { useAuth } from './AuthContext';
 import { CMReportData, CMSparepartItem, CMPhotoItem } from '@/types/correctiveReportTypes';
 import { generateCMReportPDF } from '@/utils/CMReportPdfExport';
+import { exportCMReportToDocx } from '@/utils/docxReportExport';
 import { ImageEditor } from './ImageEditor';
 
 interface CMReportFormModalProps {
@@ -349,6 +350,18 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
       console.error('Error saving CM report on export:', err);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Handle Export DOCX (Word)
+  const handleExportDocx = async () => {
+    if (!validateStep(4)) return;
+    try {
+      await exportCMReportToDocx(formData);
+      toast.success('Laporan CM Word (DOCX) berhasil diekspor!');
+    } catch (err: any) {
+      console.error('Error exporting DOCX:', err);
+      toast.error('Gagal mengekspor Laporan CM Word');
     }
   };
 
@@ -948,14 +961,24 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
 
           <div className="flex items-center gap-3">
             {currentStep === 4 && (
-              <button
-                type="button"
-                onClick={handleExportPDF}
-                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs"
-              >
-                <Download className="w-4 h-4 text-red-600" />
-                Preview / Export PDF
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={handleExportPDF}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs"
+                >
+                  <Download className="w-4 h-4 text-red-600" />
+                  Preview / Export PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportDocx}
+                  className="px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs"
+                >
+                  <Download className="w-4 h-4 text-blue-600" />
+                  Export DOCX
+                </button>
+              </>
             )}
 
             {currentStep < 4 ? (

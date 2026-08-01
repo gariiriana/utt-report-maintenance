@@ -21,6 +21,7 @@ import { collection, addDoc, serverTimestamp, getDoc, doc, updateDoc } from 'fir
 import { useAuth } from './AuthContext';
 import { PIRReportData, INITIAL_PIR_REPORT_DATA, PIRCorrectiveAction, PIRPhoto } from '@/types/pirReportTypes';
 import { generatePIRReportPDF } from '@/utils/PIRReportPdfExport';
+import { exportPIRReportToDocx } from '@/utils/docxReportExport';
 import { ImageEditor } from './ImageEditor';
 
 interface PIRReportFormModalProps {
@@ -340,6 +341,17 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
       console.error('Error auto-saving PIR report on export:', err);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleExportDocxOnly = async () => {
+    if (!validateStep(6)) return;
+    try {
+      await exportPIRReportToDocx(formData);
+      toast.success('Laporan PIR Word (DOCX) berhasil diekspor!');
+    } catch (err: any) {
+      console.error('Error exporting PIR DOCX:', err);
+      toast.error('Gagal mengekspor Laporan PIR Word');
     }
   };
 
@@ -1141,6 +1153,14 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
               className="flex-1 sm:flex-initial px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
             >
               <Download className="w-4 h-4" /> Export PDF
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportDocxOnly}
+              className="flex-1 sm:flex-initial px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+            >
+              <Download className="w-4 h-4" /> Export DOCX
             </button>
 
             <button

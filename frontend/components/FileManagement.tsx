@@ -27,6 +27,8 @@ import {
 import { exportSLAReportToExcel } from '@/utils/excelExport';
 import { generateCMReportPDF } from '@/utils/CMReportPdfExport';
 import { generatePIRReportPDF } from '@/utils/PIRReportPdfExport';
+import { exportCMReportToDocx, exportSLAReportToDocx, exportPIRReportToDocx } from '@/utils/docxReportExport';
+import { FileText } from 'lucide-react';
 import { useAuth } from './AuthContext';
 
 const YellowFolderIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
@@ -548,43 +550,50 @@ export function FileManagement({
             const byteArrays: Uint8Array[] = [];
             let mimeString = file.fileType || 'application/octet-stream';
 
-            chunksSnapshot.docs.forEach((doc) => {
-                const chunkData = doc.data().data;
-                let base64Part = chunkData;
-
-                if (chunkData.includes(';base64,')) {
-                    const parts = chunkData.split(';base64,');
-                    mimeString = parts[0].split(':')[1] || mimeString;
-                    base64Part = parts[1];
-                }
-
-                try {
-                    const byteString = atob(base64Part);
-                    const bytes = new Uint8Array(byteString.length);
-                    for (let i = 0; i < byteString.length; i++) {
-                        bytes[i] = byteString.charCodeAt(i);
+            chunksSnapshot.forEach(docSnap => {
+                const data = docSnap.data();
+                if (data.data) {
+                    const byteCharacters = atob(data.data);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
                     }
-                    byteArrays.push(bytes);
-                } catch (e) {
-                    console.error('Failed to decode chunk:', e);
-                    throw new Error('Invalid Base64 chunk data');
+                    byteArrays.push(new Uint8Array(byteNumbers));
                 }
             });
 
             const blob = new Blob(byteArrays as any[], { type: mimeString });
-            const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
-            link.href = url;
+            link.href = URL.createObjectURL(blob);
             link.download = file.fileName;
-            document.body.appendChild(link);
             link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+            URL.revokeObjectURL(link.href);
 
             toast.success('File berhasil diunduh!', { id: toastId });
         } catch (error) {
             console.error('Error downloading file:', error);
             toast.error('Gagal mengunduh file');
+        }
+    };
+
+    const handleDownloadDocx = async (file: FileData) => {
+        if (file.isCorrectiveReport) {
+            const toastId = toast.loading('Menyiapkan unduhan Word (DOCX)...');
+            try {
+                if (file.reportType === 'SLA') {
+                    await exportSLAReportToDocx(file.originalReport);
+                    toast.success('Berhasil mengunduh Laporan SLA Word!', { id: toastId });
+                } else if (file.reportType === 'PIR') {
+                    await exportPIRReportToDocx(file.originalReport);
+                    toast.success('Berhasil mengunduh Report PIR Word!', { id: toastId });
+                } else {
+                    await exportCMReportToDocx(file.originalReport);
+                    toast.success('Berhasil mengunduh Report CM Word!', { id: toastId });
+                }
+            } catch (err: any) {
+                console.error('Failed to export docx report:', err);
+                toast.error('Gagal mengunduh laporan Word', { id: toastId });
+            }
         }
     };
 
@@ -1185,12 +1194,23 @@ export function FileManagement({
                                             </div>
 
                                             <div className="flex items-center gap-2 self-end sm:self-auto ml-auto sm:ml-0">
+                                                {file.isCorrectiveReport && (
+                                                    <motion.button
+                                                        whileHover={{ scale: 1.05 }}
+                                                        whileTap={{ scale: 0.95 }}
+                                                        onClick={() => handleDownloadDocx(file)}
+                                                        className="p-2 sm:p-2.5 bg-sky-50 text-sky-600 hover:bg-sky-600 hover:text-white rounded-lg transition-all border border-sky-200/80 shadow-xs cursor-pointer"
+                                                        title="Download Word (DOCX)"
+                                                    >
+                                                        <FileText className="w-4 h-4" />
+                                                    </motion.button>
+                                                )}
                                                 <motion.button
                                                     whileHover={{ scale: 1.05 }}
                                                     whileTap={{ scale: 0.95 }}
                                                     onClick={() => handleDownload(file)}
                                                     className="p-2 sm:p-2.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white rounded-lg transition-all border border-blue-200/80 shadow-xs cursor-pointer"
-                                                    title="Download"
+                                                    title={file.isCorrectiveReport ? "Download PDF / Excel" : "Download"}
                                                 >
                                                     <Download className="w-4 h-4" />
                                                 </motion.button>

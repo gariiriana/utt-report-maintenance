@@ -15,12 +15,14 @@ import {
   ArrowLeft,
   Activity,
   Check,
-  ChevronRight
+  ChevronRight,
+  Download
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
 import { collection, addDoc, serverTimestamp, getDoc, doc, updateDoc } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
+import { exportSLAReportToDocx } from '@/utils/docxReportExport';
 
 interface SLAFormProps {
   onSuccess: () => void;
@@ -1117,26 +1119,45 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
               <ArrowRight className="w-4 h-4" />
             </motion.button>
           ) : (
-            <motion.button
-              key="submit-btn"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              disabled={submitting}
-              className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-500/10 disabled:opacity-50"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Menyimpan Laporan...
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4" />
-                  Simpan Laporan SLA
-                </>
-              )}
-            </motion.button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await exportSLAReportToDocx(formData);
+                    toast.success('Laporan SLA Word (DOCX) berhasil diekspor!');
+                  } catch (err: any) {
+                    console.error('Error exporting SLA DOCX:', err);
+                    toast.error('Gagal mengekspor Laporan SLA Word');
+                  }
+                }}
+                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition flex items-center gap-2 shadow-md shadow-blue-500/10 cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                Export DOCX
+              </button>
+
+              <motion.button
+                key="submit-btn"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                type="submit"
+                disabled={submitting}
+                className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-500/10 disabled:opacity-50 cursor-pointer"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Menyimpan Laporan...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Simpan Laporan SLA
+                  </>
+                )}
+              </motion.button>
+            </div>
           )}
         </div>
       </form>
