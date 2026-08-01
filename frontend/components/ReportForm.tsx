@@ -816,7 +816,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         maintenanceName,
         maintenanceTime,
         specificDetail: finalSpecificDetail,
-        fileSize: pdfData?.pdfBase64 ? Math.round(pdfData.pdfBase64.length * 0.75) : 0,
+        fileSize: pdfData?.doc ? ((pdfData.doc as any).output('arraybuffer')?.byteLength || 0) : 0,
         updatedAt: serverTimestamp(),
         totalPhotos: cardsToSave.length,
         photosWithImage,
