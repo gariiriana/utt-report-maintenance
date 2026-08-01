@@ -84,6 +84,60 @@ function createSectionHeader(title: string): Paragraph {
   });
 }
 
+function createHeaderLogosTable(logoLeftBytes: Uint8Array, logoRightBytes: Uint8Array): Table {
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: {
+      top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+      bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+      left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+      right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+      insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+      insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            borders: {
+              top: { style: BorderStyle.NONE },
+              bottom: { style: BorderStyle.NONE },
+              left: { style: BorderStyle.NONE },
+              right: { style: BorderStyle.NONE },
+            },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.LEFT,
+                children: logoLeftBytes.length > 0
+                  ? [new ImageRun({ data: logoLeftBytes, transformation: { width: 85, height: 45 }, type: 'png' })]
+                  : [],
+              }),
+            ],
+          }),
+          new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            borders: {
+              top: { style: BorderStyle.NONE },
+              bottom: { style: BorderStyle.NONE },
+              left: { style: BorderStyle.NONE },
+              right: { style: BorderStyle.NONE },
+            },
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.RIGHT,
+                children: logoRightBytes.length > 0
+                  ? [new ImageRun({ data: logoRightBytes, transformation: { width: 110, height: 35 }, type: 'png' })]
+                  : [],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+}
+
 function createBoxSection(title: string, content: string): Table {
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
@@ -490,20 +544,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
         },
         headers: {
           default: new Header({
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.RIGHT,
-                children: [
-                  ...(logoLeftBytes.length > 0
-                    ? [new ImageRun({ data: logoLeftBytes, transformation: { width: 90, height: 40 }, type: 'png' })]
-                    : []),
-                  new TextRun({ text: '    ' }),
-                  ...(logoRightBytes.length > 0
-                    ? [new ImageRun({ data: logoRightBytes, transformation: { width: 110, height: 35 }, type: 'png' })]
-                    : []),
-                ],
-              }),
-            ],
+            children: [createHeaderLogosTable(logoLeftBytes, logoRightBytes)],
           }),
         },
         footers: {
@@ -716,16 +757,7 @@ export async function exportSLAReportToDocx(report: any): Promise<void> {
         properties: { page: { margin: { top: 720, bottom: 720, left: 720, right: 720 } } },
         headers: {
           default: new Header({
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.RIGHT,
-                children: [
-                  ...(logoLeftBytes.length > 0 ? [new ImageRun({ data: logoLeftBytes, transformation: { width: 90, height: 40 }, type: 'png' })] : []),
-                  new TextRun({ text: '    ' }),
-                  ...(logoRightBytes.length > 0 ? [new ImageRun({ data: logoRightBytes, transformation: { width: 110, height: 35 }, type: 'png' })] : []),
-                ],
-              }),
-            ],
+            children: [createHeaderLogosTable(logoLeftBytes, logoRightBytes)],
           }),
         },
         footers: {
@@ -963,16 +995,7 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
         properties: { page: { margin: { top: 720, bottom: 720, left: 720, right: 720 } } },
         headers: {
           default: new Header({
-            children: [
-              new Paragraph({
-                alignment: AlignmentType.RIGHT,
-                children: [
-                  ...(logoLeftBytes.length > 0 ? [new ImageRun({ data: logoLeftBytes, transformation: { width: 90, height: 40 }, type: 'png' })] : []),
-                  new TextRun({ text: '    ' }),
-                  ...(logoRightBytes.length > 0 ? [new ImageRun({ data: logoRightBytes, transformation: { width: 110, height: 35 }, type: 'png' })] : []),
-                ],
-              }),
-            ],
+            children: [createHeaderLogosTable(logoLeftBytes, logoRightBytes)],
           }),
         },
         footers: {

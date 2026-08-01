@@ -78,7 +78,7 @@ export async function generateCMReportPDF(data: CMReportData) {
     // Helper: Draw Header Logos
     const drawHeaderLogos = () => {
       if (logoLeft) {
-        doc.addImage(logoLeft, 'JPEG', margin, 7, 18, 14);
+        doc.addImage(logoLeft, 'JPEG', margin, 6, 22, 16);
       }
       if (logoRight) {
         doc.addImage(logoRight, 'JPEG', pageW - margin - 32, 8, 32, 11);
