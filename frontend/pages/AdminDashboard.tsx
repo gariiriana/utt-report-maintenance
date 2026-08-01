@@ -227,11 +227,15 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         }
       }
 
-      const formattedDate = new Date(doc.maintenanceTime).toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
+      const formatSingleDateAdmin = (dStr: string) => {
+        const d = new Date(dStr);
+        return !isNaN(d.getTime())
+          ? d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })
+          : dStr;
+      };
+      const formattedDate = doc.maintenanceTime?.includes(' - ')
+        ? doc.maintenanceTime.split(' - ').map(formatSingleDateAdmin).join(' - ')
+        : formatSingleDateAdmin(doc.maintenanceTime);
 
       if (doc.type === 'excel') {
         const workbook = new ExcelJS.Workbook();

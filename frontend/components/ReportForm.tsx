@@ -73,6 +73,35 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [maintenanceName, setMaintenanceName] = useState('');
   const [maintenanceTime, setMaintenanceTime] = useState('');
 
+  const isFssAccount = user?.email?.toLowerCase() === 'fss@gmail.com';
+
+  const getFssDates = (timeStr: string) => {
+    if (!timeStr) return { start: '', end: '' };
+    if (timeStr.includes(' - ')) {
+      const parts = timeStr.split(' - ');
+      return { start: parts[0]?.trim() || '', end: parts[1]?.trim() || '' };
+    }
+    return { start: timeStr.trim(), end: '' };
+  };
+
+  const { start: fssStart, end: fssEnd } = getFssDates(maintenanceTime);
+
+  const handleFssStartChange = (newStart: string) => {
+    if (fssEnd) {
+      setMaintenanceTime(newStart ? `${newStart} - ${fssEnd}` : ` - ${fssEnd}`);
+    } else {
+      setMaintenanceTime(newStart);
+    }
+  };
+
+  const handleFssEndChange = (newEnd: string) => {
+    if (fssStart || newEnd) {
+      setMaintenanceTime(newEnd ? `${fssStart} - ${newEnd}` : fssStart);
+    } else {
+      setMaintenanceTime('');
+    }
+  };
+
 
   const [units, setUnits] = useState<ReportUnit[]>([]);
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
@@ -1068,16 +1097,46 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 </div>
                 <div>
                   <label htmlFor="maintenance-time" className="block text-sm font-bold text-slate-700 mb-2">Waktu Maintenance</label>
-                  <input
-                    id="maintenance-time"
-                    title="Waktu Maintenance"
-                    placeholder="Pilih tanggal"
-                    type="date"
-                    value={maintenanceTime}
-                    onChange={(e) => setMaintenanceTime(e.target.value)}
-                    disabled={isDME}
-                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-3 text-slate-900 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition disabled:opacity-70 disabled:cursor-not-allowed"
-                  />
+                  {isFssAccount ? (
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <input
+                          id="maintenance-time-start"
+                          title="Tanggal Mulai"
+                          placeholder="dd/mm/yyyy"
+                          type="date"
+                          value={fssStart}
+                          onChange={(e) => handleFssStartChange(e.target.value)}
+                          disabled={isDME}
+                          className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-2.5 sm:p-3 text-xs sm:text-sm text-slate-900 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition disabled:opacity-70 disabled:cursor-not-allowed"
+                        />
+                      </div>
+                      <span className="text-slate-400 font-bold text-sm select-none px-0.5">-</span>
+                      <div className="flex-1">
+                        <input
+                          id="maintenance-time-end"
+                          title="Tanggal Selesai"
+                          placeholder="dd/mm/yyyy"
+                          type="date"
+                          value={fssEnd}
+                          onChange={(e) => handleFssEndChange(e.target.value)}
+                          disabled={isDME}
+                          className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-2.5 sm:p-3 text-xs sm:text-sm text-slate-900 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition disabled:opacity-70 disabled:cursor-not-allowed"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <input
+                      id="maintenance-time"
+                      title="Waktu Maintenance"
+                      placeholder="Pilih tanggal"
+                      type="date"
+                      value={maintenanceTime}
+                      onChange={(e) => setMaintenanceTime(e.target.value)}
+                      disabled={isDME}
+                      className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-3 text-slate-900 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition disabled:opacity-70 disabled:cursor-not-allowed"
+                    />
+                  )}
                 </div>
                 <div>
                   <label htmlFor="company-type" className="block text-sm font-bold text-slate-700 mb-2">Situs / Proyek</label>

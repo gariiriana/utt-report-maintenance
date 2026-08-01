@@ -393,11 +393,15 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
         { width: 2 },
         { width: 26 },
       ];
-      const formattedDate = new Date(docData.maintenanceTime).toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
+      const formatSingleDateDoc = (dStr: string) => {
+        const d = new Date(dStr);
+        return !isNaN(d.getTime())
+          ? d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })
+          : dStr;
+      };
+      const formattedDate = docData.maintenanceTime?.includes(' - ')
+        ? docData.maintenanceTime.split(' - ').map(formatSingleDateDoc).join(' - ')
+        : formatSingleDateDoc(docData.maintenanceTime);
       try {
         const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
         const logoLeftResponse = await fetch(leftLogo);
@@ -791,12 +795,17 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
     }
 
     if (startDate || endDate) {
-      const docDate = new Date(doc.maintenanceTime).toISOString().split('T')[0];
-      if (startDate && docDate < startDate) {
-        return false;
-      }
-      if (endDate && docDate > endDate) {
-        return false;
+      const timeStr = doc.maintenanceTime || '';
+      const firstDateStr = timeStr.includes(' - ') ? timeStr.split(' - ')[0] : timeStr;
+      const d = new Date(firstDateStr);
+      const docDate = !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : '';
+      if (docDate) {
+        if (startDate && docDate < startDate) {
+          return false;
+        }
+        if (endDate && docDate > endDate) {
+          return false;
+        }
       }
     }
 

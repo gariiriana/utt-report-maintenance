@@ -219,9 +219,16 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
       doc.text(`${finalSpecificDetail.toUpperCase()}`, centerX, headerY + 16, { align: 'center' });
     }
 
-    const longDate = new Date(maintenanceTime).toLocaleDateString('id-ID', {
-      day: '2-digit', month: 'long', year: 'numeric'
-    });
+    const formatSingleDate = (dStr: string) => {
+      const d = new Date(dStr);
+      return !isNaN(d.getTime())
+        ? d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+        : dStr;
+    };
+    const longDate = maintenanceTime?.includes(' - ')
+      ? maintenanceTime.split(' - ').map(formatSingleDate).join(' - ')
+      : formatSingleDate(maintenanceTime);
+
     doc.setFontSize(7).setFont('helvetica', 'normal').setTextColor(GRAY);
     doc.text(`Tanggal Maintenance: ${longDate}`, centerX, headerY + 20, { align: 'center' });
 

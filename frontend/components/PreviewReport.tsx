@@ -58,11 +58,15 @@ export function PreviewReport({
     const filledCards = cards.filter(card => card.photoBase64 || card.description);
     const [acknowledged, setAcknowledged] = useState(false);
 
-    const formattedDate = new Date(maintenanceTime).toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric'
-    });
+    const formatSingleDate = (dStr: string) => {
+        const d = new Date(dStr);
+        return !isNaN(d.getTime())
+            ? d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+            : dStr;
+    };
+    const formattedDate = maintenanceTime?.includes(' - ')
+        ? maintenanceTime.split(' - ').map(formatSingleDate).join(' - ')
+        : formatSingleDate(maintenanceTime);
 
     const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
     const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
