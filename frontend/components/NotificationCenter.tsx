@@ -182,13 +182,16 @@ export function NotificationCenter({ onSelectNotification }: NotificationCenterP
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setIsOpen(!isOpen)}
-                className={`relative p-2.5 rounded-xl transition-all duration-300 cursor-pointer ${isOpen
-                    ? 'bg-red-600 text-white shadow-lg shadow-red-500/30 ring-2 ring-red-400/50'
-                    : 'bg-slate-100 text-slate-700 hover:text-slate-900 hover:bg-slate-200 border border-slate-200 shadow-xs'
-                    }`}
+                className={`relative p-2.5 rounded-xl transition-all duration-300 cursor-pointer flex items-center justify-center ${
+                    isOpen
+                        ? 'bg-red-50 text-red-600 border border-red-300 shadow-md ring-2 ring-red-400/40'
+                        : unreadCount > 0
+                        ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 shadow-xs'
+                        : 'bg-slate-100 text-slate-700 hover:text-slate-900 hover:bg-slate-200 border border-slate-200 shadow-xs'
+                }`}
                 title="Notifikasi File & Laporan Baru"
             >
-                <Bell className={`w-5 h-5 ${unreadCount > 0 ? 'text-red-600 animate-bounce' : ''}`} />
+                <Bell className={`w-5 h-5 transition-colors ${unreadCount > 0 || isOpen ? 'text-red-600 animate-bounce' : 'text-slate-600'}`} />
 
                 {/* RED BADGE NOTIFICATION DOT */}
                 {unreadCount > 0 && (
