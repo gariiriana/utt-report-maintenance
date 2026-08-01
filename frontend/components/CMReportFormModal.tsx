@@ -368,6 +368,10 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
   // Submit Handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (currentStep < 4) {
+      handleStepClick(currentStep + 1);
+      return;
+    }
     if (!validateStep(4)) return;
     if (!user) return;
 
