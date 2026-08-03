@@ -1626,16 +1626,16 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
         </div>
 
 
-        <div className={`grid grid-cols-1 ${userRole === 'DME' ? 'md:grid-cols-3' : 'md:grid-cols-4'} gap-3 sm:gap-4`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${isAdmin ? 'xl:grid-cols-5' : userRole !== 'DME' ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-3 sm:gap-4 items-center`}>
 
-          <div className="relative">
+          <div className="relative min-w-0">
             <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={userRole === 'DME' ? "Cari dokumen / file..." : "Cari nama maintenance..."}
-              className="w-full pl-10 sm:pl-12 pr-10 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 placeholder-slate-400 text-sm sm:text-base font-medium"
+              className="w-full pl-10 sm:pl-12 pr-10 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 placeholder-slate-400 text-sm font-medium"
             />
             {searchQuery && (
               <button
@@ -1652,37 +1652,37 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           </div>
 
 
-          <div className="flex gap-2 items-center">
-            <div className="relative flex-1">
-              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+          <div className="flex gap-1.5 items-center w-full min-w-0">
+            <div className="relative flex-1 min-w-0">
+              <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none z-10" />
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full pl-8 pr-1 py-2 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 text-xs sm:text-sm font-medium"
+                className="w-full pl-6 pr-1 py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 text-xs font-medium min-w-0"
                 title="Dari tanggal"
               />
             </div>
-            <span className="text-slate-500 text-xs font-semibold">s/d</span>
-            <div className="relative flex-1">
-              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+            <span className="text-slate-500 text-xs font-semibold shrink-0 px-0.5">s/d</span>
+            <div className="relative flex-1 min-w-0">
+              <Calendar className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none z-10" />
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full pl-8 pr-1 py-2 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 text-xs sm:text-sm font-medium"
+                className="w-full pl-6 pr-1 py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 text-xs font-medium min-w-0"
                 title="Sampai tanggal"
               />
             </div>
           </div>
 
 
-          <div className="relative">
-            <Filter className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
+          <div className="relative min-w-0">
+            <Filter className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400 pointer-events-none" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest')}
-              className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-sm sm:text-base font-medium"
+              className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-sm font-medium"
               title="Urutkan dokumen"
             >
               <option value="newest">Terbaru</option>
@@ -1691,12 +1691,12 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           </div>
 
           {userRole !== 'DME' && (
-            <div className="relative">
-              <FileType className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
+            <div className="relative min-w-0">
+              <FileType className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400 pointer-events-none" />
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value as any)}
-                className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-sm sm:text-base font-medium"
+                className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-sm font-medium"
                 title="Filter tipe dokumen"
               >
                 <option value="all">Semua Tipe</option>
@@ -1708,16 +1708,16 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           )}
 
           {isAdmin && (
-            <div className="relative">
-              <Shield className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
+            <div className="relative min-w-0">
+              <Shield className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400 pointer-events-none" />
               <select
                 value={adminDeleteFilter}
                 onChange={(e) => setAdminDeleteFilter(e.target.value as any)}
-                className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-sm sm:text-base font-medium"
+                className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-sm font-medium truncate"
                 title="Filter pengajuan admin"
               >
                 <option value="all">Semua Dokumen ({documents.length})</option>
-                <option value="pending_delete">Menunggu Persetujuan Hapus ({documents.filter(d => d.deleteRequested).length})</option>
+                <option value="pending_delete">Menunggu Hapus ({documents.filter(d => d.deleteRequested).length})</option>
               </select>
             </div>
           )}
