@@ -15,6 +15,7 @@ export interface PTWExtractedData {
   startDate: string;       // ISO format "2026-01-19"
   endDate: string;         // ISO format "2026-01-25"
   maintenanceName: string; // e.g. "PM Water Leak Detector"
+  ptwType?: 'CM' | 'PM';   // 'CM' (Corrective) or 'PM' (Preventive)
 }
 
 /**
@@ -285,6 +286,12 @@ function parsePTWFromText(text: string): Partial<PTWExtractedData> {
     result.quarter = getQuarterFromDate(result.startDate);
   }
 
+  if (/\bCM\b/i.test(text) || /corrective/i.test(text)) {
+    result.ptwType = 'CM';
+  } else {
+    result.ptwType = 'PM';
+  }
+
   return result;
 }
 
@@ -381,6 +388,13 @@ export function parsePTWFromFilename(filename: string): Partial<PTWExtractedData
 
   if (result.startDate) {
     result.quarter = getQuarterFromDate(result.startDate);
+  }
+
+  // 5. Detect PTW Type (CM vs PM)
+  if (/\bCM\b/i.test(cleanName) || /corrective/i.test(cleanName)) {
+    result.ptwType = 'CM';
+  } else {
+    result.ptwType = 'PM';
   }
 
   return result;

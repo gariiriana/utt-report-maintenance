@@ -16,6 +16,7 @@ export interface PTWExportRecord {
   startDate: string;
   endDate: string;
   notes?: string;
+  ptwType?: 'CM' | 'PM';
   fileName?: string;
   closingFileName?: string;
 }
@@ -27,6 +28,8 @@ export interface WeeklyExportData {
   openCount: number;
   closedCount: number;
   totalCount: number;
+  pmCount?: number;
+  cmCount?: number;
   records: PTWExportRecord[];
 }
 
@@ -128,7 +131,7 @@ export async function exportPTWListToExcel(records: PTWExportRecord[]) {
     }
 
     // Headers
-    const headers = ['NO', 'NOMOR PTW', 'QUARTER', 'ALAT (EQUIPMENT CODE)', 'MASA BERLAKU', 'NAMA MAINTENANCE / CATATAN', 'STATUS'];
+    const headers = ['NO', 'JENIS PTW', 'NOMOR PTW', 'QUARTER', 'ALAT (EQUIPMENT CODE)', 'MASA BERLAKU', 'NAMA MAINTENANCE / CATATAN', 'STATUS'];
     const headerRow = ws.getRow(5);
     headerRow.height = 24;
 
@@ -158,15 +161,16 @@ export async function exportPTWListToExcel(records: PTWExportRecord[]) {
       const rangeText = `${formatIndoDate(rec.startDate)} s.d. ${formatIndoDate(rec.endDate)}`;
 
       ws.getCell(`A${rowIdx}`).value = idx + 1;
-      ws.getCell(`B${rowIdx}`).value = rec.ptwNumber;
-      ws.getCell(`C${rowIdx}`).value = `Q${rec.quarter}`;
-      ws.getCell(`D${rowIdx}`).value = rec.equipmentCode;
-      ws.getCell(`E${rowIdx}`).value = rangeText;
-      ws.getCell(`F${rowIdx}`).value = rec.notes || '-';
-      ws.getCell(`G${rowIdx}`).value = statusText;
+      ws.getCell(`B${rowIdx}`).value = rec.ptwType || 'PM';
+      ws.getCell(`C${rowIdx}`).value = rec.ptwNumber;
+      ws.getCell(`D${rowIdx}`).value = `Q${rec.quarter}`;
+      ws.getCell(`E${rowIdx}`).value = rec.equipmentCode;
+      ws.getCell(`F${rowIdx}`).value = rangeText;
+      ws.getCell(`G${rowIdx}`).value = rec.notes || '-';
+      ws.getCell(`H${rowIdx}`).value = statusText;
 
       // Styling data cells
-      const cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+      const cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
       cols.forEach(col => {
         const cell = ws.getCell(`${col}${rowIdx}`);
         cell.font = { name: 'Calibri', size: 10 };
@@ -289,6 +293,7 @@ export async function exportPTWListToPDF(records: PTWExportRecord[]) {
 
     const tableData = records.map((rec, idx) => [
       String(idx + 1),
+      rec.ptwType || 'PM',
       rec.ptwNumber,
       `Q${rec.quarter}`,
       rec.equipmentCode,
@@ -299,7 +304,7 @@ export async function exportPTWListToPDF(records: PTWExportRecord[]) {
 
     autoTable(doc, {
       startY: 32,
-      head: [['No.', 'Nomor PTW', 'Q', 'Alat/Eq Code', 'Masa Berlaku', 'Nama Maintenance / Catatan', 'Status']],
+      head: [['No.', 'Jenis', 'Nomor PTW', 'Q', 'Alat/Eq Code', 'Masa Berlaku', 'Nama Maintenance / Catatan', 'Status']],
       body: tableData,
       margin: { left: margin, right: margin, bottom: 15 },
       styles: {
@@ -322,20 +327,21 @@ export async function exportPTWListToPDF(records: PTWExportRecord[]) {
         fillColor: [248, 250, 252],
       },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 8 },
-        1: { cellWidth: 26, fontStyle: 'bold' },
-        2: { halign: 'center', cellWidth: 8 },
-        3: { cellWidth: 26 },
-        4: { cellWidth: 38, halign: 'center' },
-        5: { cellWidth: 'auto' },
-        6: {
+        0: { halign: 'center', cellWidth: 7 },
+        1: { halign: 'center', cellWidth: 12, fontStyle: 'bold' },
+        2: { cellWidth: 26, fontStyle: 'bold' },
+        3: { halign: 'center', cellWidth: 7 },
+        4: { cellWidth: 24 },
+        5: { cellWidth: 36, halign: 'center' },
+        6: { cellWidth: 'auto' },
+        7: {
           halign: 'center',
-          cellWidth: 16,
+          cellWidth: 15,
           fontStyle: 'bold'
         },
       },
       didParseCell: (data) => {
-        if (data.section === 'body' && data.column.index === 6) {
+        if (data.section === 'body' && data.column.index === 7) {
           if (data.cell.raw === 'SELESAI') {
             data.cell.styles.textColor = [239, 68, 68]; // Red
           } else {
@@ -443,7 +449,7 @@ export async function exportPTWWeeklyReportToExcel(
     ws.getCell('A5').value = '1. RINGKASAN HARIAN';
     ws.getCell('A5').font = { name: 'Calibri', size: 11, bold: true, color: { argb: '000000' } };
 
-    const sumHeaders = ['HARI / TANGGAL', 'TANGGAL', 'PTW TERBUKA (AKTIF)', 'PTW SELESAI', 'TOTAL PTW'];
+    const sumHeaders = ['HARI / TANGGAL', 'TANGGAL', 'PTW PM (PREVENTIVE)', 'PTW CM (CORRECTIVE)', 'PTW TERBUKA (AKTIF)', 'PTW SELESAI', 'TOTAL PTW'];
     const sumHeaderRow = ws.getRow(6);
     sumHeaderRow.height = 22;
 
@@ -461,6 +467,8 @@ export async function exportPTWWeeklyReportToExcel(
       cell.border = thinBorder;
     });
 
+    let totalPm = 0;
+    let totalCm = 0;
     let totalOpen = 0;
     let totalClosed = 0;
     let totalAll = 0;
@@ -470,17 +478,24 @@ export async function exportPTWWeeklyReportToExcel(
       const row = ws.getRow(rowIdx);
       row.height = 20;
 
+      const pmCount = wd.pmCount ?? wd.records.filter(r => (r.ptwType || 'PM') === 'PM').length;
+      const cmCount = wd.cmCount ?? wd.records.filter(r => r.ptwType === 'CM').length;
+
       ws.getCell(`A${rowIdx}`).value = `Tgl ${wd.shortRange || wd.dateRange}`;
       ws.getCell(`B${rowIdx}`).value = wd.dateRange;
-      ws.getCell(`C${rowIdx}`).value = wd.openCount;
-      ws.getCell(`D${rowIdx}`).value = wd.closedCount;
-      ws.getCell(`E${rowIdx}`).value = wd.totalCount;
+      ws.getCell(`C${rowIdx}`).value = pmCount;
+      ws.getCell(`D${rowIdx}`).value = cmCount;
+      ws.getCell(`E${rowIdx}`).value = wd.openCount;
+      ws.getCell(`F${rowIdx}`).value = wd.closedCount;
+      ws.getCell(`G${rowIdx}`).value = wd.totalCount;
 
+      totalPm += pmCount;
+      totalCm += cmCount;
       totalOpen += wd.openCount;
       totalClosed += wd.closedCount;
       totalAll += wd.totalCount;
 
-      const cols = ['A', 'B', 'C', 'D', 'E'];
+      const cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
       cols.forEach(col => {
         const cell = ws.getCell(`${col}${rowIdx}`);
         cell.font = { name: 'Calibri', size: 10 };
@@ -498,11 +513,13 @@ export async function exportPTWWeeklyReportToExcel(
     ws.getCell(`A${totalRowIdx}`).value = 'TOTAL';
     ws.mergeCells(`A${totalRowIdx}:B${totalRowIdx}`);
     ws.getCell(`A${totalRowIdx}`).alignment = { horizontal: 'right', vertical: 'middle' };
-    ws.getCell(`C${totalRowIdx}`).value = totalOpen;
-    ws.getCell(`D${totalRowIdx}`).value = totalClosed;
-    ws.getCell(`E${totalRowIdx}`).value = totalAll;
+    ws.getCell(`C${totalRowIdx}`).value = totalPm;
+    ws.getCell(`D${totalRowIdx}`).value = totalCm;
+    ws.getCell(`E${totalRowIdx}`).value = totalOpen;
+    ws.getCell(`F${totalRowIdx}`).value = totalClosed;
+    ws.getCell(`G${totalRowIdx}`).value = totalAll;
 
-    const colsSummary = ['A', 'B', 'C', 'D', 'E'];
+    const colsSummary = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
     colsSummary.forEach(col => {
       const cell = ws.getCell(`${col}${totalRowIdx}`);
       cell.font = { name: 'Calibri', size: 10, bold: true };
@@ -541,7 +558,7 @@ export async function exportPTWWeeklyReportToExcel(
 
     weeklyData.forEach(wd => {
       // Date Title
-      ws.mergeCells(`A${currentRowIdx}:F${currentRowIdx}`);
+      ws.mergeCells(`A${currentRowIdx}:G${currentRowIdx}`);
       const weekTitleCell = ws.getCell(`A${currentRowIdx}`);
       weekTitleCell.value = `RINCIAN DOKUMEN PTW - TANGGAL ${wd.dateRange}`;
       weekTitleCell.fill = {
@@ -554,7 +571,7 @@ export async function exportPTWWeeklyReportToExcel(
       currentRowIdx++;
 
       // Headers of Detail Table
-      const detailHeaders = ['NO', 'NOMOR PTW', 'NAMA MAINTENANCE / CATATAN', 'ALAT / EQ CODE', 'MASA BERLAKU', 'STATUS'];
+      const detailHeaders = ['NO', 'JENIS PTW', 'NOMOR PTW', 'NAMA MAINTENANCE / CATATAN', 'ALAT / EQ CODE', 'MASA BERLAKU', 'STATUS'];
       const detailHeaderRow = ws.getRow(currentRowIdx);
       detailHeaderRow.height = 20;
 
@@ -575,7 +592,7 @@ export async function exportPTWWeeklyReportToExcel(
 
       // Data of Detail Table
       if (wd.records.length === 0) {
-        ws.mergeCells(`A${currentRowIdx}:F${currentRowIdx}`);
+        ws.mergeCells(`A${currentRowIdx}:G${currentRowIdx}`);
         const emptyCell = ws.getCell(`A${currentRowIdx}`);
         emptyCell.value = 'Tidak ada PTW aktif pada minggu ini';
         emptyCell.font = { name: 'Calibri', size: 10, italic: true };
@@ -594,13 +611,14 @@ export async function exportPTWWeeklyReportToExcel(
           const rangeText = `${formatIndoDate(rec.startDate)} s.d. ${formatIndoDate(rec.endDate)}`;
 
           ws.getCell(`A${currentRowIdx}`).value = idx + 1;
-          ws.getCell(`B${currentRowIdx}`).value = rec.ptwNumber;
-          ws.getCell(`C${currentRowIdx}`).value = rec.notes || '-';
-          ws.getCell(`D${currentRowIdx}`).value = rec.equipmentCode;
-          ws.getCell(`E${currentRowIdx}`).value = rangeText;
-          ws.getCell(`F${currentRowIdx}`).value = statusText;
+          ws.getCell(`B${currentRowIdx}`).value = rec.ptwType || 'PM';
+          ws.getCell(`C${currentRowIdx}`).value = rec.ptwNumber;
+          ws.getCell(`D${currentRowIdx}`).value = rec.notes || '-';
+          ws.getCell(`E${currentRowIdx}`).value = rec.equipmentCode;
+          ws.getCell(`F${currentRowIdx}`).value = rangeText;
+          ws.getCell(`G${currentRowIdx}`).value = statusText;
 
-          const cols = ['A', 'B', 'C', 'D', 'E', 'F'];
+          const cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
           cols.forEach(col => {
             const cell = ws.getCell(`${col}${currentRowIdx}`);
             cell.font = { name: 'Calibri', size: 10 };
@@ -728,15 +746,23 @@ export async function exportPTWWeeklyReportToPDF(
     doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor('#1e293b');
     doc.text('I. RINGKASAN DATA HARIAN', margin, 34);
 
-    const sumTableData = weeklyData.map(wd => [
-      `Tgl ${wd.shortRange || wd.dateRange}`,
-      wd.dateRange,
-      String(wd.openCount),
-      String(wd.closedCount),
-      String(wd.totalCount)
-    ]);
+    const sumTableData = weeklyData.map(wd => {
+      const pmCount = wd.pmCount ?? wd.records.filter(r => (r.ptwType || 'PM') === 'PM').length;
+      const cmCount = wd.cmCount ?? wd.records.filter(r => r.ptwType === 'CM').length;
+      return [
+        `Tgl ${wd.shortRange || wd.dateRange}`,
+        wd.dateRange,
+        String(pmCount),
+        String(cmCount),
+        String(wd.openCount),
+        String(wd.closedCount),
+        String(wd.totalCount)
+      ];
+    });
     
     // Add Totals
+    const totalPm = weeklyData.reduce((a, b) => a + (b.pmCount ?? b.records.filter(r => (r.ptwType || 'PM') === 'PM').length), 0);
+    const totalCm = weeklyData.reduce((a, b) => a + (b.cmCount ?? b.records.filter(r => r.ptwType === 'CM').length), 0);
     const totalOpen = weeklyData.reduce((a, b) => a + b.openCount, 0);
     const totalClosed = weeklyData.reduce((a, b) => a + b.closedCount, 0);
     const totalAll = weeklyData.reduce((a, b) => a + b.totalCount, 0);
@@ -744,6 +770,8 @@ export async function exportPTWWeeklyReportToPDF(
     sumTableData.push([
       'TOTAL',
       '-',
+      String(totalPm),
+      String(totalCm),
       String(totalOpen),
       String(totalClosed),
       String(totalAll)
@@ -753,7 +781,7 @@ export async function exportPTWWeeklyReportToPDF(
 
     autoTable(doc, {
       startY: 37,
-      head: [['Hari / Tanggal', 'Tanggal', 'PTW Terbuka (Aktif)', 'PTW Selesai', 'Total PTW']],
+      head: [['Hari / Tanggal', 'Tanggal', 'PTW PM', 'PTW CM', 'Terbuka (Aktif)', 'Selesai', 'Total PTW']],
       body: sumTableData,
       margin: { left: margin, right: margin },
       styles: {
@@ -829,6 +857,7 @@ export async function exportPTWWeeklyReportToPDF(
       } else {
         const detailRows = wd.records.map((rec, idx) => [
           String(idx + 1),
+          rec.ptwType || 'PM',
           rec.ptwNumber,
           rec.notes || '-',
           rec.equipmentCode,
@@ -838,7 +867,7 @@ export async function exportPTWWeeklyReportToPDF(
 
         autoTable(doc, {
           startY: 38,
-          head: [['No.', 'Nomor PTW', 'Nama Maintenance / Catatan', 'Alat / Eq Code', 'Masa Berlaku', 'Status']],
+          head: [['No.', 'Jenis', 'Nomor PTW', 'Nama Maintenance / Catatan', 'Alat / Eq Code', 'Masa Berlaku', 'Status']],
           body: detailRows,
           margin: { left: margin, right: margin },
           styles: {

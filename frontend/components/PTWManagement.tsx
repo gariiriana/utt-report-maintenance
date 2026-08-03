@@ -15,7 +15,7 @@ import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import { sendFileNotification } from '@/utils/notificationService';
-import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList } from 'recharts';
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { safeHtml2Canvas } from '@/utils/ReportPdfExport';
 import { 
   exportPTWListToExcel, 
@@ -35,6 +35,7 @@ interface PTWRecord {
   startDate: string;
   endDate: string;
   notes?: string;
+  ptwType?: 'CM' | 'PM';
   fileName?: string;
   totalChunks?: number;
   closingFileName?: string;
@@ -71,6 +72,7 @@ interface QueuedPTWItem {
   startDate: string;
   endDate: string;
   notes: string;
+  ptwType: 'CM' | 'PM';
   isScanning: boolean;
   scanStatus: string;
   scanSource: 'filename' | 'ocr' | 'none';
@@ -85,6 +87,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
   const { user, userRole } = useAuth();
   const isAdmin = userRole === 'admin';
   const [activeSubTab, setActiveSubTab] = useState<'list' | 'weekly'>('list');
+  const [ptwTypeFilter, setPtwTypeFilter] = useState<'ALL' | 'PM' | 'CM'>('ALL');
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedWeek, setSelectedWeek] = useState<number>(1);
@@ -126,7 +129,8 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
     quarter: '',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
-    notes: ''
+    notes: '',
+    ptwType: 'PM' as 'CM' | 'PM'
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedClosingFile, setSelectedClosingFile] = useState<File | null>(null);
@@ -196,6 +200,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date().toISOString().split('T')[0],
       notes: '',
+      ptwType: 'PM',
       isScanning: false,
       scanStatus: '',
       scanSource: 'none',
@@ -243,6 +248,9 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
         }
         if (extracted.maintenanceName) {
           updated.notes = extracted.maintenanceName;
+        }
+        if (extracted.ptwType) {
+          updated.ptwType = extracted.ptwType;
         }
         
         return updated;
@@ -307,6 +315,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
         startDate: filenameData.startDate || new Date().toISOString().split('T')[0],
         endDate: filenameData.endDate || new Date().toISOString().split('T')[0],
         notes: filenameData.maintenanceName || '',
+        ptwType: filenameData.ptwType || 'PM',
         isScanning: false,
         scanStatus: '',
         scanSource: filenameData.sequenceNumber ? 'filename' : 'none',
@@ -746,9 +755,11 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
           sequenceNumber: parseInt(formData.sequenceNumber),
           ptwNumber: ptwNum,
           equipmentCode: normalizeEquipmentCode(formData.equipmentCode),
+          quarter: formData.quarter,
           startDate: formData.startDate,
           endDate: formData.endDate,
           notes: formData.notes,
+          ptwType: formData.ptwType || 'PM',
           updatedAt: serverTimestamp()
         };
 
@@ -894,6 +905,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
             startDate: item.startDate,
             endDate: item.endDate,
             notes: item.notes,
+            ptwType: item.ptwType || 'PM',
             ...(item.file && { fileName: item.file.name, totalChunks: itemChunks }),
             createdBy: user.email,
             createdAt: serverTimestamp()
@@ -1002,7 +1014,6 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
   };
 
   const openEditModal = (record: PTWRecord) => {
-
     setSelectedRecord(record);
     setFormData({
       sequenceNumber: record.sequenceNumber.toString(),
@@ -1010,7 +1021,8 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
       quarter: record.quarter,
       startDate: record.startDate || '',
       endDate: record.endDate || '',
-      notes: record.notes || ''
+      notes: record.notes || '',
+      ptwType: record.ptwType || 'PM'
     });
     setShouldDeleteFile(false);
     setSelectedClosingFile(null);
@@ -1025,7 +1037,8 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
       quarter: '',
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date().toISOString().split('T')[0],
-      notes: ''
+      notes: '',
+      ptwType: 'PM'
     });
     setSelectedRecord(null);
     setSelectedFile(null);
@@ -1035,11 +1048,14 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
     setQueuedItems([]);
   };
 
-  const filteredRecords = records.filter(r =>
-    r.ptwNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.equipmentCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    normalizeEquipmentCode(r.equipmentCode).toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRecords = records.filter(r => {
+    const matchesSearch =
+      r.ptwNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.equipmentCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      normalizeEquipmentCode(r.equipmentCode).toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = ptwTypeFilter === 'ALL' || (r.ptwType || 'PM') === ptwTypeFilter;
+    return matchesSearch && matchesType;
+  });
 
   const groupedRecords = filteredRecords.reduce((acc, record) => {
     const code = normalizeEquipmentCode(record.equipmentCode);
@@ -1106,6 +1122,8 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
       openCount: number;
       closedCount: number;
       totalCount: number;
+      pmCount: number;
+      cmCount: number;
     }[] = [];
 
     let blockStart = new Date(startWeekDate);
@@ -1126,6 +1144,8 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
       
       const openRecords = dayRecords.filter(r => !r.closingFileName && (!r.endDate || r.endDate >= todayStr));
       const closedRecords = dayRecords.filter(r => !!r.closingFileName || (!!r.endDate && r.endDate < todayStr));
+      const pmCount = dayRecords.filter(r => (r.ptwType || 'PM') === 'PM').length;
+      const cmCount = dayRecords.filter(r => r.ptwType === 'CM').length;
 
       days.push({
         weekNum: dayNum,
@@ -1138,6 +1158,8 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
         openCount: openRecords.length,
         closedCount: closedRecords.length,
         totalCount: dayRecords.length,
+        pmCount,
+        cmCount,
       });
 
       dayNum++;
@@ -1156,7 +1178,9 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
   }, [selectedYear, selectedMonth, selectedWeek, weeklyData.length]);
 
   const chartData = weeklyData.map(wd => ({
-    name: `Minggu ${wd.weekNum}`,
+    name: `Tgl ${wd.shortRange}`,
+    'PTW PM': wd.pmCount,
+    'PTW CM': wd.cmCount,
     'Open (Aktif)': wd.openCount,
     'Closed (Selesai)': wd.closedCount,
     'Total PTW': wd.totalCount,
@@ -1164,6 +1188,8 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
 
   // Monthly grand totals for the summary cards
   const monthlyTotalPTW = weeklyData.reduce((sum, wd) => sum + wd.totalCount, 0);
+  const monthlyTotalPM = weeklyData.reduce((sum, wd) => sum + wd.pmCount, 0);
+  const monthlyTotalCM = weeklyData.reduce((sum, wd) => sum + wd.cmCount, 0);
   const monthlyTotalOpen = weeklyData.reduce((sum, wd) => sum + wd.openCount, 0);
   const monthlyTotalClosed = weeklyData.reduce((sum, wd) => sum + wd.closedCount, 0);
 
@@ -1280,37 +1306,100 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
       )}
 
       {activeSubTab === 'list' && (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-5 border border-sky-100/90 shadow-md text-slate-800 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100">
-            <Hash className="w-6 h-6 text-blue-600" />
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-5 border border-sky-100/90 shadow-md text-slate-800 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-100">
+                <Hash className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total PTW</p>
+                <p className="text-2xl font-black text-slate-900">{records.length}</p>
+              </div>
+            </div>
+
+            <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-5 border border-sky-100/90 shadow-md text-slate-800 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center border border-indigo-100">
+                <CheckCircle2 className="w-6 h-6 text-indigo-600" />
+              </div>
+              <div>
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">PTW PM (Preventive)</p>
+                <p className="text-2xl font-black text-indigo-900">{records.filter(r => (r.ptwType || 'PM') === 'PM').length}</p>
+              </div>
+            </div>
+
+            <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-5 border border-sky-100/90 shadow-md text-slate-800 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center border border-amber-100">
+                <AlertCircle className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">PTW CM (Corrective)</p>
+                <p className="text-2xl font-black text-amber-900">{records.filter(r => r.ptwType === 'CM').length}</p>
+              </div>
+            </div>
+
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Cari nomor PTW atau alat..."
+                className="w-full h-full pl-12 pr-4 py-4 bg-slate-50/90 border border-slate-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 placeholder-slate-400 shadow-md font-medium text-sm"
+              />
+            </div>
           </div>
-          <div>
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total PTW</p>
-            <p className="text-2xl font-black text-slate-900">{records.length}</p>
-          </div>
+
+      {/* Filter Tabs for PTW Type */}
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-2 bg-white/90 p-1.5 rounded-2xl border border-sky-100 shadow-sm">
+          <button
+            onClick={() => setPtwTypeFilter('ALL')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              ptwTypeFilter === 'ALL'
+                ? 'bg-slate-900 text-white shadow-md'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            Semua Jenis ({records.length})
+          </button>
+          <button
+            onClick={() => setPtwTypeFilter('PM')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              ptwTypeFilter === 'PM'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'text-slate-600 hover:text-indigo-600 hover:bg-indigo-50'
+            }`}
+          >
+            🛡️ PM (Preventive) ({records.filter(r => (r.ptwType || 'PM') === 'PM').length})
+          </button>
+          <button
+            onClick={() => setPtwTypeFilter('CM')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              ptwTypeFilter === 'CM'
+                ? 'bg-amber-600 text-white shadow-md shadow-amber-600/20'
+                : 'text-slate-600 hover:text-amber-600 hover:bg-amber-50'
+            }`}
+          >
+            🛠️ CM (Corrective) ({records.filter(r => r.ptwType === 'CM').length})
+          </button>
         </div>
-        <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-5 border border-sky-100/90 shadow-md text-slate-800 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center border border-purple-100">
-            <Calendar className="w-6 h-6 text-purple-600" />
-          </div>
-          <div>
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Update Terbaru</p>
-            <p className="text-lg font-black text-slate-900">
-              {records.length > 0 ? new Date(records[0].startDate).toLocaleDateString('id-ID') : '-'}
-            </p>
-          </div>
-        </div>
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Cari nomor PTW atau alat..."
-            className="w-full h-full pl-12 pr-4 py-4 bg-slate-50/90 border border-slate-200 rounded-2xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 placeholder-slate-400 shadow-md font-medium"
-          />
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => exportPTWListToExcel(filteredRecords)}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 text-xs font-bold transition shadow-sm cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            Export Excel
+          </button>
+          <button
+            onClick={() => exportPTWListToPDF(filteredRecords)}
+            className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl border border-red-200 text-xs font-bold transition shadow-sm cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            Export PDF
+          </button>
         </div>
       </div>
 
@@ -1327,25 +1416,6 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
         </div>
       ) : (
         <div className="space-y-6">
-          <div className="flex justify-between items-center bg-white/90 backdrop-blur-xl px-6 py-4 rounded-2xl border border-sky-100/90 shadow-md text-slate-800">
-            <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">Daftar Dokumen PTW</h2>
-            <div className="flex gap-2">
-              <button
-                onClick={() => exportPTWListToExcel(filteredRecords)}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl border border-emerald-200 text-xs font-bold transition shadow-sm cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                Export Excel
-              </button>
-              <button
-                onClick={() => exportPTWListToPDF(filteredRecords)}
-                className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl border border-red-200 text-xs font-bold transition shadow-sm cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                Export PDF
-              </button>
-            </div>
-          </div>
           {Object.keys(groupedRecords).sort().map((code) => {
             const groupRecords = groupedRecords[code];
             const isExpanded = !!expandedGroups[code];
@@ -1412,10 +1482,19 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                                 return (
                                   <tr key={record.id} className="hover:bg-indigo-50/40 transition-colors group">
                                     <td className="px-6 py-4">
-                                      <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-2 flex-wrap">
                                         <span className="text-sm font-extrabold text-indigo-900 bg-indigo-50 px-3 py-1 rounded-lg border border-indigo-200/80 shadow-xs">
                                           {record.ptwNumber}
                                         </span>
+                                        {(record.ptwType || 'PM') === 'CM' ? (
+                                          <span className="text-[10px] font-black text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300 shadow-xs">
+                                            🛠️ CM
+                                          </span>
+                                        ) : (
+                                          <span className="text-[10px] font-black text-indigo-800 bg-indigo-100 px-2.5 py-0.5 rounded-full border border-indigo-300 shadow-xs">
+                                            🛡️ PM
+                                          </span>
+                                        )}
                                         {isClosed && (
                                           <span className="text-[10px] font-black text-red-600 bg-red-50 px-2.5 py-0.5 rounded-full border border-red-200 shadow-xs">
                                             SELESAI
@@ -1508,10 +1587,19 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                             return (
                               <div key={record.id} className="bg-slate-50/80 rounded-xl border border-slate-200 p-4 shadow-sm">
                                 <div className="flex items-start justify-between mb-3">
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
                                     <span className="text-sm font-extrabold text-indigo-900 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-200/80 shadow-xs">
                                       {record.ptwNumber}
                                     </span>
+                                    {(record.ptwType || 'PM') === 'CM' ? (
+                                      <span className="text-[10px] font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full border border-amber-300">
+                                        🛠️ CM
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-black text-indigo-800 bg-indigo-100 px-2 py-0.5 rounded-full border border-indigo-300">
+                                        🛡️ PM
+                                      </span>
+                                    )}
                                     {isClosed && (
                                       <span className="text-[10px] font-black text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-200">
                                         SELESAI
@@ -1601,8 +1689,8 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
           })}
         </div>
       )}
-        </>
-      )}
+    </div>
+  )}
 
       {activeSubTab === 'weekly' && (
         <div className="space-y-8 animate-fadeIn">
@@ -1707,14 +1795,22 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                     <p className="text-slate-400 text-xs mt-1 uppercase tracking-wider font-semibold">Total PTW</p>
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-800/85 text-[11px]">
+                  <div className="grid grid-cols-4 gap-1 mt-4 pt-3 border-t border-slate-200 text-[10px]">
                     <div>
-                      <span className="text-emerald-400 font-bold block">{wd.openCount}</span>
-                      <span className="text-slate-500 block uppercase font-bold text-[9px] tracking-tight">Open</span>
+                      <span className="text-indigo-600 font-bold block">{wd.pmCount}</span>
+                      <span className="text-slate-500 block uppercase font-bold text-[8px] tracking-tight">PM</span>
                     </div>
                     <div>
-                      <span className="text-red-400 font-bold block">{wd.closedCount}</span>
-                      <span className="text-slate-500 block uppercase font-bold text-[9px] tracking-tight">Closed</span>
+                      <span className="text-amber-600 font-bold block">{wd.cmCount}</span>
+                      <span className="text-slate-500 block uppercase font-bold text-[8px] tracking-tight">CM</span>
+                    </div>
+                    <div>
+                      <span className="text-emerald-600 font-bold block">{wd.openCount}</span>
+                      <span className="text-slate-500 block uppercase font-bold text-[8px] tracking-tight">Open</span>
+                    </div>
+                    <div>
+                      <span className="text-red-600 font-bold block">{wd.closedCount}</span>
+                      <span className="text-slate-500 block uppercase font-bold text-[8px] tracking-tight">Closed</span>
                     </div>
                   </div>
                 </motion.div>
@@ -1733,16 +1829,15 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%' }}>
                 <div>
                   <h3 className="text-lg font-bold mb-1 ptw-weekly-chart-title">Visualisasi Tren Validitas Harian</h3>
-                  <p className="text-xs ptw-weekly-chart-desc" style={{ color: '#94a3b8' }}>Tingkat kepatuhan open &amp; closed PTW harian</p>
+                  <p className="text-xs ptw-weekly-chart-desc" style={{ color: '#94a3b8' }}>Tingkat kepatuhan PM, CM, Open &amp; Closed PTW harian</p>
                 </div>
 
                 {/* Monthly Summary Totals */}
                 <div 
                   style={{
-                    display: 'flex',
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    gap: '10px',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+                    gap: '6px',
                     width: '100%',
                     boxSizing: 'border-box'
                   }}
@@ -1750,41 +1845,62 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                   <div 
                     className="rounded-2xl text-center"
                     style={{
-                      flex: '1 1 32%',
                       background: 'linear-gradient(135deg, rgba(109, 40, 217, 0.3) 0%, rgba(88, 28, 135, 0.15) 100%)',
                       border: '1px solid rgba(139, 92, 246, 0.25)',
-                      padding: '10px 4px',
+                      padding: '8px 2px',
                       boxSizing: 'border-box'
                     }}
                   >
-                    <p className="text-xl font-extrabold tracking-tight" style={{ color: '#c084fc', margin: 0, padding: 0 }}>{monthlyTotalPTW}</p>
-                    <p className="text-[8px] uppercase font-bold tracking-widest mt-1" style={{ color: 'rgba(167, 139, 250, 0.8)', margin: 0, padding: 0 }}>Total PTW</p>
+                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#c084fc', margin: 0, padding: 0 }}>{monthlyTotalPTW}</p>
+                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: 'rgba(167, 139, 250, 0.8)', margin: 0, padding: 0 }}>Total</p>
                   </div>
                   <div 
                     className="rounded-2xl text-center"
                     style={{
-                      flex: '1 1 32%',
+                      background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.3) 0%, rgba(67, 56, 202, 0.15) 100%)',
+                      border: '1px solid rgba(99, 102, 241, 0.25)',
+                      padding: '8px 2px',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#a5b4fc', margin: 0, padding: 0 }}>{monthlyTotalPM}</p>
+                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: 'rgba(129, 140, 248, 0.8)', margin: 0, padding: 0 }}>PM</p>
+                  </div>
+                  <div 
+                    className="rounded-2xl text-center"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(217, 119, 6, 0.3) 0%, rgba(180, 83, 9, 0.15) 100%)',
+                      border: '1px solid rgba(245, 158, 11, 0.25)',
+                      padding: '8px 2px',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#fcd34d', margin: 0, padding: 0 }}>{monthlyTotalCM}</p>
+                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: 'rgba(252, 211, 77, 0.8)', margin: 0, padding: 0 }}>CM</p>
+                  </div>
+                  <div 
+                    className="rounded-2xl text-center"
+                    style={{
                       background: 'linear-gradient(135deg, rgba(29, 78, 216, 0.3) 0%, rgba(21, 94, 117, 0.15) 100%)',
                       border: '1px solid rgba(59, 130, 246, 0.25)',
-                      padding: '10px 4px',
+                      padding: '8px 2px',
                       boxSizing: 'border-box'
                     }}
                   >
-                    <p className="text-xl font-extrabold tracking-tight" style={{ color: '#93c5fd', margin: 0, padding: 0 }}>{monthlyTotalOpen}</p>
-                    <p className="text-[8px] uppercase font-bold tracking-widest mt-1" style={{ color: 'rgba(96, 165, 250, 0.8)', margin: 0, padding: 0 }}>Total Open</p>
+                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#93c5fd', margin: 0, padding: 0 }}>{monthlyTotalOpen}</p>
+                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: 'rgba(96, 165, 250, 0.8)', margin: 0, padding: 0 }}>Open</p>
                   </div>
                   <div 
                     className="rounded-2xl text-center"
                     style={{
-                      flex: '1 1 32%',
                       background: 'linear-gradient(135deg, rgba(194, 65, 12, 0.3) 0%, rgba(180, 83, 9, 0.15) 100%)',
                       border: '1px solid rgba(249, 115, 22, 0.25)',
-                      padding: '10px 4px',
+                      padding: '8px 2px',
                       boxSizing: 'border-box'
                     }}
                   >
-                    <p className="text-xl font-extrabold tracking-tight" style={{ color: '#fdba74', margin: 0, padding: 0 }}>{monthlyTotalClosed}</p>
-                    <p className="text-[8px] uppercase font-bold tracking-widest mt-1" style={{ color: 'rgba(251, 146, 60, 0.8)', margin: 0, padding: 0 }}>Total Closed</p>
+                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#fdba74', margin: 0, padding: 0 }}>{monthlyTotalClosed}</p>
+                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: 'rgba(251, 146, 60, 0.8)', margin: 0, padding: 0 }}>Closed</p>
                   </div>
                 </div>
               </div>
@@ -1801,12 +1917,10 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                     />
                     <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
                     <Line type="monotone" dataKey="Total PTW" stroke="#a78bfa" strokeWidth={3} dot={{ fill: '#a78bfa', r: 4 }} />
-                    <Bar dataKey="Open (Aktif)" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20}>
-                      <LabelList dataKey="Open (Aktif)" position="top" offset={10} style={{ fill: '#ffffff', fontSize: 9, fontWeight: 'bold' }} />
-                    </Bar>
-                    <Bar dataKey="Closed (Selesai)" fill="#f97316" radius={[4, 4, 0, 0]} barSize={20}>
-                      <LabelList dataKey="Closed (Selesai)" position="top" offset={10} style={{ fill: '#ffffff', fontSize: 9, fontWeight: 'bold' }} />
-                    </Bar>
+                    <Bar dataKey="PTW PM" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={14} />
+                    <Bar dataKey="PTW CM" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={14} />
+                    <Bar dataKey="Open (Aktif)" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={14} />
+                    <Bar dataKey="Closed (Selesai)" fill="#f97316" radius={[4, 4, 0, 0]} barSize={14} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -1837,6 +1951,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                         <tr>
                           <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">No.</th>
                           <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Nomor PTW</th>
+                          <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Jenis</th>
                           <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Nama Maintenance</th>
                           <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Masa Berlaku</th>
                           <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase">Status</th>
@@ -1852,6 +1967,17 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                                 <span className="bg-slate-800 px-2 py-1 rounded-lg border border-slate-700/50">
                                   {rec.ptwNumber}
                                 </span>
+                              </td>
+                              <td className="px-4 py-3 text-xs font-bold whitespace-nowrap">
+                                {(rec.ptwType || 'PM') === 'CM' ? (
+                                  <span className="text-[10px] font-black text-amber-300 bg-amber-900/40 px-2 py-0.5 rounded-full border border-amber-500/40">
+                                    🛠️ CM
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] font-black text-indigo-300 bg-indigo-900/40 px-2 py-0.5 rounded-full border border-indigo-500/40">
+                                    🛡️ PM
+                                  </span>
+                                )}
                               </td>
                               <td className="px-4 py-3 text-xs text-slate-300 max-w-[180px] truncate" title={rec.notes}>
                                 {rec.notes || '-'}
@@ -1941,6 +2067,33 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
               {isEditModalOpen ? (
                 // ===== EDIT FORM =====
                 <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 uppercase ml-1">Jenis PTW</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, ptwType: 'PM' })}
+                        className={`py-3 px-4 rounded-2xl font-bold text-sm border flex items-center justify-center gap-2 transition cursor-pointer ${
+                          formData.ptwType === 'PM'
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
+                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        🛡️ PM (Preventive)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, ptwType: 'CM' })}
+                        className={`py-3 px-4 rounded-2xl font-bold text-sm border flex items-center justify-center gap-2 transition cursor-pointer ${
+                          formData.ptwType === 'CM'
+                            ? 'bg-amber-600 text-white border-amber-600 shadow-md shadow-amber-600/20'
+                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        🛠️ CM (Corrective)
+                      </button>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label htmlFor="ptw-sequence" className="text-xs font-bold text-slate-700 uppercase ml-1">Sequence Number</label>
@@ -2342,8 +2495,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                                   </button>
                                 </div>
                               </div>
-
-                              {/* Accordion Content */}
+                  {/* Accordion Content */}
                               <AnimatePresence initial={false}>
                                 {item.isExpanded && (
                                   <motion.div
@@ -2353,6 +2505,34 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                                     transition={{ duration: 0.2, ease: 'easeInOut' }}
                                     className="border-t border-slate-200 bg-white p-4 space-y-4"
                                   >
+                                    <div className="space-y-1.5">
+                                      <label className="text-[10px] font-bold text-slate-700 uppercase ml-1">Jenis PTW (PM / CM)</label>
+                                      <div className="grid grid-cols-2 gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => updateQueueItemField(item.id, 'ptwType', 'PM')}
+                                          className={`py-2 px-3 rounded-xl font-bold text-xs border flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                                            (item.ptwType || 'PM') === 'PM'
+                                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                          }`}
+                                        >
+                                          🛡️ PM (Preventive)
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => updateQueueItemField(item.id, 'ptwType', 'CM')}
+                                          className={`py-2 px-3 rounded-xl font-bold text-xs border flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                                            item.ptwType === 'CM'
+                                              ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                                              : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                          }`}
+                                        >
+                                          🛠️ CM (Corrective)
+                                        </button>
+                                      </div>
+                                    </div>
+
                                     <div className="grid grid-cols-2 gap-4">
                                       <div className="space-y-1.5">
                                         <label className="text-[10px] font-bold text-slate-700 uppercase ml-1">No. Urut</label>
