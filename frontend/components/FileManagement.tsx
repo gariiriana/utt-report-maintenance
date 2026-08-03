@@ -8,6 +8,7 @@ import {
     Trash2,
     X,
     Loader2,
+    ChevronLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -632,16 +633,46 @@ export function FileManagement({
         }
     };
 
+    const isTypeMatch = (fMType?: string, targetType?: string | null) => {
+        if (!targetType) return true;
+        if (!fMType) return false;
+        if (fMType === targetType) return true;
+        if ((targetType.includes('Transformer') || targetType.includes('Trafo')) && (fMType.includes('Transformer') || fMType.includes('Trafo'))) return true;
+        if (targetType === 'Generator' && (fMType.includes('Generator') || fMType.includes('Genset'))) return true;
+        return false;
+    };
+
     const filteredFiles = files.filter((file) => {
-        const matchesSearch = file.fileName
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase());
+        const q = searchQuery.trim().toLowerCase();
+        const matchesSearch = !q || [
+            file.fileName,
+            file.category,
+            file.maintenanceType,
+            file.description,
+            file.uploadedBy,
+            file.uploadedByEmail
+        ].filter(Boolean).some(val => String(val).toLowerCase().includes(q));
+
         const matchesCategory =
             filterCategory === 'All' || file.category === filterCategory;
         const matchesYear =
             filterYear === 'All' || file.year === filterYear;
-        const matchesMType = !selectedMType || file.maintenanceType === selectedMType;
-        return matchesSearch && matchesCategory && matchesYear && matchesMType;
+        return matchesSearch && matchesCategory && matchesYear;
+    });
+
+    const displayFiles = filteredFiles.filter((file) => {
+        if (selectedFolder && !matchCategory(file.category, selectedFolder)) {
+            return false;
+        }
+        if (selectedQuarter && selectedFolder !== 'SLD' && file.quarter !== selectedQuarter) {
+            return false;
+        }
+        if (selectedMType && ['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'].includes(selectedFolder || '')) {
+            if (!isTypeMatch(file.maintenanceType, selectedMType)) {
+                return false;
+            }
+        }
+        return true;
     });
 
     const formatFileSize = (bytes: number) => {
@@ -888,8 +919,17 @@ export function FileManagement({
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder="Cari file..."
-                                className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl text-slate-900 text-sm sm:text-base placeholder-slate-400 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
+                                className="w-full pl-9 sm:pl-10 pr-10 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl text-slate-900 text-sm sm:text-base placeholder-slate-400 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
                             />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full transition-colors cursor-pointer"
+                                    title="Bersihkan pencarian"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -981,17 +1021,18 @@ export function FileManagement({
                         )}
                     </div>
 
-                    {(selectedFolder || selectedQuarter || selectedMType) && !searchQuery && (
+                    {(selectedFolder || selectedQuarter || selectedMType || searchQuery) && (
                         <button
                             onClick={() => {
                                 setSelectedMType(null);
                                 setSelectedQuarter(null);
                                 setSelectedFolder(null);
+                                setSearchQuery('');
                                 if (onBackToRoot) onBackToRoot();
                             }}
                             className="text-xs sm:text-sm text-slate-600 hover:text-amber-700 font-semibold flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-amber-50 border border-slate-200 rounded-lg transition-all shadow-2xs cursor-pointer"
                         >
-                            <X className="w-4 h-4" />
+                            <ChevronLeft className="w-4 h-4" />
                             Kembali ke Folder Utama
                         </button>
                     )}
@@ -1059,14 +1100,7 @@ export function FileManagement({
                 ) : !searchQuery && selectedFolder && selectedQuarter && !selectedMType && ['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'].includes(selectedFolder) ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                         {MAINTENANCE_TYPES.map((type) => {
-                            const isTypeMatch = (fMType?: string) => {
-                                if (!fMType) return false;
-                                if (fMType === type) return true;
-                                if ((type.includes('Transformer') || type.includes('Trafo')) && (fMType.includes('Transformer') || fMType.includes('Trafo'))) return true;
-                                if (type === 'Generator' && (fMType.includes('Generator') || fMType.includes('Genset'))) return true;
-                                return false;
-                            };
-                            const typeFiles = filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && f.quarter === selectedQuarter && isTypeMatch(f.maintenanceType));
+                            const typeFiles = filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && f.quarter === selectedQuarter && isTypeMatch(f.maintenanceType, type));
                             const fileCount = typeFiles.length;
 
                             return (
@@ -1092,23 +1126,10 @@ export function FileManagement({
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {(searchQuery
-                            ? filteredFiles
-                            : filteredFiles.filter(f =>
-                                matchCategory(f.category, selectedFolder) &&
-                                (selectedFolder === 'SLD' ? true : f.quarter === selectedQuarter) &&
-                                (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'].includes(selectedFolder || '')
-                                    ? (selectedMType && (
-                                        f.maintenanceType === selectedMType ||
-                                        ((selectedMType.includes('Transformer') || selectedMType.includes('Trafo')) && (f.maintenanceType?.includes('Transformer') || f.maintenanceType?.includes('Trafo'))) ||
-                                        (selectedMType === 'Generator' && (f.maintenanceType?.includes('Generator') || f.maintenanceType?.includes('Genset')))
-                                    ))
-                                    : true)
-                            )
-                        ).length === 0 ? (
+                        {displayFiles.length === 0 ? (
                             <div className="text-center py-12">
                                 <Search className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-                                <p className="text-slate-400">No matching files found</p>
+                                <p className="text-slate-400 font-medium">Tidak ada file yang sesuai</p>
                             </div>
                         ) : (
                             <>
@@ -1118,23 +1139,22 @@ export function FileManagement({
                                             <input
                                                 type="checkbox"
                                                 checked={
-                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && (selectedFolder === 'SLD' ? true : f.quarter === selectedQuarter) && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).length > 0 &&
-                                                    (searchQuery ? filteredFiles : filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && (selectedFolder === 'SLD' ? true : f.quarter === selectedQuarter) && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true))).every(f => selectedFileIds.includes(f.id))
+                                                    displayFiles.length > 0 &&
+                                                    displayFiles.every(f => selectedFileIds.includes(f.id))
                                                 }
                                                 onChange={(e) => {
-                                                    const currentFiles = searchQuery ? filteredFiles : filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && (selectedFolder === 'SLD' ? true : f.quarter === selectedQuarter) && (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true));
                                                     if (e.target.checked) {
-                                                        const allIds = currentFiles.map(f => f.id);
+                                                        const allIds = displayFiles.map(f => f.id);
                                                         setSelectedFileIds(prev => [...new Set([...prev, ...allIds])]);
                                                     } else {
-                                                        const currentIds = currentFiles.map(f => f.id);
+                                                        const currentIds = displayFiles.map(f => f.id);
                                                         setSelectedFileIds(prev => prev.filter(id => !currentIds.includes(id)));
                                                     }
                                                 }}
-                                                className="w-4 h-4 rounded border-slate-300 bg-white text-blue-600 focus:ring-blue-500"
+                                                className="w-4 h-4 rounded border-slate-300 bg-white text-blue-600 focus:ring-blue-500 cursor-pointer"
                                             />
                                             <span className="text-sm font-medium text-slate-700">
-                                                Select All Files
+                                                Pilih Semua File ({displayFiles.length})
                                             </span>
                                         </div>
 
@@ -1155,14 +1175,7 @@ export function FileManagement({
                                     </div>
                                 )}
 
-                                {(searchQuery
-                                    ? filteredFiles
-                                    : filteredFiles.filter(f =>
-                                        matchCategory(f.category, selectedFolder) &&
-                                        (selectedFolder === 'SLD' ? true : f.quarter === selectedQuarter) &&
-                                        (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'].includes(selectedFolder || '') ? f.maintenanceType === selectedMType : true)
-                                    )
-                                ).map((file) => (
+                                {displayFiles.map((file) => (
                                     <motion.div
                                         key={file.id}
                                         initial={{ opacity: 0 }}

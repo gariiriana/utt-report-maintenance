@@ -61,7 +61,7 @@ export function MainApp() {
     if (item.targetTab) {
       setActiveTab(item.targetTab as Tab);
     }
-    const rawQuery = item.searchQuery || item.fileName || item.title || '';
+    const rawQuery = item.fileName || item.searchQuery || item.title || '';
     const queryToUse = rawQuery
       .replace(/\.pdf$/i, '')
       .replace(/\.xlsx$/i, '')

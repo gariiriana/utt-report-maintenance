@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X } from 'lucide-react';
 import { collection, query, getDocs, deleteDoc, doc, where, updateDoc, deleteField } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
@@ -879,6 +879,37 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
   }, [documents, filteredDocuments]);
 
   const renderDmeContent = () => {
+    if (searchQuery.trim() !== '') {
+      return (
+        <div className="space-y-4 w-full max-w-6xl">
+          <div className="bg-white/90 backdrop-blur-xl p-4 rounded-2xl border border-slate-200 shadow-xl flex items-center justify-between flex-wrap gap-3">
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setDmeSelectedFolder(null);
+                setDmeLevel('root');
+              }}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-800 rounded-xl transition-all text-xs font-bold cursor-pointer border border-slate-200 shadow-xs"
+            >
+              <ChevronLeft className="w-4 h-4" /> Kembali ke Folder Utama
+            </button>
+            <div className="text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
+              Hasil Pencarian File: "{searchQuery}" ({filteredDocuments.length} dokumen)
+            </div>
+          </div>
+
+          {filteredDocuments.length === 0 ? (
+            <div className="text-center py-12 bg-white/90 backdrop-blur-xl rounded-2xl border border-slate-200 shadow-xl">
+              <Search className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+              <p className="text-sm font-semibold text-slate-600">Tidak ada dokumen yang sesuai dengan "{searchQuery}"</p>
+            </div>
+          ) : (
+            filteredDocuments.map((document, index) => renderDocumentCard(document, index))
+          )}
+        </div>
+      );
+    }
+
     const uniqueAccounts = Array.from(new Set(filteredDocuments.map(d => d.createdBy))).sort();
 
     const managementFolders = [
@@ -1604,8 +1635,20 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={userRole === 'DME' ? "Cari dokumen / file..." : "Cari nama maintenance..."}
-              className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 placeholder-slate-400 text-sm sm:text-base font-medium"
+              className="w-full pl-10 sm:pl-12 pr-10 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 placeholder-slate-400 text-sm sm:text-base font-medium"
             />
+            {searchQuery && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setDmeLevel('root');
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full transition-colors cursor-pointer"
+                title="Bersihkan pencarian"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
 

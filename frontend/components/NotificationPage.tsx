@@ -113,7 +113,7 @@ export function NotificationPage({ onSelectNotification }: NotificationPageProps
                         uploadedAt: dateObj,
                         targetTab: 'documents',
                         fileId: docSnap.id,
-                        searchQuery: mName || displayFileName
+                        searchQuery: displayFileName || mName
                     };
                 }
             });

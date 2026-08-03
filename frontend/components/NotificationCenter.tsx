@@ -144,7 +144,7 @@ export function NotificationCenter({ onSelectNotification, onOpenNotificationPag
                         uploadedAt: dateObj,
                         targetTab: 'documents',
                         fileId: docSnap.id,
-                        searchQuery: mName || displayFileName
+                        searchQuery: displayFileName || mName
                     };
                 }
             });
