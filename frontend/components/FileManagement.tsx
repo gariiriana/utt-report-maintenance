@@ -251,6 +251,7 @@ export function FileManagement({
                         id: doc.id,
                         ...doc.data(),
                     }))
+                    .filter((file: any) => file.status !== 'uploading')
                     .sort((a: any, b: any) => {
                         const getMillis = (val: any) => {
                             if (!val) return Date.now();
