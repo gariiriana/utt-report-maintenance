@@ -100,6 +100,14 @@ export const PDF_TEMPLATE_REGISTRY: Record<string, PDFTemplateConfig> = {
     maintenanceType: 'Door',
     description: 'Template PDF Service Report khusus Door / Rolling Door Neutra DC Cikarang',
   },
+  'gate@gmail.com': {
+    accountEmail: 'gate@gmail.com',
+    templateName: 'Service Report Automatic Gate',
+    templateFileName: 'gate@gmail.com.pdf',
+    templatePath: '/templates/pdf_service_reports/gate@gmail.com.pdf',
+    maintenanceType: 'Gate',
+    description: 'Template PDF Service Report khusus Automatic Gate Neutra DC Cikarang',
+  },
   'capacitorbank@gmail.com': {
     accountEmail: 'capacitorbank@gmail.com',
     templateName: 'Service Report Panel APFCR (Capacitor Bank)',

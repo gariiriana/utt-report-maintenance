@@ -261,6 +261,17 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'measrument Ampere S',
     'measrument Ampere T'
   ],
+  'gate@gmail.com': [
+    'Cleaning Motor',
+    'Voltage Measurement',
+    'Tightening Wheel',
+    'Setting Magnetic Sensor',
+    'Ampere Measurement',
+    'Lubricant Roll',
+    'Lubricant Bearing Gear',
+    'Tigtening Bolt Base Frame',
+    'Tigtening Bolt Module'
+  ],
   'capacitorbank@gmail.com': [
     'Perform a visual inspection and check the PFC/varimetric regulator settings',
     'Inspection and check current (A) at general incomer to the capasitor bank using Clamp Meter',
