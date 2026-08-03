@@ -24,7 +24,7 @@ import {
   exportPTWWeeklyReportToPDF 
 } from '@/utils/ptwExport';
 
-const CHUNK_SIZE = 524286; // ~512KB per chunk
+const CHUNK_SIZE = 750 * 1024; // ~750KB per chunk
 
 interface PTWRecord {
   id: string;
@@ -767,19 +767,25 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
             await delBatch.commit();
           }
 
-          // Upload new chunks
-          for (let i = 0; i < totalChunks; i++) {
-            const start = i * CHUNK_SIZE;
-            const end = Math.min(start + CHUNK_SIZE, selectedFile.size);
-            let chunkBase64 = await chunkToBase64(selectedFile.slice(start, end));
-            if (i === 0) chunkBase64 = `data:${selectedFile.type};base64,${chunkBase64}`;
-            await addDoc(collection(db, 'ptw_records', selectedRecord.id, 'chunks'), { 
-              index: i, 
-              data: chunkBase64,
-              isClosing: false
-            });
-            setUploadProgress(((i + 1) / totalChunks) * 45);
-            await new Promise(r => setTimeout(r, 30));
+          // Upload new chunks (Batched 6 at a time)
+          const BATCH_SIZE = 6;
+          for (let i = 0; i < totalChunks; i += BATCH_SIZE) {
+            const batchIndices = [];
+            for (let b = 0; b < BATCH_SIZE && (i + b) < totalChunks; b++) {
+              batchIndices.push(i + b);
+            }
+            await Promise.all(batchIndices.map(async (chunkIndex) => {
+              const start = chunkIndex * CHUNK_SIZE;
+              const end = Math.min(start + CHUNK_SIZE, selectedFile.size);
+              let chunkBase64 = await chunkToBase64(selectedFile.slice(start, end));
+              if (chunkIndex === 0) chunkBase64 = `data:${selectedFile.type};base64,${chunkBase64}`;
+              await addDoc(collection(db, 'ptw_records', selectedRecord.id, 'chunks'), { 
+                index: chunkIndex, 
+                data: chunkBase64,
+                isClosing: false
+              });
+            }));
+            setUploadProgress(Math.min(45, Math.round(((i + BATCH_SIZE) / totalChunks) * 45)));
           }
 
           updateData.fileName = selectedFile.name;
@@ -818,19 +824,25 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
             await delBatch.commit();
           }
 
-          // Upload new closing chunks
-          for (let i = 0; i < closingTotalChunks; i++) {
-            const start = i * CHUNK_SIZE;
-            const end = Math.min(start + CHUNK_SIZE, selectedClosingFile.size);
-            let chunkBase64 = await chunkToBase64(selectedClosingFile.slice(start, end));
-            if (i === 0) chunkBase64 = `data:${selectedClosingFile.type};base64,${chunkBase64}`;
-            await addDoc(collection(db, 'ptw_records', selectedRecord.id, 'chunks'), { 
-              index: i, 
-              data: chunkBase64,
-              isClosing: true
-            });
-            setUploadProgress(45 + (((i + 1) / closingTotalChunks) * 45));
-            await new Promise(r => setTimeout(r, 30));
+          // Upload new closing chunks (Batched 6 at a time)
+          const BATCH_SIZE = 6;
+          for (let i = 0; i < closingTotalChunks; i += BATCH_SIZE) {
+            const batchIndices = [];
+            for (let b = 0; b < BATCH_SIZE && (i + b) < closingTotalChunks; b++) {
+              batchIndices.push(i + b);
+            }
+            await Promise.all(batchIndices.map(async (chunkIndex) => {
+              const start = chunkIndex * CHUNK_SIZE;
+              const end = Math.min(start + CHUNK_SIZE, selectedClosingFile.size);
+              let chunkBase64 = await chunkToBase64(selectedClosingFile.slice(start, end));
+              if (chunkIndex === 0) chunkBase64 = `data:${selectedClosingFile.type};base64,${chunkBase64}`;
+              await addDoc(collection(db, 'ptw_records', selectedRecord.id, 'chunks'), { 
+                index: chunkIndex, 
+                data: chunkBase64,
+                isClosing: true
+              });
+            }));
+            setUploadProgress(45 + Math.min(45, Math.round(((i + BATCH_SIZE) / closingTotalChunks) * 45)));
           }
 
           updateData.closingFileName = selectedClosingFile.name;
@@ -911,25 +923,30 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
             searchQuery: ptwNum
           });
           
-          // Upload chunks to new doc
+          // Upload chunks to new doc (Batched 6 at a time)
           if (item.file) {
-            for (let i = 0; i < itemChunks; i++) {
-              const start = i * CHUNK_SIZE;
-              const end = Math.min(start + CHUNK_SIZE, item.file.size);
-              let chunkBase64 = await chunkToBase64(item.file.slice(start, end));
-              if (i === 0) chunkBase64 = `data:${item.file.type};base64,${chunkBase64}`;
-              await addDoc(collection(db, 'ptw_records', newDocRef.id, 'chunks'), { 
-                index: i, 
-                data: chunkBase64,
-                isClosing: false
-              });
-              
-              // Calculate global progress
+            const currentFile = item.file;
+            const BATCH_SIZE = 6;
+            for (let i = 0; i < itemChunks; i += BATCH_SIZE) {
+              const batchIndices = [];
+              for (let b = 0; b < BATCH_SIZE && (i + b) < itemChunks; b++) {
+                batchIndices.push(i + b);
+              }
+              await Promise.all(batchIndices.map(async (chunkIndex) => {
+                const start = chunkIndex * CHUNK_SIZE;
+                const end = Math.min(start + CHUNK_SIZE, currentFile.size);
+                let chunkBase64 = await chunkToBase64(currentFile.slice(start, end));
+                if (chunkIndex === 0) chunkBase64 = `data:${currentFile.type};base64,${chunkBase64}`;
+                await addDoc(collection(db, 'ptw_records', newDocRef.id, 'chunks'), { 
+                  index: chunkIndex, 
+                  data: chunkBase64,
+                  isClosing: false
+                });
+              }));
+
               const baseProgress = (idx / totalItems) * 100;
-              const fileProgress = (((i + 1) / itemChunks) * (100 / totalItems));
+              const fileProgress = (Math.min(itemChunks, i + BATCH_SIZE) / itemChunks) * (100 / totalItems);
               setUploadProgress(baseProgress + fileProgress);
-              
-              await new Promise(r => setTimeout(r, 20));
             }
           } else {
             // Advancing progress for manual entry without file

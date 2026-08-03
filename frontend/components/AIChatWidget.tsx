@@ -176,8 +176,8 @@ export function AIChatWidget() {
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error('Ukuran gambar maksimal 15MB.');
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('Ukuran gambar maksimal 50MB.');
       return;
     }
     const compressToastId = toast.loading('Memproses gambar...');

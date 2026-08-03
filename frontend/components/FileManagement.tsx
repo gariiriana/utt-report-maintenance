@@ -118,8 +118,8 @@ const ALLOWED_FILE_TYPES = [
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ];
 
-const MAX_FILE_SIZE = 15 * 1024 * 1024;
-const CHUNK_SIZE = 600 * 1024;
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
+const CHUNK_SIZE = 750 * 1024;
 
 interface FileData {
     id: string;
@@ -348,7 +348,7 @@ export function FileManagement({
 
             newFiles.forEach(file => {
                 if (file.size > MAX_FILE_SIZE) {
-                    toast.error(`File "${file.name}" terlalu besar (Maks 15MB)`);
+                    toast.error(`File "${file.name}" terlalu besar (Maks 50MB)`);
                     return;
                 }
                 if (!ALLOWED_FILE_TYPES.includes(file.type)) {
@@ -406,8 +406,8 @@ export function FileManagement({
                     status: 'uploading'
                 });
 
-                // Batch upload chunks 3 at a time to prevent Firestore write stream exhaustion
-                const BATCH_SIZE = 3;
+                // Batch upload chunks 6 at a time for ultra fast upload without Firestore write stream exhaustion
+                const BATCH_SIZE = 6;
                 for (let i = 0; i < totalChunks; i += BATCH_SIZE) {
                     const batchIndices = [];
                     for (let b = 0; b < BATCH_SIZE && (i + b) < totalChunks; b++) {
@@ -708,7 +708,7 @@ export function FileManagement({
                             />
                             <Upload className="w-8 h-8 text-blue-600 mx-auto mb-2" />
                             <p className="text-sm text-slate-800 font-bold">Klik atau seret file untuk mengunggah</p>
-                            <p className="text-xs text-slate-500 mt-1 font-medium">PDF, Excel, Word - Maks 15MB per file</p>
+                            <p className="text-xs text-slate-500 mt-1 font-medium">PDF, Excel, Word - Maks 50MB per file</p>
                         </div>
 
                         {selectedFiles.length > 0 && (
