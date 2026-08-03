@@ -406,32 +406,24 @@ export function FileManagement({
                     status: 'uploading'
                 });
 
-                // Batch upload chunks 6 at a time for ultra fast upload without Firestore write stream exhaustion
-                const BATCH_SIZE = 6;
-                for (let i = 0; i < totalChunks; i += BATCH_SIZE) {
-                    const batchIndices = [];
-                    for (let b = 0; b < BATCH_SIZE && (i + b) < totalChunks; b++) {
-                        batchIndices.push(i + b);
+                // Strictly sequential chunk upload to ensure Firestore write queue never exceeds 1 stream (prevents resource-exhausted error)
+                for (let i = 0; i < totalChunks; i++) {
+                    const start = i * CHUNK_SIZE;
+                    const end = Math.min(start + CHUNK_SIZE, file.size);
+                    const chunkBlob = file.slice(start, end);
+
+                    let chunkBase64 = await chunkToBase64(chunkBlob);
+                    if (i === 0) {
+                        chunkBase64 = `data:${file.type};base64,${chunkBase64}`;
                     }
 
-                    await Promise.all(batchIndices.map(async (chunkIndex) => {
-                        const start = chunkIndex * CHUNK_SIZE;
-                        const end = Math.min(start + CHUNK_SIZE, file.size);
-                        const chunkBlob = file.slice(start, end);
+                    await addDoc(collection(db, collectionName, fileDocRef.id, 'chunks'), {
+                        index: i,
+                        data: chunkBase64
+                    });
 
-                        let chunkBase64 = await chunkToBase64(chunkBlob);
-                        if (chunkIndex === 0) {
-                            chunkBase64 = `data:${file.type};base64,${chunkBase64}`;
-                        }
-
-                        await addDoc(collection(db, collectionName, fileDocRef.id, 'chunks'), {
-                            index: chunkIndex,
-                            data: chunkBase64
-                        });
-
-                        uploadedOverallBytes += (end - start);
-                        setUploadProgress(Math.min(99, Math.round((uploadedOverallBytes / totalOverallBytes) * 100)));
-                    }));
+                    uploadedOverallBytes += (end - start);
+                    setUploadProgress(Math.min(99, Math.round((uploadedOverallBytes / totalOverallBytes) * 100)));
                 }
 
                 await updateDoc(doc(db, collectionName, fileDocRef.id), { status: 'completed' });
