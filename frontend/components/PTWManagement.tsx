@@ -133,7 +133,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
   const [shouldDeleteClosingFile, setShouldDeleteClosingFile] = useState(false);
   const [queuedItems, setQueuedItems] = useState<QueuedPTWItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
 
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [confirmModalMessage, setConfirmModalMessage] = useState('');
@@ -282,7 +282,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
         continue;
       }
       if (file.size > MAX_FILE_SIZE) {
-        toast.error(`File ${file.name} terlalu besar. Maksimal 10MB.`);
+        toast.error(`File ${file.name} terlalu besar. Maksimal 15MB.`);
         continue;
       }
 
@@ -364,7 +364,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
     if (isEditModalOpen) {
       const file = files[0];
       if (file.size > MAX_FILE_SIZE) {
-        toast.error('File terlalu besar. Maksimal 10MB.');
+        toast.error('File terlalu besar. Maksimal 15MB.');
         e.target.value = '';
         return;
       }
@@ -2064,7 +2064,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                   </div>
 
                   <div className="space-y-3">
-                    <label htmlFor="ptw-file-input" className="text-xs font-bold text-slate-500 uppercase ml-1">File Lampiran (Max 10MB)</label>
+                    <label htmlFor="ptw-file-input" className="text-xs font-bold text-slate-500 uppercase ml-1">File Lampiran (Max 15MB)</label>
                     
                     <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl">
                       <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
@@ -2110,7 +2110,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
 
                   {/* File Closing PTW Section */}
                   <div className="space-y-3">
-                    <label htmlFor="ptw-closing-file-input" className="text-xs font-bold text-slate-500 uppercase ml-1">File Closing PTW (Opsional) (Max 10MB)</label>
+                    <label htmlFor="ptw-closing-file-input" className="text-xs font-bold text-slate-500 uppercase ml-1">File Closing PTW (Opsional) (Max 15MB)</label>
                     
                     {selectedRecord?.closingTotalChunks && selectedRecord?.closingFileName && !selectedClosingFile && !shouldDeleteClosingFile && (
                       <div className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 border border-red-500/20 rounded-xl mb-2">
@@ -2144,7 +2144,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                           const file = e.target.files?.[0];
                           if (file) {
                             if (file.size > MAX_FILE_SIZE) {
-                              toast.error('File terlalu besar. Maksimal 10MB.');
+                              toast.error('File terlalu besar. Maksimal 15MB.');
                               return;
                             }
 
@@ -2226,7 +2226,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                         </div>
                         <div className="text-center">
                           <p className="text-sm font-bold text-white mb-1">Pilih beberapa file PDF PTW Anda</p>
-                          <p className="text-xs text-slate-500">Seret berkas ke sini atau klik untuk menelusuri (Maks. 10MB per berkas)</p>
+                          <p className="text-xs text-slate-500">Seret berkas ke sini atau klik untuk menelusuri (Maks. 15MB per berkas)</p>
                         </div>
                         <input
                           id="ptw-multi-file-input"

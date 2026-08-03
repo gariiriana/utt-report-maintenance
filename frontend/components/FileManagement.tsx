@@ -118,8 +118,8 @@ const ALLOWED_FILE_TYPES = [
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ];
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
-const CHUNK_SIZE = 524286;
+const MAX_FILE_SIZE = 15 * 1024 * 1024;
+const CHUNK_SIZE = 600 * 1024;
 
 interface FileData {
     id: string;
@@ -348,7 +348,7 @@ export function FileManagement({
 
             newFiles.forEach(file => {
                 if (file.size > MAX_FILE_SIZE) {
-                    toast.error(`File "${file.name}" terlalu besar (Maks 10MB)`);
+                    toast.error(`File "${file.name}" terlalu besar (Maks 15MB)`);
                     return;
                 }
                 if (!ALLOWED_FILE_TYPES.includes(file.type)) {
@@ -382,7 +382,8 @@ export function FileManagement({
         setUploadProgress(0);
 
         try {
-            let completedCount = 0;
+            const totalOverallBytes = selectedFiles.reduce((acc, f) => acc + f.size, 0);
+            let uploadedOverallBytes = 0;
 
             for (let f = 0; f < selectedFiles.length; f++) {
                 const file = selectedFiles[f];
@@ -405,26 +406,33 @@ export function FileManagement({
                     status: 'uploading'
                 });
 
-                const chunkPromises = [];
-                for (let i = 0; i < totalChunks; i++) {
-                    const start = i * CHUNK_SIZE;
-                    const end = Math.min(start + CHUNK_SIZE, file.size);
-                    const chunkBlob = file.slice(start, end);
-
-                    let chunkBase64 = await chunkToBase64(chunkBlob);
-                    if (i === 0) {
-                        chunkBase64 = `data:${file.type};base64,${chunkBase64}`;
+                // Batch upload chunks 3 at a time to prevent Firestore write stream exhaustion
+                const BATCH_SIZE = 3;
+                for (let i = 0; i < totalChunks; i += BATCH_SIZE) {
+                    const batchIndices = [];
+                    for (let b = 0; b < BATCH_SIZE && (i + b) < totalChunks; b++) {
+                        batchIndices.push(i + b);
                     }
 
-                    chunkPromises.push(
-                        addDoc(collection(db, collectionName, fileDocRef.id, 'chunks'), {
-                            index: i,
-                            data: chunkBase64
-                        })
-                    );
-                }
+                    await Promise.all(batchIndices.map(async (chunkIndex) => {
+                        const start = chunkIndex * CHUNK_SIZE;
+                        const end = Math.min(start + CHUNK_SIZE, file.size);
+                        const chunkBlob = file.slice(start, end);
 
-                await Promise.all(chunkPromises);
+                        let chunkBase64 = await chunkToBase64(chunkBlob);
+                        if (chunkIndex === 0) {
+                            chunkBase64 = `data:${file.type};base64,${chunkBase64}`;
+                        }
+
+                        await addDoc(collection(db, collectionName, fileDocRef.id, 'chunks'), {
+                            index: chunkIndex,
+                            data: chunkBase64
+                        });
+
+                        uploadedOverallBytes += (end - start);
+                        setUploadProgress(Math.min(99, Math.round((uploadedOverallBytes / totalOverallBytes) * 100)));
+                    }));
+                }
 
                 await updateDoc(doc(db, collectionName, fileDocRef.id), { status: 'completed' });
 
@@ -436,10 +444,9 @@ export function FileManagement({
                     targetTab: 'files',
                     searchQuery: file.name
                 });
-
-                completedCount++;
-                setUploadProgress((completedCount / selectedFiles.length) * 100);
             }
+
+            setUploadProgress(100);
 
             setUploadedFilesCount(selectedFiles.length);
             setShowSuccessModal(true);
@@ -701,7 +708,7 @@ export function FileManagement({
                             />
                             <Upload className="w-8 h-8 text-blue-600 mx-auto mb-2" />
                             <p className="text-sm text-slate-800 font-bold">Klik atau seret file untuk mengunggah</p>
-                            <p className="text-xs text-slate-500 mt-1 font-medium">PDF, Excel, Word - Maks 10MB per file</p>
+                            <p className="text-xs text-slate-500 mt-1 font-medium">PDF, Excel, Word - Maks 15MB per file</p>
                         </div>
 
                         {selectedFiles.length > 0 && (
