@@ -143,6 +143,10 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 	case path == "/api/ai/ldbrdb-report" && r.Method == http.MethodPost:
 		heavy(deps.AICtrl.AnalyzeLdbrdbReport)(w, r)
 
+	case path == "/api/ai/digitize-paper-report" && r.Method == http.MethodPost:
+		heavy(deps.AICtrl.DigitizePaperReport)(w, r)
+
+
 
 
 

@@ -486,6 +486,35 @@ func (c *AIController) AnalyzeLdbrdbReport(w http.ResponseWriter, r *http.Reques
 	helpers.SendJSON(w, http.StatusOK, result)
 }
 
+// DigitizePaperReport handles POST /api/ai/digitize-paper-report
+func (c *AIController) DigitizePaperReport(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		helpers.SendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req models.PaperReportScanRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		helpers.SendError(w, "Invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if len(req.Photos) == 0 {
+		helpers.SendError(w, "At least one photo is required for paper scanning", http.StatusBadRequest)
+		return
+	}
+
+	result, err := c.service.DigitizePaperReport(r.Context(), req.Photos, req.AccountEmail)
+	if err != nil {
+		logger.Error("ai_digitize_paper_report_error", "error", err.Error())
+		helpers.SendError(w, "AI paper report scanning failed: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	helpers.SendJSON(w, http.StatusOK, result)
+}
+
+
 
 
 

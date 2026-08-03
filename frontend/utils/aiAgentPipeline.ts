@@ -1,4 +1,5 @@
 import { ATSPhotoInput, ATSReportData } from '@/types/atsReportTypes';
+import { auth } from '@/api/firebase';
 
 // ─── Environment Configurations ─────────────────────────────────────────────
 
@@ -573,5 +574,34 @@ export async function analyzeLdbrdbReportAI(photos: any[], existingData?: any) {
   if (!response.ok) throw new Error(`Panel LDB & RDB AI failed: ${response.statusText}`);
   return response.json();
 }
+
+export interface DigitizedPaperReportResult {
+  title: string;
+  equipment_info: Record<string, string>;
+  tables: Array<{
+    table_name: string;
+    headers: string[];
+    rows: string[][];
+  }>;
+  summary: string;
+  raw_text?: string;
+}
+
+export async function digitizePaperReportAI(photos: string[], accountEmail?: string): Promise<DigitizedPaperReportResult> {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+  const token = await auth.currentUser?.getIdToken();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const response = await fetch(`${apiUrl}/ai/digitize-paper-report`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ photos, account_email: accountEmail }),
+  });
+  if (!response.ok) throw new Error(`AI Scan Paper Report Gagal: ${response.statusText}`);
+  return response.json();
+}
+
 
 

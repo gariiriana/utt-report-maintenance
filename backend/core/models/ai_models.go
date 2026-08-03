@@ -502,3 +502,32 @@ type AIChatRequest struct {
 	Messages []ChatMessage `json:"messages"`
 }
 
+// ─── AI Paper Service Report Digitizer ───────────────────────────────────────
+
+type PaperReportScanRequest struct {
+	Photos       []string `json:"photos"` // list of base64 encoded images of paper report
+	AccountEmail string   `json:"account_email,omitempty"`
+	Notes        string   `json:"notes,omitempty"`
+}
+
+type DigitizedTableCell struct {
+	Value     string `json:"value"`
+	Condition string `json:"condition,omitempty"` // "Good", "Not Good", "N/A"
+	Remarks   string `json:"remarks,omitempty"`
+}
+
+type DigitizedTable struct {
+	TableName string     `json:"table_name"`
+	Headers   []string   `json:"headers"`
+	Rows      [][]string `json:"rows"`
+}
+
+type PaperReportScanResponse struct {
+	Title         string            `json:"title"`
+	EquipmentInfo map[string]string `json:"equipment_info"`
+	Tables        []DigitizedTable  `json:"tables"`
+	Summary       string            `json:"summary"`
+	RawText       string            `json:"raw_text,omitempty"`
+}
+
+

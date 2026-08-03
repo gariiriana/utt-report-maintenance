@@ -23,6 +23,7 @@ export interface PTWExportRecord {
 export interface WeeklyExportData {
   weekNum: number;
   dateRange: string;
+  shortRange?: string;
   openCount: number;
   closedCount: number;
   totalCount: number;
@@ -397,7 +398,7 @@ export async function exportPTWWeeklyReportToExcel(
     // Title Blocks
     ws.mergeCells('C2:E2');
     const titleCell = ws.getCell('C2');
-    titleCell.value = 'LAPORAN MINGGUAN VALIDITAS PERMIT TO WORK (PTW)';
+    titleCell.value = 'LAPORAN HARIAN VALIDITAS PERMIT TO WORK (PTW)';
     titleCell.font = { name: 'Calibri', size: 12, bold: true, color: { argb: '00599C' } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
@@ -438,11 +439,11 @@ export async function exportPTWWeeklyReportToExcel(
       }
     }
 
-    // --- Section 1: Ringkasan Mingguan ---
-    ws.getCell('A5').value = '1. RINGKASAN MINGGUAN';
+    // --- Section 1: Ringkasan Harian ---
+    ws.getCell('A5').value = '1. RINGKASAN HARIAN';
     ws.getCell('A5').font = { name: 'Calibri', size: 11, bold: true, color: { argb: '000000' } };
 
-    const sumHeaders = ['MINGGU', 'RENTANG TANGGAL', 'PTW TERBUKA (AKTIF)', 'PTW SELESAI', 'TOTAL PTW'];
+    const sumHeaders = ['HARI / TANGGAL', 'TANGGAL', 'PTW TERBUKA (AKTIF)', 'PTW SELESAI', 'TOTAL PTW'];
     const sumHeaderRow = ws.getRow(6);
     sumHeaderRow.height = 22;
 
@@ -469,7 +470,7 @@ export async function exportPTWWeeklyReportToExcel(
       const row = ws.getRow(rowIdx);
       row.height = 20;
 
-      ws.getCell(`A${rowIdx}`).value = `Minggu ${wd.weekNum}`;
+      ws.getCell(`A${rowIdx}`).value = `Tgl ${wd.shortRange || wd.dateRange}`;
       ws.getCell(`B${rowIdx}`).value = wd.dateRange;
       ws.getCell(`C${rowIdx}`).value = wd.openCount;
       ws.getCell(`D${rowIdx}`).value = wd.closedCount;
@@ -515,7 +516,7 @@ export async function exportPTWWeeklyReportToExcel(
     if (chartImageBase64) {
       try {
         const titleCell = ws.getCell(`A${totalRowIdx + 2}`);
-        titleCell.value = '2. GRAFIK TREN VALIDITAS PTW';
+        titleCell.value = '2. GRAFIK TREN VALIDITAS HARIAN';
         titleCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '000000' } };
 
         const chartLogoId = workbook.addImage({
@@ -528,21 +529,21 @@ export async function exportPTWWeeklyReportToExcel(
         } as any);
 
         const detailTitleCell = ws.getCell(`A${totalRowIdx + 25}`);
-        detailTitleCell.value = '3. RINCIAN DOKUMEN PTW PER MINGGU';
+        detailTitleCell.value = '3. RINCIAN DOKUMEN PTW PER TANGGAL';
         detailTitleCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '000000' } };
       } catch (e) {
         console.error('Failed to add chart image to Excel', e);
       }
     }
 
-    // --- Section 2: Rincian per Minggu ---
+    // --- Section 2: Rincian per Tanggal ---
     let currentRowIdx = chartImageBase64 ? totalRowIdx + 27 : totalRowIdx + 3;
 
     weeklyData.forEach(wd => {
-      // Week Title
+      // Date Title
       ws.mergeCells(`A${currentRowIdx}:F${currentRowIdx}`);
       const weekTitleCell = ws.getCell(`A${currentRowIdx}`);
-      weekTitleCell.value = `RINCIAN DOKUMEN PTW - MINGGU ${wd.weekNum} (${wd.dateRange})`;
+      weekTitleCell.value = `RINCIAN DOKUMEN PTW - TANGGAL ${wd.dateRange}`;
       weekTitleCell.fill = {
         type: 'pattern',
         pattern: 'solid',
@@ -703,10 +704,10 @@ export async function exportPTWWeeklyReportToPDF(
 
       const centerX = margin + col1W + (contentW - col1W - col3W) / 2;
       pdf.setFontSize(10.5).setFont('helvetica', 'bold').setTextColor('#00599c');
-      pdf.text('LAPORAN VALIDITAS PERMIT TO WORK (PTW)', centerX, headerY + 7.5, { align: 'center' });
+      pdf.text('LAPORAN HARIAN VALIDITAS PERMIT TO WORK (PTW)', centerX, headerY + 7.5, { align: 'center' });
 
       pdf.setFontSize(7.5).setFont('helvetica', 'bold').setTextColor('#1e293b');
-      pdf.text('BREAKDOWN MINGGUAN KEPATUHAN & VALIDITAS DOKUMEN', centerX, headerY + 12, { align: 'center' });
+      pdf.text('BREAKDOWN HARIAN KEPATUHAN & VALIDITAS DOKUMEN', centerX, headerY + 12, { align: 'center' });
 
       pdf.setFontSize(7).setFont('helvetica', 'normal').setTextColor('#64748b');
       pdf.text(`Periode Laporan: ${monthYearLabel}`, centerX, headerY + 16.5, { align: 'center' });
@@ -725,10 +726,10 @@ export async function exportPTWWeeklyReportToPDF(
     drawHeader(doc);
     
     doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor('#1e293b');
-    doc.text('I. RINGKASAN DATA MINGGUAN', margin, 34);
+    doc.text('I. RINGKASAN DATA HARIAN', margin, 34);
 
     const sumTableData = weeklyData.map(wd => [
-      `Minggu ${wd.weekNum}`,
+      `Tgl ${wd.shortRange || wd.dateRange}`,
       wd.dateRange,
       String(wd.openCount),
       String(wd.closedCount),
@@ -752,7 +753,7 @@ export async function exportPTWWeeklyReportToPDF(
 
     autoTable(doc, {
       startY: 37,
-      head: [['Minggu', 'Rentang Tanggal', 'PTW Terbuka (Aktif)', 'PTW Selesai', 'Total PTW']],
+      head: [['Hari / Tanggal', 'Tanggal', 'PTW Terbuka (Aktif)', 'PTW Selesai', 'Total PTW']],
       body: sumTableData,
       margin: { left: margin, right: margin },
       styles: {
@@ -814,17 +815,17 @@ export async function exportPTWWeeklyReportToPDF(
       );
     }
 
-    // PAGE 2 onwards: Detail table for each week
+    // PAGE 2 onwards: Detail table for each day
     weeklyData.forEach(wd => {
       doc.addPage();
       drawHeader(doc);
 
       doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor('#00599c');
-      doc.text(`RINCIAN PTW: MINGGU ${wd.weekNum} (${wd.dateRange})`, margin, 34);
+      doc.text(`RINCIAN PTW: TANGGAL ${wd.dateRange}`, margin, 34);
 
       if (wd.records.length === 0) {
         doc.setFontSize(8).setFont('helvetica', 'italic').setTextColor('#64748b');
-        doc.text('Tidak ada dokumen PTW yang aktif pada minggu ini.', margin, 42);
+        doc.text('Tidak ada dokumen PTW yang aktif pada tanggal ini.', margin, 42);
       } else {
         const detailRows = wd.records.map((rec, idx) => [
           String(idx + 1),

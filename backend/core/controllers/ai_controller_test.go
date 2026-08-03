@@ -92,6 +92,22 @@ func (m *mockAIService) AnalyzeLdbrdbPhotos(_ context.Context, _ []models.Ldbrdb
 	return nil, m.err
 }
 
+func (m *mockAIService) DigitizePaperReport(_ context.Context, _ []string, _ string) (*models.PaperReportScanResponse, error) {
+	return &models.PaperReportScanResponse{
+		Title: "Mock Digitize Paper Report",
+		EquipmentInfo: map[string]string{
+			"Status": "Mock OK",
+		},
+		Tables: []models.DigitizedTable{
+			{
+				TableName: "Mock Table",
+				Headers:   []string{"No", "Item", "Value"},
+				Rows:      [][]string{{"1", "Mock Item", "Good"}},
+			},
+		},
+	}, m.err
+}
+
 // Ensure mockAIService implements IAIService
 var _ services.IAIService = (*mockAIService)(nil)
 

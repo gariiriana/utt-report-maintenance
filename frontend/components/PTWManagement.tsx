@@ -1062,7 +1062,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
     }
   }, [searchTerm, filteredRecords]);
 
-  // Helper to split month dynamically into weeks based on PTW data
+  // Helper to split month dynamically per 1 day (Daily breakdown) based on PTW data
   const getDataDrivenWeeks = (year: number, month: number, ptwRecords: PTWRecord[]) => {
     const formatDate = (date: Date) => {
       const y = date.getFullYear();
@@ -1095,7 +1095,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
       startWeekDate = new Date(Math.min(...startDates.map(d => d.getTime())));
     }
 
-    const weeks: {
+    const days: {
       weekNum: number;
       startStr: string;
       endStr: string;
@@ -1109,57 +1109,42 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
     }[] = [];
 
     let blockStart = new Date(startWeekDate);
-    let weekNum = 1;
+    let dayNum = 1;
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // We continue generating weeks until blockStart is past the selected month
+    // We continue generating per 1 day until blockStart is past the selected month
     while (blockStart.getFullYear() === year && blockStart.getMonth() === month - 1) {
-      const blockEnd = new Date(blockStart);
-      blockEnd.setDate(blockEnd.getDate() + 6);
-
       const startStr = formatDate(blockStart);
-      const endStr = formatDate(blockEnd);
+      const endStr = startStr;
 
-      // Label formatting
       const minDay = String(blockStart.getDate()).padStart(2, '0');
-      const maxDay = String(blockEnd.getDate()).padStart(2, '0');
+      const rangeLabel = `${minDay} ${monthFull[blockStart.getMonth()]} ${blockStart.getFullYear()}`;
+      const shortRange = `${minDay} ${monthShort[blockStart.getMonth()]}`;
 
-      let rangeLabel = '';
-      let shortRange = '';
-
-      if (blockStart.getMonth() === blockEnd.getMonth()) {
-        rangeLabel = `${minDay} - ${maxDay} ${monthFull[blockStart.getMonth()]} ${blockStart.getFullYear()}`;
-        shortRange = `${minDay} - ${maxDay}`;
-      } else {
-        rangeLabel = `${minDay} ${monthFull[blockStart.getMonth()]} - ${maxDay} ${monthFull[blockEnd.getMonth()]} ${blockEnd.getFullYear()}`;
-        shortRange = `${minDay} ${monthShort[blockStart.getMonth()]} - ${maxDay} ${monthShort[blockEnd.getMonth()]}`;
-      }
-
-      // Filter active records within this week block
-      const weekRecords = monthRecords.filter(r => r.startDate >= startStr && r.startDate <= endStr);
+      // Filter active records on this day (either starting or active during this date)
+      const dayRecords = monthRecords.filter(r => r.startDate <= startStr && r.endDate >= startStr);
       
-      const openRecords = weekRecords.filter(r => !r.closingFileName && (!r.endDate || r.endDate >= todayStr));
-      const closedRecords = weekRecords.filter(r => !!r.closingFileName || (!!r.endDate && r.endDate < todayStr));
+      const openRecords = dayRecords.filter(r => !r.closingFileName && (!r.endDate || r.endDate >= todayStr));
+      const closedRecords = dayRecords.filter(r => !!r.closingFileName || (!!r.endDate && r.endDate < todayStr));
 
-      weeks.push({
-        weekNum,
+      days.push({
+        weekNum: dayNum,
         startStr,
         endStr,
         rangeLabel,
         dateRange: rangeLabel,
         shortRange,
-        records: weekRecords,
+        records: dayRecords,
         openCount: openRecords.length,
         closedCount: closedRecords.length,
-        totalCount: weekRecords.length,
+        totalCount: dayRecords.length,
       });
 
-      weekNum++;
-      blockStart = new Date(blockEnd);
-      blockStart.setDate(blockStart.getDate() + 1);
+      dayNum++;
+      blockStart.setDate(blockStart.getDate() + 1); // Advance 1 day per block
     }
 
-    return weeks;
+    return days;
   };
 
   const weeklyData = getDataDrivenWeeks(selectedYear, selectedMonth, records);
@@ -1289,7 +1274,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            Laporan Mingguan (Admin)
+            Laporan Harian (Admin)
           </button>
         </div>
       )}
@@ -1712,9 +1697,9 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                         ? 'bg-indigo-100 text-indigo-700' 
                         : 'bg-slate-100 text-slate-600'
                     }`}>
-                      Minggu {wd.weekNum}
+                      Tgl {wd.shortRange}
                     </span>
-                    <span className="text-[10px] text-slate-500 font-bold">{wd.shortRange}</span>
+                    <span className="text-[10px] text-slate-500 font-bold">{wd.rangeLabel}</span>
                   </div>
                   
                   <div className="mt-4">
@@ -1747,8 +1732,8 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%' }}>
                 <div>
-                  <h3 className="text-lg font-bold mb-1 ptw-weekly-chart-title">Visualisasi Tren Validitas</h3>
-                  <p className="text-xs ptw-weekly-chart-desc" style={{ color: '#94a3b8' }}>Tingkat kepatuhan open &amp; closed PTW mingguan</p>
+                  <h3 className="text-lg font-bold mb-1 ptw-weekly-chart-title">Visualisasi Tren Validitas Harian</h3>
+                  <p className="text-xs ptw-weekly-chart-desc" style={{ color: '#94a3b8' }}>Tingkat kepatuhan open &amp; closed PTW harian</p>
                 </div>
 
                 {/* Monthly Summary Totals */}
@@ -1912,7 +1897,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
                 onDragEnter={isAddModalOpen ? handleDragEnter : undefined}
-                className={`relative w-full ${isAddModalOpen ? 'max-w-2xl' : 'max-w-lg'} bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden my-auto`}
+                className={`relative w-full ${isAddModalOpen ? 'max-w-2xl' : 'max-w-lg'} bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden my-auto text-slate-900`}
               >
                 <AnimatePresence>
                   {isAddModalOpen && isDragging && (
@@ -1923,7 +1908,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
-                      className="absolute inset-0 bg-slate-950/85 backdrop-blur-md border-2 border-dashed border-indigo-500 rounded-3xl z-50 flex flex-col items-center justify-center gap-4 transition-all duration-300 pointer-events-auto"
+                      className="absolute inset-0 bg-slate-900/85 backdrop-blur-md border-2 border-dashed border-indigo-500 rounded-3xl z-50 flex flex-col items-center justify-center gap-4 transition-all duration-300 pointer-events-auto"
                     >
                       <motion.div 
                         animate={{ y: [0, -10, 0] }}
@@ -1939,14 +1924,14 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                     </motion.div>
                   )}
                 </AnimatePresence>
-              <div className="p-6 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-indigo-600/10 to-transparent">
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <ClipboardIcon className="w-6 h-6 text-indigo-400" />
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-indigo-50 to-blue-50">
+                <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                  <ClipboardIcon className="w-6 h-6 text-indigo-600" />
                   {isEditModalOpen ? 'Edit Data PTW' : 'Tambah PTW Baru (Multi-File)'}
                 </h2>
                 <button 
                   onClick={() => { setIsAddModalOpen(false); setIsEditModalOpen(false); }} 
-                  className="p-2 text-slate-400 hover:text-white transition"
+                  className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition cursor-pointer"
                   title="Tutup"
                 >
                   <X className="w-6 h-6" />
@@ -1958,9 +1943,9 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                 <form onSubmit={handleSubmit} className="p-6 space-y-5">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label htmlFor="ptw-sequence" className="text-xs font-bold text-slate-500 uppercase ml-1">Sequence Number</label>
+                      <label htmlFor="ptw-sequence" className="text-xs font-bold text-slate-700 uppercase ml-1">Sequence Number</label>
                       <div className="relative group">
-                        <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition" />
+                        <Hash className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-600 transition" />
                         <input
                           id="ptw-sequence"
                           title="Sequence Number"
@@ -1968,14 +1953,14 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                           required
                           value={formData.sequenceNumber}
                           onChange={(e) => setFormData({ ...formData, sequenceNumber: e.target.value })}
-                          className="w-full pl-11 pr-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+                          className="w-full pl-11 pr-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-medium placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition shadow-xs"
                           placeholder="Contoh: 21"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="ptw-quarter" className="text-xs font-bold text-slate-500 uppercase ml-1">Quarter</label>
+                      <label htmlFor="ptw-quarter" className="text-xs font-bold text-slate-700 uppercase ml-1">Quarter</label>
                       <div className="relative group">
                         <select
                           id="ptw-quarter"
@@ -1983,23 +1968,23 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                           required
                           value={formData.quarter}
                           onChange={(e) => setFormData({ ...formData, quarter: e.target.value })}
-                          className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition appearance-none cursor-pointer"
+                          className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition appearance-none cursor-pointer shadow-xs"
                         >
-                          <option value="" className="bg-slate-900">Pilih Quarter</option>
-                          <option value="1" className="bg-slate-900">Q1</option>
-                          <option value="2" className="bg-slate-900">Q2</option>
-                          <option value="3" className="bg-slate-900">Q3</option>
-                          <option value="4" className="bg-slate-900">Q4</option>
+                          <option value="" className="bg-white text-slate-900">Pilih Quarter</option>
+                          <option value="1" className="bg-white text-slate-900">Q1</option>
+                          <option value="2" className="bg-white text-slate-900">Q2</option>
+                          <option value="3" className="bg-white text-slate-900">Q3</option>
+                          <option value="4" className="bg-white text-slate-900">Q4</option>
                         </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none group-focus-within:text-indigo-400 transition" />
+                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-focus-within:text-indigo-600 transition" />
                       </div>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label htmlFor="ptw-equipment" className="text-xs font-bold text-slate-500 uppercase ml-1">Equipment Code</label>
+                    <label htmlFor="ptw-equipment" className="text-xs font-bold text-slate-700 uppercase ml-1">Equipment Code</label>
                     <div className="relative group">
-                      <Package className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition" />
+                      <Package className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-600 transition" />
                       <input
                         id="ptw-equipment"
                         title="Equipment Code"
@@ -2007,7 +1992,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                         required
                         value={formData.equipmentCode}
                         onChange={(e) => setFormData({ ...formData, equipmentCode: e.target.value.toUpperCase() })}
-                        className="w-full pl-11 pr-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+                        className="w-full pl-11 pr-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-medium placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition shadow-xs"
                         placeholder="Contoh: GATE, AC, etc."
                       />
                     </div>
@@ -2015,9 +2000,9 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label htmlFor="ptw-start-date" className="text-xs font-bold text-slate-500 uppercase ml-1">Masa Berlaku (Dari)</label>
+                      <label htmlFor="ptw-start-date" className="text-xs font-bold text-slate-700 uppercase ml-1">Masa Berlaku (Dari)</label>
                       <div className="relative group">
-                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition" />
+                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-600 transition" />
                         <input
                           id="ptw-start-date"
                           title="Tanggal Mulai Masa Berlaku"
@@ -2025,15 +2010,15 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                           required
                           value={formData.startDate}
                           onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                          className="w-full pl-11 pr-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+                          className="w-full pl-11 pr-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition shadow-xs"
                         />
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <label htmlFor="ptw-end-date" className="text-xs font-bold text-slate-500 uppercase ml-1">Sampai Dengan</label>
+                      <label htmlFor="ptw-end-date" className="text-xs font-bold text-slate-700 uppercase ml-1">Sampai Dengan</label>
                       <div className="relative group">
-                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-indigo-400 transition" />
+                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-600 transition" />
                         <input
                           id="ptw-end-date"
                           title="Tanggal Akhir Masa Berlaku"
@@ -2041,46 +2026,46 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                           required
                           value={formData.endDate}
                           onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                          className="w-full pl-11 pr-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+                          className="w-full pl-11 pr-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition shadow-xs"
                         />
                       </div>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label htmlFor="ptw-notes" className="text-xs font-bold text-slate-500 uppercase ml-1">Catatan (Opsional)</label>
+                    <label htmlFor="ptw-notes" className="text-xs font-bold text-slate-700 uppercase ml-1">Catatan (Opsional)</label>
                     <textarea
                       id="ptw-notes"
                       title="Catatan Tambahan"
                       value={formData.notes}
                       onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      className="w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition h-24 resize-none"
+                      className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-medium placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition h-24 resize-none shadow-xs"
                       placeholder="Masukkan catatan tambahan..."
                     />
                   </div>
 
                   <div className="space-y-3">
-                    <label htmlFor="ptw-file-input" className="text-xs font-bold text-slate-500 uppercase ml-1">File Lampiran (Max 15MB)</label>
+                    <label htmlFor="ptw-file-input" className="text-xs font-bold text-slate-700 uppercase ml-1">File Lampiran (Max 15MB)</label>
                     
-                    <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                      <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                      <p className="text-[11px] font-bold text-amber-400 leading-tight">
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl">
+                      <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                      <p className="text-[11px] font-bold text-amber-800 leading-tight">
                         FILE PTW YANG DIUPLOAD HARUS YANG SUDAH TTD TDE
                       </p>
                     </div>
 
                     {selectedRecord?.totalChunks && selectedRecord?.fileName && !selectedFile && !shouldDeleteFile && (
-                      <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl mb-2">
-                        <File className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                        <span className="text-sm text-emerald-300 truncate flex-1">{selectedRecord.fileName}</span>
+                      <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl mb-2">
+                        <File className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                        <span className="text-sm font-bold text-emerald-800 truncate flex-1">{selectedRecord.fileName}</span>
                         <div className="flex items-center gap-1.5">
-                          <button type="button" onClick={() => handleDownload(selectedRecord)} className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition" title="Unduh">
+                          <button type="button" onClick={() => handleDownload(selectedRecord)} className="p-1.5 hover:bg-emerald-100 text-emerald-700 rounded-lg transition cursor-pointer" title="Unduh">
                             <Download className="w-4 h-4" />
                           </button>
                           <button 
                             type="button" 
                             onClick={() => setShouldDeleteFile(true)} 
-                            className="p-1.5 hover:bg-red-500/20 text-red-400 rounded-lg transition" 
+                            className="p-1.5 hover:bg-red-100 text-red-600 rounded-lg transition cursor-pointer" 
                             title="Hapus Lampiran"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -2088,9 +2073,9 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                         </div>
                       </div>
                     )}
-                    <label htmlFor="ptw-file-input" className="flex items-center gap-3 px-5 py-3.5 bg-white/5 border border-white/10 border-dashed rounded-2xl text-slate-400 hover:border-indigo-500/50 hover:text-indigo-400 transition cursor-pointer">
-                      <FileUp className="w-5 h-5 flex-shrink-0" />
-                      <span className="text-sm truncate">
+                    <label htmlFor="ptw-file-input" className="flex items-center gap-3 px-5 py-3.5 bg-slate-50 border border-slate-200 border-dashed rounded-2xl text-slate-600 hover:border-indigo-500 hover:bg-indigo-50/50 hover:text-indigo-600 transition cursor-pointer">
+                      <FileUp className="w-5 h-5 flex-shrink-0 text-indigo-600" />
+                      <span className="text-sm truncate font-medium">
                         {selectedFile ? selectedFile.name : 'Pilih file PDF PTW untuk diunggah...'}
                       </span>
                       <input
@@ -2106,20 +2091,20 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
 
                   {/* File Closing PTW Section */}
                   <div className="space-y-3">
-                    <label htmlFor="ptw-closing-file-input" className="text-xs font-bold text-slate-500 uppercase ml-1">File Closing PTW (Opsional) (Max 15MB)</label>
+                    <label htmlFor="ptw-closing-file-input" className="text-xs font-bold text-slate-700 uppercase ml-1">File Closing PTW (Opsional) (Max 15MB)</label>
                     
                     {selectedRecord?.closingTotalChunks && selectedRecord?.closingFileName && !selectedClosingFile && !shouldDeleteClosingFile && (
-                      <div className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 border border-red-500/20 rounded-xl mb-2">
-                        <File className="w-4 h-4 text-red-400 flex-shrink-0" />
-                        <span className="text-sm text-red-300 truncate flex-1">{selectedRecord.closingFileName}</span>
+                      <div className="flex items-center gap-2 px-4 py-2.5 bg-rose-50 border border-rose-200 rounded-xl mb-2">
+                        <File className="w-4 h-4 text-rose-600 flex-shrink-0" />
+                        <span className="text-sm font-bold text-rose-800 truncate flex-1">{selectedRecord.closingFileName}</span>
                         <div className="flex items-center gap-1.5">
-                          <button type="button" onClick={() => handleDownloadClosing(selectedRecord)} className="p-1.5 hover:bg-red-500/20 text-red-400 rounded-lg transition" title="Unduh Closing">
+                          <button type="button" onClick={() => handleDownloadClosing(selectedRecord)} className="p-1.5 hover:bg-rose-100 text-rose-700 rounded-lg transition cursor-pointer" title="Unduh Closing">
                             <Download className="w-4 h-4" />
                           </button>
                           <button 
                             type="button" 
                             onClick={() => setShouldDeleteClosingFile(true)} 
-                            className="p-1.5 hover:bg-red-500/20 text-red-400 rounded-lg transition" 
+                            className="p-1.5 hover:bg-red-100 text-red-600 rounded-lg transition cursor-pointer" 
                             title="Hapus Closing"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -2127,9 +2112,9 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                         </div>
                       </div>
                     )}
-                    <label htmlFor="ptw-closing-file-input" className="flex items-center gap-3 px-5 py-3.5 bg-white/5 border border-white/10 border-dashed rounded-2xl text-slate-400 hover:border-red-500/50 hover:text-red-400 transition cursor-pointer">
-                      <FileUp className="w-5 h-5 flex-shrink-0" />
-                      <span className="text-sm truncate">
+                    <label htmlFor="ptw-closing-file-input" className="flex items-center gap-3 px-5 py-3.5 bg-slate-50 border border-slate-200 border-dashed rounded-2xl text-slate-600 hover:border-red-500 hover:bg-red-50/50 hover:text-red-600 transition cursor-pointer">
+                      <FileUp className="w-5 h-5 flex-shrink-0 text-rose-600" />
+                      <span className="text-sm truncate font-medium">
                         {selectedClosingFile ? selectedClosingFile.name : 'Pilih file PDF Closing PTW...'}
                       </span>
                       <input
@@ -2203,9 +2188,9 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
               ) : (
                 // ===== ADD MULTI-FILE QUEUE MANAGER =====
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                  <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-                    <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                    <p className="text-[11px] font-bold text-amber-400 leading-tight">
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl">
+                    <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                    <p className="text-[11px] font-bold text-amber-800 leading-tight">
                       FILE PTW YANG DIUPLOAD HARUS YANG SUDAH TTD TDE. SISTEM AKAN MELAKUKAN AUTO-SCAN UNTUK SETIAP FILE PDF.
                     </p>
                   </div>
@@ -2215,13 +2200,13 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                     <div className="space-y-4">
                       <label 
                         htmlFor="ptw-multi-file-input" 
-                        className="flex flex-col items-center justify-center gap-4 px-6 py-12 bg-white/5 border-2 border-white/10 border-dashed rounded-3xl text-slate-400 hover:border-indigo-500/50 hover:text-indigo-400 transition cursor-pointer group"
+                        className="flex flex-col items-center justify-center gap-4 px-6 py-12 bg-slate-50 border-2 border-slate-200 border-dashed rounded-3xl text-slate-600 hover:border-indigo-500 hover:bg-indigo-50/40 hover:text-indigo-600 transition cursor-pointer group"
                       >
-                        <div className="p-4 bg-indigo-500/10 rounded-2xl border border-indigo-500/20 group-hover:scale-110 transition-transform">
-                          <FileUp className="w-8 h-8 text-indigo-400" />
+                        <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 group-hover:scale-110 transition-transform">
+                          <FileUp className="w-8 h-8 text-indigo-600" />
                         </div>
                         <div className="text-center">
-                          <p className="text-sm font-bold text-white mb-1">Pilih beberapa file PDF PTW Anda</p>
+                          <p className="text-sm font-bold text-slate-900 mb-1">Pilih beberapa file PDF PTW Anda</p>
                           <p className="text-xs text-slate-500">Seret berkas ke sini atau klik untuk menelusuri (Maks. 15MB per berkas)</p>
                         </div>
                         <input
@@ -2236,13 +2221,13 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                       </label>
                       
                       <div className="text-center">
-                        <span className="text-xs text-slate-600 font-bold uppercase tracking-wider">Atau</span>
+                        <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Atau</span>
                       </div>
 
                       <button
                         type="button"
                         onClick={handleAddManualQueueItem}
-                        className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-bold text-sm border border-white/10 transition flex items-center justify-center gap-2"
+                        className="w-full py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold text-sm border border-slate-200 transition flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <Plus className="w-4 h-4" />
                         Input Data PTW Secara Manual
@@ -2252,7 +2237,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                     /* Queue Manager List */
                     <div className="space-y-4">
                       <div className="flex items-center justify-between px-1">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
                           Daftar Berkas Antrean ({queuedItems.length})
                         </span>
                         
@@ -2260,7 +2245,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                           <button
                             type="button"
                             onClick={handleAddManualQueueItem}
-                            className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold border border-white/10 transition flex items-center gap-1.5"
+                            className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition flex items-center gap-1.5 cursor-pointer"
                           >
                             <Plus className="w-3.5 h-3.5" />
                             Manual
@@ -2268,7 +2253,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                           
                           <label 
                             htmlFor="ptw-multi-file-input-more" 
-                            className="px-3.5 py-1.5 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 rounded-xl text-xs font-bold border border-indigo-500/20 transition flex items-center gap-1.5 cursor-pointer"
+                            className="px-3.5 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl text-xs font-bold border border-indigo-200 transition flex items-center gap-1.5 cursor-pointer"
                           >
                             <FileUp className="w-3.5 h-3.5" />
                             Tambah Berkas
@@ -2286,51 +2271,51 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                       </div>
 
                       {/* Scrollable Queue Card List */}
-                      <div className="max-h-[380px] overflow-y-auto pr-1 space-y-3 scrollbar-thin scrollbar-thumb-white/10">
+                      <div className="max-h-[380px] overflow-y-auto pr-1 space-y-3 scrollbar-thin scrollbar-thumb-slate-200">
                         {queuedItems.map((item, idx) => {
                           const isComplete = item.sequenceNumber && item.equipmentCode && item.quarter && item.startDate && item.endDate;
                           return (
-                            <div key={item.id} className="bg-white/5 rounded-2xl border border-white/5 overflow-hidden shadow-xl transition hover:border-white/10">
+                            <div key={item.id} className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-xs transition hover:border-slate-300">
                               {/* Card Header */}
                               <div 
                                 onClick={() => toggleQueueItemExpanded(item.id)}
-                                className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition cursor-pointer text-left"
+                                className="w-full flex items-center justify-between p-4 hover:bg-slate-100/80 transition cursor-pointer text-left"
                               >
                                 <div className="flex items-center gap-3 overflow-hidden flex-1 mr-2">
-                                  <div className={`p-2 rounded-xl flex-shrink-0 ${item.file ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+                                  <div className={`p-2 rounded-xl flex-shrink-0 ${item.file ? 'bg-indigo-50 text-indigo-600 border border-indigo-200' : 'bg-amber-50 text-amber-600 border border-amber-200'}`}>
                                     <File className="w-5 h-5" />
                                   </div>
                                   <div className="overflow-hidden flex-1">
-                                    <h4 className="text-sm font-bold text-white truncate">
+                                    <h4 className="text-sm font-bold text-slate-900 truncate">
                                       {item.file ? item.file.name : `Data PTW Manual #${idx + 1}`}
                                     </h4>
                                     <div className="flex flex-wrap items-center gap-2 mt-1">
                                       {item.isScanning ? (
-                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-400 animate-pulse bg-indigo-500/5 px-2 py-0.5 rounded-full border border-indigo-500/10">
+                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-600 animate-pulse bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
                                           <Loader2 className="w-3 h-3 animate-spin" />
                                           <span>{item.scanStatus || 'Memindai PDF...'}</span>
                                         </div>
                                       ) : item.scanSource === 'filename' ? (
-                                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded-full border border-emerald-500/10 flex items-center gap-1">
+                                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
                                           ⚡ Instan (Nama File)
                                         </span>
                                       ) : item.scanSource === 'ocr' ? (
-                                        <span className="text-[10px] font-bold text-blue-400 bg-blue-500/5 px-2 py-0.5 rounded-full border border-blue-500/10 flex items-center gap-1">
+                                        <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200 flex items-center gap-1">
                                           🔍 Scan Selesai (OCR)
                                         </span>
                                       ) : (
-                                        <span className="text-[10px] font-bold text-slate-400 bg-slate-500/5 px-2 py-0.5 rounded-full border border-slate-500/10 flex items-center gap-1">
+                                        <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 flex items-center gap-1">
                                           ✍️ Input Manual
                                         </span>
                                       )}
 
                                       {/* Completeness Badge */}
                                       {isComplete ? (
-                                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
                                           ✓ Lengkap
                                         </span>
                                       ) : (
-                                        <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                        <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full flex items-center gap-1">
                                           ⚠️ Belum Lengkap
                                         </span>
                                       )}
@@ -2342,7 +2327,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                                   <button
                                     type="button"
                                     onClick={() => handleRemoveQueueItem(item.id)}
-                                    className="p-2 bg-red-500/10 text-red-400 hover:bg-red-500/20 rounded-xl transition border border-red-500/20 cursor-pointer"
+                                    className="p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl transition border border-red-200 cursor-pointer"
                                     title="Hapus dari antrean"
                                   >
                                     <Trash2 className="w-4 h-4" />
@@ -2350,10 +2335,10 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                                   <button
                                     type="button"
                                     onClick={() => toggleQueueItemExpanded(item.id)}
-                                    className="p-2 bg-white/5 hover:bg-white/10 rounded-xl transition border border-white/10 text-slate-400 hover:text-white cursor-pointer"
+                                    className="p-2 bg-white hover:bg-slate-100 rounded-xl transition border border-slate-200 text-slate-500 hover:text-slate-900 cursor-pointer"
                                     title="Tampilkan detail"
                                   >
-                                    <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${item.isExpanded ? 'rotate-180 text-indigo-400' : ''}`} />
+                                    <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${item.isExpanded ? 'rotate-180 text-indigo-600' : ''}`} />
                                   </button>
                                 </div>
                               </div>
@@ -2366,57 +2351,57 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                                     animate={{ height: 'auto', opacity: 1 }}
                                     exit={{ height: 0, opacity: 0 }}
                                     transition={{ duration: 0.2, ease: 'easeInOut' }}
-                                    className="border-t border-white/5 bg-slate-900/50 p-4 space-y-4"
+                                    className="border-t border-slate-200 bg-white p-4 space-y-4"
                                   >
                                     <div className="grid grid-cols-2 gap-4">
                                       <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">No. Urut</label>
+                                        <label className="text-[10px] font-bold text-slate-700 uppercase ml-1">No. Urut</label>
                                         <input
                                           type="number"
                                           required
                                           value={item.sequenceNumber}
                                           onChange={(e) => updateQueueItemField(item.id, 'sequenceNumber', e.target.value)}
-                                          className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+                                          className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm font-medium placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition"
                                           placeholder="Contoh: 0518"
                                         />
                                       </div>
 
                                       <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Quarter</label>
+                                        <label className="text-[10px] font-bold text-slate-700 uppercase ml-1">Quarter</label>
                                         <div className="relative group">
                                           <select
                                             title="Pilih Quarter"
                                             required
                                             value={item.quarter}
                                             onChange={(e) => updateQueueItemField(item.id, 'quarter', e.target.value)}
-                                            className="w-full px-3.5 py-2.5 bg-slate-900 border border-white/10 rounded-xl text-white text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition appearance-none cursor-pointer"
+                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition appearance-none cursor-pointer"
                                           >
-                                            <option value="">Pilih Quarter</option>
-                                            <option value="1">Q1</option>
-                                            <option value="2">Q2</option>
-                                            <option value="3">Q3</option>
-                                            <option value="4">Q4</option>
+                                            <option value="" className="bg-white text-slate-900">Pilih Quarter</option>
+                                            <option value="1" className="bg-white text-slate-900">Q1</option>
+                                            <option value="2" className="bg-white text-slate-900">Q2</option>
+                                            <option value="3" className="bg-white text-slate-900">Q3</option>
+                                            <option value="4" className="bg-white text-slate-900">Q4</option>
                                           </select>
-                                          <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                                          <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                                         </div>
                                       </div>
                                     </div>
 
                                     <div className="space-y-1.5">
-                                      <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Equipment Code</label>
+                                      <label className="text-[10px] font-bold text-slate-700 uppercase ml-1">Equipment Code</label>
                                       <input
                                         type="text"
                                         required
                                         value={item.equipmentCode}
                                         onChange={(e) => updateQueueItemField(item.id, 'equipmentCode', e.target.value.toUpperCase())}
-                                        className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm font-medium placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition"
                                         placeholder="Contoh: AHU"
                                       />
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
                                       <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Masa Berlaku (Mulai)</label>
+                                        <label className="text-[10px] font-bold text-slate-700 uppercase ml-1">Masa Berlaku (Mulai)</label>
                                         <input
                                           type="date"
                                           required
@@ -2424,12 +2409,12 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                                           placeholder="YYYY-MM-DD"
                                           value={item.startDate}
                                           onChange={(e) => updateQueueItemField(item.id, 'startDate', e.target.value)}
-                                          className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+                                          className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition"
                                         />
                                       </div>
 
                                       <div className="space-y-1.5">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Sampai Dengan</label>
+                                        <label className="text-[10px] font-bold text-slate-700 uppercase ml-1">Sampai Dengan</label>
                                         <input
                                           type="date"
                                           required
@@ -2437,17 +2422,17 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                                           placeholder="YYYY-MM-DD"
                                           value={item.endDate}
                                           onChange={(e) => updateQueueItemField(item.id, 'endDate', e.target.value)}
-                                          className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition"
+                                          className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition"
                                         />
                                       </div>
                                     </div>
 
                                     <div className="space-y-1.5">
-                                      <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Catatan / Nama Maintenance</label>
+                                      <label className="text-[10px] font-bold text-slate-700 uppercase ml-1">Catatan / Nama Maintenance</label>
                                       <textarea
                                         value={item.notes}
                                         onChange={(e) => updateQueueItemField(item.id, 'notes', e.target.value)}
-                                        className="w-full px-3.5 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:ring-2 focus:ring-indigo-500/50 outline-none transition h-20 resize-none"
+                                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm font-medium placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition h-20 resize-none"
                                         placeholder="Contoh: PM AHU 4"
                                       />
                                     </div>
@@ -2519,25 +2504,25 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
                 className="relative w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-2xl p-8 text-center"
               >
-                <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/20">
-                  <Trash2 className="w-10 h-10 text-red-500" />
+                <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-100">
+                  <Trash2 className="w-10 h-10 text-red-600" />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2">Hapus Data PTW?</h3>
-                <p className="text-slate-400 mb-8">
-                  Apakah Anda yakin ingin menghapus data PTW <span className="text-white font-bold">{recordToDelete?.ptwNumber}</span>? 
+                <h3 className="text-2xl font-black text-slate-900 mb-2">Hapus Data PTW?</h3>
+                <p className="text-slate-600 mb-8">
+                  Apakah Anda yakin ingin menghapus data PTW <span className="text-slate-900 font-extrabold">{recordToDelete?.ptwNumber}</span>? 
                   Tindakan ini tidak dapat dibatalkan.
                 </p>
                 <div className="flex gap-4">
                   <button
                     onClick={() => setIsDeleteModalOpen(false)}
-                    className="flex-1 py-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-2xl font-bold transition"
+                    className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-2xl font-bold transition cursor-pointer"
                   >
                     Batal
                   </button>
                   <button
                     onClick={confirmDelete}
                     disabled={submitting}
-                    className="flex-1 py-4 bg-red-600 hover:bg-red-500 disabled:bg-red-800 text-white rounded-2xl font-bold shadow-xl shadow-red-900/20 transition flex items-center justify-center gap-2"
+                    className="flex-1 py-4 bg-red-600 hover:bg-red-500 disabled:bg-red-300 text-white rounded-2xl font-bold shadow-lg shadow-red-600/20 transition flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {submitting ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
@@ -2557,7 +2542,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setIsDeleteCategoryModalOpen(false)}
-                className="fixed inset-0 bg-black/90 backdrop-blur-md"
+                className="fixed inset-0 bg-black/70 backdrop-blur-md"
               />
               <motion.div
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -2565,25 +2550,25 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
                 className="relative w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-2xl p-8 text-center"
               >
-                <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-500/20">
-                  <Trash2 className="w-10 h-10 text-red-500" />
+                <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-red-100">
+                  <Trash2 className="w-10 h-10 text-red-600" />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2">Hapus Kategori PTW?</h3>
-                <p className="text-slate-400 mb-8">
-                  Apakah Anda yakin ingin menghapus kategori <span className="text-white font-bold">{categoryToDelete?.name}</span> beserta seluruh <span className="text-white font-bold">{categoryToDelete?.records.length}</span> dokumen PTW di dalamnya?
+                <h3 className="text-2xl font-black text-slate-900 mb-2">Hapus Kategori PTW?</h3>
+                <p className="text-slate-600 mb-8">
+                  Apakah Anda yakin ingin menghapus kategori <span className="text-slate-900 font-extrabold">{categoryToDelete?.name}</span> beserta seluruh <span className="text-slate-900 font-extrabold">{categoryToDelete?.records.length}</span> dokumen PTW di dalamnya?
                   Tindakan ini tidak dapat dibatalkan.
                 </p>
                 <div className="flex gap-4">
                   <button
                     onClick={() => setIsDeleteCategoryModalOpen(false)}
-                    className="flex-1 py-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-2xl font-bold transition"
+                    className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-2xl font-bold transition cursor-pointer"
                   >
                     Batal
                   </button>
                   <button
                     onClick={confirmDeleteCategory}
                     disabled={submitting}
-                    className="flex-1 py-4 bg-red-600 hover:bg-red-500 disabled:bg-red-800 text-white rounded-2xl font-bold shadow-xl shadow-red-900/20 transition flex items-center justify-center gap-2"
+                    className="flex-1 py-4 bg-red-600 hover:bg-red-500 disabled:bg-red-300 text-white rounded-2xl font-bold shadow-lg shadow-red-600/20 transition flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {submitting ? (
                       <Loader2 className="w-5 h-5 animate-spin" />
@@ -2603,7 +2588,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => handleConfirmResponse(false)}
-                className="fixed inset-0 bg-black/90 backdrop-blur-md"
+                className="fixed inset-0 bg-black/70 backdrop-blur-md"
               />
               <motion.div
                 initial={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -2611,25 +2596,25 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
                 className="relative w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-2xl p-8 text-center"
               >
-                <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-amber-500/20">
-                  <AlertCircle className="w-10 h-10 text-amber-500" />
+                <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6 border border-amber-100">
+                  <AlertCircle className="w-10 h-10 text-amber-600" />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2">File Sudah Ada</h3>
-                <p className="text-slate-400 mb-8 text-sm leading-relaxed">
+                <h3 className="text-2xl font-black text-slate-900 mb-2">File Sudah Ada</h3>
+                <p className="text-slate-600 mb-8 text-sm leading-relaxed">
                   {confirmModalMessage}
                 </p>
                 <div className="flex gap-4">
                   <button
                     type="button"
                     onClick={() => handleConfirmResponse(false)}
-                    className="flex-1 py-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-2xl font-bold transition cursor-pointer"
+                    className="flex-1 py-4 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-2xl font-bold transition cursor-pointer"
                   >
                     Batal
                   </button>
                   <button
                     type="button"
                     onClick={() => handleConfirmResponse(true)}
-                    className="flex-1 py-4 bg-amber-600 hover:bg-amber-500 text-white rounded-2xl font-bold shadow-xl shadow-amber-900/20 transition cursor-pointer"
+                    className="flex-1 py-4 bg-amber-600 hover:bg-amber-500 text-white rounded-2xl font-bold shadow-lg shadow-amber-600/20 transition cursor-pointer"
                   >
                     Tetap Upload
                   </button>

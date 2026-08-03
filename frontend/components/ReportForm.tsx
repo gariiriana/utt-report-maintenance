@@ -23,6 +23,8 @@ import { generateReportPDF, loadLogoBase64 } from '@/utils/ReportPdfExport';
 import { compressImage, compressBase64Image } from '@/utils/imageCompression';
 import { PreviewReport } from '@/components/PreviewReport';
 import { CameraModal } from '@/components/CameraModal';
+import { PaperReportDigitizerModal } from '@/components/PaperReportDigitizerModal';
+import { Sparkles } from 'lucide-react';
 import { draftStorage } from '@/utils/draftStorage';
 import { sendFileNotification } from '@/utils/notificationService';
 
@@ -73,6 +75,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [companyType, setCompanyType] = useState<'neutra' | 'bri'>('neutra');
   const [maintenanceName, setMaintenanceName] = useState('');
   const [maintenanceTime, setMaintenanceTime] = useState('');
+  const [paperDigitizerOpen, setPaperDigitizerOpen] = useState(false);
 
   const isFssAccount = user?.email?.toLowerCase() === 'fss@gmail.com';
 
@@ -1533,6 +1536,16 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
 
               <button
+                type="button"
+                onClick={() => setPaperDigitizerOpen(true)}
+                disabled={isSaving || isExporting}
+                className={`col-span-2 sm:col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-gradient-to-r from-sky-900 via-blue-800 to-indigo-950 text-white hover:from-sky-950 hover:to-indigo-900 border border-sky-400/30 rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-md shadow-sky-900/20 transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-sky-300 group-active:scale-90 transition-transform animate-pulse" />
+                <span className="text-center leading-tight uppercase font-extrabold">UPLOAD & SCAN PAPER REPORT</span>
+              </button>
+
+              <button
                 onClick={() => handleExportPDF()}
                 disabled={isSaving || isExporting}
                 className={`col-span-2 sm:col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-md shadow-blue-600/20 transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -1648,6 +1661,11 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       </AnimatePresence>
 
 
+      <PaperReportDigitizerModal
+        isOpen={paperDigitizerOpen}
+        onClose={() => setPaperDigitizerOpen(false)}
+        accountEmail={user?.email || undefined}
+      />
     </div>
   );
 }
