@@ -574,7 +574,20 @@ export function FileManagement({
             chunksSnapshot.forEach(docSnap => {
                 const data = docSnap.data();
                 if (data.data) {
-                    const byteCharacters = atob(data.data);
+                    let base64Part = data.data;
+                    if (base64Part.includes(';base64,')) {
+                        const parts = base64Part.split(';base64,');
+                        if (parts[0].startsWith('data:')) {
+                            const extractedMime = parts[0].replace('data:', '').trim();
+                            if (extractedMime) mimeString = extractedMime;
+                        }
+                        base64Part = parts[1];
+                    } else if (base64Part.includes(',')) {
+                        base64Part = base64Part.split(',')[1];
+                    }
+                    base64Part = base64Part.replace(/[\r\n\s]/g, '');
+
+                    const byteCharacters = atob(base64Part);
                     const byteNumbers = new Array(byteCharacters.length);
                     for (let i = 0; i < byteCharacters.length; i++) {
                         byteNumbers[i] = byteCharacters.charCodeAt(i);
