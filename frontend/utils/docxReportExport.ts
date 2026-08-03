@@ -50,7 +50,7 @@ async function loadImageAsUint8Array(src: string): Promise<Uint8Array> {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0);
       }
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      const dataUrl = canvas.toDataURL('image/png');
       resolve(base64ToUint8Array(dataUrl));
     };
     img.onerror = () => resolve(new Uint8Array());

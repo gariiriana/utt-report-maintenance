@@ -37,7 +37,7 @@ function loadImageAsBase64(url: string): Promise<string> {
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.drawImage(img, 0, 0);
             }
-            resolve(canvas.toDataURL('image/jpeg', 0.8));
+            resolve(canvas.toDataURL('image/png'));
         };
         img.onerror = () => resolve('');
         img.src = url;
@@ -62,10 +62,10 @@ export async function generateResumePdf(summary: MaintenanceSummary, maintenance
         pdf.rect(0, 0, pageW, 2.5, 'F');
 
         if (logoDmeB64) {
-            pdf.addImage(logoDmeB64, 'JPEG', margin, 8, 25, 15, undefined, 'FAST');
+            pdf.addImage(logoDmeB64, 'PNG', margin, 8, 25, 15, undefined, 'FAST');
         }
         if (logoUttB64) {
-            pdf.addImage(logoUttB64, 'JPEG', pageW - margin - 25, 8, 25, 12, undefined, 'FAST');
+            pdf.addImage(logoUttB64, 'PNG', pageW - margin - 25, 8, 25, 12, undefined, 'FAST');
         }
 
         pdf.setFont('helvetica', 'bold');

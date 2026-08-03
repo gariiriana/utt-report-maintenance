@@ -13,15 +13,15 @@ async function loadImageBase64(src: string): Promise<string> {
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
       const ctx = canvas.getContext('2d');
       if (ctx) {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0);
       }
-      resolve(canvas.toDataURL('image/jpeg', 0.9));
+      resolve(canvas.toDataURL('image/png'));
     };
     img.onerror = () => resolve('');
     img.src = src;
@@ -78,10 +78,10 @@ export async function generateCMReportPDF(data: CMReportData) {
     // Helper: Draw Header Logos
     const drawHeaderLogos = () => {
       if (logoLeft) {
-        doc.addImage(logoLeft, 'JPEG', margin, 6, 22, 16);
+        doc.addImage(logoLeft, 'PNG', margin, 6, 22, 16);
       }
       if (logoRight) {
-        doc.addImage(logoRight, 'JPEG', pageW - margin - 32, 8, 32, 11);
+        doc.addImage(logoRight, 'PNG', pageW - margin - 32, 8, 32, 11);
       }
     };
 

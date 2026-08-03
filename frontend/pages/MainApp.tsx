@@ -17,9 +17,10 @@ import { PTWManagement } from '@/components/PTWManagement';
 import { AbsenTBM } from '@/components/AbsenTBM';
 import { AbsenInduction } from '@/components/AbsenInduction';
 import { NotificationCenter, AppNotificationItem } from '@/components/NotificationCenter';
+import { NotificationPage } from '@/components/NotificationPage';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
-type Tab = 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction';
+type Tab = 'notifications' | 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction';
 
 export function MainApp() {
   const { user, userRole, logout } = useAuth();
@@ -60,10 +61,16 @@ export function MainApp() {
     if (item.targetTab) {
       setActiveTab(item.targetTab as Tab);
     }
-    if (item.searchQuery || item.fileName) {
-      setNavSearchQuery(item.searchQuery || item.fileName);
-    }
-    toast.info(`Membuka: ${item.fileName}`);
+    const rawQuery = item.searchQuery || item.fileName || item.title || '';
+    const queryToUse = rawQuery
+      .replace(/\.pdf$/i, '')
+      .replace(/\.xlsx$/i, '')
+      .replace(/^dokumentasi maintenance\s*/i, '')
+      .replace(/^laporan service:\s*/i, '')
+      .trim();
+
+    setNavSearchQuery(queryToUse);
+    toast.info(`Membuka: ${item.fileName || item.title}`);
   };
 
   // JARVIS Autonomous Voice Command Listener
@@ -121,7 +128,10 @@ export function MainApp() {
 
             {/* Desktop Actions */}
             <div className="hidden md:flex items-center gap-4">
-              <NotificationCenter onSelectNotification={handleSelectNotification} />
+              <NotificationCenter 
+                onSelectNotification={handleSelectNotification} 
+                onOpenNotificationPage={() => setActiveTab('notifications')}
+              />
               <div className="text-right">
                 <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Masuk sebagai</p>
                 <p className="text-sm font-semibold text-slate-700 truncate max-w-[260px]">{user?.email}</p>
@@ -138,7 +148,10 @@ export function MainApp() {
             </div>
 
             <div className="flex items-center gap-2 md:hidden">
-              <NotificationCenter onSelectNotification={handleSelectNotification} />
+              <NotificationCenter 
+                onSelectNotification={handleSelectNotification} 
+                onOpenNotificationPage={() => setActiveTab('notifications')}
+              />
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setMobileMenuOpen(true)}
@@ -249,14 +262,16 @@ export function MainApp() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
           >
-            {activeTab === 'admin' ? (
+            {activeTab === 'notifications' ? (
+              <NotificationPage onSelectNotification={handleSelectNotification} />
+            ) : activeTab === 'admin' ? (
               <AdminDashboard onEdit={handleEditReport} />
             ) : activeTab === 'absen_tbm' ? (
               <AbsenTBM />
             ) : activeTab === 'absen_induction' ? (
               <AbsenInduction />
             ) : activeTab === 'ptw' ? (
-              <PTWManagement />
+              <PTWManagement initialSearchQuery={navSearchQuery} />
             ) : activeTab === 'files' ? (
               <FileManagement initialSearchQuery={navSearchQuery} />
             ) : activeTab === 'report' ? (
@@ -265,15 +280,15 @@ export function MainApp() {
                 onClearEdit={clearEditingData} 
               />
             ) : activeTab === 'corrective' ? (
-              <CorrectiveMaintenance readOnly={isTDEorCBRE} />
+              <CorrectiveMaintenance readOnly={isTDEorCBRE} initialSearchQuery={navSearchQuery} />
             ) : activeTab === 'corrective_archive' ? (
-              <CorrectiveMaintenance readOnly={true} />
+              <CorrectiveMaintenance readOnly={true} initialSearchQuery={navSearchQuery} />
             ) : activeTab === 'findings' ? (
               <FindingManagement />
             ) : activeTab === 'finding_archive' ? (
               <FindingArchive />
             ) : (
-              <DocumentList onEdit={handleEditReport} />
+              <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} />
             )}
           </motion.div>
         </AnimatePresence>

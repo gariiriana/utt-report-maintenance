@@ -47,7 +47,7 @@ export const loadLogoBase64 = (pathOrObj: string | { src: string } | null | unde
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0);
       }
-      resolve(canvas.toDataURL('image/jpeg', 0.8));
+      resolve(canvas.toDataURL('image/png'));
     };
     img.onerror = () => resolve('');
     img.src = url;
@@ -202,10 +202,10 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
     doc.line(margin + col1W, headerY, margin + col1W, headerY + headerH);
     doc.line(pageWidth - margin - col3W, headerY, pageWidth - margin - col3W, headerY + headerH);
     if (logos.left) {
-      doc.addImage(logos.left, 'JPEG', margin + 3, headerY + 4, col1W - 6, 14, 'logo_l', 'FAST');
+      doc.addImage(logos.left, 'PNG', margin + 3, headerY + 4, col1W - 6, 14, 'logo_l', 'FAST');
     }
     if (logos.right) {
-      doc.addImage(logos.right, 'JPEG', pageWidth - margin - col3W + 5, headerY + 5.5, col3W - 10, 11, 'logo_r', 'FAST');
+      doc.addImage(logos.right, 'PNG', pageWidth - margin - col3W + 5, headerY + 5.5, col3W - 10, 11, 'logo_r', 'FAST');
     }
     const centerX = margin + col1W + (contentW - col1W - col3W) / 2;
     doc.setFontSize(11).setFont('helvetica', 'bold').setTextColor(THEME_BLUE);

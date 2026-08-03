@@ -24,6 +24,7 @@ import { compressImage, compressBase64Image } from '@/utils/imageCompression';
 import { PreviewReport } from '@/components/PreviewReport';
 import { CameraModal } from '@/components/CameraModal';
 import { draftStorage } from '@/utils/draftStorage';
+import { sendFileNotification } from '@/utils/notificationService';
 
 
 import imgStatusWld from '@/assets/Wld/status.jpeg';
@@ -864,6 +865,19 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         const docRef = await withRetry(() => addDoc(collection(db, 'pdf_documents'), reportData));
         docId = docRef.id;
         setUnits(prev => prev.map(u => u.id === unit.id ? { ...u, archiveId: docId, archiveType: 'pdf' } : u));
+
+        const mName = reportData.maintenanceName || reportData.equipmentName || '';
+        await sendFileNotification({
+          title: mName ? `Dokumentasi Maintenance ${mName}` : 'Dokumentasi Maintenance',
+          fileName: (reportData.fileName && reportData.fileName !== 'Service Report.pdf') 
+            ? reportData.fileName 
+            : (mName ? `Dokumentasi Maintenance ${mName}.pdf` : 'Dokumentasi Maintenance.pdf'),
+          category: 'Arsip Dokumen',
+          fileId: docId,
+          uploadedBy: user?.email || reportData.createdBy || 'Teknisi DME',
+          targetTab: 'documents',
+          searchQuery: mName || reportData.fileName || ''
+        });
       }
 
       if (cardsToSave.length > 0) {

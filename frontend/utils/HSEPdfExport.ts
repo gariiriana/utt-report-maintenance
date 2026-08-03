@@ -173,7 +173,7 @@ function loadImageAsBase64(url: string): Promise<string> {
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.drawImage(img, 0, 0);
             }
-            resolve(canvas.toDataURL('image/jpeg', 0.8));
+            resolve(canvas.toDataURL('image/png'));
         };
         img.onerror = () => resolve('');
         img.src = url;
@@ -218,14 +218,14 @@ function createHSEDpdDoc(data: HSEFormData, logoDmeB64: string, logoNeutradcB64:
         const headerTopY = 8;
 
         if (logoDmeB64) {
-            doc.addImage(logoDmeB64, 'JPEG', marginL, headerTopY, leftW, leftH, `logo_left_${pg}`, 'FAST');
+            doc.addImage(logoDmeB64, 'PNG', marginL, headerTopY, leftW, leftH, `logo_left_${pg}`, 'FAST');
         }
 
         const rightW = 30;
         const rightH = 11;
         if (logoNeutradcB64) {
             const rightY = headerTopY + (leftH - rightH) / 2;
-            doc.addImage(logoNeutradcB64, 'JPEG', pageW - marginR - rightW, rightY, rightW, rightH, `logo_right_${pg}`, 'FAST');
+            doc.addImage(logoNeutradcB64, 'PNG', pageW - marginR - rightW, rightY, rightW, rightH, `logo_right_${pg}`, 'FAST');
         }
 
         const titleY = headerTopY + 3;

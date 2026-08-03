@@ -108,11 +108,11 @@ export async function exportMonthlyPDF(
     currentDoc.line(pageWidth - margin - col3W, headerY, pageWidth - margin - col3W, headerY + headerH);
 
     if (leftLogo) {
-      currentDoc.addImage(leftLogo, 'JPEG', margin + 3, headerY + 4, col1W - 6, 16, 'logo_neutra_monthly', 'FAST');
+      currentDoc.addImage(leftLogo, 'PNG', margin + 3, headerY + 4, col1W - 6, 16, 'logo_neutra_monthly', 'FAST');
     }
 
     if (rightLogo) {
-      currentDoc.addImage(rightLogo, 'JPEG', pageWidth - margin - col3W + 5, headerY + 5, col3W - 10, 14, 'logo_dme_monthly', 'FAST');
+      currentDoc.addImage(rightLogo, 'PNG', pageWidth - margin - col3W + 5, headerY + 5, col3W - 10, 14, 'logo_dme_monthly', 'FAST');
     }
 
     const centerX = margin + col1W + (contentW - col1W - col3W) / 2;

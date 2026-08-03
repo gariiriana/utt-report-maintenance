@@ -14,6 +14,7 @@ import {
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
+import { sendFileNotification } from '@/utils/notificationService';
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LabelList } from 'recharts';
 import { safeHtml2Canvas } from '@/utils/ReportPdfExport';
 import { 
@@ -76,7 +77,11 @@ interface QueuedPTWItem {
   isExpanded: boolean;
 }
 
-export function PTWManagement() {
+interface PTWManagementProps {
+  initialSearchQuery?: string;
+}
+
+export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
   const { user, userRole } = useAuth();
   const isAdmin = userRole === 'admin';
   const [activeSubTab, setActiveSubTab] = useState<'list' | 'weekly'>('list');
@@ -98,7 +103,13 @@ export function PTWManagement() {
 
 
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(initialSearchQuery || '');
+
+  useEffect(() => {
+    if (initialSearchQuery !== undefined) {
+      setSearchTerm(initialSearchQuery);
+    }
+  }, [initialSearchQuery]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -888,6 +899,16 @@ export function PTWManagement() {
             ...(item.file && { fileName: item.file.name, totalChunks: itemChunks }),
             createdBy: user.email,
             createdAt: serverTimestamp()
+          });
+
+          await sendFileNotification({
+            title: `Dokumen PTW Baru: ${ptwNum}`,
+            fileName: item.file ? item.file.name : `PTW_${ptwNum}`,
+            category: 'PTW',
+            fileId: newDocRef.id,
+            uploadedBy: user?.email || 'Engineer',
+            targetTab: 'ptw',
+            searchQuery: ptwNum
           });
           
           // Upload chunks to new doc

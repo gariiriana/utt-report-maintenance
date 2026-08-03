@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield } from 'lucide-react';
 import { collection, query, getDocs, deleteDoc, doc, where, updateDoc, deleteField } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
@@ -74,9 +74,10 @@ export interface ExcelDocument {
 interface DocumentListProps {
   onEdit?: (doc: ExcelDocument) => void;
   filterOverride?: 'hse_utt';
+  initialSearchQuery?: string;
 }
 
-export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
+export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: DocumentListProps) {
   const { user, userRole, companyType } = useAuth();
   const isAdmin = userRole === 'admin';
   const isPrivileged = isAdmin || userRole === 'manager' || userRole === 'site_manager' || userRole === 'hse' ||
@@ -89,10 +90,17 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
+
+  useEffect(() => {
+    if (initialSearchQuery !== undefined) {
+      setSearchQuery(initialSearchQuery);
+    }
+  }, [initialSearchQuery]);
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
   const [filterType, setFilterType] = useState<'all' | 'excel' | 'pdf' | 'hse'>('all');
   const [srStatusFilter, setSrStatusFilter] = useState<'all' | 'photos_only' | 'with_sr'>('all');
+  const [adminDeleteFilter, setAdminDeleteFilter] = useState<'all' | 'pending_delete'>('all');
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<ExcelDocument | null>(null);
@@ -778,18 +786,27 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
   };
 
   const filteredDocuments = documents.filter(doc => {
-    // If user is Admin, only show documents that have pending delete requests
-    if (isAdmin && !doc.deleteRequested) {
+    // If user is Admin and explicitly filtering pending delete requests
+    if (isAdmin && adminDeleteFilter === 'pending_delete' && !doc.deleteRequested) {
       return false;
     }
 
     if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      const inMaintenanceName = doc.maintenanceName.toLowerCase().includes(lowerQuery);
-      const inSpecificDetail = (doc.specificDetail || '').toLowerCase().includes(lowerQuery);
-      const inFileName = doc.fileName.toLowerCase().includes(lowerQuery);
+      const lowerQuery = searchQuery.trim().toLowerCase();
+      const cleanQuery = lowerQuery
+        .replace(/\.pdf$/i, '')
+        .replace(/\.xlsx$/i, '')
+        .replace(/^dokumentasi maintenance\s*/i, '')
+        .replace(/^laporan service:\s*/i, '')
+        .trim();
 
-      if (!inMaintenanceName && !inSpecificDetail && !inFileName) {
+      const targetStr = `${doc.maintenanceName} ${doc.specificDetail || ''} ${doc.fileName} ${doc.createdBy || ''}`.toLowerCase();
+
+      const directMatch = targetStr.includes(lowerQuery);
+      const cleanMatch = cleanQuery ? targetStr.includes(cleanQuery) : false;
+      const tokenMatch = cleanQuery ? cleanQuery.split(/\s+/).some(t => t.length >= 2 && targetStr.includes(t)) : false;
+
+      if (!directMatch && !cleanMatch && !tokenMatch) {
         return false;
       }
     }
@@ -1639,10 +1656,25 @@ export function DocumentList({ onEdit, filterOverride }: DocumentListProps) {
                 className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-sm sm:text-base font-medium"
                 title="Filter tipe dokumen"
               >
-                <option value="all">{isAdmin ? 'Semua Pengajuan' : 'Semua Tipe'}</option>
+                <option value="all">Semua Tipe</option>
                 <option value="excel">Excel</option>
                 <option value="pdf">PDF</option>
                 <option value="hse">HSE</option>
+              </select>
+            </div>
+          )}
+
+          {isAdmin && (
+            <div className="relative">
+              <Shield className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
+              <select
+                value={adminDeleteFilter}
+                onChange={(e) => setAdminDeleteFilter(e.target.value as any)}
+                className="w-full pl-10 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-sm sm:text-base font-medium"
+                title="Filter pengajuan admin"
+              >
+                <option value="all">Semua Dokumen ({documents.length})</option>
+                <option value="pending_delete">Menunggu Persetujuan Hapus ({documents.filter(d => d.deleteRequested).length})</option>
               </select>
             </div>
           )}

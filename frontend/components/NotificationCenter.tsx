@@ -28,9 +28,10 @@ export interface AppNotificationItem {
 
 interface NotificationCenterProps {
     onSelectNotification: (item: AppNotificationItem) => void;
+    onOpenNotificationPage?: () => void;
 }
 
-export function NotificationCenter({ onSelectNotification }: NotificationCenterProps) {
+export function NotificationCenter({ onSelectNotification, onOpenNotificationPage }: NotificationCenterProps) {
     const [notifications, setNotifications] = useState<AppNotificationItem[]>([]);
     const [readIds, setReadIds] = useState<string[]>(() => {
         try {
@@ -119,6 +120,37 @@ export function NotificationCenter({ onSelectNotification }: NotificationCenterP
             updateState();
         });
 
+        // 4. Listen to pdf_documents collection (Dokumentasi Maintenance)
+        const qPdfDocs = query(collection(db, 'pdf_documents'), orderBy('createdAt', 'desc'), limit(10));
+        const unsubPdfDocs = onSnapshot(qPdfDocs, (snapshot) => {
+            snapshot.docs.forEach(docSnap => {
+                const data = docSnap.data();
+                const notifId = `pdfdoc_${docSnap.id}`;
+                if (!notifItemsMap[notifId]) {
+                    const dateObj = data.createdAt?.toDate ? data.createdAt.toDate() : (data.date ? new Date(data.date) : new Date());
+                    const mName = data.maintenanceName || data.equipmentName || data.system || data.maintenanceType || '';
+                    const displayFileName = (data.fileName && data.fileName !== 'Service Report.pdf') 
+                        ? data.fileName 
+                        : (mName ? `Dokumentasi Maintenance ${mName}.pdf` : 'Dokumentasi Maintenance.pdf');
+                    const displayTitle = mName ? `Dokumentasi Maintenance ${mName}` : (data.fileName || 'Dokumentasi Maintenance');
+                    const uploaderEmail = data.createdBy || data.uploadedByEmail || data.uploadedBy || data.author || 'Teknisi DME';
+
+                    notifItemsMap[notifId] = {
+                        id: notifId,
+                        title: displayTitle,
+                        fileName: displayFileName,
+                        category: 'Arsip Dokumen',
+                        uploadedBy: uploaderEmail,
+                        uploadedAt: dateObj,
+                        targetTab: 'documents',
+                        fileId: docSnap.id,
+                        searchQuery: mName || displayFileName
+                    };
+                }
+            });
+            updateState();
+        });
+
         function updateState() {
             const list = Object.values(notifItemsMap).sort((a, b) => {
                 const timeA = a.uploadedAt instanceof Date ? a.uploadedAt.getTime() : Date.now();
@@ -132,6 +164,7 @@ export function NotificationCenter({ onSelectNotification }: NotificationCenterP
             unsubNotif();
             unsubFiles();
             unsubCorrective();
+            unsubPdfDocs();
         };
     }, []);
 
@@ -307,11 +340,25 @@ export function NotificationCenter({ onSelectNotification }: NotificationCenterP
                         </div>
 
                         {/* Popover Footer */}
-                        <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
-                            <span className="flex items-center gap-1 text-slate-600 font-medium">
-                                <Sparkles className="w-3 h-3 text-amber-500" /> Auto-sync aktif
-                            </span>
-                            <span className="font-semibold text-slate-400">Total: {notifications.length} file</span>
+                        <div className="p-2 bg-slate-50 border-t border-slate-100 space-y-1.5">
+                            {onOpenNotificationPage && (
+                                <button
+                                    onClick={() => {
+                                        setIsOpen(false);
+                                        onOpenNotificationPage();
+                                    }}
+                                    className="w-full py-2 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer active:scale-98"
+                                >
+                                    <span>Buka Halaman Notifikasi &amp; Filter Tanggal</span>
+                                    <ChevronRight className="w-4 h-4" />
+                                </button>
+                            )}
+                            <div className="px-2 py-1 flex items-center justify-between text-[10px] text-slate-500">
+                                <span className="flex items-center gap-1 text-slate-600 font-medium">
+                                    <Sparkles className="w-3 h-3 text-amber-500" /> Auto-sync aktif
+                                </span>
+                                <span className="font-semibold text-slate-400">Total: {notifications.length} file</span>
+                            </div>
                         </div>
                     </motion.div>
                 )}

@@ -89,6 +89,7 @@ interface CorrectiveReport {
 
 interface CorrectiveMaintenanceProps {
     readOnly?: boolean;
+    initialSearchQuery?: string;
 }
 
 const INDO_MONTHS = [
@@ -106,7 +107,7 @@ const INDO_MONTHS = [
     { value: '11', label: 'Desember' }
 ];
 
-export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanceProps) {
+export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: CorrectiveMaintenanceProps) {
     const { user, userRole } = useAuth();
     const isAuthorizedRole = userRole === 'admin' || userRole === 'engineer' || userRole === 'standby_engineer';
 
@@ -120,7 +121,13 @@ export function CorrectiveMaintenance({ readOnly = false }: CorrectiveMaintenanc
 
     // Filters State
     const [archiveFolder, setArchiveFolder] = useState<'cm_pdf' | 'sla' | 'pir'>('cm_pdf');
-    const [searchQuery, setSearchQuery] = useState<string>('');
+    const [searchQuery, setSearchQuery] = useState<string>(initialSearchQuery || '');
+
+    useEffect(() => {
+        if (initialSearchQuery !== undefined) {
+            setSearchQuery(initialSearchQuery);
+        }
+    }, [initialSearchQuery]);
     const [selectedMonth, setSelectedMonth] = useState<string>('all');
     const [selectedYear, setSelectedYear] = useState<string>('all');
 

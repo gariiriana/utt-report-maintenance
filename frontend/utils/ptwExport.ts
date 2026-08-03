@@ -254,11 +254,11 @@ export async function exportPTWListToPDF(records: PTWExportRecord[]) {
       pdf.line(pageWidth - margin - col3W, headerY, pageWidth - margin - col3W, headerY + headerH);
 
       if (dmeLogo) {
-        pdf.addImage(dmeLogo, 'JPEG', margin + 3, headerY + 4, col1W - 6, 14, 'logo_dme_ptw', 'FAST');
+        pdf.addImage(dmeLogo, 'PNG', margin + 3, headerY + 4, col1W - 6, 14, 'logo_dme_ptw', 'FAST');
       }
 
       if (neutraLogo) {
-        pdf.addImage(neutraLogo, 'JPEG', pageWidth - margin - col3W + 5, headerY + 4, col3W - 10, 14, 'logo_neutra_ptw', 'FAST');
+        pdf.addImage(neutraLogo, 'PNG', pageWidth - margin - col3W + 5, headerY + 4, col3W - 10, 14, 'logo_neutra_ptw', 'FAST');
       }
 
       const centerX = margin + col1W + (contentW - col1W - col3W) / 2;
@@ -694,11 +694,11 @@ export async function exportPTWWeeklyReportToPDF(
       pdf.line(pageWidth - margin - col3W, headerY, pageWidth - margin - col3W, headerY + headerH);
 
       if (dmeLogo) {
-        pdf.addImage(dmeLogo, 'JPEG', margin + 3, headerY + 4, col1W - 6, 14, 'logo_dme_weekly', 'FAST');
+        pdf.addImage(dmeLogo, 'PNG', margin + 3, headerY + 4, col1W - 6, 14, 'logo_dme_weekly', 'FAST');
       }
 
       if (neutraLogo) {
-        pdf.addImage(neutraLogo, 'JPEG', pageWidth - margin - col3W + 5, headerY + 4, col3W - 10, 14, 'logo_neutra_weekly', 'FAST');
+        pdf.addImage(neutraLogo, 'PNG', pageWidth - margin - col3W + 5, headerY + 4, col3W - 10, 14, 'logo_neutra_weekly', 'FAST');
       }
 
       const centerX = margin + col1W + (contentW - col1W - col3W) / 2;

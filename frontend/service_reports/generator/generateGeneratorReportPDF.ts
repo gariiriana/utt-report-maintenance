@@ -18,6 +18,8 @@ async function loadImageAsBase64(src: string): Promise<string> {
       canvas.height = img.height;
       const ctx = canvas.getContext('2d');
       if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0);
         resolve(canvas.toDataURL('image/png'));
       } else {
