@@ -65,6 +65,7 @@ const ENGINEER_CATEGORIES = ['MOP', 'Risk Register', 'D-DAY', 'Report CM', 'Form
 const MAINTENANCE_TYPES = [
     'Water Leak',
     'Cooling Tower Water Treatment',
+    'Cooling Tower',
     'FCU',
     'Lift Units',
     'Dock Leveler',
@@ -83,7 +84,6 @@ const MAINTENANCE_TYPES = [
     'UPS',
     'CRAC Data Hall & Supporting Room',
     'Chiller',
-    'Cooling Tower',
     'ATS',
     'Cooling pump',
     'Transformer / Trafo',
