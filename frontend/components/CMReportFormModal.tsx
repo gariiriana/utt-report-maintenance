@@ -19,7 +19,6 @@ import { db } from '@/api/firebase';
 import { collection, addDoc, serverTimestamp, getDoc, doc, updateDoc } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { CMReportData, CMSparepartItem, CMPhotoItem } from '@/types/correctiveReportTypes';
-import { generateCMReportPDF } from '@/utils/CMReportPdfExport';
 import { exportCMReportToDocx } from '@/utils/docxReportExport';
 import { sendFileNotification } from '@/utils/notificationService';
 import { ImageEditor } from './ImageEditor';
@@ -322,37 +321,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     }
   };
 
-  // Handle Export PDF & Auto Save to Standby Archive
-  const handleExportPDF = async () => {
-    if (!validateStep(4)) return;
 
-    await generateCMReportPDF(formData);
-    setSubmitting(true);
-    try {
-      const reportPayload = {
-        ...formData,
-        category: 'CM',
-        reportType: 'CM_PDF',
-        reportedBy: user?.uid || 'system',
-        reportedByEmail: user?.email || 'system',
-        reportedAt: serverTimestamp(),
-      };
-
-      if (editId) {
-        await updateDoc(doc(db, 'corrective_reports', editId), reportPayload);
-        toast.success('Laporan CM berhasil diekspor PDF & diperbarui di Arsip Standby!');
-      } else {
-        await addDoc(collection(db, 'corrective_reports'), reportPayload);
-        localStorage.removeItem('cm_report_draft');
-        toast.success('Laporan CM berhasil diekspor PDF & disimpan ke Arsip Standby!');
-      }
-      onSuccess();
-    } catch (err: any) {
-      console.error('Error saving CM report on export:', err);
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   // Handle Export DOCX (Word)
   const handleExportDocx = async () => {
@@ -934,26 +903,6 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                   </div>
                 </div>
               </div>
-
-              {/* QUICK ACTION EXPORT PDF BANNER */}
-              <div className="p-4 bg-gradient-to-r from-red-600 to-rose-700 text-white rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg">
-                <div>
-                  <h4 className="text-sm font-bold flex items-center gap-2">
-                    <Download className="w-4 h-4 text-rose-200" />
-                    Export ke File PDF 3-Halaman
-                  </h4>
-                  <p className="text-xs text-rose-100 mt-0.5">Langsung download hasil laporan CM berbentuk PDF tanpa harus menunggu simpan database.</p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleExportPDF}
-                  className="w-full sm:w-auto px-5 py-2.5 bg-white text-red-700 hover:bg-rose-50 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition cursor-pointer"
-                >
-                  <Download className="w-4 h-4 text-red-700" />
-                  Export to PDF
-                </button>
-              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -975,24 +924,14 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
 
           <div className="flex items-center gap-3">
             {currentStep === 4 && (
-              <>
-                <button
-                  type="button"
-                  onClick={handleExportPDF}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs"
-                >
-                  <Download className="w-4 h-4 text-red-600" />
-                  Preview / Export PDF
-                </button>
-                <button
-                  type="button"
-                  onClick={handleExportDocx}
-                  className="px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs"
-                >
-                  <Download className="w-4 h-4 text-blue-600" />
-                  Export DOCX
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={handleExportDocx}
+                className="px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs"
+              >
+                <Download className="w-4 h-4 text-blue-600" />
+                Export DOCX
+              </button>
             )}
 
             {currentStep < 4 ? (

@@ -28,12 +28,8 @@ import { useAuth } from './AuthContext';
 import { SLAForm } from './SLAForm';
 import { CMReportFormModal } from './CMReportFormModal';
 import { PIRReportFormModal } from './PIRReportFormModal';
-import { generateCMReportPDF } from '@/utils/CMReportPdfExport';
-import { generatePIRReportPDF } from '@/utils/PIRReportPdfExport';
 import { exportSLAReportToExcel } from '../utils/excelExport';
-import { exportMonthlyPDF } from '../utils/pdfExport';
 import { exportCMReportToDocx, exportSLAReportToDocx } from '@/utils/docxReportExport';
-import { INITIAL_PIR_REPORT_DATA } from '@/types/pirReportTypes';
 
 interface CorrectiveReport {
     id: string;
@@ -228,40 +224,20 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             const ticketMatch = report.ticketName?.toLowerCase().includes(queryText);
             const remarkMatch = report.remark?.toLowerCase().includes(queryText);
             const incidentMatch = report.incidentName?.toLowerCase().includes(queryText);
-            
+
             return locationMatch || issueMatch || actionMatch || ticketMatch || remarkMatch || incidentMatch;
         }
 
         return true;
     });
 
-    const handleExportMonthlyPDF = async () => {
-        if (filteredReports.length === 0) {
-            toast.error('Tidak ada data laporan untuk diekspor!');
-            return;
-        }
-
-        const monthLabel = selectedMonth === 'all' 
-            ? 'Gabungan' 
-            : INDO_MONTHS.find(m => m.value === selectedMonth)?.label || 'Bulan';
-        const yearLabel = selectedYear === 'all' ? 'Gabungan' : selectedYear;
-
-        toast.loading('Mengekspor PDF laporan bulanan...', { id: 'pdf-export' });
-        try {
-            await exportMonthlyPDF(filteredReports, monthLabel, yearLabel);
-            toast.success('PDF Laporan Bulanan berhasil diunduh!', { id: 'pdf-export' });
-        } catch (error) {
-            console.error('Failed to export PDF:', error);
-            toast.error('Gagal mengekspor PDF laporan bulanan', { id: 'pdf-export' });
-        }
-    };
 
     const [activeFormTab, setActiveFormTab] = useState<'cm_pdf' | 'sla' | 'pir'>('cm_pdf');
 
     const buildCMDataFromReport = (report: any) => {
-        const dateFormatted = report.incidentDate || 
-            (report.reportedAt?.toDate ? report.reportedAt.toDate().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : 
-            (report.reportedAt ? new Date(report.reportedAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-'));
+        const dateFormatted = report.incidentDate ||
+            (report.reportedAt?.toDate ? report.reportedAt.toDate().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) :
+                (report.reportedAt ? new Date(report.reportedAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-'));
 
         const incName = report.incidentName || report.ticketName || report.issue || 'Corrective Maintenance Report';
         const eqName = report.equipmentName || report.ticketName || report.issue || report.location || 'Equipment';
@@ -329,24 +305,9 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         };
     };
 
-    // Helper: Export single report card to 3-page CM PDF
-    const handleExportSingleCMPDF = async (report: any) => {
-        const cmData = buildCMDataFromReport(report);
-        await generateCMReportPDF(cmData);
-    };
-
     const handleExportSingleCMDocx = async (report: any) => {
         const cmData = buildCMDataFromReport(report);
         await exportCMReportToDocx(cmData);
-    };
-
-    // Helper: Export single report card to PIR PDF (10-Page)
-    const handleExportSinglePIRPDF = async (report: any) => {
-        const pirData = {
-            ...INITIAL_PIR_REPORT_DATA,
-            ...report
-        };
-        await generatePIRReportPDF(pirData);
     };
 
     if (!readOnly) {
@@ -366,76 +327,75 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         <button
                             type="button"
                             onClick={() => setActiveFormTab('cm_pdf')}
-                            className={`px-2.5 sm:px-4 py-2 sm:py-2 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${
-                                activeFormTab === 'cm_pdf'
+                            className={`px-2.5 sm:px-4 py-2 sm:py-2 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${activeFormTab === 'cm_pdf'
                                     ? 'bg-red-600 text-white shadow-md'
                                     : 'text-slate-600 hover:text-slate-900'
-                            }`}
+                                }`}
                         >
                             <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                            <span className="truncate">Report CM PDF (3-Hal)</span>
+                            <span className="truncate">Report CM (3-Hal)</span>
                         </button>
                         <button
                             type="button"
                             onClick={() => setActiveFormTab('sla')}
-                            className={`px-2.5 sm:px-4 py-2 sm:py-2 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${
-                                activeFormTab === 'sla'
-                                    ? 'bg-red-600 text-white shadow-md'
-                                    : 'text-slate-600 hover:text-slate-900'
+                        className={`px-2.5 sm:px-4 py-2 sm:py-2 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${activeFormTab === 'sla'
+                                ? 'bg-red-600 text-white shadow-md'
+                                : 'text-slate-600 hover:text-slate-900'
                             }`}
                         >
-                            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                            <span className="truncate">Form SLA / SLG (5-Step)</span>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveFormTab('pir')}
-                            className={`px-2.5 sm:px-4 py-2 sm:py-2 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${
-                                activeFormTab === 'pir'
-                                    ? 'bg-red-600 text-white shadow-md'
-                                    : 'text-slate-600 hover:text-slate-900'
+                        <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                        <span className="truncate">Form SLA / SLG (5-Step)</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setActiveFormTab('pir')}
+                        className={`px-2.5 sm:px-4 py-2 sm:py-2 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${activeFormTab === 'pir'
+                                ? 'bg-red-600 text-white shadow-md'
+                                : 'text-slate-600 hover:text-slate-900'
                             }`}
-                        >
-                            <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                            <span className="truncate">Report PIR (Postmortem)</span>
-                        </button>
-                    </div>
+                    >
+                        <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                        <span className="truncate">Report PIR (Postmortem)</span>
+                    </button>
                 </div>
-
-                {activeFormTab === 'cm_pdf' ? (
-                    <CMReportFormModal
-                        key={`cm_${formKey}`}
-                        onSuccess={() => {
-                            setFormKey(prev => prev + 1);
-                        }}
-                        onCancel={() => {
-                            setFormKey(prev => prev + 1);
-                        }}
-                    />
-                ) : activeFormTab === 'sla' ? (
-                    <div className="bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl p-6 shadow-lg">
-                        <SLAForm
-                            key={`sla_${formKey}`}
-                            onSuccess={() => {
-                                setFormKey(prev => prev + 1);
-                            }}
-                            onCancel={() => {
-                                setFormKey(prev => prev + 1);
-                            }}
-                        />
-                    </div>
-                ) : (
-                    <PIRReportFormModal
-                        key={`pir_${formKey}`}
-                        onSuccess={() => {
-                            setFormKey(prev => prev + 1);
-                        }}
-                        onCancel={() => {
-                            setFormKey(prev => prev + 1);
-                        }}
-                    />
-                )}
             </div>
+
+                {
+            activeFormTab === 'cm_pdf' ? (
+                <CMReportFormModal
+                    key={`cm_${formKey}`}
+                    onSuccess={() => {
+                        setFormKey(prev => prev + 1);
+                    }}
+                    onCancel={() => {
+                        setFormKey(prev => prev + 1);
+                    }}
+                />
+            ) : activeFormTab === 'sla' ? (
+                <div className="bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl p-6 shadow-lg">
+                    <SLAForm
+                        key={`sla_${formKey}`}
+                        onSuccess={() => {
+                            setFormKey(prev => prev + 1);
+                        }}
+                        onCancel={() => {
+                            setFormKey(prev => prev + 1);
+                        }}
+                    />
+                </div>
+            ) : (
+            <PIRReportFormModal
+                key={`pir_${formKey}`}
+                onSuccess={() => {
+                    setFormKey(prev => prev + 1);
+                }}
+                onCancel={() => {
+                    setFormKey(prev => prev + 1);
+                }}
+            />
+        )
+        }
+            </div >
         );
     }
 
@@ -456,11 +416,10 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 <button
                     type="button"
                     onClick={() => setArchiveFolder('cm_pdf')}
-                    className={`px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 transition cursor-pointer border ${
-                        archiveFolder === 'cm_pdf'
+                    className={`px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 transition cursor-pointer border ${archiveFolder === 'cm_pdf'
                             ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
                             : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
-                    }`}
+                        }`}
                 >
                     <FileText className="w-4 h-4" />
                     Folder Report CM ({reports.filter(r => r.reportType !== 'SLA' && r.reportType !== 'PIR').length})
@@ -468,11 +427,10 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 <button
                     type="button"
                     onClick={() => setArchiveFolder('sla')}
-                    className={`px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 transition cursor-pointer border ${
-                        archiveFolder === 'sla'
+                    className={`px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 transition cursor-pointer border ${archiveFolder === 'sla'
                             ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
                             : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
-                    }`}
+                        }`}
                 >
                     <Clock className="w-4 h-4" />
                     Folder Form SLA / SLG ({reports.filter(r => r.reportType === 'SLA').length})
@@ -480,11 +438,10 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 <button
                     type="button"
                     onClick={() => setArchiveFolder('pir')}
-                    className={`px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 transition cursor-pointer border ${
-                        archiveFolder === 'pir'
+                    className={`px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 transition cursor-pointer border ${archiveFolder === 'pir'
                             ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
                             : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
-                    }`}
+                        }`}
                 >
                     <AlertTriangle className="w-4 h-4" />
                     Folder Report PIR ({reports.filter(r => r.reportType === 'PIR').length})
@@ -500,7 +457,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
                             >
-                                <SLAForm 
+                                <SLAForm
                                     editId={editingReportId || undefined}
                                     onSuccess={() => {
                                         setShowForm(false);
@@ -605,16 +562,6 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                 </select>
                             </div>
 
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={handleExportMonthlyPDF}
-                                disabled={filteredReports.length === 0}
-                                className="w-full md:w-auto px-4.5 py-2.5 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 disabled:from-slate-800 disabled:to-slate-900 text-white text-xs font-extrabold uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-rose-500/5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition border border-rose-500/20"
-                            >
-                                <FileText className="w-4 h-4" />
-                                Export PDF Bulanan ({filteredReports.length})
-                            </motion.button>
                         </div>
                     )}
 
@@ -635,13 +582,12 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                     key={report.id}
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className={`bg-white/90 backdrop-blur-sm rounded-2xl border overflow-hidden hover:border-blue-300 transition shadow-lg relative ${
-                                        report.reportType === 'PIR'
+                                    className={`bg-white/90 backdrop-blur-sm rounded-2xl border overflow-hidden hover:border-blue-300 transition shadow-lg relative ${report.reportType === 'PIR'
                                             ? 'border-red-400'
                                             : report.reportType === 'SLA'
-                                            ? 'border-red-300'
-                                            : 'border-slate-200'
-                                    }`}
+                                                ? 'border-red-300'
+                                                : 'border-slate-200'
+                                        }`}
                                 >
                                     {report.reportType === 'PIR' ? (
                                         /* PIR REPORT CARD LAYOUT */
@@ -666,14 +612,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                 </div>
 
                                                 <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
-                                                    <button
-                                                        onClick={() => handleExportSinglePIRPDF(report)}
-                                                        className="px-3 py-2 bg-red-600 text-white hover:bg-red-700 rounded-xl flex items-center gap-1.5 text-xs font-bold transition shadow-md cursor-pointer"
-                                                        title="Export to PIR PDF 10-Halaman"
-                                                    >
-                                                        <FileText className="w-3.5 h-3.5" />
-                                                        Export PDF PIR
-                                                    </button>
+
                                                     {isAuthorizedRole && (
                                                         <button
                                                             onClick={() => {
@@ -773,14 +712,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                         <FileText className="w-3.5 h-3.5" />
                                                         Word SLA
                                                     </button>
-                                                    <button
-                                                        onClick={() => handleExportSingleCMPDF(report)}
-                                                        className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 rounded-xl flex items-center gap-1.5 text-xs font-bold transition shadow-lg shadow-red-500/5 cursor-pointer"
-                                                        title="Export to CM PDF 3-Halaman"
-                                                    >
-                                                        <FileText className="w-3.5 h-3.5" />
-                                                        PDF CM (3-Hal)
-                                                    </button>
+
                                                     {isAuthorizedRole && (
                                                         <button
                                                             onClick={() => {
@@ -815,10 +747,9 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             <span>{report.location}</span>
                                                             <span className="text-slate-600">•</span>
                                                             <span className="text-slate-500">Prioritas:</span>
-                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                                                                report.priority === 'High' ? 'bg-rose-500/20 text-rose-400' :
-                                                                report.priority === 'Medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700/30 text-slate-400'
-                                                            }`}>{report.priority}</span>
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${report.priority === 'High' ? 'bg-rose-500/20 text-rose-400' :
+                                                                    report.priority === 'Medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700/30 text-slate-400'
+                                                                }`}>{report.priority}</span>
                                                         </div>
                                                     </div>
 
@@ -836,15 +767,14 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
                                                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col justify-between">
                                                     <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 pb-2 mb-3">SLA Metrics Summary</h4>
-                                                    
+
                                                     <div className="space-y-2.5 flex-1 flex flex-col justify-center">
                                                         <div className="flex items-center justify-between text-xs">
                                                             <span className="text-slate-400">1. Response Time</span>
                                                             <div className="flex items-center gap-2">
                                                                 <span className="font-bold text-slate-700">{report.actualResponseTimeMin} Min</span>
-                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                                                                    report.responseComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                                                                }`}>{report.responseComply ? 'Comply' : 'No Comply'}</span>
+                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${report.responseComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                                                    }`}>{report.responseComply ? 'Comply' : 'No Comply'}</span>
                                                             </div>
                                                         </div>
 
@@ -857,9 +787,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             <span className="text-slate-400">3. Principle Onsite</span>
                                                             <div className="flex items-center gap-2">
                                                                 <span className="font-bold text-slate-300">{report.actualOnsiteTimeMin} Min</span>
-                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                                                                    report.onsiteComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                                                                }`}>{report.onsiteComply ? 'Comply' : 'No Comply'}</span>
+                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${report.onsiteComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                                                    }`}>{report.onsiteComply ? 'Comply' : 'No Comply'}</span>
                                                             </div>
                                                         </div>
 
@@ -867,9 +796,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             <span className="text-slate-400">4. Restore Service</span>
                                                             <div className="flex items-center gap-2">
                                                                 <span className="font-bold text-slate-300">{report.actualRestoreTimeMin} Min</span>
-                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                                                                    report.restoreComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                                                                }`}>{report.restoreComply ? 'Comply' : 'No Comply'}</span>
+                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${report.restoreComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                                                    }`}>{report.restoreComply ? 'Comply' : 'No Comply'}</span>
                                                             </div>
                                                         </div>
 
@@ -877,9 +805,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             <span className="text-slate-400">5. Resolution Time</span>
                                                             <div className="flex items-center gap-2">
                                                                 <span className="font-bold text-slate-300">{report.actualResolutionTimeMin} Min</span>
-                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                                                                    report.resolutionComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                                                                }`}>{report.resolutionComply ? 'Comply' : 'No Comply'}</span>
+                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${report.resolutionComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                                                    }`}>{report.resolutionComply ? 'Comply' : 'No Comply'}</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -972,14 +899,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             <FileText className="w-3.5 h-3.5" />
                                                             Word CM
                                                         </button>
-                                                        <button
-                                                            onClick={() => handleExportSingleCMPDF(report)}
-                                                            className="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-600 rounded-xl flex items-center gap-1.5 text-xs font-bold transition shadow-lg shadow-red-500/5 cursor-pointer"
-                                                            title="Export to CM PDF 3-Halaman"
-                                                        >
-                                                            <FileText className="w-3.5 h-3.5" />
-                                                            PDF CM (3-Hal)
-                                                        </button>
+
                                                         {isAuthorizedRole && (
                                                             <button
                                                                 onClick={() => {
