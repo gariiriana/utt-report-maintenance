@@ -1038,10 +1038,17 @@ export function FileManagement({
                     )}
                 </div>
 
-                {!searchQuery && !selectedFolder ? (
+                {!selectedFolder ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                         {[...new Set(filteredFiles.map(f => f.category))]
                             .filter(category => category && !MAINTENANCE_TYPES.includes(category))
+                            .filter(category => {
+                                if (!searchQuery.trim()) return true;
+                                const q = searchQuery.trim().toLowerCase();
+                                const catMatches = category.toLowerCase().includes(q);
+                                const hasMatchingFiles = filteredFiles.some(f => f.category === category);
+                                return catMatches || hasMatchingFiles;
+                            })
                             .sort()
                             .map((category) => {
                                 const fileCount = filteredFiles.filter(f => f.category === category).length;
@@ -1072,57 +1079,85 @@ export function FileManagement({
                             </div>
                         )}
                     </div>
-                ) : !searchQuery && selectedFolder && !selectedQuarter && selectedFolder !== 'SLD' ? (
+                ) : selectedFolder && !selectedQuarter && selectedFolder !== 'SLD' ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                        {QUARTERS.map((quarter) => {
-                            const fileCount = filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && f.quarter === quarter).length;
-                            return (
-                                <motion.div
-                                    key={quarter}
-                                    whileHover={{ x: 2, scale: 1.01 }}
-                                    whileTap={{ scale: 0.99 }}
-                                    onClick={() => setSelectedQuarter(quarter)}
-                                    className="flex items-center gap-3.5 px-4 py-3 bg-white hover:bg-amber-50/60 border border-slate-200/90 hover:border-amber-400/80 rounded-xl cursor-pointer transition-all group shadow-2xs hover:shadow-xs"
-                                >
-                                    <YellowFolderIcon className="w-7 h-7 flex-shrink-0" />
-                                    <div className="min-w-0 flex-1">
-                                        <h3 className="text-slate-900 font-bold text-sm group-hover:text-amber-900 transition-colors">
-                                            {quarter}
-                                        </h3>
-                                        <span className="text-[11px] text-slate-500 font-medium block">
-                                            {fileCount} {fileCount === 1 ? 'file' : 'files'}
-                                        </span>
-                                    </div>
-                                </motion.div>
-                            );
-                        })}
+                        {QUARTERS
+                            .filter(quarter => {
+                                if (!searchQuery.trim()) return true;
+                                const q = searchQuery.trim().toLowerCase();
+                                const qMatches = quarter.toLowerCase().includes(q);
+                                const hasMatchingFiles = filteredFiles.some(f => matchCategory(f.category, selectedFolder) && f.quarter === quarter);
+                                return qMatches || hasMatchingFiles;
+                            })
+                            .map((quarter) => {
+                                const fileCount = filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && f.quarter === quarter).length;
+                                return (
+                                    <motion.div
+                                        key={quarter}
+                                        whileHover={{ x: 2, scale: 1.01 }}
+                                        whileTap={{ scale: 0.99 }}
+                                        onClick={() => setSelectedQuarter(quarter)}
+                                        className="flex items-center gap-3.5 px-4 py-3 bg-white hover:bg-amber-50/60 border border-slate-200/90 hover:border-amber-400/80 rounded-xl cursor-pointer transition-all group shadow-2xs hover:shadow-xs"
+                                    >
+                                        <YellowFolderIcon className="w-7 h-7 flex-shrink-0" />
+                                        <div className="min-w-0 flex-1">
+                                            <h3 className="text-slate-900 font-bold text-sm group-hover:text-amber-900 transition-colors">
+                                                {quarter}
+                                            </h3>
+                                            <span className="text-[11px] text-slate-500 font-medium block">
+                                                {fileCount} {fileCount === 1 ? 'file' : 'files'}
+                                            </span>
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
                     </div>
-                ) : !searchQuery && selectedFolder && selectedQuarter && !selectedMType && ['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'].includes(selectedFolder) ? (
+                ) : selectedFolder && selectedQuarter && !selectedMType && ['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'].includes(selectedFolder) ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                        {MAINTENANCE_TYPES.map((type) => {
-                            const typeFiles = filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && f.quarter === selectedQuarter && isTypeMatch(f.maintenanceType, type));
-                            const fileCount = typeFiles.length;
+                        {MAINTENANCE_TYPES
+                            .filter(type => {
+                                if (!searchQuery.trim()) return true;
+                                const q = searchQuery.trim().toLowerCase();
+                                const typeMatches = type.toLowerCase().includes(q);
+                                const hasMatchingFiles = filteredFiles.some(f => matchCategory(f.category, selectedFolder) && f.quarter === selectedQuarter && isTypeMatch(f.maintenanceType, type));
+                                return typeMatches || hasMatchingFiles;
+                            })
+                            .map((type) => {
+                                const typeFiles = filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && f.quarter === selectedQuarter && isTypeMatch(f.maintenanceType, type));
+                                const fileCount = typeFiles.length;
 
-                            return (
-                                <motion.div
-                                    key={type}
-                                    whileHover={{ x: 2, scale: 1.01 }}
-                                    whileTap={{ scale: 0.99 }}
-                                    onClick={() => setSelectedMType(type)}
-                                    className="flex items-center gap-3.5 px-4 py-3 bg-white hover:bg-amber-50/60 border border-slate-200/90 hover:border-amber-400/80 rounded-xl cursor-pointer transition-all group shadow-2xs hover:shadow-xs"
-                                >
-                                    <YellowFolderIcon className="w-7 h-7 flex-shrink-0" />
-                                    <div className="min-w-0 flex-1">
-                                        <h3 className="text-slate-900 font-bold text-xs truncate group-hover:text-amber-900 transition-colors">
-                                            {type}
-                                        </h3>
-                                        <span className="text-[10px] text-slate-500 font-medium block">
-                                            {fileCount} {fileCount === 1 ? 'file' : 'files'}
-                                        </span>
-                                    </div>
-                                </motion.div>
-                            );
-                        })}
+                                return (
+                                    <motion.div
+                                        key={type}
+                                        whileHover={{ x: 2, scale: 1.01 }}
+                                        whileTap={{ scale: 0.99 }}
+                                        onClick={() => setSelectedMType(type)}
+                                        className="flex items-center gap-3.5 px-4 py-3 bg-white hover:bg-amber-50/60 border border-slate-200/90 hover:border-amber-400/80 rounded-xl cursor-pointer transition-all group shadow-2xs hover:shadow-xs"
+                                    >
+                                        <YellowFolderIcon className="w-7 h-7 flex-shrink-0" />
+                                        <div className="min-w-0 flex-1">
+                                            <h3 className="text-slate-900 font-bold text-xs truncate group-hover:text-amber-900 transition-colors">
+                                                {type}
+                                            </h3>
+                                            <span className="text-[10px] text-slate-500 font-medium block">
+                                                {fileCount} {fileCount === 1 ? 'file' : 'files'}
+                                            </span>
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
+                        {MAINTENANCE_TYPES.filter(type => {
+                            if (!searchQuery.trim()) return true;
+                            const q = searchQuery.trim().toLowerCase();
+                            const typeMatches = type.toLowerCase().includes(q);
+                            const hasMatchingFiles = filteredFiles.some(f => matchCategory(f.category, selectedFolder) && f.quarter === selectedQuarter && isTypeMatch(f.maintenanceType, type));
+                            return typeMatches || hasMatchingFiles;
+                        }).length === 0 && (
+                            <div className="col-span-full text-center py-12">
+                                <YellowFolderIcon className="w-12 h-12 mx-auto opacity-40 mb-3" />
+                                <p className="text-slate-500 font-medium">Tidak ada folder peralatan ditemukan</p>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <div className="space-y-3">
