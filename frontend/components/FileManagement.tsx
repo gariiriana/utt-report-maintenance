@@ -63,7 +63,7 @@ const FILE_CATEGORIES = [
 const ENGINEER_CATEGORIES = ['MOP', 'Risk Register', 'D-DAY', 'Report CM', 'Form SLA/SLG', 'Report PIR', 'SLD', 'Service Report', 'Service Report Approved'];
 
 const MAINTENANCE_TYPES = [
-    'Water Leak',
+    'Water Leak Detector',
     'Cooling Tower Water Treatment',
     'Cooling Tower',
     'FCU',
@@ -89,7 +89,8 @@ const MAINTENANCE_TYPES = [
     'Cooling pump',
     'Transformer / Trafo',
     'Generator',
-    'MV and RMU panel',
+    'MV Panel',
+    'RMU Panel',
     'LV Panel',
     'PDU Panel',
     'FSS',
@@ -637,9 +638,21 @@ export function FileManagement({
     const isTypeMatch = (fMType?: string, targetType?: string | null) => {
         if (!targetType) return true;
         if (!fMType) return false;
-        if (fMType === targetType) return true;
-        if ((targetType.includes('Transformer') || targetType.includes('Trafo')) && (fMType.includes('Transformer') || fMType.includes('Trafo'))) return true;
-        if (targetType === 'Generator' && (fMType.includes('Generator') || fMType.includes('Genset'))) return true;
+        const normF = fMType.trim().toLowerCase();
+        const normT = targetType.trim().toLowerCase();
+        if (normF === normT) return true;
+        if ((normT.includes('transformer') || normT.includes('trafo')) && (normF.includes('transformer') || normF.includes('trafo'))) return true;
+        if (normT.includes('generator') && (normF.includes('generator') || normF.includes('genset'))) return true;
+        if (normT.includes('water leak') && normF.includes('water leak')) return true;
+        if (normT.includes('fuel leak') && normF.includes('fuel leak')) return true;
+        if (normT.includes('fuel system') && normF.includes('fuel system')) return true;
+        if (normT.includes('fuel tank') && normF.includes('fuel tank')) return true;
+        if (normT.includes('mv')) {
+            if (normF.includes('mv')) return true;
+        }
+        if (normT.includes('rmu')) {
+            if (normF.includes('rmu') && !normF.includes('mv')) return true;
+        }
         return false;
     };
 
@@ -665,11 +678,19 @@ export function FileManagement({
         if (selectedFolder && !matchCategory(file.category, selectedFolder)) {
             return false;
         }
-        if (selectedQuarter && selectedFolder !== 'SLD' && file.quarter !== selectedQuarter) {
-            return false;
+        if (selectedQuarter && selectedFolder !== 'SLD') {
+            if (selectedQuarter === 'Tanpa Quarter') {
+                if (file.quarter && QUARTERS.includes(file.quarter)) return false;
+            } else if (file.quarter !== selectedQuarter) {
+                return false;
+            }
         }
         if (selectedMType && ['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'].includes(selectedFolder || '')) {
-            if (!isTypeMatch(file.maintenanceType, selectedMType)) {
+            if (selectedMType === 'Lainnya') {
+                if (file.maintenanceType && MAINTENANCE_TYPES.some(type => isTypeMatch(file.maintenanceType, type))) {
+                    return false;
+                }
+            } else if (!isTypeMatch(file.maintenanceType, selectedMType)) {
                 return false;
             }
         }
@@ -1112,6 +1133,29 @@ export function FileManagement({
                                     </motion.div>
                                 );
                             })}
+                        {(() => {
+                            const noQCount = filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && (!f.quarter || !QUARTERS.includes(f.quarter))).length;
+                            if (noQCount === 0) return null;
+                            return (
+                                <motion.div
+                                    key="Tanpa Quarter"
+                                    whileHover={{ x: 2, scale: 1.01 }}
+                                    whileTap={{ scale: 0.99 }}
+                                    onClick={() => setSelectedQuarter('Tanpa Quarter')}
+                                    className="flex items-center gap-3.5 px-4 py-3 bg-amber-50/70 hover:bg-amber-100/80 border border-amber-300/80 rounded-xl cursor-pointer transition-all group shadow-2xs hover:shadow-xs"
+                                >
+                                    <YellowFolderIcon className="w-7 h-7 flex-shrink-0" />
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="text-amber-900 font-bold text-sm group-hover:text-amber-950 transition-colors">
+                                            Tanpa Quarter
+                                        </h3>
+                                        <span className="text-[11px] text-slate-600 font-medium block">
+                                            {noQCount} {noQCount === 1 ? 'file' : 'files'}
+                                        </span>
+                                    </div>
+                                </motion.div>
+                            );
+                        })()}
                     </div>
                 ) : selectedFolder && selectedQuarter && !selectedMType && ['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'].includes(selectedFolder) ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -1120,11 +1164,11 @@ export function FileManagement({
                                 if (!searchQuery.trim()) return true;
                                 const q = searchQuery.trim().toLowerCase();
                                 const typeMatches = type.toLowerCase().includes(q);
-                                const hasMatchingFiles = filteredFiles.some(f => matchCategory(f.category, selectedFolder) && f.quarter === selectedQuarter && isTypeMatch(f.maintenanceType, type));
+                                const hasMatchingFiles = filteredFiles.some(f => matchCategory(f.category, selectedFolder) && (selectedQuarter === 'Tanpa Quarter' ? (!f.quarter || !QUARTERS.includes(f.quarter)) : f.quarter === selectedQuarter) && isTypeMatch(f.maintenanceType, type));
                                 return typeMatches || hasMatchingFiles;
                             })
                             .map((type) => {
-                                const typeFiles = filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && f.quarter === selectedQuarter && isTypeMatch(f.maintenanceType, type));
+                                const typeFiles = filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && (selectedQuarter === 'Tanpa Quarter' ? (!f.quarter || !QUARTERS.includes(f.quarter)) : f.quarter === selectedQuarter) && isTypeMatch(f.maintenanceType, type));
                                 const fileCount = typeFiles.length;
 
                                 return (
@@ -1147,11 +1191,34 @@ export function FileManagement({
                                     </motion.div>
                                 );
                             })}
+                        {(() => {
+                            const unassignedCount = filteredFiles.filter(f => matchCategory(f.category, selectedFolder) && (selectedQuarter === 'Tanpa Quarter' ? (!f.quarter || !QUARTERS.includes(f.quarter)) : f.quarter === selectedQuarter) && (!f.maintenanceType || !MAINTENANCE_TYPES.some(t => isTypeMatch(f.maintenanceType, t)))).length;
+                            if (unassignedCount === 0) return null;
+                            return (
+                                <motion.div
+                                    key="Lainnya"
+                                    whileHover={{ x: 2, scale: 1.01 }}
+                                    whileTap={{ scale: 0.99 }}
+                                    onClick={() => setSelectedMType('Lainnya')}
+                                    className="flex items-center gap-3.5 px-4 py-3 bg-amber-50/70 hover:bg-amber-100/80 border border-amber-300/80 rounded-xl cursor-pointer transition-all group shadow-2xs hover:shadow-xs"
+                                >
+                                    <YellowFolderIcon className="w-7 h-7 flex-shrink-0" />
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="text-amber-900 font-bold text-xs truncate group-hover:text-amber-950 transition-colors">
+                                            Lainnya / Uncategorized
+                                        </h3>
+                                        <span className="text-[10px] text-slate-600 font-medium block">
+                                            {unassignedCount} {unassignedCount === 1 ? 'file' : 'files'}
+                                        </span>
+                                    </div>
+                                </motion.div>
+                            );
+                        })()}
                         {MAINTENANCE_TYPES.filter(type => {
                             if (!searchQuery.trim()) return true;
                             const q = searchQuery.trim().toLowerCase();
                             const typeMatches = type.toLowerCase().includes(q);
-                            const hasMatchingFiles = filteredFiles.some(f => matchCategory(f.category, selectedFolder) && f.quarter === selectedQuarter && isTypeMatch(f.maintenanceType, type));
+                            const hasMatchingFiles = filteredFiles.some(f => matchCategory(f.category, selectedFolder) && (selectedQuarter === 'Tanpa Quarter' ? (!f.quarter || !QUARTERS.includes(f.quarter)) : f.quarter === selectedQuarter) && isTypeMatch(f.maintenanceType, type));
                             return typeMatches || hasMatchingFiles;
                         }).length === 0 && (
                             <div className="col-span-full text-center py-12">
