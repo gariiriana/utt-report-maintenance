@@ -196,12 +196,21 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
     loadImageAsUint8Array(logoNeutraDC),
   ]);
 
+  // Resolve Aliases & Fallbacks
+  const resolvedIncidentName = data.incidentName || (data as any).ticketName || (data as any).issue || 'Corrective Maintenance Report';
+  const resolvedEquipmentName = data.equipmentName || (data as any).ticketName || (data as any).issue || (data as any).location || 'Equipment';
+  const resolvedAction = data.correctiveAction || (data as any).actionTaken || '-';
+  const resolvedResult = data.result || (data as any).remark || 'Status perbaikan telah selesai dilaksanakan dengan baik.';
+  const resolvedVisualInsp = data.visualInspectionChecking || (data as any).issue || 'Pengecekan kondisi fisik dan fungsi operasional peralatan.';
+  const resolvedCleaningMethod = data.cleaningPreventiveMethod || 'Pembersihan area kerja dan komponen pendukung.';
+  const resolvedProblemAnalysis = data.summaryProblemAnalysis || (data as any).issue || (data as any).summary || (data as any).actionTaken || 'Analisis masalah dan perbaikan unit.';
+
   // Clean bullet action items
-  const actionLines = (data.correctiveAction || '-')
+  const actionLines = (resolvedAction || '-')
     .split('\n')
-    .map((l) => l.trim())
+    .map((l: string) => l.trim())
     .filter(Boolean)
-    .map((l) => {
+    .map((l: string) => {
       const clean = l.replace(/^(?:&«|[\u26AB\u2022\u25AA\u25BA\u25B6\u2043\u25CF\u25C6]|-|\*)\s*/, '');
       return `- ${clean}`;
     });
@@ -229,7 +238,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
       }),
       new TableRow({
         children: [
-          data.incidentName || 'N/A',
+          resolvedIncidentName || 'N/A',
           data.location || 'N/A',
           data.incidentDate || 'N/A',
           data.incidentId || 'N/A',
@@ -273,7 +282,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
       }),
       new TableRow({
         children: [
-          data.equipmentName || 'N/A',
+          resolvedEquipmentName || 'N/A',
           data.brand || 'N/A',
           data.serialNumber || 'N/A',
           data.installationDate || 'N/A',
@@ -322,7 +331,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
             width: { size: 50, type: WidthType.PERCENTAGE },
             margins: { top: 100, bottom: 100, left: 100, right: 100 },
             children: actionLines.map(
-              (line) =>
+              (line: string) =>
                 new Paragraph({
                   spacing: { after: 40 },
                   children: [new TextRun({ text: line, size: 17, color: '1E293B' })],
@@ -352,7 +361,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
             margins: { top: 100, bottom: 100, left: 100, right: 100 },
             children: [
               new Paragraph({
-                children: [new TextRun({ text: data.result || '-', size: 17, color: '1E293B' })],
+                children: [new TextRun({ text: resolvedResult || '-', size: 17, color: '1E293B' })],
               }),
             ],
           }),
@@ -588,13 +597,13 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           actionTable,
           new Paragraph({ spacing: { after: 180 } }),
 
-          createBoxSection('VISUAL INSPECTION & CHECKING', data.visualInspectionChecking || 'N/A'),
+          createBoxSection('VISUAL INSPECTION & CHECKING', resolvedVisualInsp),
           new Paragraph({ spacing: { after: 120 } }),
 
-          createBoxSection('CLEANING & PREVENTIVE METHOD', data.cleaningPreventiveMethod || 'N/A'),
+          createBoxSection('CLEANING & PREVENTIVE METHOD', resolvedCleaningMethod),
           new Paragraph({ spacing: { after: 120 } }),
 
-          createBoxSection('SUMMARY CORRECTIVE REPORT (PROBLEM ANALYSIS)', data.summaryProblemAnalysis || 'N/A'),
+          createBoxSection('SUMMARY CORRECTIVE REPORT (PROBLEM ANALYSIS)', resolvedProblemAnalysis),
           new Paragraph({ spacing: { after: 240 } }),
 
           createSectionHeader('LIST OF REQUIRED SPAREPARTS'),
@@ -812,6 +821,9 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
     loadImageAsUint8Array(logoNeutraDC),
   ]);
 
+  const resolvedIncidentName = data.incidentName || (data as any).issue || (data as any).ticketName || '-';
+  const resolvedOwner = data.postmortemOwner || (data as any).reportedByEmail || (data as any).reportedBy || '-';
+
   const pirHeaderTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: cellBorder,
@@ -831,10 +843,10 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
         ],
       }),
       [
-        ['Incident Name', data.incidentName || '-'],
+        ['Incident Name', resolvedIncidentName],
         ['Incident Date', data.incidentDate || '-'],
-        ['Incident ID', data.incidentId || '-'],
-        ['Postmortem Owner', data.postmortemOwner || '-'],
+        ['Incident ID', data.incidentId || (data.id ? data.id.slice(0, 8) : '-')],
+        ['Postmortem Owner', resolvedOwner],
         ['Date Completed', data.dateCompleted || '-'],
         ['Report Authors', data.reportAuthors || '-'],
         ['Report ID', data.reportId || '-'],

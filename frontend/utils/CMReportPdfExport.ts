@@ -85,6 +85,15 @@ export async function generateCMReportPDF(data: CMReportData) {
       }
     };
 
+    // Resolve Aliases & Fallbacks
+    const resolvedIncidentName = data.incidentName || (data as any).ticketName || (data as any).issue || 'Corrective Maintenance Report';
+    const resolvedEquipmentName = data.equipmentName || (data as any).ticketName || (data as any).issue || (data as any).location || 'Equipment';
+    const resolvedAction = data.correctiveAction || (data as any).actionTaken || '-';
+    const resolvedResult = data.result || (data as any).remark || 'Status perbaikan telah selesai dilaksanakan dengan baik.';
+    const resolvedVisualInsp = data.visualInspectionChecking || (data as any).issue || 'Pengecekan kondisi fisik dan fungsi operasional peralatan.';
+    const resolvedCleaningMethod = data.cleaningPreventiveMethod || 'Pembersihan area kerja dan komponen pendukung.';
+    const resolvedProblemAnalysis = data.summaryProblemAnalysis || (data as any).issue || (data as any).summary || (data as any).actionTaken || 'Analisis masalah dan perbaikan unit.';
+
     // ==========================================
     // PAGE 1: INCIDENT, EQUIPMENT & ANALYSIS
     // ==========================================
@@ -106,7 +115,7 @@ export async function generateCMReportPDF(data: CMReportData) {
       margin: { left: margin, right: margin },
       head: [['INCIDENT NAME', 'LOCATION', 'INCIDENT DATE', 'INCIDENT ID']],
       body: [[
-        sanitizePdfText(data.incidentName) || 'N/A',
+        sanitizePdfText(resolvedIncidentName) || 'N/A',
         sanitizePdfText(data.location) || 'N/A',
         sanitizePdfText(data.incidentDate) || 'N/A',
         sanitizePdfText(data.incidentId) || 'N/A'
@@ -146,7 +155,7 @@ export async function generateCMReportPDF(data: CMReportData) {
       margin: { left: margin, right: margin },
       head: [['EQUIPMENT NAME', 'BRAND', 'SERIAL NUMBER', 'INSTALATION DATE']],
       body: [[
-        sanitizePdfText(data.equipmentName) || 'N/A',
+        sanitizePdfText(resolvedEquipmentName) || 'N/A',
         sanitizePdfText(data.brand) || 'N/A',
         sanitizePdfText(data.serialNumber) || 'N/A',
         sanitizePdfText(data.installationDate) || 'N/A'
@@ -181,7 +190,7 @@ export async function generateCMReportPDF(data: CMReportData) {
     y = (doc as any).lastAutoTable.finalY + 3;
 
     // TABLE 3: CORRECTIVE ACTION, REPAIR TIME & RESULT
-    const rawAction = sanitizePdfText(data.correctiveAction || '-');
+    const rawAction = sanitizePdfText(resolvedAction);
     const formattedAction = rawAction
       .split('\n')
       .map(line => line.trim())
@@ -201,7 +210,7 @@ export async function generateCMReportPDF(data: CMReportData) {
       body: [[
         formattedAction,
         repairTimeStr,
-        sanitizePdfText(data.result) || '-'
+        sanitizePdfText(resolvedResult) || '-'
       ]],
       theme: 'grid',
       headStyles: {
@@ -265,21 +274,21 @@ export async function generateCMReportPDF(data: CMReportData) {
     // SECTION: VISUAL INSPECTION & CHECKING
     drawSectionBox(
       'VISUAL INSPECTION & CHECKING',
-      data.visualInspectionChecking || 'N/A',
+      resolvedVisualInsp,
       18
     );
 
     // SECTION: CLEANING & PREVENTIVE METHOD
     drawSectionBox(
       'CLEANING & PREVENTIVE METHOD',
-      data.cleaningPreventiveMethod || 'N/A',
+      resolvedCleaningMethod,
       18
     );
 
     // SECTION: SUMMARY CORRECTIVE REPORT (PROBLEM ANALYSIS)
     drawSectionBox(
       'SUMMARY CORRECTIVE REPORT (PROBLEM ANALYSIS)',
-      data.summaryProblemAnalysis || 'N/A',
+      resolvedProblemAnalysis,
       35
     );
 

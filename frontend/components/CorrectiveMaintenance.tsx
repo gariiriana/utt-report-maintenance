@@ -258,36 +258,64 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
     const [activeFormTab, setActiveFormTab] = useState<'cm_pdf' | 'sla' | 'pir'>('cm_pdf');
 
-    // Helper: Export single report card to 3-page CM PDF
-    const handleExportSingleCMPDF = async (report: any) => {
-        const cmData = {
-            incidentName: report.ticketName || report.issue || 'AC VRV Error Code U9-01',
-            location: report.location || 'Organic Room',
-            incidentDate: report.reportedAt?.toDate?.()?.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) || '24-Juli-2026',
-            incidentId: report.id?.slice(0, 8) || 'N/A',
+    const buildCMDataFromReport = (report: any) => {
+        const dateFormatted = report.incidentDate || 
+            (report.reportedAt?.toDate ? report.reportedAt.toDate().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : 
+            (report.reportedAt ? new Date(report.reportedAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-'));
 
-            equipmentName: report.equipmentName || 'DAIKIN VRV',
-            brand: report.brand || 'DAIKIN',
+        const incName = report.incidentName || report.ticketName || report.issue || 'Corrective Maintenance Report';
+        const eqName = report.equipmentName || report.ticketName || report.issue || report.location || 'Equipment';
+        const actTaken = report.correctiveAction || report.actionTaken || '-';
+        const resText = report.result || report.remark || 'Status perbaikan telah selesai dilaksanakan dengan baik.';
+        const visInsp = report.visualInspectionChecking || report.issue || 'Pengecekan kondisi fisik dan fungsi operasional peralatan.';
+        const probAnal = report.summaryProblemAnalysis || report.issue || report.remark || report.actionTaken || 'Analisis dan pemulihan sistem operasional peralatan.';
+
+        const spareList = report.spareparts && report.spareparts.length > 0
+            ? report.spareparts
+            : (report.spareParts
+                ? [{ name: report.spareParts, brand: '-', qty: '1' }]
+                : [
+                    { name: '-', brand: '-', qty: '-' },
+                    { name: '-', brand: '-', qty: '-' }
+                ]);
+
+        let photoList: any[] = [];
+        if (report.photos && report.photos.length > 0) {
+            photoList = report.photos;
+        } else if (report.photoBase64) {
+            photoList.push({ photoBase64: report.photoBase64, description: report.photoDescription || 'Dokumentasi Kejadian' });
+        } else if (report.photoResponse) {
+            photoList.push({ photoBase64: report.photoResponse, description: 'Bukti Response Time SLA' });
+            if (report.photoEngineerOnsite) photoList.push({ photoBase64: report.photoEngineerOnsite, description: 'Bukti Engineer Onsite SLA' });
+            if (report.photoOnsite) photoList.push({ photoBase64: report.photoOnsite, description: 'Bukti Principle Onsite SLA' });
+            if (report.photoRestore) photoList.push({ photoBase64: report.photoRestore, description: 'Bukti Restore Service SLA' });
+            if (report.photoResolution) photoList.push({ photoBase64: report.photoResolution, description: 'Bukti Resolution Time SLA' });
+        }
+
+        return {
+            incidentName: incName,
+            location: report.location || '-',
+            incidentDate: dateFormatted,
+            incidentId: report.incidentId || (report.id ? report.id.slice(0, 8) : 'N/A'),
+
+            equipmentName: eqName,
+            brand: report.brand || '-',
             serialNumber: report.serialNumber || 'N/A',
             installationDate: report.installationDate || 'N/A',
 
-            correctiveAction: report.actionTaken || report.correctiveAction || '- Melakukan pengecekan unit ac vrv berdasarkan laporan dari tim FMA\n- Melakukan reset system melalui remote control dan panel unit untuk memulihkan koneksi transmisi',
-            repairTimeStart: report.repairTimeStart || report.timeOrder || '12:49',
-            repairTimeEnd: report.repairTimeEnd || report.actualTimeResponse || '14:56',
-            result: report.result || report.remark || 'Status error berhasil terhapus, komunikasi antar unit kembali normal dan VRV sudah beroperasi dengan baik',
+            correctiveAction: actTaken,
+            repairTimeStart: report.repairTimeStart || report.timeOrder || report.startOrder || '-',
+            repairTimeEnd: report.repairTimeEnd || report.actualTimeResponse || report.finishOrder || '-',
+            result: resText,
 
-            visualInspectionChecking: report.visualInspectionChecking || report.issue || 'Ditemukan kode error U9-01 pada remote ac VRV yang mengindikasikan gangguan pada system komunikasi transmisi pada indoor dan outdoor',
-            cleaningPreventiveMethod: report.cleaningPreventiveMethod || 'N/A',
-            summaryProblemAnalysis: report.summaryProblemAnalysis || report.issue || 'Ac VRV pada ruang organik menimbulkan kode error U9-01 pada remote ac. Pada saat pengecekan secara langsung unit indoor beroperasi sedangkan unit outdoor di temukan tidak beroperasi. Yang menyebabkan ac tidak beroperasi dengan maksimal dikarenakan terjadi gangguan pada system komunikasi indoor dan outdoor.',
+            visualInspectionChecking: visInsp,
+            cleaningPreventiveMethod: report.cleaningPreventiveMethod || 'Pembersihan area kerja dan komponen pendukung.',
+            summaryProblemAnalysis: probAnal,
 
-            spareparts: report.spareparts || [
-                { name: '-', brand: '-', qty: '-' },
-                { name: '-', brand: '-', qty: '-' }
-            ],
+            spareparts: spareList,
+            photos: photoList,
 
-            photos: report.photos || (report.photoBase64 ? [{ photoBase64: report.photoBase64 }] : report.photoResponse ? [{ photoBase64: report.photoResponse }] : []),
-
-            authorName: report.authorName || report.reportedByEmail || 'Rizki Novri Yanda – Data Center Operation',
+            authorName: report.authorName || report.reportedByEmail || 'Standby Engineer',
             preparedByName: report.preparedByName || 'Salman',
             preparedByTitle: report.preparedByTitle || '(Electrical Engineer)',
             reviewedByName: report.reviewedByName || 'Arif Budiman',
@@ -299,45 +327,16 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             approvedByName: report.approvedByName || 'Budi Susanto',
             approvedByTitle: report.approvedByTitle || '(Assistant manager HDC Facility Management)'
         };
+    };
 
+    // Helper: Export single report card to 3-page CM PDF
+    const handleExportSingleCMPDF = async (report: any) => {
+        const cmData = buildCMDataFromReport(report);
         await generateCMReportPDF(cmData);
     };
 
     const handleExportSingleCMDocx = async (report: any) => {
-        const cmData = {
-            incidentName: report.ticketName || report.issue || 'AC VRV Error Code U9-01',
-            location: report.location || 'Organic Room',
-            incidentDate: report.reportedAt?.toDate?.()?.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) || '24-Juli-2026',
-            incidentId: report.id?.slice(0, 8) || 'N/A',
-            equipmentName: report.equipmentName || 'DAIKIN VRV',
-            brand: report.brand || 'DAIKIN',
-            serialNumber: report.serialNumber || 'N/A',
-            installationDate: report.installationDate || 'N/A',
-            correctiveAction: report.actionTaken || report.correctiveAction || '- Melakukan pengecekan unit ac vrv berdasarkan laporan dari tim FMA\n- Melakukan reset system melalui remote control dan panel unit untuk memulihkan koneksi transmisi',
-            repairTimeStart: report.repairTimeStart || report.timeOrder || '12:49',
-            repairTimeEnd: report.repairTimeEnd || report.actualTimeResponse || '14:56',
-            result: report.result || report.remark || 'Status error berhasil terhapus, komunikasi antar unit kembali normal dan VRV sudah beroperasi dengan baik',
-            visualInspectionChecking: report.visualInspectionChecking || report.issue || 'Ditemukan kode error U9-01 pada remote ac VRV yang mengindikasikan gangguan pada system komunikasi transmisi pada indoor dan outdoor',
-            cleaningPreventiveMethod: report.cleaningPreventiveMethod || 'N/A',
-            summaryProblemAnalysis: report.summaryProblemAnalysis || report.issue || 'Ac VRV pada ruang organik menimbulkan kode error U9-01 pada remote ac. Pada saat pengecekan secara langsung unit indoor beroperasi sedangkan unit outdoor di temukan tidak beroperasi. Yang menyebabkan ac tidak beroperasi dengan maksimal dikarenakan terjadi gangguan pada system komunikasi indoor dan outdoor.',
-            spareparts: report.spareparts || [
-                { name: '-', brand: '-', qty: '-' },
-                { name: '-', brand: '-', qty: '-' }
-            ],
-            photos: report.photos || (report.photoBase64 ? [{ photoBase64: report.photoBase64 }] : report.photoResponse ? [{ photoBase64: report.photoResponse }] : []),
-            authorName: report.authorName || report.reportedByEmail || 'Rizki Novri Yanda – Data Center Operation',
-            preparedByName: report.preparedByName || 'Salman',
-            preparedByTitle: report.preparedByTitle || '(Electrical Engineer)',
-            reviewedByName: report.reviewedByName || 'Arif Budiman',
-            reviewedByTitle: report.reviewedByTitle || '(Technical Manager)',
-            acknowledgedBy1Name: report.acknowledgedBy1Name || 'Andrean Bima Pratama',
-            acknowledgedBy1Title: report.acknowledgedBy1Title || '(Chief Engineer)',
-            acknowledgedBy2Name: report.acknowledgedBy2Name || 'Supriyatno',
-            acknowledgedBy2Title: report.acknowledgedBy2Title || '(Facility manager)',
-            approvedByName: report.approvedByName || 'Budi Susanto',
-            approvedByTitle: report.approvedByTitle || '(Assistant manager HDC Facility Management)'
-        };
-
+        const cmData = buildCMDataFromReport(report);
         await exportCMReportToDocx(cmData);
     };
 

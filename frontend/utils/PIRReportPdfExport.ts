@@ -95,15 +95,18 @@ export async function generatePIRReportPDF(data: PIRReportData) {
 
     y += 5;
 
+    const resolvedIncidentName = data.incidentName || (data as any).issue || (data as any).ticketName || 'Postmortem Incident Report';
+    const resolvedOwner = data.postmortemOwner || (data as any).reportedByEmail || (data as any).reportedBy || 'Standby Engineer';
+
     // Table 1: INCIDENT NAME | INCIDENT DATE | INCIDENT ID
     autoTable(doc, {
       startY: y,
       margin: { left: margin, right: margin },
       head: [['INCIDENT NAME', 'INCIDENT DATE', 'INCIDENT ID']],
       body: [[
-        data.incidentName || 'N/A',
+        resolvedIncidentName || 'N/A',
         data.incidentDate || 'N/A',
-        data.incidentId || 'N/A'
+        data.incidentId || (data.id ? data.id.slice(0, 8) : 'N/A')
       ]],
       headStyles: { fillColor: HEADER_FILL, textColor: [40, 40, 40], fontStyle: 'bold', fontSize: 9, lineWidth: 0.2, lineColor: TABLE_BORDER },
       bodyStyles: { textColor: [30, 30, 30], fontSize: 9, lineWidth: 0.2, lineColor: TABLE_BORDER },
@@ -118,7 +121,7 @@ export async function generatePIRReportPDF(data: PIRReportData) {
       margin: { left: margin, right: margin },
       head: [['POSTMORTEM OWNER NAME AND TITLE', 'DATE COMPLETED']],
       body: [[
-        data.postmortemOwner || 'N/A',
+        resolvedOwner || 'N/A',
         data.dateCompleted || 'N/A'
       ]],
       headStyles: { fillColor: HEADER_FILL, textColor: [40, 40, 40], fontStyle: 'bold', fontSize: 9, lineWidth: 0.2, lineColor: TABLE_BORDER },
