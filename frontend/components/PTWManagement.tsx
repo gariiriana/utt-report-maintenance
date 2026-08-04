@@ -396,6 +396,10 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
         
         setFormData(prev => {
           const updated = { ...prev };
+          if (filenameData.ptwType) {
+            updated.ptwType = filenameData.ptwType;
+            initialFields.push('Jenis PTW');
+          }
           if (filenameData.sequenceNumber) {
             updated.sequenceNumber = filenameData.sequenceNumber;
             initialFields.push('No. Urut');

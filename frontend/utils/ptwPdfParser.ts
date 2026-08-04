@@ -277,8 +277,9 @@ function parsePTWFromText(text: string): Partial<PTWExtractedData> {
     if (parsedDates.length >= 2) {
       if (!result.startDate) result.startDate = parsedDates[0];
       if (!result.endDate) result.endDate = parsedDates[1];
-    } else if (parsedDates.length === 1 && !result.startDate) {
-      result.startDate = parsedDates[0];
+    } else if (parsedDates.length === 1) {
+      if (!result.startDate) result.startDate = parsedDates[0];
+      if (!result.endDate) result.endDate = parsedDates[0];
     }
   }
 
@@ -314,17 +315,25 @@ export function parsePTWFromFilename(filename: string): Partial<PTWExtractedData
   // Clean consecutive spaces
   cleanName = cleanName.replace(/\s+/g, " ").trim();
 
-  // 1. Try to find equipment code (common codes like WLD, AC, etc.)
-  const cleanForEq = cleanName.replace(/\b(PTW|PM|HSE|TDE|PDF)\b/gi, '').trim();
-  const eqMatch = cleanForEq.match(/\b(WLD|AC|GATE|GEN|UPS|LVMDP|HVAC|PAC|FIP|WSD|AHU)\b/i)
+  // 1. Detect PTW Type (CM vs PM)
+  if (/\bCM\b/i.test(cleanName) || /corrective/i.test(cleanName)) {
+    result.ptwType = 'CM';
+  } else {
+    result.ptwType = 'PM';
+  }
+
+  // 2. Try to find equipment code (common codes like WLD, AC, UPS, etc.)
+  const cleanForEq = cleanName.replace(/\b(PTW|PM|CM|HSE|TDE|PDF)\b/gi, '').trim();
+  const eqMatch = cleanForEq.match(/\b(WLD|AC|GATE|GEN|UPS|LVMDP|HVAC|PAC|FIP|WSD|AHU|ATS|FCU|CT|PDU|PJU|TRAFO|MV|LV|PUMP|BUSDUCT|ROOF|CHILLER)\b/i)
     || cleanForEq.match(/\b([A-Z]{3,4})\b/);
   if (eqMatch) {
     result.equipmentCode = eqMatch[1].toUpperCase();
   }
 
-  // 2. Try to find date ranges
+  // 3. Try to find date ranges or single dates
   const multiMonthMatch = cleanName.match(/(\d{1,2})\s+([A-Za-z]+)\s*[\-\s]+\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/i);
   const singleMonthMatch = cleanName.match(/(\d{1,2})\s*[\-\s]+\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})/i);
+  const singleDateMatch = cleanName.match(/(\d{1,2})[\s\/\-]([A-Za-z\d]+)[\s\/\-](\d{4})/i);
 
   let rangeIndex = -1;
   if (multiMonthMatch) {
@@ -346,21 +355,28 @@ export function parsePTWFromFilename(filename: string): Partial<PTWExtractedData
     result.startDate = parseIndonesianDate(`${startDay} ${monthName} ${year}`);
     result.endDate = parseIndonesianDate(`${endDay} ${monthName} ${year}`);
     rangeIndex = singleMonthMatch.index !== undefined ? singleMonthMatch.index : -1;
+  } else if (singleDateMatch) {
+    const parsedDate = parseIndonesianDate(singleDateMatch[0]);
+    if (parsedDate) {
+      result.startDate = parsedDate;
+      result.endDate = parsedDate;
+      rangeIndex = singleDateMatch.index !== undefined ? singleDateMatch.index : -1;
+    }
   }
 
-  // 3. Try to guess sequence number if present in filename
-  // Must be 3 or 4 digits and NOT a year starting with 20 (like 2026, 2025)
+  // 4. Try to guess sequence number if present in filename
+  // Must be 3 to 5 digits and NOT a year starting with 20 (like 2026, 2025)
   const seqMatch = cleanName.match(/\b(?!20\d{2})(\d{3,5})\b/);
   if (seqMatch) {
     result.sequenceNumber = seqMatch[1];
   }
 
-  // 4. Try to guess maintenance name (part before the date range, cleaned from prefixes)
+  // 5. Try to guess maintenance name (part before the date range/single date, cleaned from prefixes)
   let maintenanceName = '';
   if (rangeIndex !== -1) {
     maintenanceName = cleanName.substring(0, rangeIndex).trim();
   } else {
-    const pmMatch = cleanName.match(/(PM\s+[A-Z0-9\s\-]+|Maintenance\s+[A-Z0-9\s\-]+)/i);
+    const pmMatch = cleanName.match(/(?:PM|CM|Maintenance)\s+([A-Z0-9\s\-\(\)]+)/i);
     if (pmMatch) {
       maintenanceName = pmMatch[1].trim();
     } else if (seqMatch && seqMatch.index !== undefined && seqMatch.index > 0) {
@@ -368,33 +384,25 @@ export function parsePTWFromFilename(filename: string): Partial<PTWExtractedData
     }
   }
 
-  // Strip prefixes like PTW, PM, TDE, HSE repeatedly from the start of maintenanceName
+  // Strip prefixes like PTW, PM, CM, TDE, HSE repeatedly from the start of maintenanceName
   if (maintenanceName) {
     let cleaned = maintenanceName;
-    while (/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i.test(cleaned)) {
-      cleaned = cleaned.replace(/^(PTW|PM|TDE|HSE)([\s\-_/]+|$)/i, '').trim();
+    while (/^(PTW|PM|CM|TDE|HSE)([\s\-_/]+|$)/i.test(cleaned)) {
+      cleaned = cleaned.replace(/^(PTW|PM|CM|TDE|HSE)([\s\-_/]+|$)/i, '').trim();
     }
     maintenanceName = cleaned;
   }
 
   if (maintenanceName) {
     result.maintenanceName = maintenanceName;
-    // If no specific equipment code was found, use maintenanceName as the equipment code
-    // e.g. "PTW Chiller 19-25 Sep 2025 0224" → equipmentCode = "Chiller"
     if (!result.equipmentCode) {
-      result.equipmentCode = maintenanceName.toUpperCase();
+      const firstWord = maintenanceName.split(/[\s\(\)]+/)[0];
+      result.equipmentCode = (firstWord || maintenanceName).toUpperCase();
     }
   }
 
   if (result.startDate) {
     result.quarter = getQuarterFromDate(result.startDate);
-  }
-
-  // 5. Detect PTW Type (CM vs PM)
-  if (/\bCM\b/i.test(cleanName) || /corrective/i.test(cleanName)) {
-    result.ptwType = 'CM';
-  } else {
-    result.ptwType = 'PM';
   }
 
   return result;
