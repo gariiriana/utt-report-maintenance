@@ -104,7 +104,7 @@ const MAINTENANCE_TYPES = [
     'Pressurization & Degassing',
     'Pumps',
     'Water Softener',
-    'Biosduct',
+    'Busduct',
     'Physical Cooling Automation',
     'Load Bank'
 ];
