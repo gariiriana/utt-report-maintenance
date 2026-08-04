@@ -15,6 +15,7 @@ import { db } from '@/api/firebase';
 import {
     collection,
     addDoc,
+    setDoc,
     query,
     orderBy,
     onSnapshot,
@@ -121,7 +122,7 @@ const ALLOWED_FILE_TYPES = [
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ];
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024;
+const MAX_FILE_SIZE = 60 * 1024 * 1024;
 const CHUNK_SIZE = 750 * 1024;
 
 interface FileData {
@@ -352,7 +353,7 @@ export function FileManagement({
 
             newFiles.forEach(file => {
                 if (file.size > MAX_FILE_SIZE) {
-                    toast.error(`File "${file.name}" terlalu besar (Maks 50MB)`);
+                    toast.error(`File "${file.name}" terlalu besar (Maks 60MB)`);
                     return;
                 }
                 if (!ALLOWED_FILE_TYPES.includes(file.type)) {
@@ -410,24 +411,32 @@ export function FileManagement({
                     status: 'uploading'
                 });
 
-                // Strictly sequential chunk upload to ensure Firestore write queue never exceeds 1 stream (prevents resource-exhausted error)
-                for (let i = 0; i < totalChunks; i++) {
-                    const start = i * CHUNK_SIZE;
-                    const end = Math.min(start + CHUNK_SIZE, file.size);
-                    const chunkBlob = file.slice(start, end);
+                // Controlled parallel batch chunk upload (5 concurrent writes) for ultra-fast storage
+                const CONCURRENCY = 5;
+                for (let i = 0; i < totalChunks; i += CONCURRENCY) {
+                    const batchPromises = [];
+                    for (let c = i; c < Math.min(i + CONCURRENCY, totalChunks); c++) {
+                        const start = c * CHUNK_SIZE;
+                        const end = Math.min(start + CHUNK_SIZE, file.size);
+                        const chunkBlob = file.slice(start, end);
 
-                    let chunkBase64 = await chunkToBase64(chunkBlob);
-                    if (i === 0) {
-                        chunkBase64 = `data:${file.type};base64,${chunkBase64}`;
+                        batchPromises.push((async () => {
+                            let chunkBase64 = await chunkToBase64(chunkBlob);
+                            if (c === 0) {
+                                chunkBase64 = `data:${file.type};base64,${chunkBase64}`;
+                            }
+
+                            const chunkRef = doc(db, collectionName, fileDocRef.id, 'chunks', `chunk_${String(c).padStart(4, '0')}`);
+                            await setDoc(chunkRef, {
+                                index: c,
+                                data: chunkBase64
+                            });
+
+                            uploadedOverallBytes += (end - start);
+                            setUploadProgress(Math.min(99, Math.round((uploadedOverallBytes / totalOverallBytes) * 100)));
+                        })());
                     }
-
-                    await addDoc(collection(db, collectionName, fileDocRef.id, 'chunks'), {
-                        index: i,
-                        data: chunkBase64
-                    });
-
-                    uploadedOverallBytes += (end - start);
-                    setUploadProgress(Math.min(99, Math.round((uploadedOverallBytes / totalOverallBytes) * 100)));
+                    await Promise.all(batchPromises);
                 }
 
                 await updateDoc(doc(db, collectionName, fileDocRef.id), { status: 'completed' });
@@ -754,7 +763,7 @@ export function FileManagement({
                             />
                             <Upload className="w-8 h-8 text-blue-600 mx-auto mb-2" />
                             <p className="text-sm text-slate-800 font-bold">Klik atau seret file untuk mengunggah</p>
-                            <p className="text-xs text-slate-500 mt-1 font-medium">PDF, Excel, Word - Maks 50MB per file</p>
+                            <p className="text-xs text-slate-500 mt-1 font-medium">PDF, Excel, Word - Maks 60MB per file</p>
                         </div>
 
                         {selectedFiles.length > 0 && (

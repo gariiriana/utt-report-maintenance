@@ -923,6 +923,8 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       { name: 'Form SLA/SLG', desc: 'Form Service Level Agreement / Guarantee' },
       { name: 'Report PIR', desc: 'Post Incident Report (PIR)' },
       { name: 'SLD', desc: 'Single Line Diagram Data Center' },
+      { name: 'Service Report', desc: 'Draft & Laporan Service Maintenance' },
+      { name: 'Service Report Approved', desc: 'Laporan Service Maintenance (Approved)' },
     ];
 
     if (dmeLevel === 'root') {
