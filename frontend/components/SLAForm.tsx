@@ -640,15 +640,16 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slate-700 font-medium mb-1.5">SLA Target (Menit)</label>
+                  <label className="block text-sm text-slate-700 font-medium mb-1.5">SLA Target Komitmen (Menit - Standar Kontrak)</label>
                   <input
+                    disabled
                     type="number"
                     value={formData.targetResponseMin}
-                    onChange={(e) => setFormData({ ...formData, targetResponseMin: parseInt(e.target.value) || 10 })}
-                    title="Target Response Time"
-                    placeholder="Contoh: 10"
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm"
+                    title="Target Response Time (Standar Kontrak < 5 Menit)"
+                    placeholder="5"
+                    className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-bold cursor-not-allowed shadow-inner"
                   />
+                  <span className="text-[11px] text-slate-500 mt-1 block">Standar Komitmen Resmi: &lt; 5 Menit</span>
                 </div>
               </div>
 
@@ -817,15 +818,16 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slate-700 font-medium mb-1.5">SLA Target (Menit)</label>
+                  <label className="block text-sm text-slate-700 font-medium mb-1.5">SLA Target Komitmen (Menit - Standar Kontrak)</label>
                   <input
+                    disabled
                     type="number"
                     value={formData.targetOnsiteMin}
-                    onChange={(e) => setFormData({ ...formData, targetOnsiteMin: parseInt(e.target.value) || 120 })}
-                    title="Target Onsite Time"
-                    placeholder="Contoh: 120"
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm"
+                    title="Target Onsite Time (Standar Kontrak 120 Menit)"
+                    placeholder="120"
+                    className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-bold cursor-not-allowed shadow-inner"
                   />
+                  <span className="text-[11px] text-slate-500 mt-1 block">Standar Komitmen Resmi: 120 Menit (2 Jam)</span>
                 </div>
               </div>
 
@@ -941,15 +943,16 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slate-700 font-medium mb-1.5">SLA Target (Menit)</label>
+                  <label className="block text-sm text-slate-700 font-medium mb-1.5">SLA Target Komitmen (Menit - Standar Kontrak)</label>
                   <input
+                    disabled
                     type="number"
                     value={formData.targetRestoreMin}
-                    onChange={(e) => setFormData({ ...formData, targetRestoreMin: parseInt(e.target.value) || 180 })}
-                    title="Target Restore Time"
-                    placeholder="Contoh: 180"
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm"
+                    title="Target Restore Time (Standar Kontrak 120 Menit)"
+                    placeholder="120"
+                    className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-bold cursor-not-allowed shadow-inner"
                   />
+                  <span className="text-[11px] text-slate-500 mt-1 block">Standar Komitmen Resmi: 120 Menit (2 Jam)</span>
                 </div>
               </div>
 
@@ -1033,15 +1036,16 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm text-slate-700 font-medium mb-1.5">SLA Target Resolusi (Menit - Otomatis sesuai Prioritas {formData.priority})</label>
+                  <label className="block text-sm text-slate-700 font-medium mb-1.5">SLA Target Resolusi (Menit - Otomatis Prioritas {formData.priority})</label>
                   <input
+                    disabled
                     type="number"
                     value={formData.targetResolutionMin}
-                    onChange={(e) => setFormData({ ...formData, targetResolutionMin: parseInt(e.target.value) || 360 })}
-                    title="Target Resolution Time"
-                    placeholder="Contoh: 360"
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm font-semibold"
+                    title="Target Resolution Time (Standar Kontrak Sesuai Prioritas)"
+                    placeholder="360"
+                    className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-bold cursor-not-allowed shadow-inner"
                   />
+                  <span className="text-[11px] text-slate-500 mt-1 block">Target Otomatis Sesuai Prioritas: {formData.priority}</span>
                 </div>
 
                 {/* Photo Evidence slot */}
