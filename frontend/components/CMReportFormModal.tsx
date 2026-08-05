@@ -343,6 +343,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
       handleStepClick(currentStep + 1);
       return;
     }
+    if (currentStep !== 4) return;
     if (!validateStep(4)) return;
     if (!user) return;
 
@@ -927,6 +928,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
             {currentStep === 4 && (
               <>
                 <button
+                  key="btn-export-pdf"
                   type="button"
                   onClick={handleExportPdf}
                   className="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs"
@@ -935,6 +937,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                   Export PDF
                 </button>
                 <button
+                  key="btn-export-docx"
                   type="button"
                   onClick={handleExportDocx}
                   className="px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs"
@@ -947,6 +950,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
 
             {currentStep < 4 ? (
               <button
+                key={`btn-next-step-${currentStep}`}
                 type="button"
                 onClick={() => handleStepClick(currentStep + 1)}
                 className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-red-500/20 transition cursor-pointer"
@@ -956,6 +960,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               </button>
             ) : (
               <button
+                key="btn-submit-cm-report"
                 type="submit"
                 disabled={submitting}
                 className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition cursor-pointer disabled:opacity-50"
