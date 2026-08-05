@@ -326,6 +326,48 @@ function getCurrentMonthIndex(): number {
   return new Date().getMonth();
 }
 
+function getDeviceScopeBadges(remarks: string) {
+  const badges: { label: string; style: string }[] = [];
+  const lower = remarks.toLowerCase();
+
+  if (lower.includes('offline maintenance')) {
+    badges.push({
+      label: '🔴 Offline PM',
+      style: 'bg-rose-50 text-rose-700 border-rose-200'
+    });
+  }
+
+  if (lower.includes('operation condition') || lower.includes('operation')) {
+    badges.push({
+      label: '🟢 Online PM',
+      style: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+    });
+  }
+
+  if (lower.includes('consumable material')) {
+    badges.push({
+      label: '📦 Consumable',
+      style: 'bg-purple-50 text-purple-700 border-purple-200'
+    });
+  }
+
+  if (lower.includes('special test')) {
+    badges.push({
+      label: '⚡ Special Test',
+      style: 'bg-indigo-50 text-indigo-700 border-indigo-200'
+    });
+  }
+
+  if (badges.length === 0) {
+    badges.push({
+      label: '🟢 Online PM',
+      style: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+    });
+  }
+
+  return badges;
+}
+
 export function PMSchedule() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
@@ -394,7 +436,7 @@ export function PMSchedule() {
           )}
 
           <div className="bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
-            <span className="text-slate-500 font-medium">Total Device: </span>
+            <span className="text-slate-500 font-medium">Total Equipment: </span>
             <span className="font-bold text-slate-900">{totalDevices}</span>
           </div>
           <div className="bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
@@ -441,7 +483,7 @@ export function PMSchedule() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari device..."
+              placeholder="Cari equipment..."
               className="pl-8 pr-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 outline-none focus:border-slate-400 w-44 sm:w-56"
             />
           </div>
@@ -475,7 +517,7 @@ export function PMSchedule() {
             <thead>
               <tr className="bg-slate-900 text-slate-200 text-xs font-semibold">
                 <th className="sticky top-0 left-0 z-30 bg-slate-900 px-3.5 py-3 border-b border-slate-800 w-[200px] min-w-[200px]">
-                  Device
+                  Equipment
                 </th>
                 <th className="sticky top-0 z-20 bg-slate-900 px-3 py-3 border-b border-slate-800 w-[140px] min-w-[140px]">
                   Lokasi
@@ -499,7 +541,7 @@ export function PMSchedule() {
               {filteredData.length === 0 ? (
                 <tr>
                   <td colSpan={15} className="text-center py-12 text-slate-400">
-                    Tidak ada data device yang sesuai.
+                    Tidak ada data equipment yang sesuai.
                   </td>
                 </tr>
               ) : (
@@ -523,10 +565,22 @@ export function PMSchedule() {
                       }`}
                     >
                       {/* Device Name Column */}
-                      <td className={`sticky left-0 z-10 px-3.5 py-2.5 font-semibold text-slate-900 border-r border-slate-100 ${
+                      <td className={`sticky left-0 z-10 px-3.5 py-3 font-semibold text-slate-900 border-r border-slate-200/80 shadow-xs ${
                         rowIdx % 2 === 1 ? 'bg-slate-50' : 'bg-white'
                       }`}>
-                        {item.device}
+                        <div>
+                          <p className="font-extrabold text-slate-900 text-xs sm:text-sm tracking-tight">{item.device}</p>
+                          <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                            {getDeviceScopeBadges(item.remarks).map((b, i) => (
+                              <span
+                                key={i}
+                                className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold border ${b.style}`}
+                              >
+                                {b.label}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       </td>
 
                       {/* Location Column */}
@@ -586,7 +640,7 @@ export function PMSchedule() {
 
       {/* ── Footer ── */}
       <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
-        <span>Menampilkan {filteredData.length} dari {totalDevices} device</span>
+        <span>Menampilkan {filteredData.length} dari {totalDevices} equipment</span>
         <span>Schedule PM 2026 — PT DEM / PT UTT</span>
       </div>
 

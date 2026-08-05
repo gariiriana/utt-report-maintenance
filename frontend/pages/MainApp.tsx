@@ -44,7 +44,7 @@ export function MainApp() {
     { id: 'finding_archive', label: 'Arsip Temuan', icon: FolderOpen, color: 'from-teal-600 to-teal-700', show: userRole !== 'DME' },
     { id: 'report', label: userRole === 'DME' ? 'Detail Laporan' : 'Buat Laporan', icon: FileText, color: 'from-blue-600 to-blue-700', show: !isStandby && (userRole !== 'DME' || !!editingData) },
     { id: 'documents', label: 'Arsip Dokumen', icon: FolderOpen, color: 'from-emerald-600 to-emerald-700', show: !isStandby },
-    { id: 'pm_schedule', label: 'PM Schedule', icon: CalendarDays, color: 'from-indigo-500 to-purple-600', show: userRole === 'DME' || isAdmin },
+    { id: 'pm_schedule', label: 'PM Schedule', icon: CalendarDays, color: 'from-blue-600 to-indigo-700', show: userRole === 'DME' || isAdmin },
   ] as const;
 
   const getDefaultTab = (): Tab => {
