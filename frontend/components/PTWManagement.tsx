@@ -1115,7 +1115,8 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
       startWeekDate = new Date(Math.min(...startDates.map(d => d.getTime())));
     }
 
-    const days: {
+    const lastDayOfMonth = new Date(year, month, 0).getDate();
+    const weeks: {
       weekNum: number;
       startStr: string;
       endStr: string;
@@ -1130,47 +1131,63 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
       cmCount: number;
     }[] = [];
 
-    let blockStart = new Date(startWeekDate);
-    let dayNum = 1;
+    const weekRanges = [
+      { weekNum: 1, startDay: 1, endDay: 7 },
+      { weekNum: 2, startDay: 8, endDay: 14 },
+      { weekNum: 3, startDay: 15, endDay: 21 },
+      { weekNum: 4, startDay: 22, endDay: 28 },
+    ];
+
+    if (lastDayOfMonth > 28) {
+      weekRanges.push({ weekNum: 5, startDay: 29, endDay: lastDayOfMonth });
+    }
+
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // We continue generating per 1 day until blockStart is past the selected month
-    while (blockStart.getFullYear() === year && blockStart.getMonth() === month - 1) {
-      const startStr = formatDate(blockStart);
-      const endStr = startStr;
+    for (const wr of weekRanges) {
+      const startDateObj = new Date(year, month - 1, wr.startDay);
+      const endDateObj = new Date(year, month - 1, wr.endDay);
 
-      const minDay = String(blockStart.getDate()).padStart(2, '0');
-      const rangeLabel = `${minDay} ${monthFull[blockStart.getMonth()]} ${blockStart.getFullYear()}`;
-      const shortRange = `${minDay} ${monthShort[blockStart.getMonth()]}`;
+      const startStr = formatDate(startDateObj);
+      const endStr = formatDate(endDateObj);
 
-      // Filter active records on this day (either starting or active during this date)
-      const dayRecords = monthRecords.filter(r => r.startDate <= startStr && r.endDate >= startStr);
-      
-      const openRecords = dayRecords.filter(r => !r.closingFileName && (!r.endDate || r.endDate >= todayStr));
-      const closedRecords = dayRecords.filter(r => !!r.closingFileName || (!!r.endDate && r.endDate < todayStr));
-      const pmCount = dayRecords.filter(r => (r.ptwType || 'PM') === 'PM').length;
-      const cmCount = dayRecords.filter(r => r.ptwType === 'CM').length;
+      const sDay = String(wr.startDay).padStart(2, '0');
+      const eDay = String(wr.endDay).padStart(2, '0');
+      const mName = monthFull[month - 1];
+      const mShort = monthShort[month - 1];
 
-      days.push({
-        weekNum: dayNum,
+      const rangeLabel = `Minggu ${wr.weekNum} (${sDay}-${eDay} ${mShort})`;
+      const shortRange = `${sDay}-${eDay} ${mShort}`;
+
+      // Filter active records overlapping with this week range
+      const weekRecords = monthRecords.filter(r => {
+        const rStart = r.startDate;
+        const rEnd = r.endDate || r.startDate;
+        return rStart <= endStr && rEnd >= startStr;
+      });
+
+      const openRecords = weekRecords.filter(r => !r.closingFileName && (!r.endDate || r.endDate >= todayStr));
+      const closedRecords = weekRecords.filter(r => !!r.closingFileName || (!!r.endDate && r.endDate < todayStr));
+      const pmCount = weekRecords.filter(r => (r.ptwType || 'PM') === 'PM').length;
+      const cmCount = weekRecords.filter(r => r.ptwType === 'CM').length;
+
+      weeks.push({
+        weekNum: wr.weekNum,
         startStr,
         endStr,
         rangeLabel,
-        dateRange: rangeLabel,
+        dateRange: `Minggu ${wr.weekNum} (${sDay} - ${eDay} ${mName} ${year})`,
         shortRange,
-        records: dayRecords,
+        records: weekRecords,
         openCount: openRecords.length,
         closedCount: closedRecords.length,
-        totalCount: dayRecords.length,
+        totalCount: weekRecords.length,
         pmCount,
         cmCount,
       });
-
-      dayNum++;
-      blockStart.setDate(blockStart.getDate() + 1); // Advance 1 day per block
     }
 
-    return days;
+    return weeks;
   };
 
   const weeklyData = getDataDrivenWeeks(selectedYear, selectedMonth, records);
@@ -1182,7 +1199,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
   }, [selectedYear, selectedMonth, selectedWeek, weeklyData.length]);
 
   const chartData = weeklyData.map(wd => ({
-    name: `Tgl ${wd.shortRange}`,
+    name: `Minggu ${wd.weekNum}`,
     'PTW PM': wd.pmCount,
     'PTW CM': wd.cmCount,
     'Open (Aktif)': wd.openCount,
@@ -1206,7 +1223,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
         const canvas = await safeHtml2Canvas(chartEl, {
           useCORS: true,
           allowTaint: true,
-          backgroundColor: '#0f172a', // Slate-900 matching dashboard dark background
+          backgroundColor: '#ffffff', // White background matching modern light theme
           scale: 2,
           logging: false,
         });
@@ -1237,7 +1254,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
         const canvas = await safeHtml2Canvas(chartEl, {
           useCORS: true,
           allowTaint: true,
-          backgroundColor: '#0f172a', // Slate-900 matching dashboard dark background
+          backgroundColor: '#ffffff', // White background matching modern light theme
           scale: 2,
           logging: false,
         });
@@ -1795,8 +1812,8 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                   </div>
                   
                   <div className="mt-4">
-                    <p className="text-3xl font-extrabold text-white tracking-tight">{wd.totalCount}</p>
-                    <p className="text-slate-400 text-xs mt-1 uppercase tracking-wider font-semibold">Total PTW</p>
+                    <p className="text-3xl font-extrabold text-slate-900 tracking-tight">{wd.totalCount}</p>
+                    <p className="text-slate-500 text-xs mt-1 uppercase tracking-wider font-semibold">Total PTW</p>
                   </div>
                   
                   <div className="grid grid-cols-4 gap-1 mt-4 pt-3 border-t border-slate-200 text-[10px]">
@@ -1827,13 +1844,13 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
             {/* Chart Column (Span 5) */}
             <div 
               id="ptw-weekly-chart-container"
-              className="lg:col-span-5 ptw-weekly-chart-container backdrop-blur-xl rounded-3xl p-6 shadow-xl flex flex-col justify-between"
+              className="lg:col-span-5 ptw-weekly-chart-container bg-white/90 backdrop-blur-xl rounded-3xl p-6 border border-slate-200 shadow-xl flex flex-col justify-between"
               style={{ minHeight: '350px' }}
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%' }}>
                 <div>
-                  <h3 className="text-lg font-bold mb-1 ptw-weekly-chart-title">Visualisasi Tren Validitas Harian</h3>
-                  <p className="text-xs ptw-weekly-chart-desc" style={{ color: '#94a3b8' }}>Tingkat kepatuhan PM, CM, Open &amp; Closed PTW harian</p>
+                  <h3 className="text-lg font-bold mb-1 ptw-weekly-chart-title">Visualisasi Tren Validitas Mingguan</h3>
+                  <p className="text-xs ptw-weekly-chart-desc" style={{ color: '#64748b' }}>Tingkat kepatuhan PM, CM, Open &amp; Closed PTW per minggu</p>
                 </div>
 
                 {/* Monthly Summary Totals */}
@@ -1849,62 +1866,62 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                   <div 
                     className="rounded-2xl text-center"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(109, 40, 217, 0.3) 0%, rgba(88, 28, 135, 0.15) 100%)',
-                      border: '1px solid rgba(139, 92, 246, 0.25)',
+                      backgroundColor: '#f3e8ff',
+                      border: '1px solid #d8b4fe',
                       padding: '8px 2px',
                       boxSizing: 'border-box'
                     }}
                   >
-                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#c084fc', margin: 0, padding: 0 }}>{monthlyTotalPTW}</p>
-                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: 'rgba(167, 139, 250, 0.8)', margin: 0, padding: 0 }}>Total</p>
+                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#7e22ce', margin: 0, padding: 0 }}>{monthlyTotalPTW}</p>
+                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: '#9333ea', margin: 0, padding: 0 }}>Total</p>
                   </div>
                   <div 
                     className="rounded-2xl text-center"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.3) 0%, rgba(67, 56, 202, 0.15) 100%)',
-                      border: '1px solid rgba(99, 102, 241, 0.25)',
+                      backgroundColor: '#e0e7ff',
+                      border: '1px solid #c7d2fe',
                       padding: '8px 2px',
                       boxSizing: 'border-box'
                     }}
                   >
-                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#a5b4fc', margin: 0, padding: 0 }}>{monthlyTotalPM}</p>
-                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: 'rgba(129, 140, 248, 0.8)', margin: 0, padding: 0 }}>PM</p>
+                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#4338ca', margin: 0, padding: 0 }}>{monthlyTotalPM}</p>
+                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: '#4f46e5', margin: 0, padding: 0 }}>PM</p>
                   </div>
                   <div 
                     className="rounded-2xl text-center"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(217, 119, 6, 0.3) 0%, rgba(180, 83, 9, 0.15) 100%)',
-                      border: '1px solid rgba(245, 158, 11, 0.25)',
+                      backgroundColor: '#fef3c7',
+                      border: '1px solid #fde68a',
                       padding: '8px 2px',
                       boxSizing: 'border-box'
                     }}
                   >
-                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#fcd34d', margin: 0, padding: 0 }}>{monthlyTotalCM}</p>
-                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: 'rgba(252, 211, 77, 0.8)', margin: 0, padding: 0 }}>CM</p>
+                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#b45309', margin: 0, padding: 0 }}>{monthlyTotalCM}</p>
+                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: '#d97706', margin: 0, padding: 0 }}>CM</p>
                   </div>
                   <div 
                     className="rounded-2xl text-center"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(29, 78, 216, 0.3) 0%, rgba(21, 94, 117, 0.15) 100%)',
-                      border: '1px solid rgba(59, 130, 246, 0.25)',
+                      backgroundColor: '#dbeafe',
+                      border: '1px solid #bfdbfe',
                       padding: '8px 2px',
                       boxSizing: 'border-box'
                     }}
                   >
-                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#93c5fd', margin: 0, padding: 0 }}>{monthlyTotalOpen}</p>
-                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: 'rgba(96, 165, 250, 0.8)', margin: 0, padding: 0 }}>Open</p>
+                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#1d4ed8', margin: 0, padding: 0 }}>{monthlyTotalOpen}</p>
+                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: '#2563eb', margin: 0, padding: 0 }}>Open</p>
                   </div>
                   <div 
                     className="rounded-2xl text-center"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(194, 65, 12, 0.3) 0%, rgba(180, 83, 9, 0.15) 100%)',
-                      border: '1px solid rgba(249, 115, 22, 0.25)',
+                      backgroundColor: '#ffe4e6',
+                      border: '1px solid #fecdd3',
                       padding: '8px 2px',
                       boxSizing: 'border-box'
                     }}
                   >
-                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#fdba74', margin: 0, padding: 0 }}>{monthlyTotalClosed}</p>
-                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: 'rgba(251, 146, 60, 0.8)', margin: 0, padding: 0 }}>Closed</p>
+                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#be123c', margin: 0, padding: 0 }}>{monthlyTotalClosed}</p>
+                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: '#e11d48', margin: 0, padding: 0 }}>Closed</p>
                   </div>
                 </div>
               </div>
@@ -1912,19 +1929,19 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
               <div id="ptw-weekly-chart-raw" className="h-64 w-full" style={{ marginTop: '14px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={chartData} margin={{ top: 20, right: 10, left: -25, bottom: 15 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" opacity={0.3} />
-                    <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} />
-                    <YAxis stroke="#64748b" fontSize={10} tickLine={false} allowDecimals={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" opacity={0.7} />
+                    <XAxis dataKey="name" stroke="#64748b" fontSize={11} tickLine={false} />
+                    <YAxis stroke="#64748b" fontSize={11} tickLine={false} allowDecimals={false} />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
-                      labelStyle={{ color: '#ffffff', fontWeight: 'bold' }}
+                      contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                      labelStyle={{ color: '#0f172a', fontWeight: 'bold' }}
                     />
                     <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
-                    <Line type="monotone" dataKey="Total PTW" stroke="#a78bfa" strokeWidth={3} dot={{ fill: '#a78bfa', r: 4 }} />
-                    <Bar dataKey="PTW PM" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={14} />
-                    <Bar dataKey="PTW CM" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={14} />
-                    <Bar dataKey="Open (Aktif)" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={14} />
-                    <Bar dataKey="Closed (Selesai)" fill="#f97316" radius={[4, 4, 0, 0]} barSize={14} />
+                    <Line type="monotone" dataKey="Total PTW" stroke="#8b5cf6" strokeWidth={3} dot={{ fill: '#8b5cf6', r: 5 }} />
+                    <Bar dataKey="PTW PM" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={16} />
+                    <Bar dataKey="PTW CM" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={16} />
+                    <Bar dataKey="Open (Aktif)" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={16} />
+                    <Bar dataKey="Closed (Selesai)" fill="#f43f5e" radius={[4, 4, 0, 0]} barSize={16} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -1935,11 +1952,11 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
               <div>
                 <div className="flex justify-between items-center mb-6">
                   <div>
-                    <h3 className="text-lg font-bold text-white uppercase">Detail Minggu {selectedWeek}</h3>
-                    <p className="text-slate-400 text-xs">{weeklyData[selectedWeek - 1].dateRange}</p>
+                    <h3 className="text-lg font-bold text-slate-900 uppercase">Detail Minggu {selectedWeek}</h3>
+                    <p className="text-slate-500 text-xs font-semibold">{weeklyData[selectedWeek - 1]?.dateRange}</p>
                   </div>
-                  <span className="px-3.5 py-1.5 bg-indigo-500/15 border border-indigo-500/20 text-indigo-400 rounded-xl text-xs font-bold shadow-md shadow-indigo-500/5">
-                    {weeklyData[selectedWeek - 1].totalCount} Total PTW
+                  <span className="px-3.5 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-bold shadow-sm">
+                    {weeklyData[selectedWeek - 1]?.totalCount || 0} Total PTW
                   </span>
                 </div>
 

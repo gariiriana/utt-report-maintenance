@@ -168,26 +168,26 @@ input[type='number'] {
 
 /* Custom styling for PTW Weekly Chart to avoid oklab/oklch color parse issue in html2canvas */
 .ptw-weekly-chart-container {
-  background-color: #0f172a !important;
-  border: 1px solid #334155 !important;
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
 }
 
 .ptw-weekly-chart-title {
-  color: #ffffff !important;
+  color: #0f172a !important;
 }
 
 .ptw-weekly-chart-desc {
-  color: #94a3b8 !important;
+  color: #64748b !important;
 }
 
 #ptw-weekly-chart-raw {
-  background-color: #0f172a !important;
+  background-color: #ffffff !important;
 }
 
 #ptw-weekly-chart-raw,
 #ptw-weekly-chart-raw * {
-  color: #94a3b8 !important;
-  border-color: #334155 !important;
+  color: #475569 !important;
+  border-color: #e2e8f0 !important;
 }
 
 .scrollbar-none::-webkit-scrollbar,
