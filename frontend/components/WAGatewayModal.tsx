@@ -49,6 +49,10 @@ export const WAGatewayModal: React.FC<WAGatewayModalProps> = ({
 }) => {
   const isAuthorizedEmail = currentUser?.email?.toLowerCase() === 'dwimitra@co.id';
 
+  const WA_API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:5001'
+    : (import.meta.env.VITE_WA_GATEWAY_URL || 'http://localhost:5001');
+
   const [status, setStatus] = useState<'DISCONNECTED' | 'CONNECTING' | 'QR_READY' | 'CONNECTED'>('DISCONNECTED');
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [connectedUser, setConnectedUser] = useState<string>('');
@@ -61,7 +65,7 @@ export const WAGatewayModal: React.FC<WAGatewayModalProps> = ({
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch('http://localhost:5001/api/wa/status');
+      const res = await fetch(`${WA_API_BASE_URL}/api/wa/status`);
       if (!res.ok) throw new Error('WA Gateway offline');
       const data: WAStatusResponse = await res.json();
       
@@ -91,7 +95,7 @@ export const WAGatewayModal: React.FC<WAGatewayModalProps> = ({
   const handleSaveConfig = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:5001/api/wa/config', {
+      const res = await fetch(`${WA_API_BASE_URL}/api/wa/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetPhone, targetGroup, autoRemindEnabled })
@@ -117,7 +121,7 @@ export const WAGatewayModal: React.FC<WAGatewayModalProps> = ({
     try {
       setIsSendingTest(true);
       const msg = testMessage || '🔔 [TEST] Notifikasi WhatsApp Gateway DwimitraSystem berhasil terhubung!';
-      const res = await fetch('http://localhost:5001/api/wa/send', {
+      const res = await fetch(`${WA_API_BASE_URL}/api/wa/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: targetPhone, message: msg })
@@ -139,7 +143,7 @@ export const WAGatewayModal: React.FC<WAGatewayModalProps> = ({
   const handleLogoutWA = async () => {
     try {
       setLoading(true);
-      const res = await fetch('http://localhost:5001/api/wa/logout', { method: 'POST' });
+      const res = await fetch(`${WA_API_BASE_URL}/api/wa/logout`, { method: 'POST' });
       const data = await res.json();
       if (data.success) {
         toast.success('Sesi WhatsApp berhasil direset. Silakan scan QR Code baru.');
@@ -203,7 +207,7 @@ export const WAGatewayModal: React.FC<WAGatewayModalProps> = ({
       alertMessage += `*DwimitraSystem Automated PM Schedule Notification*`;
 
       // Send via Gateway
-      const res = await fetch('http://localhost:5001/api/wa/send', {
+      const res = await fetch(`${WA_API_BASE_URL}/api/wa/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: targetPhone, message: alertMessage })
