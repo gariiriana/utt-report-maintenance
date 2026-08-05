@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar } from 'lucide-react';
+import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 import { ReportForm } from '@/components/ReportForm';
@@ -16,11 +16,12 @@ import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import { PTWManagement } from '@/components/PTWManagement';
 import { AbsenTBM } from '@/components/AbsenTBM';
 import { AbsenInduction } from '@/components/AbsenInduction';
+import { PMSchedule } from '@/components/PMSchedule';
 import { NotificationCenter, AppNotificationItem } from '@/components/NotificationCenter';
 import { NotificationPage } from '@/components/NotificationPage';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
-type Tab = 'notifications' | 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction';
+type Tab = 'notifications' | 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule';
 
 export function MainApp() {
   const { user, userRole, logout } = useAuth();
@@ -43,6 +44,7 @@ export function MainApp() {
     { id: 'finding_archive', label: 'Arsip Temuan', icon: FolderOpen, color: 'from-teal-600 to-teal-700', show: userRole !== 'DME' },
     { id: 'report', label: userRole === 'DME' ? 'Detail Laporan' : 'Buat Laporan', icon: FileText, color: 'from-blue-600 to-blue-700', show: !isStandby && (userRole !== 'DME' || !!editingData) },
     { id: 'documents', label: 'Arsip Dokumen', icon: FolderOpen, color: 'from-emerald-600 to-emerald-700', show: !isStandby },
+    { id: 'pm_schedule', label: 'PM Schedule', icon: CalendarDays, color: 'from-indigo-500 to-purple-600', show: userRole === 'DME' || isAdmin },
   ] as const;
 
   const getDefaultTab = (): Tab => {
@@ -287,6 +289,8 @@ export function MainApp() {
               <FindingManagement />
             ) : activeTab === 'finding_archive' ? (
               <FindingArchive />
+            ) : activeTab === 'pm_schedule' ? (
+              <PMSchedule />
             ) : (
               <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} />
             )}

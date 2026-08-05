@@ -647,10 +647,10 @@ export async function exportSLAReportToDocx(report: any): Promise<void> {
     loadImageAsUint8Array(logoNeutraDC),
   ]);
 
-  const targetResp = report.targetResponseMin || 10;
+  const targetResp = report.targetResponseMin || 5;
   const targetOnsite = report.targetOnsiteMin || 120;
-  const targetRestore = report.targetRestoreMin || 180;
-  const targetResolution = report.targetResolutionMin || 180;
+  const targetRestore = report.targetRestoreMin || 120;
+  const targetResolution = report.targetResolutionMin || 360;
 
   const actualResp = report.actualResponseTimeMin ?? (report.timeOrder ? 5 : 0);
   const actualOnsite = report.actualOnsiteTimeMin ?? (report.actualTimeOnsite ? 45 : 0);
@@ -662,57 +662,72 @@ export async function exportSLAReportToDocx(report: any): Promise<void> {
   const restoreComply = actualRestore <= targetRestore;
   const resolutionComply = actualResolution <= targetResolution;
 
+  // Calculate SLG Scores if not present in report object
+  const scoreRT = report.slgScoreRT ?? (actualResp > 0 ? Number((Math.min(100, (targetResp / actualResp) * 100) * 0.05).toFixed(2)) : 5.0);
+  const scoreOTP = report.slgScoreOTP ?? (actualOnsite > 0 ? Number((Math.min(100, (targetOnsite / actualOnsite) * 100) * 0.05).toFixed(2)) : 5.0);
+  const scoreRST = report.slgScoreRST ?? (actualRestore > 0 ? Number((Math.min(100, (targetRestore / actualRestore) * 100) * 0.15).toFixed(2)) : 15.0);
+  const scoreRSP = report.slgScoreRSP ?? (actualResolution > 0 ? Number((Math.min(100, (targetResolution / actualResolution) * 100) * 0.10).toFixed(2)) : 10.0);
+  const totalIncidentSlg = Number((scoreRT + scoreOTP + scoreRST + scoreRSP).toFixed(2));
+
   const slaTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: cellBorder,
     rows: [
       new TableRow({
-        children: ['INDIKATOR SLA / SLG', 'TARGET', 'AKTUAL', 'STATUS SLA'].map(
+        children: ['INDIKATOR SLA / SLG', 'TARGET', 'AKTUAL', 'BOBOT', 'SKOR SLG', 'STATUS'].map(
           (headText, idx) =>
             new TableCell({
-              width: { size: [35, 20, 20, 25][idx], type: WidthType.PERCENTAGE },
+              width: { size: [30, 15, 15, 12, 13, 15][idx], type: WidthType.PERCENTAGE },
               shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
-              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+              margins: { top: 100, bottom: 100, left: 60, right: 60 },
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: headText, bold: true, size: 17, color: '000000' })],
+                  children: [new TextRun({ text: headText, bold: true, size: 15, color: '000000' })],
                 }),
               ],
             })
         ),
       }),
       [
-        { name: '1. RESPONSE TIME', target: `${targetResp} Min`, actual: `${actualResp} Min`, comply: respComply },
-        { name: '2. ONSITE SUPPORT', target: `${targetOnsite} Min`, actual: `${actualOnsite} Min`, comply: onsiteComply },
-        { name: '3. SERVICE RESTORE (RST)', target: `${targetRestore} Min`, actual: `${actualRestore} Min`, comply: restoreComply },
-        { name: '4. TOTAL RESOLUTION (RT)', target: `${targetResolution} Min`, actual: `${actualResolution} Min`, comply: resolutionComply },
+        { name: '1. RESPONSE TIME (RT)', target: `< ${targetResp} Min`, actual: `${actualResp} Min`, bobot: '5%', score: `${scoreRT}%`, comply: respComply },
+        { name: '2. ONSITE PRINCIPLE (OTP)', target: `${targetOnsite} Min`, actual: `${actualOnsite} Min`, bobot: '5%', score: `${scoreOTP}%`, comply: onsiteComply },
+        { name: '3. SERVICE RESTORE (RST)', target: `${targetRestore} Min`, actual: `${actualRestore} Min`, bobot: '15%', score: `${scoreRST}%`, comply: restoreComply },
+        { name: '4. RESOLUTION PROBLEM (RSP)', target: `${targetResolution} Min`, actual: `${actualResolution} Min`, bobot: '10%', score: `${scoreRSP}%`, comply: resolutionComply },
       ].map(
         (row) =>
           new TableRow({
             children: [
               new TableCell({
-                margins: { top: 80, bottom: 80, left: 100, right: 100 },
-                children: [new Paragraph({ children: [new TextRun({ text: row.name, bold: true, size: 17, color: '1E293B' })] })],
+                margins: { top: 80, bottom: 80, left: 80, right: 80 },
+                children: [new Paragraph({ children: [new TextRun({ text: row.name, bold: true, size: 15, color: '1E293B' })] })],
               }),
               new TableCell({
-                margins: { top: 80, bottom: 80, left: 100, right: 100 },
-                children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.target, size: 17, color: '64748B' })] })],
+                margins: { top: 80, bottom: 80, left: 60, right: 60 },
+                children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.target, size: 15, color: '64748B' })] })],
               }),
               new TableCell({
-                margins: { top: 80, bottom: 80, left: 100, right: 100 },
-                children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.actual, bold: true, size: 17, color: '1E293B' })] })],
+                margins: { top: 80, bottom: 80, left: 60, right: 60 },
+                children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.actual, bold: true, size: 15, color: '1E293B' })] })],
               }),
               new TableCell({
-                margins: { top: 80, bottom: 80, left: 100, right: 100 },
+                margins: { top: 80, bottom: 80, left: 60, right: 60 },
+                children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.bobot, size: 15, color: '475569' })] })],
+              }),
+              new TableCell({
+                margins: { top: 80, bottom: 80, left: 60, right: 60 },
+                children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.score, bold: true, size: 15, color: '2563EB' })] })],
+              }),
+              new TableCell({
+                margins: { top: 80, bottom: 80, left: 60, right: 60 },
                 children: [
                   new Paragraph({
                     alignment: AlignmentType.CENTER,
                     children: [
                       new TextRun({
-                        text: row.comply ? '✓ MEMENUHI SLA' : '✗ TIDAK MEMENUHI SLA',
+                        text: row.comply ? '✓ COMPLY' : '✗ NOT COMPLY',
                         bold: true,
-                        size: 17,
+                        size: 15,
                         color: row.comply ? '166534' : '991B1B',
                       }),
                     ],
@@ -722,6 +737,22 @@ export async function exportSLAReportToDocx(report: any): Promise<void> {
             ],
           })
       ),
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 4,
+            shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+            margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'TOTAL SKOR SLG KATEGORI INSIDEN (MAX 35%):', bold: true, size: 16, color: '1E293B' })] })],
+          }),
+          new TableCell({
+            columnSpan: 2,
+            shading: { fill: 'E2E8F0', type: ShadingType.CLEAR },
+            margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${totalIncidentSlg}% / 35.00%`, bold: true, size: 16, color: '1E3A8A' })] })],
+          }),
+        ],
+      }),
     ].flat(),
   });
 

@@ -40,33 +40,33 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
   const [formData, setFormData] = useState({
     ticketName: '',
     location: '',
-    priority: 'Medium' as 'Low' | 'Medium' | 'High',
+    priority: 'Medium' as 'Critical' | 'High' | 'Medium' | 'Low',
     picDME: '',
     picTDE: '',
     remark: '',
 
-    // Response Time (Step 1)
+    // Response Time (Step 1) - Target < 5 Menit
     timeOrder: '',
     actualTimeResponse: '',
-    targetResponseMin: 10,
+    targetResponseMin: 5,
     photoResponse: '',
 
     // Engineer Onsite Support (Step 2)
     photoEngineerOnsite: '',
 
-    // Onsite Principle Support (Step 3)
+    // Onsite Principle Support (Step 3) - Target 120 Menit (2 Jam)
     actualTimeOnsite: '',
     targetOnsiteMin: 120,
     photoOnsite: '',
 
-    // Restore Service Time (Step 4)
+    // Restore Service Time (Step 4) - Target 120 Menit (2 Jam)
     startOrder: '',
     finishOrder: '',
-    targetRestoreMin: 180,
+    targetRestoreMin: 120,
     photoRestore: '',
 
-    // Resolution Time (Step 5)
-    targetResolutionMin: 180,
+    // Resolution Time (Step 5) - Target Dynamic based on Priority (Critical 2h, High 4h, Medium 6h, Low 48h)
+    targetResolutionMin: 360,
     photoResolution: '',
   });
 
@@ -87,7 +87,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
               remark: data.remark || '',
               timeOrder: data.timeOrder || '',
               actualTimeResponse: data.actualTimeResponse || '',
-              targetResponseMin: data.targetResponseMin || 10,
+              targetResponseMin: data.targetResponseMin || 5,
               photoResponse: data.photoResponse || '',
               photoEngineerOnsite: data.photoEngineerOnsite || '',
               actualTimeOnsite: data.actualTimeOnsite || '',
@@ -95,9 +95,9 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
               photoOnsite: data.photoOnsite || '',
               startOrder: data.startOrder || '',
               finishOrder: data.finishOrder || '',
-              targetRestoreMin: data.targetRestoreMin || 180,
+              targetRestoreMin: data.targetRestoreMin || 120,
               photoRestore: data.photoRestore || '',
-              targetResolutionMin: data.targetResolutionMin || 180,
+              targetResolutionMin: data.targetResolutionMin || 360,
               photoResolution: data.photoResolution || '',
             });
           }
@@ -125,6 +125,17 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
     }
   }, [editId]);
 
+  // Update targetResolutionMin dynamically based on priority category
+  useEffect(() => {
+    let target = 360;
+    if (formData.priority === 'Critical') target = 120;       // 2 Jam
+    else if (formData.priority === 'High') target = 240;      // 4 Jam
+    else if (formData.priority === 'Medium') target = 360;    // 6 Jam
+    else if (formData.priority === 'Low') target = 2880;      // 48 Jam
+
+    setFormData(prev => ({ ...prev, targetResolutionMin: target }));
+  }, [formData.priority]);
+
   // Auto-save draft to localStorage whenever form changes (only when not editing)
   useEffect(() => {
     if (!editId) {
@@ -136,19 +147,24 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
     }
   }, [formData, currentStep, editId]);
 
-  // Derived Calculations
+  // Derived Calculations & SLG Performance Weightings
   const [calcs, setCalcs] = useState({
     responseTimeMin: 0,
     responseComply: true,
+    slgScoreRT: 5.0, // Bobot 5%
     onsiteTimeMin: 0,
     onsiteComply: true,
+    slgScoreOTP: 5.0, // Bobot 5%
     restoreTimeMin: 0,
     restoreComply: true,
+    slgScoreRST: 15.0, // Bobot 15%
     resolutionTimeMin: 0,
     resolutionComply: true,
+    slgScoreRSP: 10.0, // Bobot 10%
+    totalIncidentSlgScore: 35.0, // Total Bobot Insiden SLA (5 + 5 + 15 + 10 = 35%)
   });
 
-  // Calculate SLA values automatically on form changes
+  // Calculate SLA values & SLG Scores automatically on form changes
   useEffect(() => {
     const calculateDiffMinutes = (startStr: string, endStr: string): number => {
       if (!startStr || !endStr) return 0;
@@ -164,15 +180,39 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
     const restoreTime = calculateDiffMinutes(formData.startOrder || formData.timeOrder, formData.finishOrder);
     const resolutionTime = calculateDiffMinutes(formData.startOrder || formData.timeOrder, formData.finishOrder);
 
+    // SLG Formula: (Target / Actual) * 100 * Bobot%, capped at 100% * Bobot%
+    const scoreRT = responseTime > 0
+      ? Math.min(100, (formData.targetResponseMin / responseTime) * 100) * 0.05
+      : 5.0;
+
+    const scoreOTP = onsiteTime > 0
+      ? Math.min(100, (formData.targetOnsiteMin / onsiteTime) * 100) * 0.05
+      : 5.0;
+
+    const scoreRST = restoreTime > 0
+      ? Math.min(100, (formData.targetRestoreMin / restoreTime) * 100) * 0.15
+      : 15.0;
+
+    const scoreRSP = resolutionTime > 0
+      ? Math.min(100, (formData.targetResolutionMin / resolutionTime) * 100) * 0.10
+      : 10.0;
+
+    const totalSlg = scoreRT + scoreOTP + scoreRST + scoreRSP;
+
     setCalcs({
       responseTimeMin: responseTime,
       responseComply: formData.timeOrder && formData.actualTimeResponse ? responseTime <= formData.targetResponseMin : true,
+      slgScoreRT: Number(scoreRT.toFixed(2)),
       onsiteTimeMin: onsiteTime,
       onsiteComply: formData.timeOrder && formData.actualTimeOnsite ? onsiteTime <= formData.targetOnsiteMin : true,
+      slgScoreOTP: Number(scoreOTP.toFixed(2)),
       restoreTimeMin: restoreTime,
       restoreComply: (formData.startOrder || formData.timeOrder) && formData.finishOrder ? restoreTime <= formData.targetRestoreMin : true,
+      slgScoreRST: Number(scoreRST.toFixed(2)),
       resolutionTimeMin: resolutionTime,
       resolutionComply: (formData.startOrder || formData.timeOrder) && formData.finishOrder ? resolutionTime <= formData.targetResolutionMin : true,
+      slgScoreRSP: Number(scoreRSP.toFixed(2)),
+      totalIncidentSlgScore: Number(totalSlg.toFixed(2)),
     });
   }, [
     formData.timeOrder,
@@ -394,6 +434,13 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
         resolutionComply: calcs.resolutionComply,
         photoResolution: formData.photoResolution,
 
+        // SLG Calculated Performance Scores & Weightings
+        slgScoreRT: calcs.slgScoreRT,
+        slgScoreOTP: calcs.slgScoreOTP,
+        slgScoreRST: calcs.slgScoreRST,
+        slgScoreRSP: calcs.slgScoreRSP,
+        totalIncidentSlgScore: calcs.totalIncidentSlgScore,
+
         // Metadata
         reportedBy: user.uid,
         reportedByEmail: user.email,
@@ -427,10 +474,10 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
   };
 
   const steps = [
-    { title: 'Response Time', desc: 'SLA Respon (10 M)' },
+    { title: 'Response Time', desc: 'SLA Respon (<5 M)' },
     { title: 'Engineer Onsite', desc: 'Bukti Onsite Eng' },
     { title: 'Onsite Principle', desc: 'SLA Onsite (2 H)' },
-    { title: 'Restore Time', desc: 'SLA Restore (3 H)' },
+    { title: 'Restore Time', desc: 'SLA Restore (2 H)' },
     { title: 'Resolution', desc: 'SLA Resolusi' }
   ];
 
@@ -504,7 +551,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                   <Clock className="w-5 h-5 text-red-600" />
                   Step 1: Pencapaian Response Time SLA
                 </h3>
-                <p className="text-slate-500 text-xs">Masukkan informasi order tiket, lokasi, prioritas, dan data Response Time (Target default 10 Menit).</p>
+                <p className="text-slate-500 text-xs">Masukkan informasi order tiket, lokasi, prioritas, dan data Response Time (Target default &lt; 5 Menit).</p>
               </div>
 
               {/* Ticket Metadata (merged into Step 1) */}
@@ -539,7 +586,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slate-400 font-medium mb-1.5">Prioritas Gangguan</label>
+                  <label className="block text-sm text-slate-400 font-medium mb-1.5">Prioritas Gangguan (Determines Resolution Target)</label>
                   <div className="relative group">
                     <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-red-400 transition" />
                     <select
@@ -547,11 +594,12 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                       onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
                       title="Prioritas Gangguan"
                       aria-label="Prioritas Gangguan"
-                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm"
+                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm font-semibold"
                     >
-                      <option value="Low">Low (Rendah)</option>
-                      <option value="Medium">Medium (Sedang)</option>
-                      <option value="High">High (Tinggi)</option>
+                      <option value="Critical">Critical (Target 2 Jam / 120m)</option>
+                      <option value="High">High (Target 4 Jam / 240m)</option>
+                      <option value="Medium">Medium (Target 6 Jam / 360m)</option>
+                      <option value="Low">Low (Target 48 Jam / 2880m)</option>
                     </select>
                   </div>
                 </div>
@@ -856,7 +904,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                   <Activity className="w-5 h-5 text-red-600" />
                   Step 4: Restore Service Time SLA (RST)
                 </h3>
-                <p className="text-slate-500 text-xs">Target pemulihan layanan default adalah 180 Menit (3 Jam) dari mulainya pekerjaan.</p>
+                <p className="text-slate-500 text-xs">Target pemulihan layanan (temporary solution) default adalah 120 Menit (2 Jam) sejak engineer onsite di lokasi.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -980,19 +1028,19 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                   <CheckCircle2 className="w-5 h-5 text-red-600" />
                   Step 5: Resolution Time SLA &amp; Ringkasan Laporan
                 </h3>
-                <p className="text-slate-500 text-xs">Target resolusi total default adalah 180 Menit (3 Jam) dari dimulainya pekerjaan.</p>
+                <p className="text-slate-500 text-xs">Target resolusi permanen otomatis berdasarkan prioritas: Critical (2 Jam), High (4 Jam), Medium (6 Jam), Low (48 Jam).</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-sm text-slate-700 font-medium mb-1.5">SLA Target Resolusi (Menit)</label>
+                  <label className="block text-sm text-slate-700 font-medium mb-1.5">SLA Target Resolusi (Menit - Otomatis sesuai Prioritas {formData.priority})</label>
                   <input
                     type="number"
                     value={formData.targetResolutionMin}
-                    onChange={(e) => setFormData({ ...formData, targetResolutionMin: parseInt(e.target.value) || 180 })}
+                    onChange={(e) => setFormData({ ...formData, targetResolutionMin: parseInt(e.target.value) || 360 })}
                     title="Target Resolution Time"
-                    placeholder="Contoh: 180"
-                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm"
+                    placeholder="Contoh: 360"
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm font-semibold"
                   />
                 </div>
 
@@ -1033,56 +1081,65 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                 </div>
               </div>
 
-              {/* Comprehensive SLA Review Summary */}
+              {/* Comprehensive SLA & SLG Review Summary */}
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
-                <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider border-b border-slate-200 pb-2">Ringkasan Nilai &amp; Pencapaian SLA/SLG</h4>
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                  <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Ringkasan Pencapaian SLA &amp; Skor SLG (Insiden)</h4>
+                  <div className="text-xs font-extrabold px-3 py-1 bg-red-500/10 text-red-600 border border-red-500/30 rounded-full">
+                    Total Skor Insiden: {calcs.totalIncidentSlgScore}% / 35%
+                  </div>
+                </div>
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="p-3 bg-white border border-slate-200 rounded-xl text-center shadow-sm">
-                    <span className="text-[10px] text-slate-500 uppercase font-bold block">1. Response Time</span>
+                    <span className="text-[10px] text-slate-500 uppercase font-bold block">1. Response Time (RT 5%)</span>
                     <span className="text-base font-extrabold text-slate-900 block mt-1">{calcs.responseTimeMin} Menit</span>
-                    <span className={`inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-full mt-2 border ${
+                    <span className="text-[11px] font-bold text-blue-600 block mt-0.5">Skor SLG: {calcs.slgScoreRT}%</span>
+                    <span className={`inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-full mt-1.5 border ${
                       calcs.responseComply 
                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
                         : 'bg-red-50 text-red-700 border-red-200'
                     }`}>
-                      {calcs.responseComply ? 'COMPLY' : 'TM'}
+                      {calcs.responseComply ? 'COMPLY' : 'NOT COMPLY'}
                     </span>
                   </div>
 
                   <div className="p-3 bg-white border border-slate-200 rounded-xl text-center shadow-sm">
-                    <span className="text-[10px] text-slate-500 uppercase font-bold block">2. Onsite OPE</span>
+                    <span className="text-[10px] text-slate-500 uppercase font-bold block">2. Onsite Principle (OTP 5%)</span>
                     <span className="text-base font-extrabold text-slate-900 block mt-1">{calcs.onsiteTimeMin} Menit</span>
-                    <span className={`inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-full mt-2 border ${
+                    <span className="text-[11px] font-bold text-blue-600 block mt-0.5">Skor SLG: {calcs.slgScoreOTP}%</span>
+                    <span className={`inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-full mt-1.5 border ${
                       calcs.onsiteComply 
                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
                         : 'bg-red-50 text-red-700 border-red-200'
                     }`}>
-                      {calcs.onsiteComply ? 'COMPLY' : 'TM'}
+                      {calcs.onsiteComply ? 'COMPLY' : 'NOT COMPLY'}
                     </span>
                   </div>
 
                   <div className="p-3 bg-white border border-slate-200 rounded-xl text-center shadow-sm">
-                    <span className="text-[10px] text-slate-500 uppercase font-bold block">3. Restore RST</span>
+                    <span className="text-[10px] text-slate-500 uppercase font-bold block">3. Restore Time (RST 15%)</span>
                     <span className="text-base font-extrabold text-slate-900 block mt-1">{calcs.restoreTimeMin} Menit</span>
-                    <span className={`inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-full mt-2 border ${
+                    <span className="text-[11px] font-bold text-blue-600 block mt-0.5">Skor SLG: {calcs.slgScoreRST}%</span>
+                    <span className={`inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-full mt-1.5 border ${
                       calcs.restoreComply 
                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
                         : 'bg-red-50 text-red-700 border-red-200'
                     }`}>
-                      {calcs.restoreComply ? 'COMPLY' : 'TM'}
+                      {calcs.restoreComply ? 'COMPLY' : 'NOT COMPLY'}
                     </span>
                   </div>
 
                   <div className="p-3 bg-white border border-slate-200 rounded-xl text-center shadow-sm">
-                    <span className="text-[10px] text-slate-500 uppercase font-bold block">4. Resolution RT</span>
+                    <span className="text-[10px] text-slate-500 uppercase font-bold block">4. Resolution (RSP 10%)</span>
                     <span className="text-base font-extrabold text-slate-900 block mt-1">{calcs.resolutionTimeMin} Menit</span>
-                    <span className={`inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-full mt-2 border ${
+                    <span className="text-[11px] font-bold text-blue-600 block mt-0.5">Skor SLG: {calcs.slgScoreRSP}%</span>
+                    <span className={`inline-block text-[10px] font-extrabold px-2 py-0.5 rounded-full mt-1.5 border ${
                       calcs.resolutionComply 
                         ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
                         : 'bg-red-50 text-red-700 border-red-200'
                     }`}>
-                      {calcs.resolutionComply ? 'COMPLY' : 'TM'}
+                      {calcs.resolutionComply ? 'COMPLY' : 'NOT COMPLY'}
                     </span>
                   </div>
                 </div>
