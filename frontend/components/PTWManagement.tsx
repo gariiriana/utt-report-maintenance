@@ -1109,11 +1109,6 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
       return d.getFullYear() === year && d.getMonth() === month - 1;
     });
 
-    let startWeekDate = new Date(year, month - 1, 1);
-    if (monthRecords.length > 0) {
-      const startDates = monthRecords.map(r => parseLocal(r.startDate));
-      startWeekDate = new Date(Math.min(...startDates.map(d => d.getTime())));
-    }
 
     const lastDayOfMonth = new Date(year, month, 0).getDate();
     const weeks: {
@@ -1966,51 +1961,51 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                     <p className="text-slate-400 text-sm italic">Tidak ada PTW aktif pada minggu ini</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/20 max-h-72 overflow-y-auto scrollbar-thin">
+                  <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white max-h-72 overflow-y-auto shadow-sm">
                     <table className="w-full text-left border-collapse">
-                      <thead className="bg-slate-900 sticky top-0 z-10 border-b border-slate-850">
+                      <thead className="bg-slate-100 sticky top-0 z-10 border-b border-slate-200">
                         <tr>
-                          <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">No.</th>
-                          <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Nomor PTW</th>
-                          <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Jenis</th>
-                          <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Nama Maintenance</th>
-                          <th className="px-4 py-3 text-xs font-bold text-slate-400 uppercase">Masa Berlaku</th>
-                          <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase">Status</th>
+                          <th className="px-4 py-3 text-xs font-bold text-slate-700 uppercase">No.</th>
+                          <th className="px-4 py-3 text-xs font-bold text-slate-700 uppercase">Nomor PTW</th>
+                          <th className="px-4 py-3 text-xs font-bold text-slate-700 uppercase">Jenis</th>
+                          <th className="px-4 py-3 text-xs font-bold text-slate-700 uppercase">Nama Maintenance</th>
+                          <th className="px-4 py-3 text-xs font-bold text-slate-700 uppercase">Masa Berlaku</th>
+                          <th className="px-4 py-3 text-center text-xs font-bold text-slate-700 uppercase">Status</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/40">
+                      <tbody className="divide-y divide-slate-100">
                         {weeklyData[selectedWeek - 1].records.map((rec, idx) => {
                           const isClosed = !!rec.closingFileName || (!!rec.endDate && rec.endDate < new Date().toISOString().split('T')[0]);
                           return (
-                            <tr key={rec.id} className="hover:bg-slate-800/10 transition">
-                              <td className="px-4 py-3 text-xs font-medium text-slate-400">{idx + 1}</td>
-                              <td className="px-4 py-3 text-xs font-bold text-white whitespace-nowrap">
-                                <span className="bg-slate-800 px-2 py-1 rounded-lg border border-slate-700/50">
+                            <tr key={rec.id} className="hover:bg-slate-50 transition">
+                              <td className="px-4 py-3 text-xs font-bold text-slate-500">{idx + 1}</td>
+                              <td className="px-4 py-3 text-xs font-bold text-slate-900 whitespace-nowrap">
+                                <span className="bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200 font-bold text-slate-800">
                                   {rec.ptwNumber}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-xs font-bold whitespace-nowrap">
                                 {(rec.ptwType || 'PM') === 'CM' ? (
-                                  <span className="text-[10px] font-black text-amber-300 bg-amber-900/40 px-2 py-0.5 rounded-full border border-amber-500/40">
+                                  <span className="text-[10px] font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                                     🛠️ CM
                                   </span>
                                 ) : (
-                                  <span className="text-[10px] font-black text-indigo-300 bg-indigo-900/40 px-2 py-0.5 rounded-full border border-indigo-500/40">
+                                  <span className="text-[10px] font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
                                     🛡️ PM
                                   </span>
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-xs text-slate-300 max-w-[180px] truncate" title={rec.notes}>
+                              <td className="px-4 py-3 text-xs text-slate-700 font-medium max-w-[180px] truncate" title={rec.notes}>
                                 {rec.notes || '-'}
                               </td>
-                              <td className="px-4 py-3 text-[11px] text-slate-400 whitespace-nowrap">
+                              <td className="px-4 py-3 text-[11px] text-slate-600 font-medium whitespace-nowrap">
                                 {new Date(rec.startDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })} - {new Date(rec.endDate).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                                   isClosed 
-                                    ? 'bg-red-500/10 text-red-400 border-red-500/20' 
-                                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                    ? 'bg-red-50 text-red-600 border-red-200' 
+                                    : 'bg-emerald-50 text-emerald-600 border-emerald-200'
                                 }`}>
                                   {isClosed ? 'SELESAI' : 'AKTIF'}
                                 </span>
