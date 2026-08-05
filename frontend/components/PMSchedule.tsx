@@ -1,9 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Calendar,
   Search,
-  Filter,
   Info,
   X,
   MessageSquare
