@@ -45,3 +45,6 @@ scratch/
 utt-report-maintenance/
 .agents/
 
+# WhatsApp Gateway Session Storage
+backend/wa_session/
+
