@@ -20,6 +20,7 @@ import { collection, addDoc, serverTimestamp, getDoc, doc, updateDoc } from 'fir
 import { useAuth } from './AuthContext';
 import { CMReportData, CMSparepartItem, CMPhotoItem } from '@/types/correctiveReportTypes';
 import { exportCMReportToDocx } from '@/utils/docxReportExport';
+import { generateCMReportPDF } from '@/utils/CMReportPdfExport';
 import { sendFileNotification } from '@/utils/notificationService';
 import { ImageEditor } from './ImageEditor';
 
@@ -303,15 +304,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
       }
     }
 
-    // Step 3 Validation
-    if (targetStep > 3) {
-      if (!formData.photos || formData.photos.length === 0) {
-        toast.error('Mohon unggah minimal 1 Foto Dokumentasi di Step 3');
-        setCurrentStep(3);
-        return false;
-      }
-    }
-
+    // Step 3 Validation (Photos optional so step 4 TTD can be accessed)
     return true;
   };
 
@@ -321,11 +314,19 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     }
   };
 
-
+  // Handle Export PDF
+  const handleExportPdf = async () => {
+    try {
+      await generateCMReportPDF(formData);
+      toast.success('Laporan CM PDF berhasil diekspor!');
+    } catch (err: any) {
+      console.error('Error exporting PDF:', err);
+      toast.error('Gagal mengekspor Laporan CM PDF');
+    }
+  };
 
   // Handle Export DOCX (Word)
   const handleExportDocx = async () => {
-    if (!validateStep(4)) return;
     try {
       await exportCMReportToDocx(formData);
       toast.success('Laporan CM Word (DOCX) berhasil diekspor!');
@@ -924,14 +925,24 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
 
           <div className="flex items-center gap-3">
             {currentStep === 4 && (
-              <button
-                type="button"
-                onClick={handleExportDocx}
-                className="px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs"
-              >
-                <Download className="w-4 h-4 text-blue-600" />
-                Export DOCX
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={handleExportPdf}
+                  className="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs"
+                >
+                  <FileText className="w-4 h-4 text-red-600" />
+                  Export PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportDocx}
+                  className="px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs"
+                >
+                  <Download className="w-4 h-4 text-blue-600" />
+                  Export DOCX
+                </button>
+              </>
             )}
 
             {currentStep < 4 ? (

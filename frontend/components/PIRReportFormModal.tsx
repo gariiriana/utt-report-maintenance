@@ -254,15 +254,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
       }
     }
 
-    // Step 5 Validation
-    if (targetStep > 5) {
-      if (!formData.photos || formData.photos.length === 0) {
-        toast.error('Mohon unggah minimal 1 Foto Dokumentasi di Step 5');
-        setCurrentStep(5);
-        return false;
-      }
-    }
-
+    // Step 5 Validation (Photos optional so step 6 TTD can be accessed)
     return true;
   };
 
