@@ -1055,16 +1055,26 @@ export function FileManagement({
                     {(selectedFolder || selectedQuarter || selectedMType || searchQuery) && (
                         <button
                             onClick={() => {
-                                setSelectedMType(null);
-                                setSelectedQuarter(null);
-                                setSelectedFolder(null);
-                                setSearchQuery('');
-                                if (onBackToRoot) onBackToRoot();
+                                if (selectedMType) {
+                                    setSelectedMType(null);
+                                } else if (selectedQuarter) {
+                                    setSelectedQuarter(null);
+                                } else if (selectedFolder) {
+                                    setSelectedFolder(null);
+                                    setSearchQuery('');
+                                    if (onBackToRoot) onBackToRoot();
+                                } else if (searchQuery) {
+                                    setSearchQuery('');
+                                }
                             }}
                             className="text-xs sm:text-sm text-slate-600 hover:text-amber-700 font-semibold flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-amber-50 border border-slate-200 rounded-lg transition-all shadow-2xs cursor-pointer"
                         >
                             <ChevronLeft className="w-4 h-4" />
-                            Kembali ke Folder Utama
+                            {selectedMType
+                                ? `Kembali ke ${selectedQuarter}`
+                                : selectedQuarter
+                                ? `Kembali ke ${selectedFolder}`
+                                : 'Kembali ke Folder Utama'}
                         </button>
                     )}
                 </div>

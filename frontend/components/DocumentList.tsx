@@ -998,20 +998,6 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     if (dmeLevel === 'management_files') {
       return (
         <div className="space-y-4 w-full max-w-6xl">
-          <div className="bg-white/90 backdrop-blur-xl p-4 rounded-2xl border border-slate-200 shadow-xl flex items-center justify-between">
-            <button
-              onClick={() => {
-                setDmeSelectedFolder(null);
-                setDmeLevel('root');
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg transition-colors text-xs font-bold cursor-pointer border border-slate-200"
-            >
-              <ChevronLeft className="w-4 h-4" /> Kembali ke Folder Utama
-            </button>
-            <div className="text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1 rounded-lg border border-amber-200">
-              {dmeSelectedFolder ? `Folder: ${dmeSelectedFolder}` : 'Manajemen File & Dokumentasi'}
-            </div>
-          </div>
           <FileManagement allowUpload={false} initialFolder={dmeSelectedFolder} onBackToRoot={() => { setDmeSelectedFolder(null); setDmeLevel('root'); }} />
         </div>
       );

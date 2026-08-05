@@ -327,42 +327,27 @@ function getCurrentMonthIndex(): number {
 }
 
 function getDeviceScopeBadges(remarks: string) {
-  const badges: { label: string; style: string }[] = [];
+  const badges: string[] = [];
   const lower = remarks.toLowerCase();
 
   if (lower.includes('offline maintenance')) {
-    badges.push({
-      label: '🔴 Offline PM',
-      style: 'bg-rose-50 text-rose-700 border-rose-200'
-    });
+    badges.push('Offline PM');
   }
 
   if (lower.includes('operation condition') || lower.includes('operation')) {
-    badges.push({
-      label: '🟢 Online PM',
-      style: 'bg-emerald-50 text-emerald-700 border-emerald-200'
-    });
+    badges.push('Online PM');
   }
 
   if (lower.includes('consumable material')) {
-    badges.push({
-      label: '📦 Consumable',
-      style: 'bg-purple-50 text-purple-700 border-purple-200'
-    });
+    badges.push('Consumable');
   }
 
   if (lower.includes('special test')) {
-    badges.push({
-      label: '⚡ Special Test',
-      style: 'bg-indigo-50 text-indigo-700 border-indigo-200'
-    });
+    badges.push('Special Test');
   }
 
   if (badges.length === 0) {
-    badges.push({
-      label: '🟢 Online PM',
-      style: 'bg-emerald-50 text-emerald-700 border-emerald-200'
-    });
+    badges.push('Online PM');
   }
 
   return badges;
@@ -570,13 +555,13 @@ export function PMSchedule() {
                       }`}>
                         <div>
                           <p className="font-extrabold text-slate-900 text-xs sm:text-sm tracking-tight">{item.device}</p>
-                          <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                          <div className="flex flex-wrap items-center gap-1 mt-1">
                             {getDeviceScopeBadges(item.remarks).map((b, i) => (
                               <span
                                 key={i}
-                                className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold border ${b.style}`}
+                                className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200/80"
                               >
-                                {b.label}
+                                {b}
                               </span>
                             ))}
                           </div>
