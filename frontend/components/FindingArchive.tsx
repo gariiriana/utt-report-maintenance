@@ -15,8 +15,6 @@ import {
   Folder,
   ChevronRight,
   ChevronLeft,
-  Grid,
-  List,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -69,7 +67,6 @@ export function FindingArchive() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   // Folder navigation state
-  const [viewMode, setViewMode] = useState<'folder' | 'all'>('folder');
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const [selectedQuarter, setSelectedQuarter] = useState<'Q1' | 'Q2' | 'Q3' | 'Q4' | null>(null);
 
@@ -154,8 +151,7 @@ export function FindingArchive() {
 
   // Filter findings based on selected account, quarter, search, and filters
   const filtered = findings.filter((f) => {
-    // If in folder view mode and not searching:
-    if (viewMode === 'folder' && !searchQuery.trim()) {
+    if (!searchQuery.trim()) {
       if (selectedAccount && (f.createdByEmail || '').toLowerCase() !== selectedAccount.toLowerCase()) {
         return false;
       }
@@ -252,34 +248,6 @@ export function FindingArchive() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Mode Switcher */}
-          <div className="bg-slate-100 p-1 rounded-xl border border-slate-200 flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setViewMode('folder')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
-                viewMode === 'folder'
-                  ? 'bg-white text-teal-700 shadow-xs border border-slate-200'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Grid className="w-3.5 h-3.5" />
-              <span>Struktur Folder</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
-                viewMode === 'all'
-                  ? 'bg-white text-teal-700 shadow-xs border border-slate-200'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <List className="w-3.5 h-3.5" />
-              <span>Semua File ({findings.length})</span>
-            </button>
-          </div>
-
           {filtered.length > 0 && (
             <>
               <motion.button
@@ -357,8 +325,8 @@ export function FindingArchive() {
         </div>
       ) : (
         <>
-          {/* LEVEL 1: ACCOUNT FOLDERS (When in Folder Mode and no account selected & no search) */}
-          {viewMode === 'folder' && !searchQuery.trim() && !selectedAccount && (
+          {/* LEVEL 1: ACCOUNT FOLDERS (When no account selected & no search) */}
+          {!searchQuery.trim() && !selectedAccount && (
             <div className="bg-white/90 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 shadow-xl space-y-5">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-3">
@@ -415,7 +383,7 @@ export function FindingArchive() {
           )}
 
           {/* LEVEL 2: QUARTER FOLDERS (When account is selected, but quarter is null & no search) */}
-          {viewMode === 'folder' && !searchQuery.trim() && selectedAccount && !selectedQuarter && (
+          {!searchQuery.trim() && selectedAccount && !selectedQuarter && (
             <div className="bg-white/90 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 shadow-xl space-y-5">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-3">
                 <button
@@ -473,11 +441,11 @@ export function FindingArchive() {
             </div>
           )}
 
-          {/* LEVEL 3: FILE LIST (When account & quarter selected, OR when in 'all' view mode OR when searching) */}
-          {(viewMode === 'all' || !!searchQuery.trim() || (selectedAccount && selectedQuarter)) && (
+          {/* LEVEL 3: FILE LIST (When account & quarter selected OR searching) */}
+          {(!!searchQuery.trim() || (selectedAccount && selectedQuarter)) && (
             <div className="space-y-4">
               {/* Navigation Breadcrumb inside File List */}
-              {viewMode === 'folder' && !searchQuery.trim() && selectedAccount && selectedQuarter && (
+              {!searchQuery.trim() && selectedAccount && selectedQuarter && (
                 <div className="bg-white/90 backdrop-blur-xl p-4 rounded-2xl border border-slate-200 shadow-xl flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-2">
                     <button
