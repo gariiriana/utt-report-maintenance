@@ -141,18 +141,42 @@ function createHeaderLogosTable(logoLeftBytes: Uint8Array, logoRightBytes: Uint8
   });
 }
 
-function formatDocxBulletLines(content: string): string[] {
-  if (!content) return ['•  N/A'];
+function cleanBulletLines(content: string): string[] {
+  if (!content) return ['N/A'];
   const lines = content.split('\n').map((l) => l.trim()).filter(Boolean);
-  if (lines.length === 0) return ['•  N/A'];
-  return lines.map((l) => {
-    const clean = l.replace(/^(?:&«|[\u26AB\u2022\u25AA\u25BA\u25B6\u2043\u25CF\u25C6]|-|\*|\d+\.\s*)\s*/, '').trim();
-    return `•  ${clean}`;
-  });
+  if (lines.length === 0) return ['N/A'];
+  return lines.map((l) =>
+    l.replace(/^(?:&«|[\u26AB\u2022\u25AA\u25BA\u25B6\u2043\u25CF\u25C6]|-|\*|\d+\.\s*)\s*/, '').trim()
+  );
+}
+
+function createBulletParagraphs(content: string, fontSize = 18): Paragraph[] {
+  const cleanItems = cleanBulletLines(content);
+  return cleanItems.map(
+    (text) =>
+      new Paragraph({
+        indent: { left: 320, hanging: 240 },
+        spacing: { after: 60 },
+        children: [
+          new TextRun({
+            text: '•\t',
+            bold: true,
+            size: fontSize,
+            color: '1E293B',
+            font: 'Century Gothic',
+          }),
+          new TextRun({
+            text: text,
+            size: fontSize,
+            color: '1E293B',
+            font: 'Century Gothic',
+          }),
+        ],
+      })
+  );
 }
 
 function createBoxSection(title: string, content: string): Table {
-  const formattedLines = formatDocxBulletLines(content);
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: cellBorder,
@@ -182,20 +206,7 @@ function createBoxSection(title: string, content: string): Table {
         children: [
           new TableCell({
             margins: { top: 120, bottom: 120, left: 150, right: 150 },
-            children: formattedLines.map(
-              (line) =>
-                new Paragraph({
-                  spacing: { after: 60 },
-                  children: [
-                    new TextRun({
-                      text: line,
-                      size: 18,
-                      color: '1E293B',
-                      font: 'Century Gothic',
-                    }),
-                  ],
-                })
-            ),
+            children: createBulletParagraphs(content, 18),
           }),
         ],
       }),
@@ -225,9 +236,6 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
   const resolvedVisualInsp = data.visualInspectionChecking || (data as any).issue || 'Pengecekan kondisi fisik dan fungsi operasional peralatan.';
   const resolvedCleaningMethod = data.cleaningPreventiveMethod || 'Pembersihan area kerja dan komponen pendukung.';
   const resolvedProblemAnalysis = data.summaryProblemAnalysis || (data as any).issue || (data as any).summary || (data as any).actionTaken || 'Analisis masalah dan perbaikan unit.';
-
-  // Clean bullet action items with •
-  const actionLines = formatDocxBulletLines(resolvedAction);
 
   // Table 1: Incident Info
   const incidentTable = new Table({
@@ -344,13 +352,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           new TableCell({
             width: { size: 50, type: WidthType.PERCENTAGE },
             margins: { top: 100, bottom: 100, left: 100, right: 100 },
-            children: actionLines.map(
-              (line: string) =>
-                new Paragraph({
-                  spacing: { after: 40 },
-                  children: [new TextRun({ text: line, size: 17, color: '1E293B', font: 'Century Gothic' })],
-                })
-            ),
+            children: createBulletParagraphs(resolvedAction, 17),
           }),
           // Repair Time
           new TableCell({
