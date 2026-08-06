@@ -17,7 +17,10 @@ import {
   Check,
   ChevronRight,
   Download,
-  FileText
+  FileText,
+  Scissors,
+  Eye,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -25,6 +28,7 @@ import { collection, addDoc, serverTimestamp, getDoc, doc, updateDoc } from 'fir
 import { useAuth } from './AuthContext';
 import { exportSLAReportToDocx } from '@/utils/docxReportExport';
 import { sendFileNotification } from '@/utils/notificationService';
+import { ImageEditor } from './ImageEditor';
 
 /** A single photo evidence item with optional description */
 interface PhotoItem {
@@ -42,6 +46,8 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [editingPhotoInfo, setEditingPhotoInfo] = useState<{ field: 'photosResponse' | 'photosOnsite' | 'photosRestore' | 'photosResolution'; index: number } | null>(null);
+  const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
 
   // Maximum photos allowed per step
   const MAX_PHOTOS_PER_STEP = 10;
@@ -747,16 +753,49 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                     {formData.photosResponse.map((item, idx) => (
                       <div key={idx} className="relative bg-slate-50 border border-slate-200 rounded-xl p-3 group">
-                        <div className="relative">
+                        <div className="relative group overflow-hidden rounded-lg">
                           <img src={item.photo} alt={`Bukti Response ${idx + 1}`} className="w-full h-36 object-contain rounded-lg border border-slate-200 bg-white" />
-                          <button
-                            type="button"
-                            onClick={() => removePhoto('photosResponse', idx)}
-                            className="absolute -top-2 -right-2 p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full transition shadow-lg opacity-0 group-hover:opacity-100"
-                            title="Hapus Foto"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
+                            <button
+                              type="button"
+                              onClick={() => setPreviewPhotoUrl(item.photo)}
+                              className="p-1.5 bg-slate-800/90 hover:bg-slate-900 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                              title="Lihat Foto Fullscreen"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingPhotoInfo({ field: 'photosResponse', index: idx })}
+                              className="p-1.5 bg-blue-600/90 hover:bg-blue-700 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                              title="Crop / Edit Foto"
+                            >
+                              <Scissors className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = item.photo;
+                                link.download = `bukti_response_${idx + 1}.png`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              className="p-1.5 bg-emerald-600/90 hover:bg-emerald-700 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                              title="Unduh Foto"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removePhoto('photosResponse', idx)}
+                              className="p-1.5 bg-red-600/90 hover:bg-red-700 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                              title="Hapus Foto"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                         <input
                           type="text"
@@ -882,16 +921,49 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                     {formData.photosOnsite.map((item, idx) => (
                       <div key={idx} className="relative bg-slate-50 border border-slate-200 rounded-xl p-3 group">
-                        <div className="relative">
+                        <div className="relative group overflow-hidden rounded-lg">
                           <img src={item.photo} alt={`Bukti Onsite ${idx + 1}`} className="w-full h-36 object-contain rounded-lg border border-slate-200 bg-white" />
-                          <button
-                            type="button"
-                            onClick={() => removePhoto('photosOnsite', idx)}
-                            className="absolute -top-2 -right-2 p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full transition shadow-lg opacity-0 group-hover:opacity-100"
-                            title="Hapus Foto"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
+                            <button
+                              type="button"
+                              onClick={() => setPreviewPhotoUrl(item.photo)}
+                              className="p-1.5 bg-slate-800/90 hover:bg-slate-900 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                              title="Lihat Foto Fullscreen"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingPhotoInfo({ field: 'photosOnsite', index: idx })}
+                              className="p-1.5 bg-blue-600/90 hover:bg-blue-700 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                              title="Crop / Edit Foto"
+                            >
+                              <Scissors className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = item.photo;
+                                link.download = `bukti_onsite_${idx + 1}.png`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              className="p-1.5 bg-emerald-600/90 hover:bg-emerald-700 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                              title="Unduh Foto"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removePhoto('photosOnsite', idx)}
+                              className="p-1.5 bg-red-600/90 hover:bg-red-700 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                              title="Hapus Foto"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                         <input
                           type="text"
@@ -1020,16 +1092,49 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                     {formData.photosRestore.map((item, idx) => (
                       <div key={idx} className="relative bg-slate-50 border border-slate-200 rounded-xl p-3 group">
-                        <div className="relative">
+                        <div className="relative group overflow-hidden rounded-lg">
                           <img src={item.photo} alt={`Bukti Restore ${idx + 1}`} className="w-full h-36 object-contain rounded-lg border border-slate-200 bg-white" />
-                          <button
-                            type="button"
-                            onClick={() => removePhoto('photosRestore', idx)}
-                            className="absolute -top-2 -right-2 p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full transition shadow-lg opacity-0 group-hover:opacity-100"
-                            title="Hapus Foto"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
+                            <button
+                              type="button"
+                              onClick={() => setPreviewPhotoUrl(item.photo)}
+                              className="p-1.5 bg-slate-800/90 hover:bg-slate-900 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                              title="Lihat Foto Fullscreen"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingPhotoInfo({ field: 'photosRestore', index: idx })}
+                              className="p-1.5 bg-blue-600/90 hover:bg-blue-700 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                              title="Crop / Edit Foto"
+                            >
+                              <Scissors className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = item.photo;
+                                link.download = `bukti_restore_${idx + 1}.png`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              className="p-1.5 bg-emerald-600/90 hover:bg-emerald-700 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                              title="Unduh Foto"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removePhoto('photosRestore', idx)}
+                              className="p-1.5 bg-red-600/90 hover:bg-red-700 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                              title="Hapus Foto"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                         <input
                           type="text"
@@ -1120,16 +1225,49 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                     {formData.photosResolution.map((item, idx) => (
                       <div key={idx} className="relative bg-slate-50 border border-slate-200 rounded-xl p-3 group">
-                        <div className="relative">
+                        <div className="relative group overflow-hidden rounded-lg">
                           <img src={item.photo} alt={`Bukti Resolusi ${idx + 1}`} className="w-full h-36 object-contain rounded-lg border border-slate-200 bg-white" />
-                          <button
-                            type="button"
-                            onClick={() => removePhoto('photosResolution', idx)}
-                            className="absolute -top-2 -right-2 p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full transition shadow-lg opacity-0 group-hover:opacity-100"
-                            title="Hapus Foto"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
+                            <button
+                              type="button"
+                              onClick={() => setPreviewPhotoUrl(item.photo)}
+                              className="p-1.5 bg-slate-800/90 hover:bg-slate-900 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                              title="Lihat Foto Fullscreen"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingPhotoInfo({ field: 'photosResolution', index: idx })}
+                              className="p-1.5 bg-blue-600/90 hover:bg-blue-700 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                              title="Crop / Edit Foto"
+                            >
+                              <Scissors className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = item.photo;
+                                link.download = `bukti_resolusi_${idx + 1}.png`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              className="p-1.5 bg-emerald-600/90 hover:bg-emerald-700 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                              title="Unduh Foto"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removePhoto('photosResolution', idx)}
+                              className="p-1.5 bg-red-600/90 hover:bg-red-700 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                              title="Hapus Foto"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                         <input
                           type="text"
@@ -1307,6 +1445,35 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
           )}
         </div>
       </form>
+
+      {editingPhotoInfo && (
+        <ImageEditor
+          image={formData[editingPhotoInfo.field][editingPhotoInfo.index].photo}
+          onSave={(editedPhoto) => {
+            const updated = [...formData[editingPhotoInfo.field]];
+            updated[editingPhotoInfo.index] = { ...updated[editingPhotoInfo.index], photo: editedPhoto };
+            setFormData({ ...formData, [editingPhotoInfo.field]: updated });
+            setEditingPhotoInfo(null);
+          }}
+          onCancel={() => setEditingPhotoInfo(null)}
+        />
+      )}
+
+      {/* Fullscreen Photo Lightbox Preview */}
+      {previewPhotoUrl && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setPreviewPhotoUrl(null)}>
+          <div className="relative max-w-5xl max-h-[90vh] bg-slate-900 rounded-2xl p-2 border border-slate-700 shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setPreviewPhotoUrl(null)}
+              className="absolute top-4 right-4 p-2 bg-black/60 hover:bg-black text-white rounded-full transition z-10 cursor-pointer"
+              title="Tutup Preview"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img src={previewPhotoUrl} alt="Preview Foto Fullscreen" className="max-w-full max-h-[82vh] object-contain rounded-xl mx-auto" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

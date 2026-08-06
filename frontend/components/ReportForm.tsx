@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, Save, ChevronLeft, ChevronRight, X, Eye, Download, Loader2, Languages } from 'lucide-react';
+import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, Save, ChevronLeft, ChevronRight, X, Eye, Download, Loader2, Languages, AlertTriangle, ChevronDown, Package, Sparkles } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { ExcelDocument } from '@/components/DocumentList';
 import { ImageEditor } from '@/components/ImageEditor';
@@ -24,7 +24,6 @@ import { compressImage, compressBase64Image } from '@/utils/imageCompression';
 import { PreviewReport } from '@/components/PreviewReport';
 import { CameraModal } from '@/components/CameraModal';
 import { PaperReportDigitizerModal } from '@/components/PaperReportDigitizerModal';
-import { Sparkles } from 'lucide-react';
 import { draftStorage } from '@/utils/draftStorage';
 import { sendFileNotification } from '@/utils/notificationService';
 
@@ -130,6 +129,53 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [translatingCardId, setTranslatingCardId] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<{ src: string; title: string } | null>(null);
+
+  // Abnormal / Temuan State
+  const [abnormalStatus, setAbnormalStatus] = useState<'none' | 'normal' | 'abnormal'>('none');
+  const [findingData, setFindingData] = useState({
+    partName: '',
+    partNumber: '',
+    brandName: '',
+    quantity: '1',
+    findingDate: new Date().toISOString().split('T')[0],
+    remark: ''
+  });
+  const [findingPhotos, setFindingPhotos] = useState<{ base64: string; description: string }[]>([]);
+  const [editingFindingPhotoIdx, setEditingFindingPhotoIdx] = useState<number | null>(null);
+  const abnormalSectionRef = useRef<HTMLDivElement>(null);
+
+  const handleAddFindingPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error('Ukuran maksimal foto 20MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          const MAX = 800;
+          let w = img.width;
+          let h = img.height;
+          if (w > h) { if (w > MAX) { h = (h * MAX) / w; w = MAX; } }
+          else { if (h > MAX) { w = (w * MAX) / h; h = MAX; } }
+          canvas.width = w;
+          canvas.height = h;
+          ctx?.drawImage(img, 0, 0, w, h);
+          const compressed = canvas.toDataURL('image/jpeg', 0.7);
+          setFindingPhotos((prev) => [...prev, { base64: compressed, description: '' }]);
+        };
+      };
+    });
+    e.target.value = '';
+  };
 
 
 
@@ -743,8 +789,17 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       userEmail: user?.email || '',
       logos: {
         left: logoLeftB64,
-        right: logoRightB64
-      }
+        right: logoRightB64,
+      },
+      abnormalFinding: abnormalStatus === 'abnormal' ? {
+        partName: findingData.partName,
+        partNumber: findingData.partNumber,
+        brandName: findingData.brandName,
+        quantity: findingData.quantity,
+        findingDate: findingData.findingDate,
+        remark: findingData.remark,
+        photos: findingPhotos
+      } : null
     });
   };
 
@@ -824,6 +879,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         updatedAt: serverTimestamp(),
         totalPhotos: cardsToSave.length,
         photosWithImage,
+        hasAbnormal: abnormalStatus === 'abnormal',
       };
 
       if (!editingData) {
@@ -954,9 +1010,51 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const targetUnit = unit || activeUnit;
     if (!targetUnit) return toast.error('Unit tidak terpilih');
 
+    // Validation for Abnormal / Temuan Selection
+    if (abnormalStatus === 'none') {
+      toast.error('Wajib memilih Status Abnormal (Pilih "Tidak Ada Abnormal" atau "Ada Abnormal") terlebih dahulu!');
+      abnormalSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    if (abnormalStatus === 'abnormal') {
+      if (!findingData.partName.trim() || !findingData.partNumber.trim()) {
+        toast.error('Nama Part dan Nomor Part Temuan Wajib Diisi!');
+        abnormalSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      if (findingPhotos.length === 0) {
+        toast.error('Minimal upload 1 foto bukti temuan!');
+        abnormalSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
+
     setIsExporting(true);
     const toastId = toast.loading(isDME ? 'Memproses export PDF...' : 'Memproses export PDF & Menyimpan data...');
     try {
+      // Save finding to Firestore collection 'findings' if abnormal
+      if (abnormalStatus === 'abnormal' && user) {
+        try {
+          await addDoc(collection(db, 'findings'), {
+            partName: findingData.partName,
+            partNumber: findingData.partNumber,
+            brandName: findingData.brandName,
+            quantity: findingData.quantity,
+            findingDate: findingData.findingDate,
+            photos: findingPhotos,
+            remark: findingData.remark,
+            maintenanceName: maintenanceName,
+            specificDetail: targetUnit.specificDetail,
+            createdBy: user.uid,
+            createdByEmail: (user.email || '').toLowerCase(),
+            createdAt: serverTimestamp(),
+          });
+        } catch (fErr) {
+          console.error('Error saving finding:', fErr);
+        }
+      }
+
       const result = await generatePDFDocument(targetUnit);
       if (result) {
         const { doc, fileName } = result;
@@ -1432,22 +1530,53 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
+                                  const photoData = card.photoBase64 || (card.photo ? URL.createObjectURL(card.photo) : '');
+                                  if (photoData) {
+                                    setPreviewImage({ src: photoData, title: card.description || `Foto ${card.id}` });
+                                  }
+                                }}
+                                className="p-1.5 sm:p-2 bg-slate-800/90 hover:bg-slate-900 text-white rounded-lg transition shadow-md cursor-pointer"
+                                title="Lihat Foto Fullscreen"
+                              >
+                                <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setEditingCardId(card.id);
                                 }}
-                                className="p-1.5 sm:p-2.5 bg-white/20 backdrop-blur-md rounded-lg hover:bg-white/30 transition shadow-xl"
-                                title="Edit/Crop"
+                                className="p-1.5 sm:p-2 bg-blue-600/90 hover:bg-blue-700 text-white rounded-lg transition shadow-md cursor-pointer"
+                                title="Crop / Edit Foto"
                               >
-                                <Scissors className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                                <Scissors className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const photoData = card.photoBase64 || (card.photo ? URL.createObjectURL(card.photo) : '');
+                                  if (photoData) {
+                                    const link = document.createElement('a');
+                                    link.href = photoData;
+                                    link.download = `foto_maintenance_${card.description || 'report'}.png`;
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                  }
+                                }}
+                                className="p-1.5 sm:p-2 bg-emerald-600/90 hover:bg-emerald-700 text-white rounded-lg transition shadow-md cursor-pointer"
+                                title="Unduh Foto"
+                              >
+                                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                               </button>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePhotoChange(card.id, null);
                                 }}
-                                className="p-1.5 sm:p-2.5 bg-red-600/20 backdrop-blur-md rounded-lg hover:bg-red-600/30 transition shadow-xl"
+                                className="p-1.5 sm:p-2 bg-red-600/90 hover:bg-red-700 text-white rounded-lg transition shadow-md cursor-pointer"
                                 title="Hapus Foto"
                               >
-                                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" />
+                                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                               </button>
                             </>
                           )}
@@ -1503,12 +1632,240 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       </button>
                     )}
                   </div>
-
                 </div>
               ))}
             </div>
 
-            <div className="grid grid-cols-2 sm:flex sm:flex-row sm:flex-wrap lg:flex-nowrap items-stretch justify-center gap-2 sm:gap-3 mt-12 bg-white/90 backdrop-blur-xl p-4 sm:p-5 rounded-[2rem] border border-sky-100/90 shadow-2xl shadow-sky-900/10 w-full">
+            {/* Status Abnormal / Temuan Section (Below Photo Cards Grid, Above Action Bar) */}
+            <div ref={abnormalSectionRef} className="bg-white/95 backdrop-blur-xl border-2 border-slate-200 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4 my-8 transition-all">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className={`w-5 h-5 sm:w-6 sm:h-6 ${abnormalStatus === 'abnormal' ? 'text-red-600 animate-bounce' : abnormalStatus === 'normal' ? 'text-emerald-600' : 'text-slate-400'}`} />
+                  <h3 className="font-extrabold text-slate-900 text-sm sm:text-base uppercase tracking-wider">
+                    Status Pemeriksaan Abnormal / Temuan Peralatan *
+                  </h3>
+                </div>
+                {abnormalStatus === 'none' && (
+                  <span className="text-[10px] sm:text-xs font-extrabold text-red-600 bg-red-50 border border-red-200 px-3 py-1 rounded-full animate-pulse self-start sm:self-auto">
+                    ⚠️ Wajib Dipilih Sebelum Export PDF
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Choice 1: Checkbox Box "Tidak Ada Abnormal" */}
+                <div
+                  onClick={() => {
+                    setAbnormalStatus(abnormalStatus === 'normal' ? 'none' : 'normal');
+                  }}
+                  className={`p-4 rounded-2xl border-2 transition cursor-pointer flex items-center gap-3 ${
+                    abnormalStatus === 'normal'
+                      ? 'bg-emerald-50 border-emerald-500 text-emerald-900 shadow-md ring-2 ring-emerald-400/20'
+                      : 'bg-slate-50/80 border-slate-200 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/30'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={abnormalStatus === 'normal'}
+                    onChange={() => setAbnormalStatus(abnormalStatus === 'normal' ? 'none' : 'normal')}
+                    className="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer shrink-0"
+                  />
+                  <div>
+                    <span className="font-extrabold text-xs sm:text-sm block text-emerald-950">☑ Tidak Ada Abnormal</span>
+                    <span className="text-[11px] text-slate-500 font-medium block">Kondisi unit normal, aman & operasional (Tanpa Temuan)</span>
+                  </div>
+                </div>
+
+                {/* Choice 2: Button "Ada Abnormal / Input Temuan" */}
+                <div
+                  onClick={() => {
+                    setAbnormalStatus(abnormalStatus === 'abnormal' ? 'none' : 'abnormal');
+                  }}
+                  className={`p-4 rounded-2xl border-2 transition cursor-pointer flex items-center justify-between ${
+                    abnormalStatus === 'abnormal'
+                      ? 'bg-red-50 border-red-600 text-red-900 shadow-md ring-2 ring-red-400/20'
+                      : 'bg-slate-50/80 border-slate-200 text-slate-700 hover:border-red-300 hover:bg-red-50/30'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
+                    <div>
+                      <span className="font-extrabold text-xs sm:text-sm block text-red-600">⚠️ Ada Abnormal / Input Temuan</span>
+                      <span className="text-[11px] text-slate-500 font-medium block">Ditemukan kerusakan/kelainan pada part atau sistem</span>
+                    </div>
+                  </div>
+                  <ChevronDown className={`w-5 h-5 text-red-600 transition-transform ${abnormalStatus === 'abnormal' ? 'rotate-180' : ''}`} />
+                </div>
+              </div>
+
+              {/* Dropdown Form Input Temuan (Expanded when abnormalStatus === 'abnormal') */}
+              <AnimatePresence>
+                {abnormalStatus === 'abnormal' && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="bg-red-50/60 border border-red-200 rounded-2xl p-4 sm:p-5 space-y-4 pt-4 mt-2 overflow-hidden shadow-inner"
+                  >
+                    <div className="border-b border-red-200 pb-2 flex items-center justify-between flex-wrap gap-2">
+                      <h4 className="font-extrabold text-xs sm:text-sm text-red-700 flex items-center gap-2">
+                        <Package className="w-4 h-4 text-red-600" /> Detail Inputan Temuan Abnormal
+                      </h4>
+                      <span className="text-[10px] font-bold text-red-600 bg-red-100 border border-red-200 px-2.5 py-0.5 rounded-full">
+                        📄 Otomatis Digabung ke PDF (Lembar Berbeda)
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Nama Part / Peralatan Temuan *</label>
+                        <input
+                          type="text"
+                          value={findingData.partName}
+                          onChange={e => setFindingData({ ...findingData, partName: e.target.value })}
+                          placeholder="Contoh: Modul Inverter UPS / Bearing AHU"
+                          className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-red-500 outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Nomor Part / Serial Number *</label>
+                        <input
+                          type="text"
+                          value={findingData.partNumber}
+                          onChange={e => setFindingData({ ...findingData, partNumber: e.target.value })}
+                          placeholder="Contoh: PN-8823-X1 / SN: 2026-99"
+                          className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-red-500 outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Merk / Brand</label>
+                        <input
+                          type="text"
+                          value={findingData.brandName}
+                          onChange={e => setFindingData({ ...findingData, brandName: e.target.value })}
+                          placeholder="Contoh: Schneider / Liebert / Daikin"
+                          className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-red-500 outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">Jumlah (Qty)</label>
+                        <input
+                          type="text"
+                          value={findingData.quantity}
+                          onChange={e => setFindingData({ ...findingData, quantity: e.target.value })}
+                          placeholder="1 Unit / 2 Pcs"
+                          className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-red-500 outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Catatan / Deskripsi Detail Temuan Abnormal *</label>
+                      <textarea
+                        rows={3}
+                        value={findingData.remark}
+                        onChange={e => setFindingData({ ...findingData, remark: e.target.value })}
+                        placeholder="Jelaskan kondisi kelainan/kerusakan yang ditemukan dan tindakan rekomendasi perbaikan..."
+                        className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-red-500 outline-none resize-none font-medium"
+                      />
+                    </div>
+
+                    {/* Upload Foto Temuan */}
+                    <div>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                        <label className="text-xs font-bold text-slate-700">Foto Bukti Temuan (Minimal 1 Foto) *</label>
+                        <label className="px-3.5 py-2 sm:py-1.5 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 cursor-pointer flex items-center justify-center gap-1.5 shadow-sm transition active:scale-95 shrink-0 self-start sm:self-auto">
+                          <Camera className="w-4 h-4 sm:w-3.5 sm:h-3.5" /> Upload Foto Temuan
+                          <input type="file" accept="image/*" multiple onChange={handleAddFindingPhoto} className="hidden" />
+                        </label>
+                      </div>
+
+                      {findingPhotos.length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-3">
+                          {findingPhotos.map((p, idx) => (
+                            <div key={idx} className="bg-white p-2.5 rounded-2xl border border-red-200 shadow-xs flex flex-col gap-2 relative group">
+                              <div className="relative aspect-video rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
+                                <img src={p.base64} alt={`Foto Temuan ${idx + 1}`} className="w-full h-full object-cover" />
+                                
+                                {/* Action buttons overlay (View, Crop, Download, Delete) */}
+                                <div className="absolute inset-0 bg-black/30 flex items-center justify-center gap-1.5 sm:gap-2.5 opacity-100 transition-opacity">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPreviewImage({ src: p.base64, title: p.description || `Foto Bukti Temuan #${idx + 1}` });
+                                    }}
+                                    className="p-1.5 sm:p-2 bg-slate-800/90 hover:bg-slate-900 text-white rounded-lg transition shadow-md cursor-pointer"
+                                    title="Lihat Fullscreen"
+                                  >
+                                    <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingFindingPhotoIdx(idx);
+                                    }}
+                                    className="p-1.5 sm:p-2 bg-blue-600/90 hover:bg-blue-700 text-white rounded-lg transition shadow-md cursor-pointer"
+                                    title="Crop / Edit Foto"
+                                  >
+                                    <Scissors className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDownloadPhoto(p.base64, p.description || `temuan_${idx + 1}`, idx);
+                                    }}
+                                    className="p-1.5 sm:p-2 bg-emerald-600/90 hover:bg-emerald-700 text-white rounded-lg transition shadow-md cursor-pointer"
+                                    title="Unduh Foto"
+                                  >
+                                    <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setFindingPhotos(prev => prev.filter((_, i) => i !== idx));
+                                    }}
+                                    className="p-1.5 sm:p-2 bg-red-600/90 hover:bg-red-700 text-white rounded-lg transition shadow-md cursor-pointer"
+                                    title="Hapus Foto"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  </button>
+                                </div>
+
+                                <span className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-xs text-white text-[10px] font-bold rounded-md z-10 pointer-events-none">
+                                  Bukti #{idx + 1}
+                                </span>
+                              </div>
+
+                              <div>
+                                <input
+                                  type="text"
+                                  value={p.description || ''}
+                                  onChange={(e) => {
+                                    const newDesc = e.target.value;
+                                    setFindingPhotos(prev => prev.map((item, i) => i === idx ? { ...item, description: newDesc } : item));
+                                  }}
+                                  placeholder={`Masukkan deskripsi foto temuan #${idx + 1}...`}
+                                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:bg-white focus:ring-2 focus:ring-red-500 outline-none transition placeholder:text-slate-400"
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <div className="grid grid-cols-2 sm:flex sm:flex-row sm:flex-wrap lg:flex-nowrap items-stretch justify-center gap-2 sm:gap-3 mt-4 bg-white/90 backdrop-blur-xl p-4 sm:p-5 rounded-[2rem] border border-sky-100/90 shadow-2xl shadow-sky-900/10 w-full">
               {!isDME && (
                 <button
                   onClick={handleManualSave}
@@ -1601,6 +1958,23 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             onSave={base64 => handleApplyEdit(editingCardId, base64)}
             onCancel={() => setEditingCardId(null)}
             description={cards.find(c => c.id === editingCardId)?.description}
+            maintenanceName={maintenanceName}
+            specificDetail={specificDetail}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingFindingPhotoIdx !== null && (
+          <ImageEditor
+            image={findingPhotos[editingFindingPhotoIdx]?.base64 || ''}
+            onSave={(editedBase64) => {
+              setFindingPhotos(prev => prev.map((p, i) => i === editingFindingPhotoIdx ? { ...p, base64: editedBase64 } : p));
+              setEditingFindingPhotoIdx(null);
+              toast.success('Foto temuan berhasil di-crop!');
+            }}
+            onCancel={() => setEditingFindingPhotoIdx(null)}
+            description={findingPhotos[editingFindingPhotoIdx]?.description}
             maintenanceName={maintenanceName}
             specificDetail={specificDetail}
           />

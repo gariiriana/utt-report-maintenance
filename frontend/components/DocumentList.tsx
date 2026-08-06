@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle } from 'lucide-react';
 import { collection, query, getDocs, deleteDoc, doc, where, updateDoc, deleteField } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
@@ -37,6 +37,7 @@ export interface ExcelDocument {
   photosWithImage: number;
   photosData: PhotoData[];
   documentType: 'excel' | 'pdf' | 'hse';
+  hasAbnormal?: boolean;
   hseType?: 'inspection' | 'sio' | 'silo';
   maintenanceType?: string;
   atsCustomerInfo?: any;
@@ -143,20 +144,21 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
       const fetchAll = async () => {
         const fetchPromises: Promise<any>[] = [];
+        const userEmailClean = (user?.email || '').toLowerCase().trim();
 
         if (filterOverride !== 'hse_utt') {
           if (userRole !== 'DME') {
-            const excelQuery = isPrivileged
+            const excelQuery = (isPrivileged || isEngineer)
               ? query(collection(db, 'excel_documents'))
-              : query(collection(db, 'excel_documents'), where('createdBy', '==', (user.email || '').toLowerCase()));
+              : query(collection(db, 'excel_documents'), where('createdBy', '==', userEmailClean));
             fetchPromises.push(getDocs(excelQuery));
           } else {
             fetchPromises.push(Promise.resolve(null));
           }
 
-          const pdfQuery = (isPrivileged || userRole === 'DME')
+          const pdfQuery = (isPrivileged || isEngineer || userRole === 'DME')
             ? query(collection(db, 'pdf_documents'))
-            : query(collection(db, 'pdf_documents'), where('createdBy', '==', (user.email || '').toLowerCase()));
+            : query(collection(db, 'pdf_documents'), where('createdBy', '==', userEmailClean));
           fetchPromises.push(getDocs(pdfQuery));
         } else {
           fetchPromises.push(Promise.resolve(null));
@@ -229,6 +231,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               photosWithImage: data.photosWithImage || 0,
               photosData: [], // Optimized: photosData is lazily loaded on edit
               documentType: 'pdf',
+              hasAbnormal: data.hasAbnormal || false,
               atsCustomerInfo: data.atsCustomerInfo,
               atsReportData: data.atsReportData,
               atsTimeSpent: data.atsTimeSpent,
@@ -1463,6 +1466,11 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               }`}>
               {document.documentType.toUpperCase()}
             </span>
+            {document.hasAbnormal && (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-600 text-white border border-red-700 shadow-xs flex items-center gap-1 animate-pulse">
+                <AlertTriangle className="w-3 h-3" /> Abnormal (Ditemukan Temuan)
+              </span>
+            )}
             {(document.createdBy === 'ats@gmail.com' || document.createdBy === 'fcu@gmail.com' || document.atsCustomerInfo || document.fcuCustomerInfo) && (
               <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${(document.atsCustomerInfo || document.fcuCustomerInfo)
                   ? 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30'

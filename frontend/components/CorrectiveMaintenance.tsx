@@ -413,7 +413,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             </div>
 
             {/* Folder Switcher Tabs in Arsip Standby */}
-            <div className="flex items-center gap-3 mb-6 border-b border-slate-200 pb-4 overflow-x-auto">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-3 mb-6 border-b border-slate-200 pb-4 w-full">
                 <button
                     type="button"
                     onClick={() => {
@@ -422,13 +422,14 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         setEditingReportId(null);
                         setReportFormType(null);
                     }}
-                    className={`px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 transition cursor-pointer border ${archiveFolder === 'cm_pdf'
+                    className={`px-1.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'cm_pdf'
                             ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
                             : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
                         }`}
                 >
-                    <FileText className="w-4 h-4" />
-                    Folder Report CM ({reports.filter(r => r.reportType !== 'SLA' && r.reportType !== 'PIR').length})
+                    <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                    <span className="sm:hidden">CM ({reports.filter(r => r.reportType !== 'SLA' && r.reportType !== 'PIR').length})</span>
+                    <span className="hidden sm:inline">Report CM ({reports.filter(r => r.reportType !== 'SLA' && r.reportType !== 'PIR').length})</span>
                 </button>
                 <button
                     type="button"
@@ -438,13 +439,14 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         setEditingReportId(null);
                         setReportFormType(null);
                     }}
-                    className={`px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 transition cursor-pointer border ${archiveFolder === 'sla'
+                    className={`px-1.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'sla'
                             ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
                             : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
                         }`}
                 >
-                    <Clock className="w-4 h-4" />
-                    Folder Form SLA / SLG ({reports.filter(r => r.reportType === 'SLA').length})
+                    <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                    <span className="sm:hidden">SLA ({reports.filter(r => r.reportType === 'SLA').length})</span>
+                    <span className="hidden sm:inline">Form SLA / SLG ({reports.filter(r => r.reportType === 'SLA').length})</span>
                 </button>
                 <button
                     type="button"
@@ -454,13 +456,14 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         setEditingReportId(null);
                         setReportFormType(null);
                     }}
-                    className={`px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 transition cursor-pointer border ${archiveFolder === 'pir'
+                    className={`px-1.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'pir'
                             ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
                             : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
                         }`}
                 >
-                    <AlertTriangle className="w-4 h-4" />
-                    Folder Report PIR ({reports.filter(r => r.reportType === 'PIR').length})
+                    <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                    <span className="sm:hidden">PIR ({reports.filter(r => r.reportType === 'PIR').length})</span>
+                    <span className="hidden sm:inline">Report PIR ({reports.filter(r => r.reportType === 'PIR').length})</span>
                 </button>
             </div>
 

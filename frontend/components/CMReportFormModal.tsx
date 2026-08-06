@@ -12,6 +12,7 @@ import {
   ArrowLeft,
   Scissors,
   Download,
+  Eye,
   X
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -35,6 +36,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [editingPhotoIndex, setEditingPhotoIndex] = useState<number | null>(null);
+  const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
 
   // Form State initialized with empty guide fields
   const [formData, setFormData] = useState<CMReportData>({
@@ -725,22 +727,45 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                     <div key={idx} className="bg-white border border-slate-300 rounded-xl p-2.5 shadow-xs space-y-2">
                       <div className="relative group border border-slate-200 rounded-lg overflow-hidden bg-slate-100 aspect-4/3">
                         <img src={photo.photoBase64} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition">
+                        <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewPhotoUrl(photo.photoBase64)}
+                            className="p-1.5 bg-slate-800/90 hover:bg-slate-900 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                            title="Lihat Foto Fullscreen"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
                           <button
                             type="button"
                             onClick={() => setEditingPhotoIndex(idx)}
-                            className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                            title="Crop/Edit Foto"
+                            className="p-1.5 bg-blue-600/90 hover:bg-blue-700 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                            title="Crop / Edit Foto"
                           >
-                            <Scissors className="w-4 h-4" />
+                            <Scissors className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const link = document.createElement('a');
+                              link.href = photo.photoBase64;
+                              link.download = `foto_dokumentasi_${idx + 1}.png`;
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            }}
+                            className="p-1.5 bg-emerald-600/90 hover:bg-emerald-700 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
+                            title="Unduh Foto"
+                          >
+                            <Download className="w-3.5 h-3.5" />
                           </button>
                           <button
                             type="button"
                             onClick={() => removePhoto(idx)}
-                            className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+                            className="p-1.5 bg-red-600/90 hover:bg-red-700 text-white rounded-lg transition shadow-md cursor-pointer backdrop-blur-xs"
                             title="Hapus Foto"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                         <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold rounded-md">
@@ -980,6 +1005,22 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
           onSave={handleApplyEditPhoto}
           onCancel={() => setEditingPhotoIndex(null)}
         />
+      )}
+
+      {/* Fullscreen Photo Lightbox Preview */}
+      {previewPhotoUrl && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setPreviewPhotoUrl(null)}>
+          <div className="relative max-w-5xl max-h-[90vh] bg-slate-900 rounded-2xl p-2 border border-slate-700 shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setPreviewPhotoUrl(null)}
+              className="absolute top-4 right-4 p-2 bg-black/60 hover:bg-black text-white rounded-full transition z-10 cursor-pointer"
+              title="Tutup Preview"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img src={previewPhotoUrl} alt="Preview Foto Fullscreen" className="max-w-full max-h-[82vh] object-contain rounded-xl mx-auto" />
+          </div>
+        </div>
       )}
     </div>
   );

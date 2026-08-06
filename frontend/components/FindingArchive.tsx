@@ -62,7 +62,7 @@ export function FindingArchive() {
     if (!user) return;
 
     const privilegedRoles = ['admin', 'manager', 'site_manager', 'hse', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
-    const isPrivileged = userRole && privilegedRoles.includes(userRole);
+    const isPrivileged = (userRole && privilegedRoles.includes(userRole)) || (user?.email && user.email.toLowerCase().includes('dwimitra'));
 
     let q;
     if (isPrivileged) {

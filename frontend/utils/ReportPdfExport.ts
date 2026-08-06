@@ -10,6 +10,16 @@ export interface PDFExportResult {
   filled: PhotoCard[];
 }
 
+export interface FindingDataExport {
+  partName: string;
+  partNumber: string;
+  brandName: string;
+  quantity: string;
+  findingDate: string;
+  remark: string;
+  photos: { base64: string; description?: string }[];
+}
+
 interface ExportOptions {
   maintenanceName: string;
   maintenanceTime: string;
@@ -22,6 +32,7 @@ interface ExportOptions {
     left: string;
     right: string;
   };
+  abnormalFinding?: FindingDataExport | null;
 }
 
 export const loadLogoBase64 = (pathOrObj: string | { src: string } | null | undefined): Promise<string> => {
@@ -110,7 +121,8 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
     cards,
     companyType,
     userEmail,
-    logos
+    logos,
+    abnormalFinding
   } = options;
 
   if (!maintenanceName || !maintenanceTime) {
@@ -324,6 +336,109 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
       curY += photoH + capH + rowGap;
     }
   }
+
+  if (abnormalFinding) {
+    doc.addPage();
+    let findY = drawHeader(doc);
+
+    // Title banner
+    doc.setFillColor(220, 38, 38);
+    doc.rect(margin, findY, contentW, 8, 'F');
+    doc.setFontSize(10).setFont('helvetica', 'bold').setTextColor(255, 255, 255);
+    doc.text('LAPORAN TEMUAN PERALATAN (ABNORMAL FINDING REPORT)', margin + contentW / 2, findY + 5.5, { align: 'center' });
+
+    findY += 13;
+
+    // Table of finding details
+    const details = [
+      ['Nama Part / Peralatan', abnormalFinding.partName || '-'],
+      ['Nomor Part / Serial', abnormalFinding.partNumber || '-'],
+      ['Merk / Brand', abnormalFinding.brandName || '-'],
+      ['Jumlah (Qty)', abnormalFinding.quantity ? `${abnormalFinding.quantity}` : '-'],
+      ['Tanggal Temuan', abnormalFinding.findingDate || '-']
+    ];
+
+    const col1W = 55;
+    const col2W = contentW - col1W;
+
+    details.forEach(([lbl, val]) => {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(margin, findY, col1W, 7, 'F');
+      doc.setDrawColor(226, 232, 240);
+      doc.rect(margin, findY, col1W, 7, 'S');
+
+      doc.setFillColor(255, 255, 255);
+      doc.rect(margin + col1W, findY, col2W, 7, 'F');
+      doc.rect(margin + col1W, findY, col2W, 7, 'S');
+
+      doc.setFontSize(8.5).setFont('helvetica', 'bold').setTextColor(71, 85, 105);
+      doc.text(lbl, margin + 3, findY + 4.8);
+
+      doc.setFontSize(8.5).setFont('helvetica', 'bold').setTextColor(15, 23, 42);
+      doc.text(val, margin + col1W + 3, findY + 4.8);
+
+      findY += 7;
+    });
+
+    findY += 4;
+
+    // Remark section
+    doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor(220, 38, 38);
+    doc.text('CATATAN DETAIL KELAINAN / TEMUAN ABNORMAL:', margin, findY);
+    findY += 4;
+
+    doc.setFontSize(8.5).setFont('helvetica', 'normal').setTextColor(51, 65, 85);
+    const splitRemark = doc.splitTextToSize(abnormalFinding.remark || 'Ditemukan kelainan/kerusakan pada unit.', contentW - 6);
+    const remarkBoxH = Math.max(16, splitRemark.length * 4.5 + 4);
+
+    doc.setFillColor(254, 242, 242);
+    doc.rect(margin, findY, contentW, remarkBoxH, 'F');
+    doc.setDrawColor(254, 202, 202);
+    doc.rect(margin, findY, contentW, remarkBoxH, 'S');
+
+    doc.text(splitRemark, margin + 3, findY + 5);
+    findY += remarkBoxH + 6;
+
+    // Photos Section
+    if (abnormalFinding.photos && abnormalFinding.photos.length > 0) {
+      doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor(30, 41, 59);
+      doc.text('FOTO BUKTI TEMUAN ABNORMAL:', margin, findY);
+      findY += 4;
+
+      const fPhotos = abnormalFinding.photos;
+      const fCols = Math.min(fPhotos.length, 2);
+      const fPhotoW = (contentW - (fCols - 1) * 5) / fCols;
+      const fPhotoH = 55;
+
+      fPhotos.slice(0, 4).forEach((p, pIdx) => {
+        const row = Math.floor(pIdx / 2);
+        const col = pIdx % 2;
+        const extraH = p.description ? 8 : 0;
+        const x = margin + col * (fPhotoW + 5);
+        const y = findY + row * (fPhotoH + extraH + 5);
+
+        if (p.base64) {
+          try {
+            doc.addImage(p.base64, 'JPEG', x, y, fPhotoW, fPhotoH);
+            doc.setDrawColor(226, 232, 240);
+            doc.rect(x, y, fPhotoW, fPhotoH, 'S');
+
+            if (p.description) {
+              doc.setFillColor(248, 250, 252);
+              doc.rect(x, y + fPhotoH, fPhotoW, 7, 'F');
+              doc.setDrawColor(226, 232, 240);
+              doc.rect(x, y + fPhotoH, fPhotoW, 7, 'S');
+              doc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(51, 65, 85);
+              doc.text(doc.splitTextToSize(p.description, fPhotoW - 4), x + 2, y + fPhotoH + 4.8);
+            }
+          } catch (e) {
+            console.error('Error adding finding photo to PDF', e);
+          }
+        }
+      });
+    }
+  }
+
   const totalPages = (doc.internal as any).getNumberOfPages();
   for (let pg = 1; pg <= totalPages; pg++) {
     doc.setPage(pg);
