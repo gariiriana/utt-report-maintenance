@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { CMReportData } from '@/types/correctiveReportTypes';
+import { PREPARED_BY_SIGNATURES } from '@/utils/engineerSignatures';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import { compressBase64Image } from '@/utils/imageCompression';
@@ -553,9 +554,10 @@ export async function generateCMReportPDF(data: CMReportData) {
     doc.text('PREPARED BY,', margin + sigCellW / 2, y + 4.5, { align: 'center' });
 
     // Draw Prepared Signature if available
-    if ((data as any).preparedBySign) {
+    const prepSign = (data as any).preparedBySign || PREPARED_BY_SIGNATURES[data.preparedByName];
+    if (prepSign) {
       try {
-        doc.addImage((data as any).preparedBySign, 'PNG', margin + (sigCellW - 35) / 2, y + headerBarH + 2, 35, sigImageH - 4);
+        doc.addImage(prepSign, 'PNG', margin + (sigCellW - 35) / 2, y + headerBarH + 2, 35, sigImageH - 4);
       } catch { /* ignore */ }
     }
 

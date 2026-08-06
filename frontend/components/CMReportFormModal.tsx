@@ -25,11 +25,7 @@ import { generateCMReportPDF } from '@/utils/CMReportPdfExport';
 import { sendFileNotification } from '@/utils/notificationService';
 import { ImageEditor } from './ImageEditor';
 
-export const PREPARED_BY_SIGNATURES: Record<string, string> = {
-  Salman: '',
-  Agil: '',
-  Asep: '',
-};
+import { PREPARED_BY_SIGNATURES } from '@/utils/engineerSignatures';
 
 interface CMReportFormModalProps {
   onSuccess: () => void;
@@ -76,6 +72,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     authorName: 'Rizki Novri Yanda – Data Center Operation',
     preparedByName: 'Salman',
     preparedByTitle: '(Electrical Engineer)',
+    preparedBySign: PREPARED_BY_SIGNATURES['Salman'],
     reviewedByName: 'Arif Budiman',
     reviewedByTitle: '(Technical Manager)',
     acknowledgedBy1Name: 'Andrean Bima Pratama',

@@ -17,6 +17,7 @@ import {
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { CMReportData } from '@/types/correctiveReportTypes';
+import { PREPARED_BY_SIGNATURES } from '@/utils/engineerSignatures';
 import { PIRReportData } from '@/types/pirReportTypes';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
@@ -209,7 +210,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
   const [logoLeftBytes, logoRightBytes, prepSignBytes, revSignBytes, ack1SignBytes, ack2SignBytes, appSignBytes] = await Promise.all([
     loadImageAsUint8Array(logoDwimitra),
     loadImageAsUint8Array(logoNeutraDC),
-    loadImageAsUint8Array((data as any).preparedBySign || ''),
+    loadImageAsUint8Array((data as any).preparedBySign || PREPARED_BY_SIGNATURES[data.preparedByName] || ''),
     loadImageAsUint8Array((data as any).reviewedBySign || ''),
     loadImageAsUint8Array((data as any).acknowledgedBy1Sign || ''),
     loadImageAsUint8Array((data as any).acknowledgedBy2Sign || ''),
