@@ -768,7 +768,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               new TextRun({
                 text: 'REPORT CORRECTIVE MAINTENANCE',
                 bold: true,
-                size: 28,
+                size: 36, // 18pt in Word
                 color: '475569',
                 font: 'Century Gothic',
               }),
