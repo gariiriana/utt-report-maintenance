@@ -498,63 +498,137 @@ export async function generateCMReportPDF(data: CMReportData) {
     doc.setTextColor(0, 0, 0);
     doc.text(`AUTHOR BY, ${sanitizePdfText(data.authorName) || 'Rizki Novri Yanda - Data Center Operation'}`, margin, y);
 
-    y += 8;
+    y += 7;
 
-    // Signature Table Grid (Matching Screenshot)
     const sigCellW = contentW / 2;
-    const sigBoxH = 42;
+    const headerBarH = 6.5;
+    const sigImageH = 28;
+    const nameBoxH = 11;
+    const totalBoxH = headerBarH + sigImageH + nameBoxH; // 45.5mm total box height
 
-    // Row 1: PREPARED BY & REVIEWED BY
     doc.setDrawColor(...BORDER_COLOR);
     doc.setLineWidth(0.2);
 
-    // Box PREPARED BY
-    doc.rect(margin, y, sigCellW, sigBoxH);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.text('PREPARED BY,', margin + sigCellW / 2, y + 5, { align: 'center' });
-    doc.text(sanitizePdfText(data.preparedByName) || 'Salman', margin + sigCellW / 2, y + sigBoxH - 7, { align: 'center' });
-    doc.setFont('helvetica', 'normal');
-    doc.text(sanitizePdfText(data.preparedByTitle) || '(Electrical Engineer)', margin + sigCellW / 2, y + sigBoxH - 2.5, { align: 'center' });
+    // ------------------------------------------
+    // ROW 1: PREPARED BY & REVIEWED BY
+    // ------------------------------------------
+    // PREPARED BY Box
+    doc.rect(margin, y, sigCellW, totalBoxH, 'D');
+    doc.setFillColor(...HEADER_FILL);
+    doc.rect(margin, y, sigCellW, headerBarH, 'FD');
+    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
+    doc.text('PREPARED BY,', margin + sigCellW / 2, y + 4.5, { align: 'center' });
 
-    // Box REVIEWED BY
-    doc.rect(margin + sigCellW, y, sigCellW, sigBoxH);
-    doc.setFont('helvetica', 'bold');
-    doc.text('REVIEWED BY,', margin + sigCellW + sigCellW / 2, y + 5, { align: 'center' });
-    doc.text(sanitizePdfText(data.reviewedByName) || 'Arif Budiman', margin + sigCellW + sigCellW / 2, y + sigBoxH - 7, { align: 'center' });
-    doc.setFont('helvetica', 'normal');
-    doc.text(sanitizePdfText(data.reviewedByTitle) || '(Technical Manager)', margin + sigCellW + sigCellW / 2, y + sigBoxH - 2.5, { align: 'center' });
+    // Draw Prepared Signature if available
+    if ((data as any).preparedBySign) {
+      try {
+        doc.addImage((data as any).preparedBySign, 'PNG', margin + (sigCellW - 35) / 2, y + headerBarH + 2, 35, sigImageH - 4);
+      } catch { /* ignore */ }
+    }
 
-    y += sigBoxH;
+    // Prepared Name & Title Divider Line
+    const row1NameY = y + headerBarH + sigImageH;
+    doc.line(margin, row1NameY, margin + sigCellW, row1NameY);
+    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
+    doc.text(sanitizePdfText(data.preparedByName) || 'Salman', margin + sigCellW / 2, row1NameY + 4.2, { align: 'center' });
+    doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(50, 50, 50);
+    doc.text(sanitizePdfText(data.preparedByTitle) || '(Electrical Engineer)', margin + sigCellW / 2, row1NameY + 8.5, { align: 'center' });
 
-    // Row 2: ACKNOWLEDGED BY (Header bar + 2 split cells)
-    doc.rect(margin, y, contentW, sigBoxH);
-    doc.setFont('helvetica', 'bold');
-    doc.text('ACKNOWLEDGED BY,', pageW / 2, y + 5, { align: 'center' });
+    // REVIEWED BY Box
+    const revX = margin + sigCellW;
+    doc.rect(revX, y, sigCellW, totalBoxH, 'D');
+    doc.setFillColor(...HEADER_FILL);
+    doc.rect(revX, y, sigCellW, headerBarH, 'FD');
+    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
+    doc.text('REVIEWED BY,', revX + sigCellW / 2, y + 4.5, { align: 'center' });
 
-    // Acknowledged 1 (Left)
-    doc.text(sanitizePdfText(data.acknowledgedBy1Name) || 'Andrean Bima Pratama', margin + sigCellW / 2, y + sigBoxH - 7, { align: 'center' });
-    doc.setFont('helvetica', 'normal');
-    doc.text(sanitizePdfText(data.acknowledgedBy1Title) || '(Chief Engineer)', margin + sigCellW / 2, y + sigBoxH - 2.5, { align: 'center' });
+    // Draw Reviewed Signature if available
+    if ((data as any).reviewedBySign) {
+      try {
+        doc.addImage((data as any).reviewedBySign, 'PNG', revX + (sigCellW - 35) / 2, y + headerBarH + 2, 35, sigImageH - 4);
+      } catch { /* ignore */ }
+    }
 
-    // Acknowledged 2 (Right)
-    doc.setFont('helvetica', 'bold');
-    doc.text(sanitizePdfText(data.acknowledgedBy2Name) || 'Supriyatno', margin + sigCellW + sigCellW / 2, y + sigBoxH - 7, { align: 'center' });
-    doc.setFont('helvetica', 'normal');
-    doc.text(sanitizePdfText(data.acknowledgedBy2Title) || '(Facility manager)', margin + sigCellW + sigCellW / 2, y + sigBoxH - 2.5, { align: 'center' });
+    // Reviewed Name & Title Divider Line
+    doc.line(revX, row1NameY, revX + sigCellW, row1NameY);
+    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
+    doc.text(sanitizePdfText(data.reviewedByName) || 'Arif Budiman', revX + sigCellW / 2, row1NameY + 4.2, { align: 'center' });
+    doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(50, 50, 50);
+    doc.text(sanitizePdfText(data.reviewedByTitle) || '(Technical Manager)', revX + sigCellW / 2, row1NameY + 8.5, { align: 'center' });
 
-    y += sigBoxH;
+    y += totalBoxH + 4;
 
-    // Row 3: APPROVED BY (Center box matching screenshot)
-    const appW = contentW * 0.6;
+    // ------------------------------------------
+    // ROW 2: ACKNOWLEDGED BY (Full Header + 2 Columns)
+    // ------------------------------------------
+    doc.rect(margin, y, contentW, totalBoxH, 'D');
+    // Header bar spanning full content width
+    doc.setFillColor(...HEADER_FILL);
+    doc.rect(margin, y, contentW, headerBarH, 'FD');
+    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
+    doc.text('ACKNOWLEDGED BY,', pageW / 2, y + 4.5, { align: 'center' });
+
+    // Vertical middle divider line between Acknowledged 1 and Acknowledged 2
+    doc.line(margin + sigCellW, y + headerBarH, margin + sigCellW, y + totalBoxH);
+
+    // Acknowledged 1 (Left) Signature
+    if ((data as any).acknowledgedBy1Sign) {
+      try {
+        doc.addImage((data as any).acknowledgedBy1Sign, 'PNG', margin + (sigCellW - 35) / 2, y + headerBarH + 2, 35, sigImageH - 4);
+      } catch { /* ignore */ }
+    }
+
+    // Acknowledged 2 (Right) Signature
+    if ((data as any).acknowledgedBy2Sign) {
+      try {
+        doc.addImage((data as any).acknowledgedBy2Sign, 'PNG', revX + (sigCellW - 35) / 2, y + headerBarH + 2, 35, sigImageH - 4);
+      } catch { /* ignore */ }
+    }
+
+    // Name & Title Divider Line
+    const row2NameY = y + headerBarH + sigImageH;
+    doc.line(margin, row2NameY, margin + contentW, row2NameY);
+
+    // Acknowledged 1 Text
+    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
+    doc.text(sanitizePdfText(data.acknowledgedBy1Name) || 'Andrean Bima Pratama', margin + sigCellW / 2, row2NameY + 4.2, { align: 'center' });
+    doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(50, 50, 50);
+    doc.text(sanitizePdfText(data.acknowledgedBy1Title) || '(Chief Engineer)', margin + sigCellW / 2, row2NameY + 8.5, { align: 'center' });
+
+    // Acknowledged 2 Text
+    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
+    doc.text(sanitizePdfText(data.acknowledgedBy2Name) || 'Supriyatno', revX + sigCellW / 2, row2NameY + 4.2, { align: 'center' });
+    doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(50, 50, 50);
+    doc.text(sanitizePdfText(data.acknowledgedBy2Title) || '(Facility manager)', revX + sigCellW / 2, row2NameY + 8.5, { align: 'center' });
+
+    y += totalBoxH + 4;
+
+    // ------------------------------------------
+    // ROW 3: APPROVED BY (Centered Box)
+    // ------------------------------------------
+    const appW = contentW * 0.6; // 60% width centered
     const appX = margin + (contentW - appW) / 2;
 
-    doc.rect(appX, y, appW, sigBoxH);
-    doc.setFont('helvetica', 'bold');
-    doc.text('APPROVED BY,', appX + appW / 2, y + 5, { align: 'center' });
-    doc.text(sanitizePdfText(data.approvedByName) || 'Budi Susanto', appX + appW / 2, y + sigBoxH - 7, { align: 'center' });
-    doc.setFont('helvetica', 'normal');
-    doc.text(sanitizePdfText(data.approvedByTitle) || '(Assistant manager HDC Facility Management)', appX + appW / 2, y + sigBoxH - 2.5, { align: 'center' });
+    doc.rect(appX, y, appW, totalBoxH, 'D');
+    doc.setFillColor(...HEADER_FILL);
+    doc.rect(appX, y, appW, headerBarH, 'FD');
+    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
+    doc.text('APPROVED BY,', appX + appW / 2, y + 4.5, { align: 'center' });
+
+    if ((data as any).approvedBySign) {
+      try {
+        doc.addImage((data as any).approvedBySign, 'PNG', appX + (appW - 35) / 2, y + headerBarH + 2, 35, sigImageH - 4);
+      } catch { /* ignore */ }
+    }
+
+    // Approved Name & Title Divider Line
+    const row3NameY = y + headerBarH + sigImageH;
+    doc.line(appX, row3NameY, appX + appW, row3NameY);
+
+    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
+    doc.text(sanitizePdfText(data.approvedByName) || 'Budi Susanto', appX + appW / 2, row3NameY + 4.2, { align: 'center' });
+    doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(50, 50, 50);
+    doc.text(sanitizePdfText(data.approvedByTitle) || '(Assistant manager HDC Facility Management)', appX + appW / 2, row3NameY + 8.5, { align: 'center' });
 
     // Page Footer
     doc.setFont('helvetica', 'normal');
