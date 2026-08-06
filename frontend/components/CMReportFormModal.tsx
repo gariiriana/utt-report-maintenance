@@ -21,7 +21,6 @@ import { collection, addDoc, serverTimestamp, getDoc, doc, updateDoc } from 'fir
 import { useAuth } from './AuthContext';
 import { CMReportData, CMSparepartItem, CMPhotoItem } from '@/types/correctiveReportTypes';
 import { exportCMReportToDocx } from '@/utils/docxReportExport';
-import { generateCMReportPDF } from '@/utils/CMReportPdfExport';
 import { sendFileNotification } from '@/utils/notificationService';
 import { ImageEditor } from './ImageEditor';
 
@@ -319,21 +318,54 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     }
   };
 
-  // Handle Export PDF
-  const handleExportPdf = async () => {
-    try {
-      await generateCMReportPDF(formData);
-      toast.success('Laporan CM PDF berhasil diekspor!');
-    } catch (err: any) {
-      console.error('Error exporting PDF:', err);
-      toast.error('Gagal mengekspor Laporan CM PDF');
-    }
-  };
-
   // Handle Export DOCX (Word)
   const handleExportDocx = async () => {
     try {
-      await exportCMReportToDocx(formData);
+      let dateFormatted = formData.incidentDate;
+      if (formData.incidentDate) {
+        const d = new Date(formData.incidentDate);
+        if (!isNaN(d.getTime())) {
+          dateFormatted = d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+        }
+      }
+      if (!dateFormatted) {
+        dateFormatted = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+      }
+
+      const prepName = formData.preparedByName || 'Salman';
+      const prepSign = formData.preparedBySign || (PREPARED_BY_SIGNATURES as Record<string, string>)[prepName] || '';
+
+      const formattedData: CMReportData = {
+        ...formData,
+        incidentName: formData.incidentName || formData.equipmentName || 'Corrective Maintenance Report',
+        equipmentName: formData.equipmentName || formData.incidentName || 'Equipment',
+        location: formData.location || 'Neutra DC Cikarang',
+        incidentDate: dateFormatted,
+        incidentId: formData.incidentId || `CM-${Math.floor(1000 + Math.random() * 9000)}`,
+        brand: formData.brand || 'Daikin',
+        serialNumber: formData.serialNumber || 'N/A',
+        installationDate: formData.installationDate || 'N/A',
+        correctiveAction: formData.correctiveAction || '-',
+        repairTimeStart: formData.repairTimeStart || '-',
+        repairTimeEnd: formData.repairTimeEnd || '-',
+        result: formData.result || 'Status perbaikan telah selesai dilaksanakan dengan baik.',
+        visualInspectionChecking: formData.visualInspectionChecking || 'Pengecekan kondisi fisik dan fungsi operasional peralatan.',
+        cleaningPreventiveMethod: formData.cleaningPreventiveMethod || 'Pembersihan area kerja dan komponen pendukung.',
+        summaryProblemAnalysis: formData.summaryProblemAnalysis || 'Analisis dan pemulihan sistem operasional peralatan.',
+        preparedByName: prepName,
+        preparedBySign: prepSign,
+        preparedByTitle: formData.preparedByTitle || '(Standby Engineer)',
+        reviewedByName: formData.reviewedByName || 'Arif Budiman',
+        reviewedByTitle: formData.reviewedByTitle || '(Technical Manager)',
+        acknowledgedBy1Name: formData.acknowledgedBy1Name || 'Andrean Bima Pratama',
+        acknowledgedBy1Title: formData.acknowledgedBy1Title || '(Chief Engineer)',
+        acknowledgedBy2Name: formData.acknowledgedBy2Name || 'Supriyatno',
+        acknowledgedBy2Title: formData.acknowledgedBy2Title || '(Facility manager)',
+        approvedByName: formData.approvedByName || 'Budi Susanto',
+        approvedByTitle: formData.approvedByTitle || '(Assistant manager HDC Facility Management)',
+      };
+
+      await exportCMReportToDocx(formattedData);
       toast.success('Laporan CM Word (DOCX) berhasil diekspor!');
     } catch (err: any) {
       console.error('Error exporting DOCX:', err);
@@ -398,7 +430,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
           </div>
           <div className="min-w-0">
             <h2 className="text-sm sm:text-xl font-bold leading-tight truncate sm:whitespace-normal">Form Laporan Corrective Maintenance (CM)</h2>
-            <p className="text-[10px] sm:text-xs text-rose-100 mt-0.5 truncate sm:whitespace-normal">Sesuai format resmi PDF 3-Halaman Standby Engineer</p>
+            <p className="text-[10px] sm:text-xs text-rose-100 mt-0.5 truncate sm:whitespace-normal">Sesuai format resmi Word (DOCX) & PDF Standby Engineer</p>
           </div>
         </div>
 
@@ -419,7 +451,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
             { step: 1, label: '1. Incident & Peralatan', shortLabel: '1. Incident' },
             { step: 2, label: '2. Perbaikan & Analisis', shortLabel: '2. Perbaikan' },
             { step: 3, label: '3. Sparepart & Foto', shortLabel: '3. Sparepart' },
-            { step: 4, label: '4. TTD & Export PDF', shortLabel: '4. Export' }
+            { step: 4, label: '4. TTD & Export DOCX', shortLabel: '4. Export' }
           ].map((item) => (
             <button
               key={item.step}
@@ -963,26 +995,15 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
 
           <div className="flex items-center gap-3">
             {currentStep === 4 && (
-              <>
-                <button
-                  key="btn-export-pdf"
-                  type="button"
-                  onClick={handleExportPdf}
-                  className="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs"
-                >
-                  <FileText className="w-4 h-4 text-red-600" />
-                  Export PDF
-                </button>
-                <button
-                  key="btn-export-docx"
-                  type="button"
-                  onClick={handleExportDocx}
-                  className="px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs"
-                >
-                  <Download className="w-4 h-4 text-blue-600" />
-                  Export DOCX
-                </button>
-              </>
+              <button
+                key="btn-export-docx"
+                type="button"
+                onClick={handleExportDocx}
+                className="px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shadow-xs"
+              >
+                <Download className="w-4 h-4 text-blue-600" />
+                Export DOCX
+              </button>
             )}
 
             {currentStep < 4 ? (
