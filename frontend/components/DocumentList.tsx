@@ -13,6 +13,7 @@ import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { FileManagement } from './FileManagement';
+import { FindingArchive } from './FindingArchive';
 import { generateHSEPdf } from '@/utils/HSEPdfExport';
 import { generateATSServiceReportPDF, generateFCUServiceReportPDF, generatePJUServiceReportPDF, generatePDUServiceReportPDF, generateCTReportPDF, generateGeneratorReportPDF, generateACSplitReportPDF, generateTrafoReportPDF, generateCapacitorbankReportPDF } from '@/service_reports';
 import { getDoc } from 'firebase/firestore';
@@ -925,6 +926,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       { name: 'Report CM', desc: 'Laporan Corrective Maintenance (CM)' },
       { name: 'Form SLA/SLG', desc: 'Form Service Level Agreement / Guarantee' },
       { name: 'Report PIR', desc: 'Post Incident Report (PIR)' },
+      { name: 'Laporan Temuan', desc: 'Data & Laporan Temuan Maintenance' },
       { name: 'SLD', desc: 'Single Line Diagram Data Center' },
       { name: 'Service Report', desc: 'Draft & Laporan Service Maintenance' },
       { name: 'Service Report Approved', desc: 'Laporan Service Maintenance (Approved)' },
@@ -999,6 +1001,24 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     }
 
     if (dmeLevel === 'management_files') {
+      if (dmeSelectedFolder === 'Laporan Temuan') {
+        return (
+          <div className="space-y-4 w-full max-w-6xl">
+            <div className="bg-white/90 backdrop-blur-xl p-4 rounded-2xl border border-slate-200 shadow-xl flex items-center justify-between">
+              <button
+                onClick={() => { setDmeSelectedFolder(null); setDmeLevel('root'); }}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-800 rounded-xl transition-all text-xs font-bold cursor-pointer border border-slate-200"
+              >
+                <ChevronLeft className="w-4 h-4" /> Kembali ke Folder Utama
+              </button>
+              <div className="text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
+                Folder: Laporan Temuan Maintenance
+              </div>
+            </div>
+            <FindingArchive />
+          </div>
+        );
+      }
       return (
         <div className="space-y-4 w-full max-w-6xl">
           <FileManagement allowUpload={false} initialFolder={dmeSelectedFolder} onBackToRoot={() => { setDmeSelectedFolder(null); setDmeLevel('root'); }} />
