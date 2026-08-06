@@ -147,7 +147,7 @@ service cloud.firestore {
     
     match /excel_documents/{docId} {
       allow create: if request.auth != null 
-                    && (request.resource.data.createdBy == getEmail() || request.resource.data.createdBy == getEmail().lowerAscii() || isEngineer() || isPrivilegedRole())
+                    && (request.resource.data.createdBy == getEmail() || isEngineer() || isPrivilegedRole())
                     && request.resource.data.keys().hasAll([
                       'fileName', 
                       'maintenanceName', 
@@ -163,12 +163,12 @@ service cloud.firestore {
                     && isValidString(request.resource.data.createdBy, 200);
       
       allow read: if request.auth != null 
-                  && (resource.data.createdBy == getEmail() || resource.data.createdBy == getEmail().lowerAscii() || isPrivilegedRole() || isEngineer() || isDME());
+                  && (resource.data.createdBy == getEmail() || isPrivilegedRole() || isEngineer() || isDME());
       
-      allow delete: if request.auth != null && (isAdminSafe() || resource.data.createdBy == getEmail() || resource.data.createdBy == getEmail().lowerAscii());
+      allow delete: if request.auth != null && (isAdminSafe() || resource.data.createdBy == getEmail());
       
       allow update: if request.auth != null 
-                    && (resource.data.createdBy == getEmail() || resource.data.createdBy == getEmail().lowerAscii() || isPrivilegedRole() || isEngineer())
+                    && (resource.data.createdBy == getEmail() || isPrivilegedRole() || isEngineer())
                     && hasAcceptableFieldCount(request.resource.data, 25);
 
       match /photos/{photoId} {
@@ -181,7 +181,7 @@ service cloud.firestore {
     
     match /pdf_documents/{docId} {
       allow create: if request.auth != null 
-                    && (request.resource.data.createdBy == getEmail() || request.resource.data.createdBy == getEmail().lowerAscii() || isEngineer() || isPrivilegedRole())
+                    && (request.resource.data.createdBy == getEmail() || isEngineer() || isPrivilegedRole())
                     && request.resource.data.keys().hasAll([
                       'fileName', 
                       'maintenanceName', 
@@ -197,12 +197,12 @@ service cloud.firestore {
                     && isValidString(request.resource.data.createdBy, 200);
       
       allow read: if request.auth != null 
-                  && (resource.data.createdBy == getEmail() || resource.data.createdBy == getEmail().lowerAscii() || isPrivilegedRole() || isEngineer() || isDME());
+                  && (resource.data.createdBy == getEmail() || isPrivilegedRole() || isEngineer() || isDME());
       
-      allow delete: if request.auth != null && (isAdminSafe() || resource.data.createdBy == getEmail() || resource.data.createdBy == getEmail().lowerAscii());
+      allow delete: if request.auth != null && (isAdminSafe() || resource.data.createdBy == getEmail());
       
       allow update: if request.auth != null 
-                    && (resource.data.createdBy == getEmail() || resource.data.createdBy == getEmail().lowerAscii() || isPrivilegedRole() || isEngineer())
+                    && (resource.data.createdBy == getEmail() || isPrivilegedRole() || isEngineer())
                     && hasAcceptableFieldCount(request.resource.data, 25);
 
       match /photos/{photoId} {
