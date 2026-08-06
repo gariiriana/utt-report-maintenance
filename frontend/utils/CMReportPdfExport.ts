@@ -32,12 +32,23 @@ async function loadImageBase64(src: string): Promise<string> {
 function sanitizePdfText(text: string | undefined | null): string {
   if (!text) return '';
   return text
-    // Replace mangled bullet combinations (&«) or non-WinAnsi unicode bullets (⚫, •, ▪, ►, etc.) with standard ASCII hyphen
-    .replace(/(?:&«|[\u26AB\u2022\u25AA\u25BA\u25B6\u2043\u25CF\u25C6])/g, '-')
+    // Replace mangled bullet combinations (&«) or unicode symbols with standard bullet •
+    .replace(/(?:&«|[\u26AB\u25AA\u25BA\u25B6\u2043\u25CF\u25C6])/g, '•')
     // Replace smart quotes and dashes with standard ASCII equivalents
     .replace(/[\u201C\u201D]/g, '"')
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/[\u2013\u2014]/g, '-');
+}
+
+/** Helper to format text lines into neat bullet point lists (using •) */
+function formatAsBulletList(text: string | null | undefined): string {
+  if (!text) return '•  -';
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) return '•  -';
+  return lines.map(line => {
+    const clean = line.replace(/^(?:[•\u2022\u26AB\u25AA\u25BA\u25B6\u2043\u25CF\u25C6]|-|\*|\d+\.\s*)\s*/, '').trim();
+    return `•  ${clean}`;
+  }).join('\n');
 }
 
 let cachedCenturyGothicFont = '';
@@ -245,17 +256,7 @@ export async function generateCMReportPDF(data: CMReportData) {
     y = (doc as any).lastAutoTable.finalY + 3;
 
     // TABLE 3: CORRECTIVE ACTION, REPAIR TIME & RESULT
-    const rawAction = sanitizePdfText(resolvedAction);
-    const formattedAction = rawAction
-      .split('\n')
-      .map(line => line.trim())
-      .filter(Boolean)
-      .map(line => {
-        const cleanLine = line.replace(/^(?:-\s*)+/, '').trim();
-        return `-  ${cleanLine}`;
-      })
-      .join('\n') || '-';
-
+    const formattedAction = formatAsBulletList(resolvedAction);
     const repairTimeStr = `Start  : ${sanitizePdfText(data.repairTimeStart) || '-'}\nEnd   : ${sanitizePdfText(data.repairTimeEnd) || '-'}`;
 
     autoTable(doc, {
@@ -332,21 +333,21 @@ export async function generateCMReportPDF(data: CMReportData) {
     // SECTION: VISUAL INSPECTION & CHECKING
     drawSectionBox(
       'VISUAL INSPECTION & CHECKING',
-      resolvedVisualInsp,
+      formatAsBulletList(resolvedVisualInsp),
       18
     );
 
     // SECTION: CLEANING & PREVENTIVE METHOD
     drawSectionBox(
       'CLEANING & PREVENTIVE METHOD',
-      resolvedCleaningMethod,
+      formatAsBulletList(resolvedCleaningMethod),
       18
     );
 
     // SECTION: SUMMARY CORRECTIVE REPORT (PROBLEM ANALYSIS)
     drawSectionBox(
       'SUMMARY CORRECTIVE REPORT (PROBLEM ANALYSIS)',
-      resolvedProblemAnalysis,
+      formatAsBulletList(resolvedProblemAnalysis),
       35
     );
 

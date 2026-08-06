@@ -138,7 +138,18 @@ function createHeaderLogosTable(logoLeftBytes: Uint8Array, logoRightBytes: Uint8
   });
 }
 
+function formatDocxBulletLines(content: string): string[] {
+  if (!content) return ['•  N/A'];
+  const lines = content.split('\n').map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return ['•  N/A'];
+  return lines.map((l) => {
+    const clean = l.replace(/^(?:&«|[\u26AB\u2022\u25AA\u25BA\u25B6\u2043\u25CF\u25C6]|-|\*|\d+\.\s*)\s*/, '').trim();
+    return `•  ${clean}`;
+  });
+}
+
 function createBoxSection(title: string, content: string): Table {
+  const formattedLines = formatDocxBulletLines(content);
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: cellBorder,
@@ -156,6 +167,7 @@ function createBoxSection(title: string, content: string): Table {
                     bold: true,
                     size: 18,
                     color: '000000',
+                    font: 'Century Gothic',
                   }),
                 ],
               }),
@@ -167,7 +179,7 @@ function createBoxSection(title: string, content: string): Table {
         children: [
           new TableCell({
             margins: { top: 120, bottom: 120, left: 150, right: 150 },
-            children: (content || 'N/A').split('\n').map(
+            children: formattedLines.map(
               (line) =>
                 new Paragraph({
                   spacing: { after: 60 },
@@ -176,6 +188,7 @@ function createBoxSection(title: string, content: string): Table {
                       text: line,
                       size: 18,
                       color: '1E293B',
+                      font: 'Century Gothic',
                     }),
                   ],
                 })
@@ -210,15 +223,8 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
   const resolvedCleaningMethod = data.cleaningPreventiveMethod || 'Pembersihan area kerja dan komponen pendukung.';
   const resolvedProblemAnalysis = data.summaryProblemAnalysis || (data as any).issue || (data as any).summary || (data as any).actionTaken || 'Analisis masalah dan perbaikan unit.';
 
-  // Clean bullet action items
-  const actionLines = (resolvedAction || '-')
-    .split('\n')
-    .map((l: string) => l.trim())
-    .filter(Boolean)
-    .map((l: string) => {
-      const clean = l.replace(/^(?:&«|[\u26AB\u2022\u25AA\u25BA\u25B6\u2043\u25CF\u25C6]|-|\*)\s*/, '');
-      return `- ${clean}`;
-    });
+  // Clean bullet action items with •
+  const actionLines = formatDocxBulletLines(resolvedAction);
 
   // Table 1: Incident Info
   const incidentTable = new Table({
