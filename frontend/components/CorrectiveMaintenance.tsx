@@ -166,11 +166,16 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
     const confirmDelete = async () => {
         if (!deleteId) return;
+        if (userRole === 'standby_engineer') {
+            toast.error('Standby Engineer tidak diizinkan menghapus laporan di Arsip Standby');
+            setDeleteId(null);
+            return;
+        }
         try {
             await deleteDoc(doc(db, 'corrective_reports', deleteId));
-            toast.success('Report deleted');
+            toast.success('Laporan berhasil dihapus');
         } catch (error) {
-            toast.error('Failed to delete report');
+            toast.error('Gagal menghapus laporan');
         } finally {
             setDeleteId(null);
         }
@@ -693,7 +698,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             <PenTool className="w-4 h-4" />
                                                         </button>
                                                     )}
-                                                    {isAuthorizedRole && (report.reportedBy === user?.uid || userRole === 'admin') && (
+                                                    {isAuthorizedRole && userRole !== 'standby_engineer' && (report.reportedBy === user?.uid || userRole === 'admin') && (
                                                         <button
                                                             onClick={() => handleDeleteClick(report.id)}
                                                             className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-200 transition cursor-pointer"
@@ -793,7 +798,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             <PenTool className="w-4 h-4" />
                                                         </button>
                                                     )}
-                                                    {isAuthorizedRole && (report.reportedBy === user?.uid || userRole === 'admin') && (
+                                                    {isAuthorizedRole && userRole !== 'standby_engineer' && (report.reportedBy === user?.uid || userRole === 'admin') && (
                                                         <button
                                                             onClick={() => handleDeleteClick(report.id)}
                                                             className="p-2 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500/20 border border-red-500/20 transition cursor-pointer"
@@ -980,7 +985,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                 <PenTool className="w-4 h-4" />
                                                             </button>
                                                         )}
-                                                        {isAuthorizedRole && (report.reportedBy === user?.uid || userRole === 'admin') && (
+                                                        {isAuthorizedRole && userRole !== 'standby_engineer' && (report.reportedBy === user?.uid || userRole === 'admin') && (
                                                             <button
                                                                 onClick={() => handleDeleteClick(report.id)}
                                                                 className="p-2 bg-red-500/10 text-red-600 rounded-lg hover:bg-red-500/20 border border-red-500/20 transition cursor-pointer"
