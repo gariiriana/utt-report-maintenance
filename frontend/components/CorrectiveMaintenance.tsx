@@ -12,7 +12,8 @@ import {
     User,
     Clock,
     FolderOpen,
-    AlertTriangle
+    AlertTriangle,
+    Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -344,7 +345,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                             }`}
                         >
                         <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                        <span className="truncate">Form SLA / SLG (5-Step)</span>
+                        <span className="truncate">Form SLA / SLG (4-Step)</span>
                     </button>
                     <button
                         type="button"
@@ -415,7 +416,12 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             <div className="flex items-center gap-3 mb-6 border-b border-slate-200 pb-4 overflow-x-auto">
                 <button
                     type="button"
-                    onClick={() => setArchiveFolder('cm_pdf')}
+                    onClick={() => {
+                        setArchiveFolder('cm_pdf');
+                        setShowForm(false);
+                        setEditingReportId(null);
+                        setReportFormType(null);
+                    }}
                     className={`px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 transition cursor-pointer border ${archiveFolder === 'cm_pdf'
                             ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
                             : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
@@ -426,7 +432,12 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 </button>
                 <button
                     type="button"
-                    onClick={() => setArchiveFolder('sla')}
+                    onClick={() => {
+                        setArchiveFolder('sla');
+                        setShowForm(false);
+                        setEditingReportId(null);
+                        setReportFormType(null);
+                    }}
                     className={`px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 transition cursor-pointer border ${archiveFolder === 'sla'
                             ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
                             : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
@@ -437,7 +448,12 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 </button>
                 <button
                     type="button"
-                    onClick={() => setArchiveFolder('pir')}
+                    onClick={() => {
+                        setArchiveFolder('pir');
+                        setShowForm(false);
+                        setEditingReportId(null);
+                        setReportFormType(null);
+                    }}
                     className={`px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider flex items-center gap-2 transition cursor-pointer border ${archiveFolder === 'pir'
                             ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
                             : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
@@ -562,33 +578,54 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                 </select>
                             </div>
 
-                            {archiveFolder === 'sla' && (
-                                <button
-                                    type="button"
-                                    onClick={async () => {
-                                        const slaReports = filteredReports.filter(r => r.reportType === 'SLA');
-                                        if (slaReports.length === 0) {
-                                            toast.error('Tidak ada laporan SLA yang sesuai filter untuk direkap.');
-                                            return;
-                                        }
-                                        const toastId = toast.loading('Memproses Rekap SLA (DOCX)...');
-                                        try {
-                                            const monthName = selectedMonth !== 'all' ? (INDO_MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth) : 'Semua Bulan';
-                                            const yearName = selectedYear !== 'all' ? selectedYear : new Date().getFullYear().toString();
-                                            const periodTitle = `${monthName} ${yearName}`;
-                                            await exportSLAMonthlyRecapToDocx(slaReports, periodTitle);
-                                            toast.success('Berhasil mengekspor Rekap SLA Word (DOCX)!', { id: toastId });
-                                        } catch (err: any) {
-                                            console.error('Failed to export SLA monthly recap:', err);
-                                            toast.error('Gagal mengekspor Rekap SLA Word', { id: toastId });
-                                        }
-                                    }}
-                                    className="w-full md:w-auto px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-md shadow-blue-500/10 cursor-pointer text-xs shrink-0"
-                                >
-                                    <FileText className="w-4 h-4" />
-                                    Export Rekap SLA (DOCX)
-                                </button>
-                            )}
+                            <div className="flex items-center gap-2 flex-wrap w-full md:w-auto justify-end">
+                                {isAuthorizedRole && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setEditingReportId(null);
+                                            setReportFormType(archiveFolder);
+                                            setShowForm(true);
+                                        }}
+                                        className="w-full md:w-auto px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-md shadow-red-500/10 cursor-pointer text-xs shrink-0"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                        {archiveFolder === 'sla'
+                                            ? '+ Buat Form SLA Baru'
+                                            : archiveFolder === 'pir'
+                                            ? '+ Buat Report PIR Baru'
+                                            : '+ Buat Report CM Baru'}
+                                    </button>
+                                )}
+
+                                {archiveFolder === 'sla' && (
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            const slaReports = filteredReports.filter(r => r.reportType === 'SLA');
+                                            if (slaReports.length === 0) {
+                                                toast.error('Tidak ada laporan SLA yang sesuai filter untuk direkap.');
+                                                return;
+                                            }
+                                            const toastId = toast.loading('Memproses Rekap SLA (DOCX)...');
+                                            try {
+                                                const monthName = selectedMonth !== 'all' ? (INDO_MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth) : 'Semua Bulan';
+                                                const yearName = selectedYear !== 'all' ? selectedYear : new Date().getFullYear().toString();
+                                                const periodTitle = `${monthName} ${yearName}`;
+                                                await exportSLAMonthlyRecapToDocx(slaReports, periodTitle);
+                                                toast.success('Berhasil mengekspor Rekap SLA Word (DOCX)!', { id: toastId });
+                                            } catch (err: any) {
+                                                console.error('Failed to export SLA monthly recap:', err);
+                                                toast.error('Gagal mengekspor Rekap SLA Word', { id: toastId });
+                                            }
+                                        }}
+                                        className="w-full md:w-auto px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-md shadow-blue-500/10 cursor-pointer text-xs shrink-0"
+                                    >
+                                        <FileText className="w-4 h-4" />
+                                        Export Rekap SLA (DOCX)
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     )}
 
