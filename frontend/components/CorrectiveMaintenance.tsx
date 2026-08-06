@@ -22,9 +22,7 @@ import {
     orderBy,
     onSnapshot,
     deleteDoc,
-    doc,
-    addDoc,
-    serverTimestamp
+    doc
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { SLAForm } from './SLAForm';
@@ -565,282 +563,31 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                             </div>
 
                             {archiveFolder === 'sla' && (
-                                <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
-                                    <button
-                                        type="button"
-                                        onClick={async () => {
-                                            const samplePhoto = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAB5CAYAAAD9T9FvAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABTSURBVHhe7cExAQAAAMKg9U9tDC8gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACA0wAaAAABr/w3XQAAAABJRU5ErkJggg==';
-                                            const toastId = toast.loading('Membuat data dummy SLA (5 tiket)...');
-                                            try {
-                                                const dummyItems = [
-                                                    {
-                                                        reportType: 'SLA',
-                                                        ticketName: 'WO-2025-07-001 / VRV Problem',
-                                                        issue: '[SLA / SLG] WO-2025-07-001 / VRV Problem (Medium)',
-                                                        location: 'SCC Room',
-                                                        priority: 'Medium',
-                                                        picDME: 'Afdhol',
-                                                        picTDE: 'Henru',
-                                                        remark: 'Pengecekan refrigerant dan reset error code',
-                                                        resolutionRemark: 'Pembersihan filter indoor, perbaikan sensor suhu, dan reset sistem VRV. Kondisi akhir: AC dingin normal.',
-                                                        actionTaken: 'Pembersihan filter indoor, perbaikan sensor suhu, dan reset sistem VRV. Kondisi akhir: AC dingin normal.',
-                                                        status: 'Resolved',
-                                                        spareParts: 'Freon R410a',
-                                                        quarter: 'Q3',
-                                                        year: '2025',
-                                                        timeOrder: '2025-07-01T10:47',
-                                                        actualTimeResponse: '2025-07-01T10:48',
-                                                        actualResponseTimeMin: 1,
-                                                        targetResponseMin: 5,
-                                                        responseComply: true,
-                                                        photosResponse: [{ photo: samplePhoto, description: 'Bukti screenshot order masuk via WA' }],
-                                                        photoResponse: samplePhoto,
-                                                        actualTimeOnsite: '2025-07-01T11:15',
-                                                        actualOnsiteTimeMin: 28,
-                                                        targetOnsiteMin: 120,
-                                                        onsiteComply: true,
-                                                        photosOnsite: [{ photo: samplePhoto, description: 'Bukti kehadiran principle di SCC Room' }],
-                                                        photoOnsite: samplePhoto,
-                                                        startOrder: '2025-07-01T11:15',
-                                                        finishOrder: '2025-07-01T12:30',
-                                                        actualRestoreTimeMin: 75,
-                                                        targetRestoreMin: 120,
-                                                        restoreComply: true,
-                                                        photosRestore: [{ photo: samplePhoto, description: 'Sistem VRV running temporary' }],
-                                                        photoRestore: samplePhoto,
-                                                        actualResolutionTimeMin: 103,
-                                                        targetResolutionMin: 360,
-                                                        resolutionComply: true,
-                                                        photosResolution: [{ photo: samplePhoto, description: 'Tiket closed di system' }],
-                                                        photoResolution: samplePhoto,
-                                                        slgScoreRT: 5.0, slgScoreOTP: 5.0, slgScoreRST: 15.0, slgScoreRSP: 10.0, totalIncidentSlgScore: 35.0,
-                                                        reportedAt: serverTimestamp(),
-                                                        reportedBy: user?.uid || 'dummy_seed',
-                                                        reportedByEmail: user?.email || 'standby.engineer@dwimitra.co.id'
-                                                    },
-                                                    {
-                                                        reportType: 'SLA',
-                                                        ticketName: 'WO-2025-07-002 / Alarm Chiller 2, Status Off',
-                                                        issue: '[SLA / SLG] WO-2025-07-002 / Alarm Chiller 2 (High)',
-                                                        location: 'Chiller Plant Room',
-                                                        priority: 'High',
-                                                        picDME: 'Ifriadi',
-                                                        picTDE: 'Indra Setiady',
-                                                        remark: 'Pengecekan alur flow kondensor dan pompa',
-                                                        resolutionRemark: 'Pengecekan terminasi sensor pressure, pembukaan valve bypass, dan restart panel Chiller 2. Kondisi normal.',
-                                                        actionTaken: 'Pengecekan terminasi sensor pressure, pembukaan valve bypass, dan restart panel Chiller 2. Kondisi normal.',
-                                                        status: 'Resolved',
-                                                        spareParts: '-',
-                                                        quarter: 'Q3',
-                                                        year: '2025',
-                                                        timeOrder: '2025-07-09T10:08',
-                                                        actualTimeResponse: '2025-07-09T10:10',
-                                                        actualResponseTimeMin: 2,
-                                                        targetResponseMin: 5,
-                                                        responseComply: true,
-                                                        photosResponse: [{ photo: samplePhoto, description: 'Notifikasi alarm Chiller 2 di BMS' }],
-                                                        photoResponse: samplePhoto,
-                                                        actualTimeOnsite: '2025-07-09T10:40',
-                                                        actualOnsiteTimeMin: 32,
-                                                        targetOnsiteMin: 120,
-                                                        onsiteComply: true,
-                                                        photosOnsite: [{ photo: samplePhoto, description: 'Inspeksi fisik di Chiller Plant' }],
-                                                        photoOnsite: samplePhoto,
-                                                        startOrder: '2025-07-09T10:40',
-                                                        finishOrder: '2025-07-09T11:53',
-                                                        actualRestoreTimeMin: 73,
-                                                        targetRestoreMin: 120,
-                                                        restoreComply: true,
-                                                        photosRestore: [{ photo: samplePhoto, description: 'Water flow kondensor kembali normal' }],
-                                                        photoRestore: samplePhoto,
-                                                        actualResolutionTimeMin: 105,
-                                                        targetResolutionMin: 240,
-                                                        resolutionComply: true,
-                                                        photosResolution: [{ photo: samplePhoto, description: 'Status alarm cleared' }],
-                                                        photoResolution: samplePhoto,
-                                                        slgScoreRT: 5.0, slgScoreOTP: 5.0, slgScoreRST: 15.0, slgScoreRSP: 10.0, totalIncidentSlgScore: 35.0,
-                                                        reportedAt: serverTimestamp(),
-                                                        reportedBy: user?.uid || 'dummy_seed',
-                                                        reportedByEmail: user?.email || 'standby.engineer@dwimitra.co.id'
-                                                    },
-                                                    {
-                                                        reportType: 'SLA',
-                                                        ticketName: 'WO-2025-07-003 / Alarm Over Voltage UPS IT Load B',
-                                                        issue: '[SLA / SLG] WO-2025-07-003 / Over Voltage UPS (Critical)',
-                                                        location: 'IT Load B Room',
-                                                        priority: 'Critical',
-                                                        picDME: 'Ifriadi',
-                                                        picTDE: 'Budi Susanto',
-                                                        remark: 'Reset tegangan input dan kalibrasi modul UPS',
-                                                        resolutionRemark: 'Reset tegangan input pada Frame 6 UPS IT Load B & penggantian kartu komunikasi. Kondisi tegangan stabil 380V.',
-                                                        actionTaken: 'Reset tegangan input pada Frame 6 UPS IT Load B & penggantian kartu komunikasi. Kondisi tegangan stabil 380V.',
-                                                        status: 'Resolved',
-                                                        spareParts: 'Card Comm UPS',
-                                                        quarter: 'Q3',
-                                                        year: '2025',
-                                                        timeOrder: '2025-07-19T08:19',
-                                                        actualTimeResponse: '2025-07-19T08:20',
-                                                        actualResponseTimeMin: 1,
-                                                        targetResponseMin: 5,
-                                                        responseComply: true,
-                                                        photosResponse: [{ photo: samplePhoto, description: 'Alert Over Voltage UPS' }],
-                                                        photoResponse: samplePhoto,
-                                                        actualTimeOnsite: '2025-07-19T08:35',
-                                                        actualOnsiteTimeMin: 16,
-                                                        targetOnsiteMin: 120,
-                                                        onsiteComply: true,
-                                                        photosOnsite: [{ photo: samplePhoto, description: 'Tim engineer di depan panel UPS IT Load B' }],
-                                                        photoOnsite: samplePhoto,
-                                                        startOrder: '2025-07-19T08:35',
-                                                        finishOrder: '2025-07-19T09:45',
-                                                        actualRestoreTimeMin: 70,
-                                                        targetRestoreMin: 120,
-                                                        restoreComply: true,
-                                                        photosRestore: [{ photo: samplePhoto, description: 'Load bypass ke inverter UPS normal' }],
-                                                        photoRestore: samplePhoto,
-                                                        actualResolutionTimeMin: 86,
-                                                        targetResolutionMin: 120,
-                                                        resolutionComply: true,
-                                                        photosResolution: [{ photo: samplePhoto, description: 'Modul UPS 100% online' }],
-                                                        photoResolution: samplePhoto,
-                                                        slgScoreRT: 5.0, slgScoreOTP: 5.0, slgScoreRST: 15.0, slgScoreRSP: 10.0, totalIncidentSlgScore: 35.0,
-                                                        reportedAt: serverTimestamp(),
-                                                        reportedBy: user?.uid || 'dummy_seed',
-                                                        reportedByEmail: user?.email || 'standby.engineer@dwimitra.co.id'
-                                                    },
-                                                    {
-                                                        reportType: 'SLA',
-                                                        ticketName: 'WO-2025-07-004 / WLD Ruang Crac Room 3',
-                                                        issue: '[SLA / SLG] WO-2025-07-004 / WLD Alarm (Medium)',
-                                                        location: 'Crac Room 3',
-                                                        priority: 'Medium',
-                                                        picDME: 'Ardian',
-                                                        picTDE: 'FMA - CBRE',
-                                                        remark: 'Pembersihan jalur drain dan pengeringan kabel sensing',
-                                                        resolutionRemark: 'Pembersihan kondensat pada baki drain CRAC 3 dan penggantian pita sensor WLD yang lembab. Kondisi area kering.',
-                                                        actionTaken: 'Pembersihan kondensat pada baki drain CRAC 3 dan penggantian pita sensor WLD yang lembab. Kondisi area kering.',
-                                                        status: 'Resolved',
-                                                        spareParts: 'Pita Sensor WLD 2m',
-                                                        quarter: 'Q3',
-                                                        year: '2025',
-                                                        timeOrder: '2025-07-21T16:12',
-                                                        actualTimeResponse: '2025-07-21T16:13',
-                                                        actualResponseTimeMin: 1,
-                                                        targetResponseMin: 5,
-                                                        responseComply: true,
-                                                        photosResponse: [{ photo: samplePhoto, description: 'Indikasi alarm WLD pada panel' }],
-                                                        photoResponse: samplePhoto,
-                                                        actualTimeOnsite: '2025-07-21T16:30',
-                                                        actualOnsiteTimeMin: 18,
-                                                        targetOnsiteMin: 120,
-                                                        onsiteComply: true,
-                                                        photosOnsite: [{ photo: samplePhoto, description: 'Pengecekan Raised Floor Crac Room 3' }],
-                                                        photoOnsite: samplePhoto,
-                                                        startOrder: '2025-07-21T16:30',
-                                                        finishOrder: '2025-07-21T17:11',
-                                                        actualRestoreTimeMin: 41,
-                                                        targetRestoreMin: 120,
-                                                        restoreComply: true,
-                                                        photosRestore: [{ photo: samplePhoto, description: 'Area bebas genangan air' }],
-                                                        photoRestore: samplePhoto,
-                                                        actualResolutionTimeMin: 59,
-                                                        targetResolutionMin: 360,
-                                                        resolutionComply: true,
-                                                        photosResolution: [{ photo: samplePhoto, description: 'Sistem WLD normal (Standby)' }],
-                                                        photoResolution: samplePhoto,
-                                                        slgScoreRT: 5.0, slgScoreOTP: 5.0, slgScoreRST: 15.0, slgScoreRSP: 10.0, totalIncidentSlgScore: 35.0,
-                                                        reportedAt: serverTimestamp(),
-                                                        reportedBy: user?.uid || 'dummy_seed',
-                                                        reportedByEmail: user?.email || 'standby.engineer@dwimitra.co.id'
-                                                    },
-                                                    {
-                                                        reportType: 'SLA',
-                                                        ticketName: 'WO-2025-07-005 / Terdapat Noise pada Pompa STP',
-                                                        issue: '[SLA / SLG] WO-2025-07-005 / Noise Pompa STP (Low)',
-                                                        location: 'Pump Room Office',
-                                                        priority: 'Low',
-                                                        picDME: 'Afdhol',
-                                                        picTDE: 'Indra Setiady',
-                                                        remark: 'Pelumasan bearing dan pengencangan baut fondasi pompa',
-                                                        resolutionRemark: 'Pelumasan ulang bearing mekanis, perbaikan klem baut fondasi, dan alignment impeller. Suara noise hilang.',
-                                                        actionTaken: 'Pelumasan ulang bearing mekanis, perbaikan klem baut fondasi, dan alignment impeller. Suara noise hilang.',
-                                                        status: 'Resolved',
-                                                        spareParts: 'Grease Bearing SKF',
-                                                        quarter: 'Q3',
-                                                        year: '2025',
-                                                        timeOrder: '2025-07-30T09:57',
-                                                        actualTimeResponse: '2025-07-30T09:58',
-                                                        actualResponseTimeMin: 1,
-                                                        targetResponseMin: 5,
-                                                        responseComply: true,
-                                                        photosResponse: [{ photo: samplePhoto, description: 'Laporan keluhan noise dari user' }],
-                                                        photoResponse: samplePhoto,
-                                                        actualTimeOnsite: '2025-07-30T10:15',
-                                                        actualOnsiteTimeMin: 18,
-                                                        targetOnsiteMin: 120,
-                                                        onsiteComply: true,
-                                                        photosOnsite: [{ photo: samplePhoto, description: 'Tim di Pump Room Office' }],
-                                                        photoOnsite: samplePhoto,
-                                                        startOrder: '2025-07-30T10:15',
-                                                        finishOrder: '2025-07-30T12:34',
-                                                        actualRestoreTimeMin: 139,
-                                                        targetRestoreMin: 120,
-                                                        restoreComply: false,
-                                                        photosRestore: [{ photo: samplePhoto, description: 'Pompa beroperasi sementara' }],
-                                                        photoRestore: samplePhoto,
-                                                        actualResolutionTimeMin: 157,
-                                                        targetResolutionMin: 2880,
-                                                        resolutionComply: true,
-                                                        photosResolution: [{ photo: samplePhoto, description: 'Hasil uji getaran & noise normal' }],
-                                                        photoResolution: samplePhoto,
-                                                        slgScoreRT: 5.0, slgScoreOTP: 5.0, slgScoreRST: 12.95, slgScoreRSP: 10.0, totalIncidentSlgScore: 32.95,
-                                                        reportedAt: serverTimestamp(),
-                                                        reportedBy: user?.uid || 'dummy_seed',
-                                                        reportedByEmail: user?.email || 'standby.engineer@dwimitra.co.id'
-                                                    }
-                                                ];
-
-                                                for (const item of dummyItems) {
-                                                    await addDoc(collection(db, 'corrective_reports'), item);
-                                                }
-                                                toast.success('Berhasil menambahkan 5 data dummy SLA (Juli 2025)!', { id: toastId });
-                                            } catch (err: any) {
-                                                console.error('Error generating dummy SLA:', err);
-                                                toast.error('Gagal membuat data dummy SLA: ' + (err.message || err), { id: toastId });
-                                            }
-                                        }}
-                                        className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/10 cursor-pointer text-xs shrink-0"
-                                        title="Generate 5 data dummy SLA untuk pengujian export"
-                                    >
-                                        + Data Dummy SLA
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        onClick={async () => {
-                                            const slaReports = filteredReports.filter(r => r.reportType === 'SLA');
-                                            if (slaReports.length === 0) {
-                                                toast.error('Tidak ada laporan SLA yang sesuai filter untuk direkap.');
-                                                return;
-                                            }
-                                            const toastId = toast.loading('Memproses Rekap SLA (DOCX)...');
-                                            try {
-                                                const monthName = selectedMonth !== 'all' ? (INDO_MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth) : 'Semua Bulan';
-                                                const yearName = selectedYear !== 'all' ? selectedYear : new Date().getFullYear().toString();
-                                                const periodTitle = `${monthName} ${yearName}`;
-                                                await exportSLAMonthlyRecapToDocx(slaReports, periodTitle);
-                                                toast.success('Berhasil mengekspor Rekap SLA Word (DOCX)!', { id: toastId });
-                                            } catch (err: any) {
-                                                console.error('Failed to export SLA monthly recap:', err);
-                                                toast.error('Gagal mengekspor Rekap SLA Word', { id: toastId });
-                                            }
-                                        }}
-                                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-md shadow-blue-500/10 cursor-pointer text-xs shrink-0"
-                                    >
-                                        <FileText className="w-4 h-4" />
-                                        Export Rekap SLA (DOCX)
-                                    </button>
-                                </div>
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        const slaReports = filteredReports.filter(r => r.reportType === 'SLA');
+                                        if (slaReports.length === 0) {
+                                            toast.error('Tidak ada laporan SLA yang sesuai filter untuk direkap.');
+                                            return;
+                                        }
+                                        const toastId = toast.loading('Memproses Rekap SLA (DOCX)...');
+                                        try {
+                                            const monthName = selectedMonth !== 'all' ? (INDO_MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth) : 'Semua Bulan';
+                                            const yearName = selectedYear !== 'all' ? selectedYear : new Date().getFullYear().toString();
+                                            const periodTitle = `${monthName} ${yearName}`;
+                                            await exportSLAMonthlyRecapToDocx(slaReports, periodTitle);
+                                            toast.success('Berhasil mengekspor Rekap SLA Word (DOCX)!', { id: toastId });
+                                        } catch (err: any) {
+                                            console.error('Failed to export SLA monthly recap:', err);
+                                            toast.error('Gagal mengekspor Rekap SLA Word', { id: toastId });
+                                        }
+                                    }}
+                                    className="w-full md:w-auto px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-md shadow-blue-500/10 cursor-pointer text-xs shrink-0"
+                                >
+                                    <FileText className="w-4 h-4" />
+                                    Export Rekap SLA (DOCX)
+                                </button>
                             )}
                         </div>
                     )}
