@@ -191,9 +191,14 @@ function createBoxSection(title: string, content: string): Table {
 // 1. EXPORT CORRECTIVE MAINTENANCE (CM) REPORT TO DOCX
 // ==========================================
 export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
-  const [logoLeftBytes, logoRightBytes] = await Promise.all([
+  const [logoLeftBytes, logoRightBytes, prepSignBytes, revSignBytes, ack1SignBytes, ack2SignBytes, appSignBytes] = await Promise.all([
     loadImageAsUint8Array(logoDwimitra),
     loadImageAsUint8Array(logoNeutraDC),
+    loadImageAsUint8Array((data as any).preparedBySign || ''),
+    loadImageAsUint8Array((data as any).reviewedBySign || ''),
+    loadImageAsUint8Array((data as any).acknowledgedBy1Sign || ''),
+    loadImageAsUint8Array((data as any).acknowledgedBy2Sign || ''),
+    loadImageAsUint8Array((data as any).approvedBySign || ''),
   ]);
 
   // Resolve Aliases & Fallbacks
@@ -230,7 +235,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: headText, bold: true, size: 17, color: '000000' })],
+                  children: [new TextRun({ text: headText, bold: true, size: 17, color: '000000', font: 'Century Gothic' })],
                 }),
               ],
             })
@@ -250,7 +255,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: val, size: 17, color: '1E293B' })],
+                  children: [new TextRun({ text: val, size: 17, color: '1E293B', font: 'Century Gothic' })],
                 }),
               ],
             })
@@ -274,7 +279,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: headText, bold: true, size: 17, color: '000000' })],
+                  children: [new TextRun({ text: headText, bold: true, size: 17, color: '000000', font: 'Century Gothic' })],
                 }),
               ],
             })
@@ -294,7 +299,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: val, size: 17, color: '1E293B' })],
+                  children: [new TextRun({ text: val, size: 17, color: '1E293B', font: 'Century Gothic' })],
                 }),
               ],
             })
@@ -318,7 +323,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: headText, bold: true, size: 17, color: '000000' })],
+                  children: [new TextRun({ text: headText, bold: true, size: 17, color: '000000', font: 'Century Gothic' })],
                 }),
               ],
             })
@@ -334,7 +339,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               (line: string) =>
                 new Paragraph({
                   spacing: { after: 40 },
-                  children: [new TextRun({ text: line, size: 17, color: '1E293B' })],
+                  children: [new TextRun({ text: line, size: 17, color: '1E293B', font: 'Century Gothic' })],
                 })
             ),
           }),
@@ -345,12 +350,12 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
             children: [
               new Paragraph({
                 children: [
-                  new TextRun({ text: `Start : ${data.repairTimeStart || '-'}`, size: 17, color: '1E293B' }),
+                  new TextRun({ text: `Start : ${data.repairTimeStart || '-'}`, size: 17, color: '1E293B', font: 'Century Gothic' }),
                 ],
               }),
               new Paragraph({
                 children: [
-                  new TextRun({ text: `End   : ${data.repairTimeEnd || '-'}`, size: 17, color: '1E293B' }),
+                  new TextRun({ text: `End   : ${data.repairTimeEnd || '-'}`, size: 17, color: '1E293B', font: 'Century Gothic' }),
                 ],
               }),
             ],
@@ -361,7 +366,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
             margins: { top: 100, bottom: 100, left: 100, right: 100 },
             children: [
               new Paragraph({
-                children: [new TextRun({ text: resolvedResult || '-', size: 17, color: '1E293B' })],
+                children: [new TextRun({ text: resolvedResult || '-', size: 17, color: '1E293B', font: 'Century Gothic' })],
               }),
             ],
           }),
@@ -384,7 +389,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
                     children: [
                       new Paragraph({
                         alignment: cIdx === 1 ? AlignmentType.LEFT : AlignmentType.CENTER,
-                        children: [new TextRun({ text: cellVal, size: 17, color: '1E293B' })],
+                        children: [new TextRun({ text: cellVal, size: 17, color: '1E293B', font: 'Century Gothic' })],
                       }),
                     ],
                   })
@@ -401,7 +406,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
                   children: [
                     new Paragraph({
                       alignment: AlignmentType.CENTER,
-                      children: [new TextRun({ text: cellVal, size: 17, color: '1E293B' })],
+                      children: [new TextRun({ text: cellVal, size: 17, color: '1E293B', font: 'Century Gothic' })],
                     }),
                   ],
                 })
@@ -423,7 +428,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: hText, bold: true, size: 17, color: '000000' })],
+                  children: [new TextRun({ text: hText, bold: true, size: 17, color: '000000', font: 'Century Gothic' })],
                 }),
               ],
             })
@@ -433,48 +438,170 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
     ],
   });
 
-  // Photo Documentation Grid
-  const photoParagraphs: Paragraph[] = [];
+  // Photo Documentation 2-Column Table Grid
+  const photoTableRows: TableRow[] = [];
   if (data.photos && data.photos.length > 0) {
-    for (const p of data.photos) {
-      if (!p.photoBase64) continue;
-      const imgBytes = await loadImageAsUint8Array(p.photoBase64);
-      if (imgBytes.length > 0) {
-        photoParagraphs.push(
+    const validPhotos = data.photos.filter((p) => p.photoBase64);
+    for (let i = 0; i < validPhotos.length; i += 2) {
+      const p1 = validPhotos[i];
+      const p2 = validPhotos[i + 1];
+
+      const img1Bytes = await loadImageAsUint8Array(p1.photoBase64);
+      const img2Bytes = p2 ? await loadImageAsUint8Array(p2.photoBase64) : new Uint8Array();
+
+      const cell1Children: Paragraph[] = [];
+      if (img1Bytes.length > 0) {
+        cell1Children.push(
           new Paragraph({
             alignment: AlignmentType.CENTER,
-            spacing: { before: 120, after: 60 },
             children: [
               new ImageRun({
-                data: imgBytes,
-                transformation: { width: 360, height: 220 },
+                data: img1Bytes,
+                transformation: { width: 240, height: 145 },
                 type: 'png',
               }),
             ],
           })
         );
-        if (p.description) {
-          photoParagraphs.push(
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              spacing: { after: 180 },
+        cell1Children.push(
+          new Paragraph({
+            alignment: AlignmentType.LEFT,
+            spacing: { before: 40, after: 40 },
+            children: [
+              new TextRun({
+                text: p1.description ? `Ket: ${p1.description}` : `Ket: Dokumentasi Foto #${i + 1}`,
+                size: 15,
+                color: '334155',
+                font: 'Century Gothic',
+              }),
+            ],
+          })
+        );
+      }
+
+      const cell2Children: Paragraph[] = [];
+      if (p2 && img2Bytes.length > 0) {
+        cell2Children.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new ImageRun({
+                data: img2Bytes,
+                transformation: { width: 240, height: 145 },
+                type: 'png',
+              }),
+            ],
+          })
+        );
+        cell2Children.push(
+          new Paragraph({
+            alignment: AlignmentType.LEFT,
+            spacing: { before: 40, after: 40 },
+            children: [
+              new TextRun({
+                text: p2.description ? `Ket: ${p2.description}` : `Ket: Dokumentasi Foto #${i + 2}`,
+                size: 15,
+                color: '334155',
+                font: 'Century Gothic',
+              }),
+            ],
+          })
+        );
+      }
+
+      // Add Header Row for Photo Documentation Pair
+      photoTableRows.push(
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 50, type: WidthType.PERCENTAGE },
+              shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+              margins: { top: 60, bottom: 60, left: 80, right: 80 },
               children: [
-                new TextRun({
-                  text: `Ket: ${p.description}`,
-                  italics: true,
-                  size: 16,
-                  color: '64748B',
+                new Paragraph({
+                  alignment: AlignmentType.LEFT,
+                  children: [new TextRun({ text: `FOTO DOKUMENTASI #${i + 1}`, bold: true, size: 16, color: '1E293B', font: 'Century Gothic' })],
                 }),
               ],
-            })
-          );
-        }
-      }
+            }),
+            new TableCell({
+              width: { size: 50, type: WidthType.PERCENTAGE },
+              shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+              margins: { top: 60, bottom: 60, left: 80, right: 80 },
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.LEFT,
+                  children: [p2 ? new TextRun({ text: `FOTO DOKUMENTASI #${i + 2}`, bold: true, size: 16, color: '1E293B', font: 'Century Gothic' }) : new TextRun({ text: '' })],
+                }),
+              ],
+            }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            new TableCell({
+              width: { size: 50, type: WidthType.PERCENTAGE },
+              margins: { top: 80, bottom: 80, left: 80, right: 80 },
+              children: cell1Children.length > 0 ? cell1Children : [new Paragraph({ children: [] })],
+            }),
+            new TableCell({
+              width: { size: 50, type: WidthType.PERCENTAGE },
+              margins: { top: 80, bottom: 80, left: 80, right: 80 },
+              children: cell2Children.length > 0 ? cell2Children : [new Paragraph({ children: [] })],
+            }),
+          ],
+        })
+      );
     }
   }
 
-  // Signatures Table Grid
+  const photoGridTable = photoTableRows.length > 0
+    ? new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: cellBorder,
+        rows: photoTableRows,
+      })
+    : null;
+
+  // Signatures Table Grid (Matching PDF Screenshot Layout)
   const sigCellWidth = { size: 50, type: WidthType.PERCENTAGE };
+
+  // Helper to build signature cell contents with header shading & image
+  const buildSigCell = (headerTitle: string, signBytes: Uint8Array, nameText: string, titleText: string) => {
+    const children: Paragraph[] = [
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [new TextRun({ text: headerTitle, bold: true, size: 16, color: '000000', font: 'Century Gothic' })],
+      }),
+    ];
+
+    if (signBytes && signBytes.length > 0) {
+      children.push(
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 80, after: 80 },
+          children: [new ImageRun({ data: signBytes, transformation: { width: 110, height: 45 }, type: 'png' })],
+        })
+      );
+    } else {
+      children.push(new Paragraph({ spacing: { before: 300 } }));
+    }
+
+    children.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 40 },
+        children: [new TextRun({ text: nameText, bold: true, size: 17, color: '000000', font: 'Century Gothic' })],
+      }),
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: [new TextRun({ text: titleText, size: 15, color: '475569', font: 'Century Gothic' })],
+      })
+    );
+
+    return children;
+  };
+
   const signatureTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: cellBorder,
@@ -484,59 +611,99 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
         children: [
           new TableCell({
             width: sigCellWidth,
-            margins: { top: 120, bottom: 120, left: 100, right: 100 },
+            shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+            margins: { top: 60, bottom: 60, left: 80, right: 80 },
             children: [
-              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'PREPARED BY,', bold: true, size: 17 })] }),
-              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 400 }, children: [new TextRun({ text: data.preparedByName || 'Salman', bold: true, size: 17 })] }),
-              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.preparedByTitle || '(Electrical Engineer)', size: 16 })] }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: 'PREPARED BY,', bold: true, size: 16, color: '000000', font: 'Century Gothic' })],
+              }),
             ],
           }),
           new TableCell({
             width: sigCellWidth,
-            margins: { top: 120, bottom: 120, left: 100, right: 100 },
+            shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+            margins: { top: 60, bottom: 60, left: 80, right: 80 },
             children: [
-              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'REVIEWED BY,', bold: true, size: 17 })] }),
-              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 400 }, children: [new TextRun({ text: data.reviewedByName || 'Arif Budiman', bold: true, size: 17 })] }),
-              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.reviewedByTitle || '(Technical Manager)', size: 16 })] }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: 'REVIEWED BY,', bold: true, size: 16, color: '000000', font: 'Century Gothic' })],
+              }),
             ],
           }),
         ],
       }),
-      // Row 2: ACKNOWLEDGED BY
       new TableRow({
         children: [
           new TableCell({
             width: sigCellWidth,
-            margins: { top: 120, bottom: 120, left: 100, right: 100 },
-            children: [
-              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'ACKNOWLEDGED BY,', bold: true, size: 17 })] }),
-              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 400 }, children: [new TextRun({ text: data.acknowledgedBy1Name || 'Andrean Bima Pratama', bold: true, size: 17 })] }),
-              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.acknowledgedBy1Title || '(Chief Engineer)', size: 16 })] }),
-            ],
+            margins: { top: 80, bottom: 80, left: 80, right: 80 },
+            children: buildSigCell('', prepSignBytes, data.preparedByName || 'Salman', data.preparedByTitle || '(Electrical Engineer)'),
           }),
           new TableCell({
             width: sigCellWidth,
-            margins: { top: 120, bottom: 120, left: 100, right: 100 },
+            margins: { top: 80, bottom: 80, left: 80, right: 80 },
+            children: buildSigCell('', revSignBytes, data.reviewedByName || 'Arif Budiman', data.reviewedByTitle || '(Technical Manager)'),
+          }),
+        ],
+      }),
+
+      // Row 2: ACKNOWLEDGED BY (Full Header + 2 Columns)
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 2,
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+            margins: { top: 60, bottom: 60, left: 80, right: 80 },
             children: [
-              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'ACKNOWLEDGED BY,', bold: true, size: 17 })] }),
-              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 400 }, children: [new TextRun({ text: data.acknowledgedBy2Name || 'Supriyatno', bold: true, size: 17 })] }),
-              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.acknowledgedBy2Title || '(Facility manager)', size: 16 })] }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: 'ACKNOWLEDGED BY,', bold: true, size: 16, color: '000000', font: 'Century Gothic' })],
+              }),
             ],
           }),
         ],
       }),
+      new TableRow({
+        children: [
+          new TableCell({
+            width: sigCellWidth,
+            margins: { top: 80, bottom: 80, left: 80, right: 80 },
+            children: buildSigCell('', ack1SignBytes, data.acknowledgedBy1Name || 'Andrean Bima Pratama', data.acknowledgedBy1Title || '(Chief Engineer)'),
+          }),
+          new TableCell({
+            width: sigCellWidth,
+            margins: { top: 80, bottom: 80, left: 80, right: 80 },
+            children: buildSigCell('', ack2SignBytes, data.acknowledgedBy2Name || 'Supriyatno', data.acknowledgedBy2Title || '(Facility manager)'),
+          }),
+        ],
+      }),
+
       // Row 3: APPROVED BY
       new TableRow({
         children: [
           new TableCell({
             columnSpan: 2,
             width: { size: 100, type: WidthType.PERCENTAGE },
-            margins: { top: 120, bottom: 120, left: 100, right: 100 },
+            shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+            margins: { top: 60, bottom: 60, left: 80, right: 80 },
             children: [
-              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'APPROVED BY,', bold: true, size: 17 })] }),
-              new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 400 }, children: [new TextRun({ text: data.approvedByName || 'Budi Susanto', bold: true, size: 17 })] }),
-              new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.approvedByTitle || '(Assistant manager HDC Facility Management)', size: 16 })] }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [new TextRun({ text: 'APPROVED BY,', bold: true, size: 16, color: '000000', font: 'Century Gothic' })],
+              }),
             ],
+          }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 2,
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            margins: { top: 80, bottom: 80, left: 80, right: 80 },
+            children: buildSigCell('', appSignBytes, data.approvedByName || 'Budi Susanto', data.approvedByTitle || '(Assistant manager HDC Facility Management)'),
           }),
         ],
       }),
@@ -544,6 +711,15 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
   });
 
   const doc = new Document({
+    styles: {
+      default: {
+        document: {
+          run: {
+            font: 'Century Gothic',
+          },
+        },
+      },
+    },
     sections: [
       {
         properties: {
@@ -562,11 +738,12 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               new Paragraph({
                 alignment: AlignmentType.CENTER,
                 children: [
-                  new TextRun({ text: 'Halaman ', size: 16, color: '64748B' }),
+                  new TextRun({ text: 'Halaman ', size: 16, color: '64748B', font: 'Century Gothic' }),
                   new TextRun({
                     children: [PageNumber.CURRENT],
                     size: 16,
                     color: '64748B',
+                    font: 'Century Gothic',
                   }),
                 ],
               }),
@@ -584,6 +761,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
                 bold: true,
                 size: 28,
                 color: '475569',
+                font: 'Century Gothic',
               }),
             ],
           }),
@@ -610,8 +788,8 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           sparepartTable,
           new Paragraph({ spacing: { after: 240 } }),
 
-          ...(photoParagraphs.length > 0
-            ? [createSectionHeader('SUPPORTING DOCUMENTATION'), ...photoParagraphs]
+          ...(photoGridTable
+            ? [createSectionHeader('SUPPORTING DOCUMENTATION'), photoGridTable]
             : []),
 
           new Paragraph({ spacing: { after: 240 } }),
@@ -624,6 +802,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
                 bold: true,
                 size: 18,
                 color: '000000',
+                font: 'Century Gothic',
               }),
             ],
           }),

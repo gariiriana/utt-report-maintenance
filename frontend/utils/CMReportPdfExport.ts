@@ -40,6 +40,41 @@ function sanitizePdfText(text: string | undefined | null): string {
     .replace(/[\u2013\u2014]/g, '-');
 }
 
+let cachedCenturyGothicFont = '';
+
+async function loadCenturyGothicFont(): Promise<string> {
+  if (cachedCenturyGothicFont) return cachedCenturyGothicFont;
+  const fontUrls = [
+    'https://raw.githubusercontent.com/mojs/mojs-website/master/app/css/fonts/CenturyGothic.ttf',
+    'https://cdn.jsdelivr.net/gh/mojs/mojs-website@master/app/css/fonts/CenturyGothic.ttf',
+    'https://raw.githubusercontent.com/ThatZiv/ziv-loadscreen/master/assets/fonts/CenturyGothic.ttf'
+  ];
+  for (const url of fontUrls) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const blob = await res.blob();
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1] || '');
+          };
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(blob);
+        });
+        if (base64 && base64.length > 1000) {
+          cachedCenturyGothicFont = base64;
+          return cachedCenturyGothicFont;
+        }
+      }
+    } catch {
+      /* try next */
+    }
+  }
+  return '';
+}
+
 export async function generateCMReportPDF(data: CMReportData) {
   const toastId = toast.loading('Memproses PDF Corrective Maintenance...');
 
@@ -49,6 +84,20 @@ export async function generateCMReportPDF(data: CMReportData) {
     const pageH = doc.internal.pageSize.getHeight();
     const margin = 12;
     const contentW = pageW - 2 * margin;
+
+    // Load Century Gothic Font
+    const centuryFontBase64 = await loadCenturyGothicFont();
+    let fontName = 'helvetica';
+    if (centuryFontBase64) {
+      try {
+        doc.addFileToVFS('CenturyGothic.ttf', centuryFontBase64);
+        doc.addFont('CenturyGothic.ttf', 'CenturyGothic', 'normal');
+        doc.addFont('CenturyGothic.ttf', 'CenturyGothic', 'bold');
+        fontName = 'CenturyGothic';
+      } catch (e) {
+        console.error('Failed to register Century Gothic font in jsPDF:', e);
+      }
+    }
 
     // Load Logos
     let logoLeft = '';
@@ -102,7 +151,7 @@ export async function generateCMReportPDF(data: CMReportData) {
     let y = 28;
 
     // Document Title
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(fontName, 'bold');
     doc.setFontSize(14);
     doc.setTextColor(100, 100, 100);
     doc.text('REPORT CORRECTIVE MAINTENANCE', pageW / 2, y, { align: 'center' });
@@ -121,7 +170,9 @@ export async function generateCMReportPDF(data: CMReportData) {
         sanitizePdfText(data.incidentId) || 'N/A'
       ]],
       theme: 'grid',
+      styles: { font: fontName },
       headStyles: {
+        font: fontName,
         fillColor: HEADER_FILL,
         textColor: [0, 0, 0],
         fontStyle: 'bold',
@@ -132,6 +183,7 @@ export async function generateCMReportPDF(data: CMReportData) {
         lineColor: BORDER_COLOR,
       },
       bodyStyles: {
+        font: fontName,
         textColor: [20, 20, 20],
         fontSize: 8.5,
         halign: 'center',
@@ -161,7 +213,9 @@ export async function generateCMReportPDF(data: CMReportData) {
         sanitizePdfText(data.installationDate) || 'N/A'
       ]],
       theme: 'grid',
+      styles: { font: fontName },
       headStyles: {
+        font: fontName,
         fillColor: HEADER_FILL,
         textColor: [0, 0, 0],
         fontStyle: 'bold',
@@ -172,6 +226,7 @@ export async function generateCMReportPDF(data: CMReportData) {
         lineColor: BORDER_COLOR,
       },
       bodyStyles: {
+        font: fontName,
         textColor: [20, 20, 20],
         fontSize: 8.5,
         halign: 'center',
@@ -213,7 +268,9 @@ export async function generateCMReportPDF(data: CMReportData) {
         sanitizePdfText(resolvedResult) || '-'
       ]],
       theme: 'grid',
+      styles: { font: fontName },
       headStyles: {
+        font: fontName,
         fillColor: HEADER_FILL,
         textColor: [0, 0, 0],
         fontStyle: 'bold',
@@ -224,6 +281,7 @@ export async function generateCMReportPDF(data: CMReportData) {
         lineColor: BORDER_COLOR,
       },
       bodyStyles: {
+        font: fontName,
         textColor: [20, 20, 20],
         fontSize: 8.5,
         valign: 'top',
@@ -249,7 +307,7 @@ export async function generateCMReportPDF(data: CMReportData) {
       doc.setLineWidth(0.2);
       doc.rect(margin, y, contentW, 6, 'FD');
 
-      doc.setFont('helvetica', 'bold');
+      doc.setFont(fontName, 'bold');
       doc.setFontSize(8.5);
       doc.setTextColor(0, 0, 0);
       doc.text(title, margin + 2, y + 4.2);
@@ -257,7 +315,7 @@ export async function generateCMReportPDF(data: CMReportData) {
       y += 6;
 
       // Text box
-      doc.setFont('helvetica', 'normal');
+      doc.setFont(fontName, 'normal');
       doc.setFontSize(8.5);
       doc.setTextColor(30, 30, 30);
 
@@ -320,7 +378,9 @@ export async function generateCMReportPDF(data: CMReportData) {
       head: [['No', 'LIST OF REQUIRED SPAREPART', 'BRAND', 'QTY']],
       body: sparepartRows,
       theme: 'grid',
+      styles: { font: fontName },
       headStyles: {
+        font: fontName,
         fillColor: HEADER_FILL,
         textColor: [0, 0, 0],
         fontStyle: 'bold',
@@ -331,6 +391,7 @@ export async function generateCMReportPDF(data: CMReportData) {
         lineColor: BORDER_COLOR,
       },
       bodyStyles: {
+        font: fontName,
         textColor: [20, 20, 20],
         fontSize: 8.5,
         halign: 'center',
@@ -349,7 +410,7 @@ export async function generateCMReportPDF(data: CMReportData) {
     y = (doc as any).lastAutoTable.finalY + 8;
 
     // Section Header: SUPPORTING DOCUMENTATION
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(fontName, 'bold');
     doc.setFontSize(10);
     doc.setTextColor(50, 50, 50);
     doc.text('SUPPORTING DOCUMENTATION', margin, y);
@@ -362,7 +423,7 @@ export async function generateCMReportPDF(data: CMReportData) {
     doc.setLineWidth(0.2);
     doc.rect(margin, y, contentW, 6, 'FD');
 
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(fontName, 'bold');
     doc.setFontSize(8.5);
     doc.setTextColor(0, 0, 0);
     doc.text('VISUAL INSPECTION & CHECKING', margin + 2, y + 4.2);
@@ -407,7 +468,7 @@ export async function generateCMReportPDF(data: CMReportData) {
           // 2. Table Header Bar (FOTO DOKUMENTASI #X)
           doc.setFillColor(...HEADER_FILL);
           doc.rect(cardX, cardY, cardW, headH, 'FD');
-          doc.setFont('helvetica', 'bold');
+          doc.setFont(fontName, 'bold');
           doc.setFontSize(8);
           doc.setTextColor(30, 41, 59);
           doc.text(`FOTO DOKUMENTASI #${photoNum}`, cardX + 3, cardY + 4.2);
@@ -429,7 +490,7 @@ export async function generateCMReportPDF(data: CMReportData) {
           doc.setDrawColor(...BORDER_COLOR);
           doc.line(cardX, descY, cardX + cardW, descY); // Top divider line
 
-          doc.setFont('helvetica', 'normal');
+          doc.setFont(fontName, 'normal');
           doc.setFontSize(7.5);
           doc.setTextColor(51, 65, 85);
           const descText = item.description ? `Ket: ${item.description}` : `Ket: Dokumentasi Foto #${photoNum}`;
@@ -446,7 +507,7 @@ export async function generateCMReportPDF(data: CMReportData) {
           drawHeaderLogos();
           currentY = 28;
 
-          doc.setFont('helvetica', 'bold');
+          doc.setFont(fontName, 'bold');
           doc.setFontSize(10);
           doc.setTextColor(50, 50, 50);
           doc.text('SUPPORTING DOCUMENTATION (LANJUTAN)', margin, currentY);
@@ -458,7 +519,7 @@ export async function generateCMReportPDF(data: CMReportData) {
           doc.setLineWidth(0.2);
           doc.rect(margin, currentY, contentW, 6, 'FD');
 
-          doc.setFont('helvetica', 'bold');
+          doc.setFont(fontName, 'bold');
           doc.setFontSize(8.5);
           doc.setTextColor(0, 0, 0);
           doc.text(`VISUAL INSPECTION & CHECKING (FOTO ${pageIdx * 4 + 1}-${pageIdx * 4 + pagePhotos.length})`, margin + 2, currentY + 4.2);
@@ -469,14 +530,14 @@ export async function generateCMReportPDF(data: CMReportData) {
 
         renderPhotoGrid(pagePhotos, currentY, pageIdx * 4);
 
-        doc.setFont('helvetica', 'normal');
+        doc.setFont(fontName, 'normal');
         doc.setFontSize(8);
         doc.setTextColor(120, 120, 120);
         doc.text(currentPageIndex.toString(), pageW / 2, pageH - 8, { align: 'center' });
       });
     } else {
       // Page 2 Footer if no photos
-      doc.setFont('helvetica', 'normal');
+      doc.setFont(fontName, 'normal');
       doc.setFontSize(8);
       doc.setTextColor(120, 120, 120);
       doc.text(currentPageIndex.toString(), pageW / 2, pageH - 8, { align: 'center' });
@@ -493,7 +554,7 @@ export async function generateCMReportPDF(data: CMReportData) {
     y = 28;
 
     // Author Text Line
-    doc.setFont('helvetica', 'bold');
+    doc.setFont(fontName, 'bold');
     doc.setFontSize(10);
     doc.setTextColor(0, 0, 0);
     doc.text(`AUTHOR BY, ${sanitizePdfText(data.authorName) || 'Rizki Novri Yanda - Data Center Operation'}`, margin, y);
@@ -516,7 +577,7 @@ export async function generateCMReportPDF(data: CMReportData) {
     doc.rect(margin, y, sigCellW, totalBoxH, 'D');
     doc.setFillColor(...HEADER_FILL);
     doc.rect(margin, y, sigCellW, headerBarH, 'FD');
-    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
+    doc.setFont(fontName, 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
     doc.text('PREPARED BY,', margin + sigCellW / 2, y + 4.5, { align: 'center' });
 
     // Draw Prepared Signature if available
@@ -529,9 +590,9 @@ export async function generateCMReportPDF(data: CMReportData) {
     // Prepared Name & Title Divider Line
     const row1NameY = y + headerBarH + sigImageH;
     doc.line(margin, row1NameY, margin + sigCellW, row1NameY);
-    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
+    doc.setFont(fontName, 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
     doc.text(sanitizePdfText(data.preparedByName) || 'Salman', margin + sigCellW / 2, row1NameY + 4.2, { align: 'center' });
-    doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(50, 50, 50);
+    doc.setFont(fontName, 'normal').setFontSize(7.5).setTextColor(50, 50, 50);
     doc.text(sanitizePdfText(data.preparedByTitle) || '(Electrical Engineer)', margin + sigCellW / 2, row1NameY + 8.5, { align: 'center' });
 
     // REVIEWED BY Box
@@ -539,7 +600,7 @@ export async function generateCMReportPDF(data: CMReportData) {
     doc.rect(revX, y, sigCellW, totalBoxH, 'D');
     doc.setFillColor(...HEADER_FILL);
     doc.rect(revX, y, sigCellW, headerBarH, 'FD');
-    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
+    doc.setFont(fontName, 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
     doc.text('REVIEWED BY,', revX + sigCellW / 2, y + 4.5, { align: 'center' });
 
     // Draw Reviewed Signature if available
@@ -551,9 +612,9 @@ export async function generateCMReportPDF(data: CMReportData) {
 
     // Reviewed Name & Title Divider Line
     doc.line(revX, row1NameY, revX + sigCellW, row1NameY);
-    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
+    doc.setFont(fontName, 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
     doc.text(sanitizePdfText(data.reviewedByName) || 'Arif Budiman', revX + sigCellW / 2, row1NameY + 4.2, { align: 'center' });
-    doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(50, 50, 50);
+    doc.setFont(fontName, 'normal').setFontSize(7.5).setTextColor(50, 50, 50);
     doc.text(sanitizePdfText(data.reviewedByTitle) || '(Technical Manager)', revX + sigCellW / 2, row1NameY + 8.5, { align: 'center' });
 
     y += totalBoxH + 4;
@@ -565,7 +626,7 @@ export async function generateCMReportPDF(data: CMReportData) {
     // Header bar spanning full content width
     doc.setFillColor(...HEADER_FILL);
     doc.rect(margin, y, contentW, headerBarH, 'FD');
-    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
+    doc.setFont(fontName, 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
     doc.text('ACKNOWLEDGED BY,', pageW / 2, y + 4.5, { align: 'center' });
 
     // Vertical middle divider line between Acknowledged 1 and Acknowledged 2
@@ -590,15 +651,15 @@ export async function generateCMReportPDF(data: CMReportData) {
     doc.line(margin, row2NameY, margin + contentW, row2NameY);
 
     // Acknowledged 1 Text
-    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
+    doc.setFont(fontName, 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
     doc.text(sanitizePdfText(data.acknowledgedBy1Name) || 'Andrean Bima Pratama', margin + sigCellW / 2, row2NameY + 4.2, { align: 'center' });
-    doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(50, 50, 50);
+    doc.setFont(fontName, 'normal').setFontSize(7.5).setTextColor(50, 50, 50);
     doc.text(sanitizePdfText(data.acknowledgedBy1Title) || '(Chief Engineer)', margin + sigCellW / 2, row2NameY + 8.5, { align: 'center' });
 
     // Acknowledged 2 Text
-    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
+    doc.setFont(fontName, 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
     doc.text(sanitizePdfText(data.acknowledgedBy2Name) || 'Supriyatno', revX + sigCellW / 2, row2NameY + 4.2, { align: 'center' });
-    doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(50, 50, 50);
+    doc.setFont(fontName, 'normal').setFontSize(7.5).setTextColor(50, 50, 50);
     doc.text(sanitizePdfText(data.acknowledgedBy2Title) || '(Facility manager)', revX + sigCellW / 2, row2NameY + 8.5, { align: 'center' });
 
     y += totalBoxH + 4;
@@ -612,7 +673,7 @@ export async function generateCMReportPDF(data: CMReportData) {
     doc.rect(appX, y, appW, totalBoxH, 'D');
     doc.setFillColor(...HEADER_FILL);
     doc.rect(appX, y, appW, headerBarH, 'FD');
-    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
+    doc.setFont(fontName, 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
     doc.text('APPROVED BY,', appX + appW / 2, y + 4.5, { align: 'center' });
 
     if ((data as any).approvedBySign) {
@@ -625,13 +686,13 @@ export async function generateCMReportPDF(data: CMReportData) {
     const row3NameY = y + headerBarH + sigImageH;
     doc.line(appX, row3NameY, appX + appW, row3NameY);
 
-    doc.setFont('helvetica', 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
+    doc.setFont(fontName, 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
     doc.text(sanitizePdfText(data.approvedByName) || 'Budi Susanto', appX + appW / 2, row3NameY + 4.2, { align: 'center' });
-    doc.setFont('helvetica', 'normal').setFontSize(7.5).setTextColor(50, 50, 50);
+    doc.setFont(fontName, 'normal').setFontSize(7.5).setTextColor(50, 50, 50);
     doc.text(sanitizePdfText(data.approvedByTitle) || '(Assistant manager HDC Facility Management)', appX + appW / 2, row3NameY + 8.5, { align: 'center' });
 
     // Page Footer
-    doc.setFont('helvetica', 'normal');
+    doc.setFont(fontName, 'normal');
     doc.setFontSize(8);
     doc.setTextColor(120, 120, 120);
     doc.text(currentPageIndex.toString(), pageW / 2, pageH - 8, { align: 'center' });
