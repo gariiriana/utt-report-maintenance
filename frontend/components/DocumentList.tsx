@@ -148,8 +148,10 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
         const userEmailClean = (user?.email || '').toLowerCase().trim();
 
         if (filterOverride !== 'hse_utt') {
+          const isPrivilegedOrDME = isPrivileged || userRole === 'DME' || (user?.email && user.email.toLowerCase().includes('dwimitra'));
+
           if (userRole !== 'DME') {
-            const excelQuery = (isPrivileged || isEngineer)
+            const excelQuery = isPrivilegedOrDME
               ? query(collection(db, 'excel_documents'))
               : query(collection(db, 'excel_documents'), where('createdBy', '==', userEmailClean));
             fetchPromises.push(getDocs(excelQuery));
@@ -157,7 +159,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
             fetchPromises.push(Promise.resolve(null));
           }
 
-          const pdfQuery = (isPrivileged || isEngineer || userRole === 'DME')
+          const pdfQuery = isPrivilegedOrDME
             ? query(collection(db, 'pdf_documents'))
             : query(collection(db, 'pdf_documents'), where('createdBy', '==', userEmailClean));
           fetchPromises.push(getDocs(pdfQuery));
@@ -790,6 +792,15 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
   };
 
   const filteredDocuments = documents.filter(doc => {
+    // Non-privileged accounts can ONLY see documents created by their own email
+    const isPrivilegedOrDME = isPrivileged || userRole === 'DME' || (user?.email && user.email.toLowerCase().includes('dwimitra'));
+    if (!isPrivilegedOrDME) {
+      const userEmailClean = (user?.email || '').toLowerCase().trim();
+      if ((doc.createdBy || '').toLowerCase().trim() !== userEmailClean) {
+        return false;
+      }
+    }
+
     // If user is Admin and explicitly filtering pending delete requests
     if (isAdmin && adminDeleteFilter === 'pending_delete' && !doc.deleteRequested) {
       return false;

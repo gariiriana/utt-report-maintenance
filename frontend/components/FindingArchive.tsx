@@ -150,7 +150,17 @@ export function FindingArchive() {
   ).sort();
 
   // Filter findings based on selected account, quarter, search, and filters
+  const privilegedRoles = ['admin', 'manager', 'site_manager', 'hse', 'dirut', 'direksiSDM', 'DireksiKeuangan', 'DME'];
+  const isPrivilegedUser = (userRole && privilegedRoles.includes(userRole)) || (user?.email && user.email.toLowerCase().includes('dwimitra'));
+
   const filtered = findings.filter((f) => {
+    if (!isPrivilegedUser) {
+      const userEmailClean = (user?.email || '').toLowerCase().trim();
+      if ((f.createdByEmail || '').toLowerCase().trim() !== userEmailClean && f.createdBy !== user?.uid) {
+        return false;
+      }
+    }
+
     if (!searchQuery.trim()) {
       if (selectedAccount && (f.createdByEmail || '').toLowerCase() !== selectedAccount.toLowerCase()) {
         return false;
