@@ -25,6 +25,12 @@ import { generateCMReportPDF } from '@/utils/CMReportPdfExport';
 import { sendFileNotification } from '@/utils/notificationService';
 import { ImageEditor } from './ImageEditor';
 
+export const PREPARED_BY_SIGNATURES: Record<string, string> = {
+  Salman: '',
+  Agil: '',
+  Asep: '',
+};
+
 interface CMReportFormModalProps {
   onSuccess: () => void;
   onCancel: () => void;
@@ -835,13 +841,22 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                   {/* PREPARED BY */}
                   <div className="bg-white p-3 border border-slate-200 rounded-xl space-y-2">
                     <span className="text-xs font-bold text-red-600 block">1. PREPARED BY</span>
-                    <input
-                      type="text"
+                    <select
                       value={formData.preparedByName}
-                      onChange={e => setFormData({ ...formData, preparedByName: e.target.value })}
-                      placeholder="Nama (e.g. Salman)"
-                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
-                    />
+                      onChange={e => {
+                        const selectedName = e.target.value;
+                        setFormData(prev => ({
+                          ...prev,
+                          preparedByName: selectedName,
+                          preparedBySign: (PREPARED_BY_SIGNATURES as Record<string, string>)[selectedName] || prev.preparedBySign || ''
+                        }));
+                      }}
+                      className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-900 font-semibold outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
+                    >
+                      <option value="Salman">Salman</option>
+                      <option value="Agil">Agil</option>
+                      <option value="Asep">Asep</option>
+                    </select>
                     <input
                       type="text"
                       value={formData.preparedByTitle}

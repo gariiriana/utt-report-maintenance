@@ -43,14 +43,19 @@ export interface CMReportData {
   authorName: string;
   preparedByName: string;
   preparedByTitle: string;
+  preparedBySign?: string;
   reviewedByName: string;
   reviewedByTitle: string;
+  reviewedBySign?: string;
   acknowledgedBy1Name: string;
   acknowledgedBy1Title: string;
+  acknowledgedBy1Sign?: string;
   acknowledgedBy2Name: string;
   acknowledgedBy2Title: string;
+  acknowledgedBy2Sign?: string;
   approvedByName: string;
   approvedByTitle: string;
+  approvedBySign?: string;
   
   // System Metadata
   reportedBy?: string;
