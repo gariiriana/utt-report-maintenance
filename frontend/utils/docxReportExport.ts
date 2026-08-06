@@ -143,11 +143,15 @@ function createHeaderLogosTable(logoLeftBytes: Uint8Array, logoRightBytes: Uint8
 
 function cleanBulletLines(content: string): string[] {
   if (!content) return ['N/A'];
-  const lines = content.split('\n').map((l) => l.trim()).filter(Boolean);
+  const lines = content.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   if (lines.length === 0) return ['N/A'];
-  return lines.map((l) =>
-    l.replace(/^(?:&«|[\u26AB\u2022\u25AA\u25BA\u25B6\u2043\u25CF\u25C6]|-|\*|\d+\.\s*)\s*/, '').trim()
-  );
+  return lines.map((l) => {
+    const clean = l
+      .replace(/^[\s\-–—−⁃•*\u26AB\u2022\u25AA\u25BA\u25B6\u2043\u25CF\u25C6\u2013\u2014\u2212]+\s*/, '')
+      .replace(/^\d+[\.\)\-]\s*/, '')
+      .trim();
+    return clean || l;
+  });
 }
 
 function createBulletParagraphs(content: string, fontSize = 18): Paragraph[] {
@@ -1125,15 +1129,11 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
         children: [
           new TableCell({
             margins: { top: 80, bottom: 80, left: 100, right: 100 },
-            children: (data.attendeesTDE && data.attendeesTDE.length > 0 ? data.attendeesTDE : ['-']).map(
-              (name) => new Paragraph({ children: [new TextRun({ text: `• ${name}`, size: 16 })] })
-            ),
+            children: createBulletParagraphs(data.attendeesTDE && data.attendeesTDE.length > 0 ? data.attendeesTDE.join('\n') : '-', 16),
           }),
           new TableCell({
             margins: { top: 80, bottom: 80, left: 100, right: 100 },
-            children: (data.attendeesDME && data.attendeesDME.length > 0 ? data.attendeesDME : ['-']).map(
-              (name) => new Paragraph({ children: [new TextRun({ text: `• ${name}`, size: 16 })] })
-            ),
+            children: createBulletParagraphs(data.attendeesDME && data.attendeesDME.length > 0 ? data.attendeesDME.join('\n') : '-', 16),
           }),
         ],
       }),
