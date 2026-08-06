@@ -69,16 +69,18 @@ const cellBorder = {
   right: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
 };
 
-function createSectionHeader(title: string): Paragraph {
+function createSectionHeader(title: string, pageBreak = false): Paragraph {
   return new Paragraph({
+    pageBreakBefore: pageBreak,
     alignment: AlignmentType.LEFT,
-    spacing: { before: 240, after: 120 },
+    spacing: { before: 180, after: 120 },
     children: [
       new TextRun({
         text: title,
         bold: true,
         size: 20, // 10pt
         color: '1E293B',
+        font: 'Century Gothic',
       }),
     ],
   });
@@ -795,7 +797,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           new Paragraph({ spacing: { after: 240 } }),
 
           ...(photoGridTable
-            ? [createSectionHeader('SUPPORTING DOCUMENTATION'), photoGridTable]
+            ? [createSectionHeader('SUPPORTING DOCUMENTATION', true), photoGridTable]
             : []),
 
           new Paragraph({ spacing: { after: 240 } }),

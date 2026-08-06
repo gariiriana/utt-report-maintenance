@@ -416,30 +416,14 @@ export async function generateCMReportPDF(data: CMReportData) {
     doc.setTextColor(50, 50, 50);
     doc.text('SUPPORTING DOCUMENTATION', margin, y);
 
-    y += 5;
-
-    // Outer Box: VISUAL INSPECTION & CHECKING PHOTOS
-    doc.setFillColor(...HEADER_FILL);
-    doc.setDrawColor(...BORDER_COLOR);
-    doc.setLineWidth(0.2);
-    doc.rect(margin, y, contentW, 6, 'FD');
-
-    doc.setFont(fontName, 'bold');
-    doc.setFontSize(8.5);
-    doc.setTextColor(0, 0, 0);
-    doc.text('VISUAL INSPECTION & CHECKING', margin + 2, y + 4.2);
-
     y += 6;
 
-    const photoBoxH = 155;
-    doc.rect(margin, y, contentW, photoBoxH, 'D');
-
-    // Draw photos inside photo box (up to 12 photos in grid across pages if >4)
+    // Draw photos in 2-column grid starting directly under SUPPORTING DOCUMENTATION
     const validPhotos = processedPhotos.filter(p => p.base64).slice(0, 12);
     let currentPageIndex = 2;
 
     if (validPhotos.length > 0) {
-      // Chunk photos by 4 photos per page (2 rows x 2 cols) to preserve clear, large photo dimensions
+      // Chunk photos by 4 photos per page (2 rows x 2 cols)
       const photoPages: { base64: string; description: string }[][] = [];
       for (let i = 0; i < validPhotos.length; i += 4) {
         photoPages.push(validPhotos.slice(i, i + 4));
@@ -448,18 +432,18 @@ export async function generateCMReportPDF(data: CMReportData) {
       const renderPhotoGrid = (photos: { base64: string; description: string }[], boxY: number, globalOffset = 0) => {
         const gapX = 6;
         const gapY = 4;
-        const cardW = (contentW - 10 - gapX) / 2; // 88mm wide
-        const headH = 6; // Header table bar
+        const cardW = (contentW - gapX) / 2; // 90mm wide to span full width
+        const headH = 6.5; // Header table bar
         const imgH = 55; // Image area height (clear & legible)
         const descH = 10; // Caption table row height
-        const cardH = headH + imgH + descH; // 71mm total height per card
+        const cardH = headH + imgH + descH; // 71.5mm total height per card
 
         photos.forEach((item, idx) => {
           const photoNum = globalOffset + idx + 1;
           const col = idx % 2;
           const row = Math.floor(idx / 2);
-          const cardX = margin + 5 + col * (cardW + gapX);
-          const cardY = boxY + 5 + row * (cardH + gapY);
+          const cardX = margin + col * (cardW + gapX);
+          const cardY = boxY + row * (cardH + gapY);
 
           // 1. Table Outer Box
           doc.setDrawColor(...BORDER_COLOR);
@@ -470,9 +454,9 @@ export async function generateCMReportPDF(data: CMReportData) {
           doc.setFillColor(...HEADER_FILL);
           doc.rect(cardX, cardY, cardW, headH, 'FD');
           doc.setFont(fontName, 'bold');
-          doc.setFontSize(8);
-          doc.setTextColor(30, 41, 59);
-          doc.text(`FOTO DOKUMENTASI #${photoNum}`, cardX + 3, cardY + 4.2);
+          doc.setFontSize(8.5);
+          doc.setTextColor(0, 0, 0);
+          doc.text(`FOTO DOKUMENTASI #${photoNum}`, cardX + 3, cardY + 4.5);
 
           // 3. Image Area
           const imgY = cardY + headH;
@@ -513,20 +497,7 @@ export async function generateCMReportPDF(data: CMReportData) {
           doc.setTextColor(50, 50, 50);
           doc.text('SUPPORTING DOCUMENTATION (LANJUTAN)', margin, currentY);
 
-          currentY += 5;
-
-          doc.setFillColor(...HEADER_FILL);
-          doc.setDrawColor(...BORDER_COLOR);
-          doc.setLineWidth(0.2);
-          doc.rect(margin, currentY, contentW, 6, 'FD');
-
-          doc.setFont(fontName, 'bold');
-          doc.setFontSize(8.5);
-          doc.setTextColor(0, 0, 0);
-          doc.text(`VISUAL INSPECTION & CHECKING (FOTO ${pageIdx * 4 + 1}-${pageIdx * 4 + pagePhotos.length})`, margin + 2, currentY + 4.2);
-
           currentY += 6;
-          doc.rect(margin, currentY, contentW, photoBoxH, 'D');
         }
 
         renderPhotoGrid(pagePhotos, currentY, pageIdx * 4);
