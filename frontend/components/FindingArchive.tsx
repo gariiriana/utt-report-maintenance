@@ -162,6 +162,28 @@ export function FindingArchive() {
     }
   };
 
+  const handleExportSinglePDF = async (finding: FindingRecord) => {
+    try {
+      toast.loading(`Mengunduh PDF temuan "${finding.partName}"...`, { id: 'single-pdf' });
+      await exportFindingsToPDF([finding]);
+      toast.success('PDF Temuan berhasil di-export!', { id: 'single-pdf' });
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal export PDF temuan', { id: 'single-pdf' });
+    }
+  };
+
+  const handleExportSingleWord = async (finding: FindingRecord) => {
+    try {
+      toast.loading(`Mengunduh Word temuan "${finding.partName}"...`, { id: 'single-word' });
+      await exportFindingsToWord([finding]);
+      toast.success('Word Temuan berhasil di-export!', { id: 'single-word' });
+    } catch (err) {
+      console.error(err);
+      toast.error('Gagal export Word temuan', { id: 'single-word' });
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
       {/* Header & Actions */}
@@ -327,15 +349,37 @@ export function FindingArchive() {
                           </div>
                         </div>
 
-                        {canDelete && (finding.createdBy === user?.uid || userRole === 'admin') && (
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <button
-                            onClick={() => setDeleteId(finding.id)}
-                            className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition border border-red-200 opacity-0 group-hover:opacity-100 shadow-sm"
-                            title="Hapus Temuan"
+                            type="button"
+                            onClick={() => handleExportSinglePDF(finding)}
+                            className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-bold flex items-center gap-1 transition shadow-xs cursor-pointer"
+                            title="Export PDF Temuan Ini"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>PDF</span>
                           </button>
-                        )}
+                          <button
+                            type="button"
+                            onClick={() => handleExportSingleWord(finding)}
+                            className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold flex items-center gap-1 transition shadow-xs cursor-pointer"
+                            title="Export Word Temuan Ini"
+                          >
+                            <FileDown className="w-3.5 h-3.5" />
+                            <span>DOCX</span>
+                          </button>
+
+                          {canDelete && (finding.createdBy === user?.uid || userRole === 'admin') && (
+                            <button
+                              type="button"
+                              onClick={() => setDeleteId(finding.id)}
+                              className="p-1.5 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-lg transition border border-slate-200 shadow-xs cursor-pointer"
+                              title="Hapus Temuan"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       {finding.remark && (
