@@ -29,7 +29,7 @@ import {
 import { exportSLAReportToExcel } from '@/utils/excelExport';
 import { generateCMReportPDF } from '@/utils/CMReportPdfExport';
 import { generatePIRReportPDF } from '@/utils/PIRReportPdfExport';
-import { exportCMReportToDocx, exportSLAReportToDocx, exportPIRReportToDocx } from '@/utils/docxReportExport';
+import { exportCMReportToDocx, exportSLAReportToDocx, exportPIRReportToDocx, exportSLAMonthlyRecapToDocx } from '@/utils/docxReportExport';
 import { sendFileNotification } from '@/utils/notificationService';
 import { FileText } from 'lucide-react';
 import { useAuth } from './AuthContext';
@@ -1052,31 +1052,59 @@ export function FileManagement({
                         )}
                     </div>
 
-                    {(selectedFolder || selectedQuarter || selectedMType || searchQuery) && (
-                        <button
-                            onClick={() => {
-                                if (selectedMType) {
-                                    setSelectedMType(null);
-                                } else if (selectedQuarter) {
-                                    setSelectedQuarter(null);
-                                } else if (selectedFolder) {
-                                    setSelectedFolder(null);
-                                    setSearchQuery('');
-                                    if (onBackToRoot) onBackToRoot();
-                                } else if (searchQuery) {
-                                    setSearchQuery('');
-                                }
-                            }}
-                            className="text-xs sm:text-sm text-slate-600 hover:text-amber-700 font-semibold flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-amber-50 border border-slate-200 rounded-lg transition-all shadow-2xs cursor-pointer"
-                        >
-                            <ChevronLeft className="w-4 h-4" />
-                            {selectedMType
-                                ? `Kembali ke ${selectedQuarter}`
-                                : selectedQuarter
-                                ? `Kembali ke ${selectedFolder}`
-                                : 'Kembali ke Folder Utama'}
-                        </button>
-                    )}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {(selectedFolder === 'Form SLA/SLG' || selectedFolder === 'SLA/SLG' || selectedFolder === 'Report CM, SLA & PIR') && (
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    const slaFiles = displayFiles.filter(f => f.isCorrectiveReport && f.reportType === 'SLA').map(f => f.originalReport).filter(Boolean);
+                                    if (slaFiles.length === 0) {
+                                        toast.error('Tidak ada data laporan SLA di folder ini untuk direkap.');
+                                        return;
+                                    }
+                                    const toastId = toast.loading('Memproses Rekap SLA (DOCX)...');
+                                    try {
+                                        const folderName = selectedQuarter ? `${selectedFolder} (${selectedQuarter})` : selectedFolder;
+                                        await exportSLAMonthlyRecapToDocx(slaFiles, folderName);
+                                        toast.success('Berhasil mengekspor Rekap SLA Word (DOCX)!', { id: toastId });
+                                    } catch (err: any) {
+                                        console.error('Failed to export SLA recap:', err);
+                                        toast.error('Gagal mengekspor Rekap SLA Word', { id: toastId });
+                                    }
+                                }}
+                                className="text-xs sm:text-sm text-white bg-blue-600 hover:bg-blue-700 font-bold flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all shadow-sm cursor-pointer shrink-0"
+                            >
+                                <FileText className="w-4 h-4" />
+                                Export Rekap SLA (DOCX)
+                            </button>
+                        )}
+
+                        {(selectedFolder || selectedQuarter || selectedMType || searchQuery) && (
+                            <button
+                                onClick={() => {
+                                    if (selectedMType) {
+                                        setSelectedMType(null);
+                                    } else if (selectedQuarter) {
+                                        setSelectedQuarter(null);
+                                    } else if (selectedFolder) {
+                                        setSelectedFolder(null);
+                                        setSearchQuery('');
+                                        if (onBackToRoot) onBackToRoot();
+                                    } else if (searchQuery) {
+                                        setSearchQuery('');
+                                    }
+                                }}
+                                className="text-xs sm:text-sm text-slate-600 hover:text-amber-700 font-semibold flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-amber-50 border border-slate-200 rounded-lg transition-all shadow-2xs cursor-pointer"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                                {selectedMType
+                                    ? `Kembali ke ${selectedQuarter}`
+                                    : selectedQuarter
+                                    ? `Kembali ke ${selectedFolder}`
+                                    : 'Kembali ke Folder Utama'}
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {!selectedFolder ? (

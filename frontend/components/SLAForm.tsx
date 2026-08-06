@@ -16,7 +16,8 @@ import {
   Activity,
   Check,
   ChevronRight,
-  Download
+  Download,
+  FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -24,6 +25,12 @@ import { collection, addDoc, serverTimestamp, getDoc, doc, updateDoc } from 'fir
 import { useAuth } from './AuthContext';
 import { exportSLAReportToDocx } from '@/utils/docxReportExport';
 import { sendFileNotification } from '@/utils/notificationService';
+
+/** A single photo evidence item with optional description */
+interface PhotoItem {
+  photo: string;
+  description: string;
+}
 
 interface SLAFormProps {
   onSuccess: () => void;
@@ -35,6 +42,9 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+
+  // Maximum photos allowed per step
+  const MAX_PHOTOS_PER_STEP = 10;
 
   // Form State
   const [formData, setFormData] = useState({
@@ -49,26 +59,31 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
     timeOrder: '',
     actualTimeResponse: '',
     targetResponseMin: 5,
-    photoResponse: '',
+    photosResponse: [] as PhotoItem[],
 
-    // Engineer Onsite Support (Step 2)
-    photoEngineerOnsite: '',
-
-    // Onsite Principle Support (Step 3) - Target 120 Menit (2 Jam)
+    // Onsite Principle Support (Step 2) - Target 120 Menit (2 Jam)
     actualTimeOnsite: '',
     targetOnsiteMin: 120,
-    photoOnsite: '',
+    photosOnsite: [] as PhotoItem[],
 
-    // Restore Service Time (Step 4) - Target 120 Menit (2 Jam)
+    // Restore Service Time (Step 3) - Target 120 Menit (2 Jam)
     startOrder: '',
     finishOrder: '',
     targetRestoreMin: 120,
-    photoRestore: '',
+    photosRestore: [] as PhotoItem[],
 
-    // Resolution Time (Step 5) - Target Dynamic based on Priority (Critical 2h, High 4h, Medium 6h, Low 48h)
+    // Resolution Time (Step 4) - Target Dynamic based on Priority (Critical 2h, High 4h, Medium 6h, Low 48h)
     targetResolutionMin: 360,
-    photoResolution: '',
+    photosResolution: [] as PhotoItem[],
+    resolutionRemark: '',
   });
+
+  // Helper: migrate legacy single photo string to PhotoItem array
+  const migratePhotos = (data: any, arrayKey: string, legacyKey: string): PhotoItem[] => {
+    if (Array.isArray(data[arrayKey]) && data[arrayKey].length > 0) return data[arrayKey];
+    if (data[legacyKey]) return [{ photo: data[legacyKey], description: '' }];
+    return [];
+  };
 
   // Load draft or existing report if editing
   useEffect(() => {
@@ -78,6 +93,11 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
           const docSnap = await getDoc(doc(db, 'corrective_reports', editId));
           if (docSnap.exists()) {
             const data = docSnap.data();
+            // Merge old engineer onsite photo into onsite photos if present
+            const onsitePhotos = migratePhotos(data, 'photosOnsite', 'photoOnsite');
+            if (data.photoEngineerOnsite && !onsitePhotos.some((p: PhotoItem) => p.photo === data.photoEngineerOnsite)) {
+              onsitePhotos.unshift({ photo: data.photoEngineerOnsite, description: 'Bukti Engineer Onsite' });
+            }
             setFormData({
               ticketName: data.ticketName || '',
               location: data.location || '',
@@ -88,17 +108,17 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
               timeOrder: data.timeOrder || '',
               actualTimeResponse: data.actualTimeResponse || '',
               targetResponseMin: data.targetResponseMin || 5,
-              photoResponse: data.photoResponse || '',
-              photoEngineerOnsite: data.photoEngineerOnsite || '',
+              photosResponse: migratePhotos(data, 'photosResponse', 'photoResponse'),
               actualTimeOnsite: data.actualTimeOnsite || '',
               targetOnsiteMin: data.targetOnsiteMin || 120,
-              photoOnsite: data.photoOnsite || '',
+              photosOnsite: onsitePhotos,
               startOrder: data.startOrder || '',
               finishOrder: data.finishOrder || '',
               targetRestoreMin: data.targetRestoreMin || 120,
-              photoRestore: data.photoRestore || '',
+              photosRestore: migratePhotos(data, 'photosRestore', 'photoRestore'),
               targetResolutionMin: data.targetResolutionMin || 360,
-              photoResolution: data.photoResolution || '',
+              photosResolution: migratePhotos(data, 'photosResolution', 'photoResolution'),
+              resolutionRemark: data.resolutionRemark || '',
             });
           }
         } catch (error) {
@@ -113,9 +133,16 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
         try {
           const parsed = JSON.parse(savedDraft);
           if (parsed.formData) {
-            setFormData(parsed.formData);
+            // Validate draft has new photo format, otherwise reset photos
+            const draft = parsed.formData;
+            if (draft.photoResponse !== undefined || draft.photoEngineerOnsite !== undefined) {
+              // Legacy draft detected â€” clear it and start fresh
+              localStorage.removeItem('sla_form_draft');
+            } else {
+              setFormData(draft);
+            }
           }
-          if (parsed.currentStep) {
+          if (parsed.currentStep && parsed.currentStep <= 4) {
             setCurrentStep(parsed.currentStep);
           }
         } catch (e) {
@@ -226,63 +253,100 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
     formData.targetResolutionMin
   ]);
 
-  // Sync Start Order with Time Order by default
+  // Sync Start Order with Onsite Principle time (non-editable)
   useEffect(() => {
-    if (formData.timeOrder && !formData.startOrder) {
-      setFormData(prev => ({ ...prev, startOrder: formData.timeOrder }));
+    if (formData.actualTimeOnsite) {
+      setFormData(prev => ({ ...prev, startOrder: formData.actualTimeOnsite }));
     }
-  }, [formData.timeOrder]);
+  }, [formData.actualTimeOnsite]);
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'photoResponse' | 'photoEngineerOnsite' | 'photoOnsite' | 'photoRestore' | 'photoResolution') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Multi-photo upload handler â€” compresses and appends to the specified photo array
+  type PhotoField = 'photosResponse' | 'photosOnsite' | 'photosRestore' | 'photosResolution';
 
-    if (file.size > 15 * 1024 * 1024) {
-      toast.error('Maksimal ukuran file foto adalah 15MB');
+  const handleMultiPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, field: PhotoField) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const currentPhotos = formData[field];
+    if (currentPhotos.length >= MAX_PHOTOS_PER_STEP) {
+      toast.error(`Maksimal ${MAX_PHOTOS_PER_STEP} foto per langkah`);
       return;
     }
 
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+    const remaining = MAX_PHOTOS_PER_STEP - currentPhotos.length;
+    const filesToProcess = Array.from(files).slice(0, remaining);
 
-        const MAX_WIDTH = 800;
-        const MAX_HEIGHT = 800;
-        let width = img.width;
-        let height = img.height;
+    filesToProcess.forEach((file) => {
+      if (file.size > 15 * 1024 * 1024) {
+        toast.error(`File "${file.name}" melebihi batas 15MB, dilewati.`);
+        return;
+      }
 
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height = (height * MAX_WIDTH) / width;
-            width = MAX_WIDTH;
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = (height * MAX_WIDTH) / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = (width * MAX_HEIGHT) / height;
+              height = MAX_HEIGHT;
+            }
           }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width = (width * MAX_HEIGHT) / height;
-            height = MAX_HEIGHT;
-          }
-        }
 
-        canvas.width = width;
-        canvas.height = height;
-        ctx?.drawImage(img, 0, 0, width, height);
+          canvas.width = width;
+          canvas.height = height;
+          ctx?.drawImage(img, 0, 0, width, height);
 
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-        setFormData(prev => ({ ...prev, [field]: compressedBase64 }));
-        toast.success('Bukti foto berhasil diunggah!');
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          setFormData(prev => ({
+            ...prev,
+            [field]: [...prev[field], { photo: compressedBase64, description: '' }]
+          }));
+          toast.success('Foto berhasil ditambahkan!');
+        };
       };
-    };
+    });
+
+    // Reset input so same file can be re-selected
+    e.target.value = '';
+  };
+
+  // Update description for a specific photo in a photo array
+  const updatePhotoDescription = (field: PhotoField, index: number, description: string) => {
+    setFormData(prev => {
+      const updated = [...prev[field]];
+      updated[index] = { ...updated[index], description };
+      return { ...prev, [field]: updated };
+    });
+  };
+
+  // Remove a specific photo from a photo array
+  const removePhoto = (field: PhotoField, index: number) => {
+    setFormData(prev => {
+      const updated = prev[field].filter((_: PhotoItem, i: number) => i !== index);
+      return { ...prev, [field]: updated };
+    });
   };
 
   const validateStep = (targetStep: number): boolean => {
     if (targetStep <= currentStep) return true;
 
-    // Step 1 Validation
+    // Step 1 Validation: Response Time
     if (targetStep > 1) {
       if (!formData.location?.trim()) {
         toast.error('Mohon lengkapi Lokasi Gangguan di Step 1');
@@ -294,55 +358,51 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
         setCurrentStep(1);
         return false;
       }
-      if (!formData.photoResponse) {
-        toast.error('Mohon unggah Bukti Foto Response Time di Step 1');
+      if (formData.photosResponse.length === 0) {
+        toast.error('Mohon unggah minimal 1 Bukti Foto Response Time di Step 1');
         setCurrentStep(1);
         return false;
       }
     }
 
-    // Step 2 Validation
+    // Step 2 Validation: Onsite Principle
     if (targetStep > 2) {
-      if (!formData.photoEngineerOnsite) {
-        toast.error('Mohon unggah Bukti Foto Engineer Onsite Support di Step 2');
+      if (!formData.actualTimeOnsite) {
+        toast.error('Mohon isi Waktu Aktual Principle Onsite di Step 2');
+        setCurrentStep(2);
+        return false;
+      }
+      if (formData.photosOnsite.length === 0) {
+        toast.error('Mohon unggah minimal 1 Bukti Foto Onsite Principle di Step 2');
         setCurrentStep(2);
         return false;
       }
     }
 
-    // Step 3 Validation
+    // Step 3 Validation: Restore Time
     if (targetStep > 3) {
-      if (!formData.actualTimeOnsite) {
-        toast.error('Mohon isi Waktu Aktual Onsite di Step 3');
+      if (!formData.finishOrder) {
+        toast.error('Mohon isi Waktu Layanan Pulih (Finish Order) di Step 3');
         setCurrentStep(3);
         return false;
       }
-      if (!formData.photoOnsite) {
-        toast.error('Mohon unggah Bukti Foto Onsite Principle Engineer di Step 3');
+      if (formData.photosRestore.length === 0) {
+        toast.error('Mohon unggah minimal 1 Bukti Foto Restore Service Time di Step 3');
         setCurrentStep(3);
         return false;
       }
     }
 
-    // Step 4 Validation
+    // Step 4 Validation: Resolution
     if (targetStep > 4) {
-      if (!formData.startOrder || !formData.finishOrder) {
-        toast.error('Mohon isi Waktu Mulai dan Selesai Order di Step 4');
+      if (formData.photosResolution.length === 0) {
+        toast.error('Mohon unggah minimal 1 Bukti Foto Resolution Time di Step 4');
         setCurrentStep(4);
         return false;
       }
-      if (!formData.photoRestore) {
-        toast.error('Mohon unggah Bukti Foto Restore Service Time di Step 4');
+      if (!formData.resolutionRemark?.trim()) {
+        toast.error('Mohon isi Catatan Remark Resolution di Step 4');
         setCurrentStep(4);
-        return false;
-      }
-    }
-
-    // Step 5 Validation
-    if (targetStep > 5) {
-      if (!formData.photoResolution) {
-        toast.error('Mohon unggah Bukti Foto Resolution Time di Step 5');
-        setCurrentStep(5);
         return false;
       }
     }
@@ -366,7 +426,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateStep(5)) return;
+    if (!validateStep(4)) return;
     if (!user) return;
 
     const isLocalhost = import.meta.env.DEV || (
@@ -378,8 +438,8 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
       )
     );
 
-    if (!isLocalhost && !formData.photoResolution) {
-      toast.error('Mohon unggah Bukti Foto Resolution Time pada Step 5');
+    if (!isLocalhost && formData.photosResolution.length === 0) {
+      toast.error('Mohon unggah Bukti Foto Resolution Time pada Step 4');
       return;
     }
 
@@ -396,7 +456,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
 
         // Core calculations mapping for normal display compatibility
         issue: `[SLA / SLG] ${formData.ticketName.trim() || 'Work Order'} (${formData.priority})`,
-        actionTaken: formData.remark.trim() || 'Pemeliharaan corrective diselesaikan sesuai target SLA.',
+        actionTaken: formData.resolutionRemark.trim() || formData.remark.trim() || 'Pemeliharaan corrective diselesaikan sesuai target SLA.',
         status: 'Resolved',
         spareParts: '',
         quarter: `Q${Math.floor(new Date().getMonth() / 3) + 1}`,
@@ -408,31 +468,34 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
         actualResponseTimeMin: calcs.responseTimeMin,
         targetResponseMin: formData.targetResponseMin,
         responseComply: calcs.responseComply,
-        photoResponse: formData.photoResponse,
+        photosResponse: formData.photosResponse,
+        // Legacy backward compat: keep first photo as string
+        photoResponse: formData.photosResponse[0]?.photo || '',
 
-        // SLA 2: Engineer Onsite photo
-        photoEngineerOnsite: formData.photoEngineerOnsite,
-
-        // SLA 3: Onsite OPE
+        // SLA 2: Onsite Principle
         actualTimeOnsite: formData.actualTimeOnsite,
         actualOnsiteTimeMin: calcs.onsiteTimeMin,
         targetOnsiteMin: formData.targetOnsiteMin,
         onsiteComply: calcs.onsiteComply,
-        photoOnsite: formData.photoOnsite,
+        photosOnsite: formData.photosOnsite,
+        photoOnsite: formData.photosOnsite[0]?.photo || '',
 
-        // SLA 4: Restore RST
+        // SLA 3: Restore RST
         startOrder: formData.startOrder,
         finishOrder: formData.finishOrder,
         actualRestoreTimeMin: calcs.restoreTimeMin,
         targetRestoreMin: formData.targetRestoreMin,
         restoreComply: calcs.restoreComply,
-        photoRestore: formData.photoRestore,
+        photosRestore: formData.photosRestore,
+        photoRestore: formData.photosRestore[0]?.photo || '',
 
-        // SLA 5: Resolution RT
+        // SLA 4: Resolution
         actualResolutionTimeMin: calcs.resolutionTimeMin,
         targetResolutionMin: formData.targetResolutionMin,
         resolutionComply: calcs.resolutionComply,
-        photoResolution: formData.photoResolution,
+        photosResolution: formData.photosResolution,
+        photoResolution: formData.photosResolution[0]?.photo || '',
+        resolutionRemark: formData.resolutionRemark.trim(),
 
         // SLG Calculated Performance Scores & Weightings
         slgScoreRT: calcs.slgScoreRT,
@@ -475,7 +538,6 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
 
   const steps = [
     { title: 'Response Time', desc: 'SLA Respon (<5 M)' },
-    { title: 'Engineer Onsite', desc: 'Bukti Onsite Eng' },
     { title: 'Onsite Principle', desc: 'SLA Onsite (2 H)' },
     { title: 'Restore Time', desc: 'SLA Restore (2 H)' },
     { title: 'Resolution', desc: 'SLA Resolusi' }
@@ -523,7 +585,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
         {/* Mobile-only Step Description */}
         <div className="mt-4 sm:hidden flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-2.5">
           <div className="text-left">
-            <span className="text-[10px] text-red-600 uppercase font-extrabold tracking-wider block">Langkah {currentStep} dari 5</span>
+            <span className="text-[10px] text-red-600 uppercase font-extrabold tracking-wider block">Langkah {currentStep} dari 4</span>
             <span className="text-xs font-bold text-slate-900 block mt-0.5">{steps[currentStep - 1].title}</span>
             <span className="text-[11px] text-slate-500 block mt-0.5">{steps[currentStep - 1].desc}</span>
           </div>
@@ -677,45 +739,59 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                 </div>
               )}
 
-              {/* Photo Evidence slot */}
+              {/* Multi-Photo Evidence Gallery */}
               <div>
                 <label className="block text-sm text-slate-400 font-medium mb-2">Bukti Tangkapan Layar (Screenshot) Response Time *</label>
-                <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:border-red-500 hover:bg-slate-50 transition cursor-pointer relative group">
-                  {formData.photoResponse ? (
-                    <div className="relative inline-block">
-                      <img
-                        src={formData.photoResponse}
-                        alt="Bukti Response"
-                        className="h-44 object-contain mx-auto rounded-xl border border-slate-700"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, photoResponse: '' })}
-                        className="absolute -top-3 -right-3 p-2 bg-red-600 hover:bg-red-700 text-white rounded-full transition shadow-xl"
-                        title="Hapus Bukti"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <Camera className="w-10 h-10 text-slate-500 mx-auto mb-3" />
-                      <p className="text-sm font-semibold text-slate-300">Pilih berkas foto bukti</p>
-                      <p className="text-xs text-slate-500 mt-1">Gunakan screenshot WhatsApp, log tiket, atau email masuk (Max 15MB)</p>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handlePhotoUpload(e, 'photoResponse')}
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                        title="Upload bukti respon"
-                      />
-                    </>
-                  )}
-                </div>
+                {/* Existing Photos Grid */}
+                {formData.photosResponse.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                    {formData.photosResponse.map((item, idx) => (
+                      <div key={idx} className="relative bg-slate-50 border border-slate-200 rounded-xl p-3 group">
+                        <div className="relative">
+                          <img src={item.photo} alt={`Bukti Response ${idx + 1}`} className="w-full h-36 object-contain rounded-lg border border-slate-200 bg-white" />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto('photosResponse', idx)}
+                            className="absolute -top-2 -right-2 p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full transition shadow-lg opacity-0 group-hover:opacity-100"
+                            title="Hapus Foto"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          value={item.description}
+                          onChange={(e) => updatePhotoDescription('photosResponse', idx, e.target.value)}
+                          placeholder={`Deskripsi foto ${idx + 1}...`}
+                          className="w-full mt-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Add Photo Button */}
+                {formData.photosResponse.length < MAX_PHOTOS_PER_STEP && (
+                  <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:border-red-500 hover:bg-slate-50 transition cursor-pointer relative group">
+                    <Camera className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+                    <p className="text-sm font-semibold text-slate-500">
+                      {formData.photosResponse.length === 0 ? 'Pilih berkas foto bukti' : '+ Tambah Foto Lagi'}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">Gunakan screenshot WhatsApp, log tiket, atau email masuk (Max 15MB per foto, maks {MAX_PHOTOS_PER_STEP} foto)</p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => handleMultiPhotoUpload(e, 'photosResponse')}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      title="Upload bukti respon"
+                    />
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
 
+          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• STEP 2: ONSITE PRINCIPLE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
           {currentStep === 2 && (
             <motion.div
               key="step2"
@@ -727,65 +803,10 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
             >
               <div className="border-b border-slate-200 pb-3">
                 <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <Camera className="w-5 h-5 text-red-600" />
-                  Step 2: Bukti Foto Engineer Onsite Support
-                </h3>
-                <p className="text-slate-500 text-xs">Unggah foto bukti kedatangan atau kehadiran engineer di lokasi unit gangguan.</p>
-              </div>
-
-              <div>
-                <label className="block text-sm text-slate-700 font-medium mb-2">Bukti Tangkapan Layar (Screenshot) / Foto Engineer Onsite *</label>
-                <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:border-red-500 hover:bg-slate-50 transition cursor-pointer relative group">
-                  {formData.photoEngineerOnsite ? (
-                    <div className="relative inline-block">
-                      <img
-                        src={formData.photoEngineerOnsite}
-                        alt="Bukti Engineer Onsite"
-                        className="h-44 object-contain mx-auto rounded-xl border border-slate-200"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, photoEngineerOnsite: '' })}
-                        className="absolute -top-3 -right-3 p-2 bg-red-600 hover:bg-red-700 text-white rounded-full transition shadow-xl"
-                        title="Hapus Bukti"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <Camera className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-                      <p className="text-sm font-semibold text-slate-700">Pilih berkas foto bukti engineer onsite</p>
-                      <p className="text-xs text-slate-500 mt-1">Gunakan foto selfie engineer, screenshot share-loc WA, atau log kehadiran (Max 15MB)</p>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handlePhotoUpload(e, 'photoEngineerOnsite')}
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                        title="Upload bukti engineer onsite"
-                      />
-                    </>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {currentStep === 3 && (
-            <motion.div
-              key="step3"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-5"
-            >
-              <div className="border-b border-slate-200 pb-3">
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
                   <User className="w-5 h-5 text-red-600" />
-                  Step 3: Onsite Principle Engineer SLA (OPE)
+                  Step 2: Onsite Principle SLA (OPE)
                 </h3>
-                <p className="text-slate-500 text-xs">Target kedatangan di lokasi (onsite) default adalah 120 Menit (2 Jam) dihitung sejak order dibuat.</p>
+                <p className="text-slate-500 text-xs">Target kedatangan principle di lokasi (onsite) default adalah 120 Menit (2 Jam) dihitung sejak order dibuat.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -802,7 +823,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                 </div>
 
                 <div>
-                  <label className="block text-sm text-slate-700 font-medium mb-1.5">Waktu Aktual Tiba di Lokasi (Onsite) *</label>
+                  <label className="block text-sm text-slate-700 font-medium mb-1.5">Waktu Aktual Principle Onsite *</label>
                   <div className="relative group">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 transition" />
                     <input
@@ -810,7 +831,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                       type="datetime-local"
                       value={formData.actualTimeOnsite}
                       onChange={(e) => setFormData({ ...formData, actualTimeOnsite: e.target.value })}
-                      title="Waktu Aktual Tiba di Lokasi"
+                      title="Waktu Aktual Principle Onsite"
                       placeholder="Pilih waktu onsite"
                       className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm"
                     />
@@ -854,47 +875,60 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                 </div>
               )}
 
+              {/* Multi-Photo Evidence Gallery */}
               <div>
-                <label className="block text-sm text-slate-700 font-medium mb-2">Bukti Tangkapan Layar (Screenshot) Kedatangan Onsite Principle *</label>
-                <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:border-red-500 hover:bg-slate-50 transition cursor-pointer relative group">
-                  {formData.photoOnsite ? (
-                    <div className="relative inline-block">
-                      <img
-                        src={formData.photoOnsite}
-                        alt="Bukti Onsite"
-                        className="h-44 object-contain mx-auto rounded-xl border border-slate-200"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, photoOnsite: '' })}
-                        className="absolute -top-3 -right-3 p-2 bg-red-600 hover:bg-red-700 text-white rounded-full transition shadow-xl"
-                        title="Hapus Bukti"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <Camera className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-                      <p className="text-sm font-semibold text-slate-700">Pilih berkas foto bukti</p>
-                      <p className="text-xs text-slate-500 mt-1">Gunakan foto selfie di depan unit, log absen, atau screenshot WA (Max 15MB)</p>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handlePhotoUpload(e, 'photoOnsite')}
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                        title="Upload bukti kedatangan"
-                      />
-                    </>
-                  )}
-                </div>
+                <label className="block text-sm text-slate-700 font-medium mb-2">Bukti Foto Kedatangan Onsite Principle *</label>
+                {formData.photosOnsite.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                    {formData.photosOnsite.map((item, idx) => (
+                      <div key={idx} className="relative bg-slate-50 border border-slate-200 rounded-xl p-3 group">
+                        <div className="relative">
+                          <img src={item.photo} alt={`Bukti Onsite ${idx + 1}`} className="w-full h-36 object-contain rounded-lg border border-slate-200 bg-white" />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto('photosOnsite', idx)}
+                            className="absolute -top-2 -right-2 p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full transition shadow-lg opacity-0 group-hover:opacity-100"
+                            title="Hapus Foto"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          value={item.description}
+                          onChange={(e) => updatePhotoDescription('photosOnsite', idx, e.target.value)}
+                          placeholder={`Deskripsi foto ${idx + 1}...`}
+                          className="w-full mt-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {formData.photosOnsite.length < MAX_PHOTOS_PER_STEP && (
+                  <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:border-red-500 hover:bg-slate-50 transition cursor-pointer relative group">
+                    <Camera className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+                    <p className="text-sm font-semibold text-slate-500">
+                      {formData.photosOnsite.length === 0 ? 'Pilih berkas foto bukti onsite' : '+ Tambah Foto Lagi'}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">Gunakan foto selfie di depan unit, screenshot share-loc WA, atau log kehadiran (Max 15MB)</p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => handleMultiPhotoUpload(e, 'photosOnsite')}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      title="Upload bukti kedatangan"
+                    />
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
 
-          {currentStep === 4 && (
+          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• STEP 3: RESTORE TIME â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {currentStep === 3 && (
             <motion.div
-              key="step4"
+              key="step3"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -904,26 +938,26 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
               <div className="border-b border-slate-200 pb-3">
                 <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
                   <Activity className="w-5 h-5 text-red-600" />
-                  Step 4: Restore Service Time SLA (RST)
+                  Step 3: Restore Service Time SLA (RST)
                 </h3>
-                <p className="text-slate-500 text-xs">Target pemulihan layanan (temporary solution) default adalah 120 Menit (2 Jam) sejak engineer onsite di lokasi.</p>
+                <p className="text-slate-500 text-xs">Target pemulihan layanan (temporary solution) default adalah 120 Menit (2 Jam) sejak principle onsite di lokasi.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
-                  <label className="block text-sm text-slate-700 font-medium mb-1.5">Waktu Mulai Pekerjaan (Start Order) *</label>
-                  <div className="relative group">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 transition" />
+                  <label className="block text-sm text-slate-700 font-medium mb-1.5">Waktu Mulai Pekerjaan (Start Order)</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input
-                      required
+                      disabled
                       type="datetime-local"
                       value={formData.startOrder}
-                      onChange={(e) => setFormData({ ...formData, startOrder: e.target.value })}
-                      title="Waktu Mulai Pekerjaan"
-                      placeholder="Pilih waktu mulai"
-                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm"
+                      title="Waktu Mulai Pekerjaan (otomatis dari waktu Principle Onsite)"
+                      placeholder="Otomatis dari Principle Onsite"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed"
                     />
                   </div>
+                  <span className="text-[11px] text-slate-400 mt-1 block italic">Otomatis mengikuti waktu Principle Onsite</span>
                 </div>
 
                 <div>
@@ -979,47 +1013,60 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                 </div>
               )}
 
+              {/* Multi-Photo Evidence Gallery */}
               <div>
                 <label className="block text-sm text-slate-700 font-medium mb-2">Bukti Tangkapan Layar (Screenshot) Layanan Pulih *</label>
-                <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:border-red-500 hover:bg-slate-50 transition cursor-pointer relative group">
-                  {formData.photoRestore ? (
-                    <div className="relative inline-block">
-                      <img
-                        src={formData.photoRestore}
-                        alt="Bukti Restore"
-                        className="h-44 object-contain mx-auto rounded-xl border border-slate-200"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, photoRestore: '' })}
-                        className="absolute -top-3 -right-3 p-2 bg-red-600 hover:bg-red-700 text-white rounded-full transition shadow-xl"
-                        title="Hapus Bukti"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <Camera className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-                      <p className="text-sm font-semibold text-slate-700">Pilih berkas foto bukti</p>
-                      <p className="text-xs text-slate-500 mt-1">Gunakan screenshot grafik sistem normal, log tiket pulih, atau chat WA (Max 15MB)</p>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handlePhotoUpload(e, 'photoRestore')}
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                        title="Upload bukti layanan pulih"
-                      />
-                    </>
-                  )}
-                </div>
+                {formData.photosRestore.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                    {formData.photosRestore.map((item, idx) => (
+                      <div key={idx} className="relative bg-slate-50 border border-slate-200 rounded-xl p-3 group">
+                        <div className="relative">
+                          <img src={item.photo} alt={`Bukti Restore ${idx + 1}`} className="w-full h-36 object-contain rounded-lg border border-slate-200 bg-white" />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto('photosRestore', idx)}
+                            className="absolute -top-2 -right-2 p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full transition shadow-lg opacity-0 group-hover:opacity-100"
+                            title="Hapus Foto"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          value={item.description}
+                          onChange={(e) => updatePhotoDescription('photosRestore', idx, e.target.value)}
+                          placeholder={`Deskripsi foto ${idx + 1}...`}
+                          className="w-full mt-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {formData.photosRestore.length < MAX_PHOTOS_PER_STEP && (
+                  <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:border-red-500 hover:bg-slate-50 transition cursor-pointer relative group">
+                    <Camera className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+                    <p className="text-sm font-semibold text-slate-500">
+                      {formData.photosRestore.length === 0 ? 'Pilih berkas foto bukti' : '+ Tambah Foto Lagi'}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">Gunakan screenshot grafik sistem normal, log tiket pulih, atau chat WA (Max 15MB)</p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => handleMultiPhotoUpload(e, 'photosRestore')}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      title="Upload bukti layanan pulih"
+                    />
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
 
-          {currentStep === 5 && (
+          {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• STEP 4: RESOLUTION â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {currentStep === 4 && (
             <motion.div
-              key="step5"
+              key="step4"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -1029,7 +1076,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
               <div className="border-b border-slate-200 pb-3">
                 <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 text-red-600" />
-                  Step 5: Resolution Time SLA &amp; Ringkasan Laporan
+                  Step 4: Resolution Time SLA &amp; Ringkasan Laporan
                 </h3>
                 <p className="text-slate-500 text-xs">Target resolusi permanen otomatis berdasarkan prioritas: Critical (2 Jam), High (4 Jam), Medium (6 Jam), Low (48 Jam).</p>
               </div>
@@ -1047,42 +1094,70 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                   />
                   <span className="text-[11px] text-slate-500 mt-1 block">Target Otomatis Sesuai Prioritas: {formData.priority}</span>
                 </div>
+              </div>
 
-                {/* Photo Evidence slot */}
-                <div>
-                  <label className="block text-sm text-slate-700 font-medium mb-1.5">Bukti Tangkapan Layar (Screenshot) Tiket Closed/Selesai *</label>
-                  <div className="border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center hover:border-red-500 hover:bg-slate-50 transition cursor-pointer relative group">
-                    {formData.photoResolution ? (
-                      <div className="relative inline-block">
-                        <img
-                          src={formData.photoResolution}
-                          alt="Bukti Resolusi"
-                          className="h-28 object-contain mx-auto rounded-xl border border-slate-200"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setFormData({ ...formData, photoResolution: '' })}
-                          className="absolute -top-3 -right-3 p-2 bg-red-600 hover:bg-red-700 text-white rounded-full transition shadow-xl"
-                          title="Hapus Bukti"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <Camera className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                        <p className="text-xs font-semibold text-slate-700">Pilih berkas foto bukti tiket closed</p>
+              {/* Resolution Remark */}
+              <div>
+                <label className="block text-sm text-slate-700 font-medium mb-1.5 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-red-500" />
+                  Catatan Remark (Problem Solving &amp; Final Kondisi) *
+                </label>
+                <textarea
+                  required
+                  value={formData.resolutionRemark}
+                  onChange={(e) => setFormData({ ...formData, resolutionRemark: e.target.value })}
+                  placeholder="Jelaskan langkah-langkah problem solving yang dilakukan selama penanganan gangguan dan kondisi akhir setelah penyelesaian..."
+                  rows={4}
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm resize-none"
+                />
+                <span className="text-[11px] text-slate-400 mt-1 block">Contoh: Melakukan restart unit, cek parameter, penggantian part XYZ. Kondisi akhir: sistem normal kembali.</span>
+              </div>
+
+              {/* Multi-Photo Evidence Gallery */}
+              <div>
+                <label className="block text-sm text-slate-700 font-medium mb-2">Bukti Tangkapan Layar (Screenshot) Tiket Closed/Selesai *</label>
+                {formData.photosResolution.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                    {formData.photosResolution.map((item, idx) => (
+                      <div key={idx} className="relative bg-slate-50 border border-slate-200 rounded-xl p-3 group">
+                        <div className="relative">
+                          <img src={item.photo} alt={`Bukti Resolusi ${idx + 1}`} className="w-full h-36 object-contain rounded-lg border border-slate-200 bg-white" />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto('photosResolution', idx)}
+                            className="absolute -top-2 -right-2 p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full transition shadow-lg opacity-0 group-hover:opacity-100"
+                            title="Hapus Foto"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                         <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => handlePhotoUpload(e, 'photoResolution')}
-                          className="absolute inset-0 opacity-0 cursor-pointer"
-                          title="Upload bukti penyelesaian"
+                          type="text"
+                          value={item.description}
+                          onChange={(e) => updatePhotoDescription('photosResolution', idx, e.target.value)}
+                          placeholder={`Deskripsi foto ${idx + 1}...`}
+                          className="w-full mt-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition"
                         />
-                      </>
-                    )}
+                      </div>
+                    ))}
                   </div>
-                </div>
+                )}
+                {formData.photosResolution.length < MAX_PHOTOS_PER_STEP && (
+                  <div className="border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center hover:border-red-500 hover:bg-slate-50 transition cursor-pointer relative group">
+                    <Camera className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                    <p className="text-sm font-semibold text-slate-500">
+                      {formData.photosResolution.length === 0 ? 'Pilih berkas foto bukti tiket closed' : '+ Tambah Foto Lagi'}
+                    </p>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={(e) => handleMultiPhotoUpload(e, 'photosResolution')}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      title="Upload bukti penyelesaian"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Comprehensive SLA & SLG Review Summary */}
@@ -1177,7 +1252,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
             </button>
           )}
 
-          {currentStep < 5 ? (
+          {currentStep < 4 ? (
             <motion.button
               key="next-btn"
               whileHover={{ scale: 1.02 }}
@@ -1235,3 +1310,4 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
     </div>
   );
 }
+

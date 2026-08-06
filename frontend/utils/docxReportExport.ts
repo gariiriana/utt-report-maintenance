@@ -756,38 +756,49 @@ export async function exportSLAReportToDocx(report: any): Promise<void> {
     ].flat(),
   });
 
-  // Photos
-  const photos = [
-    { title: '1. PHOTO RESPONSE TIME', base64: report.photoResponse },
-    { title: '2. PHOTO ENGINEER ONSITE', base64: report.photoEngineerOnsite },
-    { title: '3. PHOTO ONSITE PRINCIPLE', base64: report.photoOnsite },
-    { title: '4. PHOTO SERVICE RESTORE', base64: report.photoRestore },
-    { title: '5. PHOTO RESOLUTION', base64: report.photoResolution },
-  ].filter((p) => Boolean(p.base64));
+  // Photos — support multi-photo arrays (PhotoItem[]) with descriptions
+  interface PhotoItem { photo: string; description: string; }
+  const photoSections: { title: string; items: PhotoItem[] }[] = [
+    { title: '1. PHOTO RESPONSE TIME', items: (report.photosResponse as PhotoItem[] | undefined) || (report.photoResponse ? [{ photo: report.photoResponse, description: '' }] : []) },
+    { title: '2. PHOTO ONSITE PRINCIPLE', items: (report.photosOnsite as PhotoItem[] | undefined) || (report.photoOnsite ? [{ photo: report.photoOnsite, description: '' }] : []) },
+    { title: '3. PHOTO SERVICE RESTORE', items: (report.photosRestore as PhotoItem[] | undefined) || (report.photoRestore ? [{ photo: report.photoRestore, description: '' }] : []) },
+    { title: '4. PHOTO RESOLUTION', items: (report.photosResolution as PhotoItem[] | undefined) || (report.photoResolution ? [{ photo: report.photoResolution, description: '' }] : []) },
+  ].filter((s) => s.items.length > 0);
 
   const photoParagraphs: Paragraph[] = [];
-  for (const p of photos) {
-    const imgBytes = await loadImageAsUint8Array(p.base64);
-    if (imgBytes.length > 0) {
-      photoParagraphs.push(
-        new Paragraph({
-          spacing: { before: 180, after: 60 },
-          children: [new TextRun({ text: p.title, bold: true, size: 18, color: '1E293B' })],
-        })
-      );
-      photoParagraphs.push(
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 180 },
-          children: [
-            new ImageRun({
-              data: imgBytes,
-              transformation: { width: 360, height: 220 },
-              type: 'png',
-            }),
-          ],
-        })
-      );
+  for (const section of photoSections) {
+    photoParagraphs.push(
+      new Paragraph({
+        spacing: { before: 240, after: 80 },
+        children: [new TextRun({ text: section.title, bold: true, size: 20, color: '1E293B' })],
+      })
+    );
+    for (let i = 0; i < section.items.length; i++) {
+      const item = section.items[i];
+      const imgBytes = await loadImageAsUint8Array(item.photo);
+      if (imgBytes.length > 0) {
+        if (item.description) {
+          photoParagraphs.push(
+            new Paragraph({
+              spacing: { before: 80, after: 40 },
+              children: [new TextRun({ text: `Foto ${i + 1}: ${item.description}`, italics: true, size: 16, color: '475569' })],
+            })
+          );
+        }
+        photoParagraphs.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 180 },
+            children: [
+              new ImageRun({
+                data: imgBytes,
+                transformation: { width: 360, height: 220 },
+                type: 'png',
+              }),
+            ],
+          })
+        );
+      }
     }
   }
 
@@ -1110,4 +1121,648 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
   const blob = await Packer.toBlob(doc);
   const cleanFileName = `PIR_Report_${(data.incidentName || 'PIR').replace(/[^a-zA-Z0-9_\-]/g, '_')}_${data.incidentDate || '2026'}.docx`;
   saveAs(blob, cleanFileName);
+}
+
+// ==========================================
+// 4. EXPORT SLA / SLG MONTHLY RECAP TO DOCX
+// ==========================================
+export async function exportSLAMonthlyRecapToDocx(reports: any[], periodTitle: string = 'Bulanan'): Promise<void> {
+  const [logoLeftBytes, logoRightBytes] = await Promise.all([
+    loadImageAsUint8Array(logoDwimitra),
+    loadImageAsUint8Array(logoNeutraDC),
+  ]);
+
+  const formatMinToHHMM = (min: number | undefined): string => {
+    if (min === undefined || min === null || isNaN(min)) return '0:00';
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return `${h}:${String(m).padStart(2, '0')}`;
+  };
+
+  const formatDateHour = (dateStr: string | undefined): string => {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const MM = d.getMonth() + 1;
+    const DD = d.getDate();
+    const YY = String(d.getFullYear()).slice(-2);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${MM}/${DD}/${YY} ${hh}:${mm}`;
+  };
+
+  const cellBorderThin = {
+    top: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+    bottom: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+    left: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+    right: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+  };
+
+  const createHeading = (title: string) => {
+    return new Paragraph({
+      spacing: { before: 280, after: 120 },
+      children: [
+        new TextRun({
+          text: title,
+          bold: true,
+          size: 22,
+          color: '0F172A',
+        }),
+      ],
+    });
+  };
+
+  const createSubHeading = (text: string) => {
+    return new Paragraph({
+      spacing: { after: 140 },
+      children: [
+        new TextRun({
+          text: text,
+          bold: true,
+          size: 18,
+          color: '475569',
+        }),
+      ],
+    });
+  };
+
+  const createNotesSection = (note1: string, note2: string, note3: string) => {
+    return [
+      new Paragraph({
+        spacing: { before: 120, after: 40 },
+        children: [new TextRun({ text: note1, size: 16, color: '334155' })],
+      }),
+      new Paragraph({
+        spacing: { after: 40 },
+        children: [new TextRun({ text: note2, bold: true, size: 16, color: '1E293B' })],
+      }),
+      new Paragraph({
+        spacing: { after: 200 },
+        children: [new TextRun({ text: note3, bold: true, size: 16, color: '166534' })],
+      }),
+    ];
+  };
+
+  // Helper to get array of photos from report
+  const getPhotos = (report: any, arrayKey: string, legacyKey: string): string[] => {
+    if (Array.isArray(report[arrayKey]) && report[arrayKey].length > 0) {
+      return report[arrayKey].map((p: any) => typeof p === 'string' ? p : p.photo).filter(Boolean);
+    }
+    if (report[legacyKey]) return [report[legacyKey]];
+    return [];
+  };
+
+  // Pre-load all photo bytes for Evidence Table
+  interface ReportPhotoBytes {
+    response: Uint8Array[];
+    onsite: Uint8Array[];
+    restore: Uint8Array[];
+    resolution: Uint8Array[];
+  }
+  const reportPhotosMap: ReportPhotoBytes[] = await Promise.all(
+    reports.map(async (r) => {
+      const respPhotos = getPhotos(r, 'photosResponse', 'photoResponse');
+      const onsitePhotos = getPhotos(r, 'photosOnsite', 'photoOnsite');
+      const restorePhotos = getPhotos(r, 'photosRestore', 'photoRestore');
+      const resolPhotos = getPhotos(r, 'photosResolution', 'photoResolution');
+
+      const [respBytes, onsiteBytes, restoreBytes, resolBytes] = await Promise.all([
+        Promise.all(respPhotos.map((p) => loadImageAsUint8Array(p))),
+        Promise.all(onsitePhotos.map((p) => loadImageAsUint8Array(p))),
+        Promise.all(restorePhotos.map((p) => loadImageAsUint8Array(p))),
+        Promise.all(resolPhotos.map((p) => loadImageAsUint8Array(p))),
+      ]);
+
+      return {
+        response: respBytes.filter((b) => b.length > 0),
+        onsite: onsiteBytes.filter((b) => b.length > 0),
+        restore: restoreBytes.filter((b) => b.length > 0),
+        resolution: resolBytes.filter((b) => b.length > 0),
+      };
+    })
+  );
+
+  // -------------------------------------------------------------
+  // 1. EV RESPONSE TIME TABLE
+  // -------------------------------------------------------------
+  const respHeaders = ['NO', 'ORDER/TICKET', 'LOCATION', 'PIC DME', 'PIC TDE', 'TIME ORDER', 'ACTUAL TIME', 'ACTUAL', 'TARGET', 'COMPLY', 'REMARK'];
+  const respWidths = [4, 18, 11, 8, 8, 12, 12, 7, 6, 6, 8];
+
+  const respRows = reports.map((r, idx) => {
+    const comply = r.responseComply !== undefined ? r.responseComply : (r.actualResponseTimeMin ? r.actualResponseTimeMin <= (r.targetResponseMin || 5) : true);
+    return new TableRow({
+      children: [
+        String(idx + 1),
+        r.ticketName || r.issue || 'WO',
+        r.location || '-',
+        r.picDME || '-',
+        r.picTDE || '-',
+        formatDateHour(r.timeOrder),
+        formatDateHour(r.actualTimeResponse),
+        formatMinToHHMM(r.actualResponseTimeMin),
+        formatMinToHHMM(r.targetResponseMin || 5),
+        comply ? 'M' : 'TM',
+        r.remark || 'Via WhatsApp',
+      ].map((val, cIdx) => new TableCell({
+        width: { size: respWidths[cIdx], type: WidthType.PERCENTAGE },
+        shading: cIdx === 9 ? { fill: comply ? 'F0FDF4' : 'FEF2F2', type: ShadingType.CLEAR } : undefined,
+        margins: { top: 60, bottom: 60, left: 40, right: 40 },
+        children: [
+          new Paragraph({
+            alignment: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].includes(cIdx) ? AlignmentType.CENTER : AlignmentType.LEFT,
+            children: [
+              new TextRun({
+                text: String(val),
+                size: 14,
+                bold: cIdx === 9,
+                color: cIdx === 9 ? (comply ? '166534' : '991B1B') : '1E293B',
+              }),
+            ],
+          }),
+        ],
+      })),
+    });
+  });
+
+  const tableResponse = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: cellBorderThin,
+    rows: [
+      new TableRow({
+        children: respHeaders.map((hText, cIdx) => new TableCell({
+          width: { size: respWidths[cIdx], type: WidthType.PERCENTAGE },
+          shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+          margins: { top: 80, bottom: 80, left: 40, right: 40 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [new TextRun({ text: hText, bold: true, size: 14, color: '0F172A' })],
+            }),
+          ],
+        })),
+      }),
+      ...respRows,
+    ],
+  });
+
+  // Calculate Response Compliance
+  const respMCount = reports.filter(r => r.responseComply !== false).length;
+  const respScore = reports.length > 0 ? Number(((respMCount / reports.length) * 5).toFixed(2)) : 5.00;
+
+  // -------------------------------------------------------------
+  // 2. EV ONSITE PRINCIPLE TABLE
+  // -------------------------------------------------------------
+  const onsiteHeaders = ['NO', 'ORDER/TICKET', 'LOCATION', 'PIC DME', 'PIC TDE', 'TIME ORDER', 'ACTUAL ONSITE', 'ACTUAL', 'TARGET', 'COMPLY', 'REMARK'];
+  const onsiteWidths = [4, 18, 11, 8, 8, 12, 12, 7, 6, 6, 8];
+
+  const onsiteRows = reports.map((r, idx) => {
+    const comply = r.onsiteComply !== undefined ? r.onsiteComply : (r.actualOnsiteTimeMin ? r.actualOnsiteTimeMin <= (r.targetOnsiteMin || 120) : true);
+    return new TableRow({
+      children: [
+        String(idx + 1),
+        r.ticketName || r.issue || 'WO',
+        r.location || '-',
+        r.picDME || '-',
+        r.picTDE || '-',
+        formatDateHour(r.timeOrder),
+        formatDateHour(r.actualTimeOnsite),
+        formatMinToHHMM(r.actualOnsiteTimeMin),
+        formatMinToHHMM(r.targetOnsiteMin || 120),
+        comply ? 'M' : 'TM',
+        r.remark || '-',
+      ].map((val, cIdx) => new TableCell({
+        width: { size: onsiteWidths[cIdx], type: WidthType.PERCENTAGE },
+        shading: cIdx === 9 ? { fill: comply ? 'F0FDF4' : 'FEF2F2', type: ShadingType.CLEAR } : undefined,
+        margins: { top: 60, bottom: 60, left: 40, right: 40 },
+        children: [
+          new Paragraph({
+            alignment: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].includes(cIdx) ? AlignmentType.CENTER : AlignmentType.LEFT,
+            children: [
+              new TextRun({
+                text: String(val),
+                size: 14,
+                bold: cIdx === 9,
+                color: cIdx === 9 ? (comply ? '166534' : '991B1B') : '1E293B',
+              }),
+            ],
+          }),
+        ],
+      })),
+    });
+  });
+
+  const tableOnsite = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: cellBorderThin,
+    rows: [
+      new TableRow({
+        children: onsiteHeaders.map((hText, cIdx) => new TableCell({
+          width: { size: onsiteWidths[cIdx], type: WidthType.PERCENTAGE },
+          shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+          margins: { top: 80, bottom: 80, left: 40, right: 40 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [new TextRun({ text: hText, bold: true, size: 14, color: '0F172A' })],
+            }),
+          ],
+        })),
+      }),
+      ...onsiteRows,
+    ],
+  });
+
+  const onsiteMCount = reports.filter(r => r.onsiteComply !== false).length;
+  const onsiteScore = reports.length > 0 ? Number(((onsiteMCount / reports.length) * 5).toFixed(2)) : 5.00;
+
+  // -------------------------------------------------------------
+  // 3. EV RESTORE TIME TABLE
+  // -------------------------------------------------------------
+  const restoreHeaders = ['NO', 'ORDER/TICKET', 'LOCATION', 'START ORDER', 'FINISH ORDER', 'ACTUAL RESTORE', 'TARGET', 'COMPLY', 'REMARK'];
+  const restoreWidths = [4, 20, 12, 13, 13, 9, 7, 7, 15];
+
+  const restoreRows = reports.map((r, idx) => {
+    const comply = r.restoreComply !== undefined ? r.restoreComply : (r.actualRestoreTimeMin ? r.actualRestoreTimeMin <= (r.targetRestoreMin || 120) : true);
+    return new TableRow({
+      children: [
+        String(idx + 1),
+        r.ticketName || r.issue || 'WO',
+        r.location || '-',
+        formatDateHour(r.startOrder || r.actualTimeOnsite),
+        formatDateHour(r.finishOrder),
+        formatMinToHHMM(r.actualRestoreTimeMin),
+        formatMinToHHMM(r.targetRestoreMin || 120),
+        comply ? 'M' : 'TM',
+        r.actionTaken || r.remark || '-',
+      ].map((val, cIdx) => new TableCell({
+        width: { size: restoreWidths[cIdx], type: WidthType.PERCENTAGE },
+        shading: cIdx === 7 ? { fill: comply ? 'F0FDF4' : 'FEF2F2', type: ShadingType.CLEAR } : undefined,
+        margins: { top: 60, bottom: 60, left: 40, right: 40 },
+        children: [
+          new Paragraph({
+            alignment: [0, 3, 4, 5, 6, 7].includes(cIdx) ? AlignmentType.CENTER : AlignmentType.LEFT,
+            children: [
+              new TextRun({
+                text: String(val),
+                size: 14,
+                bold: cIdx === 7,
+                color: cIdx === 7 ? (comply ? '166534' : '991B1B') : '1E293B',
+              }),
+            ],
+          }),
+        ],
+      })),
+    });
+  });
+
+  const tableRestore = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: cellBorderThin,
+    rows: [
+      new TableRow({
+        children: restoreHeaders.map((hText, cIdx) => new TableCell({
+          width: { size: restoreWidths[cIdx], type: WidthType.PERCENTAGE },
+          shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+          margins: { top: 80, bottom: 80, left: 40, right: 40 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [new TextRun({ text: hText, bold: true, size: 14, color: '0F172A' })],
+            }),
+          ],
+        })),
+      }),
+      ...restoreRows,
+    ],
+  });
+
+  const restoreMCount = reports.filter(r => r.restoreComply !== false).length;
+  const restoreScore = reports.length > 0 ? Number(((restoreMCount / reports.length) * 15).toFixed(2)) : 15.00;
+
+  // -------------------------------------------------------------
+  // 4. EV RESOLUTION TIME TABLE
+  // -------------------------------------------------------------
+  const resolutionHeaders = ['NO', 'ORDER/TICKET', 'LOCATION', 'START ORDER', 'FINISH ORDER', 'ACTUAL RESOLUTION', 'TARGET', 'COMPLY', 'REMARK'];
+  const resolutionWidths = [4, 20, 12, 13, 13, 9, 7, 7, 15];
+
+  const resolutionRows = reports.map((r, idx) => {
+    const comply = r.resolutionComply !== undefined ? r.resolutionComply : (r.actualResolutionTimeMin ? r.actualResolutionTimeMin <= (r.targetResolutionMin || 360) : true);
+    return new TableRow({
+      children: [
+        String(idx + 1),
+        r.ticketName || r.issue || 'WO',
+        r.location || '-',
+        formatDateHour(r.startOrder || r.actualTimeOnsite),
+        formatDateHour(r.finishOrder),
+        formatMinToHHMM(r.actualResolutionTimeMin),
+        formatMinToHHMM(r.targetResolutionMin || 360),
+        comply ? 'M' : 'TM',
+        r.resolutionRemark || r.actionTaken || r.remark || '-',
+      ].map((val, cIdx) => new TableCell({
+        width: { size: resolutionWidths[cIdx], type: WidthType.PERCENTAGE },
+        shading: cIdx === 7 ? { fill: comply ? 'F0FDF4' : 'FEF2F2', type: ShadingType.CLEAR } : undefined,
+        margins: { top: 60, bottom: 60, left: 40, right: 40 },
+        children: [
+          new Paragraph({
+            alignment: [0, 3, 4, 5, 6, 7].includes(cIdx) ? AlignmentType.CENTER : AlignmentType.LEFT,
+            children: [
+              new TextRun({
+                text: String(val),
+                size: 14,
+                bold: cIdx === 7,
+                color: cIdx === 7 ? (comply ? '166534' : '991B1B') : '1E293B',
+              }),
+            ],
+          }),
+        ],
+      })),
+    });
+  });
+
+  const tableResolution = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: cellBorderThin,
+    rows: [
+      new TableRow({
+        children: resolutionHeaders.map((hText, cIdx) => new TableCell({
+          width: { size: resolutionWidths[cIdx], type: WidthType.PERCENTAGE },
+          shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+          margins: { top: 80, bottom: 80, left: 40, right: 40 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [new TextRun({ text: hText, bold: true, size: 14, color: '0F172A' })],
+            }),
+          ],
+        })),
+      }),
+      ...resolutionRows,
+    ],
+  });
+
+  const resolutionMCount = reports.filter(r => r.resolutionComply !== false).length;
+  const resolutionScore = reports.length > 0 ? Number(((resolutionMCount / reports.length) * 15).toFixed(2)) : 15.00;
+
+  // -------------------------------------------------------------
+  // 5. EVIDENCE (PHOTO GRID) TABLE
+  // -------------------------------------------------------------
+  const evHeaders = ['NO', 'ORDER / TICKET', 'RESPONSE TIME', 'ONSITE TIME', 'RESTORE TIME', 'RESOLUTION TIME'];
+  const evWidths = [4, 20, 19, 19, 19, 19];
+
+  const evRows: TableRow[] = [];
+  for (let idx = 0; idx < reports.length; idx++) {
+    const r = reports[idx];
+    const pBytes = reportPhotosMap[idx];
+
+    const createCellPhotos = (bytesArray: Uint8Array[]) => {
+      if (bytesArray.length === 0) {
+        return [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: '-', size: 14, color: '94A3B8' })] })];
+      }
+      return bytesArray.map((bytes) =>
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { before: 40, after: 40 },
+          children: [
+            new ImageRun({
+              data: bytes,
+              transformation: { width: 100, height: 65 },
+              type: 'png',
+            }),
+          ],
+        })
+      );
+    };
+
+    evRows.push(
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: evWidths[0], type: WidthType.PERCENTAGE },
+            margins: { top: 60, bottom: 60, left: 40, right: 40 },
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(idx + 1), size: 14, color: '1E293B' })] })],
+          }),
+          new TableCell({
+            width: { size: evWidths[1], type: WidthType.PERCENTAGE },
+            margins: { top: 60, bottom: 60, left: 40, right: 40 },
+            children: [new Paragraph({ children: [new TextRun({ text: r.ticketName || r.issue || 'WO', bold: true, size: 14, color: '1E293B' })] })],
+          }),
+          new TableCell({
+            width: { size: evWidths[2], type: WidthType.PERCENTAGE },
+            margins: { top: 60, bottom: 60, left: 40, right: 40 },
+            children: createCellPhotos(pBytes.response),
+          }),
+          new TableCell({
+            width: { size: evWidths[3], type: WidthType.PERCENTAGE },
+            margins: { top: 60, bottom: 60, left: 40, right: 40 },
+            children: createCellPhotos(pBytes.onsite),
+          }),
+          new TableCell({
+            width: { size: evWidths[4], type: WidthType.PERCENTAGE },
+            margins: { top: 60, bottom: 60, left: 40, right: 40 },
+            children: createCellPhotos(pBytes.restore),
+          }),
+          new TableCell({
+            width: { size: evWidths[5], type: WidthType.PERCENTAGE },
+            margins: { top: 60, bottom: 60, left: 40, right: 40 },
+            children: createCellPhotos(pBytes.resolution),
+          }),
+        ],
+      })
+    );
+  }
+
+  const tableEvidence = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: cellBorderThin,
+    rows: [
+      new TableRow({
+        children: evHeaders.map((hText, cIdx) => new TableCell({
+          width: { size: evWidths[cIdx], type: WidthType.PERCENTAGE },
+          shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+          margins: { top: 80, bottom: 80, left: 40, right: 40 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [new TextRun({ text: hText, bold: true, size: 14, color: '0F172A' })],
+            }),
+          ],
+        })),
+      }),
+      ...evRows,
+    ],
+  });
+
+  // -------------------------------------------------------------
+  // REKAPITULASI PENCAPAIAN SLA & SLG (SUMMARY TABLE)
+  // -------------------------------------------------------------
+  const summaryHeaders = ['NO', 'INDIKATOR KINERJA SLA / SLG', 'SATUAN', 'JUMLAH ORDER', 'PENCAPAIAN (M)', '% COMPLY', 'BOBOT', 'HASIL AKHIR SLG'];
+  const summaryWidths = [5, 30, 9, 12, 12, 10, 8, 14];
+
+  const totalReportsCount = reports.length || 1;
+  const respPct = (respMCount / totalReportsCount) * 100;
+  const onsitePct = (onsiteMCount / totalReportsCount) * 100;
+  const restorePct = (restoreMCount / totalReportsCount) * 100;
+  const resolutionPct = (resolutionMCount / totalReportsCount) * 100;
+
+  const totalSlgScore = respScore + onsiteScore + restoreScore + resolutionScore;
+
+  const summaryData = [
+    { no: 1, indicator: 'Response Time', unit: 'Order', count: reports.length, comply: respMCount, pct: `${respPct.toFixed(0)}%`, bobot: '5%', score: `${respScore.toFixed(2)}%` },
+    { no: 2, indicator: 'Onsite Time (Principle Onsite)', unit: 'Order', count: reports.length, comply: onsiteMCount, pct: `${onsitePct.toFixed(0)}%`, bobot: '5%', score: `${onsiteScore.toFixed(2)}%` },
+    { no: 3, indicator: 'Restore Time (Service Restore)', unit: 'Order', count: reports.length, comply: restoreMCount, pct: `${restorePct.toFixed(0)}%`, bobot: '15%', score: `${restoreScore.toFixed(2)}%` },
+    { no: 4, indicator: 'Resolution Time (Problem Resolution)', unit: 'Order', count: reports.length, comply: resolutionMCount, pct: `${resolutionPct.toFixed(0)}%`, bobot: '15%', score: `${resolutionScore.toFixed(2)}%` },
+  ];
+
+  const summaryRows = summaryData.map((row) => new TableRow({
+    children: [
+      String(row.no),
+      row.indicator,
+      row.unit,
+      String(row.count),
+      String(row.comply),
+      row.pct,
+      row.bobot,
+      row.score,
+    ].map((val, cIdx) => new TableCell({
+      width: { size: summaryWidths[cIdx], type: WidthType.PERCENTAGE },
+      margins: { top: 80, bottom: 80, left: 60, right: 60 },
+      children: [
+        new Paragraph({
+          alignment: [0, 2, 3, 4, 5, 6, 7].includes(cIdx) ? AlignmentType.CENTER : AlignmentType.LEFT,
+          children: [
+            new TextRun({
+              text: String(val),
+              bold: cIdx === 1 || cIdx === 7,
+              size: 15,
+              color: cIdx === 7 ? '166534' : '1E293B',
+            }),
+          ],
+        }),
+      ],
+    })),
+  }));
+
+  const tableSummary = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: cellBorderThin,
+    rows: [
+      new TableRow({
+        children: summaryHeaders.map((hText, cIdx) => new TableCell({
+          width: { size: summaryWidths[cIdx], type: WidthType.PERCENTAGE },
+          shading: { fill: '002060', type: ShadingType.CLEAR },
+          margins: { top: 100, bottom: 100, left: 60, right: 60 },
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              children: [new TextRun({ text: hText, bold: true, size: 15, color: 'FFFFFF' })],
+            }),
+          ],
+        })),
+      }),
+      ...summaryRows,
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 6,
+            shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+            margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: 'TOTAL HASIL AKHIR PENCAPAIAN SLG (MAX 40%):', bold: true, size: 16, color: '0F172A' })] })],
+          }),
+          new TableCell({
+            columnSpan: 2,
+            shading: { fill: 'FEF08A', type: ShadingType.CLEAR },
+            margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${totalSlgScore.toFixed(2)}% / 40.00%`, bold: true, size: 18, color: '854D0E' })] })],
+          }),
+        ],
+      }),
+    ],
+  });
+
+  // Build complete Word Document
+  const doc = new Document({
+    sections: [
+      {
+        properties: { page: { margin: { top: 720, bottom: 720, left: 720, right: 720 } } },
+        headers: {
+          default: new Header({
+            children: [createHeaderLogosTable(logoLeftBytes, logoRightBytes)],
+          }),
+        },
+        footers: {
+          default: new Footer({
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({ text: 'Halaman ', size: 16, color: '64748B' }),
+                  new TextRun({ children: [PageNumber.CURRENT], size: 16, color: '64748B' }),
+                  new TextRun({ text: ' dari ', size: 16, color: '64748B' }),
+                  new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 16, color: '64748B' }),
+                  new TextRun({ text: ' • Rekap SLA/SLG DC Cikarang', size: 16, color: '64748B' }),
+                ],
+              }),
+            ],
+          }),
+        },
+        children: [
+          // Section 0: Summary Rekapitulasi Table
+          createHeading('REKAPITULASI PENCAPAIAN KINERJA SLA & SLG'),
+          createSubHeading(`MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG\nPeriode: ${periodTitle}`),
+          tableSummary,
+          new Paragraph({ spacing: { after: 240 } }),
+
+          // Section 1
+          createHeading('1. PENCAPAIAN RESPONSE TIME COMPLIANCE'),
+          createSubHeading(`MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG\nPeriode: ${periodTitle}`),
+          tableResponse,
+          ...createNotesSection(
+            '• M = Memenuhi, TM = Tidak Memenuhi, Diambil dari Laporan Kegiatan yang mencatat data Response Time dan telah di-approve User',
+            '• Formula perhitungan Kinerja Response Time (RT) x 5%',
+            `• Hasil perhitungan Kinerja Response Time (RT): ${respScore.toFixed(2)}%`
+          ),
+
+          // Section 2
+          createHeading('2. PENCAPAIAN ONSITE TIME COMPLIANCE'),
+          createSubHeading(`MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG\nPeriode: ${periodTitle}`),
+          tableOnsite,
+          ...createNotesSection(
+            '• M = Memenuhi, TM = Tidak Memenuhi, Diambil dari Laporan Kegiatan yang mencatat data Onsite Time dan telah di-approve User',
+            '• Formula perhitungan Onsite Time (OT) x 5%',
+            `• Hasil perhitungan Kinerja Onsite Time (OT): ${onsiteScore.toFixed(2)}%`
+          ),
+
+          // Section 3
+          createHeading('3. PENCAPAIAN RESTORE SERVICE TIME COMPLIANCE'),
+          createSubHeading(`MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG\nPeriode: ${periodTitle}`),
+          tableRestore,
+          ...createNotesSection(
+            '• M = Memenuhi, TM = Tidak Memenuhi, Diambil dari Laporan Kegiatan yang mencatat data Restore Time dan telah di-approve User',
+            '• Formula perhitungan Kinerja Restore Time (RST) x 15%',
+            `• Hasil perhitungan Kinerja Response Time (RST): ${restoreScore.toFixed(2)}%`
+          ),
+
+          // Section 4
+          createHeading('4. PENCAPAIAN RESOLUTION SERVICE TIME COMPLIANCE'),
+          createSubHeading(`MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG\nPeriode: ${periodTitle}`),
+          tableResolution,
+          ...createNotesSection(
+            '• M = Memenuhi, TM = Tidak Memenuhi, Diambil dari Laporan Kegiatan yang mencatat data Resolution Time dan telah di-approve User',
+            '• Formula perhitungan Kinerja Resolution Time (RSP) X 15%',
+            `• Hasil perhitungan Kinerja Resolution Time (RSP): ${resolutionScore.toFixed(2)}%`
+          ),
+
+          // Section 5: Evidence
+          createHeading('5. PENCAPAIAN ENGINEER ONSITE (EVIDENCE BUKTI FOTO)'),
+          createSubHeading(`MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG\nPeriode: ${periodTitle}`),
+          tableEvidence,
+          new Paragraph({ spacing: { after: 200 } }),
+        ],
+      },
+    ],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  const cleanPeriod = periodTitle.replace(/[^a-zA-Z0-9_\-]/g, '_');
+  saveAs(blob, `Rekap_SLA_SLG_DC_Cikarang_${cleanPeriod}.docx`);
 }
