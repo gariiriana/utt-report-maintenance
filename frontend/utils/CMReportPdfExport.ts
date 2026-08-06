@@ -372,131 +372,108 @@ export async function generateCMReportPDF(data: CMReportData) {
     const photoBoxH = 155;
     doc.rect(margin, y, contentW, photoBoxH, 'D');
 
-    // Draw photos inside photo box (up to 10 photos in grid across pages if >6)
-    const validPhotos = processedPhotos.filter(p => p.base64).slice(0, 10);
+    // Draw photos inside photo box (up to 12 photos in grid across pages if >4)
+    const validPhotos = processedPhotos.filter(p => p.base64).slice(0, 12);
     let currentPageIndex = 2;
 
     if (validPhotos.length > 0) {
-      const page1Photos = validPhotos.slice(0, Math.min(validPhotos.length, 6));
-      const page2Photos = validPhotos.length > 6 ? validPhotos.slice(6, 10) : [];
+      // Chunk photos by 4 photos per page (2 rows x 2 cols) to preserve clear, large photo dimensions
+      const photoPages: { base64: string; description: string }[][] = [];
+      for (let i = 0; i < validPhotos.length; i += 4) {
+        photoPages.push(validPhotos.slice(i, i + 4));
+      }
 
-      // Helper function to draw a grid of photos on current page
-      const renderPhotoGrid = (photos: { base64: string; description: string }[], boxY: number) => {
-        const numPhotos = photos.length;
-        if (numPhotos === 1) {
-          const imgW = 120;
-          const imgH = 125;
-          const imgX = margin + (contentW - imgW) / 2;
-          const imgY = boxY + 8;
-          doc.addImage(photos[0].base64, 'JPEG', imgX, imgY, imgW, imgH);
-          if (photos[0].description) {
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8.5);
-            doc.setTextColor(50, 50, 50);
-            doc.text(`Ket: ${photos[0].description}`, pageW / 2, imgY + imgH + 5, { align: 'center', maxWidth: imgW });
+      const renderPhotoGrid = (photos: { base64: string; description: string }[], boxY: number, globalOffset = 0) => {
+        const gapX = 6;
+        const gapY = 4;
+        const cardW = (contentW - 10 - gapX) / 2; // 88mm wide
+        const headH = 6; // Header table bar
+        const imgH = 55; // Image area height (clear & legible)
+        const descH = 10; // Caption table row height
+        const cardH = headH + imgH + descH; // 71mm total height per card
+
+        photos.forEach((item, idx) => {
+          const photoNum = globalOffset + idx + 1;
+          const col = idx % 2;
+          const row = Math.floor(idx / 2);
+          const cardX = margin + 5 + col * (cardW + gapX);
+          const cardY = boxY + 5 + row * (cardH + gapY);
+
+          // 1. Table Outer Box
+          doc.setDrawColor(...BORDER_COLOR);
+          doc.setLineWidth(0.2);
+          doc.rect(cardX, cardY, cardW, cardH, 'D');
+
+          // 2. Table Header Bar (FOTO DOKUMENTASI #X)
+          doc.setFillColor(...HEADER_FILL);
+          doc.rect(cardX, cardY, cardW, headH, 'FD');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.setTextColor(30, 41, 59);
+          doc.text(`FOTO DOKUMENTASI #${photoNum}`, cardX + 3, cardY + 4.2);
+
+          // 3. Image Area
+          const imgY = cardY + headH;
+          if (item.base64) {
+            try {
+              doc.addImage(item.base64, 'JPEG', cardX + 0.5, imgY + 0.5, cardW - 1, imgH - 1);
+            } catch (e) {
+              console.error('Error adding CM photo to PDF', e);
+            }
           }
-        } else if (numPhotos === 2) {
-          const gap = 4;
-          const availW = contentW - 10;
-          const singleW = (availW - gap) / 2;
-          const singleH = 125;
-          const imgY = boxY + 8;
 
-          photos.forEach((item, idx) => {
-            const imgX = margin + 5 + idx * (singleW + gap);
-            doc.addImage(item.base64, 'JPEG', imgX, imgY, singleW, singleH);
-            if (item.description) {
-              doc.setFont('helvetica', 'normal');
-              doc.setFontSize(8);
-              doc.setTextColor(50, 50, 50);
-              doc.text(`Ket: ${item.description}`, imgX + singleW / 2, imgY + singleH + 5, { align: 'center', maxWidth: singleW });
-            }
-          });
-        } else if (numPhotos <= 4) {
-          const gap = 4;
-          const availW = contentW - 10;
-          const singleW = (availW - gap) / 2;
-          const singleH = 58;
+          // 4. Bottom Description Table Row
+          const descY = imgY + imgH;
+          doc.setFillColor(248, 250, 252);
+          doc.rect(cardX, descY, cardW, descH, 'FD');
+          doc.setDrawColor(...BORDER_COLOR);
+          doc.line(cardX, descY, cardX + cardW, descY); // Top divider line
 
-          photos.forEach((item, idx) => {
-            const row = Math.floor(idx / 2);
-            const col = idx % 2;
-            const imgX = margin + 5 + col * (singleW + gap);
-            const imgY = boxY + 6 + row * (singleH + 12);
-            doc.addImage(item.base64, 'JPEG', imgX, imgY, singleW, singleH);
-            if (item.description) {
-              doc.setFont('helvetica', 'normal');
-              doc.setFontSize(7.5);
-              doc.setTextColor(50, 50, 50);
-              doc.text(`Ket: ${item.description}`, imgX + singleW / 2, imgY + singleH + 4, { align: 'center', maxWidth: singleW });
-            }
-          });
-        } else {
-          // 5 to 6 photos in 2x3 grid
-          const gap = 4;
-          const availW = contentW - 10;
-          const singleW = (availW - gap) / 2;
-          const singleH = 38;
-
-          photos.forEach((item, idx) => {
-            const row = Math.floor(idx / 2);
-            const col = idx % 2;
-            const imgX = margin + 5 + col * (singleW + gap);
-            const imgY = boxY + 5 + row * (singleH + 10);
-            doc.addImage(item.base64, 'JPEG', imgX, imgY, singleW, singleH);
-            if (item.description) {
-              doc.setFont('helvetica', 'normal');
-              doc.setFontSize(7);
-              doc.setTextColor(50, 50, 50);
-              doc.text(`Ket: ${item.description}`, imgX + singleW / 2, imgY + singleH + 3.5, { align: 'center', maxWidth: singleW });
-            }
-          });
-        }
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7.5);
+          doc.setTextColor(51, 65, 85);
+          const descText = item.description ? `Ket: ${item.description}` : `Ket: Dokumentasi Foto #${photoNum}`;
+          const splitDesc = doc.splitTextToSize(descText, cardW - 4);
+          doc.text(splitDesc, cardX + 2, descY + 4.2);
+        });
       };
 
-      // Draw first page of photos (Page 2)
-      renderPhotoGrid(page1Photos, y);
+      photoPages.forEach((pagePhotos, pageIdx) => {
+        let currentY = y;
+        if (pageIdx > 0) {
+          currentPageIndex++;
+          doc.addPage();
+          drawHeaderLogos();
+          currentY = 28;
 
-      // Page 2 Footer
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(120, 120, 120);
-      doc.text(currentPageIndex.toString(), pageW / 2, pageH - 8, { align: 'center' });
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(10);
+          doc.setTextColor(50, 50, 50);
+          doc.text('SUPPORTING DOCUMENTATION (LANJUTAN)', margin, currentY);
 
-      // If photos 7-10 exist, add continuation page
-      if (page2Photos.length > 0) {
-        currentPageIndex++;
-        doc.addPage();
-        drawHeaderLogos();
-        let contY = 28;
+          currentY += 5;
 
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.setTextColor(50, 50, 50);
-        doc.text('SUPPORTING DOCUMENTATION (LANJUTAN)', margin, contY);
+          doc.setFillColor(...HEADER_FILL);
+          doc.setDrawColor(...BORDER_COLOR);
+          doc.setLineWidth(0.2);
+          doc.rect(margin, currentY, contentW, 6, 'FD');
 
-        contY += 5;
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8.5);
+          doc.setTextColor(0, 0, 0);
+          doc.text(`VISUAL INSPECTION & CHECKING (FOTO ${pageIdx * 4 + 1}-${pageIdx * 4 + pagePhotos.length})`, margin + 2, currentY + 4.2);
 
-        doc.setFillColor(...HEADER_FILL);
-        doc.setDrawColor(...BORDER_COLOR);
-        doc.setLineWidth(0.2);
-        doc.rect(margin, contY, contentW, 6, 'FD');
+          currentY += 6;
+          doc.rect(margin, currentY, contentW, photoBoxH, 'D');
+        }
 
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8.5);
-        doc.setTextColor(0, 0, 0);
-        doc.text('VISUAL INSPECTION & CHECKING (SAMBUNGAN FOTO 7-10)', margin + 2, contY + 4.2);
-
-        contY += 6;
-        doc.rect(margin, contY, contentW, photoBoxH, 'D');
-
-        renderPhotoGrid(page2Photos, contY);
+        renderPhotoGrid(pagePhotos, currentY, pageIdx * 4);
 
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(8);
         doc.setTextColor(120, 120, 120);
         doc.text(currentPageIndex.toString(), pageW / 2, pageH - 8, { align: 'center' });
-      }
+      });
     } else {
       // Page 2 Footer if no photos
       doc.setFont('helvetica', 'normal');
@@ -507,8 +484,9 @@ export async function generateCMReportPDF(data: CMReportData) {
 
 
     // ==========================================
-    // PAGE 3: SIGNATURES & AUTHOR
+    // PAGE SIGNATURES & AUTHOR
     // ==========================================
+    currentPageIndex++;
     doc.addPage();
     drawHeaderLogos();
 
@@ -578,11 +556,11 @@ export async function generateCMReportPDF(data: CMReportData) {
     doc.setFont('helvetica', 'normal');
     doc.text(sanitizePdfText(data.approvedByTitle) || '(Assistant manager HDC Facility Management)', appX + appW / 2, y + sigBoxH - 2.5, { align: 'center' });
 
-    // Page 3 Footer
+    // Page Footer
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(120, 120, 120);
-    doc.text('3', pageW / 2, pageH - 8, { align: 'center' });
+    doc.text(currentPageIndex.toString(), pageW / 2, pageH - 8, { align: 'center' });
 
     // File Name
     const cleanFileName = `CM_Report_${(data.incidentName || 'Corrective').replace(/[^a-zA-Z0-9_\-]/g, '_')}_${data.incidentDate || '2026'}.pdf`;
