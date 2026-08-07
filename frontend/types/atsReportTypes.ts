@@ -1,53 +1,59 @@
-// ─── ATS Service Report Types ─────────────────────────────────────────────
+// ============================================================================
+// FILE: frontend/types/atsReportTypes.ts
+// Deskripsi: Definisi Tipe TypeScript & Template Nilai Bawaan (Default Values)
+//            untuk Laporan Service Maintenance ATS (Automatic Transfer Switch).
+//            Berisi interface foto input AI, tabel inspeksi visual, pengukuran power meter,
+//            pengukuran tegangan/arus (V/A), thermovisi, dan tahanan pembumian (grounding).
+// ============================================================================
 
-/** Photo input for AI analysis */
+/** Input Foto untuk Analisa Otomatis AI Gemini */
 export interface ATSPhotoInput {
-  base64: string;
-  category: 'visual_inspection' | 'power_meter' | 'thermal' | 'grounding';
-  label: string;
-  parameter?: string;
+  base64: string; // Gambar format base64
+  category: 'visual_inspection' | 'power_meter' | 'thermal' | 'grounding'; // Kategori foto
+  label: string;    // Label deskripsi foto
+  parameter?: string; // Parameter opsional
 }
 
-/** Request body for POST /api/ai/ats-report */
+/** Body Request untuk Endpoint Backend POST /api/ai/ats-report */
 export interface ATSAnalyzeRequest {
   photos: ATSPhotoInput[];
 }
 
-/** A single row in the Visual Inspection & Check table */
+/** Struktur 1 Baris Tabel Inspeksi Visual & Cek fisik ATS */
 export interface VisualInspectionItem {
-  no: string;
-  activity: string;
-  parameter: string;
-  condition: 'Good' | 'Not Good';
-  remarks: string;
+  no: string;                               // Poin inspeksi (a - p)
+  activity: string;                         // Jenis aktivitas pemeriksaan
+  parameter: string;                        // Standar kondisi ideal
+  condition: 'Good' | 'Not Good';           // Hasil kondisi (Baik / Tidak Baik)
+  remarks: string;                          // Catatan tambahan insinyur
 }
 
-/** Voltage reading for a wire pair */
+/** Pembacaan Baris Tegangan Fasa Power Meter */
 export interface PowerMeterRow {
-  voltage: string;
-  remarks: string;
+  voltage: string;                          // Nilai tegangan (Volt)
+  remarks: string;                          // Catatan
 }
 
-/** Digital Power Meter Recording data */
+/** Data Pencatatan Digital Power Meter Panel ATS */
 export interface PowerMeterData {
-  rs: PowerMeterRow;
-  st: PowerMeterRow;
-  tr: PowerMeterRow;
-  rn: PowerMeterRow;
-  sn: PowerMeterRow;
-  tn: PowerMeterRow;
-  n: PowerMeterRow;
-  kw: string;
-  kva: string;
-  kvar: string;
-  cos_p: string;
-  r_ampere: string;
-  s_ampere: string;
-  t_ampere: string;
-  n_ampere: string;
+  rs: PowerMeterRow;                        // Tegangan Fasa R-S
+  st: PowerMeterRow;                        // Tegangan Fasa S-T
+  tr: PowerMeterRow;                        // Tegangan Fasa T-R
+  rn: PowerMeterRow;                        // Tegangan Fasa R-N
+  sn: PowerMeterRow;                        // Tegangan Fasa S-N
+  tn: PowerMeterRow;                        // Tegangan Fasa T-N
+  n: PowerMeterRow;                         // Tegangan Netral
+  kw: string;                               // Daya Aktif (kW)
+  kva: string;                              // Daya Semu (kVA)
+  kvar: string;                             // Daya Reaktif (kVAR)
+  cos_p: string;                            // Faktor Daya (Cos Phi)
+  r_ampere: string;                         // Arus Beban Fasa R (Ampere)
+  s_ampere: string;                         // Arus Beban Fasa S (Ampere)
+  t_ampere: string;                         // Arus Beban Fasa T (Ampere)
+  n_ampere: string;                         // Arus Netral (Ampere)
 }
 
-/** Voltage & Current Measurement data */
+/** Data Pengukuran Tegangan & Arus Manual */
 export interface VoltageCurrentData {
   voltage_rs: string;
   voltage_st: string;
@@ -55,39 +61,39 @@ export interface VoltageCurrentData {
   voltage_rn: string;
   voltage_sn: string;
   voltage_tn: string;
-  voltage_ng: string;
+  voltage_ng: string;                       // Tegangan Netral ke Ground
   ampere_r: string;
   ampere_s: string;
   ampere_t: string;
   remarks: string;
 }
 
-/** Thermal Measurement data */
+/** Hasil Pengukuran Suhu Thermal Imager */
 export interface ThermalData {
-  result_temperature: string;
-  standard: string;
-  remarks: string;
+  result_temperature: string;               // Suhu terukur (°C)
+  standard: string;                         // Standar batas maksimum (misal "40°C")
+  remarks: string;                          // Catatan (misal "Normal, tidak ada hotspot")
 }
 
-/** Grounding Resistance Measurement data */
+/** Hasil Pengukuran Tahanan Pembumian Grounding */
 export interface GroundingData {
-  result_ohm: string;
-  standard: string;
-  remarks: string;
+  result_ohm: string;                       // Nilai tahanan terukur (Ohm / Ω)
+  standard: string;                         // Standar maksimum (misal "<5 Ω")
+  remarks: string;                          // Catatan
 }
 
-/** Normal/Abnormal Operation status */
+/** Status Operasional & Analisis Kerusakan */
 export interface OperationStatusData {
-  is_normal: boolean;
-  remark: string;
-  fault_symptom: string;
-  fault_analysis: string;
-  work_done: string;
-  fault_part_sn: string;
-  fault_part_name: string;
+  is_normal: boolean;                       // Apakah sistem ATS beroperasi normal
+  remark: string;                           // Ringkasan catatan
+  fault_symptom: string;                    // Gejala kegagalan/gangguan
+  fault_analysis: string;                   // Analisis penyebab gangguan
+  work_done: string;                        // Tindakan perbaikan yang dilakukan
+  fault_part_sn: string;                    // Serial Number komponen rusak
+  fault_part_name: string;                  // Nama komponen rusak
 }
 
-/** Full AI-generated ATS Service Report data */
+/** Struktur Lengkap Data Laporan ATS */
 export interface ATSReportData {
   visual_inspection: VisualInspectionItem[];
   power_meter_recording: PowerMeterData;
@@ -97,41 +103,41 @@ export interface ATSReportData {
   operation_status: OperationStatusData;
 }
 
-/** Customer information (manual input by engineer) */
+/** Informasi Pelanggan & Lokasi Perangkat (Input Manual Insinyur) */
 export interface ATSCustomerInfo {
-  companyName: string;
-  equipmentName: string;
-  ciDescription: string;
-  ciName: string;
-  type: string;
-  serialNo: string;
-  productName: string;
-  productYears: string;
-  specification: string;
-  location: string;
-  area: string;
-  mapNo: string;
-  quarter: string;
-  date: string;
-  engineer: string;
+  companyName: string;                      // Nama perusahaan (Neutra DC Cikarang)
+  equipmentName: string;                    // Nama Perangkat (ATS)
+  ciDescription: string;                    // Deskripsi Perangkat
+  ciName: string;                           // Tag Nama Perangkat (1F - ATS - A)
+  type: string;                             // Tipe/Model Perangkat
+  serialNo: string;                         // Nomor Seri
+  productName: string;                      // Merk/Manufaktur (ASCO)
+  productYears: string;                     // Tahun Pembuatan
+  specification: string;                    // Spesifikasi Kapasitas (4000 A)
+  location: string;                         // Lokasi Ruangan (Power Room A)
+  area: string;                             // Area Gedung (Campus 5)
+  mapNo: string;                            // Nomor Dokumen Acuan Prosedur
+  quarter: string;                          // Kuartal Pelaksanaan (Q1/Q2/Q3/Q4)
+  date: string;                             // Tanggal Pelaksanaan
+  engineer: string;                         // Nama Insinyur Pelaksana
 }
 
-/** Time spent information */
+/** Data Rincian Waktu Kerja (Time Spent) */
 export interface ATSTimeSpent {
-  date: string;
-  departure: string;
-  start: string;
-  finish: string;
+  date: string;                             // Tanggal
+  departure: string;                        // Jam Berangkat
+  start: string;                            // Jam Mulai Kerja
+  finish: string;                           // Jam Selesai Kerja
 }
 
-/** Complete ATS Service Report (customer info + AI data + time) */
+/** Dokumen Laporan Lengkap ATS Service Report */
 export interface ATSFullReport {
   customerInfo: ATSCustomerInfo;
   reportData: ATSReportData;
   timeSpent: ATSTimeSpent;
 }
 
-// ─── Default Values ─────────────────────────────────────────────────────
+// ─── NILAI DEFAULT BAWAAN (DEFAULT VALUES) ──────────────────────────────
 
 export const DEFAULT_CUSTOMER_INFO: ATSCustomerInfo = {
   companyName: 'Neutra DC Cikarang',
@@ -192,6 +198,7 @@ export const DEFAULT_OPERATION_STATUS: OperationStatusData = {
   fault_part_name: '',
 };
 
+// Standard Check Points ATS
 export const DEFAULT_VISUAL_INSPECTION: VisualInspectionItem[] = [
   { no: 'a', activity: 'Inspection unsafe action and unsafe condition before start activity maintenance', parameter: 'Good Condition', condition: 'Good', remarks: '' },
   { no: 'b', activity: 'Take a photo before action activity to indicate the initial condition of the equipment panel', parameter: 'Information before activity clear', condition: 'Good', remarks: '' },
