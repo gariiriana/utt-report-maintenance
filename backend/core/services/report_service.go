@@ -1,3 +1,10 @@
+// ============================================================================
+// FILE: backend/core/services/report_service.go
+// Deskripsi: Service Manajemen & Penyimpanan Dokumen Laporan Maintenance.
+//            Menangani manipulasi data Firestore (Create, Read, Update, Delete),
+//            penataan payload dokumen ke sub-koleksi, dan sanitasi HTML/XSS input.
+// ============================================================================
+
 package services
 
 import (

@@ -1,3 +1,10 @@
+// ============================================================================
+// FILE: frontend/service_reports/acsplit/generateACSplitReportPDF.ts
+// Deskripsi: Generator Cetak PDF Laporan Pemeliharaan Perangkat AC Split Data Center.
+//            Mengolah data inspeksi unit indoor/outdoor, tekanan freon (PSI),
+//            pengukuran arus listrik compressor, dan suhu hembusan udara (Air Outlet).
+// ============================================================================
+
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ACSplitCustomerInfo, ACSplitReportData, ACSplitTimeSpent } from '@/types/acSplitReportTypes';

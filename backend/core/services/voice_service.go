@@ -1,3 +1,11 @@
+// ============================================================================
+// FILE: backend/core/services/voice_service.go
+// Deskripsi: Layanan Agen Suara Pintar AI Voice Command (JARVIS / Assistant M/E).
+//            Mengolah streaming audio mikrofon teknisi melalui koneksi WebSocket,
+//            menjangkau Gemini Multimodal Audio Model, & mengeksekusi instruksi suara
+//            seperti mengisi form otomatis atau navigasi aplikasi.
+// ============================================================================
+
 package services
 
 import (

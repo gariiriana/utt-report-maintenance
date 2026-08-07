@@ -1,3 +1,15 @@
+// ============================================================================
+// FILE: frontend/service_reports/ats/generateATSReportPDF.ts
+// Deskripsi: Generator Cetak Dokumen PDF Resmi Laporan Service Pemeliharaan ATS
+//            (Automatic Transfer Switch).
+//            Menggunakan `jsPDF` & `jspdf-autotable` untuk menggambar layout 5-Halaman:
+//            - Page 1: Kop Header Logo Dwimitra & NeutraDC, Tabel Informasi Pelanggan.
+//            - Page 2: Tabel Hasil Inspeksi Visual 16 Poin Aktivitas.
+//            - Page 3: Matriks Hasil Pengukuran Digital Power Meter & V/A.
+//            - Page 4: Pengukuran Thermovisi (°C), Grounding (<5 Ω), & Operation Status.
+//            - Page 5: Foto Dokumentasi Lampiran & Matriks Tanda Tangan Insinyur.
+// ============================================================================
+
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { ATSCustomerInfo, ATSReportData, ATSTimeSpent } from '@/types/atsReportTypes';

@@ -1,3 +1,13 @@
+// ============================================================================
+// FILE: backend/core/services/ai_service.go
+// Deskripsi: Core AI Engine Service (Google Gemini Vision API Integration).
+//            Layanan terpusat pemrosesan kecerdasan buatan untuk 13 kategori perangkat M/E:
+//            - Multi-Key Round-Robin Pool untuk rotasi API Key anti-rate-limit.
+//            - Pemindaian foto multimeter, power meter, thermovisi, & nameplate panel.
+//            - OCR digitasi dokumen fisik lembar kertas cetak ke objek JSON.
+//            - Pelacakan kuota harian sistem di Firestore system_status/ai_limit_tracker.
+// ============================================================================
+
 package services
 
 import (
