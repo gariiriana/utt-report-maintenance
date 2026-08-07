@@ -12,7 +12,8 @@ import {
   Phone,
   ShieldAlert,
   CalendarCheck2,
-  Clock
+  Clock,
+  CalendarClock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { User } from 'firebase/auth';
@@ -38,6 +39,7 @@ interface WAStatusResponse {
     targetPhone: string;
     targetGroup: string;
     autoRemindEnabled: boolean;
+    lastCheckDate: string;
   };
 }
 
@@ -62,6 +64,7 @@ export const WAGatewayModal: React.FC<WAGatewayModalProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [testMessage, setTestMessage] = useState<string>('');
   const [isSendingTest, setIsSendingTest] = useState<boolean>(false);
+  const [lastCheckDate, setLastCheckDate] = useState<string>('');
 
   const fetchStatus = async () => {
     try {
@@ -77,6 +80,7 @@ export const WAGatewayModal: React.FC<WAGatewayModalProps> = ({
         setTargetPhone(prev => prev || cfg.targetPhone || '');
         setTargetGroup(prev => prev || cfg.targetGroup || '');
         setAutoRemindEnabled(cfg.autoRemindEnabled);
+        if (cfg.lastCheckDate) setLastCheckDate(cfg.lastCheckDate);
       }
     } catch (err) {
       console.warn('WA Gateway service unreachable:', err);
@@ -414,7 +418,7 @@ export const WAGatewayModal: React.FC<WAGatewayModalProps> = ({
                       onChange={(e) => setAutoRemindEnabled(e.target.checked)}
                       className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
                     />
-                    <span className="text-xs font-bold text-slate-700">Aktifkan Auto-Check Reminder H-60 PM Schedule</span>
+                    <span className="text-xs font-bold text-slate-700">Aktifkan Auto-Reminder H-60 (Setiap Senin 08:00 WIB)</span>
                   </label>
 
                   <button
@@ -437,6 +441,20 @@ export const WAGatewayModal: React.FC<WAGatewayModalProps> = ({
                 <p className="text-xs text-slate-600 leading-relaxed">
                   Sistem akan secara otomatis menyaring agenda <strong>Preventive Maintenance (PM) 2 Bulan ke depan</strong> dari jadwal resmi PM Schedule 2026, lalu mengirimkan daftar tagihan dokumen yang belum siap langsung ke nomor WhatsApp yang dikonfigurasi di atas.
                 </p>
+
+                {/* Schedule Info Badge */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-100 border border-indigo-200 text-indigo-700 rounded-full text-xs font-bold">
+                    <CalendarClock className="w-3.5 h-3.5" />
+                    Jadwal Otomatis: Setiap Hari Senin, 08:00 WIB
+                  </span>
+                  {lastCheckDate && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full text-[10px] font-semibold">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Terakhir dikirim: {new Date(lastCheckDate).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <button
