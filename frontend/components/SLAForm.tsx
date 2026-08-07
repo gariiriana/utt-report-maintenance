@@ -166,6 +166,18 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
     return [];
   };
 
+  // Prevent background scrolling when Panduan SLA modal is open
+  useEffect(() => {
+    if (showGuideModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showGuideModal]);
+
   // Load draft or existing report if editing
   useEffect(() => {
     if (editId) {
@@ -1743,12 +1755,12 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
       {/* Panduan SLA Equipment Reference Modal */}
       <AnimatePresence>
         {showGuideModal && (
-          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[9999] bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl max-w-4xl w-full max-h-[85vh] border border-slate-200 shadow-2xl overflow-hidden flex flex-col"
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-2xl max-w-4xl w-full max-h-[85vh] sm:max-h-[80vh] border border-slate-200 shadow-2xl overflow-hidden flex flex-col my-auto"
             >
               {/* Modal Header */}
               <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
