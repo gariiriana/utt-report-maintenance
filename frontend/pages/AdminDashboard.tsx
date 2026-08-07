@@ -1,3 +1,11 @@
+// ============================================================================
+// FILE: AdminDashboard.tsx
+// Deskripsi: Dasbor Administrator Utama (Admin Dashboard).
+//            Menampilkan statistik ringkasan sistem (Total Laporan, Foto Terlampir, Penggunaan Storage),
+//            pemantauan log aktivitas laporan real-time, pencarian & penyaringan dokumen,
+//            serta fitur ekspor Excel (.xlsx) & PDF batch secara langsung.
+// ============================================================================
+
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { FileText, FileSpreadsheet, Download, Search, Filter, Calendar, User, Database, Activity, TrendingUp, Pencil, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';

@@ -1,3 +1,10 @@
+// ============================================================================
+// FILE: DivisionApp.tsx
+// Deskripsi: Aplikasi Dasbor Divisi (PMO, Sales, Presales, Purchasing, HSE).
+//            Menyediakan antarmuka manajemen dokumen ISO terisolasi untuk masing-masing
+//            divisi perusahaan serta mode Registri Eksekutif khusus bagi Direksi.
+// ============================================================================
+
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import {
@@ -19,6 +26,7 @@ import { NotificationCenter } from '@/components/NotificationCenter';
 import { Footer } from '@/components/Footer';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
+// Daftar divisi perusahaan beserta ikon dan konfigurasi warna
 const DIVISIONS = [
     { id: 'pmo', name: 'PMO', icon: Layout, color: 'blue' },
     { id: 'sales', name: 'Sales', icon: TrendingUp, color: 'emerald' },
@@ -28,14 +36,17 @@ const DIVISIONS = [
 ];
 
 export function DivisionApp() {
+    // State autentikasi user
     const { user, userRole, logout } = useAuth();
     const [logoutModalOpen, setLogoutModalOpen] = useState(false);
 
+    // Pengecekan peranan (role): Apakah jajaran Direksi atau Anggota Divisi spesifik
     const isDirector = ['dirut', 'direksiSDM', 'DireksiKeuangan'].includes(userRole || '');
     const isDivisionUser = ['pmo', 'sales', 'presales', 'purchasing'].includes(userRole || '');
     const [activeDivision, setActiveDivision] = useState<string | null>(isDivisionUser ? userRole : null);
     const [showVault, setShowVault] = useState(false);
 
+    // Pemetaan nama jabatan Direksi dalam Bahasa Indonesia
     const directorTitles: Record<string, string> = {
         'dirut': 'Direktur Utama',
         'direksiSDM': 'Direktur SDM',
@@ -43,15 +54,17 @@ export function DivisionApp() {
     };
     const directorTitle = directorTitles[userRole || ''] || 'Direktur';
 
+    // Helper untuk mengambil metadata divisi berdasarkan ID
     const getDivisionDetails = (id: string) => DIVISIONS.find(d => d.id === id);
 
     return (
         <div className="min-h-screen flex flex-col">
 
-            {/* Top Navbar */}
+            {/* Navbar Atas — Menampilkan Logo, Status User, Notifikasi, dan Tombol Logout */}
             <div className="bg-white/80 backdrop-blur-xl border-b border-sky-100/80 sticky top-0 z-50 shadow-sm text-slate-800">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
                     <div className="flex items-center justify-between">
+                        {/* Logo Perusahaan & Lencana Jabatan User */}
                         <div className="flex items-center gap-3">
                             <img
                                 src={logoDwimitra}
@@ -73,6 +86,7 @@ export function DivisionApp() {
                             </div>
                         </div>
 
+                        {/* Pusat Notifikasi, Info Akun Email, & Tombol Log Out */}
                         <div className="flex items-center gap-3">
                             <NotificationCenter onSelectNotification={(item) => {
                                 toast.info(`Membuka: ${item.fileName}`);
@@ -97,8 +111,9 @@ export function DivisionApp() {
                 </div>
             </div>
 
-            {/* Main Content */}
+            {/* Konten Utama Aplikasi Divisi */}
             <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-8">
+                {/* Tampilan 1: Registri Eksekutif Khusus Direksi (Menu Pilihan Departemen) */}
                 {isDirector && !showVault ? (
                     <div className="space-y-8">
                         <div>
@@ -108,7 +123,7 @@ export function DivisionApp() {
                         </div>
 
                         <div className="flex flex-col lg:flex-row gap-8 min-h-[600px]">
-                            {/* Left Navigation */}
+                            {/* Navigasi Daftar Departemen Sisi Kiri */}
                             <div className="w-full lg:w-80 flex flex-col shrink-0 bg-white/90 backdrop-blur-md rounded-3xl border border-sky-100/90 overflow-hidden shadow-lg text-slate-800">
                                 <div className="px-6 py-5 border-b border-slate-200 bg-slate-50/80">
                                     <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600">Registri Departemen</p>
@@ -131,7 +146,7 @@ export function DivisionApp() {
                                                     : `hover:bg-slate-50`
                                                 }`}
                                             >
-                                                {/* Active Indicator Bar */}
+                                                {/* Batang Indikator Aktif */}
                                                 {IsActive && (
                                                     <motion.div
                                                         layoutId="active-nav-border"
@@ -160,7 +175,7 @@ export function DivisionApp() {
                                 </div>
                             </div>
 
-                            {/* Right Empty Vault State */}
+                            {/* Tampilan Kosong Sisi Kanan (Placeholder Sebelum Memilih Divisi) */}
                             <div className="hidden lg:flex flex-1 flex-col items-center justify-center text-center p-8 bg-white/90 backdrop-blur-md border border-sky-100/90 rounded-[2.5rem] shadow-lg relative overflow-hidden group text-slate-800">
                                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
@@ -174,13 +189,13 @@ export function DivisionApp() {
                                     </p>
                                 </div>
 
-                                {}
                                 <div className="absolute -top-24 -right-24 w-48 h-48 bg-blue-500/10 blur-[80px] pointer-events-none" />
                             </div>
                         </div>
                         </div>
                     </div>
                 ) : (
+                    /* Tampilan 2: Pengelola Berkas Dokumen (File Management / Document List) */
                     <div className="space-y-6">
                         {isDirector && (
                             <button
@@ -209,8 +224,10 @@ export function DivisionApp() {
                 )}
             </div>
 
+            {/* Footer Hak Cipta Perusahaan */}
             <Footer />
 
+            {/* Modal Konfirmasi Keluar / Log Out */}
             <LogoutConfirmModal
                 isOpen={logoutModalOpen}
                 onClose={() => setLogoutModalOpen(false)}
@@ -220,4 +237,3 @@ export function DivisionApp() {
         </div>
     );
 }
-

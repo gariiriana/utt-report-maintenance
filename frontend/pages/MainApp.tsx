@@ -1,3 +1,18 @@
+// ============================================================================
+// FILE: MainApp.tsx
+// Deskripsi: Aplikasi Utama DwimitraSystem (Main Application Shell).
+//            Menyediakan navigasi tab utama untuk Admin, Engineer, Standby Engineer,
+//            dan User DME. Mengontrol routing internal antar modul:
+//            - Dashboard Admin & Statistik
+//            - Absensi TBM & Safety Induction
+//            - Permit to Work (PTW) Management
+//            - Manajemen File & Dokumen Laporan
+//            - Corrective Maintenance (CM, SLA/SLG, PIR)
+//            - Finding Management (Temuan & Arsip)
+//            - Preventive Maintenance (PM) Schedule
+//            - Pusat Notifikasi & Perintah Suara JARVIS AI
+// ============================================================================
+
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays } from 'lucide-react';
@@ -21,17 +36,22 @@ import { NotificationCenter, AppNotificationItem } from '@/components/Notificati
 import { NotificationPage } from '@/components/NotificationPage';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
+// Tipe Tab Navigasi yang Tersedia dalam Aplikasi
 type Tab = 'notifications' | 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule';
 
 export function MainApp() {
+  // State autentikasi & peranan user dari AuthContext
   const { user, userRole, logout } = useAuth();
 
+  // Flag evaluasi hak akses peranan user
   const isAdmin = userRole === 'admin';
   const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
   const isStandby = userRole === 'standby_engineer';
 
+  // State data laporan yang sedang disunting (edit mode)
   const [editingData, setEditingData] = useState<ExcelDocument | null>(null);
 
+  // Daftar item navigasi aplikasi beserta batasan hak akses (fitur show)
   const navItems = [
     { id: 'admin', label: 'Dashboard', icon: Shield, color: 'from-purple-600 to-pink-600', show: isAdmin },
     { id: 'absen_tbm', label: 'Absen TBM', icon: Calendar, color: 'from-pink-500 to-rose-600', show: isAdmin },
@@ -47,6 +67,7 @@ export function MainApp() {
     { id: 'pm_schedule', label: 'PM Schedule', icon: CalendarDays, color: 'from-blue-600 to-indigo-700', show: userRole === 'DME' || isAdmin },
   ] as const;
 
+  // Menentukan tab awal default berdasarkan peranan user saat pertama kali dibuka
   const getDefaultTab = (): Tab => {
     if (isAdmin) return 'admin';
     if (isStandby) return 'corrective';
@@ -59,6 +80,7 @@ export function MainApp() {
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [navSearchQuery, setNavSearchQuery] = useState('');
 
+  // Handler saat notifikasi diklik: Otomatis berpindah tab dan memicu pencarian dokumen
   const handleSelectNotification = (item: AppNotificationItem) => {
     if (item.targetTab) {
       setActiveTab(item.targetTab as Tab);
@@ -75,7 +97,7 @@ export function MainApp() {
     toast.info(`Membuka: ${item.fileName || item.title}`);
   };
 
-  // JARVIS Autonomous Voice Command Listener
+  // Integration Event Listener: JARVIS Autonomous Voice Command Agent
   useEffect(() => {
     const handleVoiceCommand = (e: Event) => {
       const customEvent = e as CustomEvent;
@@ -95,11 +117,13 @@ export function MainApp() {
     return () => window.removeEventListener('voice-agent-command', handleVoiceCommand);
   }, []);
 
+  // Handler untuk mengedit laporan
   const handleEditReport = (doc: ExcelDocument) => {
     setEditingData(doc);
     setActiveTab('report');
   };
 
+  // Handler untuk membersihkan data edit (kembali ke tab arsip dokumen)
   const clearEditingData = () => {
     setEditingData(null);
     if (userRole === 'DME') {
@@ -107,13 +131,13 @@ export function MainApp() {
     }
   };
 
-
   return (
     <div className="min-h-screen flex flex-col">
-      {}
+      {/* Navbar Top Bar Desktop & Mobile */}
       <div className="bg-white/80 backdrop-blur-xl border-b border-sky-100/80 shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
+            {/* Logo Perusahaan & Sub-Header */}
             <div className="flex items-center gap-3 min-w-0">
               <img
                 src={logoDwimitra}
@@ -128,7 +152,7 @@ export function MainApp() {
               </div>
             </div>
 
-            {/* Desktop Actions */}
+            {/* Aksi Navbar Desktop (Pusat Notifikasi, Email User, Log Out) */}
             <div className="hidden md:flex items-center gap-4">
               <NotificationCenter 
                 onSelectNotification={handleSelectNotification} 
@@ -149,6 +173,7 @@ export function MainApp() {
               </motion.button>
             </div>
 
+            {/* Aksi Navbar Mobile (Tombol Hamburger Menu & Notifikasi) */}
             <div className="flex items-center gap-2 md:hidden">
               <NotificationCenter 
                 onSelectNotification={handleSelectNotification} 
@@ -164,31 +189,32 @@ export function MainApp() {
             </div>
           </div>
         </div>
-        {/* Desktop Secondary Navigation (Tabs) */}
-      <div className="hidden md:block bg-sky-50/60 backdrop-blur-md border-t border-sky-100/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-          <div className="flex items-center justify-center gap-1 xl:gap-1.5">
-            {navItems.filter(i => i.show).map((item) => (
-              <motion.button
-                key={item.id}
-                whileHover={{ y: -1, scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setActiveTab(item.id as Tab)}
-                className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] xl:text-xs font-bold transition-all whitespace-nowrap border rounded-xl cursor-pointer ${activeTab === item.id
-                  ? `bg-gradient-to-r ${item.color} text-white border-transparent shadow-md shadow-blue-500/20`
-                  : 'bg-white/80 text-slate-600 border-slate-200/80 hover:bg-white hover:text-slate-900 shadow-sm'
-                  }`}
-              >
-                <item.icon className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>{item.label}</span>
-              </motion.button>
-            ))}
+
+        {/* Tab Navigasi Sekunder Tampilan Desktop */}
+        <div className="hidden md:block bg-sky-50/60 backdrop-blur-md border-t border-sky-100/80">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+            <div className="flex items-center justify-center gap-1 xl:gap-1.5">
+              {navItems.filter(i => i.show).map((item) => (
+                <motion.button
+                  key={item.id}
+                  whileHover={{ y: -1, scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setActiveTab(item.id as Tab)}
+                  className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 text-[11px] xl:text-xs font-bold transition-all whitespace-nowrap border rounded-xl cursor-pointer ${activeTab === item.id
+                    ? `bg-gradient-to-r ${item.color} text-white border-transparent shadow-md shadow-blue-500/20`
+                    : 'bg-white/80 text-slate-600 border-slate-200/80 hover:bg-white hover:text-slate-900 shadow-sm'
+                    }`}
+                >
+                  <item.icon className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span>{item.label}</span>
+                </motion.button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
-      </div>
 
-      {/* Mobile Menu Drawer */}
+      {/* Drawer Menu Navigasi Layar Mobile (Samping Kanan) */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <>
@@ -254,7 +280,7 @@ export function MainApp() {
         )}
       </AnimatePresence>
 
-      {}
+      {/* Konten Utama Aplikasi (Render Dinamis Berdasarkan activeTab) */}
       <main className="flex-1 relative w-full min-w-0 overflow-x-hidden">
         <AnimatePresence mode="wait">
           <motion.div
@@ -298,8 +324,10 @@ export function MainApp() {
         </AnimatePresence>
       </main>
 
+      {/* Footer Aplikasi */}
       <Footer />
 
+      {/* Modal Konfirmasi Log Out Sesi */}
       <LogoutConfirmModal
         isOpen={logoutModalOpen}
         onClose={() => setLogoutModalOpen(false)}

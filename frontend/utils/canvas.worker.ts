@@ -1,22 +1,33 @@
+// ============================================================================
+// FILE: canvas.worker.ts
+// Deskripsi: Web Worker untuk rendering animasi latar belakang interaktif (DataCenterBackground).
+//            Menggunakan OffscreenCanvas di thread terpisah (background thread)
+//            supaya rendering grafik titik & garis koneksi tidak membebani
+//            main UI thread (mencegah lag saat user mengetik form).
+// ============================================================================
 
+// State lokal worker untuk OffscreenCanvas
 let ctx: OffscreenCanvasRenderingContext2D | null = null;
 let canvasWidth = 0;
 let canvasHeight = 0;
 let nodes: any[] = [];
-const nodeCount = 15;
-const CONNECTION_DISTANCE = 200;
-const OPACITY_STEPS = 20;
+const nodeCount = 15;                 // Jumlah node/titik partikel
+const CONNECTION_DISTANCE = 200;      // Jarak maksimum antar node untuk menggambar garis penghubung
+const OPACITY_STEPS = 20;             // Jumlah tingkatan transparansi garis yang di-cache
 let cachedStrokeStyles: string[] = [];
 const NODE_FILL_STYLE = 'rgba(96, 165, 250, 0.9)';
 
+// Pre-calculate cache warna & transparansi garis agar performa rendering 30 FPS tetap tinggi
 for (let i = 0; i <= OPACITY_STEPS; i++) {
   const opacity = (i / OPACITY_STEPS) * 0.3;
   cachedStrokeStyles.push(`rgba(59, 130, 246, ${opacity.toFixed(3)})`);
 }
 
+// Event listener menerima pesan dari main thread
 self.onmessage = function (e) {
   const { type, payload } = e.data;
 
+  // Pesan inisialisasi canvas dari main thread
   if (type === 'init') {
     const canvas = payload.canvas as OffscreenCanvas;
     canvasWidth = payload.width;
@@ -25,6 +36,7 @@ self.onmessage = function (e) {
 
     if (ctx) {
       nodes = [];
+      // Generate koordinat dan kecepatan acak untuk masing-masing titik/node
       for (let i = 0; i < nodeCount; i++) {
         nodes.push({
           x: Math.random() * canvasWidth,
@@ -34,29 +46,36 @@ self.onmessage = function (e) {
           pulse: Math.random() * Math.PI * 2,
         });
       }
+      // Mulai loop animasi Web Worker
       requestAnimationFrame(animate);
     }
   } else if (type === 'resize') {
+    // Perbarui ukuran canvas saat jendela browser di-resize
     canvasWidth = payload.width;
     canvasHeight = payload.height;
   }
 };
 
+// Pengatur FPS (Dibatasi 30 FPS untuk efisiensi penggunaan CPU & baterai)
 let lastFrameTime = 0;
 const TARGET_FPS = 30;
 const FRAME_INTERVAL = 1000 / TARGET_FPS;
 
+// Fungsi utama render loop animasi
 function animate(currentTime: number) {
   requestAnimationFrame(animate);
 
   if (!ctx) return;
 
+  // Lewati frame jika belum waktunya (sesuai target 30 FPS)
   const elapsed = currentTime - lastFrameTime;
   if (elapsed < FRAME_INTERVAL) return;
   lastFrameTime = currentTime - (elapsed % FRAME_INTERVAL);
 
+  // Bersihkan canvas
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
+  // 1. Perbarui posisi node & memantul jika menyentuh pinggir layar
   for (let i = 0; i < nodeCount; i++) {
     const node = nodes[i];
     node.x += node.vx;
@@ -65,9 +84,10 @@ function animate(currentTime: number) {
     if (node.x < 0 || node.x > canvasWidth) node.vx *= -1;
     if (node.y < 0 || node.y > canvasHeight) node.vy *= -1;
 
-    node.pulse += 0.02;
+    node.pulse += 0.02; // Efek denyut (pulsating)
   }
 
+  // 2. Gambar garis koneksi antar node yang berdekatan
   ctx.lineWidth = 1;
   for (let i = 0; i < nodeCount; i++) {
     const node = nodes[i];
@@ -77,6 +97,7 @@ function animate(currentTime: number) {
       const dy = node.y - otherNode.y;
       const distSq = dx * dx + dy * dy;
 
+      // Jika jarak dua node lebih kecil dari CONNECTION_DISTANCE, gambar garisnya
       if (distSq < CONNECTION_DISTANCE * CONNECTION_DISTANCE) {
         const distance = Math.sqrt(distSq);
         const opacityIndex = Math.round((1 - distance / CONNECTION_DISTANCE) * OPACITY_STEPS);
@@ -89,6 +110,7 @@ function animate(currentTime: number) {
     }
   }
 
+  // 3. Gambar titik node partikel lengkap dengan efek pendaran (glow radial gradient)
   for (let i = 0; i < nodeCount; i++) {
     const node = nodes[i];
     const pulseSize = 2 + Math.sin(node.pulse) * 0.5;
@@ -110,4 +132,3 @@ function animate(currentTime: number) {
     ctx.fill();
   }
 }
-

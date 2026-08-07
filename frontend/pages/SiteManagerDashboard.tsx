@@ -1,3 +1,11 @@
+// ============================================================================
+// FILE: SiteManagerDashboard.tsx
+// Deskripsi: Dasbor Utama Site Manager (PT UTT / PT Dwimitra Ekatama Mandiri).
+//            Menyajikan visualisasi statistik grafik (Donut Chart capai pemeliharaan),
+//            pemantauan real-time progress PM (Preventive Maintenance),
+//            input data aktivitas harian, serta kontrol ekspor ringkasan laporan.
+// ============================================================================
+
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -38,6 +46,10 @@ import {
   type MaintenanceSummary
 } from '@/utils/MaintenanceLogic';
 
+/**
+ * Komponen grafik lingkaran (Donut Chart) statistik capaian pemeliharaan.
+ * Menggunakan animasi SVG lingkaran bertingkat dengan gradient warna.
+ */
 function StatDonut({ label, percent, sublabel, color, delay = 0, glowColor }: {
   label: string;
   percent: number;

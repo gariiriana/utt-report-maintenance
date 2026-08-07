@@ -1,3 +1,10 @@
+// ============================================================================
+// FILE: HSEApp.tsx
+// Deskripsi: Aplikasi Dasbor Khusus Petugas HSE (Health, Safety, and Environment).
+//            Digunakan oleh HSE Officer untuk membuat laporan inspeksi K33/HSE,
+//            mengelola foto inspeksi keselamatan kerja, dan mengakses arsip dokumen HSE.
+// ============================================================================
+
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { LogOut, ShieldCheck, HardHat, FileText, Folder, Menu, X, ChevronRight, User } from 'lucide-react';
@@ -9,21 +16,27 @@ import { DocumentList } from '@/components/DocumentList';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
 export function HSEApp() {
+    // State autentikasi user
     const { user, logout } = useAuth();
     const [logoutModalOpen, setLogoutModalOpen] = useState(false);
+    
+    // State tab aktif ('inspection' untuk buat laporan HSE, 'iso' untuk arsip dokumen)
     const [activeTab, setActiveTab] = useState<'inspection' | 'iso'>('inspection');
-    const [editingData, setEditingData] = useState<any>(null);
-    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [editingData, setEditingData] = useState<any>(null); // Data laporan yang sedang di-edit
+    const [sidebarOpen, setSidebarOpen] = useState(false);     // State drawer navigasi HP (Mobile)
 
+    // Handler saat user mengklik tombol edit laporan dari daftar dokumen
     const handleEditReport = (data: any) => {
         setEditingData(data);
-        setActiveTab('inspection'); 
+        setActiveTab('inspection'); // Otomatis pindah ke tab form inspeksi
     };
 
+    // Handler untuk mereset mode edit (kembali ke mode form kosong)
     const handleClearEdit = () => {
         setEditingData(null);
     };
 
+    // Helper judul label tab aktif
     const getTabLabel = () => {
         switch (activeTab) {
             case 'inspection': return 'Laporan Inspeksi HSE';
@@ -32,6 +45,7 @@ export function HSEApp() {
         }
     };
 
+    // Daftar item navigasi utama HSE Portal
     const navigationItems = [
         { id: 'inspection', label: 'Buat Inspeksi', icon: FileText, color: 'bg-green-600', shadow: 'shadow-green-600/20' },
         { id: 'iso', label: 'Arsip Dokumen', icon: Folder, color: 'bg-emerald-600', shadow: 'shadow-emerald-600/20' },
@@ -39,10 +53,11 @@ export function HSEApp() {
 
     return (
         <div className="min-h-screen font-geist text-slate-800">
-            {/* Mobile Drawer */}
+            {/* Drawer Sidebar Navigasi Layar HP / Mobile */}
             <AnimatePresence>
                 {sidebarOpen && (
                     <>
+                        {/* Backdrop Gelap saat Sidebar HP Terbuka */}
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -50,6 +65,7 @@ export function HSEApp() {
                             onClick={() => setSidebarOpen(false)}
                             className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] lg:hidden"
                         />
+                        {/* Panel Menu Samping Kanan HP */}
                         <motion.div
                             initial={{ x: '100%' }}
                             animate={{ x: 0 }}
@@ -67,6 +83,7 @@ export function HSEApp() {
                                 </button>
                             </div>
 
+                            {/* Tombol-tombol Tab Navigasi di Drawer Mobile */}
                             <div className="flex-1 overflow-y-auto p-4 space-y-2">
                                 <p className="px-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4">Navigasi Utama</p>
                                 {navigationItems.map((item) => (
@@ -91,6 +108,7 @@ export function HSEApp() {
                                 ))}
                             </div>
 
+                            {/* Info Akun HSE Officer & Tombol Log Out di Mobile */}
                             <div className="p-4 border-t border-slate-200 space-y-4 bg-slate-50/50">
                                 <div className="flex items-center gap-3 px-4 py-2">
                                     <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center">
@@ -117,7 +135,7 @@ export function HSEApp() {
                 )}
             </AnimatePresence>
 
-            {/* Top Navbar */}
+            {/* Navbar Atas Desktop / Tablet */}
             <div className="bg-white/80 backdrop-blur-xl border-b border-sky-100/80 sticky top-0 z-50 shadow-sm text-slate-800">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
                     <div className="flex items-center justify-between">
@@ -170,7 +188,7 @@ export function HSEApp() {
                 </div>
             </div>
 
-            {/* Subheader Navigation */}
+            {/* Subheader Judul Tab Navigasi Aktif */}
             <div className="bg-white/90 backdrop-blur-md border-b border-sky-100/80 shadow-sm text-slate-800">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-5">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -188,6 +206,7 @@ export function HSEApp() {
                             </div>
                         </div>
 
+                        {/* Pilihan Tab di Tampilan Desktop */}
                         <div className="hidden lg:flex flex-wrap gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-200 shadow-sm">
                             {navigationItems.map((item) => (
                                 <button
@@ -207,6 +226,7 @@ export function HSEApp() {
                 </div>
             </div>
 
+            {/* Konten Utama HSE Portal: Form Inspeksi HSE atau Daftar Dokumen HSE */}
             <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
                 {activeTab === 'iso' ? (
                     <DocumentList 
@@ -222,8 +242,10 @@ export function HSEApp() {
                 )}
             </div>
 
+            {/* Footer Hak Cipta Perusahaan */}
             <Footer />
 
+            {/* Modal Konfirmasi Log Out */}
             <LogoutConfirmModal
                 isOpen={logoutModalOpen}
                 onClose={() => setLogoutModalOpen(false)}
@@ -233,4 +255,3 @@ export function HSEApp() {
         </div>
     );
 }
-

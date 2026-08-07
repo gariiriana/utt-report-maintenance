@@ -1,3 +1,11 @@
+// ============================================================================
+// FILE: AuthContext.tsx
+// Deskripsi: React Context Provider Autentikasi Utama DwimitraSystem.
+//            Mengelola status login, peranan user (Role-Based Access Control / RBAC),
+//            penyinkronan profil user ke Cloud Firestore, serta penanganan fallback login
+//            jika jaringan Firebase terhalang AdBlocker/Firewall.
+// ============================================================================
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   User,
@@ -11,6 +19,7 @@ import {
 import { auth, db } from '@/api/firebase';
 import { doc, setDoc, serverTimestamp, getDoc, onSnapshot } from 'firebase/firestore';
 
+// Interface struktur data profil user yang tersimpan di Firestore ('users' collection)
 interface UserData {
   email: string;
   uid: string;
@@ -19,6 +28,11 @@ interface UserData {
   createdAt: any;
 }
 
+/**
+ * Helper otomatis: Menentukan peranan (role) awal user berdasarkan format alamat email
+ * @param email Alamat email user
+ * @returns Kode role resmi (admin, standby_engineer, engineer, dsb.)
+ */
 const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' => {
   if (!email) return 'engineer';
   const lowerEmail = email.toLowerCase();
@@ -34,10 +48,12 @@ const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby
   if (lowerEmail.includes('purchasing')) return 'purchasing';
   if (lowerEmail.includes('dirut')) return 'dirut';
   if (lowerEmail.includes('dme')) return 'DME';
+  // Email spesifik teknisi Standby Engineer UTT
   if (lowerEmail === 'agil@utt.com' || lowerEmail === 'krishna@utt.com' || lowerEmail === 'asep@utt.com' || lowerEmail === 'salman@utt.com' || lowerEmail === 'gilang@utt.com' || lowerEmail === 'dison@utt.com' || lowerEmail.includes('standby')) return 'standby_engineer';
   return 'engineer';
 };
 
+// Interface konteks autentikasi React
 interface AuthContextType {
   user: User | null;
   userRole: 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | null;
@@ -58,9 +74,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let unsubscribeDoc: (() => void) | null = null;
     
-
+    // Set persistensi lokal browser (user tetap terautentikasi meskipun tab/browser ditutup)
     setPersistence(auth, browserLocalPersistence).catch(err => console.error("Persistence failed", err));
 
+    // Event Listener perubahan status autentikasi Firebase
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
 
@@ -75,6 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const userDoc = await getDoc(userDocRef);
 
+          // Jika user baru pertama kali login, buat dokumen profil awal di Firestore
           if (!userDoc.exists()) {
             const initialRole = getRoleFromEmail(user.email);
             await setDoc(userDocRef, {
@@ -90,6 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.warn('Error creating/fetching user document (offline?):', error);
         }
 
+        // Realtime Listener snapshot dokumen profil user dari Firestore
         unsubscribeDoc = onSnapshot(
           userDocRef,
           (docSnap) => {
@@ -118,7 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         );
       } else {
-        // Check fallback session if Firebase Auth state is null
+        // Pengecekan fallback session jika koneksi Firebase Auth terputus
         try {
           const rawSession = localStorage.getItem('dwimitra_fallback_session');
           if (rawSession) {
@@ -167,6 +186,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  /**
+   * Fungsi Login Utama:
+   * 1. Cek koneksi internet.
+   * 2. Mencoba login Firebase Auth standar.
+   * 3. Jika diblokir oleh AdBlocker/DNS lokal, otomatis fallback ke Backend Proxy Login (/api/auth/proxy-login).
+   */
   const login = async (email: string, password: string) => {
     if (!navigator.onLine) {
       throw new Error('Login memerlukan koneksi internet untuk verifikasi keamanan pertama kali.');
@@ -200,6 +225,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (primaryError: any) {
       console.warn('Primary Firebase login failed, attempting backend proxy fallback:', primaryError);
 
+      // Mekanisme Fallback Backend Proxy saat Firebase Client SDK terhalang jaringan/firewall
       if (
         primaryError.code === 'auth/network-request-failed' ||
         primaryError.code === 'auth/internal-error' ||
@@ -282,6 +308,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  /**
+   * Fungsi Logout Utama: Membersihkan sesi lokal & mereset state autentikasi
+   */
   const logout = async () => {
     try {
       localStorage.removeItem('dwimitra_fallback_session');
@@ -310,6 +339,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Custom Hook untuk memanggil AuthContext secara praktis di komponen mana pun
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {

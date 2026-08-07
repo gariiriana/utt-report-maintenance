@@ -1,3 +1,10 @@
+// ============================================================================
+// FILE: backend/core/controllers/auth_controller.go
+// Deskripsi: Controller Autentikasi Backend Go.
+//            Menangani request Login, Verifikasi ID Token Firebase, Proxy Login Fallback,
+//            Verifikasi Turnstile CAPTCHA, Logout, serta Logging Audit Trail ke Firestore.
+// ============================================================================
+
 package controllers
 
 import (
@@ -12,15 +19,22 @@ import (
 	apperrors "github.com/gariiriana/DwimitraSystem/backend/pkg/errors"
 	"github.com/gariiriana/DwimitraSystem/backend/pkg/helpers"
 )
+
+// Struct AuthController menampung pointer layanan backend (Services)
 type AuthController struct {
 	AuthService  *services.AuthService
 	UserService  *services.UserService
 	AuditSvc     *services.AuditService
 	TurnstileSvc *services.TurnstileService
 }
+
+// Constructor AuthController
 func NewAuthController(auth *services.AuthService, user *services.UserService, audit *services.AuditService, turnstile *services.TurnstileService) *AuthController {
 	return &AuthController{AuthService: auth, UserService: user, AuditSvc: audit, TurnstileSvc: turnstile}
 }
+
+// Endpoint: POST /api/auth/login
+// Memverifikasi ID Token Firebase & memverifikasi Turnstile CAPTCHA jika dilampirkan
 func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		IDToken        string `json:"id_token"`
@@ -33,7 +47,7 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	// Optional/Conditional Turnstile token verification
+	// Verifikasi opsional token Turnstile CAPTCHA
 	if body.TurnstileToken != "" && c.TurnstileSvc != nil {
 		clientIP := helpers.GetClientIP(r)
 		valid, err := c.TurnstileSvc.Verify(ctx, body.TurnstileToken, clientIP)
@@ -51,8 +65,11 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 	email, _ := token.Claims["email"].(string)
 	displayName, _ := token.Claims["name"].(string)
 	photoURL, _ := token.Claims["picture"].(string)
+
+	// Sinkronisasi data profil user ke Firestore database
 	_ = c.UserService.UpsertFromLogin(ctx, token.UID, email, displayName, photoURL)
 
+	// Catat log aktivitas login ke Audit Trail
 	requestID := helpers.ExtractRequestID(r)
 	ip := helpers.GetClientIP(r)
 	c.AuditSvc.LogAction(ctx, models.ActionLogin, token.UID, email, "", "", "", requestID, ip, true, "")
@@ -64,6 +81,9 @@ func (c *AuthController) Login(w http.ResponseWriter, r *http.Request) {
 		"message": "Login recorded successfully",
 	})
 }
+
+// Endpoint: GET /api/auth/me
+// Mengambil profil data user aktif berdasarkan ID token yang terautentikasi
 func (c *AuthController) Me(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	uid := middlewares.UIDFromContext(ctx)
@@ -79,6 +99,9 @@ func (c *AuthController) Me(w http.ResponseWriter, r *http.Request) {
 	}
 	helpers.SendJSON(w, http.StatusOK, models.BuildAPIResponse(profile, nil))
 }
+
+// Endpoint: POST /api/auth/logout
+// Melakukan pembatalan refresh token Firebase & mencatat aktivitas logout
 func (c *AuthController) Logout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	uid := middlewares.UIDFromContext(ctx)
@@ -103,12 +126,14 @@ func (c *AuthController) Logout(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Struct payload request Proxy Login Fallback
 type ProxyLoginRequest struct {
 	Email          string `json:"email"`
 	Password       string `json:"password"`
 	TurnstileToken string `json:"turnstile_token"`
 }
 
+// Struct response Identity Toolkit API Google Firebase
 type IdentityToolkitResponse struct {
 	Kind         string `json:"kind"`
 	LocalID      string `json:"localId"`
@@ -123,6 +148,8 @@ type IdentityToolkitResponse struct {
 	} `json:"error,omitempty"`
 }
 
+// Endpoint: POST /api/auth/proxy-login
+// Fallback backend login saat koneksi langsung browser ke Firebase Identity Toolkit terhalang adblocker/firewall
 func (c *AuthController) ProxyLogin(w http.ResponseWriter, r *http.Request) {
 	var body ProxyLoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Email == "" || body.Password == "" {
@@ -132,6 +159,7 @@ func (c *AuthController) ProxyLogin(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
+	// Verifikasi token Turnstile CAPTCHA jika ada
 	if body.TurnstileToken != "" && c.TurnstileSvc != nil {
 		clientIP := helpers.GetClientIP(r)
 		valid, err := c.TurnstileSvc.Verify(ctx, body.TurnstileToken, clientIP)
@@ -183,6 +211,7 @@ func (c *AuthController) ProxyLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Generate Custom Token Firebase dari server
 	customToken, _ := c.AuthService.CreateCustomToken(ctx, idResp.LocalID)
 	_ = c.UserService.UpsertFromLogin(ctx, idResp.LocalID, idResp.Email, idResp.DisplayName, "")
 
@@ -199,4 +228,3 @@ func (c *AuthController) ProxyLogin(w http.ResponseWriter, r *http.Request) {
 		"refreshToken": idResp.RefreshToken,
 	})
 }
-

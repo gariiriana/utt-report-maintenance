@@ -1,7 +1,15 @@
-// ─── TRANSLATION UTILITY (EN <-> ID) FOR SERVICE REPORT PHOTO CARDS ───────────────────
+// ============================================================================
+// FILE: translator.ts
+// Deskripsi: Utility penerjemah (Kamus Dua Arah EN <-> ID) untuk teks aktivitas pada
+//            Kartu Foto Service Report (PJU, FCU, ATS, dsb.).
+//            Menyediakan pemetaan kamus statis + fallback otomatis ke API AI (Gemini)
+//            jika teks kustom tidak ada dalam kamus.
+// ============================================================================
 
+// Kamus Penerjemahan Statis (Inggris -> Indonesia)
+// Berisi standar kalimat pemeriksaan teknis data center M/E
 export const TRANSLATION_DICTIONARY: Record<string, string> = {
-  // PJU (Street & Garden Lighting)
+  // PJU (Penerangan Jalan Umum & Taman)
   'Inspection visual of lamps': 'Inspeksi visual lampu',
   'Inspection all lighting fixtures regularly to ensure they are in good working order': 'Inspeksi berkala seluruh armature lampu untuk memastikan berfungsi dengan baik',
   'Inspection wiring and connections to prevent electrical problems': 'Inspeksi pengkabelan dan koneksi untuk mencegah masalah kelistrikan',
@@ -120,38 +128,41 @@ export const TRANSLATION_DICTIONARY: Record<string, string> = {
   'Inspection visual from downstream power connections (connecting pads, cable mechanical strength)': 'Inspeksi visual koneksi daya downstream (bantalan sambungan, kekuatan mekanis kabel)',
 };
 
-// Reverse dictionary for ID -> EN
+// Kamus Pemetaan Terbalik (Indonesia -> Inggris)
 export const REVERSE_TRANSLATION_DICTIONARY: Record<string, string> = Object.entries(TRANSLATION_DICTIONARY).reduce((acc, [en, id]) => {
   acc[id] = en;
   return acc;
 }, {} as Record<string, string>);
 
 /**
- * Translates a description text between English and Indonesian.
- * Returns the translated string.
+ * Menerjemahkan kalimat deskripsi antara Bahasa Inggris dan Indonesia.
+ * 1. Mengecek pencocokan persis di kamus EN -> ID.
+ * 2. Mengecek pencocokan persis di kamus ID -> EN.
+ * 3. Mengecek pencocokan tanpa membedakan huruf besar/kecil (case-insensitive).
+ * 4. Jika tidak ada di kamus, melakukan panggil API AI (/api/ai/chat) untuk penerjemahan dinamis.
  */
 export async function translateText(text: string): Promise<string> {
   const trimmed = text.trim();
   if (!trimmed) return text;
 
-  // 1. Check exact match in EN -> ID dictionary
+  // 1. Cek pencocokan langsung EN -> ID
   if (TRANSLATION_DICTIONARY[trimmed]) {
     return TRANSLATION_DICTIONARY[trimmed];
   }
 
-  // 2. Check exact match in ID -> EN dictionary
+  // 2. Cek pencocokan langsung ID -> EN
   if (REVERSE_TRANSLATION_DICTIONARY[trimmed]) {
     return REVERSE_TRANSLATION_DICTIONARY[trimmed];
   }
 
-  // 3. Check case-insensitive match
+  // 3. Cek pencocokan case-insensitive
   const lower = trimmed.toLowerCase();
   for (const [en, id] of Object.entries(TRANSLATION_DICTIONARY)) {
     if (en.toLowerCase() === lower) return id;
     if (id.toLowerCase() === lower) return en;
   }
 
-  // 4. Fallback: Call AI endpoint for dynamic translation of custom text
+  // 4. Fallback ke endpoint AI Gemini untuk teks bebas luar kamus
   try {
     const res = await fetch('/api/ai/chat', {
       method: 'POST',
@@ -179,13 +190,13 @@ export async function translateText(text: string): Promise<string> {
     console.error('AI translation fallback error:', err);
   }
 
-  // Fallback to original text if translation fails
+  // Kembalikan teks asli jika penerjemahan gagal
   return text;
 }
 
 /**
- * Ensures a text string is in English for PDF Export.
- * If the text is an Indonesian translation from dictionary, converts it back to English master text.
+ * Memastikan teks dalam format Bahasa Inggris untuk Export PDF.
+ * Jika teks berupa Bahasa Indonesia dari kamus, dikembalikan ke teks master Inggris.
  */
 export function toEnglishText(text?: string | null): string {
   if (!text) return '';
@@ -193,7 +204,7 @@ export function toEnglishText(text?: string | null): string {
   if (REVERSE_TRANSLATION_DICTIONARY[trimmed]) {
     return REVERSE_TRANSLATION_DICTIONARY[trimmed];
   }
-  // Case-insensitive lookup in REVERSE_TRANSLATION_DICTIONARY
+  // Pencarian case-insensitive pada kamus terbalik
   const lower = trimmed.toLowerCase();
   for (const [id, en] of Object.entries(REVERSE_TRANSLATION_DICTIONARY)) {
     if (id.toLowerCase() === lower) return en;

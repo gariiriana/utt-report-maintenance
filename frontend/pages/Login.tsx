@@ -1,3 +1,11 @@
+// ============================================================================
+// FILE: Login.tsx
+// Deskripsi: Halaman Login autentikasi utama DwimitraSystem.
+//            Dilengkapi dengan integrasi Cloudflare Turnstile CAPTCHA untuk
+//            mencegah bot / brute-force attack, serta animasi Framer Motion
+//            dan penanganan error terisolasi dalam Bahasa Indonesia.
+// ============================================================================
+
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { useAuth } from '@/components/AuthContext';
@@ -8,22 +16,32 @@ import { Turnstile } from '@marsidev/react-turnstile';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
 export function Login() {
+  // State form login
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false); // Toggle lihat/sembunyi password
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null); // Token CAPTCHA Turnstile
 
+  // Ambil fungsi login dari AuthContext
   const { login } = useAuth();
 
+  /**
+   * Handler submit form login
+   * 1. Validasi field kosong & token Turnstile CAPTCHA
+   * 2. Panggil fungsi login Firebase Auth
+   * 3. Menampilkan pesan error spesifik jika terjadi kegagalan (koneksi, password salah, dll.)
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validasi field terisi
     if (!email || !password) {
       toast.error('Mohon isi semua field');
       return;
     }
 
+    // Validasi verifikasi bot Turnstile
     if (!turnstileToken) {
       toast.error('Mohon selesaikan verifikasi keamanan Turnstile terlebih dahulu');
       return;
@@ -31,6 +49,7 @@ export function Login() {
 
     setLoading(true);
     try {
+      // Proses login Firebase Auth
       await login(email, password);
       toast.success('Login berhasil!');
     } catch (error: any) {
@@ -38,6 +57,7 @@ export function Login() {
 
       let errorMessage = 'Login gagal. Silakan coba lagi.';
 
+      // Penanganan error jaringan / kredensial terpisah
       if (error.code === 'auth/network-request-failed') {
         errorMessage = 'Koneksi jaringan ke server gagal. Pastikan internet Anda lancar dan tidak terhalang AdBlocker/Firewall/DNS lokal.';
       } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
@@ -47,7 +67,7 @@ export function Login() {
       }
 
       toast.error(errorMessage);
-      setTurnstileToken(null);
+      setTurnstileToken(null); // Reset token Turnstile jika login gagal
     } finally {
       setLoading(false);
     }
@@ -55,6 +75,7 @@ export function Login() {
 
   return (
     <div className="min-h-screen w-full font-geist text-slate-800 flex items-center justify-center p-4 sm:p-6 md:p-8 select-none z-50">
+      {/* Container Card Login dengan animasi fade-in & scale */}
       <motion.div
         initial={{ opacity: 0, y: 15, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -62,9 +83,11 @@ export function Login() {
         className="w-[92%] sm:w-full max-w-[360px] sm:max-w-[420px] relative z-10 mx-auto my-auto"
       >
         <div className="bg-white/80 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-xl shadow-sky-900/10 border border-white/90 overflow-hidden">
+          {/* Garis Aksen Dekorasi Top Bar */}
           <div className="h-1.5 bg-gradient-to-r from-blue-600 via-cyan-500 to-teal-500" />
 
           <div className="p-4 sm:p-6 md:p-7">
+            {/* Header Logo & Judul Perusahaan */}
             <div className="text-center mb-4 sm:mb-5">
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -87,7 +110,9 @@ export function Login() {
               </p>
             </div>
 
+            {/* Form Input Email, Password, & CAPTCHA */}
             <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+              {/* Input Email */}
               <div>
                 <label htmlFor="email" className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">
                   Alamat Email
@@ -105,6 +130,7 @@ export function Login() {
                 </div>
               </div>
 
+              {/* Input Kata Sandi */}
               <div>
                 <label htmlFor="password" className="block text-[11px] sm:text-xs font-bold text-slate-700 mb-1">
                   Kata Sandi
@@ -133,6 +159,7 @@ export function Login() {
                 </div>
               </div>
 
+              {/* Cloudflare Turnstile Anti-Bot Security */}
               <div className="pt-0.5 pb-0.5 flex justify-center items-center cf-turnstile" data-action="turnstile-spin-v2">
                 <Turnstile
                   siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY || '0x4AAAAAAD_fWrDH129FQ_Rm'}
@@ -143,6 +170,7 @@ export function Login() {
                 />
               </div>
 
+              {/* Tombol Submit Login */}
               <motion.button
                 whileHover={{ scale: turnstileToken && !loading ? 1.01 : 1 }}
                 whileTap={{ scale: turnstileToken && !loading ? 0.98 : 1 }}

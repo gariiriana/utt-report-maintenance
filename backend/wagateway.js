@@ -1,3 +1,12 @@
+// ============================================================================
+// FILE: backend/wagateway.js
+// Deskripsi: WhatsApp Gateway Service menggunakan Baileys library (Node.js/Express).
+//            Layanan ini mengontrol sesi WhatsApp otomatis untuk pengiriman pengingat
+//            jadwal PM (Preventive Maintenance), pesan broadcast, notifikasi darurat,
+//            dan scanner QR Code pairing WhatsApp Web.
+// Port: 5001
+// ============================================================================
+
 import express from 'express';
 import cors from 'cors';
 import QRCode from 'qrcode';
@@ -22,7 +31,7 @@ const PORT = 5001;
 const AUTH_DIR = path.join(__dirname, 'wa_session');
 const CONFIG_FILE = path.join(__dirname, 'wa_config.json');
 
-// Memory State
+// State memori koneksi WhatsApp
 let waSock = null;
 let connectionStatus = 'DISCONNECTED'; // DISCONNECTED | QR_READY | CONNECTING | CONNECTED
 let currentQrCodeUrl = '';
