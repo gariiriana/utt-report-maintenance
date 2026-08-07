@@ -150,13 +150,22 @@ export function parsePTWFromFilename(filename: string): Partial<PTWExtractedData
  * @param arrayBuffer Buffer binary file PDF
  * @returns Promise<PTWExtractedData | null> Data hasil ekstraksi otomatis
  */
-export async function parsePTWPdf(arrayBuffer: ArrayBuffer): Promise<PTWExtractedData | null> {
+export async function parsePTWPdf(
+  input: ArrayBuffer | File,
+  onStatus?: (msg: string) => void
+): Promise<PTWExtractedData | null> {
   try {
+    if (onStatus) onStatus('Membaca berkas PDF...');
+    const buffer = input instanceof ArrayBuffer 
+      ? input 
+      : await (input as File).arrayBuffer();
+
     // 1. Load dokumen PDF dari memory buffer menggunakan pdf.js engine
-    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    const loadingTask = pdfjsLib.getDocument({ data: buffer });
     const pdfDoc = await loadingTask.promise;
 
     let fullText = '';
+    if (onStatus) onStatus('Ekstraksi lapisan teks PDF...');
 
     // 2. Looping membaca seluruh teks dari setiap halaman PDF (Text Content Items)
     for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
@@ -179,6 +188,7 @@ export async function parsePTWPdf(arrayBuffer: ArrayBuffer): Promise<PTWExtracte
 
     // 4. Jika PDF berbentuk foto scan (teks digital kosong), panggil OCR Fallback Tesseract.js
     console.log('Text extraction produced empty/short text. Falling back to OCR...');
+    if (onStatus) onStatus('Menjalankan pemindaian OCR...');
     return await parsePTWPdfWithOCR(pdfDoc);
 
   } catch (err) {
@@ -208,7 +218,7 @@ async function parsePTWPdfWithOCR(pdfDoc: pdfjsLib.PDFDocumentProxy): Promise<PT
     canvas.height = viewport.height;
 
     if (context) {
-      await page.render({ canvasContext: context, viewport }).promise;
+      await page.render({ canvasContext: context, viewport, canvas: canvas } as any).promise;
       const imageUrl = canvas.toDataURL('image/png');
 
       // 3. Jalankan OCR Tesseract pada gambar canvas

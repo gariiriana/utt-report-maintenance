@@ -226,7 +226,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
     ));
     
     try {
-      const extracted = await parsePTWPdf(file, (msg) => {
+      const extracted = await parsePTWPdf(file, (msg: string) => {
         setQueuedItems(prev => prev.map(item => 
           item.id === itemId 
             ? { ...item, scanStatus: msg }
@@ -234,36 +234,38 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
         ));
       });
       
-      setQueuedItems(prev => prev.map(item => {
-        if (item.id !== itemId) return item;
-        
-        const updated = { ...item };
-        updated.scanSource = 'ocr';
-        
-        if (extracted.sequenceNumber) {
-          updated.sequenceNumber = extracted.sequenceNumber;
-        }
-        if (extracted.equipmentCode && (!item.equipmentCode || item.equipmentCode.toUpperCase() === 'PTW')) {
-          updated.equipmentCode = extracted.equipmentCode;
-        }
-        if (extracted.quarter) {
-          updated.quarter = extracted.quarter;
-        }
-        if (extracted.startDate) {
-          updated.startDate = extracted.startDate;
-        }
-        if (extracted.endDate) {
-          updated.endDate = extracted.endDate;
-        }
-        if (extracted.maintenanceName) {
-          updated.notes = extracted.maintenanceName;
-        }
-        if (extracted.ptwType) {
-          updated.ptwType = extracted.ptwType;
-        }
-        
-        return updated;
-      }));
+      if (extracted) {
+        setQueuedItems(prev => prev.map(item => {
+          if (item.id !== itemId) return item;
+          
+          const updated = { ...item };
+          updated.scanSource = 'ocr';
+          
+          if (extracted.sequenceNumber) {
+            updated.sequenceNumber = extracted.sequenceNumber;
+          }
+          if (extracted.equipmentCode && (!item.equipmentCode || item.equipmentCode.toUpperCase() === 'PTW')) {
+            updated.equipmentCode = extracted.equipmentCode;
+          }
+          if (extracted.quarter) {
+            updated.quarter = extracted.quarter;
+          }
+          if (extracted.startDate) {
+            updated.startDate = extracted.startDate;
+          }
+          if (extracted.endDate) {
+            updated.endDate = extracted.endDate;
+          }
+          if (extracted.maintenanceName) {
+            updated.notes = extracted.maintenanceName;
+          }
+          if (extracted.ptwType) {
+            updated.ptwType = extracted.ptwType;
+          }
+          
+          return updated;
+        }));
+      }
       
       toast.success(`✅ Pemindaian selesai: ${file.name}`);
     } catch (err) {
@@ -318,16 +320,16 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
       const item: QueuedPTWItem = {
         id: itemId,
         file: file,
-        sequenceNumber: filenameData.sequenceNumber || '',
-        equipmentCode: filenameData.equipmentCode || '',
-        quarter: filenameData.quarter || '',
-        startDate: filenameData.startDate || new Date().toISOString().split('T')[0],
-        endDate: filenameData.endDate || new Date().toISOString().split('T')[0],
-        notes: filenameData.maintenanceName || '',
-        ptwType: filenameData.ptwType || 'PM',
+        sequenceNumber: filenameData?.sequenceNumber || '',
+        equipmentCode: filenameData?.equipmentCode || '',
+        quarter: filenameData?.quarter || '',
+        startDate: filenameData?.startDate || new Date().toISOString().split('T')[0],
+        endDate: filenameData?.endDate || new Date().toISOString().split('T')[0],
+        notes: filenameData?.maintenanceName || '',
+        ptwType: filenameData?.ptwType || 'PM',
         isScanning: false,
         scanStatus: '',
-        scanSource: filenameData.sequenceNumber ? 'filename' : 'none',
+        scanSource: filenameData?.sequenceNumber ? 'filename' : 'none',
         isExpanded: false
       };
       
@@ -405,38 +407,38 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
         
         setFormData(prev => {
           const updated = { ...prev };
-          if (filenameData.ptwType) {
+          if (filenameData?.ptwType) {
             updated.ptwType = filenameData.ptwType;
             initialFields.push('Jenis PTW');
           }
-          if (filenameData.sequenceNumber) {
+          if (filenameData?.sequenceNumber) {
             updated.sequenceNumber = filenameData.sequenceNumber;
             initialFields.push('No. Urut');
           }
-          if (filenameData.equipmentCode) {
+          if (filenameData?.equipmentCode) {
             updated.equipmentCode = filenameData.equipmentCode;
             initialFields.push('Equipment Code');
           }
-          if (filenameData.quarter) {
+          if (filenameData?.quarter) {
             updated.quarter = filenameData.quarter;
             initialFields.push('Quarter');
           }
-          if (filenameData.startDate) {
+          if (filenameData?.startDate) {
             updated.startDate = filenameData.startDate;
             initialFields.push('Tanggal Mulai');
           }
-          if (filenameData.endDate) {
+          if (filenameData?.endDate) {
             updated.endDate = filenameData.endDate;
             initialFields.push('Tanggal Selesai');
           }
-          if (filenameData.maintenanceName) {
+          if (filenameData?.maintenanceName) {
             updated.notes = filenameData.maintenanceName;
             initialFields.push('Nama Maintenance');
           }
           return updated;
         });
 
-        if (filenameData.sequenceNumber) {
+        if (filenameData?.sequenceNumber) {
           toast.success(`⚡ Semua data berhasil diisi instan dari nama file!`, { duration: 4000 });
         } else {
           if (initialFields.length > 0) {
@@ -445,39 +447,45 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
 
           const scanToast = toast.loading('🔍 Memindai isi berkas PDF...');
           try {
-            const extracted = await parsePTWPdf(file, (msg) => {
+            const extracted = await parsePTWPdf(file, (msg: string) => {
               toast.loading(`🔍 ${msg}`, { id: scanToast });
             });
             const filledFields: string[] = [];
 
-            setFormData(prev => {
-              const updated = { ...prev };
-              if (extracted.sequenceNumber) {
-                updated.sequenceNumber = extracted.sequenceNumber;
-                if (!initialFields.includes('No. Urut')) filledFields.push('No. Urut');
-              }
-              if (extracted.equipmentCode && (!filenameData.equipmentCode || filenameData.equipmentCode.toUpperCase() === 'PTW')) {
-                updated.equipmentCode = extracted.equipmentCode;
-                if (!initialFields.includes('Equipment Code')) filledFields.push('Equipment Code');
-              }
-              if (extracted.quarter) {
-                updated.quarter = extracted.quarter;
-                if (!initialFields.includes('Quarter')) filledFields.push('Quarter');
-              }
-              if (extracted.startDate) {
-                updated.startDate = extracted.startDate;
-                if (!initialFields.includes('Tanggal Mulai')) filledFields.push('Tanggal Mulai');
-              }
-              if (extracted.endDate) {
-                updated.endDate = extracted.endDate;
-                if (!initialFields.includes('Tanggal Selesai')) filledFields.push('Tanggal Selesai');
-              }
-              if (extracted.maintenanceName) {
-                updated.notes = extracted.maintenanceName;
-                if (!initialFields.includes('Nama Maintenance')) filledFields.push('Nama Maintenance');
-              }
-              return updated;
-            });
+            if (extracted) {
+              setFormData(prev => {
+                const updated = { ...prev };
+                if (extracted.sequenceNumber) {
+                  updated.sequenceNumber = extracted.sequenceNumber;
+                  if (!initialFields.includes('No. Urut')) filledFields.push('No. Urut');
+                }
+                if (extracted.equipmentCode && (!filenameData?.equipmentCode || filenameData.equipmentCode.toUpperCase() === 'PTW')) {
+                  updated.equipmentCode = extracted.equipmentCode;
+                  if (!initialFields.includes('Equipment Code')) filledFields.push('Equipment Code');
+                }
+                if (extracted.quarter) {
+                  updated.quarter = extracted.quarter;
+                  if (!initialFields.includes('Quarter')) filledFields.push('Quarter');
+                }
+                if (extracted.startDate) {
+                  updated.startDate = extracted.startDate;
+                  if (!initialFields.includes('Tanggal Mulai')) filledFields.push('Tanggal Mulai');
+                }
+                if (extracted.endDate) {
+                  updated.endDate = extracted.endDate;
+                  if (!initialFields.includes('Tanggal Selesai')) filledFields.push('Tanggal Selesai');
+                }
+                if (extracted.maintenanceName) {
+                  updated.notes = extracted.maintenanceName;
+                  if (!initialFields.includes('Nama Maintenance')) filledFields.push('Nama Maintenance');
+                }
+                if (extracted.ptwType) {
+                  updated.ptwType = extracted.ptwType;
+                  if (!initialFields.includes('Jenis PTW')) filledFields.push('Jenis PTW');
+                }
+                return updated;
+              });
+            }
 
             const totalFilled = initialFields.length + filledFields.length;
             if (totalFilled > 0) {
