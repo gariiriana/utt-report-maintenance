@@ -1213,29 +1213,30 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
     useCORS: true,
     allowTaint: true,
     backgroundColor: '#ffffff',
-    scale: 2,
+    scale: 3,
     logging: false,
     onclone: (clonedDoc: Document) => {
       const el = clonedDoc.getElementById('ptw-weekly-chart-container');
       if (!el) return;
 
-      el.style.fontFamily = 'Arial, sans-serif';
+      el.style.fontFamily = 'Arial';
       el.style.letterSpacing = '0px';
-      el.style.wordSpacing = '3px';
+      el.style.wordSpacing = 'normal';
 
       const allElements = el.querySelectorAll('*');
       allElements.forEach((node) => {
         const htmlNode = node as HTMLElement;
         if (htmlNode.style) {
-          htmlNode.style.fontFamily = 'Arial, sans-serif';
+          htmlNode.style.fontFamily = 'Arial';
           htmlNode.style.letterSpacing = '0px';
+          htmlNode.style.wordSpacing = 'normal';
         }
       });
 
       // Process SVG <text> and <tspan> elements explicitly
       const svgTexts = el.querySelectorAll('svg text, svg tspan');
       svgTexts.forEach((textNode) => {
-        textNode.setAttribute('font-family', 'Arial, sans-serif');
+        textNode.setAttribute('font-family', 'Arial');
         textNode.setAttribute('letter-spacing', '0');
         if (textNode.textContent && textNode.textContent.includes(' ')) {
           textNode.textContent = textNode.textContent.replace(/ /g, '\u00A0');
