@@ -1,13 +1,24 @@
+// ============================================================================
+// FILE: frontend/service_reports/acsplit/generateACSplitReportExcel.ts
+// Deskripsi: Generator Cetak Excel (.xlsx) Laporan Pemeliharaan Perangkat AC Split.
+//            Memetakan data inspeksi unit indoor/outdoor, hasil pengukuran freon & arus,
+//            serta status operasional perangkat ke bentuk spreadsheet ExcelJS.
+// ============================================================================
+
 import { ACSplitCustomerInfo, ACSplitReportData, ACSplitTimeSpent } from '@/types/acSplitReportTypes';
 import { generateServiceReportExcel, writeMeasurementTable } from '@/service_reports/common/serviceReportExcel';
 
+/** Main Function: Generate File Excel Laporan Maintenance AC Split */
 export async function generateACSplitReportExcel(
   customerInfo: ACSplitCustomerInfo,
   reportData: ACSplitReportData,
   timeSpent: ACSplitTimeSpent,
   photos?: Array<{ photoBase64?: string; description: string }>
 ) {
+  // 1. Gabungkan inspeksi visual unit indoor & outdoor
   const allInspection = [...reportData.indoorInspection, ...reportData.outdoorInspection];
+
+  // 2. Eksekusi builder terpusat ExcelJS
   await generateServiceReportExcel({
     title: 'Service Report Split Wall AC',
     equipmentLabel: 'AC Split',

@@ -27,23 +27,40 @@ interface ACSplitServiceReportProps {
   onChange?: (data: { customerInfo: ACSplitCustomerInfo; reportData: ACSplitReportData; timeSpent: ACSplitTimeSpent }) => void;
 }
 
+// ============================================================================
+// FILE: frontend/components/ACSplitServiceReport.tsx
+// Deskripsi: Form Pembuatan & Pemeliharaan Laporan Service AC Split Wall.
+//            Mengelola data inspeksi unit indoor/outdoor, pembersihan filter/evaporator,
+//            pengukuran tekanan freon (PSI), arus listrik compressor (Ampere), & analisis gangguan.
+// ============================================================================
+
 export function ACSplitServiceReport({ prefillData, onClearPrefill, onChange }: ACSplitServiceReportProps) {
+  // State 1: Informasi Pelanggan & Lokasi Perangkat AC Split
   const [customerInfo, setCustomerInfo] = useState<ACSplitCustomerInfo>(DEFAULT_ACSPLIT_CUSTOMER_INFO);
+
+  // State 2: Data Hasil Inspeksi & Pengukuran AC Split
   const [reportData, setReportData] = useState<ACSplitReportData>(DEFAULT_ACSPLIT_REPORT_DATA);
+
+  // State 3: Data Rincian Waktu Pengerjaan
   const [timeSpent, setTimeSpent] = useState<ACSplitTimeSpent>(DEFAULT_ACSPLIT_TIME_SPENT);
+
+  // State 4: Array Foto Lampiran Perbaikan
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
 
+  // State 5: Tab Navigasi Aktif Pengisian Form
   const [activeTab, setActiveTab] = useState<'indoor' | 'outdoor' | 'testing' | 'analysis' | 'customer' | 'time' | 'photos'>('indoor');
+
+  // State 6: Modal Zoom Preview Foto
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  // Sync state with parent
+  // Effect 1: Sinkronisasi data ke komponen induk
   useEffect(() => {
     if (onChange) {
       onChange({ customerInfo, reportData, timeSpent });
     }
   }, [customerInfo, reportData, timeSpent, onChange]);
 
-  // Load from prefill or sinkronisasi
+  // Effect 2: Memuat data dari prefill (OCR Scan / Draft Firestore)
   useEffect(() => {
     if (prefillData) {
       if (prefillData.photos) {
@@ -76,6 +93,7 @@ export function ACSplitServiceReport({ prefillData, onClearPrefill, onChange }: 
     }
   }, [prefillData, onClearPrefill]);
 
+  // Handler 1: Update baris inspeksi unit Indoor AC Split
   const updateIndoorItem = (idx: number, field: string, val: any) => {
     setReportData(prev => {
       const updated = [...prev.indoorInspection];
@@ -84,6 +102,7 @@ export function ACSplitServiceReport({ prefillData, onClearPrefill, onChange }: 
     });
   };
 
+  // Handler 2: Update baris inspeksi unit Outdoor AC Split
   const updateOutdoorItem = (idx: number, field: string, val: any) => {
     setReportData(prev => {
       const updated = [...prev.outdoorInspection];

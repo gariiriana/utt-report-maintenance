@@ -1,3 +1,10 @@
+// ============================================================================
+// FILE: test_session.js
+// Deskripsi: Script Pengujian Sesi Login Terautentikasi Menggunakan Puppeteer Core.
+//            Menghubungkan ke profil lokal Chrome/Edge user untuk memverifikasi
+//            apakah cookie sesi login terisi dengan benar di dwimitrasystem.com.
+// ============================================================================
+
 import puppeteer from 'puppeteer-core';
 import fs from 'fs';
 import path from 'path';
@@ -8,11 +15,12 @@ const executablePath = fs.existsSync(chromePath) ? chromePath : edgePath;
 
 const scratchDir = 'C:\\Users\\User\\.gemini\\antigravity-ide\\brain\\57449464-4824-426d-b205-6952bcfe5898';
 
-// Chrome or Edge profile directory
+// Direktori profil Chrome/Edge lokal
 const chromeUserData = 'C:\\Users\\User\\AppData\\Local\\Google\\Chrome\\User Data';
 const edgeUserData = 'C:\\Users\\User\\AppData\\Local\\Microsoft\\Edge\\User Data';
 const userDataDir = fs.existsSync(chromeUserData) ? chromeUserData : edgeUserData;
 
+/** Main Executable Function */
 async function run() {
   console.log('Using browser:', executablePath);
   console.log('Using UserDataDir:', userDataDir);

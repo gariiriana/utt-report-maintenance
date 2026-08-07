@@ -25,27 +25,49 @@ interface FCUServiceReportProps {
   onChange?: (data: { customerInfo: FCUCustomerInfo; reportData: FCUReportData; timeSpent: FCUTimeSpent }) => void;
 }
 
+// ============================================================================
+// FILE: frontend/components/FCUServiceReport.tsx
+// Deskripsi: Form Pembuatan & Pemeliharaan Laporan Service Perangkat FCU (Fan Coil Unit).
+//            Mengelola data inspeksi visual unit indoor/outdoor, pembersihan filter air,
+//            pengukuran tegangan/arus kipas blower, serta analisis gangguan AI Vision.
+// ============================================================================
+
 export function FCUServiceReport({ prefillData, onClearPrefill, onChange }: FCUServiceReportProps) {
+  // State 1: Data Informasi Pelanggan & Lokasi Perangkat FCU
   const [customerInfo, setCustomerInfo] = useState<FCUCustomerInfo>(DEFAULT_FCU_CUSTOMER_INFO);
+
+  // State 2: Data Hasil Inspeksi & Pengukuran FCU
   const [reportData, setReportData] = useState<FCUReportData>(DEFAULT_FCU_REPORT_DATA);
+
+  // State 3: Data Waktu Pengerjaan (Time Spent)
   const [timeSpent, setTimeSpent] = useState<FCUTimeSpent>(DEFAULT_FCU_TIME_SPENT);
+
+  // State 4: Array Foto Dokumentasi Lampiran
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
 
+  // State 5: Tab Navigasi Aktif Pengisian Form
   const [activeTab, setActiveTab] = useState<'customer' | 'photos' | 'visual' | 'cleaning' | 'measurements' | 'status' | 'time'>('visual');
+
+  // State 6: Status Animasi Loading Analisis AI Vision
   const [_isGeneratingAI, setIsGeneratingAI] = useState(false);
+
+  // State 7: Modal Preview Gambar Perbesar Foto
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  // Sync state with parent onChange
+  // Effect 1: Sinkronkan perubahan state ke komponen parent via callback `onChange`
   useEffect(() => {
     if (onChange) {
+      // Kirim objek data gabungan ke parent component
       onChange({ customerInfo, reportData, timeSpent });
     }
   }, [customerInfo, reportData, timeSpent, onChange]);
 
-  // Load from prefill or sinkronisasi
+  // Effect 2: Memuat data awal dari props `prefillData` (jika form dibuka dari hasil Scan OCR / Firestore Draft)
   useEffect(() => {
     if (prefillData) {
       let mappedPhotos: UploadedPhoto[] = [];
+
+      // 1. Pemetaan array foto jika ada data prefill
       if (prefillData.photos) {
         mappedPhotos = prefillData.photos.map((p: any, i: number) => ({
           id: `fcu-p-${i}-${Date.now()}`,
@@ -58,6 +80,7 @@ export function FCUServiceReport({ prefillData, onClearPrefill, onChange }: FCUS
         setPhotos(mappedPhotos);
       }
 
+      // 2. Isi state customer, report, dan timeSpent dari data prefill
       if (prefillData.fcuCustomerInfo) {
         setCustomerInfo(prefillData.fcuCustomerInfo);
       }
@@ -70,23 +93,26 @@ export function FCUServiceReport({ prefillData, onClearPrefill, onChange }: FCUS
 
       toast.success('Mengekstrak data foto & parameter ke SR FCU di bawah!');
 
+      // 3. Picu analisis otomatis AI jika foto tersedia
       if (mappedPhotos.length > 0) {
         handleGenerateAI(mappedPhotos);
       }
 
+      // 4. Bersihkan state prefill di parent agar tidak terpicu ulang
       if (onClearPrefill) {
         onClearPrefill();
       }
     }
   }, [prefillData, onClearPrefill]);
 
-  // Trigger AI Report Generation
+  // Handler 1: Eksekusi Request Analisis AI Vision ke Endpoint `/api/ai/fcu-report`
   const handleGenerateAI = async (overridePhotos?: UploadedPhoto[]) => {
     const targetPhotos = overridePhotos || photos;
     try {
       setIsGeneratingAI(true);
       toast.info('Menghubungi AI Agent untuk menganalisis data SR FCU...', { id: 'fcu-ai-toast' });
 
+      // Format payload foto input untuk AI Model
       const photosInput: FCUPhotoInput[] = targetPhotos.map(p => ({
         base64: p.base64 || '',
         category: p.category || 'visual_inspection',
@@ -94,6 +120,7 @@ export function FCUServiceReport({ prefillData, onClearPrefill, onChange }: FCUS
         parameter: p.parameter || '',
       }));
 
+      // Kirim HTTP POST request ke backend Go API
       const res = await fetch('/api/ai/fcu-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -108,6 +135,7 @@ export function FCUServiceReport({ prefillData, onClearPrefill, onChange }: FCUS
         throw new Error(errJson.error || `HTTP ${res.status}`);
       }
 
+      // Simpan hasil analisis JSON ke state reportData
       const generatedData: FCUReportData = await res.json();
       setReportData(generatedData);
       toast.success('AI Service Report FCU berhasil dibuat!', { id: 'fcu-ai-toast' });
@@ -119,7 +147,7 @@ export function FCUServiceReport({ prefillData, onClearPrefill, onChange }: FCUS
     }
   };
 
-  // Helper updater for visual inspection items
+  // Handler 2: Update baris nilai pada tabel Inspeksi Visual FCU
   const updateVisualItem = (index: number, field: keyof FCUInspectionItem, value: string) => {
     setReportData(prev => {
       const updated = [...prev.visual_inspection];
@@ -128,7 +156,7 @@ export function FCUServiceReport({ prefillData, onClearPrefill, onChange }: FCUS
     });
   };
 
-  // Helper updater for cleaning items
+  // Handler 3: Update baris nilai pada tabel Pembersihan (Cleaning) FCU
   const updateCleaningItem = (index: number, field: keyof FCUInspectionItem, value: string) => {
     setReportData(prev => {
       const updated = [...prev.cleaning];

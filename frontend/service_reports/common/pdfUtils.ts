@@ -1,8 +1,17 @@
+// ============================================================================
+// FILE: frontend/service_reports/common/pdfUtils.ts
+// Deskripsi: Shared Helper Loader Gambar Logo & Aset Base64 PDF Service Reports.
+//            Menyediakan fungsi pemuatan logo PT Dwimitra & NeutraDC secara asynchronous
+//            untuk disisipkan pada kop header dokumen jsPDF.
+// ============================================================================
+
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 
 /**
- * Load image URL into base64 string for jsPDF rendering
+ * Helper 1: Mengonversi URL Sumber Gambar ke Format Base64 PNG
+ * Junior Dev Notes: Menggunakan elemen HTML5 Canvas untuk menggambar ulang gambar
+ * dengan latar belakang putih agar transparansi PNG tidak menjadi hitam di PDF.
  */
 export async function loadImageBase64(src: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -26,7 +35,7 @@ export async function loadImageBase64(src: string): Promise<string> {
 }
 
 /**
- * Load default company logos for Service Report PDF header
+ * Helper 2: Memuat Logo Kiri (Dwimitra) & Logo Kanan (NeutraDC)
  */
 export async function loadCompanyLogos() {
   let logoLeft: string | null = null;

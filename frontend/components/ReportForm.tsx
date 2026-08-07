@@ -98,6 +98,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
   const { start: fssStart, end: fssEnd } = getFssDates(maintenanceTime);
 
+  // Handler 1: Update jam mulai pengerjaan maintenance FSS
   const handleFssStartChange = (newStart: string) => {
     if (fssEnd) {
       setMaintenanceTime(newStart ? `${newStart} - ${fssEnd}` : ` - ${fssEnd}`);
@@ -106,6 +107,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }
   };
 
+  // Handler 2: Update jam selesai pengerjaan maintenance FSS
   const handleFssEndChange = (newEnd: string) => {
     if (fssStart || newEnd) {
       setMaintenanceTime(newEnd ? `${fssStart} - ${newEnd}` : fssStart);
@@ -114,11 +116,14 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }
   };
 
-
+  // State 1: Daftar unit multi-tab perbaikan perangkat M/E
   const [units, setUnits] = useState<ReportUnit[]>([]);
+  // State 2: ID unit tab yang sedang aktif dipilih teknisi
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
+  // Ref 1: Elemen DOM container tab untuk animasi scroll horizontal
   const tabContainerRef = useRef<HTMLDivElement>(null);
 
+  // Handler 3: Scroll tab navigasi ke kiri atau ke kanan secara halus (smooth)
   const scrollTabs = (direction: 'left' | 'right') => {
     if (tabContainerRef.current) {
       const scrollAmount = 200;
@@ -126,6 +131,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }
   };
 
+  // State UI Modal & Card photo editor
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [addCardModalOpen, setAddCardModalOpen] = useState(false);
   const [numberOfCardsToAdd, setNumberOfCardsToAdd] = useState<string>('1');
@@ -139,7 +145,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [translatingCardId, setTranslatingCardId] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<{ src: string; title: string } | null>(null);
 
-  // Abnormal / Temuan State
+  // State Abnormal / Temuan Kerusakan Komponen
   const [abnormalStatus, setAbnormalStatus] = useState<'none' | 'normal' | 'abnormal'>('none');
   const [findingData, setFindingData] = useState({
     partName: '',
@@ -153,6 +159,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [editingFindingPhotoIdx, setEditingFindingPhotoIdx] = useState<number | null>(null);
   const abnormalSectionRef = useRef<HTMLDivElement>(null);
 
+  // Handler 4: Kompresi & penambahan foto lampiran temuan kerusakan (HTML5 Canvas 800px)
   const handleAddFindingPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -186,10 +193,11 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     e.target.value = '';
   };
 
-
-
+  // Helper 1: Dapatkan unit perbaikan yang sedang aktif
   const activeUnit = units.find(u => u.id === activeUnitId) || null;
   const cards = activeUnit?.cards || [];
+
+  // Helper 2: Update daftar PhotoCard pada unit perbaikan aktif
   const setCards = (newCards: PhotoCard[] | ((prev: PhotoCard[]) => PhotoCard[])) => {
     if (!activeUnitId) return;
     setUnits(prev => prev.map(u => {
@@ -203,15 +211,17 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }));
   };
 
+  // Helper 3: Update nama label tab unit aktif
   const setTabName = (val: string) => {
     if (!activeUnitId) return;
     setUnits(prev => prev.map(u => u.id === activeUnitId ? { ...u, tabName: val } : u));
   };
+
+  // Helper 4: Update rincian detail spesifik unit (auto-fill nama tab jika masih default)
   const setSpecificDetail = (val: string) => {
     if (!activeUnitId) return;
     setUnits(prev => prev.map(u => {
       if (u.id === activeUnitId) {
-
         const isDefaultTab = !u.tabName || /^Unit \d+$/i.test(u.tabName);
         return {
           ...u,
@@ -227,16 +237,26 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const specificDetail = activeUnit?.specificDetail || '';
   const vrvUnitDetail = activeUnit?.vrvUnitDetail || '';
 
+  // Helper 5: Buat daftar kartu foto bawaan (default 11 poin kegiatan PM)
   const createDefaultCards = (count: number = 11) => {
+    // Generasi array indeks 1 sampai N untuk kartu foto dasar
     return Array.from({ length: count }, (_, i) => ({
       id: `${i + 1}`,
       photo: null,
       description: '',
       parameter: ''
     }));
-  };  const getAccountTemplate = (email: string | undefined | null): string[] | null => {
+  };
+
+  // Helper 6: Dapatkan template daftar deskripsi kegiatan PM berdasarkan alamat email akun terautentikasi
+  const getAccountTemplate = (email: string | undefined | null): string[] | null => {
+    // 1. Kembalikan null jika email kosong
     if (!email) return null;
+
+    // 2. Normalisasi string email ke huruf kecil tanpa spasi
     const lowerEmail = email.toLowerCase().trim();
+
+    // 3. Cek pencocokan template spesifik akun teknisi
     if (lowerEmail === 'vrv@gmail.com') return VRV_TEMPLATE.indoor;
     if (lowerEmail === 'ahhu@utt.com' || lowerEmail === 'ahu@gmail.com' || lowerEmail.includes('ahu') || lowerEmail.includes('ahhu')) return AHHU_TEMPLATE.indoor;
     if (REPORT_TEMPLATES[lowerEmail]) return REPORT_TEMPLATES[lowerEmail];
@@ -252,14 +272,18 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     return null;
   };
 
+  // Helper 7: Tambahkan unit perbaikan baru ke dalam daftar tab M/E
   const addNewUnit = async (name: string = '') => {
+    // 1. Buat ID unik 9-karakter alfanumerik acak
     const newId = Math.random().toString(36).substr(2, 9);
     let initialCards: PhotoCard[] = [];
 
+    // 2. Ambil template standar berdasarkan role akun teknisi
     const template = getAccountTemplate(user?.email);
     if (template && template.length > 0) {
       const lowerEmail = user?.email?.toLowerCase() || '';
       if (lowerEmail === 'wld@gmail.com' || lowerEmail === 'fld@gmail.com') {
+        // Pemetaan kartu foto dengan preset gambar default WLD/FLD
         initialCards = await Promise.all(template.map(async (desc, idx) => {
           let defaultUrl = WLD_DEFAULT_PHOTOS[desc];
           if (lowerEmail === 'fld@gmail.com' && desc === 'Test Ping') defaultUrl = imgTesPingFld;
@@ -267,12 +291,15 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           return { id: `${idx + 1}`, photo: null, photoBase64: b64, description: desc, parameter: '' };
         }));
       } else {
+        // Pemetaan kartu foto standar dari array template
         initialCards = template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc, parameter: '' }));
       }
     } else {
+      // Jika tidak ada template khusus, gunakan 11 kartu default
       initialCards = createDefaultCards(11);
     }
 
+    // 3. Konstruksi objek unit perbaikan baru
     const newUnit: ReportUnit = {
       id: newId,
       tabName: name || `Unit ${units.length + 1}`,
@@ -282,6 +309,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       cards: initialCards
     };
 
+    // 4. Simpan ke state units & aktifkan tab unit baru tersebut
     setUnits(prev => [...prev, newUnit]);
     setActiveUnitId(newId);
     return newId;

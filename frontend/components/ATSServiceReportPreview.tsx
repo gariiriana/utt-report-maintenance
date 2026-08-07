@@ -1,3 +1,14 @@
+// ============================================================================
+// FILE: frontend/components/ATSServiceReportPreview.tsx
+// Deskripsi: Komponen Live Interactive Preview Laporan Service Maintenance ATS.
+//            Merender pratinjau tampilan dokumen A4 (5-Halaman) secara realtime:
+//            - Halaman 1: Header Logo & Tabel Informasi Pelanggan.
+//            - Halaman 2: Hasil Inspeksi Visual 16 Aktivitas.
+//            - Halaman 3: Pengukuran Digital Power Meter & Tegangan/Arus Listrik.
+//            - Halaman 4: Hasil Thermovisi (°C), Grounding (<5 Ω), & Status Operasional.
+//            - Halaman 5: Galeri Foto Lampiran & Otorisasi Tanda Tangan Insinyur.
+// ============================================================================
+
 import { useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Download } from 'lucide-react';

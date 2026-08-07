@@ -1,3 +1,11 @@
+// ============================================================================
+// FILE: frontend/components/GeneratorServiceReport.tsx
+// Deskripsi: Form Pembuatan & Pemeliharaan Laporan Service Perangkat Genset / Generator.
+//            Mengelola data pengujian unit generator diesel, inspeksi oli/air pendingin,
+//            pengukuran tegangan output generator, pengujian beban (load test),
+//            serta sinkronisasi draft laporan realtime ke Firestore.
+// ============================================================================
+
 import { useState, useEffect } from 'react';
 import { Eye, FileType } from 'lucide-react';
 import { toast } from 'sonner';

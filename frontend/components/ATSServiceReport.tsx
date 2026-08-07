@@ -1,3 +1,11 @@
+// ============================================================================
+// FILE: frontend/components/ATSServiceReport.tsx
+// Deskripsi: Form Pembuatan Laporan Service Perangkat ATS (Automatic Transfer Switch).
+//            Menyediakan tab navigasi pengisian data pelanggan, inspeksi visual 16 poin,
+//            pencatatan power meter, tegangan/arus, thermovisi, grounding,
+//            analisis kecerdasan buatan AI Vision, serta pemodelan live preview & ekspor PDF/Excel.
+// ============================================================================
+
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';

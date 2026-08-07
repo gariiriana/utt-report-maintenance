@@ -1,3 +1,11 @@
+// ============================================================================
+// FILE: vite.config.ts
+// Deskripsi: Konfigurasi Terpusat Bundler Frontend Vite.
+//            Menangani plugin React, TailwindCSS v4, PWA (Progressive Web App),
+//            Proxy API Server (`/api` -> `http://localhost:8080`), Path Alias `@/` -> `./frontend`,
+//            dan Pembagian Chunking Produksi (Manual Chunks untuk PDF/Excel/Firebase).
+// ============================================================================
+
 import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
@@ -9,8 +17,13 @@ process.env.BROWSER = 'chrome'
 
 export default defineConfig({
   plugins: [
+    // 1. Plugin React Fast Refresh
     react(),
+    
+    // 2. Plugin TailwindCSS Bundler Engine
     tailwindcss(),
+
+    // 3. Plugin PWA (Offline Service Worker & Manifest Web App)
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['logo_utt.png', 'logo-neutradc.png'],
@@ -57,10 +70,13 @@ export default defineConfig({
       }
     })
   ],
+
+  // Konfigurasi Development Server (`npm run dev`)
   server: {
     open: true,
     host: true,
     proxy: {
+      // Direct semua request HTTP/WebSocket `/api` ke Backend Go di port 8080
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
@@ -70,14 +86,19 @@ export default defineConfig({
       },
     },
   },
+
+  // Konfigurasi Resolver Path Alias (`@/` -> `./frontend/`)
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './frontend'),
     },
   },
+
+  // Konfigurasi Optimization Rollup Build Produksi
   build: {
     rollupOptions: {
       output: {
+        // Pemisahan bundle library besar menjadi terpisah untuk pemuatan halaman cepat
         manualChunks(id) {
           if (id.includes('firebase')) {
             return 'firebase';

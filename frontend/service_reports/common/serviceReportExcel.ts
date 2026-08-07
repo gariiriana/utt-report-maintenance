@@ -1,7 +1,10 @@
-/**
- * Shared Excel export utility for all Service Reports.
- * Uses ExcelJS to generate Excel files matching the PDF layout.
- */
+// ============================================================================
+// FILE: frontend/service_reports/common/serviceReportExcel.ts
+// Deskripsi: Shared Utility Ekspor Excel Terpusat untuk 14 Jenis Service Reports Perangkat M/E.
+//            Menggunakan `ExcelJS` & `file-saver` untuk merender sheet Excel (.xlsx)
+//            dengan styling sel header, border, dan tabel pengukuran yang selaras dengan PDF.
+// ============================================================================
+
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import type { InspectionItem, CommonCustomerInfo, CommonTimeSpent, OperationStatus, PhotoCard } from '@/components/ServiceReportPreviewShell';

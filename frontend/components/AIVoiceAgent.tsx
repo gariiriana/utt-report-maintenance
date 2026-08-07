@@ -1,3 +1,11 @@
+// ============================================================================
+// FILE: frontend/components/AIVoiceAgent.tsx
+// Deskripsi: Komponen Antarmuka Operator Suara AI Interaktif (JARVIS Voice Agent).
+//            Menampilkan efek bola animasi Orb 3D 6-Status (Siap, Menghubungkan,
+//            Mendengarkan, Berpikir, Berbicara, Error) dengan indikator Visualizer Gelombang Suara,
+//            serta mengintegrasikan `useVoiceAgent` & `useVoiceCommands`.
+// ============================================================================
+
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Mic, MicOff, PhoneOff, Wifi, WifiOff, Volume2, Settings, Play, Sliders, Hand } from 'lucide-react';

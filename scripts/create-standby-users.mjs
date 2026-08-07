@@ -1,13 +1,14 @@
-/**
- * Script: Create 6 Standby Engineer accounts via Firebase Auth REST API
- * Run with: node scripts/create-standby-users.mjs
- * 
- * Uses Firebase Auth REST API (signUp endpoint) - no admin SDK needed.
- */
+// ============================================================================
+// FILE: scripts/create-standby-users.mjs
+// Deskripsi: Script Otomatisasi Pembuatan 6 Akun Standby Engineer di Firebase Auth.
+//            Menggunakan Firebase Identity Toolkit REST API (signUp endpoint).
+//            Eksekusi dengan perintah: `node scripts/create-standby-users.mjs`
+// ============================================================================
 
 const API_KEY = 'AIzaSyAkhsPf9KzIq9B7L_P33g-6wN3M7QHXCbs';
 const SIGN_UP_URL = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${API_KEY}`;
 
+// Daftar 6 Akun Standby Engineer Baku UTT
 const users = [
   { email: 'agil@utt.com', password: 'agilutt@#2002', displayName: 'Agil' },
   { email: 'krishna@utt.com', password: 'krishna&4638@', displayName: 'Krishna' },
@@ -17,6 +18,7 @@ const users = [
   { email: 'dison@utt.com', password: 'dison%64738@', displayName: 'Dison' },
 ];
 
+/** Helper pembuat 1 akun user via REST API */
 async function createUser(u) {
   try {
     const res = await fetch(SIGN_UP_URL, {
@@ -46,6 +48,7 @@ async function createUser(u) {
   }
 }
 
+/** Entry Point Utama Script */
 async function main() {
   console.log('🔧 Creating 6 Standby Engineer accounts...\n');
   

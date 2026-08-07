@@ -1,3 +1,11 @@
+// ============================================================================
+// FILE: frontend/components/WAGatewayModal.tsx
+// Deskripsi: Modal Antarmuka Pemindaian QR Code WhatsApp Gateway & Pengirim Pesan Otomatis.
+//            Menghubungkan aplikasi web ke Node.js WA Gateway service via polling WebSocket,
+//            menampilkan gambar QR Code pairing WhatsApp Web, serta mengirimkan pesan rekap
+//            jadwal PM mingguan & pengingat darurat ke nomor HP teknisi.
+// ============================================================================
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
