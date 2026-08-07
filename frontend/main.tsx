@@ -1,12 +1,26 @@
+// ============================================================================
+// FILE: frontend/main.tsx
+// Deskripsi: Titik Masuk Utama (Main Entry Point) Aplikasi React Client-Side.
+//            Menginisialisasi pendaftaran Progressive Web App (PWA Service Worker),
+//            menerapkan DOM Polyfill pengaman crash React DOM `removeChild`/`insertBefore`,
+//            dan merender komponen utama `<App />` ke elemen DOM `#root`.
+// ============================================================================
+
 import { createRoot } from "react-dom/client";
-  import App from "./App.tsx";
-  import "./themes/index.css";
-  import "./api/firebase";
-  import { registerSW } from 'virtual:pwa-register';
+import App from "./App.tsx";
+import "./themes/index.css";
+import "./api/firebase";
+import { registerSW } from 'virtual:pwa-register';
 
-  registerSW({ immediate: true });
+// Register Service Worker PWA secara otomatis untuk dukungan akses offline & caching
+registerSW({ immediate: true });
 
-  // Polyfill to prevent React DOM removeChild/insertBefore crashes caused by browser extensions or Framer Motion DOM mutations
+/**
+ * Polyfill DOM Node Prototype Pengaman Crash React
+ * Junior Dev Notes: Ekstensi browser (seperti Google Translate atau Password Manager)
+ * dan Framer Motion sering memanipulasi node DOM secara langsung tanpa sepengetahuan React.
+ * Polyfill ini mencegah error fatal `NotFoundError: Failed to execute 'removeChild' on 'Node'`.
+ */
 if (typeof window !== 'undefined') {
   const originalRemoveChild = Node.prototype.removeChild;
   Node.prototype.removeChild = function <T extends Node>(child: T): T {
@@ -31,5 +45,5 @@ if (typeof window !== 'undefined') {
   };
 }
 
+// Render Komponen Utama React <App /> ke elemen <div id="root">
 createRoot(document.getElementById("root")!).render(<App />);
-
