@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Camera,
@@ -24,7 +25,8 @@ import {
   Search,
   Zap,
   AlertTriangle,
-  HelpCircle
+  HelpCircle,
+  ChevronDown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -170,11 +172,14 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
   useEffect(() => {
     if (showGuideModal) {
       document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
     } else {
       document.body.style.overflow = '';
+      document.body.style.touchAction = '';
     }
     return () => {
       document.body.style.overflow = '';
+      document.body.style.touchAction = '';
     };
   }, [showGuideModal]);
 
@@ -1752,124 +1757,141 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
         />
       )}
 
-      {/* Panduan SLA Equipment Reference Modal */}
-      <AnimatePresence>
-        {showGuideModal && (
-          <div className="fixed inset-0 z-[9999] bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="bg-white rounded-2xl max-w-4xl w-full max-h-[85vh] sm:max-h-[80vh] border border-slate-200 shadow-2xl overflow-hidden flex flex-col my-auto"
+      {/* Panduan SLA Equipment Reference Modal (Portal to body for true centering & scroll isolation) */}
+      {typeof document !== 'undefined' && createPortal(
+        <AnimatePresence>
+          {showGuideModal && (
+            <div
+              className="fixed inset-0 z-[99999] bg-slate-900/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-hidden"
+              onClick={() => setShowGuideModal(false)}
             >
-              {/* Modal Header */}
-              <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <Shield className="w-5 h-5 text-red-600" />
-                    Panduan Matriks Prioritas SLA & SLG Equipment
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">Panduan resmi penetapan level gangguan untuk Standby Engineer di Neutra DC Cikarang.</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowGuideModal(false)}
-                  className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-200/60 transition cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Modal Body Filter Tabs */}
-              <div className="px-6 py-3 bg-white border-b border-slate-200 flex flex-wrap items-center gap-2 text-xs">
-                <span className="font-bold text-slate-500 mr-2">Filter Level:</span>
-                {(['All', 'Critical', 'High', 'Medium', 'Low'] as const).map((filter) => (
-                  <button
-                    key={filter}
-                    type="button"
-                    onClick={() => setGuideCategoryFilter(filter)}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
-                      guideCategoryFilter === filter
-                        ? 'bg-slate-900 text-white shadow-sm'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    {filter === 'All' ? 'Semua Equipment (34)' : filter}
-                  </button>
-                ))}
-              </div>
-
-              {/* CRITICAL Condition Rule Alert */}
-              <div className="px-6 pt-4">
-                <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-900 text-xs">
-                  <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.92, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.92, y: 15 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-2xl max-w-4xl w-full max-h-[85vh] sm:max-h-[80vh] border border-slate-200 shadow-2xl overflow-hidden flex flex-col my-auto relative"
+              >
+                {/* Modal Header */}
+                <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
                   <div>
-                    <span className="font-extrabold text-red-700 block">🔴 Syarat Khusus Level CRITICAL (Target Resolution: 2 Jam / 120m):</span>
-                    <p className="text-red-800 leading-relaxed mt-0.5">
-                      Level <strong>CRITICAL</strong> berlaku untuk <strong>SEMUA equipment</strong> apabila terjadi kondisi <strong>seluruh unit mati total / tidak ada sumber inflow</strong> yang masuk (contoh: Total Blackout, Total Cooling Stop, atau redundansi N+1 runtuh total).
-                    </p>
+                    <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-red-600" />
+                      Panduan Matriks Prioritas SLA & SLG Equipment
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Panduan resmi penetapan level gangguan untuk Standby Engineer di Neutra DC Cikarang.</p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowGuideModal(false)}
+                    className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-200/60 transition cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
-              </div>
 
-              {/* Equipment Grid List */}
-              <div className="p-6 overflow-y-auto max-h-[55vh] space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {EQUIPMENT_SLA_CATALOG.filter(item => {
-                    if (guideCategoryFilter === 'All') return true;
-                    if (guideCategoryFilter === 'Critical') return false; // Critical is condition-based
-                    return item.defaultPriority === guideCategoryFilter;
-                  }).map(item => (
-                    <div
-                      key={item.id}
-                      className="p-3.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl flex items-center justify-between gap-3 transition"
+                {/* Modal Body Filter Tabs */}
+                <div className="px-6 py-3 bg-white border-b border-slate-200 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="font-bold text-slate-500 mr-2">Filter Level:</span>
+                  {(['All', 'Critical', 'High', 'Medium', 'Low'] as const).map((filter) => (
+                    <button
+                      key={filter}
+                      type="button"
+                      onClick={() => setGuideCategoryFilter(filter)}
+                      className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+                        guideCategoryFilter === filter
+                          ? 'bg-slate-900 text-white shadow-sm'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
                     >
-                      <div>
-                        <div className="text-xs font-bold text-slate-900">{item.device}</div>
-                        <span className="text-[10px] font-semibold text-slate-500 block mt-0.5">
-                          Kategori: {item.category}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span className={`px-2.5 py-1 rounded-md text-[11px] font-extrabold border ${
-                          item.defaultPriority === 'High'
-                            ? 'bg-amber-100 text-amber-800 border-amber-300'
-                            : item.defaultPriority === 'Medium'
-                            ? 'bg-blue-100 text-blue-800 border-blue-300'
-                            : 'bg-slate-200 text-slate-700 border-slate-300'
-                        }`}>
-                          {item.defaultPriority} ({item.defaultPriority === 'High' ? '4 Jam' : item.defaultPriority === 'Medium' ? '6 Jam' : '48 Jam'})
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleSelectEquipment(item);
-                            setShowGuideModal(false);
-                          }}
-                          className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold rounded-md transition cursor-pointer"
-                        >
-                          Pilih
-                        </button>
-                      </div>
-                    </div>
+                      {filter === 'All' ? 'Semua Equipment (34)' : filter}
+                    </button>
                   ))}
                 </div>
-              </div>
 
-              {/* Modal Footer */}
-              <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowGuideModal(false)}
-                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl transition cursor-pointer"
+                {/* CRITICAL Condition Rule Alert */}
+                <div className="px-6 pt-4">
+                  <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-900 text-xs">
+                    <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-extrabold text-red-700 block">🔴 Syarat Khusus Level CRITICAL (Target Resolution: 2 Jam / 120m):</span>
+                      <p className="text-red-800 leading-relaxed mt-0.5">
+                        Level <strong>CRITICAL</strong> berlaku untuk <strong>SEMUA equipment</strong> apabila terjadi kondisi <strong>seluruh unit mati total / tidak ada sumber inflow</strong> yang masuk (contoh: Total Blackout, Total Cooling Stop, atau redundansi N+1 runtuh total).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Scroll Hint Banner for Android & Mobile */}
+                <div className="px-6 py-2 bg-slate-100 border-t border-b border-slate-200 text-center text-xs font-bold text-slate-700 flex items-center justify-center gap-2 shrink-0">
+                  <ChevronDown className="w-4 h-4 text-red-600 animate-bounce shrink-0" />
+                  <span>Scroll ke bawah untuk melihat daftar equipment lainnya</span>
+                  <ChevronDown className="w-4 h-4 text-red-600 animate-bounce shrink-0" />
+                </div>
+
+                {/* Equipment Grid List (Touch Scroll Enabled for Mobile/Android) */}
+                <div 
+                  className="p-4 sm:p-6 overflow-y-auto max-h-[50vh] sm:max-h-[55vh] space-y-3 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100"
+                  style={{ touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' }}
                 >
-                  Tutup Panduan
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {EQUIPMENT_SLA_CATALOG.filter(item => {
+                      if (guideCategoryFilter === 'All') return true;
+                      if (guideCategoryFilter === 'Critical') return false; // Critical is condition-based
+                      return item.defaultPriority === guideCategoryFilter;
+                    }).map(item => (
+                      <div
+                        key={item.id}
+                        className="p-3.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl flex items-center justify-between gap-3 transition shadow-2xs"
+                      >
+                        <div>
+                          <div className="text-xs font-bold text-slate-900">{item.device}</div>
+                          <span className="text-[10px] font-semibold text-slate-500 block mt-0.5">
+                            Kategori: {item.category}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md text-[10px] sm:text-[11px] font-extrabold border ${
+                            item.defaultPriority === 'High'
+                              ? 'bg-amber-100 text-amber-800 border-amber-300'
+                              : item.defaultPriority === 'Medium'
+                              ? 'bg-blue-100 text-blue-800 border-blue-300'
+                              : 'bg-slate-200 text-slate-700 border-slate-300'
+                          }`}>
+                            {item.defaultPriority} ({item.defaultPriority === 'High' ? '4 Jam' : item.defaultPriority === 'Medium' ? '6 Jam' : '48 Jam'})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleSelectEquipment(item);
+                              setShowGuideModal(false);
+                            }}
+                            className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold rounded-md transition cursor-pointer"
+                          >
+                            Pilih
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowGuideModal(false)}
+                    className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl transition cursor-pointer"
+                  >
+                    Tutup Panduan
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Fullscreen Photo Lightbox Preview */}
       {previewPhotoUrl && (
