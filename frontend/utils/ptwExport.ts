@@ -153,7 +153,7 @@ export async function exportPTWListToExcel(records: PTWExportRecord[]) {
     records.forEach((rec, idx) => {
       const rowIdx = 6 + idx;
       const row = ws.getRow(rowIdx);
-      row.height = 20;
+      row.height = 22;
 
       const todayStr = new Date().toISOString().split('T')[0];
       const isClosed = !!rec.closingFileName || (!!rec.endDate && rec.endDate < todayStr);
@@ -177,17 +177,21 @@ export async function exportPTWListToExcel(records: PTWExportRecord[]) {
         cell.border = thinBorder;
         
         // Zebra striping
-        if (rowIdx % 2 === 1) {
+        if (idx % 2 === 1) {
           cell.fill = {
             type: 'pattern',
             pattern: 'solid',
             fgColor: { argb: COLOR_GRAY_BG },
           };
-        }        // Alignments
-        if (col === 'A' || col === 'B' || col === 'C' || col === 'D' || col === 'H') {
+        }
+
+        // Alignments
+        if (col === 'A' || col === 'B' || col === 'D' || col === 'H') {
           cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        } else if (col === 'F') {
-          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        } else if (col === 'C' || col === 'F') {
+          cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        } else if (col === 'E' || col === 'G') {
+          cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
         } else {
           cell.alignment = { horizontal: 'left', vertical: 'middle' };
         }
@@ -292,16 +296,20 @@ export async function exportPTWListToPDF(records: PTWExportRecord[]) {
 
     drawHeader(doc);
 
-    const tableData = records.map((rec, idx) => [
-      String(idx + 1),
-      rec.ptwType || 'PM',
-      rec.ptwNumber,
-      `Q${rec.quarter}`,
-      rec.equipmentCode,
-      `${formatIndoDate(rec.startDate)} - ${formatIndoDate(rec.endDate)}`,
-      rec.notes || '-',
-      rec.closingFileName || (rec.endDate && rec.endDate < new Date().toISOString().split('T')[0]) ? 'SELESAI' : 'AKTIF'
-    ]);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const tableData = records.map((rec, idx) => {
+      const isClosed = !!rec.closingFileName || (!!rec.endDate && rec.endDate < todayStr);
+      return [
+        String(idx + 1),
+        rec.ptwType || 'PM',
+        rec.ptwNumber,
+        `Q${rec.quarter}`,
+        rec.equipmentCode,
+        `${formatIndoDate(rec.startDate)} - ${formatIndoDate(rec.endDate)}`,
+        rec.notes || '-',
+        isClosed ? 'SELESAI' : 'AKTIF'
+      ];
+    });
 
     autoTable(doc, {
       startY: 32,
@@ -328,12 +336,12 @@ export async function exportPTWListToPDF(records: PTWExportRecord[]) {
         fillColor: [248, 250, 252],
       },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 7 },
+        0: { halign: 'center', cellWidth: 8 },
         1: { halign: 'center', cellWidth: 12, fontStyle: 'bold' },
-        2: { cellWidth: 26, fontStyle: 'bold' },
+        2: { halign: 'center', cellWidth: 28, fontStyle: 'bold' },
         3: { halign: 'center', cellWidth: 8 },
-        4: { cellWidth: 24 },
-        5: { cellWidth: 34, halign: 'center' },
+        4: { cellWidth: 22 },
+        5: { cellWidth: 36, halign: 'center', fontSize: 7 },
         6: { cellWidth: 'auto' },
         7: { halign: 'center', cellWidth: 16, fontStyle: 'bold' },
       },
@@ -497,8 +505,10 @@ export async function exportPTWWeeklyReportToExcel(
         const cell = ws.getCell(`${col}${rowIdx}`);
         cell.font = { name: 'Calibri', size: 10 };
         cell.border = thinBorder;
-        if (col === 'B') {
-          cell.alignment = { horizontal: 'left', vertical: 'middle' };
+        if (col === 'A') {
+          cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        } else if (col === 'B') {
+          cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         } else {
           cell.alignment = { horizontal: 'center', vertical: 'middle' };
         }
@@ -621,7 +631,7 @@ export async function exportPTWWeeklyReportToExcel(
             cell.font = { name: 'Calibri', size: 10 };
             cell.border = thinBorder;
 
-            if (currentRowIdx % 2 === 1) {
+            if (idx % 2 === 1) {
               cell.fill = {
                 type: 'pattern',
                 pattern: 'solid',
@@ -629,12 +639,14 @@ export async function exportPTWWeeklyReportToExcel(
               };
             }
 
-            if (col === 'A' || col === 'B' || col === 'C' || col === 'G') {
+            if (col === 'A' || col === 'B' || col === 'G') {
               cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            } else if (col === 'C') {
+              cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             } else if (col === 'F') {
-              cell.alignment = { horizontal: 'center', vertical: 'middle' };
+              cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
             } else {
-              cell.alignment = { horizontal: 'left', vertical: 'middle' };
+              cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
             }
 
             if (col === 'G') {
@@ -655,13 +667,13 @@ export async function exportPTWWeeklyReportToExcel(
     });
 
     // Column widths
-    ws.getColumn('A').width = 14;
-    ws.getColumn('B').width = 24;
-    ws.getColumn('C').width = 28;
-    ws.getColumn('D').width = 35;
-    ws.getColumn('E').width = 26;
-    ws.getColumn('F').width = 30;
-    ws.getColumn('G').width = 14;
+    ws.getColumn('A').width = 16;
+    ws.getColumn('B').width = 22;
+    ws.getColumn('C').width = 22;
+    ws.getColumn('D').width = 22;
+    ws.getColumn('E').width = 28;
+    ws.getColumn('F').width = 32;
+    ws.getColumn('G').width = 16;
 
     // Save
     const buffer = await workbook.xlsx.writeBuffer();
@@ -802,7 +814,13 @@ export async function exportPTWWeeklyReportToPDF(
         halign: 'center'
       },
       columnStyles: {
-        1: { halign: 'left' }
+        0: { cellWidth: 24 },
+        1: { halign: 'center', cellWidth: 28 },
+        2: { halign: 'center', cellWidth: 18 },
+        3: { halign: 'center', cellWidth: 18 },
+        4: { halign: 'center', cellWidth: 24 },
+        5: { halign: 'center', cellWidth: 20 },
+        6: { halign: 'center', cellWidth: 20 },
       },
       didParseCell: (data) => {
         // Bold the last row (TOTAL row)
@@ -818,29 +836,57 @@ export async function exportPTWWeeklyReportToPDF(
 
     // Draw chart if provided
     if (chartImageBase64) {
-      const chartWidth = 135;
-      const chartHeight = 125;
       const chartY = finalYOnPage1 + 8;
       
-      doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor('#1e293b');
-      doc.text('II. GRAFIK TREN VALIDITAS PTW', margin, chartY);
+      // Check if there's enough space on current page, otherwise add new page
+      const availableSpace = pageHeight - chartY - 15;
+      const chartWidth = contentW - 8;
+      const chartHeight = Math.min(120, availableSpace - 18);
 
-      const chartX = margin + (contentW - chartWidth) / 2;
+      if (chartHeight < 60) {
+        // Not enough space, add a new page
+        doc.addPage();
+        drawHeader(doc);
+        const newChartY = 34;
 
-      doc.setDrawColor('#cbd5e1');
-      doc.setLineWidth(0.2);
-      doc.roundedRect(chartX - 2, chartY + 2.5, chartWidth + 4, chartHeight + 8, 1.5, 1.5, 'D');
+        doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor('#1e293b');
+        doc.text('II. GRAFIK TREN VALIDITAS PTW', margin, newChartY);
 
-      doc.addImage(
-        chartImageBase64, 
-        'PNG', 
-        chartX, 
-        chartY + 4.5, 
-        chartWidth, 
-        chartHeight, 
-        'recharts_weekly_chart', 
-        'FAST'
-      );
+        const chartX = margin + 4;
+        doc.setDrawColor('#cbd5e1');
+        doc.setLineWidth(0.2);
+        doc.roundedRect(chartX - 2, newChartY + 2.5, chartWidth + 4, 128, 1.5, 1.5, 'D');
+
+        doc.addImage(
+          chartImageBase64, 
+          'PNG', 
+          chartX, 
+          newChartY + 4.5, 
+          chartWidth, 
+          120, 
+          'recharts_weekly_chart', 
+          'FAST'
+        );
+      } else {
+        doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor('#1e293b');
+        doc.text('II. GRAFIK TREN VALIDITAS PTW', margin, chartY);
+
+        const chartX = margin + 4;
+        doc.setDrawColor('#cbd5e1');
+        doc.setLineWidth(0.2);
+        doc.roundedRect(chartX - 2, chartY + 2.5, chartWidth + 4, chartHeight + 8, 1.5, 1.5, 'D');
+
+        doc.addImage(
+          chartImageBase64, 
+          'PNG', 
+          chartX, 
+          chartY + 4.5, 
+          chartWidth, 
+          chartHeight, 
+          'recharts_weekly_chart', 
+          'FAST'
+        );
+      }
     }
 
     // PAGE 2 onwards: Detail table for each day
@@ -855,15 +901,19 @@ export async function exportPTWWeeklyReportToPDF(
         doc.setFontSize(8).setFont('helvetica', 'italic').setTextColor('#64748b');
         doc.text('Tidak ada dokumen PTW yang aktif pada tanggal ini.', margin, 42);
       } else {
-        const detailRows = wd.records.map((rec, idx) => [
-          String(idx + 1),
-          rec.ptwType || 'PM',
-          rec.ptwNumber,
-          rec.notes || '-',
-          rec.equipmentCode,
-          `${formatIndoDate(rec.startDate)} - ${formatIndoDate(rec.endDate)}`,
-          rec.closingFileName || (rec.endDate && rec.endDate < new Date().toISOString().split('T')[0]) ? 'SELESAI' : 'AKTIF'
-        ]);
+        const todayStr = new Date().toISOString().split('T')[0];
+        const detailRows = wd.records.map((rec, idx) => {
+          const isClosed = !!rec.closingFileName || (!!rec.endDate && rec.endDate < todayStr);
+          return [
+            String(idx + 1),
+            rec.ptwType || 'PM',
+            rec.ptwNumber,
+            rec.notes || '-',
+            rec.equipmentCode,
+            `${formatIndoDate(rec.startDate)} - ${formatIndoDate(rec.endDate)}`,
+            isClosed ? 'SELESAI' : 'AKTIF'
+          ];
+        });
 
         autoTable(doc, {
           startY: 38,
@@ -891,11 +941,11 @@ export async function exportPTWWeeklyReportToPDF(
           },
           columnStyles: {
             0: { halign: 'center', cellWidth: 8 },
-            1: { halign: 'center', cellWidth: 14, fontStyle: 'bold' },
-            2: { cellWidth: 26, fontStyle: 'bold' },
+            1: { halign: 'center', cellWidth: 12, fontStyle: 'bold' },
+            2: { halign: 'center', cellWidth: 28, fontStyle: 'bold' },
             3: { cellWidth: 'auto' },
-            4: { cellWidth: 26, halign: 'center' },
-            5: { cellWidth: 32, halign: 'center' },
+            4: { cellWidth: 22 },
+            5: { cellWidth: 36, halign: 'center', fontSize: 7 },
             6: { halign: 'center', cellWidth: 16, fontStyle: 'bold' },
           },
           didParseCell: (data) => {
