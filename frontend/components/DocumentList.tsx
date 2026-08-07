@@ -1,3 +1,12 @@
+// ============================================================================
+// FILE: DocumentList.tsx
+// Deskripsi: Modul Arsip Dokumen Laporan Pemeliharaan Terpusat (Arsip Dokumen ISO / UTT).
+//            Menyediakan antarmuka pencarian, penyaringan tanggal, pengurutan,
+//            preview isi laporan (Viewer modal), sunting data, hapus laporan,
+//            serta ekspor langsung ke format PDF & Excel (.xlsx) resmi.
+//            Mendukung 14 jenis Service Report Perangkat M/E & Laporan Inspeksi HSE.
+// ============================================================================
+
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle } from 'lucide-react';

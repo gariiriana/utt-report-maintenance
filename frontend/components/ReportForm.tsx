@@ -1,3 +1,12 @@
+// ============================================================================
+// FILE: ReportForm.tsx
+// Deskripsi: Form Utama Pembuatan Laporan Service Maintenance Perangkat (General Service Report).
+//            Menyediakan fitur template pemeriksaan otomatis (VRV, AHU, LV Panel, ATS, Trafo, PDU, dsb.),
+//            pengambilan foto langsung via Kamera HP / Web (CameraModal),
+//            digitasi dokumen kertas otomatis berbasis AI (PaperReportDigitizerModal),
+//            penyimpanan draft otomatis di IndexedDB, serta ekspor PDF & Excel.
+// ============================================================================
+
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, Save, ChevronLeft, ChevronRight, X, Eye, Download, Loader2, Languages, AlertTriangle, ChevronDown, Package, Sparkles } from 'lucide-react';

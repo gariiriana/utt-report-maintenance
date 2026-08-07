@@ -1,3 +1,14 @@
+// ============================================================================
+// FILE: CMReportFormModal.tsx
+// Deskripsi: Modal Wizard Form Laporan Corrective Maintenance (CM Report 3-Halaman).
+//            Memandu Standby Engineer mengisi rincian laporan perbaikan darurat:
+//            - Step 1: Informasi Tiket, Waktu Order, Pengguna & Lokasi Gangguan.
+//            - Step 2: Rincian Kronologi Akar Masalah (PIR / Root Cause Analysis).
+//            - Step 3: Pengadaan Suku Cadang / Spareparts Terpakai.
+//            - Step 4: Lampiran Foto Bervariasi (Sebelum / Proses / Sesudah Pemeliharaan).
+//            Menyediakan ekspor instan ke format DOCX (.docx) & PDF standar UTT.
+// ============================================================================
+
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {

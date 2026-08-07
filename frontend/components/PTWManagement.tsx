@@ -1,3 +1,12 @@
+// ============================================================================
+// FILE: PTWManagement.tsx
+// Deskripsi: Modul Utama Pengelolaan Permit to Work (PTW) Data Center.
+//            Mengelola siklus pendaftaran izin kerja (Open / Closed), pencatatan nomor urut PTW,
+//            pengunggahan PDF dokumen fisik PTW (dengan chunking otomatis ke Firestore),
+//            pemantauan grafik tren validitas mingguan (Recharts),
+//            serta fitur ekspor laporan resmi PTW ke format PDF & Excel.
+// ============================================================================
+
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';

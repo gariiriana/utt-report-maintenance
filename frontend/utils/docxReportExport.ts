@@ -1,3 +1,13 @@
+// ============================================================================
+// FILE: docxReportExport.ts
+// Deskripsi: Utility Ekspor Laporan Resmi ke format Microsoft Word (.docx).
+//            Menggunakan library `docx` untuk menyusun dokumen surat resmi:
+//            - Laporan Pemeliharaan Corrective Maintenance (3-Halaman Standar UTT)
+//            - Laporan PIR (Post Incident Report) Data Center NeutraDC
+//            Dilengkapi header logo ganda (Dwimitra & NeutraDC), tabel informasi teknis,
+//            tanda tangan elektronik insinyur terverifikasi, dan galeri foto.
+// ============================================================================
+
 import {
   Document,
   Packer,

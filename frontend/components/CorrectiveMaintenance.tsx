@@ -1,3 +1,13 @@
+// ============================================================================
+// FILE: CorrectiveMaintenance.tsx
+// Deskripsi: Modul Utama Pengelolaan Corrective Maintenance (CM).
+//            Menyediakan antarmuka Tab terpadu untuk Standby Engineer:
+//            - Tab 1: Form / List Laporan CM Standar (3-Halaman)
+//            - Tab 2: Audit Pencapaian SLA / SLG Waktu Respon & Resolution Time
+//            - Tab 3: Laporan PIR (Post Incident Report / Root Cause Analysis)
+//            Dilengkapi filter pencarian cepat, ekspor DOCX/Excel, serta konfirmasi hapus data.
+// ============================================================================
+
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {

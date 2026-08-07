@@ -1,3 +1,11 @@
+// ============================================================================
+// FILE: ptwExport.ts
+// Deskripsi: Utility Ekspor Laporan PTW (Permit to Work) ke format Excel (.xlsx) dan PDF.
+//            Mengolah data izin kerja PTW mingguan, status validitas (Open / Closed),
+//            rekapitulasi tren mingguan, serta grafik performa kepatuhan PTW
+//            di lingkungan Data Center NeutraDC Hyper-Scale Cikarang.
+// ============================================================================
+
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';

@@ -1,3 +1,11 @@
+// ============================================================================
+// FILE: FindingArchive.tsx
+// Deskripsi: Modul Arsip Dokumen Temuan Pemeliharaan (Finding Archive Viewer).
+//            Menyajikan riwayat daftar temuan perangkat terorganisir per folder bulan/tahun,
+//            fitur pencarian real-time (Nama Part / No. Part), preview foto bukti temuan,
+//            serta ekspor langsung laporan temuan ke format PDF & Word (.docx).
+// ============================================================================
+
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {

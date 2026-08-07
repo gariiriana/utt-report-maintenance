@@ -1,3 +1,11 @@
+// ============================================================================
+// FILE: AbsenInduction.tsx
+// Deskripsi: Modul Rekapitulasi Presensi & Sertifikasi Safety Induction K3 Data Center.
+//            Mengelola pendaftaran peserta induction (Kontraktor / Tamu / Vendor),
+//            pemindaian berkas PDF sertifikat fisik (pdf.js OCR/Preview),
+//            dokumentasi foto penyerahan kartu akses, serta ekspor PDF & Excel (.xlsx).
+// ============================================================================
+
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -14,7 +22,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Configure pdf.js worker
+// Konfigurasi Web Worker pdf.js untuk pembacaan & render berkas PDF di browser
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   'pdfjs-dist/build/pdf.worker.min.mjs',
   import.meta.url

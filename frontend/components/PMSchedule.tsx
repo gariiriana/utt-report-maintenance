@@ -1,3 +1,12 @@
+// ============================================================================
+// FILE: PMSchedule.tsx
+// Deskripsi: Matriks Kalender Jadwal Pemeliharaan Berkala (PM Schedule 2026).
+//            Menampilkan 34 perangkat Data Center NeutraDC Cikarang lengkap dengan
+//            rentang tanggal eksekusi per bulan (Januari - Desember), lokasi spesifik,
+//            catatan prosedur pengujian khusus (Special Test / Offline Maintenance),
+//            serta integrasi tombol Pengingat WhatsApp Gateway otomatis.
+// ============================================================================
+
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {

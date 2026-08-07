@@ -1,7 +1,17 @@
+// ============================================================================
+// FILE: excelExport.ts
+// Deskripsi: Utility Ekspor Laporan SLA / SLG ke format Microsoft Excel (.xlsx).
+//            Menggunakan library ExcelJS untuk menyusun workbook multi-sheet:
+//            - Sheet 1: Pencapaian Response Time (<5 Menit)
+//            - Sheet 2: Pencapaian Resolution Time (Level Prioritas SLA Perangkat)
+//            - Sheet 3: Laporan D-Day / SLG Penalty & Deductions
+//            Dilengkapi dengan styling cell border, header background, dan otomatisasi rumus.
+// ============================================================================
+
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
-// Utility helper to format dates for Excel display (e.g. "3/7/2026 16:12:00")
+// Utility helper untuk memformat tanggal ke tampilan standar Excel (contoh: "3/7/2026 16:12:00")
 const formatExcelDate = (dateStr: string): string => {
   if (!dateStr) return '';
   const d = new Date(dateStr);
@@ -18,6 +28,9 @@ const formatExcelDate = (dateStr: string): string => {
   return `${MM}/${DD}/${YYYY} ${hh}:${mm}:${ss}`;
 };
 
+/**
+ * Memunculkan unduhan file Excel (.xlsx) dari objek Laporan SLA/SLG
+ */
 export async function exportSLAReportToExcel(report: any) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'PT Dwimitra Ekatama Mandiri';

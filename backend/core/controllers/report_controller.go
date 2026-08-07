@@ -1,3 +1,10 @@
+// ============================================================================
+// FILE: backend/core/controllers/report_controller.go
+// Deskripsi: Controller Manajemen Laporan Service & Dokumen Pemeliharaan.
+//            Menangani pembuatan laporan baru, penyimpanan metadata ke Firestore,
+//            logging audit trail aksi user, serta pengiriman notifikasi terpusat.
+// ============================================================================
+
 package controllers
 
 import (
@@ -11,11 +18,13 @@ import (
 	apperrors "github.com/gariiriana/DwimitraSystem/backend/pkg/errors"
 	"github.com/gariiriana/DwimitraSystem/backend/pkg/helpers"
 )
+
 type ReportController struct {
 	Service      *services.ReportService
 	AuditService *services.AuditService
 	NotifService *services.NotificationService
 }
+
 func NewReportController(service *services.ReportService, audit *services.AuditService, notif *services.NotificationService) *ReportController {
 	return &ReportController{Service: service, AuditService: audit, NotifService: notif}
 }

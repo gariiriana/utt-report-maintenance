@@ -1,3 +1,11 @@
+// ============================================================================
+// FILE: FindingPdfExport.ts
+// Deskripsi: Export PDF Laporan Temuan Pemeliharaan (Finding Management).
+//            Mengubah array data temuan perangkat (FindingRecord) menjadi dokumen PDF resmi
+//            lengkap dengan tabel per rincian part, tanggal, brand, jumlah (qty),
+//            serta lampiran galeri foto dokumentasi temuan yang otomatis dikompresi.
+// ============================================================================
+
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { FindingRecord } from '../types/finding';
@@ -7,7 +15,10 @@ import logoDME from '@/assets/logo_dwimitra_v2.png';
 import { compressBase64Image } from './imageCompression';
 import { toast } from 'sonner';
 
-
+/**
+ * Helper async untuk mengambil dimensi lebar & tinggi foto base64
+ * Digunakan untuk menjaga aspect ratio gambar agar tidak melar/distort di dalam PDF.
+ */
 function getImageDimensions(base64: string): Promise<{ width: number; height: number }> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -17,8 +28,12 @@ function getImageDimensions(base64: string): Promise<{ width: number; height: nu
   });
 }
 
-
+/**
+ * Fungsi Utama: Meng-export daftar temuan ke file PDF resmi
+ * @param findings Array daftar data temuan perangkat
+ */
 export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<void> {
+  // Step 1: Kompresi foto-foto temuan secara asynchronous sebelum dimasukkan ke PDF
   toast.loading('Mengompresi foto temuan...', { id: 'finding-compress' });
   const optimizedFindings = await Promise.all(
     findings.map(async (f) => {
@@ -40,23 +55,27 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
   );
   toast.dismiss('finding-compress');
 
+  // Step 2: Inisialisasi dokumen jsPDF (Format A4 Portrait)
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 14;
   const contentW = pageWidth - 2 * margin;
 
+  // Palette Warna Tema Laporan Resmi
   const THEME_BLUE = '#00599c';
   const DARK = '#1e293b';
   const GRAY = '#64748b';
   const SLATE_200 = '#e2e8f0';
   const AMBER = '#f59e0b';
 
+  // Muat logo NeutraDC & logo Dwimitra dalam format base64
   const [leftLogo, rightLogo] = await Promise.all([
     loadLogoBase64(logoNeutra),
     loadLogoBase64(logoDME),
   ]);
 
+  // Fungsi penggambar Header PDF
   const drawHeader = (currentDoc: jsPDF): number => {
     currentDoc.setFillColor(THEME_BLUE);
     currentDoc.rect(0, 0, pageWidth, 2.5, 'F');
@@ -100,6 +119,7 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
     return headerY + headerH + 6;
   };
 
+  // Fungsi penggambar Footer PDF (Nomor Halaman)
   const drawFooter = (currentDoc: jsPDF, pg: number, totalPages: number) => {
     currentDoc.setFillColor(THEME_BLUE);
     currentDoc.rect(0, pageHeight - 2.5, pageWidth, 2.5, 'F');
@@ -111,6 +131,7 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
 
   let curY = drawHeader(doc);
 
+  // Format array data tabel temuan
   const tableData = optimizedFindings.map((f, idx) => [
     String(idx + 1),
     f.partName || '-',
@@ -123,6 +144,7 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
     }) || '-',
   ]);
 
+  // Step 3: Render Tabel Temuan Perangkat (autoTable)
   autoTable(doc, {
     startY: curY,
     head: [['No.', 'Nama Part', 'No. Part', 'Brand', 'Qty', 'Remark', 'Tanggal']],
@@ -162,6 +184,7 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
     },
   });
 
+  // Step 4: Render Galeri Foto Dokumentasi Temuan
   const findingsWithPhotos = optimizedFindings.filter((f) => f.photos && f.photos.length > 0);
 
   if (findingsWithPhotos.length > 0) {
@@ -272,6 +295,7 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
     }
   }
 
+  // Step 5: Cetak Footer di setiap halaman & simpan file PDF
   const totalPages = (doc.internal as any).getNumberOfPages();
   for (let pg = 1; pg <= totalPages; pg++) {
     doc.setPage(pg);
@@ -282,4 +306,3 @@ export async function exportFindingsToPDF(findings: FindingRecord[]): Promise<vo
   const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   doc.save(`Laporan_Temuan_Maintenance_${dateStr}.pdf`);
 }
-

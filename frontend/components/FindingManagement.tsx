@@ -1,3 +1,12 @@
+// ============================================================================
+// FILE: FindingManagement.tsx
+// Deskripsi: Form Penginputan Temuan Pemeliharaan Perangkat (Finding Input Form).
+//            Memungkinkan teknisi mencatat temuan kerusakan/kelainan sparepart:
+//            - Nama Part, Nomor Part (P/N), Brand/Merk, & Jumlah (Qty)
+//            - Lampiran multi-foto bukti temuan lengkap dengan fitur Image Editor
+//            - Notifikasi otomatis ke Firestore setelah temuan disimpan
+// ============================================================================
+
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {

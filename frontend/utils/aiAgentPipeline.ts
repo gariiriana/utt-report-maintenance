@@ -1,3 +1,12 @@
+// ============================================================================
+// FILE: aiAgentPipeline.ts
+// Deskripsi: Pipeline Asisten AI Otomatis (Google Gemini AI Service Client).
+//            Menyediakan fitur OCR pembacaan foto instrumen ukur (Earth Clamp Tester, Thermal Imager),
+//            analisis keselamatan kerja, verifikasi foto bukti maintenance,
+//            serta auto-fill deskripsi pekerjaan secara cerdas berbasis visi komputer.
+// NB: Nama env var VITE_NVIDIA_NIM_* dipertahankan untuk backward compatibility backend.
+// ============================================================================
+
 import { ATSPhotoInput, ATSReportData } from '@/types/atsReportTypes';
 import { auth } from '@/api/firebase';
 
@@ -10,6 +19,7 @@ const visionModel = import.meta.env.VITE_NVIDIA_NIM_VISION_MODEL || 'meta/llama-
 const reasoningModel = import.meta.env.VITE_NVIDIA_NIM_REASONING_MODEL || 'deepseek-ai/deepseek-v4-flash';
 
 let keyIndex = 0;
+// Multi-key round robin pool management untuk menghindari rate limit API
 function getNextAPIKey(): string {
   if (apiKeys.length === 0) {
     throw new Error('NVIDIA NIM API Keys are not configured. Please check VITE_NVIDIA_NIM_API_KEYS.');

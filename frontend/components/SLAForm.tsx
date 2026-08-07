@@ -1,3 +1,12 @@
+// ============================================================================
+// FILE: SLAForm.tsx
+// Deskripsi: Form Pembuatan & Audit Pencapaian Target SLA / SLG (4-Step Wizard).
+//            Mengolah pencapaian waktu respon (<5 Menit) dan waktu penyelesaian gangguan (Resolution Time)
+//            berdasarkan Matriks Prioritas SLA 34 Perangkat Data Center (Critical, High, Medium, Low).
+//            Memiliki pencarian otomatis (Autocomplete equipment), deteksi kondisi "Mati Total" (Total Loss),
+//            serta popup Panduan Matriks Prioritas terisolasi dengan React Portal.
+// ============================================================================
+
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';

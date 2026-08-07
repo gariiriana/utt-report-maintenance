@@ -1,3 +1,11 @@
+// ============================================================================
+// FILE: AbsenTBM.tsx
+// Deskripsi: Modul Rekapitulasi Presensi Toolbox Meeting (TBM) & Jam Kerja Teknisi.
+//            Mengelola data daftar hadir harian tim teknisi Data Center,
+//            perhitungan otomatis jam kerja/lembur, lampiran dokumentasi foto TBM,
+//            serta ekspor laporan presensi resmi ke format PDF & Excel (.xlsx).
+// ============================================================================
+
 import { useState, useEffect, useMemo, Fragment, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {

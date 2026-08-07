@@ -1,3 +1,12 @@
+// ============================================================================
+// FILE: FileManagement.tsx
+// Deskripsi: Modul Manajemen Berkas Dokumen (Cloud Storage & Firestore Repository).
+//            Mengelola pengunggahan berkas PDF/Excel berukuran besar dengan fitur chunking otomatis
+//            ke Firestore (menghindari batas batas ukuran dokumen 1MB Firestore),
+//            penyaringan kategori per divisi (PMO, Sales, Presales, Purchasing, HSE),
+//            serta sistem pengunduhan aman dan konfirmasi hapus data.
+// ============================================================================
+
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {

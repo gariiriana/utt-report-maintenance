@@ -1,3 +1,13 @@
+// ============================================================================
+// FILE: backend/core/controllers/ai_controller.go
+// Deskripsi: Controller Layanan Kecerdasan Buatan AI (Google Gemini / Vision Model).
+//            Menangani request HTTP untuk otomatisasi analisa laporan service:
+//            - /api/ai/ats-report (Analisa Foto Perangkat ATS & Panel Listrik)
+//            - /api/ai/digitize-paper (Digitasi Dokumen Kertas Cetak ke JSON Laporan)
+//            - /api/ai/chat (Asisten Percakapan & Penerjemahan Istilah M/E)
+//            - /api/ai/voice-command (Integrasi Agen Suara JARVIS AI)
+// ============================================================================
+
 package controllers
 
 import (
