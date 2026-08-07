@@ -1209,19 +1209,58 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
   const monthlyTotalOpen = weeklyData.reduce((sum, wd) => sum + wd.openCount, 0);
   const monthlyTotalClosed = weeklyData.reduce((sum, wd) => sum + wd.closedCount, 0);
 
+  const getChartCanvasOptions = () => ({
+    useCORS: true,
+    allowTaint: true,
+    backgroundColor: '#ffffff',
+    scale: 2,
+    logging: false,
+    onclone: (clonedDoc: Document) => {
+      const el = clonedDoc.getElementById('ptw-weekly-chart-container');
+      if (!el) return;
+
+      el.style.fontFamily = 'Arial, sans-serif';
+      el.style.letterSpacing = '0px';
+      el.style.wordSpacing = '3px';
+
+      const allElements = el.querySelectorAll('*');
+      allElements.forEach((node) => {
+        const htmlNode = node as HTMLElement;
+        if (htmlNode.style) {
+          htmlNode.style.fontFamily = 'Arial, sans-serif';
+          htmlNode.style.letterSpacing = '0px';
+        }
+      });
+
+      // Process SVG <text> and <tspan> elements explicitly
+      const svgTexts = el.querySelectorAll('svg text, svg tspan');
+      svgTexts.forEach((textNode) => {
+        textNode.setAttribute('font-family', 'Arial, sans-serif');
+        textNode.setAttribute('letter-spacing', '0');
+        if (textNode.textContent && textNode.textContent.includes(' ')) {
+          textNode.textContent = textNode.textContent.replace(/ /g, '\u00A0');
+        }
+      });
+
+      // Convert spaces to non-breaking spaces in text nodes to prevent html2canvas whitespace collapsing
+      const textWalker = clonedDoc.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+      let currentNode = textWalker.nextNode();
+      while (currentNode) {
+        if (currentNode.nodeValue && currentNode.nodeValue.includes(' ')) {
+          currentNode.nodeValue = currentNode.nodeValue.replace(/ /g, '\u00A0');
+        }
+        currentNode = textWalker.nextNode();
+      }
+    }
+  });
+
   const handleExportPdfReport = async () => {
     const toastId = toast.loading('Menyiapkan grafik untuk PDF...');
     try {
       const chartEl = document.getElementById('ptw-weekly-chart-container');
       let chartBase64 = '';
       if (chartEl) {
-        const canvas = await safeHtml2Canvas(chartEl, {
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#ffffff', // White background matching modern light theme
-          scale: 2,
-          logging: false,
-        });
+        const canvas = await safeHtml2Canvas(chartEl, getChartCanvasOptions());
         chartBase64 = canvas.toDataURL('image/png');
       }
       toast.dismiss(toastId);
@@ -1246,13 +1285,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
       const chartEl = document.getElementById('ptw-weekly-chart-container');
       let chartBase64 = '';
       if (chartEl) {
-        const canvas = await safeHtml2Canvas(chartEl, {
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#ffffff', // White background matching modern light theme
-          scale: 2,
-          logging: false,
-        });
+        const canvas = await safeHtml2Canvas(chartEl, getChartCanvasOptions());
         chartBase64 = canvas.toDataURL('image/png');
       }
       toast.dismiss(toastId);
@@ -1940,8 +1973,8 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                       iconType="circle" 
                       wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }} 
                       formatter={(value: string) => (
-                        <span style={{ color: '#334155', fontWeight: 600, paddingLeft: '4px', paddingRight: '12px', display: 'inline-block' }}>
-                          {value}
+                        <span style={{ color: '#334155', fontWeight: 600, paddingLeft: '4px', paddingRight: '12px', display: 'inline-block', whiteSpace: 'nowrap' }}>
+                          {String(value).replace(/ /g, '\u00A0')}
                         </span>
                       )}
                     />

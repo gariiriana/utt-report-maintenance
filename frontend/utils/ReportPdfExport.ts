@@ -74,6 +74,12 @@ export const safeHtml2Canvas = async (element: HTMLElement, options: any): Promi
       get(target, prop) {
         if (prop === 'getPropertyValue') {
           return function(propertyName: string) {
+            if (propertyName === 'letter-spacing' || propertyName === 'letterSpacing') {
+              return '0px';
+            }
+            if (propertyName === 'word-spacing' || propertyName === 'wordSpacing') {
+              return '2px';
+            }
             const val = target.getPropertyValue(propertyName);
             if (typeof val === 'string' && val.includes('oklch')) {
               return val.replace(/oklch\(([^)]+)\)/g, (_match, p1) => {
@@ -86,6 +92,12 @@ export const safeHtml2Canvas = async (element: HTMLElement, options: any): Promi
             }
             return val;
           };
+        }
+        if (prop === 'letterSpacing' || prop === 'letter-spacing') {
+          return '0px';
+        }
+        if (prop === 'wordSpacing' || prop === 'word-spacing') {
+          return '2px';
         }
         const val = target[prop as any];
         if (typeof val === 'string' && val.includes('oklch')) {
