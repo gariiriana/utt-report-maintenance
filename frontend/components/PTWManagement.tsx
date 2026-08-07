@@ -1840,12 +1840,16 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
             <div 
               id="ptw-weekly-chart-container"
               className="lg:col-span-5 ptw-weekly-chart-container bg-white/90 backdrop-blur-xl rounded-3xl p-6 border border-slate-200 shadow-xl flex flex-col justify-between"
-              style={{ minHeight: '350px' }}
+              style={{ minHeight: '360px', boxSizing: 'border-box' }}
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', width: '100%' }}>
                 <div>
-                  <h3 className="text-lg font-bold mb-1 ptw-weekly-chart-title">Visualisasi Tren Validitas Mingguan</h3>
-                  <p className="text-xs ptw-weekly-chart-desc" style={{ color: '#64748b' }}>Tingkat kepatuhan PM, CM, Open &amp; Closed PTW per minggu</p>
+                  <h3 className="text-lg font-bold text-slate-900" style={{ margin: '0 0 4px 0', lineHeight: '1.3', letterSpacing: 'normal' }}>
+                    Visualisasi Tren Validitas Mingguan
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium" style={{ margin: 0, color: '#64748b', lineHeight: '1.4', letterSpacing: 'normal' }}>
+                    Tingkat kepatuhan PM, CM, Open &amp; Closed PTW per minggu
+                  </p>
                 </div>
 
                 {/* Monthly Summary Totals */}
@@ -1859,64 +1863,64 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                   }}
                 >
                   <div 
-                    className="rounded-2xl text-center"
+                    className="rounded-2xl flex flex-col items-center justify-center text-center"
                     style={{
                       backgroundColor: '#f3e8ff',
                       border: '1px solid #d8b4fe',
-                      padding: '8px 2px',
+                      padding: '8px 4px',
                       boxSizing: 'border-box'
                     }}
                   >
-                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#7e22ce', margin: 0, padding: 0 }}>{monthlyTotalPTW}</p>
-                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: '#9333ea', margin: 0, padding: 0 }}>Total</p>
+                    <span style={{ fontSize: '18px', fontWeight: 800, color: '#7e22ce', lineHeight: '1.2', display: 'block' }}>{monthlyTotalPTW}</span>
+                    <span style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', color: '#9333ea', lineHeight: '1.2', marginTop: '4px', display: 'block', letterSpacing: '0.02em' }}>Total</span>
                   </div>
                   <div 
-                    className="rounded-2xl text-center"
+                    className="rounded-2xl flex flex-col items-center justify-center text-center"
                     style={{
                       backgroundColor: '#e0e7ff',
                       border: '1px solid #c7d2fe',
-                      padding: '8px 2px',
+                      padding: '8px 4px',
                       boxSizing: 'border-box'
                     }}
                   >
-                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#4338ca', margin: 0, padding: 0 }}>{monthlyTotalPM}</p>
-                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: '#4f46e5', margin: 0, padding: 0 }}>PM</p>
+                    <span style={{ fontSize: '18px', fontWeight: 800, color: '#4338ca', lineHeight: '1.2', display: 'block' }}>{monthlyTotalPM}</span>
+                    <span style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', color: '#4f46e5', lineHeight: '1.2', marginTop: '4px', display: 'block', letterSpacing: '0.02em' }}>PM</span>
                   </div>
                   <div 
-                    className="rounded-2xl text-center"
+                    className="rounded-2xl flex flex-col items-center justify-center text-center"
                     style={{
                       backgroundColor: '#fef3c7',
                       border: '1px solid #fde68a',
-                      padding: '8px 2px',
+                      padding: '8px 4px',
                       boxSizing: 'border-box'
                     }}
                   >
-                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#b45309', margin: 0, padding: 0 }}>{monthlyTotalCM}</p>
-                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: '#d97706', margin: 0, padding: 0 }}>CM</p>
+                    <span style={{ fontSize: '18px', fontWeight: 800, color: '#b45309', lineHeight: '1.2', display: 'block' }}>{monthlyTotalCM}</span>
+                    <span style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', color: '#d97706', lineHeight: '1.2', marginTop: '4px', display: 'block', letterSpacing: '0.02em' }}>CM</span>
                   </div>
                   <div 
-                    className="rounded-2xl text-center"
+                    className="rounded-2xl flex flex-col items-center justify-center text-center"
                     style={{
                       backgroundColor: '#dbeafe',
                       border: '1px solid #bfdbfe',
-                      padding: '8px 2px',
+                      padding: '8px 4px',
                       boxSizing: 'border-box'
                     }}
                   >
-                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#1d4ed8', margin: 0, padding: 0 }}>{monthlyTotalOpen}</p>
-                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: '#2563eb', margin: 0, padding: 0 }}>Open</p>
+                    <span style={{ fontSize: '18px', fontWeight: 800, color: '#1d4ed8', lineHeight: '1.2', display: 'block' }}>{monthlyTotalOpen}</span>
+                    <span style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', color: '#2563eb', lineHeight: '1.2', marginTop: '4px', display: 'block', letterSpacing: '0.02em' }}>Open</span>
                   </div>
                   <div 
-                    className="rounded-2xl text-center"
+                    className="rounded-2xl flex flex-col items-center justify-center text-center"
                     style={{
                       backgroundColor: '#ffe4e6',
                       border: '1px solid #fecdd3',
-                      padding: '8px 2px',
+                      padding: '8px 4px',
                       boxSizing: 'border-box'
                     }}
                   >
-                    <p className="text-lg font-extrabold tracking-tight" style={{ color: '#be123c', margin: 0, padding: 0 }}>{monthlyTotalClosed}</p>
-                    <p className="text-[7px] uppercase font-bold tracking-widest mt-1" style={{ color: '#e11d48', margin: 0, padding: 0 }}>Closed</p>
+                    <span style={{ fontSize: '18px', fontWeight: 800, color: '#be123c', lineHeight: '1.2', display: 'block' }}>{monthlyTotalClosed}</span>
+                    <span style={{ fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', color: '#e11d48', lineHeight: '1.2', marginTop: '4px', display: 'block', letterSpacing: '0.02em' }}>Closed</span>
                   </div>
                 </div>
               </div>
@@ -1931,7 +1935,16 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                       contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
                       labelStyle={{ color: '#0f172a', fontWeight: 'bold' }}
                     />
-                    <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                    <Legend 
+                      iconSize={8} 
+                      iconType="circle" 
+                      wrapperStyle={{ fontSize: '11px', paddingTop: '12px' }} 
+                      formatter={(value: string) => (
+                        <span style={{ color: '#334155', fontWeight: 600, paddingLeft: '4px', paddingRight: '12px', display: 'inline-block' }}>
+                          {value}
+                        </span>
+                      )}
+                    />
                     <Line type="monotone" dataKey="Total PTW" stroke="#8b5cf6" strokeWidth={3} dot={{ fill: '#8b5cf6', r: 5 }} />
                     <Bar dataKey="PTW PM" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={16} />
                     <Bar dataKey="PTW CM" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={16} />

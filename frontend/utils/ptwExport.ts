@@ -183,17 +183,17 @@ export async function exportPTWListToExcel(records: PTWExportRecord[]) {
             pattern: 'solid',
             fgColor: { argb: COLOR_GRAY_BG },
           };
-        }
-
-        // Alignments
-        if (col === 'A' || col === 'C' || col === 'D' || col === 'G') {
+        }        // Alignments
+        if (col === 'A' || col === 'B' || col === 'C' || col === 'D' || col === 'H') {
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        } else if (col === 'F') {
           cell.alignment = { horizontal: 'center', vertical: 'middle' };
         } else {
           cell.alignment = { horizontal: 'left', vertical: 'middle' };
         }
 
         // Status text color
-        if (col === 'G') {
+        if (col === 'H') {
           cell.font = {
             name: 'Calibri',
             size: 10,
@@ -205,13 +205,14 @@ export async function exportPTWListToExcel(records: PTWExportRecord[]) {
     });
 
     // Column widths
-    ws.getColumn('A').width = 6;
-    ws.getColumn('B').width = 20;
-    ws.getColumn('C').width = 10;
-    ws.getColumn('D').width = 28;
-    ws.getColumn('E').width = 30;
-    ws.getColumn('F').width = 40;
-    ws.getColumn('G').width = 12;
+    ws.getColumn('A').width = 8;
+    ws.getColumn('B').width = 14;
+    ws.getColumn('C').width = 28;
+    ws.getColumn('D').width = 10;
+    ws.getColumn('E').width = 26;
+    ws.getColumn('F').width = 32;
+    ws.getColumn('G').width = 40;
+    ws.getColumn('H').width = 14;
 
     // Save
     const buffer = await workbook.xlsx.writeBuffer();
@@ -330,15 +331,11 @@ export async function exportPTWListToPDF(records: PTWExportRecord[]) {
         0: { halign: 'center', cellWidth: 7 },
         1: { halign: 'center', cellWidth: 12, fontStyle: 'bold' },
         2: { cellWidth: 26, fontStyle: 'bold' },
-        3: { halign: 'center', cellWidth: 7 },
+        3: { halign: 'center', cellWidth: 8 },
         4: { cellWidth: 24 },
-        5: { cellWidth: 36, halign: 'center' },
+        5: { cellWidth: 34, halign: 'center' },
         6: { cellWidth: 'auto' },
-        7: {
-          halign: 'center',
-          cellWidth: 15,
-          fontStyle: 'bold'
-        },
+        7: { halign: 'center', cellWidth: 16, fontStyle: 'bold' },
       },
       didParseCell: (data) => {
         if (data.section === 'body' && data.column.index === 7) {
@@ -542,7 +539,7 @@ export async function exportPTWWeeklyReportToExcel(
         });
         ws.addImage(chartLogoId, {
           tl: { col: 0, row: totalRowIdx + 3 },
-          br: { col: 6, row: totalRowIdx + 23 }
+          br: { col: 7, row: totalRowIdx + 23 }
         } as any);
 
         const detailTitleCell = ws.getCell(`A${totalRowIdx + 25}`);
@@ -632,13 +629,15 @@ export async function exportPTWWeeklyReportToExcel(
               };
             }
 
-            if (col === 'A' || col === 'B' || col === 'D' || col === 'F') {
+            if (col === 'A' || col === 'B' || col === 'C' || col === 'G') {
+              cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            } else if (col === 'F') {
               cell.alignment = { horizontal: 'center', vertical: 'middle' };
             } else {
               cell.alignment = { horizontal: 'left', vertical: 'middle' };
             }
 
-            if (col === 'F') {
+            if (col === 'G') {
               cell.font = {
                 name: 'Calibri',
                 size: 10,
@@ -656,12 +655,13 @@ export async function exportPTWWeeklyReportToExcel(
     });
 
     // Column widths
-    ws.getColumn('A').width = 12;
+    ws.getColumn('A').width = 14;
     ws.getColumn('B').width = 24;
-    ws.getColumn('C').width = 38;
-    ws.getColumn('D').width = 24;
-    ws.getColumn('E').width = 34;
-    ws.getColumn('F').width = 14;
+    ws.getColumn('C').width = 28;
+    ws.getColumn('D').width = 35;
+    ws.getColumn('E').width = 26;
+    ws.getColumn('F').width = 30;
+    ws.getColumn('G').width = 14;
 
     // Save
     const buffer = await workbook.xlsx.writeBuffer();
@@ -891,14 +891,15 @@ export async function exportPTWWeeklyReportToPDF(
           },
           columnStyles: {
             0: { halign: 'center', cellWidth: 8 },
-            1: { cellWidth: 26, fontStyle: 'bold' },
-            2: { cellWidth: 'auto' },
-            3: { cellWidth: 24, halign: 'center' },
-            4: { cellWidth: 38, halign: 'center' },
-            5: { cellWidth: 16, halign: 'center', fontStyle: 'bold' },
+            1: { halign: 'center', cellWidth: 14, fontStyle: 'bold' },
+            2: { cellWidth: 26, fontStyle: 'bold' },
+            3: { cellWidth: 'auto' },
+            4: { cellWidth: 26, halign: 'center' },
+            5: { cellWidth: 32, halign: 'center' },
+            6: { halign: 'center', cellWidth: 16, fontStyle: 'bold' },
           },
           didParseCell: (data) => {
-            if (data.section === 'body' && data.column.index === 5) {
+            if (data.section === 'body' && data.column.index === 6) {
               if (data.cell.raw === 'SELESAI') {
                 data.cell.styles.textColor = [239, 68, 68]; // Red
               } else {
