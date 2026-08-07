@@ -20,7 +20,11 @@ import {
   FileText,
   Scissors,
   Eye,
-  X
+  X,
+  Search,
+  Zap,
+  AlertTriangle,
+  HelpCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -29,6 +33,69 @@ import { useAuth } from './AuthContext';
 import { exportSLAReportToDocx } from '@/utils/docxReportExport';
 import { sendFileNotification } from '@/utils/notificationService';
 import { ImageEditor } from './ImageEditor';
+
+export interface EquipmentSLAItem {
+  id: string;
+  device: string;
+  category: 'Electrical' | 'HVAC' | 'Mechanical' | 'Safety' | 'Civil';
+  defaultPriority: 'High' | 'Medium' | 'Low';
+  categoryBadgeColor?: string;
+  notes?: string;
+}
+
+export const EQUIPMENT_SLA_CATALOG: EquipmentSLAItem[] = [
+  // ⚡ 1. Electrical & Power System
+  { id: 'ups', device: 'UPS (Uninterruptible Power Supply)', category: 'Electrical', defaultPriority: 'High' },
+  { id: 'ats', device: 'ATS (Automatic Transfer Switch)', category: 'Electrical', defaultPriority: 'High' },
+  { id: 'trafo', device: 'Transformer (Trafo Daya)', category: 'Electrical', defaultPriority: 'High' },
+  { id: 'mv_rmu', device: 'MV and RMU Panel (Medium Voltage)', category: 'Electrical', defaultPriority: 'High' },
+  { id: 'lv_panel', device: 'LV Panel (Low Voltage)', category: 'Electrical', defaultPriority: 'High' },
+  { id: 'pdu_panel', device: 'PDU Panel (Power Distribution Unit)', category: 'Electrical', defaultPriority: 'High' },
+
+  { id: 'genset', device: 'Generator & Fuel System', category: 'Electrical', defaultPriority: 'Medium' },
+  { id: 'ldb_rdb', device: 'Panel LDB & RDB (Distribution Board)', category: 'Electrical', defaultPriority: 'Medium' },
+  { id: 'busduct', device: 'Busduct', category: 'Electrical', defaultPriority: 'Medium' },
+  { id: 'cap_bank', device: 'Capacitor Bank', category: 'Electrical', defaultPriority: 'Medium' },
+
+  { id: 'lighting', device: 'Lighting Point', category: 'Electrical', defaultPriority: 'Low' },
+  { id: 'grounding', device: 'Grounding System', category: 'Electrical', defaultPriority: 'Low' },
+  { id: 'lightning', device: 'Lightning Protection System (Penangkal Petir)', category: 'Electrical', defaultPriority: 'Low' },
+  { id: 'pju', device: 'PJU (Penerangan Jalan Umum)', category: 'Electrical', defaultPriority: 'Low' },
+
+  // ❄️ 2. HVAC & Cooling System (All Medium)
+  { id: 'crac', device: 'CRAC Data Hall & Supporting Room', category: 'HVAC', defaultPriority: 'Medium' },
+  { id: 'chiller', device: 'Chiller', category: 'HVAC', defaultPriority: 'Medium' },
+  { id: 'cooling_tower', device: 'Cooling Tower', category: 'HVAC', defaultPriority: 'Medium' },
+  { id: 'ct_water', device: 'Cooling Tower Water Treatment', category: 'HVAC', defaultPriority: 'Medium' },
+  { id: 'cooling_pump', device: 'Cooling Pump', category: 'HVAC', defaultPriority: 'Medium' },
+  { id: 'fcu', device: 'FCU (Fan Coil Unit)', category: 'HVAC', defaultPriority: 'Medium' },
+  { id: 'ahu', device: 'AHU (Air Handling Unit)', category: 'HVAC', defaultPriority: 'Medium' },
+  { id: 'vrv', device: 'VRV System (Variable Refrigerant Volume)', category: 'HVAC', defaultPriority: 'Medium' },
+  { id: 'ac_split', device: 'AC Splits', category: 'HVAC', defaultPriority: 'Medium' },
+  { id: 'exhaust_fan', device: 'Exhaust Fan', category: 'HVAC', defaultPriority: 'Medium' },
+  { id: 'cooling_automation', device: 'Physical Cooling Automation', category: 'HVAC', defaultPriority: 'Medium' },
+
+  // 🛗 3. Mechanical & Utility System (All Low)
+  { id: 'lift', device: 'Lift Units (Elevator Office & Campus)', category: 'Mechanical', defaultPriority: 'Low' },
+  { id: 'gate', device: 'Gate (Pagar / Autogate Utama)', category: 'Mechanical', defaultPriority: 'Low' },
+  { id: 'road_blocker', device: 'Road Blocker', category: 'Mechanical', defaultPriority: 'Low' },
+  { id: 'dock_leveler', device: 'Dock Leveler', category: 'Mechanical', defaultPriority: 'Low' },
+  { id: 'pumps', device: 'Pumps (Pompa Transfer / Umum)', category: 'Mechanical', defaultPriority: 'Low' },
+  { id: 'water_softener', device: 'Water Softener', category: 'Mechanical', defaultPriority: 'Low' },
+
+  // 🛡️ 4. Safety & Fire Protection System (All Low)
+  { id: 'fss', device: 'FSS (Fire Suppression System)', category: 'Safety', defaultPriority: 'Low' },
+  { id: 'hydrant', device: 'Hydrant System', category: 'Safety', defaultPriority: 'Low' },
+  { id: 'pre_action', device: 'Pre-Action System', category: 'Safety', defaultPriority: 'Low' },
+  { id: 'water_leak', device: 'Water Leak Detection System', category: 'Safety', defaultPriority: 'Low' },
+  { id: 'fuel_leak', device: 'Fuel Leak Detection System (Ground Tank)', category: 'Safety', defaultPriority: 'Low' },
+  { id: 'x_ray', device: 'X-Ray Scanner (Post Security Bravo)', category: 'Safety', defaultPriority: 'Low' },
+  { id: 'pressurization', device: 'Pressurization & Degassing', category: 'Safety', defaultPriority: 'Low' },
+
+  // 🏢 5. Civil & Building Infrastructure (All Low)
+  { id: 'stp_plumbing', device: 'STP & Plumbing (Sewage Treatment Plant)', category: 'Civil', defaultPriority: 'Low' },
+  { id: 'door', device: 'Door (Pintu Akses Data Hall / Campus)', category: 'Civil', defaultPriority: 'Low' },
+];
 
 /** A single photo evidence item with optional description */
 interface PhotoItem {
@@ -51,6 +118,14 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
 
   // Maximum photos allowed per step
   const MAX_PHOTOS_PER_STEP = 10;
+
+  // Equipment Search & SLA Prioritization States
+  const [equipmentSearch, setEquipmentSearch] = useState('');
+  const [isEquipmentDropdownOpen, setIsEquipmentDropdownOpen] = useState(false);
+  const [selectedEquipmentItem, setSelectedEquipmentItem] = useState<EquipmentSLAItem | null>(null);
+  const [isTotalBlackout, setIsTotalBlackout] = useState(false);
+  const [showGuideModal, setShowGuideModal] = useState(false);
+  const [guideCategoryFilter, setGuideCategoryFilter] = useState<'All' | 'Critical' | 'High' | 'Medium' | 'Low'>('All');
 
   // Form State
   const [formData, setFormData] = useState({
@@ -168,6 +243,53 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
 
     setFormData(prev => ({ ...prev, targetResolutionMin: target }));
   }, [formData.priority]);
+
+  // Equipment SLA Selection Handler
+  const handleSelectEquipment = (item: EquipmentSLAItem) => {
+    setSelectedEquipmentItem(item);
+    setEquipmentSearch(item.device);
+    setIsEquipmentDropdownOpen(false);
+
+    // Auto set ticket name if empty or default format
+    setFormData(prev => ({
+      ...prev,
+      ticketName: prev.ticketName ? prev.ticketName : `WO-${item.device}`
+    }));
+
+    if (!isTotalBlackout) {
+      setFormData(prev => ({ ...prev, priority: item.defaultPriority }));
+      toast.success(`Equipment Terpilih: ${item.device}`, {
+        description: `Prioritas SLA otomatis disetel ke ${item.defaultPriority}`
+      });
+    } else {
+      toast.info(`Equipment Terpilih: ${item.device}`, {
+        description: 'Prioritas tetap CRITICAL karena status "Semua Unit Mati Total" sedang aktif.'
+      });
+    }
+  };
+
+  // Total Blackout / Critical Override Handler
+  const handleToggleTotalBlackout = (checked: boolean) => {
+    setIsTotalBlackout(checked);
+    if (checked) {
+      setFormData(prev => ({ ...prev, priority: 'Critical' }));
+      toast.error('🔥 CRITICAL PRIORITY APPLIED', {
+        description: 'Status Semua Unit Mati Total (Total Loss) diaktifkan! Target Resolution: 2 Jam.'
+      });
+    } else {
+      const defaultPrio = selectedEquipmentItem ? selectedEquipmentItem.defaultPriority : 'Medium';
+      setFormData(prev => ({ ...prev, priority: defaultPrio }));
+      toast.info('Status Total Loss dinonaktifkan', {
+        description: `Prioritas dikembalikan ke ${defaultPrio}.`
+      });
+    }
+  };
+
+  // Filtered Equipment Catalog based on search
+  const filteredEquipmentCatalog = EQUIPMENT_SLA_CATALOG.filter(item =>
+    item.device.toLowerCase().includes(equipmentSearch.toLowerCase()) ||
+    item.category.toLowerCase().includes(equipmentSearch.toLowerCase())
+  );
 
   // Auto-save draft to localStorage whenever form changes (only when not editing)
   useEffect(() => {
@@ -622,6 +744,161 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                 <p className="text-slate-500 text-xs">Masukkan informasi order tiket, lokasi, prioritas, dan data Response Time (Target default &lt; 5 Menit).</p>
               </div>
 
+              {/* Searchable Equipment Selector & SLA Guidance */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-4 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-amber-500" />
+                      Pilih Equipment / Perangkat Terganggu
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-0.5">Ketik nama equipment untuk auto-suggest prioritas SLA secara presisi.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowGuideModal(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition cursor-pointer self-start sm:self-auto"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5" />
+                    Panduan SLA Equipment
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Searchable Equipment Combobox */}
+                  <div className="relative">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Cari Equipment (Autocomplete)</label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={equipmentSearch}
+                        onChange={(e) => {
+                          setEquipmentSearch(e.target.value);
+                          setIsEquipmentDropdownOpen(true);
+                        }}
+                        onFocus={() => setIsEquipmentDropdownOpen(true)}
+                        placeholder="Ketik misal: UPS, Chiller, Trafo, Generator..."
+                        className="w-full pl-9 pr-8 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm font-medium"
+                      />
+                      {equipmentSearch && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEquipmentSearch('');
+                            setSelectedEquipmentItem(null);
+                          }}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Dropdown Options */}
+                    <AnimatePresence>
+                      {isEquipmentDropdownOpen && (
+                        <>
+                          <div className="fixed inset-0 z-20" onClick={() => setIsEquipmentDropdownOpen(false)} />
+                          <motion.div
+                            initial={{ opacity: 0, y: -4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -4 }}
+                            className="absolute left-0 right-0 top-full mt-1.5 z-30 max-h-64 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl divide-y divide-slate-100"
+                          >
+                            {filteredEquipmentCatalog.length > 0 ? (
+                              filteredEquipmentCatalog.map((item) => (
+                                <button
+                                  key={item.id}
+                                  type="button"
+                                  onClick={() => handleSelectEquipment(item)}
+                                  className="w-full px-3.5 py-2.5 text-left hover:bg-slate-50 transition flex items-center justify-between gap-2 group cursor-pointer"
+                                >
+                                  <div>
+                                    <div className="text-xs font-bold text-slate-900 group-hover:text-red-600 transition">
+                                      {item.device}
+                                    </div>
+                                    <span className="text-[10px] text-slate-500 font-medium">
+                                      Kategori: {item.category}
+                                    </span>
+                                  </div>
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                    item.defaultPriority === 'High'
+                                      ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                      : item.defaultPriority === 'Medium'
+                                      ? 'bg-blue-100 text-blue-800 border-blue-300'
+                                      : 'bg-slate-100 text-slate-700 border-slate-300'
+                                  }`}>
+                                    {item.defaultPriority} SLA
+                                  </span>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="p-3 text-center text-xs text-slate-500 font-medium">
+                                Equipment "{equipmentSearch}" tidak ditemukan di katalog.
+                              </div>
+                            )}
+                          </motion.div>
+                        </>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Selected Equipment SLA Status Banner */}
+                  <div className="flex items-center">
+                    {selectedEquipmentItem ? (
+                      <div className="w-full p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between gap-3 shadow-xs">
+                        <div>
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">Equipment Terpilih</span>
+                          <span className="text-xs font-bold text-slate-900">{selectedEquipmentItem.device}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 block">Default Prioritas</span>
+                          <span className={`inline-block px-2.5 py-0.5 rounded-md text-xs font-extrabold border ${
+                            selectedEquipmentItem.defaultPriority === 'High'
+                              ? 'bg-amber-500/10 text-amber-700 border-amber-500/30'
+                              : selectedEquipmentItem.defaultPriority === 'Medium'
+                              ? 'bg-blue-500/10 text-blue-700 border-blue-500/30'
+                              : 'bg-slate-500/10 text-slate-700 border-slate-500/30'
+                          }`}>
+                            {selectedEquipmentItem.defaultPriority} (Target {selectedEquipmentItem.defaultPriority === 'High' ? '4 Jam' : selectedEquipmentItem.defaultPriority === 'Medium' ? '6 Jam' : '48 Jam'})
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full p-3 bg-slate-100 border border-dashed border-slate-300 rounded-xl text-center text-xs text-slate-500">
+                        Ketik & pilih nama equipment di samping untuk rekomendasi SLA otomatis.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* CRITICAL Condition Checkbox Switch Banner */}
+                <div className={`p-3.5 rounded-xl border transition ${
+                  isTotalBlackout
+                    ? 'bg-red-500/10 border-red-500/40 text-red-900 shadow-md'
+                    : 'bg-white border-slate-200 text-slate-700'
+                }`}>
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isTotalBlackout}
+                      onChange={(e) => handleToggleTotalBlackout(e.target.checked)}
+                      className="mt-0.5 w-4 h-4 text-red-600 rounded border-slate-300 focus:ring-red-500 accent-red-600 cursor-pointer"
+                    />
+                    <div>
+                      <span className="text-xs font-extrabold text-red-600 flex items-center gap-1.5">
+                        <AlertTriangle className="w-4 h-4 text-red-600 animate-bounce" />
+                        🔥 Syarat CRITICAL: Seluruh Unit Mati Total / Tidak Ada Sumber Inflow (Total Loss)
+                      </span>
+                      <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
+                        Centang opsi ini jika <strong>seluruh unit di salah satu equipment mati total</strong> tanpa ada pasokan/inflow daya atau cooling. Otomatis menetapkan prioritas ke <strong>CRITICAL (Target 2 Jam / 120m)</strong>.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
               {/* Ticket Metadata (merged into Step 1) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
@@ -662,7 +939,11 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                       onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
                       title="Prioritas Gangguan"
                       aria-label="Prioritas Gangguan"
-                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm font-semibold"
+                      className={`w-full pl-10 pr-4 py-2.5 bg-white border rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm font-semibold ${
+                        formData.priority === 'Critical'
+                          ? 'border-red-500 text-red-600 bg-red-50/50'
+                          : 'border-slate-200'
+                      }`}
                     >
                       <option value="Critical">Critical (Target 2 Jam / 120m)</option>
                       <option value="High">High (Target 4 Jam / 240m)</option>
@@ -1458,6 +1739,125 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
           onCancel={() => setEditingPhotoInfo(null)}
         />
       )}
+
+      {/* Panduan SLA Equipment Reference Modal */}
+      <AnimatePresence>
+        {showGuideModal && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl max-w-4xl w-full max-h-[85vh] border border-slate-200 shadow-2xl overflow-hidden flex flex-col"
+            >
+              {/* Modal Header */}
+              <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-red-600" />
+                    Panduan Matriks Prioritas SLA & SLG Equipment
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">Panduan resmi penetapan level gangguan untuk Standby Engineer di Neutra DC Cikarang.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowGuideModal(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-200/60 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body Filter Tabs */}
+              <div className="px-6 py-3 bg-white border-b border-slate-200 flex flex-wrap items-center gap-2 text-xs">
+                <span className="font-bold text-slate-500 mr-2">Filter Level:</span>
+                {(['All', 'Critical', 'High', 'Medium', 'Low'] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    onClick={() => setGuideCategoryFilter(filter)}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
+                      guideCategoryFilter === filter
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {filter === 'All' ? 'Semua Equipment (34)' : filter}
+                  </button>
+                ))}
+              </div>
+
+              {/* CRITICAL Condition Rule Alert */}
+              <div className="px-6 pt-4">
+                <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-900 text-xs">
+                  <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-extrabold text-red-700 block">🔴 Syarat Khusus Level CRITICAL (Target Resolution: 2 Jam / 120m):</span>
+                    <p className="text-red-800 leading-relaxed mt-0.5">
+                      Level <strong>CRITICAL</strong> berlaku untuk <strong>SEMUA equipment</strong> apabila terjadi kondisi <strong>seluruh unit mati total / tidak ada sumber inflow</strong> yang masuk (contoh: Total Blackout, Total Cooling Stop, atau redundansi N+1 runtuh total).
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Equipment Grid List */}
+              <div className="p-6 overflow-y-auto max-h-[55vh] space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {EQUIPMENT_SLA_CATALOG.filter(item => {
+                    if (guideCategoryFilter === 'All') return true;
+                    if (guideCategoryFilter === 'Critical') return false; // Critical is condition-based
+                    return item.defaultPriority === guideCategoryFilter;
+                  }).map(item => (
+                    <div
+                      key={item.id}
+                      className="p-3.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-xl flex items-center justify-between gap-3 transition"
+                    >
+                      <div>
+                        <div className="text-xs font-bold text-slate-900">{item.device}</div>
+                        <span className="text-[10px] font-semibold text-slate-500 block mt-0.5">
+                          Kategori: {item.category}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`px-2.5 py-1 rounded-md text-[11px] font-extrabold border ${
+                          item.defaultPriority === 'High'
+                            ? 'bg-amber-100 text-amber-800 border-amber-300'
+                            : item.defaultPriority === 'Medium'
+                            ? 'bg-blue-100 text-blue-800 border-blue-300'
+                            : 'bg-slate-200 text-slate-700 border-slate-300'
+                        }`}>
+                          {item.defaultPriority} ({item.defaultPriority === 'High' ? '4 Jam' : item.defaultPriority === 'Medium' ? '6 Jam' : '48 Jam'})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleSelectEquipment(item);
+                            setShowGuideModal(false);
+                          }}
+                          className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold rounded-md transition cursor-pointer"
+                        >
+                          Pilih
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-3 border-t border-slate-200 bg-slate-50 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowGuideModal(false)}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold rounded-xl transition cursor-pointer"
+                >
+                  Tutup Panduan
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Fullscreen Photo Lightbox Preview */}
       {previewPhotoUrl && (

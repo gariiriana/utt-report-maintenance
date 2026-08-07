@@ -47,6 +47,15 @@ const formatIndoDate = (dateStr: string): string => {
   return `${day} ${month} ${year}`;
 };
 
+const getImageDimensions = (base64: string): Promise<{ width: number; height: number }> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.width, height: img.height });
+    img.onerror = () => resolve({ width: 580, height: 420 });
+    img.src = base64;
+  });
+};
+
 // Colors and styling constants
 const COLOR_BLUE = '00599C'; // Main Theme Blue
 const COLOR_GRAY_BG = 'F8FAFC';
@@ -537,22 +546,34 @@ export async function exportPTWWeeklyReportToExcel(
     });
 
     // Add chart image if provided
+    let chartOccupiedRows = 0;
     if (chartImageBase64) {
       try {
         const titleCell = ws.getCell(`A${totalRowIdx + 2}`);
         titleCell.value = '2. GRAFIK TREN VALIDITAS HARIAN';
         titleCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '000000' } };
 
+        const dims = await getImageDimensions(chartImageBase64);
+        const aspectRatio = dims.height / dims.width;
+
         const chartLogoId = workbook.addImage({
           base64: chartImageBase64.split(',')[1],
           extension: 'png',
         });
+
+        // Maintain exact aspect ratio in Excel
+        const excelImgWidth = 540;
+        const excelImgHeight = Math.round(excelImgWidth * aspectRatio);
+
         ws.addImage(chartLogoId, {
           tl: { col: 0, row: totalRowIdx + 3 },
-          br: { col: 7, row: totalRowIdx + 23 }
+          ext: { width: excelImgWidth, height: excelImgHeight },
+          editAs: 'oneCell'
         } as any);
 
-        const detailTitleCell = ws.getCell(`A${totalRowIdx + 25}`);
+        chartOccupiedRows = Math.ceil(excelImgHeight / 20) + 2;
+
+        const detailTitleCell = ws.getCell(`A${totalRowIdx + 3 + chartOccupiedRows}`);
         detailTitleCell.value = '3. RINCIAN DOKUMEN PTW PER TANGGAL';
         detailTitleCell.font = { name: 'Calibri', size: 11, bold: true, color: { argb: '000000' } };
       } catch (e) {
@@ -561,7 +582,7 @@ export async function exportPTWWeeklyReportToExcel(
     }
 
     // --- Section 2: Rincian per Tanggal ---
-    let currentRowIdx = chartImageBase64 ? totalRowIdx + 27 : totalRowIdx + 3;
+    let currentRowIdx = chartImageBase64 ? totalRowIdx + 5 + chartOccupiedRows : totalRowIdx + 3;
 
     weeklyData.forEach(wd => {
       // Date Title
@@ -836,14 +857,16 @@ export async function exportPTWWeeklyReportToPDF(
 
     // Draw chart if provided
     if (chartImageBase64) {
-      const chartY = finalYOnPage1 + 8;
+      const dims = await getImageDimensions(chartImageBase64);
+      const aspectRatio = dims.height / dims.width;
       
-      // Check if there's enough space on current page, otherwise add new page
-      const availableSpace = pageHeight - chartY - 15;
-      const chartWidth = contentW - 8;
-      const chartHeight = Math.min(120, availableSpace - 18);
+      const chartWidth = contentW - 4; // 178mm
+      let chartHeight = chartWidth * aspectRatio;
 
-      if (chartHeight < 60) {
+      const chartY = finalYOnPage1 + 8;
+      const availableSpace = pageHeight - chartY - 15;
+
+      if (chartHeight > availableSpace || availableSpace < 60) {
         // Not enough space, add a new page
         doc.addPage();
         drawHeader(doc);
@@ -852,10 +875,15 @@ export async function exportPTWWeeklyReportToPDF(
         doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor('#1e293b');
         doc.text('II. GRAFIK TREN VALIDITAS PTW', margin, newChartY);
 
-        const chartX = margin + 4;
+        const maxPageH = pageHeight - newChartY - 20;
+        if (chartHeight > maxPageH) {
+          chartHeight = maxPageH;
+        }
+
+        const chartX = margin + 2;
         doc.setDrawColor('#cbd5e1');
         doc.setLineWidth(0.2);
-        doc.roundedRect(chartX - 2, newChartY + 2.5, chartWidth + 4, 128, 1.5, 1.5, 'D');
+        doc.roundedRect(chartX - 2, newChartY + 2.5, chartWidth + 4, chartHeight + 4, 1.5, 1.5, 'D');
 
         doc.addImage(
           chartImageBase64, 
@@ -863,7 +891,7 @@ export async function exportPTWWeeklyReportToPDF(
           chartX, 
           newChartY + 4.5, 
           chartWidth, 
-          120, 
+          chartHeight, 
           'recharts_weekly_chart', 
           'FAST'
         );
@@ -871,10 +899,10 @@ export async function exportPTWWeeklyReportToPDF(
         doc.setFontSize(9).setFont('helvetica', 'bold').setTextColor('#1e293b');
         doc.text('II. GRAFIK TREN VALIDITAS PTW', margin, chartY);
 
-        const chartX = margin + 4;
+        const chartX = margin + 2;
         doc.setDrawColor('#cbd5e1');
         doc.setLineWidth(0.2);
-        doc.roundedRect(chartX - 2, chartY + 2.5, chartWidth + 4, chartHeight + 8, 1.5, 1.5, 'D');
+        doc.roundedRect(chartX - 2, chartY + 2.5, chartWidth + 4, chartHeight + 4, 1.5, 1.5, 'D');
 
         doc.addImage(
           chartImageBase64, 
