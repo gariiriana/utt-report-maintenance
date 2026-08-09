@@ -44,6 +44,7 @@ import { useAuth } from './AuthContext';
 import { exportSLAReportToDocx } from '@/utils/docxReportExport';
 import { sendFileNotification } from '@/utils/notificationService';
 import { ImageEditor } from './ImageEditor';
+import { compressImage, compressBase64Image } from '@/utils/imageCompression';
 
 export interface EquipmentSLAItem {
   id: string;
@@ -361,39 +362,38 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
     const restoreTime = calculateDiffMinutes(formData.startOrder || formData.timeOrder, formData.finishOrder);
     const resolutionTime = calculateDiffMinutes(formData.startOrder || formData.timeOrder, formData.finishOrder);
 
+    const targetRT = Number(formData.targetResponseMin) || 5;
+    const targetOTP = Number(formData.targetOnsiteMin) || 120;
+    const targetRST = Number(formData.targetRestoreMin) || 120;
+    const targetRSP = Number(formData.targetResolutionMin) || 360;
+
     // SLG Formula: (Target / Actual) * 100 * Bobot%, capped at 100% * Bobot%
-    const scoreRT = responseTime > 0
-      ? Math.min(100, (formData.targetResponseMin / responseTime) * 100) * 0.05
-      : 5.0;
+    const rawScoreRT = responseTime > 0 ? Math.min(100, (targetRT / responseTime) * 100) * 0.05 : 5.0;
+    const rawScoreOTP = onsiteTime > 0 ? Math.min(100, (targetOTP / onsiteTime) * 100) * 0.05 : 5.0;
+    const rawScoreRST = restoreTime > 0 ? Math.min(100, (targetRST / restoreTime) * 100) * 0.15 : 15.0;
+    const rawScoreRSP = resolutionTime > 0 ? Math.min(100, (targetRSP / resolutionTime) * 100) * 0.10 : 10.0;
 
-    const scoreOTP = onsiteTime > 0
-      ? Math.min(100, (formData.targetOnsiteMin / onsiteTime) * 100) * 0.05
-      : 5.0;
-
-    const scoreRST = restoreTime > 0
-      ? Math.min(100, (formData.targetRestoreMin / restoreTime) * 100) * 0.15
-      : 15.0;
-
-    const scoreRSP = resolutionTime > 0
-      ? Math.min(100, (formData.targetResolutionMin / resolutionTime) * 100) * 0.10
-      : 10.0;
-
-    const totalSlg = scoreRT + scoreOTP + scoreRST + scoreRSP;
+    const safeScoreRT = isNaN(rawScoreRT) ? 5.0 : Number(rawScoreRT.toFixed(2));
+    const safeScoreOTP = isNaN(rawScoreOTP) ? 5.0 : Number(rawScoreOTP.toFixed(2));
+    const safeScoreRST = isNaN(rawScoreRST) ? 15.0 : Number(rawScoreRST.toFixed(2));
+    const safeScoreRSP = isNaN(rawScoreRSP) ? 10.0 : Number(rawScoreRSP.toFixed(2));
+    const rawTotalSlg = safeScoreRT + safeScoreOTP + safeScoreRST + safeScoreRSP;
+    const safeTotalSlg = isNaN(rawTotalSlg) ? 35.0 : Number(rawTotalSlg.toFixed(2));
 
     setCalcs({
       responseTimeMin: responseTime,
-      responseComply: formData.timeOrder && formData.actualTimeResponse ? responseTime <= formData.targetResponseMin : true,
-      slgScoreRT: Number(scoreRT.toFixed(2)),
+      responseComply: formData.timeOrder && formData.actualTimeResponse ? responseTime <= targetRT : true,
+      slgScoreRT: safeScoreRT,
       onsiteTimeMin: onsiteTime,
-      onsiteComply: formData.timeOrder && formData.actualTimeOnsite ? onsiteTime <= formData.targetOnsiteMin : true,
-      slgScoreOTP: Number(scoreOTP.toFixed(2)),
+      onsiteComply: formData.timeOrder && formData.actualTimeOnsite ? onsiteTime <= targetOTP : true,
+      slgScoreOTP: safeScoreOTP,
       restoreTimeMin: restoreTime,
-      restoreComply: (formData.startOrder || formData.timeOrder) && formData.finishOrder ? restoreTime <= formData.targetRestoreMin : true,
-      slgScoreRST: Number(scoreRST.toFixed(2)),
+      restoreComply: (formData.startOrder || formData.timeOrder) && formData.finishOrder ? restoreTime <= targetRST : true,
+      slgScoreRST: safeScoreRST,
       resolutionTimeMin: resolutionTime,
-      resolutionComply: (formData.startOrder || formData.timeOrder) && formData.finishOrder ? resolutionTime <= formData.targetResolutionMin : true,
-      slgScoreRSP: Number(scoreRSP.toFixed(2)),
-      totalIncidentSlgScore: Number(totalSlg.toFixed(2)),
+      resolutionComply: (formData.startOrder || formData.timeOrder) && formData.finishOrder ? resolutionTime <= targetRSP : true,
+      slgScoreRSP: safeScoreRSP,
+      totalIncidentSlgScore: safeTotalSlg,
     });
   }, [
     formData.timeOrder,
@@ -414,10 +414,10 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
     }
   }, [formData.actualTimeOnsite]);
 
-  // Multi-photo upload handler â€” compresses and appends to the specified photo array
+  // Multi-photo upload handler — compresses and appends to the specified photo array
   type PhotoField = 'photosResponse' | 'photosOnsite' | 'photosRestore' | 'photosResolution';
 
-  const handleMultiPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, field: PhotoField) => {
+  const handleMultiPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: PhotoField) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -430,51 +430,24 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
     const remaining = MAX_PHOTOS_PER_STEP - currentPhotos.length;
     const filesToProcess = Array.from(files).slice(0, remaining);
 
-    filesToProcess.forEach((file) => {
+    for (const file of filesToProcess) {
       if (file.size > 15 * 1024 * 1024) {
         toast.error(`File "${file.name}" melebihi batas 15MB, dilewati.`);
-        return;
+        continue;
       }
 
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-
-          const MAX_WIDTH = 800;
-          const MAX_HEIGHT = 800;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height = (height * MAX_WIDTH) / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width = (width * MAX_HEIGHT) / height;
-              height = MAX_HEIGHT;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          ctx?.drawImage(img, 0, 0, width, height);
-
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-          setFormData(prev => ({
-            ...prev,
-            [field]: [...prev[field], { photo: compressedBase64, description: '' }]
-          }));
-          toast.success('Foto berhasil ditambahkan!');
-        };
-      };
-    });
+      try {
+        const compressedBase64 = await compressImage(file, { maxWidth: 640, maxHeight: 640, quality: 0.5 });
+        setFormData(prev => ({
+          ...prev,
+          [field]: [...prev[field], { photo: compressedBase64, description: '' }]
+        }));
+        toast.success('Foto berhasil ditambahkan!');
+      } catch (err) {
+        console.error('Error compressing uploaded photo:', err);
+        toast.error(`Gagal memproses foto "${file.name}"`);
+      }
+    }
 
     // Reset input so same file can be re-selected
     e.target.value = '';
@@ -598,79 +571,127 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
     }
 
     setSubmitting(true);
+    toast.loading('Menyimpan Laporan SLA ke database...', { id: 'save-sla-report' });
+
     try {
-      const finalReport = {
+      // Helper function to ensure all photos are safely compressed and formatted without undefined
+      const processPhotos = async (photos: PhotoItem[], maxDim = 640, qual = 0.5): Promise<PhotoItem[]> => {
+        if (!photos || !Array.isArray(photos)) return [];
+        const processed: PhotoItem[] = [];
+        for (const item of photos) {
+          if (!item || !item.photo) continue;
+          let base64 = item.photo;
+          // Compress if string length exceeds ~60KB
+          if (base64.length > 60000) {
+            try {
+              base64 = await compressBase64Image(base64, { maxWidth: maxDim, maxHeight: maxDim, quality: qual });
+            } catch (err) {
+              console.warn('Could not compress photo base64:', err);
+            }
+          }
+          processed.push({
+            photo: base64,
+            description: (item.description || '').trim()
+          });
+        }
+        return processed;
+      };
+
+      let photosResp = await processPhotos(formData.photosResponse, 640, 0.5);
+      let photosOnst = await processPhotos(formData.photosOnsite, 640, 0.5);
+      let photosRest = await processPhotos(formData.photosRestore, 640, 0.5);
+      let photosReso = await processPhotos(formData.photosResolution, 640, 0.5);
+
+      let finalReport: any = {
         reportType: 'SLA',
-        ticketName: formData.ticketName.trim() || 'Work Order',
-        location: formData.location,
-        priority: formData.priority,
-        picDME: formData.picDME.trim() || 'On Duty DME',
-        picTDE: formData.picTDE.trim() || 'FMA - OCS',
-        remark: formData.remark.trim() || 'Team melaksanakan perbaikan corrective.',
+        ticketName: (formData.ticketName || '').trim() || 'Work Order',
+        location: (formData.location || '').trim() || 'Neutra DC Cikarang',
+        priority: formData.priority || 'Medium',
+        picDME: (formData.picDME || '').trim() || 'On Duty DME',
+        picTDE: (formData.picTDE || '').trim() || 'FMA - OCS',
+        remark: (formData.remark || '').trim() || 'Team melaksanakan perbaikan corrective.',
 
         // Core calculations mapping for normal display compatibility
-        issue: `[SLA / SLG] ${formData.ticketName.trim() || 'Work Order'} (${formData.priority})`,
-        actionTaken: formData.resolutionRemark.trim() || formData.remark.trim() || 'Pemeliharaan corrective diselesaikan sesuai target SLA.',
+        issue: `[SLA / SLG] ${(formData.ticketName || '').trim() || 'Work Order'} (${formData.priority || 'Medium'})`,
+        actionTaken: (formData.resolutionRemark || '').trim() || (formData.remark || '').trim() || 'Pemeliharaan corrective diselesaikan sesuai target SLA.',
         status: 'Resolved',
         spareParts: '',
         quarter: `Q${Math.floor(new Date().getMonth() / 3) + 1}`,
         year: new Date().getFullYear().toString(),
 
         // SLA 1: Response Time
-        timeOrder: formData.timeOrder,
-        actualTimeResponse: formData.actualTimeResponse,
-        actualResponseTimeMin: calcs.responseTimeMin,
-        targetResponseMin: formData.targetResponseMin,
-        responseComply: calcs.responseComply,
-        photosResponse: formData.photosResponse,
-        // Legacy backward compat: keep first photo as string
-        photoResponse: formData.photosResponse[0]?.photo || '',
+        timeOrder: formData.timeOrder || '',
+        actualTimeResponse: formData.actualTimeResponse || '',
+        actualResponseTimeMin: Number(calcs.responseTimeMin) || 0,
+        targetResponseMin: Number(formData.targetResponseMin) || 5,
+        responseComply: Boolean(calcs.responseComply),
+        photosResponse: photosResp,
+        photoResponse: photosResp[0]?.photo || '',
 
         // SLA 2: Onsite Principle
-        actualTimeOnsite: formData.actualTimeOnsite,
-        actualOnsiteTimeMin: calcs.onsiteTimeMin,
-        targetOnsiteMin: formData.targetOnsiteMin,
-        onsiteComply: calcs.onsiteComply,
-        photosOnsite: formData.photosOnsite,
-        photoOnsite: formData.photosOnsite[0]?.photo || '',
+        actualTimeOnsite: formData.actualTimeOnsite || '',
+        actualOnsiteTimeMin: Number(calcs.onsiteTimeMin) || 0,
+        targetOnsiteMin: Number(formData.targetOnsiteMin) || 120,
+        onsiteComply: Boolean(calcs.onsiteComply),
+        photosOnsite: photosOnst,
+        photoOnsite: photosOnst[0]?.photo || '',
 
         // SLA 3: Restore RST
-        startOrder: formData.startOrder,
-        finishOrder: formData.finishOrder,
-        actualRestoreTimeMin: calcs.restoreTimeMin,
-        targetRestoreMin: formData.targetRestoreMin,
-        restoreComply: calcs.restoreComply,
-        photosRestore: formData.photosRestore,
-        photoRestore: formData.photosRestore[0]?.photo || '',
+        startOrder: formData.startOrder || '',
+        finishOrder: formData.finishOrder || '',
+        actualRestoreTimeMin: Number(calcs.restoreTimeMin) || 0,
+        targetRestoreMin: Number(formData.targetRestoreMin) || 120,
+        restoreComply: Boolean(calcs.restoreComply),
+        photosRestore: photosRest,
+        photoRestore: photosRest[0]?.photo || '',
 
         // SLA 4: Resolution
-        actualResolutionTimeMin: calcs.resolutionTimeMin,
-        targetResolutionMin: formData.targetResolutionMin,
-        resolutionComply: calcs.resolutionComply,
-        photosResolution: formData.photosResolution,
-        photoResolution: formData.photosResolution[0]?.photo || '',
-        resolutionRemark: formData.resolutionRemark.trim(),
+        actualResolutionTimeMin: Number(calcs.resolutionTimeMin) || 0,
+        targetResolutionMin: Number(formData.targetResolutionMin) || 360,
+        resolutionComply: Boolean(calcs.resolutionComply),
+        photosResolution: photosReso,
+        photoResolution: photosReso[0]?.photo || '',
+        resolutionRemark: (formData.resolutionRemark || '').trim(),
 
         // SLG Calculated Performance Scores & Weightings
-        slgScoreRT: calcs.slgScoreRT,
-        slgScoreOTP: calcs.slgScoreOTP,
-        slgScoreRST: calcs.slgScoreRST,
-        slgScoreRSP: calcs.slgScoreRSP,
-        totalIncidentSlgScore: calcs.totalIncidentSlgScore,
+        slgScoreRT: Number(calcs.slgScoreRT) || 0,
+        slgScoreOTP: Number(calcs.slgScoreOTP) || 0,
+        slgScoreRST: Number(calcs.slgScoreRST) || 0,
+        slgScoreRSP: Number(calcs.slgScoreRSP) || 0,
+        totalIncidentSlgScore: Number(calcs.totalIncidentSlgScore) || 0,
 
         // Metadata
         reportedBy: user.uid,
-        reportedByEmail: user.email,
+        reportedByEmail: user.email || 'engineer@dwimitra.co.id',
         reportedAt: serverTimestamp(),
       };
 
+      // Safeguard: Check document JSON size limit (1MB max in Firestore)
+      let payloadSize = JSON.stringify(finalReport).length;
+      if (payloadSize > 750000) { // If payload > ~750KB
+        // Re-compress photos aggressively to fit safely within limit
+        photosResp = await processPhotos(photosResp, 480, 0.35);
+        photosOnst = await processPhotos(photosOnst, 480, 0.35);
+        photosRest = await processPhotos(photosRest, 480, 0.35);
+        photosReso = await processPhotos(photosReso, 480, 0.35);
+
+        finalReport.photosResponse = photosResp;
+        finalReport.photoResponse = photosResp[0]?.photo || '';
+        finalReport.photosOnsite = photosOnst;
+        finalReport.photoOnsite = photosOnst[0]?.photo || '';
+        finalReport.photosRestore = photosRest;
+        finalReport.photoRestore = photosRest[0]?.photo || '';
+        finalReport.photosResolution = photosReso;
+        finalReport.photoResolution = photosReso[0]?.photo || '';
+      }
+
       if (editId) {
         await updateDoc(doc(db, 'corrective_reports', editId), finalReport);
-        toast.success('Laporan SLA/SLG Corrective Maintenance berhasil diperbarui!');
+        toast.success('Laporan SLA/SLG Corrective Maintenance berhasil diperbarui!', { id: 'save-sla-report' });
       } else {
         await addDoc(collection(db, 'corrective_reports'), finalReport);
         localStorage.removeItem('sla_form_draft');
-        toast.success('Laporan SLA/SLG Corrective Maintenance berhasil disimpan!');
+        toast.success('Laporan SLA/SLG Corrective Maintenance berhasil disimpan!', { id: 'save-sla-report' });
 
         await sendFileNotification({
           title: `Laporan SLA Baru: ${formData.ticketName || 'Work Order'}`,
@@ -682,9 +703,16 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
         });
       }
       onSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving SLA report:', error);
-      toast.error('Gagal menyimpan laporan ke database.');
+      const errMsg = error?.message || error?.toString() || '';
+      if (errMsg.includes('exceeds maximum size') || errMsg.includes('too big') || errMsg.includes('1048576')) {
+        toast.error('Ukuran foto terlalu besar (melebihi 1MB database). Kurangi foto atau coba simpan lagi.', { id: 'save-sla-report' });
+      } else if (errMsg.includes('permission-denied') || errMsg.includes('PERMISSION_DENIED')) {
+        toast.error('Sesi login telah berakhir atau akun tidak diizinkan menyimpan.', { id: 'save-sla-report' });
+      } else {
+        toast.error(`Gagal menyimpan laporan: ${errMsg || 'Kendala jaringan/database.'}`, { id: 'save-sla-report' });
+      }
     } finally {
       setSubmitting(false);
     }
