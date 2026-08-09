@@ -1764,6 +1764,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                 onClick={async () => {
                   try {
                     await exportSLAReportToDocx(formData);
+                    localStorage.removeItem('sla_form_draft');
                     toast.success('Laporan SLA Word (DOCX) berhasil diekspor!');
                   } catch (err: any) {
                     console.error('Error exporting SLA DOCX:', err);

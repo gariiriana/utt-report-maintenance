@@ -352,6 +352,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
     if (!validateStep(6)) return;
     try {
       await exportPIRReportToDocx(formData);
+      localStorage.removeItem('pir_report_draft');
       toast.success('Laporan PIR Word (DOCX) berhasil diekspor!');
     } catch (err: any) {
       console.error('Error exporting PIR DOCX:', err);

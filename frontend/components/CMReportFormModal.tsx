@@ -377,6 +377,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
       };
 
       await exportCMReportToDocx(formattedData);
+      localStorage.removeItem('cm_report_draft');
       toast.success('Laporan CM Word (DOCX) berhasil diekspor!');
     } catch (err: any) {
       console.error('Error exporting DOCX:', err);
