@@ -92,6 +92,12 @@ interface CorrectiveReport {
     postmortemOwner?: string;
     severityLevel?: string;
     summary?: string;
+
+    // CM fields
+    equipmentName?: string;
+    summaryProblemAnalysis?: string;
+    visualInspectionChecking?: string;
+    correctiveAction?: string;
 }
 
 interface CorrectiveMaintenanceProps {
@@ -964,11 +970,15 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             {report.status}
                                                         </div>
                                                         <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                                                            <MapPin className="w-4 h-4 text-slate-400" />
-                                                            {report.location}
+                                                            <AlertCircle className="w-4.5 h-4.5 text-rose-600 shrink-0" />
+                                                            <span>{report.incidentName || report.issue || report.equipmentName || 'Laporan Insiden / Issue'}</span>
                                                         </h3>
+                                                        <div className="flex items-center gap-2 text-slate-500 text-xs font-medium mt-1">
+                                                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                                            <span>Area / Lokasi: <strong className="text-slate-800">{report.location}</strong></span>
+                                                        </div>
                                                         <p className="text-xs text-slate-500 mt-1">
-                                                            Reported by <span className="text-slate-700">{report.reportedByEmail}</span> • {report.reportedAt?.toDate?.()?.toLocaleDateString()}
+                                                            Reported by <span className="text-slate-700">{report.reportedByEmail}</span> • {report.reportedAt?.toDate?.()?.toLocaleDateString() || report.incidentDate || 'Baru Saja'}
                                                         </p>
                                                     </div>
 
@@ -1010,15 +1020,17 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <div>
                                                         <h4 className="text-sm font-semibold text-orange-600 mb-1 flex items-center gap-2">
-                                                            <AlertCircle className="w-3 h-3" /> Issue
+                                                            <AlertCircle className="w-3 h-3" /> Issue / Akar Masalah
                                                         </h4>
-                                                        <p className="text-slate-700 text-sm leading-relaxed">{report.issue}</p>
+                                                        <p className="text-slate-700 text-sm leading-relaxed">
+                                                            {report.issue || report.summaryProblemAnalysis || report.visualInspectionChecking || report.incidentName || '-'}
+                                                        </p>
                                                     </div>
                                                     <div>
                                                         <h4 className="text-sm font-semibold text-emerald-600 mb-1 flex items-center gap-2">
-                                                            <CheckCircle2 className="w-3 h-3" /> Action Taken
+                                                            <CheckCircle2 className="w-3 h-3" /> Action Taken (Tindakan)
                                                         </h4>
-                                                        <p className="text-slate-700 text-sm leading-relaxed">{report.actionTaken}</p>
+                                                        <p className="text-slate-700 text-sm leading-relaxed">{report.actionTaken || report.correctiveAction || '-'}</p>
                                                     </div>
                                                 </div>
 

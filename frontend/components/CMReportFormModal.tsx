@@ -400,6 +400,8 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     try {
       const reportPayload = {
         ...formData,
+        issue: formData.incidentName || formData.summaryProblemAnalysis || formData.visualInspectionChecking || 'Laporan Issue CM',
+        actionTaken: formData.correctiveAction || '-',
         category: 'CM',
         reportedBy: user.uid,
         reportedByEmail: user.email,
@@ -508,13 +510,13 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">INCIDENT NAME *</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">NAMA ISSUE / INCIDENT NAME *</label>
                   <input
                     type="text"
                     required
                     value={formData.incidentName}
                     onChange={e => setFormData({ ...formData, incidentName: e.target.value })}
-                    placeholder="e.g. AC VRV Error Code U9-01"
+                    placeholder="e.g. Pompa Groundtank Bocor / Error Code U9-01 CRAC 2"
                     className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-red-500 outline-none"
                   />
                 </div>
