@@ -69,6 +69,45 @@ async function loadImageAsUint8Array(src: string): Promise<Uint8Array> {
   });
 }
 
+async function getImageWithDimensions(
+  src: string,
+  maxWidth = 230,
+  maxHeight = 260
+): Promise<{ bytes: Uint8Array; width: number; height: number }> {
+  if (!src) return { bytes: new Uint8Array(), width: 0, height: 0 };
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const origW = img.naturalWidth || img.width || 300;
+      const origH = img.naturalHeight || img.height || 200;
+
+      const scale = Math.min(maxWidth / origW, maxHeight / origH);
+      const width = Math.max(1, Math.round(origW * scale));
+      const height = Math.max(1, Math.round(origH * scale));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = origW;
+      canvas.height = origH;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, origW, origH);
+        ctx.drawImage(img, 0, 0);
+      }
+      const dataUrl = canvas.toDataURL('image/png');
+      const bytes = base64ToUint8Array(dataUrl);
+
+      resolve({ bytes, width, height });
+    };
+    img.onerror = () => {
+      resolve({ bytes: new Uint8Array(), width: 0, height: 0 });
+    };
+    img.src = src;
+  });
+}
+
 // Color Tokens matching report branding
 const HEADER_FILL = 'DCE6F1'; // Light blue cell header
 const BORDER_COLOR = 'A6A6A6';
@@ -960,7 +999,11 @@ export async function exportSLAReportToDocx(report: any): Promise<void> {
     ].flat(),
   });
 
-  // Photos — support multi-photo arrays (PhotoItem[]) with descriptions
+  // Safe fallback values for PIC DME and PIC TDE
+  const picDMEVal = (!report.picDME || report.picDME === '-') ? 'On Duty DME' : report.picDME;
+  const picTDEVal = (!report.picTDE || report.picTDE === 'FMA - CBRE' || report.picTDE === '-') ? 'FMA - OCS' : report.picTDE;
+
+  // Photos — support multi-photo arrays (PhotoItem[]) formatted in a clean 2-column side-by-side grid with preserved aspect ratio
   interface PhotoItem { photo: string; description: string; }
   const photoSections: { title: string; items: PhotoItem[] }[] = [
     { title: '1. PHOTO RESPONSE TIME', items: (report.photosResponse as PhotoItem[] | undefined) || (report.photoResponse ? [{ photo: report.photoResponse, description: '' }] : []) },
@@ -969,42 +1012,106 @@ export async function exportSLAReportToDocx(report: any): Promise<void> {
     { title: '4. PHOTO RESOLUTION', items: (report.photosResolution as PhotoItem[] | undefined) || (report.photoResolution ? [{ photo: report.photoResolution, description: '' }] : []) },
   ].filter((s) => s.items.length > 0);
 
-  const photoParagraphs: Paragraph[] = [];
+  interface PhotoGridItem {
+    description: string;
+    bytes: Uint8Array;
+    width: number;
+    height: number;
+  }
+
+  const allPhotoItems: PhotoGridItem[] = [];
   for (const section of photoSections) {
-    photoParagraphs.push(
-      new Paragraph({
-        spacing: { before: 240, after: 80 },
-        children: [new TextRun({ text: section.title, bold: true, size: 20, color: '1E293B' })],
-      })
-    );
     for (let i = 0; i < section.items.length; i++) {
       const item = section.items[i];
-      const imgBytes = await loadImageAsUint8Array(item.photo);
-      if (imgBytes.length > 0) {
-        if (item.description) {
-          photoParagraphs.push(
-            new Paragraph({
-              spacing: { before: 80, after: 40 },
-              children: [new TextRun({ text: `Foto ${i + 1}: ${item.description}`, italics: true, size: 16, color: '475569' })],
-            })
-          );
+      if (item.photo) {
+        const imgData = await getImageWithDimensions(item.photo, 230, 260);
+        if (imgData.bytes.length > 0) {
+          const descStr = section.items.length > 1
+            ? `${section.title} (Foto ${i + 1}${item.description ? `: ${item.description}` : ''})`
+            : `${section.title}${item.description ? ` - ${item.description}` : ''}`;
+          allPhotoItems.push({
+            description: descStr,
+            bytes: imgData.bytes,
+            width: imgData.width,
+            height: imgData.height,
+          });
         }
-        photoParagraphs.push(
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 180 },
-            children: [
-              new ImageRun({
-                data: imgBytes,
-                transformation: { width: 360, height: 220 },
-                type: 'png',
-              }),
-            ],
-          })
-        );
       }
     }
   }
+
+  const photoRows: TableRow[] = [];
+  for (let i = 0; i < allPhotoItems.length; i += 2) {
+    const item1 = allPhotoItems[i];
+    const item2 = allPhotoItems[i + 1];
+
+    const cell1Children: Paragraph[] = [
+      new Paragraph({
+        alignment: AlignmentType.LEFT,
+        spacing: { before: 60, after: 60 },
+        children: [
+          new TextRun({ text: item1.description, bold: true, size: 15, color: '1E293B' }),
+        ],
+      }),
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 80 },
+        children: [
+          new ImageRun({
+            data: item1.bytes,
+            transformation: { width: item1.width, height: item1.height },
+            type: 'png',
+          }),
+        ],
+      }),
+    ];
+
+    const cell2Children: Paragraph[] = item2
+      ? [
+          new Paragraph({
+            alignment: AlignmentType.LEFT,
+            spacing: { before: 60, after: 60 },
+            children: [
+              new TextRun({ text: item2.description, bold: true, size: 15, color: '1E293B' }),
+            ],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 80 },
+            children: [
+              new ImageRun({
+                data: item2.bytes,
+                transformation: { width: item2.width, height: item2.height },
+                type: 'png',
+              }),
+            ],
+          }),
+        ]
+      : [];
+
+    photoRows.push(
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            children: cell1Children,
+          }),
+          new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            children: cell2Children,
+          }),
+        ],
+      })
+    );
+  }
+
+  const photoTable = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: cellBorder,
+    rows: photoRows,
+  });
 
   const doc = new Document({
     sections: [
@@ -1037,17 +1144,20 @@ export async function exportSLAReportToDocx(report: any): Promise<void> {
             ],
           }),
 
-          createBoxSection('TIKET INCIDENT & LOKASI', `Nama Tiket : ${report.ticketName || 'N/A'}\nLokasi     : ${report.location || 'N/A'}\nPriority   : ${report.priority || 'Medium'}\nPIC DME    : ${report.picDME || '-'}\nPIC TDE    : ${report.picTDE || '-'}`),
+          createBoxSection('TIKET INCIDENT & LOKASI', `Nama Tiket : ${report.ticketName || 'N/A'}\nLokasi     : ${report.location || 'N/A'}\nPriority   : ${report.priority || 'Medium'}\nPIC DME    : ${picDMEVal}\nPIC TDE    : ${picTDEVal}`),
           new Paragraph({ spacing: { after: 180 } }),
 
           createSectionHeader('MATRIKS PENCAPAIAN SLA / SLG'),
           slaTable,
           new Paragraph({ spacing: { after: 180 } }),
 
+          createBoxSection('TINDAKAN PERBAIKAN (ACTION)', report.actionTaken || report.resolutionRemark || 'N/A'),
+          new Paragraph({ spacing: { after: 180 } }),
+
           createBoxSection('REMARK / CATATAN PENANGANAN', report.remark || 'N/A'),
           new Paragraph({ spacing: { after: 240 } }),
 
-          ...(photoParagraphs.length > 0 ? [createSectionHeader('DOKUMENTASI FOTO BUKTI SLA / SLG'), ...photoParagraphs] : []),
+          ...(allPhotoItems.length > 0 ? [createSectionHeader('DOKUMENTASI FOTO BUKTI SLA / SLG', true), photoTable] : []),
         ],
       },
     ],
@@ -1455,8 +1565,8 @@ export async function exportSLAMonthlyRecapToDocx(reports: any[], periodTitle: s
         String(idx + 1),
         r.ticketName || r.issue || 'WO',
         r.location || '-',
-        r.picDME || '-',
-        r.picTDE || '-',
+        r.picDME || 'On Duty DME',
+        (!r.picTDE || r.picTDE === 'FMA - CBRE' || r.picTDE === '-') ? 'FMA - OCS' : r.picTDE,
         formatDateHour(r.timeOrder),
         formatDateHour(r.actualTimeResponse),
         formatMinToHHMM(r.actualResponseTimeMin),
@@ -1522,8 +1632,8 @@ export async function exportSLAMonthlyRecapToDocx(reports: any[], periodTitle: s
         String(idx + 1),
         r.ticketName || r.issue || 'WO',
         r.location || '-',
-        r.picDME || '-',
-        r.picTDE || '-',
+        r.picDME || 'On Duty DME',
+        (!r.picTDE || r.picTDE === 'FMA - CBRE' || r.picTDE === '-') ? 'FMA - OCS' : r.picTDE,
         formatDateHour(r.timeOrder),
         formatDateHour(r.actualTimeOnsite),
         formatMinToHHMM(r.actualOnsiteTimeMin),

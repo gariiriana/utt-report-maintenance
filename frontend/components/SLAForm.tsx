@@ -605,7 +605,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
         location: formData.location,
         priority: formData.priority,
         picDME: formData.picDME.trim() || 'On Duty DME',
-        picTDE: formData.picTDE.trim() || 'FMA - CBRE',
+        picTDE: formData.picTDE.trim() || 'FMA - OCS',
         remark: formData.remark.trim() || 'Team melaksanakan perbaikan corrective.',
 
         // Core calculations mapping for normal display compatibility
@@ -893,7 +893,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                       </div>
                     ) : (
                       <div className="w-full p-3 bg-slate-100 border border-dashed border-slate-300 rounded-xl text-center text-xs text-slate-500">
-                        Ketik & pilih nama equipment di samping untuk rekomendasi SLA otomatis.
+                        Ketik &amp; pilih nama equipment di samping untuk rekomendasi SLA otomatis.
                       </div>
                     )}
                   </div>
@@ -965,11 +965,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                       onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
                       title="Prioritas Gangguan"
                       aria-label="Prioritas Gangguan"
-                      className={`w-full pl-10 pr-4 py-2.5 bg-white border rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm font-semibold ${
-                        formData.priority === 'Critical'
-                          ? 'border-red-500 text-red-600 bg-red-50/50'
-                          : 'border-slate-200'
-                      }`}
+                      className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm font-semibold"
                     >
                       <option value="Critical">Critical (Target 2 Jam / 120m)</option>
                       <option value="High">High (Target 4 Jam / 240m)</option>
@@ -977,6 +973,30 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                       <option value="Low">Low (Target 48 Jam / 2880m)</option>
                     </select>
                   </div>
+                </div>
+              </div>
+
+              {/* PIC DME & PIC TDE Inputs */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm text-slate-700 font-medium mb-1.5">PIC DME (Opsional)</label>
+                  <input
+                    type="text"
+                    value={formData.picDME}
+                    onChange={(e) => setFormData({ ...formData, picDME: e.target.value })}
+                    placeholder="On Duty DME"
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 outline-none shadow-sm text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-slate-700 font-medium mb-1.5">PIC TDE (Opsional)</label>
+                  <input
+                    type="text"
+                    value={formData.picTDE}
+                    onChange={(e) => setFormData({ ...formData, picTDE: e.target.value })}
+                    placeholder="FMA - OCS"
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 outline-none shadow-sm text-sm"
+                  />
                 </div>
               </div>
 
