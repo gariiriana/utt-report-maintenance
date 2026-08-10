@@ -29,7 +29,9 @@ import { saveAs } from 'file-saver';
 import { CMReportData } from '@/types/correctiveReportTypes';
 import {
   PREPARED_BY_SIGNATURES,
-  ARIF_BUDIMAN_SIGNATURE_BASE64
+  ARIF_BUDIMAN_SIGNATURE_BASE64,
+  normalizeEngineerName,
+  getEngineerSignature
 } from '@/utils/engineerSignatures';
 import { PIRReportData } from '@/types/pirReportTypes';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
@@ -274,13 +276,15 @@ function createBoxSection(title: string, content: string): Table {
 // 1. EXPORT CORRECTIVE MAINTENANCE (CM) REPORT TO DOCX
 // ==========================================
 export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
+  const normalizedPrepName = normalizeEngineerName(data.preparedByName);
   const resolvedRevSign = (data as any).reviewedBySign ||
     ((data.reviewedByName || 'Arif Budiman').toLowerCase().includes('arif') || (data.reviewedByName || 'Arif Budiman').toLowerCase().includes('budiman')
       ? ARIF_BUDIMAN_SIGNATURE_BASE64
       : '');
 
   const resolvedPrepSign = (data as any).preparedBySign ||
-    PREPARED_BY_SIGNATURES[data.preparedByName] ||
+    getEngineerSignature(normalizedPrepName) ||
+    PREPARED_BY_SIGNATURES[normalizedPrepName] ||
     PREPARED_BY_SIGNATURES['Muhammad Salman Abdurohman'] || '';
 
   const [logoLeftBytes, logoRightBytes, prepSignBytes, revSignBytes, ack1SignBytes, ack2SignBytes, appSignBytes] = await Promise.all([
@@ -713,7 +717,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           new TableCell({
             width: sigCellWidth,
             margins: { top: 80, bottom: 80, left: 80, right: 80 },
-            children: buildSigCell('', prepSignBytes, data.preparedByName || 'Muhammad Salman Abdurohman', data.preparedByTitle || '(Electrical Engineer)'),
+            children: buildSigCell('', prepSignBytes, normalizedPrepName, data.preparedByTitle || '(Electrical Engineer)'),
           }),
           new TableCell({
             width: sigCellWidth,

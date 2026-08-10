@@ -64,6 +64,19 @@ export function getEngineerSignature(identifier?: string | null): string | null 
 }
 
 /**
+ * Helper: Normalisasi nama insinyur ke nama lengkap resmi (Agil Zakia Amanda, Muhammad Salman Abdurohman, Asep Mohammad Fauzi)
+ */
+export function normalizeEngineerName(identifier?: string | null): string {
+  if (!identifier) return 'Muhammad Salman Abdurohman';
+  const trimmed = identifier.trim();
+  const lower = trimmed.toLowerCase();
+  if (lower === 'agil' || lower.includes('agil')) return 'Agil Zakia Amanda';
+  if (lower === 'salman' || lower.includes('salman')) return 'Muhammad Salman Abdurohman';
+  if (lower === 'asep' || lower.includes('asep')) return 'Asep Mohammad Fauzi';
+  return trimmed;
+}
+
+/**
  * Helper: Ambil tanda tangan base64 Reviewer (Arif Budiman)
  */
 export function getReviewerSignature(identifier?: string | null): string | null {

@@ -41,6 +41,7 @@ import { CMReportFormModal } from './CMReportFormModal';
 import { PIRReportFormModal } from './PIRReportFormModal';
 import { exportSLAReportToExcel } from '../utils/excelExport';
 import { exportCMReportToDocx, exportSLAReportToDocx, exportSLAMonthlyRecapToDocx } from '@/utils/docxReportExport';
+import { normalizeEngineerName } from '@/utils/engineerSignatures';
 
 interface CorrectiveReport {
     id: string;
@@ -314,7 +315,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             photos: photoList,
 
             authorName: report.authorName || report.reportedByEmail || 'Standby Engineer',
-            preparedByName: report.preparedByName || 'Muhammad Salman Abdurohman',
+            preparedByName: normalizeEngineerName(report.preparedByName),
             preparedByTitle: report.preparedByTitle || '(Electrical Engineer)',
             reviewedByName: report.reviewedByName || 'Arif Budiman',
             reviewedByTitle: report.reviewedByTitle || '(Technical Manager)',

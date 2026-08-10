@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { CMReportData } from '@/types/correctiveReportTypes';
-import { PREPARED_BY_SIGNATURES, ARIF_BUDIMAN_SIGNATURE_BASE64 } from '@/utils/engineerSignatures';
+import { PREPARED_BY_SIGNATURES, ARIF_BUDIMAN_SIGNATURE_BASE64, normalizeEngineerName, getEngineerSignature } from '@/utils/engineerSignatures';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import { compressBase64Image } from '@/utils/imageCompression';
@@ -552,8 +552,10 @@ export async function generateCMReportPDF(data: CMReportData) {
     doc.text('PREPARED BY,', margin + sigCellW / 2, y + 4.5, { align: 'center' });
 
     // Draw Prepared Signature if available
+    const normalizedPrepName = normalizeEngineerName(data.preparedByName);
     const prepSign = (data as any).preparedBySign ||
-      PREPARED_BY_SIGNATURES[data.preparedByName] ||
+      getEngineerSignature(normalizedPrepName) ||
+      PREPARED_BY_SIGNATURES[normalizedPrepName] ||
       PREPARED_BY_SIGNATURES['Muhammad Salman Abdurohman'];
     if (prepSign) {
       try {
@@ -565,7 +567,7 @@ export async function generateCMReportPDF(data: CMReportData) {
     const row1NameY = y + headerBarH + sigImageH;
     doc.line(margin, row1NameY, margin + sigCellW, row1NameY);
     doc.setFont(fontName, 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
-    doc.text(sanitizePdfText(data.preparedByName) || 'Muhammad Salman Abdurohman', margin + sigCellW / 2, row1NameY + 4.2, { align: 'center' });
+    doc.text(sanitizePdfText(normalizedPrepName), margin + sigCellW / 2, row1NameY + 4.2, { align: 'center' });
     doc.setFont(fontName, 'normal').setFontSize(7.5).setTextColor(50, 50, 50);
     doc.text(sanitizePdfText(data.preparedByTitle) || '(Electrical Engineer)', margin + sigCellW / 2, row1NameY + 8.5, { align: 'center' });
 

@@ -35,7 +35,7 @@ import { exportCMReportToDocx } from '@/utils/docxReportExport';
 import { sendFileNotification } from '@/utils/notificationService';
 import { ImageEditor } from './ImageEditor';
 
-import { PREPARED_BY_SIGNATURES, ARIF_BUDIMAN_SIGNATURE_BASE64 } from '@/utils/engineerSignatures';
+import { PREPARED_BY_SIGNATURES, ARIF_BUDIMAN_SIGNATURE_BASE64, normalizeEngineerName, getEngineerSignature } from '@/utils/engineerSignatures';
 
 interface CMReportFormModalProps {
   onSuccess: () => void;
@@ -102,9 +102,18 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
           const docSnap = await getDoc(doc(db, 'corrective_reports', editId));
           if (docSnap.exists()) {
             const data = docSnap.data() as any;
+            const normalizedPrepName = normalizeEngineerName(data.preparedByName);
+            const normalizedRevName = data.reviewedByName || 'Arif Budiman';
+            const prepSign = data.preparedBySign || getEngineerSignature(normalizedPrepName) || PREPARED_BY_SIGNATURES[normalizedPrepName] || '';
+            const revSign = data.reviewedBySign || (normalizedRevName.toLowerCase().includes('arif') || normalizedRevName.toLowerCase().includes('budiman') ? ARIF_BUDIMAN_SIGNATURE_BASE64 : '');
+
             setFormData({
               ...formData,
               ...data,
+              preparedByName: normalizedPrepName,
+              preparedBySign: prepSign,
+              reviewedByName: normalizedRevName,
+              reviewedBySign: revSign,
               spareparts: data.spareparts || [
                 { name: '-', brand: '-', qty: '-' },
                 { name: '-', brand: '-', qty: '-' }
@@ -360,8 +369,8 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
         dateFormatted = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
       }
 
-      const prepName = formData.preparedByName || 'Muhammad Salman Abdurohman';
-      const prepSign = formData.preparedBySign || (PREPARED_BY_SIGNATURES as Record<string, string>)[prepName] || '';
+      const prepName = normalizeEngineerName(formData.preparedByName);
+      const prepSign = formData.preparedBySign || getEngineerSignature(prepName) || (PREPARED_BY_SIGNATURES as Record<string, string>)[prepName] || '';
       const revName = formData.reviewedByName || 'Arif Budiman';
       const revSign = formData.reviewedBySign || (revName.toLowerCase().includes('arif') || revName.toLowerCase().includes('budiman') ? ARIF_BUDIMAN_SIGNATURE_BASE64 : '');
 
@@ -437,8 +446,8 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
 
     setSubmitting(true);
     try {
-      const prepName = formData.preparedByName || 'Muhammad Salman Abdurohman';
-      const prepSign = formData.preparedBySign || (PREPARED_BY_SIGNATURES as Record<string, string>)[prepName] || '';
+      const prepName = normalizeEngineerName(formData.preparedByName);
+      const prepSign = formData.preparedBySign || getEngineerSignature(prepName) || (PREPARED_BY_SIGNATURES as Record<string, string>)[prepName] || '';
       const revName = formData.reviewedByName || 'Arif Budiman';
       const revSign = formData.reviewedBySign || (revName.toLowerCase().includes('arif') || revName.toLowerCase().includes('budiman') ? ARIF_BUDIMAN_SIGNATURE_BASE64 : '');
 
