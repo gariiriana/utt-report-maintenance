@@ -174,12 +174,11 @@ export async function generateCMReportPDF(data: CMReportData) {
     autoTable(doc, {
       startY: y,
       margin: { left: margin, right: margin },
-      head: [['INCIDENT NAME', 'LOCATION', 'INCIDENT DATE', 'INCIDENT ID']],
+      head: [['INCIDENT NAME', 'LOCATION', 'INCIDENT DATE']],
       body: [[
         sanitizePdfText(resolvedIncidentName) || 'N/A',
         sanitizePdfText(data.location) || 'N/A',
-        sanitizePdfText(data.incidentDate) || 'N/A',
-        sanitizePdfText(data.incidentId) || 'N/A'
+        sanitizePdfText(data.incidentDate) || 'N/A'
       ]],
       theme: 'grid',
       styles: { font: fontName },
@@ -204,10 +203,9 @@ export async function generateCMReportPDF(data: CMReportData) {
         lineColor: BORDER_COLOR,
       },
       columnStyles: {
-        0: { cellWidth: contentW * 0.35 },
-        1: { cellWidth: contentW * 0.25 },
-        2: { cellWidth: contentW * 0.20 },
-        3: { cellWidth: contentW * 0.20 },
+        0: { cellWidth: contentW * 0.45 },
+        1: { cellWidth: contentW * 0.30 },
+        2: { cellWidth: contentW * 0.25 },
       }
     });
 

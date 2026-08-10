@@ -308,10 +308,10 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
     borders: cellBorder,
     rows: [
       new TableRow({
-        children: ['INCIDENT NAME', 'LOCATION', 'INCIDENT DATE', 'INCIDENT ID'].map(
+        children: ['INCIDENT NAME', 'LOCATION', 'INCIDENT DATE'].map(
           (headText, idx) =>
             new TableCell({
-              width: { size: [35, 25, 20, 20][idx], type: WidthType.PERCENTAGE },
+              width: { size: [45, 30, 25][idx], type: WidthType.PERCENTAGE },
               shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
               margins: { top: 100, bottom: 100, left: 100, right: 100 },
               children: [
@@ -328,11 +328,10 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           resolvedIncidentName || 'N/A',
           data.location || 'N/A',
           data.incidentDate || 'N/A',
-          data.incidentId || 'N/A',
         ].map(
           (val, idx) =>
             new TableCell({
-              width: { size: [35, 25, 20, 20][idx], type: WidthType.PERCENTAGE },
+              width: { size: [45, 30, 25][idx], type: WidthType.PERCENTAGE },
               margins: { top: 100, bottom: 100, left: 100, right: 100 },
               children: [
                 new Paragraph({

@@ -582,7 +582,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                   />
                 </div>
 
-                <div className={userRole === 'standby_engineer' ? 'md:col-span-2' : ''}>
+                <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-slate-700 mb-1">INCIDENT DATE</label>
                   <input
                     type="text"
@@ -592,19 +592,6 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                     className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-red-500 outline-none"
                   />
                 </div>
-
-                {userRole !== 'standby_engineer' && (
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">INCIDENT ID</label>
-                    <input
-                      type="text"
-                      value={formData.incidentId}
-                      onChange={e => setFormData({ ...formData, incidentId: e.target.value })}
-                      placeholder="e.g. N/A"
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-red-500 outline-none"
-                    />
-                  </div>
-                )}
               </div>
 
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 my-2">
