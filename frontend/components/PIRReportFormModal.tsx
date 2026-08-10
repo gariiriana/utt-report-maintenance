@@ -352,8 +352,30 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
     if (!validateStep(6)) return;
     try {
       await exportPIRReportToDocx(formData);
+
+      if (user) {
+        const docPayload = {
+          reportType: 'PIR',
+          issue: formData.incidentName || 'Laporan Insiden PIR',
+          location: 'Neutra DC Cikarang',
+          ticketName: formData.incidentName || 'Laporan PIR',
+          actionTaken: formData.resolution || '-',
+          status: 'Resolved',
+          reportedBy: formData.reportAuthors || user.displayName || 'Standby Engineer',
+          reportedByEmail: user?.email || 'standby@dwimitra.co.id',
+          reportedAt: serverTimestamp(),
+          ...formData
+        };
+
+        if (editId) {
+          await updateDoc(doc(db, 'corrective_reports', editId), docPayload);
+        } else {
+          await addDoc(collection(db, 'corrective_reports'), docPayload);
+        }
+      }
+
       localStorage.removeItem('pir_report_draft');
-      toast.success('Laporan PIR Word (DOCX) berhasil diekspor!');
+      toast.success('Laporan PIR Word (DOCX) berhasil diekspor & disimpan ke Arsip Standby!');
     } catch (err: any) {
       console.error('Error exporting PIR DOCX:', err);
       toast.error('Gagal mengekspor Laporan PIR Word');
@@ -425,12 +447,13 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">INCIDENT NAME *</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">INCIDENT NAME / ISSUE GANGGUAN *</label>
                 <input
                   type="text"
+                  required
                   value={formData.incidentName}
                   onChange={(e) => setFormData({ ...formData, incidentName: e.target.value })}
-                  placeholder="Contoh: Issue for VRV drainage"
+                  placeholder="Contoh: Issue for VRV drainage / Pompa Bocor"
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm font-semibold focus:ring-2 focus:ring-red-500 outline-none"
                 />
               </div>

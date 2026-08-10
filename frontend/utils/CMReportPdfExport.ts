@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { CMReportData } from '@/types/correctiveReportTypes';
-import { PREPARED_BY_SIGNATURES } from '@/utils/engineerSignatures';
+import { PREPARED_BY_SIGNATURES, ARIF_BUDIMAN_SIGNATURE_BASE64 } from '@/utils/engineerSignatures';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import { compressBase64Image } from '@/utils/imageCompression';
@@ -554,7 +554,9 @@ export async function generateCMReportPDF(data: CMReportData) {
     doc.text('PREPARED BY,', margin + sigCellW / 2, y + 4.5, { align: 'center' });
 
     // Draw Prepared Signature if available
-    const prepSign = (data as any).preparedBySign || PREPARED_BY_SIGNATURES[data.preparedByName];
+    const prepSign = (data as any).preparedBySign ||
+      PREPARED_BY_SIGNATURES[data.preparedByName] ||
+      PREPARED_BY_SIGNATURES['Muhammad Salman Abdurohman'];
     if (prepSign) {
       try {
         doc.addImage(prepSign, 'PNG', margin + (sigCellW - 35) / 2, y + headerBarH + 2, 35, sigImageH - 4);
@@ -565,7 +567,7 @@ export async function generateCMReportPDF(data: CMReportData) {
     const row1NameY = y + headerBarH + sigImageH;
     doc.line(margin, row1NameY, margin + sigCellW, row1NameY);
     doc.setFont(fontName, 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
-    doc.text(sanitizePdfText(data.preparedByName) || 'Salman', margin + sigCellW / 2, row1NameY + 4.2, { align: 'center' });
+    doc.text(sanitizePdfText(data.preparedByName) || 'Muhammad Salman Abdurohman', margin + sigCellW / 2, row1NameY + 4.2, { align: 'center' });
     doc.setFont(fontName, 'normal').setFontSize(7.5).setTextColor(50, 50, 50);
     doc.text(sanitizePdfText(data.preparedByTitle) || '(Electrical Engineer)', margin + sigCellW / 2, row1NameY + 8.5, { align: 'center' });
 
@@ -578,9 +580,13 @@ export async function generateCMReportPDF(data: CMReportData) {
     doc.text('REVIEWED BY,', revX + sigCellW / 2, y + 4.5, { align: 'center' });
 
     // Draw Reviewed Signature if available
-    if ((data as any).reviewedBySign) {
+    const revSign = (data as any).reviewedBySign ||
+      ((data.reviewedByName || 'Arif Budiman').toLowerCase().includes('arif') || (data.reviewedByName || 'Arif Budiman').toLowerCase().includes('budiman')
+        ? ARIF_BUDIMAN_SIGNATURE_BASE64
+        : '');
+    if (revSign) {
       try {
-        doc.addImage((data as any).reviewedBySign, 'PNG', revX + (sigCellW - 35) / 2, y + headerBarH + 2, 35, sigImageH - 4);
+        doc.addImage(revSign, 'PNG', revX + (sigCellW - 35) / 2, y + headerBarH + 2, 35, sigImageH - 4);
       } catch { /* ignore */ }
     }
 

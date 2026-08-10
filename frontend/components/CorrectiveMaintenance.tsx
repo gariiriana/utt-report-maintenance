@@ -314,7 +314,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             photos: photoList,
 
             authorName: report.authorName || report.reportedByEmail || 'Standby Engineer',
-            preparedByName: report.preparedByName || 'Salman',
+            preparedByName: report.preparedByName || 'Muhammad Salman Abdurohman',
             preparedByTitle: report.preparedByTitle || '(Electrical Engineer)',
             reviewedByName: report.reviewedByName || 'Arif Budiman',
             reviewedByTitle: report.reviewedByTitle || '(Technical Manager)',
@@ -728,7 +728,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
                                             <div className="space-y-3">
                                                 <div>
-                                                    <h3 className="text-lg font-bold text-slate-900">{report.incidentName || report.issue}</h3>
+                                                    <span className="text-[10px] font-extrabold text-red-600 uppercase tracking-wider block mb-0.5">NAMA ISSUE / INSIDEN</span>
+                                                    <h3 className="text-lg font-bold text-slate-900">{report.incidentName || report.issue || 'Laporan Insiden PIR'}</h3>
                                                     <p className="text-xs text-slate-500 mt-0.5">
                                                         Incident ID: <span className="font-bold text-slate-700">{report.incidentId || report.id?.slice(0, 8)}</span> • Severity Level: <span className="font-bold text-red-600">{report.severityLevel || 'LOW'}</span>
                                                     </p>
@@ -829,14 +830,15 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                                                 <div className="lg:col-span-2 space-y-4">
                                                     <div>
-                                                        <h3 className="text-lg font-bold text-slate-900 mb-1">{report.ticketName}</h3>
-                                                        <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
+                                                        <span className="text-[10px] font-extrabold text-blue-600 uppercase tracking-wider block mb-0.5">NAMA ISSUE / ORDER TIKET</span>
+                                                        <h3 className="text-lg font-bold text-slate-900 mb-1">{report.ticketName || report.issue || 'Laporan Gangguan SLA'}</h3>
+                                                        <div className="flex items-center gap-2 text-slate-500 text-xs font-medium">
                                                             <MapPin className="w-3.5 h-3.5 text-slate-500" />
                                                             <span>{report.location}</span>
-                                                            <span className="text-slate-600">•</span>
+                                                            <span className="text-slate-400">•</span>
                                                             <span className="text-slate-500">Prioritas:</span>
-                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${report.priority === 'High' ? 'bg-rose-500/20 text-rose-400' :
-                                                                    report.priority === 'Medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700/30 text-slate-400'
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${report.priority === 'High' ? 'bg-rose-500/20 text-rose-600' :
+                                                                    report.priority === 'Medium' ? 'bg-amber-500/20 text-amber-700' : 'bg-slate-200 text-slate-700'
                                                                 }`}>{report.priority}</span>
                                                         </div>
                                                     </div>
@@ -969,6 +971,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                         <div className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(report.status)} mb-2`}>
                                                             {report.status}
                                                         </div>
+                                                        <span className="text-[10px] font-extrabold text-red-600 uppercase tracking-wider block mb-0.5">NAMA ISSUE / PERALATAN</span>
                                                         <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                                                             <AlertCircle className="w-4.5 h-4.5 text-rose-600 shrink-0" />
                                                             <span>{report.incidentName || report.issue || report.equipmentName || 'Laporan Insiden / Issue'}</span>

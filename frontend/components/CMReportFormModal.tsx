@@ -35,7 +35,7 @@ import { exportCMReportToDocx } from '@/utils/docxReportExport';
 import { sendFileNotification } from '@/utils/notificationService';
 import { ImageEditor } from './ImageEditor';
 
-import { PREPARED_BY_SIGNATURES } from '@/utils/engineerSignatures';
+import { PREPARED_BY_SIGNATURES, ARIF_BUDIMAN_SIGNATURE_BASE64 } from '@/utils/engineerSignatures';
 
 interface CMReportFormModalProps {
   onSuccess: () => void;
@@ -44,7 +44,7 @@ interface CMReportFormModalProps {
 }
 
 export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormModalProps) {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [editingPhotoIndex, setEditingPhotoIndex] = useState<number | null>(null);
@@ -80,11 +80,12 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     photos: [],
 
     authorName: 'Rizki Novri Yanda – Data Center Operation',
-    preparedByName: 'Salman',
+    preparedByName: 'Muhammad Salman Abdurohman',
     preparedByTitle: '(Electrical Engineer)',
-    preparedBySign: PREPARED_BY_SIGNATURES['Salman'],
+    preparedBySign: PREPARED_BY_SIGNATURES['Muhammad Salman Abdurohman'],
     reviewedByName: 'Arif Budiman',
     reviewedByTitle: '(Technical Manager)',
+    reviewedBySign: ARIF_BUDIMAN_SIGNATURE_BASE64,
     acknowledgedBy1Name: 'Andrean Bima Pratama',
     acknowledgedBy1Title: '(Chief Engineer)',
     acknowledgedBy2Name: 'Supriyatno',
@@ -123,7 +124,23 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
         try {
           const parsed = JSON.parse(savedDraft);
           if (parsed.formData) {
-            setFormData(parsed.formData);
+            let pName = parsed.formData.preparedByName;
+            if (pName === 'Salman') pName = 'Muhammad Salman Abdurohman';
+            if (pName === 'Agil') pName = 'Agil Zakia Amanda';
+            if (pName === 'Asep') pName = 'Asep Mohammad Fauzi';
+            pName = pName || 'Muhammad Salman Abdurohman';
+
+            const rName = parsed.formData.reviewedByName || 'Arif Budiman';
+            const rSign = parsed.formData.reviewedBySign || (rName.toLowerCase().includes('arif') || rName.toLowerCase().includes('budiman') ? ARIF_BUDIMAN_SIGNATURE_BASE64 : '');
+            const pSign = parsed.formData.preparedBySign || (PREPARED_BY_SIGNATURES as Record<string, string>)[pName] || '';
+
+            setFormData({
+              ...parsed.formData,
+              preparedByName: pName,
+              preparedBySign: pSign,
+              reviewedByName: rName,
+              reviewedBySign: rSign,
+            });
           }
           if (parsed.currentStep) {
             setCurrentStep(parsed.currentStep);
@@ -343,8 +360,10 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
         dateFormatted = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
       }
 
-      const prepName = formData.preparedByName || 'Salman';
+      const prepName = formData.preparedByName || 'Muhammad Salman Abdurohman';
       const prepSign = formData.preparedBySign || (PREPARED_BY_SIGNATURES as Record<string, string>)[prepName] || '';
+      const revName = formData.reviewedByName || 'Arif Budiman';
+      const revSign = formData.reviewedBySign || (revName.toLowerCase().includes('arif') || revName.toLowerCase().includes('budiman') ? ARIF_BUDIMAN_SIGNATURE_BASE64 : '');
 
       const formattedData: CMReportData = {
         ...formData,
@@ -352,7 +371,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
         equipmentName: formData.equipmentName || formData.incidentName || 'Equipment',
         location: formData.location || 'Neutra DC Cikarang',
         incidentDate: dateFormatted,
-        incidentId: formData.incidentId || `CM-${Math.floor(1000 + Math.random() * 9000)}`,
+        incidentId: formData.incidentId || 'N/A',
         brand: formData.brand || 'Daikin',
         serialNumber: formData.serialNumber || 'N/A',
         installationDate: formData.installationDate || 'N/A',
@@ -365,9 +384,10 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
         summaryProblemAnalysis: formData.summaryProblemAnalysis || 'Analisis dan pemulihan sistem operasional peralatan.',
         preparedByName: prepName,
         preparedBySign: prepSign,
-        preparedByTitle: formData.preparedByTitle || '(Standby Engineer)',
-        reviewedByName: formData.reviewedByName || 'Arif Budiman',
+        preparedByTitle: formData.preparedByTitle || '(Electrical Engineer)',
+        reviewedByName: revName,
         reviewedByTitle: formData.reviewedByTitle || '(Technical Manager)',
+        reviewedBySign: revSign,
         acknowledgedBy1Name: formData.acknowledgedBy1Name || 'Andrean Bima Pratama',
         acknowledgedBy1Title: formData.acknowledgedBy1Title || '(Chief Engineer)',
         acknowledgedBy2Name: formData.acknowledgedBy2Name || 'Supriyatno',
@@ -377,8 +397,27 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
       };
 
       await exportCMReportToDocx(formattedData);
+
+      // Auto-save to Firestore so it is immediately visible in Arsip Standby
+      if (user) {
+        const reportPayload = {
+          ...formattedData,
+          issue: formattedData.incidentName || formattedData.summaryProblemAnalysis || 'Laporan Issue CM',
+          actionTaken: formattedData.correctiveAction || '-',
+          category: 'CM',
+          reportedBy: user.uid,
+          reportedByEmail: user.email,
+          reportedAt: serverTimestamp(),
+        };
+        if (editId) {
+          await updateDoc(doc(db, 'corrective_reports', editId), reportPayload);
+        } else {
+          await addDoc(collection(db, 'corrective_reports'), reportPayload);
+        }
+      }
+
       localStorage.removeItem('cm_report_draft');
-      toast.success('Laporan CM Word (DOCX) berhasil diekspor!');
+      toast.success('Laporan CM Word (DOCX) berhasil diekspor & disimpan ke Arsip Standby!');
     } catch (err: any) {
       console.error('Error exporting DOCX:', err);
       toast.error('Gagal mengekspor Laporan CM Word');
@@ -398,8 +437,18 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
 
     setSubmitting(true);
     try {
+      const prepName = formData.preparedByName || 'Muhammad Salman Abdurohman';
+      const prepSign = formData.preparedBySign || (PREPARED_BY_SIGNATURES as Record<string, string>)[prepName] || '';
+      const revName = formData.reviewedByName || 'Arif Budiman';
+      const revSign = formData.reviewedBySign || (revName.toLowerCase().includes('arif') || revName.toLowerCase().includes('budiman') ? ARIF_BUDIMAN_SIGNATURE_BASE64 : '');
+
       const reportPayload = {
         ...formData,
+        preparedByName: prepName,
+        preparedBySign: prepSign,
+        reviewedByName: revName,
+        reviewedBySign: revSign,
+        incidentId: formData.incidentId || 'N/A',
         issue: formData.incidentName || formData.summaryProblemAnalysis || formData.visualInspectionChecking || 'Laporan Issue CM',
         actionTaken: formData.correctiveAction || '-',
         category: 'CM',
@@ -533,7 +582,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                   />
                 </div>
 
-                <div>
+                <div className={userRole === 'standby_engineer' ? 'md:col-span-2' : ''}>
                   <label className="block text-xs font-bold text-slate-700 mb-1">INCIDENT DATE</label>
                   <input
                     type="text"
@@ -544,16 +593,18 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">INCIDENT ID</label>
-                  <input
-                    type="text"
-                    value={formData.incidentId}
-                    onChange={e => setFormData({ ...formData, incidentId: e.target.value })}
-                    placeholder="e.g. N/A"
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-red-500 outline-none"
-                  />
-                </div>
+                {userRole !== 'standby_engineer' && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">INCIDENT ID</label>
+                    <input
+                      type="text"
+                      value={formData.incidentId}
+                      onChange={e => setFormData({ ...formData, incidentId: e.target.value })}
+                      placeholder="e.g. N/A"
+                      className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-red-500 outline-none"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 my-2">
@@ -896,9 +947,9 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                       }}
                       className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-900 font-semibold outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
                     >
-                      <option value="Salman">Salman</option>
-                      <option value="Agil">Agil</option>
-                      <option value="Asep">Asep</option>
+                      <option value="Muhammad Salman Abdurohman">Muhammad Salman Abdurohman</option>
+                      <option value="Agil Zakia Amanda">Agil Zakia Amanda</option>
+                      <option value="Asep Mohammad Fauzi">Asep Mohammad Fauzi</option>
                     </select>
                     <input
                       type="text"

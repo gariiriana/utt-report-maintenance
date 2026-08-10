@@ -956,14 +956,15 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
               {/* Ticket Metadata (merged into Step 1) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div>
-                  <label className="block text-sm text-slate-400 font-medium mb-1.5">Nama Order / Tiket (Opsional)</label>
+                  <label className="block text-sm text-slate-400 font-medium mb-1.5">Nama Order / Tiket Issue Gangguan *</label>
                   <div className="relative group">
                     <PenTool className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-red-400 transition" />
                     <input
                       type="text"
+                      required
                       value={formData.ticketName}
                       onChange={(e) => setFormData({ ...formData, ticketName: e.target.value })}
-                      placeholder="Contoh: WO-2026-001 / Reset AC VRV"
+                      placeholder="Contoh: WO-2026-001 / Error Code U9-01 CRAC 2"
                       className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition shadow-sm"
                     />
                   </div>
@@ -1764,8 +1765,39 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
                 onClick={async () => {
                   try {
                     await exportSLAReportToDocx(formData);
+                    if (user) {
+                      const finalReport: any = {
+                        reportType: 'SLA',
+                        ticketName: (formData.ticketName || '').trim() || 'Work Order',
+                        location: (formData.location || '').trim() || 'Neutra DC Cikarang',
+                        priority: formData.priority || 'Medium',
+                        picDME: (formData.picDME || '').trim() || 'On Duty DME',
+                        picTDE: (formData.picTDE || '').trim() || 'FMA - OCS',
+                        remark: (formData.remark || '').trim() || 'Team melaksanakan perbaikan corrective.',
+                        issue: `[SLA / SLG] ${(formData.ticketName || '').trim() || 'Work Order'} (${formData.priority || 'Medium'})`,
+                        actionTaken: (formData.resolutionRemark || '').trim() || (formData.remark || '').trim() || 'Pemeliharaan corrective diselesaikan sesuai target SLA.',
+                        status: 'Resolved',
+                        quarter: `Q${Math.floor(new Date().getMonth() / 3) + 1}`,
+                        year: new Date().getFullYear().toString(),
+                        timeOrder: formData.timeOrder || '',
+                        actualTimeResponse: formData.actualTimeResponse || '',
+                        actualTimeOnsite: formData.actualTimeOnsite || '',
+                        startOrder: formData.startOrder || '',
+                        finishOrder: formData.finishOrder || '',
+                        resolutionRemark: (formData.resolutionRemark || '').trim(),
+                        reportedBy: user.uid,
+                        reportedByEmail: user.email || 'engineer@dwimitra.co.id',
+                        reportedAt: serverTimestamp(),
+                      };
+
+                      if (editId) {
+                        await updateDoc(doc(db, 'corrective_reports', editId), finalReport);
+                      } else {
+                        await addDoc(collection(db, 'corrective_reports'), finalReport);
+                      }
+                    }
                     localStorage.removeItem('sla_form_draft');
-                    toast.success('Laporan SLA Word (DOCX) berhasil diekspor!');
+                    toast.success('Laporan SLA Word (DOCX) berhasil diekspor & disimpan ke Arsip Standby!');
                   } catch (err: any) {
                     console.error('Error exporting SLA DOCX:', err);
                     toast.error('Gagal mengekspor Laporan SLA Word');
