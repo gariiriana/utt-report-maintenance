@@ -31,7 +31,8 @@ import {
   PREPARED_BY_SIGNATURES,
   ARIF_BUDIMAN_SIGNATURE_BASE64,
   normalizeEngineerName,
-  getEngineerSignature
+  getEngineerSignature,
+  cleanSignature
 } from '@/utils/engineerSignatures';
 import { PIRReportData } from '@/types/pirReportTypes';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
@@ -277,15 +278,14 @@ function createBoxSection(title: string, content: string): Table {
 // ==========================================
 export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
   const normalizedPrepName = normalizeEngineerName(data.preparedByName);
-  const resolvedRevSign = (data as any).reviewedBySign ||
+  const resolvedRevSign = cleanSignature((data as any).reviewedBySign) ||
     ((data.reviewedByName || 'Arif Budiman').toLowerCase().includes('arif') || (data.reviewedByName || 'Arif Budiman').toLowerCase().includes('budiman')
       ? ARIF_BUDIMAN_SIGNATURE_BASE64
       : '');
 
-  const resolvedPrepSign = (data as any).preparedBySign ||
+  const resolvedPrepSign = cleanSignature((data as any).preparedBySign) ||
     getEngineerSignature(normalizedPrepName) ||
-    PREPARED_BY_SIGNATURES[normalizedPrepName] ||
-    PREPARED_BY_SIGNATURES['Muhammad Salman Abdurohman'] || '';
+    cleanSignature(PREPARED_BY_SIGNATURES[normalizedPrepName]) || '';
 
   const [logoLeftBytes, logoRightBytes, prepSignBytes, revSignBytes, ack1SignBytes, ack2SignBytes, appSignBytes] = await Promise.all([
     loadImageAsUint8Array(logoDwimitra),

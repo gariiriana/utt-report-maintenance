@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { CMReportData } from '@/types/correctiveReportTypes';
-import { PREPARED_BY_SIGNATURES, ARIF_BUDIMAN_SIGNATURE_BASE64, normalizeEngineerName, getEngineerSignature } from '@/utils/engineerSignatures';
+import { PREPARED_BY_SIGNATURES, ARIF_BUDIMAN_SIGNATURE_BASE64, normalizeEngineerName, getEngineerSignature, cleanSignature } from '@/utils/engineerSignatures';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import { compressBase64Image } from '@/utils/imageCompression';
@@ -553,11 +553,11 @@ export async function generateCMReportPDF(data: CMReportData) {
 
     // Draw Prepared Signature if available
     const normalizedPrepName = normalizeEngineerName(data.preparedByName);
-    const prepSign = (data as any).preparedBySign ||
+    const prepSign = cleanSignature((data as any).preparedBySign) ||
       getEngineerSignature(normalizedPrepName) ||
-      PREPARED_BY_SIGNATURES[normalizedPrepName] ||
-      PREPARED_BY_SIGNATURES['Muhammad Salman Abdurohman'];
-    if (prepSign) {
+      cleanSignature(PREPARED_BY_SIGNATURES[normalizedPrepName]) ||
+      '';
+    if (prepSign && prepSign.trim() !== '') {
       try {
         doc.addImage(prepSign, 'PNG', margin + (sigCellW - 35) / 2, y + headerBarH + 2, 35, sigImageH - 4);
       } catch { /* ignore */ }
