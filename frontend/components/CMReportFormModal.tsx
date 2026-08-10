@@ -44,7 +44,7 @@ interface CMReportFormModalProps {
 }
 
 export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormModalProps) {
-  const { user, userRole } = useAuth();
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [editingPhotoIndex, setEditingPhotoIndex] = useState<number | null>(null);
