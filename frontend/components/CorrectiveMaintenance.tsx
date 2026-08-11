@@ -72,19 +72,23 @@ interface CorrectiveReport {
     targetResponseMin?: number;
     responseComply?: boolean;
     photoResponse?: string;
+    photosResponse?: Array<{ photo: string; description?: string }>;
     photoEngineerOnsite?: string;
     actualOnsiteTimeMin?: number;
     targetOnsiteMin?: number;
     onsiteComply?: boolean;
     photoOnsite?: string;
+    photosOnsite?: Array<{ photo: string; description?: string }>;
     actualRestoreTimeMin?: number;
     targetRestoreMin?: number;
     restoreComply?: boolean;
     photoRestore?: string;
+    photosRestore?: Array<{ photo: string; description?: string }>;
     actualResolutionTimeMin?: number;
     targetResolutionMin?: number;
     resolutionComply?: boolean;
     photoResolution?: string;
+    photosResolution?: Array<{ photo: string; description?: string }>;
 
     // PIR fields
     incidentName?: string;
@@ -283,9 +287,13 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             photoList = report.photos;
         } else if (report.photoBase64) {
             photoList.push({ photoBase64: report.photoBase64, description: report.photoDescription || 'Dokumentasi Kejadian' });
-        } else if (report.photoResponse) {
-            photoList.push({ photoBase64: report.photoResponse, description: 'Bukti Response Time SLA' });
-            if (report.photoEngineerOnsite) photoList.push({ photoBase64: report.photoEngineerOnsite, description: 'Bukti Engineer Onsite SLA' });
+        } else if (report.photosResponse || report.photosOnsite || report.photosRestore || report.photosResolution) {
+            (report.photosResponse || []).forEach((p: any) => photoList.push({ photoBase64: p.photo, description: p.description || 'Bukti Response Time SLA' }));
+            (report.photosOnsite || []).forEach((p: any) => photoList.push({ photoBase64: p.photo, description: p.description || 'Bukti Principle Onsite SLA' }));
+            (report.photosRestore || []).forEach((p: any) => photoList.push({ photoBase64: p.photo, description: p.description || 'Bukti Restore Service SLA' }));
+            (report.photosResolution || []).forEach((p: any) => photoList.push({ photoBase64: p.photo, description: p.description || 'Bukti Resolution Time SLA' }));
+        } else if (report.photoResponse || report.photoOnsite || report.photoRestore || report.photoResolution) {
+            if (report.photoResponse) photoList.push({ photoBase64: report.photoResponse, description: 'Bukti Response Time SLA' });
             if (report.photoOnsite) photoList.push({ photoBase64: report.photoOnsite, description: 'Bukti Principle Onsite SLA' });
             if (report.photoRestore) photoList.push({ photoBase64: report.photoRestore, description: 'Bukti Restore Service SLA' });
             if (report.photoResolution) photoList.push({ photoBase64: report.photoResolution, description: 'Bukti Resolution Time SLA' });
@@ -351,8 +359,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                             type="button"
                             onClick={() => setActiveFormTab('cm_pdf')}
                             className={`px-2.5 sm:px-4 py-2 sm:py-2 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${activeFormTab === 'cm_pdf'
-                                    ? 'bg-red-600 text-white shadow-md'
-                                    : 'text-slate-600 hover:text-slate-900'
+                                ? 'bg-red-600 text-white shadow-md'
+                                : 'text-slate-600 hover:text-slate-900'
                                 }`}
                         >
                             <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
@@ -361,63 +369,63 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         <button
                             type="button"
                             onClick={() => setActiveFormTab('sla')}
-                        className={`px-2.5 sm:px-4 py-2 sm:py-2 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${activeFormTab === 'sla'
+                            className={`px-2.5 sm:px-4 py-2 sm:py-2 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${activeFormTab === 'sla'
                                 ? 'bg-red-600 text-white shadow-md'
                                 : 'text-slate-600 hover:text-slate-900'
-                            }`}
+                                }`}
                         >
-                        <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                        <span className="truncate">Form SLA / SLG (4-Step)</span>
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setActiveFormTab('pir')}
-                        className={`px-2.5 sm:px-4 py-2 sm:py-2 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${activeFormTab === 'pir'
+                            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                            <span className="truncate">Form SLA / SLG (4-Step)</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveFormTab('pir')}
+                            className={`px-2.5 sm:px-4 py-2 sm:py-2 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${activeFormTab === 'pir'
                                 ? 'bg-red-600 text-white shadow-md'
                                 : 'text-slate-600 hover:text-slate-900'
-                            }`}
-                    >
-                        <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                        <span className="truncate">Report PIR (Postmortem)</span>
-                    </button>
+                                }`}
+                        >
+                            <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                            <span className="truncate">Report PIR (Postmortem)</span>
+                        </button>
+                    </div>
                 </div>
-            </div>
 
                 {
-            activeFormTab === 'cm_pdf' ? (
-                <CMReportFormModal
-                    key={`cm_${formKey}`}
-                    onSuccess={() => {
-                        setFormKey(prev => prev + 1);
-                    }}
-                    onCancel={() => {
-                        setFormKey(prev => prev + 1);
-                    }}
-                />
-            ) : activeFormTab === 'sla' ? (
-                <div className="bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl p-6 shadow-lg">
-                    <SLAForm
-                        key={`sla_${formKey}`}
-                        onSuccess={() => {
-                            setFormKey(prev => prev + 1);
-                        }}
-                        onCancel={() => {
-                            setFormKey(prev => prev + 1);
-                        }}
-                    />
-                </div>
-            ) : (
-            <PIRReportFormModal
-                key={`pir_${formKey}`}
-                onSuccess={() => {
-                    setFormKey(prev => prev + 1);
-                }}
-                onCancel={() => {
-                    setFormKey(prev => prev + 1);
-                }}
-            />
-        )
-        }
+                    activeFormTab === 'cm_pdf' ? (
+                        <CMReportFormModal
+                            key={`cm_${formKey}`}
+                            onSuccess={() => {
+                                setFormKey(prev => prev + 1);
+                            }}
+                            onCancel={() => {
+                                setFormKey(prev => prev + 1);
+                            }}
+                        />
+                    ) : activeFormTab === 'sla' ? (
+                        <div className="bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl p-6 shadow-lg">
+                            <SLAForm
+                                key={`sla_${formKey}`}
+                                onSuccess={() => {
+                                    setFormKey(prev => prev + 1);
+                                }}
+                                onCancel={() => {
+                                    setFormKey(prev => prev + 1);
+                                }}
+                            />
+                        </div>
+                    ) : (
+                        <PIRReportFormModal
+                            key={`pir_${formKey}`}
+                            onSuccess={() => {
+                                setFormKey(prev => prev + 1);
+                            }}
+                            onCancel={() => {
+                                setFormKey(prev => prev + 1);
+                            }}
+                        />
+                    )
+                }
             </div >
         );
     }
@@ -445,8 +453,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         setReportFormType(null);
                     }}
                     className={`px-1.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'cm_pdf'
-                            ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
+                        ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
                         }`}
                 >
                     <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
@@ -462,8 +470,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         setReportFormType(null);
                     }}
                     className={`px-1.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'sla'
-                            ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
+                        ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
                         }`}
                 >
                     <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
@@ -479,8 +487,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         setReportFormType(null);
                     }}
                     className={`px-1.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'pir'
-                            ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
-                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
+                        ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 shadow-xs'
                         }`}
                 >
                     <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
@@ -618,8 +626,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                         {archiveFolder === 'sla'
                                             ? '+ Buat Form SLA Baru'
                                             : archiveFolder === 'pir'
-                                            ? '+ Buat Report PIR Baru'
-                                            : '+ Buat Report CM Baru'}
+                                                ? '+ Buat Report PIR Baru'
+                                                : '+ Buat Report CM Baru'}
                                     </button>
                                 )}
 
@@ -672,10 +680,10 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     className={`bg-white/90 backdrop-blur-sm rounded-2xl border overflow-hidden hover:border-blue-300 transition shadow-lg relative ${report.reportType === 'PIR'
-                                            ? 'border-red-400'
-                                            : report.reportType === 'SLA'
-                                                ? 'border-red-300'
-                                                : 'border-slate-200'
+                                        ? 'border-red-400'
+                                        : report.reportType === 'SLA'
+                                            ? 'border-red-300'
+                                            : 'border-slate-200'
                                         }`}
                                 >
                                     {report.reportType === 'PIR' ? (
@@ -839,7 +847,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             <span className="text-slate-400">•</span>
                                                             <span className="text-slate-500">Prioritas:</span>
                                                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${report.priority === 'High' ? 'bg-rose-500/20 text-rose-600' :
-                                                                    report.priority === 'Medium' ? 'bg-amber-500/20 text-amber-700' : 'bg-slate-200 text-slate-700'
+                                                                report.priority === 'Medium' ? 'bg-amber-500/20 text-amber-700' : 'bg-slate-200 text-slate-700'
                                                                 }`}>{report.priority}</span>
                                                         </div>
                                                     </div>
@@ -861,42 +869,37 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
                                                     <div className="space-y-2.5 flex-1 flex flex-col justify-center">
                                                         <div className="flex items-center justify-between text-xs">
-                                                            <span className="text-slate-400">1. Response Time</span>
+                                                            <span className="text-slate-600 font-medium">1. Response Time</span>
                                                             <div className="flex items-center gap-2">
-                                                                <span className="font-bold text-slate-700">{report.actualResponseTimeMin} Min</span>
-                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${report.responseComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                                                <span className="font-bold text-slate-800">{report.actualResponseTimeMin ?? 0} Min</span>
+                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${report.responseComply ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
                                                                     }`}>{report.responseComply ? 'Comply' : 'No Comply'}</span>
                                                             </div>
                                                         </div>
 
                                                         <div className="flex items-center justify-between text-xs">
-                                                            <span className="text-slate-400">2. Engineer Onsite</span>
-                                                            <span className="font-bold text-slate-300">Evidence Ok</span>
-                                                        </div>
-
-                                                        <div className="flex items-center justify-between text-xs">
-                                                            <span className="text-slate-400">3. Principle Onsite</span>
+                                                            <span className="text-slate-600 font-medium">2. Principle Onsite</span>
                                                             <div className="flex items-center gap-2">
-                                                                <span className="font-bold text-slate-300">{report.actualOnsiteTimeMin} Min</span>
-                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${report.onsiteComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                                                <span className="font-bold text-slate-800">{report.actualOnsiteTimeMin ?? 0} Min</span>
+                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${report.onsiteComply ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
                                                                     }`}>{report.onsiteComply ? 'Comply' : 'No Comply'}</span>
                                                             </div>
                                                         </div>
 
                                                         <div className="flex items-center justify-between text-xs">
-                                                            <span className="text-slate-400">4. Restore Service</span>
+                                                            <span className="text-slate-600 font-medium">3. Restore Service</span>
                                                             <div className="flex items-center gap-2">
-                                                                <span className="font-bold text-slate-300">{report.actualRestoreTimeMin} Min</span>
-                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${report.restoreComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                                                <span className="font-bold text-slate-800">{report.actualRestoreTimeMin ?? 0} Min</span>
+                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${report.restoreComply ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
                                                                     }`}>{report.restoreComply ? 'Comply' : 'No Comply'}</span>
                                                             </div>
                                                         </div>
 
                                                         <div className="flex items-center justify-between text-xs">
-                                                            <span className="text-slate-400">5. Resolution Time</span>
+                                                            <span className="text-slate-600 font-medium">4. Resolution Time</span>
                                                             <div className="flex items-center gap-2">
-                                                                <span className="font-bold text-slate-300">{report.actualResolutionTimeMin} Min</span>
-                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${report.resolutionComply ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                                                <span className="font-bold text-slate-800">{report.actualResolutionTimeMin ?? 0} Min</span>
+                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${report.resolutionComply ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
                                                                     }`}>{report.resolutionComply ? 'Comply' : 'No Comply'}</span>
                                                             </div>
                                                         </div>
@@ -905,48 +908,55 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                             </div>
 
                                             <div>
-                                                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-2">Bukti Dokumentasi SLA (5-Step)</span>
-                                                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                                                    {report.photoResponse && (
-                                                        <div className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
-                                                            <img src={report.photoResponse} alt="Response Time Evidence" className="w-full h-24 object-cover" />
-                                                            <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
-                                                                <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">1. Response</span>
-                                                            </div>
+                                                <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider block mb-2">Bukti Dokumentasi SLA (4-Step)</span>
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                    {/* Step 1: Response */}
+                                                    <div className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+                                                        {report.photoResponse || report.photosResponse?.[0]?.photo ? (
+                                                            <img src={report.photoResponse || report.photosResponse?.[0]?.photo} alt="Response Time Evidence" className="w-full h-24 object-cover" />
+                                                        ) : (
+                                                            <div className="w-full h-24 flex items-center justify-center text-slate-400 text-xs italic">Tidak ada foto</div>
+                                                        )}
+                                                        <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
+                                                            <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">1. Response</span>
                                                         </div>
-                                                    )}
-                                                    {report.photoEngineerOnsite && (
-                                                        <div className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
-                                                            <img src={report.photoEngineerOnsite} alt="Engineer Onsite Evidence" className="w-full h-24 object-cover" />
-                                                            <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
-                                                                <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">2. Eng Onsite</span>
-                                                            </div>
+                                                    </div>
+
+                                                    {/* Step 2: Principle Onsite */}
+                                                    <div className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+                                                        {report.photoOnsite || report.photosOnsite?.[0]?.photo ? (
+                                                            <img src={report.photoOnsite || report.photosOnsite?.[0]?.photo} alt="Principle Onsite Evidence" className="w-full h-24 object-cover" />
+                                                        ) : (
+                                                            <div className="w-full h-24 flex items-center justify-center text-slate-400 text-xs italic">Tidak ada foto</div>
+                                                        )}
+                                                        <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
+                                                            <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">2. Princ Onsite</span>
                                                         </div>
-                                                    )}
-                                                    {report.photoOnsite && (
-                                                        <div className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
-                                                            <img src={report.photoOnsite} alt="Principle Onsite Evidence" className="w-full h-24 object-cover" />
-                                                            <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
-                                                                <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">3. Princ Onsite</span>
-                                                            </div>
+                                                    </div>
+
+                                                    {/* Step 3: Restore Service */}
+                                                    <div className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+                                                        {report.photoRestore || report.photosRestore?.[0]?.photo ? (
+                                                            <img src={report.photoRestore || report.photosRestore?.[0]?.photo} alt="Restore Time Evidence" className="w-full h-24 object-cover" />
+                                                        ) : (
+                                                            <div className="w-full h-24 flex items-center justify-center text-slate-400 text-xs italic">Tidak ada foto</div>
+                                                        )}
+                                                        <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
+                                                            <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">3. Restore</span>
                                                         </div>
-                                                    )}
-                                                    {report.photoRestore && (
-                                                        <div className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
-                                                            <img src={report.photoRestore} alt="Restore Time Evidence" className="w-full h-24 object-cover" />
-                                                            <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
-                                                                <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">4. Restore</span>
-                                                            </div>
+                                                    </div>
+
+                                                    {/* Step 4: Resolution */}
+                                                    <div className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+                                                        {report.photoResolution || report.photosResolution?.[0]?.photo ? (
+                                                            <img src={report.photoResolution || report.photosResolution?.[0]?.photo} alt="Resolution Time Evidence" className="w-full h-24 object-cover" />
+                                                        ) : (
+                                                            <div className="w-full h-24 flex items-center justify-center text-slate-400 text-xs italic">Tidak ada foto</div>
+                                                        )}
+                                                        <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
+                                                            <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">4. Resolusi</span>
                                                         </div>
-                                                    )}
-                                                    {report.photoResolution && (
-                                                        <div className="relative group border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
-                                                            <img src={report.photoResolution} alt="Resolution Time Evidence" className="w-full h-24 object-cover" />
-                                                            <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center transition-all">
-                                                                <span className="text-[9px] font-extrabold text-white uppercase tracking-wider">5. Resolusi</span>
-                                                            </div>
-                                                        </div>
-                                                    )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

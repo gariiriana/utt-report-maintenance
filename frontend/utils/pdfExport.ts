@@ -31,19 +31,23 @@ export interface CorrectiveReport {
   targetResponseMin?: number;
   responseComply?: boolean;
   photoResponse?: string;
+  photosResponse?: Array<{ photo: string; description?: string }>;
   photoEngineerOnsite?: string;
   actualOnsiteTimeMin?: number;
   targetOnsiteMin?: number;
   onsiteComply?: boolean;
   photoOnsite?: string;
+  photosOnsite?: Array<{ photo: string; description?: string }>;
   actualRestoreTimeMin?: number;
   targetRestoreMin?: number;
   restoreComply?: boolean;
   photoRestore?: string;
+  photosRestore?: Array<{ photo: string; description?: string }>;
   actualResolutionTimeMin?: number;
   targetResolutionMin?: number;
   resolutionComply?: boolean;
   photoResolution?: string;
+  photosResolution?: Array<{ photo: string; description?: string }>;
   timeOrder?: string;
   actualTimeResponse?: string;
   actualTimeOnsite?: string;
@@ -159,7 +163,7 @@ export async function exportMonthlyPDF(
       typeLabel = 'SLA/SLG CM';
       title = r.ticketName || '-';
       action = r.remark || '-';
-      
+
       // Calculate SLA compliance: Memenuhi / Tidak Memenuhi
       let complies = 0;
       let total = 0;
@@ -167,7 +171,7 @@ export async function exportMonthlyPDF(
       if (r.actualOnsiteTimeMin !== undefined) { total++; if (r.onsiteComply) complies++; }
       if (r.actualRestoreTimeMin !== undefined) { total++; if (r.restoreComply) complies++; }
       if (r.actualResolutionTimeMin !== undefined) { total++; if (r.resolutionComply) complies++; }
-      
+
       statusLabel = (total > 0 && complies === total) ? 'Memenuhi' : 'Tidak Memenuhi';
     }
 
@@ -235,7 +239,7 @@ export async function exportMonthlyPDF(
 
   // --- APPENDIX SECTION: DETAILED SHEETS WITH SCREENSHOT GALLERY ---
   // We separate standard reports (2 per page) and SLA reports (1 per page)
-  
+
   // A. Detailed SLA Reports (1 per page)
   for (let sIdx = 0; sIdx < slaReports.length; sIdx++) {
     const report = slaReports[sIdx];
@@ -252,7 +256,7 @@ export async function exportMonthlyPDF(
 
     // Detailed Info Rows (4 columns)
     doc.setFillColor(250, 250, 250).setDrawColor(SLATE_200).roundedRect(margin, curY, contentW, 16, 1, 1, 'FD');
-    
+
     doc.setFontSize(7).setFont('helvetica', 'bold').setTextColor(GRAY);
     doc.text('LOKASI GANGGUAN', margin + 5, curY + 5);
     doc.setFontSize(8).setFont('helvetica', 'bold').setTextColor(DARK);
@@ -286,10 +290,10 @@ export async function exportMonthlyPDF(
     const remarkBoxH = Math.max(16, remarkLinesCount * 4 + 8);
 
     doc.setFillColor(250, 250, 250).setDrawColor(SLATE_200).roundedRect(margin, curY, contentW, remarkBoxH, 1, 1, 'FD');
-    
+
     doc.setFontSize(7).setFont('helvetica', 'bold').setTextColor(GRAY);
     doc.text('TINDAKAN PERBAIKAN (ACTION TAKEN) / REMARK', margin + 5, curY + 5.5);
-    
+
     doc.setFontSize(8).setFont('helvetica', 'normal').setTextColor(DARK);
     // Draw all lines of the remark cleanly
     doc.text(remarkLines, margin + 5, curY + 11);
@@ -330,14 +334,13 @@ export async function exportMonthlyPDF(
     const gridCapH = 5;
 
     const photosSla = [
-      { base64: report.photoResponse, label: '1. Bukti Response Time' },
-      { base64: report.photoEngineerOnsite, label: '2. Bukti Engineer Onsite Support' },
-      { base64: report.photoOnsite, label: '3. Bukti Onsite Principle Engineer' },
-      { base64: report.photoRestore, label: '4. Bukti Layanan Pulih (RST)' },
-      { base64: report.photoResolution, label: '5. Bukti Tiket Closed (RT)' },
+      { base64: report.photoResponse || (report.photosResponse && report.photosResponse[0]?.photo), label: '1. Bukti Response Time (< 5 Min)' },
+      { base64: report.photoOnsite || (report.photosOnsite && report.photosOnsite[0]?.photo), label: '2. Bukti Onsite Principle (< 120 Min)' },
+      { base64: report.photoRestore || (report.photosRestore && report.photosRestore[0]?.photo), label: '3. Bukti Layanan Pulih / RST (< 120 Min)' },
+      { base64: report.photoResolution || (report.photosResolution && report.photosResolution[0]?.photo), label: '4. Bukti Resolution Time (RT)' },
     ];
 
-    for (let rowIdx = 0; rowIdx < 3; rowIdx++) {
+    for (let rowIdx = 0; rowIdx < 2; rowIdx++) {
       for (let colIdx = 0; colIdx < 2; colIdx++) {
         const photoIdx = rowIdx * 2 + colIdx;
         if (photoIdx >= photosSla.length) break;
@@ -346,7 +349,7 @@ export async function exportMonthlyPDF(
         const y = curY + rowIdx * (gridRowH + gridCapH + 3);
 
         doc.setFillColor(255, 255, 255).setDrawColor(SLATE_200).roundedRect(x, y, gridColW, gridRowH + gridCapH, 1, 1, 'FD');
-        
+
         if (photo.base64) {
           try {
             const dims = await getImageDimensions(photo.base64);
@@ -363,7 +366,7 @@ export async function exportMonthlyPDF(
             }
             const offX = (gridColW - drawW) / 2;
             const offY = (gridRowH - drawH) / 2;
-            
+
             doc.addImage(photo.base64, 'JPEG', x + offX, y + offY, drawW, drawH, `sla_${sIdx}_img_${rowIdx}_${colIdx}`, 'FAST');
           } catch (e) {
             doc.setFontSize(7).setTextColor(GRAY).text('Gagal Memuat Gambar', x + gridColW / 2, y + gridRowH / 2, { align: 'center' });
@@ -457,7 +460,7 @@ export async function exportMonthlyPDF(
     doc.line(photoX, curY + photoH, photoX + photoW, curY + photoH);
     doc.setFillColor(THEME_BLUE).rect(photoX + 2, curY + photoH + 2.5, 0.4, 4, 'F');
     doc.setFontSize(7).setFont('helvetica', 'bold').setTextColor(DARK).text('Foto Dokumentasi Lapangan', photoX + 3.5, curY + photoH + 5.5);
-    
+
     const descText = report.photoDescription || 'Dokumentasi kerusakan/tindakan unit.';
     doc.setFontSize(6.5).setFont('helvetica', 'normal').setTextColor(GRAY);
     const descLines = doc.splitTextToSize(descText, photoW - 6);

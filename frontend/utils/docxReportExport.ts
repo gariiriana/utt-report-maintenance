@@ -458,40 +458,40 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
   const sparepartRows =
     data.spareparts && data.spareparts.length > 0
       ? data.spareparts.map(
-          (sp, idx) =>
-            new TableRow({
-              children: [(idx + 1).toString(), sp.name || '-', sp.brand || '-', sp.qty || '-'].map(
-                (cellVal, cIdx) =>
-                  new TableCell({
-                    width: { size: [10, 50, 25, 15][cIdx], type: WidthType.PERCENTAGE },
-                    margins: { top: 80, bottom: 80, left: 100, right: 100 },
-                    children: [
-                      new Paragraph({
-                        alignment: cIdx === 1 ? AlignmentType.LEFT : AlignmentType.CENTER,
-                        children: [new TextRun({ text: cellVal, size: 20, color: '1E293B', font: 'Century Gothic' })],
-                      }),
-                    ],
-                  })
-              ),
-            })
-        )
-      : [
+        (sp, idx) =>
           new TableRow({
-            children: ['-', '-', '-', '-'].map(
+            children: [(idx + 1).toString(), sp.name || '-', sp.brand || '-', sp.qty || '-'].map(
               (cellVal, cIdx) =>
                 new TableCell({
                   width: { size: [10, 50, 25, 15][cIdx], type: WidthType.PERCENTAGE },
                   margins: { top: 80, bottom: 80, left: 100, right: 100 },
                   children: [
                     new Paragraph({
-                      alignment: AlignmentType.CENTER,
+                      alignment: cIdx === 1 ? AlignmentType.LEFT : AlignmentType.CENTER,
                       children: [new TextRun({ text: cellVal, size: 20, color: '1E293B', font: 'Century Gothic' })],
                     }),
                   ],
                 })
             ),
-          }),
-        ];
+          })
+      )
+      : [
+        new TableRow({
+          children: ['-', '-', '-', '-'].map(
+            (cellVal, cIdx) =>
+              new TableCell({
+                width: { size: [10, 50, 25, 15][cIdx], type: WidthType.PERCENTAGE },
+                margins: { top: 80, bottom: 80, left: 100, right: 100 },
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [new TextRun({ text: cellVal, size: 20, color: '1E293B', font: 'Century Gothic' })],
+                  }),
+                ],
+              })
+          ),
+        }),
+      ];
 
   const sparepartTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
@@ -636,10 +636,10 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
 
   const photoGridTable = photoTableRows.length > 0
     ? new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        borders: cellBorder,
-        rows: photoTableRows,
-      })
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: cellBorder,
+      rows: photoTableRows,
+    })
     : null;
 
   // Signatures Table Grid (Matching PDF Screenshot Layout)
@@ -1084,25 +1084,25 @@ export async function exportSLAReportToDocx(report: any): Promise<void> {
 
     const cell2Children: Paragraph[] = item2
       ? [
-          new Paragraph({
-            alignment: AlignmentType.LEFT,
-            spacing: { before: 60, after: 60 },
-            children: [
-              new TextRun({ text: item2.description, bold: true, size: 15, color: '1E293B' }),
-            ],
-          }),
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 80 },
-            children: [
-              new ImageRun({
-                data: item2.bytes,
-                transformation: { width: item2.width, height: item2.height },
-                type: 'png',
-              }),
-            ],
-          }),
-        ]
+        new Paragraph({
+          alignment: AlignmentType.LEFT,
+          spacing: { before: 60, after: 60 },
+          children: [
+            new TextRun({ text: item2.description, bold: true, size: 15, color: '1E293B' }),
+          ],
+        }),
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 80 },
+          children: [
+            new ImageRun({
+              data: item2.bytes,
+              transformation: { width: item2.width, height: item2.height },
+              type: 'png',
+            }),
+          ],
+        }),
+      ]
       : [];
 
     photoRows.push(
@@ -1280,28 +1280,16 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
   const correctiveActionRows =
     data.correctiveActions && data.correctiveActions.length > 0
       ? data.correctiveActions.map(
-          (ca) =>
-            new TableRow({
-              children: [
-                ca.actionItem || '-',
-                ca.typeOfAction || '-',
-                ca.assignedTo || '-',
-                ca.bug || '-',
-                ca.startDate || '-',
-                ca.endDate || '-',
-              ].map(
-                (cellText, idx) =>
-                  new TableCell({
-                    width: { size: [30, 15, 15, 15, 12, 13][idx], type: WidthType.PERCENTAGE },
-                    margins: { top: 60, bottom: 60, left: 80, right: 80 },
-                    children: [new Paragraph({ children: [new TextRun({ text: cellText, size: 15 })] })],
-                  })
-              ),
-            })
-        )
-      : [
+        (ca) =>
           new TableRow({
-            children: ['-', '-', '-', '-', '-', '-'].map(
+            children: [
+              ca.actionItem || '-',
+              ca.typeOfAction || '-',
+              ca.assignedTo || '-',
+              ca.bug || '-',
+              ca.startDate || '-',
+              ca.endDate || '-',
+            ].map(
               (cellText, idx) =>
                 new TableCell({
                   width: { size: [30, 15, 15, 15, 12, 13][idx], type: WidthType.PERCENTAGE },
@@ -1309,8 +1297,20 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
                   children: [new Paragraph({ children: [new TextRun({ text: cellText, size: 15 })] })],
                 })
             ),
-          }),
-        ];
+          })
+      )
+      : [
+        new TableRow({
+          children: ['-', '-', '-', '-', '-', '-'].map(
+            (cellText, idx) =>
+              new TableCell({
+                width: { size: [30, 15, 15, 15, 12, 13][idx], type: WidthType.PERCENTAGE },
+                margins: { top: 60, bottom: 60, left: 80, right: 80 },
+                children: [new Paragraph({ children: [new TextRun({ text: cellText, size: 15 })] })],
+              })
+          ),
+        }),
+      ];
 
   const pirActionTable = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
@@ -2079,7 +2079,7 @@ export async function exportSLAMonthlyRecapToDocx(reports: any[], periodTitle: s
           ),
 
           // Section 5: Evidence
-          createHeading('5. PENCAPAIAN ENGINEER ONSITE (EVIDENCE BUKTI FOTO)'),
+          createHeading('5. EVIDENCE BUKTI FOTO DOKUMENTASI (4-STEP SLA/SLG)'),
           createSubHeading(`MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG\nPeriode: ${periodTitle}`),
           tableEvidence,
           new Paragraph({ spacing: { after: 200 } }),

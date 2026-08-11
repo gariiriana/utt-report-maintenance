@@ -16,15 +16,15 @@ const formatExcelDate = (dateStr: string): string => {
   if (!dateStr) return '';
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
-  
+
   const MM = d.getMonth() + 1;
   const DD = d.getDate();
   const YYYY = d.getFullYear();
-  
+
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');
   const ss = String(d.getSeconds()).padStart(2, '0');
-  
+
   return `${MM}/${DD}/${YYYY} ${hh}:${mm}:${ss}`;
 };
 
@@ -78,10 +78,10 @@ export async function exportSLAReportToExcel(report: any) {
 
   wsResponse.mergeCells('A6:A7');
   wsResponse.getCell('A6').value = 'NO';
-  
+
   wsResponse.mergeCells('B6:C7');
   wsResponse.getCell('B6').value = 'ORDER/TIKET';
-  
+
   wsResponse.mergeCells('D6:D7');
   wsResponse.getCell('D6').value = 'LOKASI';
 
