@@ -35,7 +35,8 @@ export async function generateGeneratorReportPDF(
   customerInfo: GensetCustomerInfo,
   reportData: GensetReportData,
   timeSpent: GensetTimeSpent,
-  _photos?: any[]
+  _photos?: any[],
+  saveToFile: boolean = true
 ) {
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -289,5 +290,9 @@ export async function generateGeneratorReportPDF(
   });
 
   // Save PDF
-  doc.save(`Service_Report_GENSET_${customerInfo.companyName.replace(/\s+/g, '_')}_${Date.now()}.pdf`);
+  const filename = `Service_Report_GENSET_${customerInfo.companyName.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
+  if (saveToFile) {
+    doc.save(filename);
+  }
+  return { doc, filename, blob: doc.output('blob') };
 }

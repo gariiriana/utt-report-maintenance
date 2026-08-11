@@ -37,7 +37,8 @@ export async function generatePDUServiceReportPDF(
   customerInfo: PDUCustomerInfo,
   reportData: PDUReportData,
   timeSpent: PDUTimeSpent,
-  photosData: Array<{ id: string; photoBase64?: string; description?: string }> = []
+  photosData: Array<{ id: string; photoBase64?: string; description?: string }> = [],
+  saveToFile: boolean = true
 ) {
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -374,5 +375,8 @@ export async function generatePDUServiceReportPDF(
 
   // Save PDF file
   const fileName = `${customerInfo.companyName || 'PDU'}_Service_Report_${customerInfo.date || 'draft'}.pdf`.replace(/\s+/g, '_');
-  doc.save(fileName);
+  if (saveToFile) {
+    doc.save(fileName);
+  }
+  return { doc, fileName, blob: doc.output('blob') };
 }

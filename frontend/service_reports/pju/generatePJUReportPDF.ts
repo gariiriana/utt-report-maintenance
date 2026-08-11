@@ -40,7 +40,8 @@ export async function generatePJUServiceReportPDF(
   customerInfo: PJUCustomerInfo,
   reportData: PJUReportData,
   timeSpent: PJUTimeSpent,
-  originalReportCards?: Array<{ photoBase64?: string; description: string }>
+  originalReportCards?: Array<{ photoBase64?: string; description: string }>,
+  saveToFile: boolean = true
 ) {
   let optimizedCards = originalReportCards || [];
   if (originalReportCards && originalReportCards.length > 0) {
@@ -569,5 +570,8 @@ export async function generatePJUServiceReportPDF(
 
   // Save PDF file
   const filename = `Service_Report_PJU_${customerInfo.mopNo || 'Report'}_${customerInfo.date || 'undated'}.pdf`;
-  doc.save(filename);
+  if (saveToFile) {
+    doc.save(filename);
+  }
+  return { doc, filename, blob: doc.output('blob') };
 }

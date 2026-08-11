@@ -18,8 +18,9 @@ export async function generateDocklevelerReportPDF(
   customerInfo: DocklevelerCustomerInfo,
   reportData: DocklevelerReportData,
   timeSpent: DocklevelerTimeSpent,
-  photos: ReportPhoto[] = []
-): Promise<void> {
+  photos: ReportPhoto[] = [],
+  saveToFile: boolean = true
+) {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -380,5 +381,8 @@ export async function generateDocklevelerReportPDF(
 
   // Save PDF
   const filename = `Service_Report_Dock_Leveler_${customerInfo.companyName.replace(/\s+/g, '_')}_${timeSpent.date || 'draft'}.pdf`;
-  doc.save(filename);
+  if (saveToFile) {
+    doc.save(filename);
+  }
+  return { doc, filename, blob: doc.output('blob') };
 }

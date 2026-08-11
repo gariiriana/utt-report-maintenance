@@ -36,7 +36,8 @@ export async function generateBusductReportPDF(
   customerInfo: BusductCustomerInfo,
   reportData: BusductReportData,
   timeSpent: BusductTimeSpent,
-  originalReportCards?: Array<{ photoBase64?: string; description: string }>
+  originalReportCards?: Array<{ photoBase64?: string; description: string }>,
+  saveToFile: boolean = true
 ) {
   let optimizedCards = originalReportCards || [];
   if (originalReportCards && originalReportCards.length > 0) {
@@ -271,5 +272,9 @@ export async function generateBusductReportPDF(
     }
   }
 
-  doc.save(`Service_Report_BUSDUCT_${customerInfo.serialNo}_${customerInfo.date}.pdf`);
+  const filename = `Service_Report_BUSDUCT_${customerInfo.serialNo}_${customerInfo.date}.pdf`;
+  if (saveToFile) {
+    doc.save(filename);
+  }
+  return { doc, filename, blob: doc.output('blob') };
 }

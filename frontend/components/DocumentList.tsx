@@ -9,12 +9,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen } from 'lucide-react';
 import { collection, query, getDocs, deleteDoc, doc, where, updateDoc, deleteField } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 import { generateReportPDF, loadLogoBase64 } from '@/utils/ReportPdfExport';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
@@ -23,8 +25,22 @@ import logoBRILeft from '@/assets/bri_left_logo.png';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { FileManagement } from './FileManagement';
 import { FindingArchive } from './FindingArchive';
-import { generateHSEPdf } from '@/utils/HSEPdfExport';
-import { generateATSServiceReportPDF, generateFCUServiceReportPDF, generatePJUServiceReportPDF, generatePDUServiceReportPDF, generateCTReportPDF, generateGeneratorReportPDF, generateACSplitReportPDF, generateTrafoReportPDF, generateCapacitorbankReportPDF } from '@/service_reports';
+import { generateHSEPdf, generateHSEPdfBlob } from '@/utils/HSEPdfExport';
+import {
+  generateATSServiceReportPDF,
+  generateFCUServiceReportPDF,
+  generatePJUServiceReportPDF,
+  generatePDUServiceReportPDF,
+  generateCTReportPDF,
+  generateGeneratorReportPDF,
+  generateACSplitReportPDF,
+  generateTrafoReportPDF,
+  generateCapacitorbankReportPDF,
+  generateBusductReportPDF,
+  generateDocklevelerReportPDF,
+  generateDoorReportPDF,
+  generateLdbrdbReportPDF,
+} from '@/service_reports';
 import { getDoc } from 'firebase/firestore';
 import { safeStorage } from '@/utils/safeStorage';
 
@@ -439,400 +455,521 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     }
   };
 
-  const handleDownload = async (docData: ExcelDocument) => {
+  const buildExcelBlob = async (docData: ExcelDocument): Promise<{ blob: Blob; fileName: string }> => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Maintenance Report');
+    worksheet.columns = [
+      { width: 26 },
+      { width: 2 },
+      { width: 26 },
+      { width: 2 },
+      { width: 26 },
+    ];
+    const formatSingleDateDoc = (dStr: string) => {
+      const d = new Date(dStr);
+      return !isNaN(d.getTime())
+        ? d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        : dStr;
+    };
+    const formattedDate = docData.maintenanceTime?.includes(' - ')
+      ? docData.maintenanceTime.split(' - ').map(formatSingleDateDoc).join(' - ')
+      : formatSingleDateDoc(docData.maintenanceTime);
     try {
-      toast.loading('Generating Excel from database...', { id: 'download' });
+      const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
+      const logoLeftResponse = await fetch(leftLogo);
+      const logoLeftBlob = await logoLeftResponse.blob();
+      const logoLeftArrayBuffer = await logoLeftBlob.arrayBuffer();
+      const logoLeftBase64 = btoa(
+        new Uint8Array(logoLeftArrayBuffer).reduce(
+          (data, byte) => data + String.fromCharCode(byte), ''
+        )
+      );
+      const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
+      const logoRightResponse = await fetch(rightLogo);
+      const logoRightBlob = await logoRightResponse.blob();
+      const logoRightArrayBuffer = await logoRightBlob.arrayBuffer();
+      const logoRightBase64 = btoa(
+        new Uint8Array(logoRightArrayBuffer).reduce(
+          (data, byte) => data + String.fromCharCode(byte), ''
+        )
+      );
 
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('Maintenance Report');
-      worksheet.columns = [
-        { width: 26 },
-        { width: 2 },
-        { width: 26 },
-        { width: 2 },
-        { width: 26 },
-      ];
-      const formatSingleDateDoc = (dStr: string) => {
-        const d = new Date(dStr);
-        return !isNaN(d.getTime())
-          ? d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' })
-          : dStr;
-      };
-      const formattedDate = docData.maintenanceTime?.includes(' - ')
-        ? docData.maintenanceTime.split(' - ').map(formatSingleDateDoc).join(' - ')
-        : formatSingleDateDoc(docData.maintenanceTime);
-      try {
-        const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
-        const logoLeftResponse = await fetch(leftLogo);
-        const logoLeftBlob = await logoLeftResponse.blob();
-        const logoLeftArrayBuffer = await logoLeftBlob.arrayBuffer();
-        const logoLeftBase64 = btoa(
-          new Uint8Array(logoLeftArrayBuffer).reduce(
-            (data, byte) => data + String.fromCharCode(byte), ''
-          )
-        );
-        const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
-        const logoRightResponse = await fetch(rightLogo);
-        const logoRightBlob = await logoRightResponse.blob();
-        const logoRightArrayBuffer = await logoRightBlob.arrayBuffer();
-        const logoRightBase64 = btoa(
-          new Uint8Array(logoRightArrayBuffer).reduce(
-            (data, byte) => data + String.fromCharCode(byte), ''
-          )
-        );
+      const dwimitraImageId = workbook.addImage({
+        base64: logoLeftBase64,
+        extension: 'png',
+      });
 
-        const dwimitraImageId = workbook.addImage({
-          base64: logoLeftBase64,
-          extension: 'png',
-        });
-
-        const neutraDCImageId = workbook.addImage({
-          base64: logoRightBase64,
-          extension: 'png',
-        });
-        worksheet.getRow(1).height = 50;
-        worksheet.mergeCells('A1:E1');
-        const titleCell = worksheet.getCell('A1');
-        titleCell.value = `Dokumentasi PM ${docData.maintenanceName} (${formattedDate})`;
-        titleCell.font = { size: 11, bold: true };
-        titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
-        titleCell.border = {
-          top: { style: 'thin', color: { argb: 'FF000000' } },
-          left: { style: 'thin', color: { argb: 'FF000000' } },
-          bottom: { style: 'thin', color: { argb: 'FF000000' } },
-          right: { style: 'thin', color: { argb: 'FF000000' } }
-        };
-        worksheet.addImage(dwimitraImageId, {
-          tl: { col: 0.1, row: 0.15 },
-          ext: { width: 130, height: 50 }
-        });
-        worksheet.addImage(neutraDCImageId, {
-          tl: { col: 4.4, row: 0.15 },
-          ext: { width: 130, height: 50 }
-        });
-
-      } catch (error) {
-        console.error('Logo error:', error);
-      }
-      worksheet.mergeCells('A2:E2');
-      const equipmentCell = worksheet.getCell('A2');
-      equipmentCell.value = docData.specificDetail || docData.maintenanceName;
-      equipmentCell.font = { size: 10, bold: true };
-      equipmentCell.alignment = { horizontal: 'center', vertical: 'middle' };
-      equipmentCell.border = {
+      const neutraDCImageId = workbook.addImage({
+        base64: logoRightBase64,
+        extension: 'png',
+      });
+      worksheet.getRow(1).height = 50;
+      worksheet.mergeCells('A1:E1');
+      const titleCell = worksheet.getCell('A1');
+      titleCell.value = `Dokumentasi PM ${docData.maintenanceName} (${formattedDate})`;
+      titleCell.font = { size: 11, bold: true };
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      titleCell.border = {
         top: { style: 'thin', color: { argb: 'FF000000' } },
         left: { style: 'thin', color: { argb: 'FF000000' } },
         bottom: { style: 'thin', color: { argb: 'FF000000' } },
         right: { style: 'thin', color: { argb: 'FF000000' } }
       };
-      worksheet.getRow(2).height = 30;
-      worksheet.getRow(3).height = 8;
-      let currentRow = 4;
-      let finalPhotosData = docData.photosData || [];
-
-      if (finalPhotosData.length === 0) {
-        try {
-          const photosSnap = await getDocs(
-            collection(db, `excel_documents/${docData.id}/photos`)
-          );
-          if (!photosSnap.empty) {
-            finalPhotosData = photosSnap.docs
-              .map(d => d.data() as PhotoData)
-              .sort((a, b) => a.index - b.index);
-          }
-        } catch (err) {
-          console.error('Failed to fetch subcollection photos (Excel):', err);
-        }
-      }
-
-      const photosData = finalPhotosData;
-
-      for (let i = 0; i < photosData.length; i += 3) {
-        const rowCards = photosData.slice(i, i + 3);
-
-        worksheet.getRow(currentRow).height = 160;
-        worksheet.getRow(currentRow + 1).height = 35;
-
-        const photoColumns = [0, 2, 4];
-
-        for (let j = 0; j < 3; j++) {
-          const card = rowCards[j];
-          const colIndex = photoColumns[j];
-
-          const photoCell = worksheet.getCell(currentRow, colIndex + 1);
-          photoCell.border = {
-            top: { style: 'thick', color: { argb: 'FF000000' } },
-            left: { style: 'thick', color: { argb: 'FF000000' } },
-            bottom: { style: 'thick', color: { argb: 'FF000000' } },
-            right: { style: 'thick', color: { argb: 'FF000000' } }
-          };
-          photoCell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FFFFFFFF' }
-          };
-
-          const captionCell = worksheet.getCell(currentRow + 1, colIndex + 1);
-          captionCell.border = {
-            top: { style: 'thick', color: { argb: 'FF000000' } },
-            left: { style: 'thick', color: { argb: 'FF000000' } },
-            bottom: { style: 'thick', color: { argb: 'FF000000' } },
-            right: { style: 'thick', color: { argb: 'FF000000' } }
-          };
-          captionCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-          captionCell.font = { size: 9 };
-
-          if (card && card.photoBase64) {
-            const base64Data = card.photoBase64.split(',')[1] || card.photoBase64;
-
-            const imageId = workbook.addImage({
-              base64: base64Data,
-              extension: 'jpeg',
-            });
-
-            worksheet.addImage(imageId, {
-              tl: { col: colIndex, row: currentRow - 1 },
-              ext: { width: 120, height: 150 }
-            });
-
-            captionCell.value = card.description || `Photo ${i + j + 1}`;
-          } else if (card) {
-            photoCell.value = '';
-            captionCell.value = card.description || '';
-          }
-        }
-
-        currentRow += 2;
-        worksheet.getRow(currentRow).height = 8;
-        currentRow++;
-      }
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      worksheet.addImage(dwimitraImageId, {
+        tl: { col: 0.1, row: 0.15 },
+        ext: { width: 130, height: 50 }
+      });
+      worksheet.addImage(neutraDCImageId, {
+        tl: { col: 4.4, row: 0.15 },
+        ext: { width: 130, height: 50 }
       });
 
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = docData.fileName;
-      link.click();
-      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Logo error:', error);
+    }
+    worksheet.mergeCells('A2:E2');
+    const equipmentCell = worksheet.getCell('A2');
+    equipmentCell.value = docData.specificDetail || docData.maintenanceName;
+    equipmentCell.font = { size: 10, bold: true };
+    equipmentCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    equipmentCell.border = {
+      top: { style: 'thin', color: { argb: 'FF000000' } },
+      left: { style: 'thin', color: { argb: 'FF000000' } },
+      bottom: { style: 'thin', color: { argb: 'FF000000' } },
+      right: { style: 'thin', color: { argb: 'FF000000' } }
+    };
+    worksheet.getRow(2).height = 30;
+    worksheet.getRow(3).height = 8;
+    let currentRow = 4;
+    let finalPhotosData = docData.photosData || [];
 
-      toast.success('File berhasil diunduh!', { id: 'download' });
+    if (finalPhotosData.length === 0) {
+      try {
+        const photosSnap = await getDocs(
+          collection(db, `excel_documents/${docData.id}/photos`)
+        );
+        if (!photosSnap.empty) {
+          finalPhotosData = photosSnap.docs
+            .map(d => d.data() as PhotoData)
+            .sort((a, b) => a.index - b.index);
+        }
+      } catch (err) {
+        console.error('Failed to fetch subcollection photos (Excel):', err);
+      }
+    }
+
+    const photosData = finalPhotosData;
+
+    for (let i = 0; i < photosData.length; i += 3) {
+      const rowCards = photosData.slice(i, i + 3);
+
+      worksheet.getRow(currentRow).height = 160;
+      worksheet.getRow(currentRow + 1).height = 35;
+
+      const photoColumns = [0, 2, 4];
+
+      for (let j = 0; j < 3; j++) {
+        const card = rowCards[j];
+        const colIndex = photoColumns[j];
+
+        const photoCell = worksheet.getCell(currentRow, colIndex + 1);
+        photoCell.border = {
+          top: { style: 'thick', color: { argb: 'FF000000' } },
+          left: { style: 'thick', color: { argb: 'FF000000' } },
+          bottom: { style: 'thick', color: { argb: 'FF000000' } },
+          right: { style: 'thick', color: { argb: 'FF000000' } }
+        };
+        photoCell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFFFFF' }
+        };
+
+        const captionCell = worksheet.getCell(currentRow + 1, colIndex + 1);
+        captionCell.border = {
+          top: { style: 'thick', color: { argb: 'FF000000' } },
+          left: { style: 'thick', color: { argb: 'FF000000' } },
+          bottom: { style: 'thick', color: { argb: 'FF000000' } },
+          right: { style: 'thick', color: { argb: 'FF000000' } }
+        };
+        captionCell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        captionCell.font = { size: 9 };
+
+        if (card && card.photoBase64) {
+          const base64Data = card.photoBase64.split(',')[1] || card.photoBase64;
+
+          const imageId = workbook.addImage({
+            base64: base64Data,
+            extension: 'jpeg',
+          });
+
+          worksheet.addImage(imageId, {
+            tl: { col: colIndex, row: currentRow - 1 },
+            ext: { width: 120, height: 150 }
+          });
+
+          captionCell.value = card.description || `Photo ${i + j + 1}`;
+        } else if (card) {
+          photoCell.value = '';
+          captionCell.value = card.description || '';
+        }
+      }
+
+      currentRow += 2;
+      worksheet.getRow(currentRow).height = 8;
+      currentRow++;
+    }
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+    const fileName = docData.fileName.endsWith('.xlsx') ? docData.fileName : `${docData.fileName}.xlsx`;
+    return { blob, fileName };
+  };
+
+  const buildPDFBlob = async (docData: ExcelDocument, saveToFile: boolean = false): Promise<{ blob: Blob; fileName: string }[]> => {
+    let finalPhotosData = docData.photosData || [];
+
+    if (finalPhotosData.length === 0) {
+      try {
+        const photosSnap = await getDocs(
+          collection(db, `pdf_documents/${docData.id}/photos`)
+        );
+        if (!photosSnap.empty) {
+          finalPhotosData = photosSnap.docs
+            .map(d => d.data() as PhotoData)
+            .sort((a, b) => a.index - b.index);
+        }
+      } catch (err) {
+        console.error('Failed to fetch subcollection photos (PDF):', err);
+      }
+    }
+
+    const cards = finalPhotosData.map((p, i) => ({
+      id: `archive_${i}`,
+      photo: null as File | null,
+      photoBase64: p.photoBase64 || '',
+      description: p.description || '',
+    }));
+
+    if (docData.createdBy === 'ats@gmail.com' && docData.atsCustomerInfo && docData.atsReportData && docData.atsTimeSpent) {
+      const res = await generateATSServiceReportPDF(
+        docData.atsCustomerInfo,
+        docData.atsReportData,
+        docData.atsTimeSpent,
+        cards,
+        saveToFile
+      );
+      return [{ fileName: res.filename, blob: res.blob }];
+    }
+
+    if (docData.createdBy === 'fcu@gmail.com' && docData.fcuCustomerInfo && docData.fcuReportData && docData.fcuTimeSpent) {
+      const res = await generateFCUServiceReportPDF(
+        docData.fcuCustomerInfo,
+        docData.fcuReportData,
+        docData.fcuTimeSpent,
+        cards,
+        saveToFile
+      );
+      return [{ fileName: res.fileName, blob: res.blob }];
+    }
+
+    if (docData.createdBy === 'pju@gmail.com' && docData.pjuCustomerInfo && docData.pjuReportData && docData.pjuTimeSpent) {
+      const res = await generatePJUServiceReportPDF(
+        docData.pjuCustomerInfo,
+        docData.pjuReportData,
+        docData.pjuTimeSpent,
+        cards,
+        saveToFile
+      );
+      return [{ fileName: res.filename, blob: res.blob }];
+    }
+
+    if (docData.createdBy === 'pdu@gmail.com' && docData.pduCustomerInfo && docData.pduReportData && docData.pduTimeSpent) {
+      const res = await generatePDUServiceReportPDF(
+        docData.pduCustomerInfo,
+        docData.pduReportData,
+        docData.pduTimeSpent,
+        cards,
+        saveToFile
+      );
+      return [{ fileName: res.fileName, blob: res.blob }];
+    }
+
+    if (docData.createdBy === 'coolingtower@gmail.com' && docData.ctCustomerInfo && docData.ctReportData && docData.ctTimeSpent) {
+      const res = await generateCTReportPDF(
+        docData.ctCustomerInfo,
+        docData.ctReportData,
+        docData.ctTimeSpent,
+        cards
+      );
+      const blob = res.doc.output('blob');
+      if (saveToFile) {
+        res.doc.save(res.fileName);
+      }
+      return [{ fileName: res.fileName, blob }];
+    }
+
+    if (docData.createdBy === 'generator@gmail.com' && docData.generatorCustomerInfo && docData.generatorReportData && docData.generatorTimeSpent) {
+      const res = await generateGeneratorReportPDF(
+        docData.generatorCustomerInfo,
+        docData.generatorReportData,
+        docData.generatorTimeSpent,
+        cards,
+        saveToFile
+      );
+      return [{ fileName: res.filename, blob: res.blob }];
+    }
+
+    if (docData.createdBy === 'acsplit@gmail.com' && docData.acSplitCustomerInfo && docData.acSplitReportData && docData.acSplitTimeSpent) {
+      const res = await generateACSplitReportPDF(
+        docData.acSplitCustomerInfo,
+        docData.acSplitReportData,
+        docData.acSplitTimeSpent,
+        cards,
+        saveToFile
+      );
+      return [{ fileName: res.filename, blob: res.blob }];
+    }
+
+    if (docData.createdBy === 'trafo@gmail.com' && docData.trafoCustomerInfo && docData.trafoReportData && docData.trafoTimeSpent) {
+      const resList = await generateTrafoReportPDF(
+        docData.trafoCustomerInfo,
+        docData.trafoReportData,
+        docData.trafoTimeSpent,
+        cards,
+        saveToFile
+      );
+      return resList.map(r => ({ fileName: r.filename, blob: r.blob }));
+    }
+
+    if (docData.createdBy === 'capacitorbank@gmail.com' && docData.capacitorbankCustomerInfo && docData.capacitorbankReportData && docData.capacitorbankTimeSpent) {
+      const res = await generateCapacitorbankReportPDF(
+        docData.capacitorbankCustomerInfo,
+        docData.capacitorbankReportData,
+        docData.capacitorbankTimeSpent,
+        cards,
+        saveToFile
+      );
+      return [{ fileName: res.filename, blob: res.blob }];
+    }
+
+    if (docData.createdBy === 'busduct@gmail.com' && (docData as any).busductCustomerInfo) {
+      const res = await generateBusductReportPDF(
+        (docData as any).busductCustomerInfo,
+        (docData as any).busductReportData,
+        (docData as any).busductTimeSpent,
+        cards,
+        saveToFile
+      );
+      return [{ fileName: res.filename, blob: res.blob }];
+    }
+
+    if (docData.createdBy === 'door@gmail.com' && (docData as any).doorCustomerInfo) {
+      const res = await generateDoorReportPDF(
+        (docData as any).doorCustomerInfo,
+        (docData as any).doorReportData,
+        (docData as any).doorTimeSpent,
+        cards,
+        saveToFile
+      );
+      return [{ fileName: res.filename, blob: res.blob }];
+    }
+
+    if (docData.createdBy === 'dockleveler@gmail.com' && (docData as any).docklevelerCustomerInfo) {
+      const res = await generateDocklevelerReportPDF(
+        (docData as any).docklevelerCustomerInfo,
+        (docData as any).docklevelerReportData,
+        (docData as any).docklevelerTimeSpent,
+        cards,
+        saveToFile
+      );
+      return [{ fileName: res.filename, blob: res.blob }];
+    }
+
+    if (docData.createdBy === 'ldb/rdb@gmail.com' && (docData as any).ldbrdbCustomerInfo) {
+      const res = await generateLdbrdbReportPDF(
+        (docData as any).ldbrdbCustomerInfo,
+        (docData as any).ldbrdbReportData,
+        (docData as any).ldbrdbTimeSpent,
+        cards,
+        saveToFile
+      );
+      return [{ fileName: res.filename, blob: res.blob }];
+    }
+
+    const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
+    const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
+    const [logoLeftB64, logoRightB64] = await Promise.all([
+      loadLogoBase64(leftLogo),
+      loadLogoBase64(rightLogo),
+    ]);
+
+    const result = await generateReportPDF({
+      maintenanceName: docData.maintenanceName,
+      maintenanceTime: docData.maintenanceTime,
+      specificDetail: docData.specificDetail || '',
+      vrvUnitDetail: '',
+      cards,
+      companyType: companyType as 'neutra' | 'bri',
+      userEmail: docData.createdBy,
+      logos: { left: logoLeftB64, right: logoRightB64 },
+    });
+
+    if (!result) {
+      throw new Error('Gagal membuat PDF');
+    }
+
+    const pdfBlob = result.doc.output('blob');
+    const fileName = docData.fileName.endsWith('.pdf') ? docData.fileName : `${docData.fileName}.pdf`;
+    if (saveToFile) {
+      result.doc.save(fileName);
+    }
+    return [{ fileName, blob: pdfBlob }];
+  };
+
+  const buildHSEBlob = async (docData: ExcelDocument, saveToFile: boolean = false): Promise<{ blob: Blob; fileName: string }> => {
+    const hseDoc = await getDoc(doc(db, 'hse', docData.id));
+    if (!hseDoc.exists()) {
+      throw new Error('HSE document not found');
+    }
+
+    const hseData = hseDoc.data();
+    const photosSnap = await getDocs(collection(db, `hse/${docData.id}/photos`));
+    const photos = photosSnap.docs
+      .map(d => {
+        const data = d.data();
+        return {
+          base64: data.dataUrl,
+          description: data.description || '',
+          label: data.label || ''
+        };
+      });
+    const formData = {
+      aktivitas: hseData.aktivitas,
+      lokasi: hseData.lokasi,
+      personil: hseData.personil,
+      pic: hseData.pic,
+      anggota: hseData.anggota,
+      inspectorK3: hseData.inspectorK3 || '',
+      checklist: hseData.checklist,
+      photos: photos,
+      date: hseData.date,
+      reportType: hseData.reportType,
+      hseType: hseData.hseType || 'inspection',
+      maintenanceType: hseData.maintenanceType || 'OTHER'
+    };
+
+    const blob = await generateHSEPdfBlob(formData, userRole || undefined);
+    const fileName = docData.fileName.endsWith('.pdf') ? docData.fileName : `${docData.fileName}.pdf`;
+    if (saveToFile) {
+      const shouldAutoOpen = userRole === 'hse' && user?.email?.toLowerCase() !== 'hsemamik@gmail.com';
+      await generateHSEPdf(formData, shouldAutoOpen, userRole || undefined);
+    }
+    return { blob, fileName };
+  };
+
+  const getDocumentExportFiles = async (
+    docData: ExcelDocument
+  ): Promise<{ name: string; blob: Blob }[]> => {
+    if (docData.documentType === 'excel') {
+      const res = await buildExcelBlob(docData);
+      return [{ name: res.fileName, blob: res.blob }];
+    } else if (docData.documentType === 'hse') {
+      const res = await buildHSEBlob(docData, false);
+      return [{ name: res.fileName, blob: res.blob }];
+    } else {
+      const resList = await buildPDFBlob(docData, false);
+      return resList.map(r => ({ name: r.fileName, blob: r.blob }));
+    }
+  };
+
+  const handleDownload = async (docData: ExcelDocument) => {
+    try {
+      toast.loading('Generating Excel from database...', { id: 'download' });
+      const { blob, fileName } = await buildExcelBlob(docData);
+      saveAs(blob, fileName);
+      toast.success('File Excel berhasil diunduh!', { id: 'download' });
     } catch (error) {
       console.error('Download error:', error);
-      toast.error('Gagal mengunduh file', { id: 'download' });
+      toast.error('Gagal mengunduh file Excel', { id: 'download' });
     }
   };
 
   const handleDownloadPDF = async (docData: ExcelDocument) => {
     try {
       toast.loading('Menghasilkan PDF dari database...', { id: 'download-pdf' });
-
-      let finalPhotosData = docData.photosData || [];
-
-      if (finalPhotosData.length === 0) {
-        try {
-          const photosSnap = await getDocs(
-            collection(db, `pdf_documents/${docData.id}/photos`)
-          );
-          if (!photosSnap.empty) {
-            finalPhotosData = photosSnap.docs
-              .map(d => d.data() as PhotoData)
-              .sort((a, b) => a.index - b.index);
-          }
-        } catch (err) {
-          console.error('Failed to fetch subcollection photos (PDF):', err);
-        }
+      const files = await buildPDFBlob(docData, true);
+      if (files.length === 1 && !docData.createdBy?.startsWith('trafo')) {
+        toast.success('PDF berhasil diunduh!', { id: 'download-pdf' });
       }
-
-      const cards = finalPhotosData.map((p, i) => ({
-        id: `archive_${i}`,
-        photo: null as File | null,
-        photoBase64: p.photoBase64 || '',
-        description: p.description || '',
-      }));
-
-      if (docData.createdBy === 'ats@gmail.com' && docData.atsCustomerInfo && docData.atsReportData && docData.atsTimeSpent) {
-        await generateATSServiceReportPDF(
-          docData.atsCustomerInfo,
-          docData.atsReportData,
-          docData.atsTimeSpent,
-          cards
-        );
-        toast.success('PDF Service Report ATS downloaded successfully!', { id: 'download-pdf' });
-        return;
-      }
-
-      if (docData.createdBy === 'fcu@gmail.com' && docData.fcuCustomerInfo && docData.fcuReportData && docData.fcuTimeSpent) {
-        await generateFCUServiceReportPDF(
-          docData.fcuCustomerInfo,
-          docData.fcuReportData,
-          docData.fcuTimeSpent,
-          cards
-        );
-        toast.success('PDF Service Report FCU downloaded successfully!', { id: 'download-pdf' });
-        return;
-      }
-
-      if (docData.createdBy === 'pju@gmail.com' && docData.pjuCustomerInfo && docData.pjuReportData && docData.pjuTimeSpent) {
-        await generatePJUServiceReportPDF(
-          docData.pjuCustomerInfo,
-          docData.pjuReportData,
-          docData.pjuTimeSpent,
-          cards
-        );
-        toast.success('PDF Service Report PJU downloaded successfully!', { id: 'download-pdf' });
-        return;
-      }
-
-      if (docData.createdBy === 'pdu@gmail.com' && docData.pduCustomerInfo && docData.pduReportData && docData.pduTimeSpent) {
-        await generatePDUServiceReportPDF(
-          docData.pduCustomerInfo,
-          docData.pduReportData,
-          docData.pduTimeSpent,
-          cards
-        );
-        toast.success('PDF Service Report PDU downloaded successfully!', { id: 'download-pdf' });
-        return;
-      }
-
-      if (docData.createdBy === 'coolingtower@gmail.com' && docData.ctCustomerInfo && docData.ctReportData && docData.ctTimeSpent) {
-        await generateCTReportPDF(
-          docData.ctCustomerInfo,
-          docData.ctReportData,
-          docData.ctTimeSpent,
-          cards
-        );
-        toast.success('PDF Service Report Cooling Tower downloaded successfully!', { id: 'download-pdf' });
-        return;
-      }
-
-      if (docData.createdBy === 'generator@gmail.com' && docData.generatorCustomerInfo && docData.generatorReportData && docData.generatorTimeSpent) {
-        await generateGeneratorReportPDF(
-          docData.generatorCustomerInfo,
-          docData.generatorReportData,
-          docData.generatorTimeSpent,
-          cards
-        );
-        toast.success('PDF Service Report Generator downloaded successfully!', { id: 'download-pdf' });
-        return;
-      }
-
-      if (docData.createdBy === 'acsplit@gmail.com' && docData.acSplitCustomerInfo && docData.acSplitReportData && docData.acSplitTimeSpent) {
-        await generateACSplitReportPDF(
-          docData.acSplitCustomerInfo,
-          docData.acSplitReportData,
-          docData.acSplitTimeSpent,
-          cards
-        );
-        toast.success('PDF Service Report Split Wall AC downloaded successfully!', { id: 'download-pdf' });
-        return;
-      }
-
-      if (docData.createdBy === 'trafo@gmail.com' && docData.trafoCustomerInfo && docData.trafoReportData && docData.trafoTimeSpent) {
-        await generateTrafoReportPDF(
-          docData.trafoCustomerInfo,
-          docData.trafoReportData,
-          docData.trafoTimeSpent,
-          cards
-        );
-        toast.success('2 File PDF Service Report Transformator downloaded successfully!', { id: 'download-pdf' });
-        return;
-      }
-
-      if (docData.createdBy === 'capacitorbank@gmail.com' && docData.capacitorbankCustomerInfo && docData.capacitorbankReportData && docData.capacitorbankTimeSpent) {
-        await generateCapacitorbankReportPDF(
-          docData.capacitorbankCustomerInfo,
-          docData.capacitorbankReportData,
-          docData.capacitorbankTimeSpent,
-          cards
-        );
-        toast.success('PDF Service Report Panel APFCR (Capacitor Bank) downloaded successfully!', { id: 'download-pdf' });
-        return;
-      }
-
-      const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
-      const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
-      const [logoLeftB64, logoRightB64] = await Promise.all([
-        loadLogoBase64(leftLogo),
-        loadLogoBase64(rightLogo),
-      ]);
-
-      const result = await generateReportPDF({
-        maintenanceName: docData.maintenanceName,
-        maintenanceTime: docData.maintenanceTime,
-        specificDetail: docData.specificDetail || '',
-        vrvUnitDetail: '',
-        cards,
-        companyType: companyType as 'neutra' | 'bri',
-        userEmail: docData.createdBy,
-        logos: { left: logoLeftB64, right: logoRightB64 },
-      });
-
-      if (!result) {
-        toast.error('Gagal membuat PDF', { id: 'download-pdf' });
-        return;
-      }
-
-      const pdfBlob = result.doc.output('blob');
-      const url = URL.createObjectURL(pdfBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = docData.fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      toast.success('PDF downloaded successfully!', { id: 'download-pdf' });
     } catch (error) {
       console.error('Download PDF error:', error);
-      toast.error('Failed to download PDF', { id: 'download-pdf' });
+      toast.error('Gagal mengunduh PDF', { id: 'download-pdf' });
     }
   };
 
   const handleDownloadHSE = async (docData: ExcelDocument) => {
     try {
       toast.loading('Memuat data laporan HSE...', { id: 'download-hse' });
-      const hseDoc = await getDoc(doc(db, 'hse', docData.id));
-
-      if (!hseDoc.exists()) {
-        throw new Error('HSE document not found');
-      }
-
-      const hseData = hseDoc.data();
-      const photosSnap = await getDocs(collection(db, `hse/${docData.id}/photos`));
-      const photos = photosSnap.docs
-        .map(d => {
-          const data = d.data();
-          return {
-            base64: data.dataUrl,
-            description: data.description || '',
-            label: data.label || ''
-          };
-        });
-      const formData = {
-        aktivitas: hseData.aktivitas,
-        lokasi: hseData.lokasi,
-        personil: hseData.personil,
-        pic: hseData.pic,
-        anggota: hseData.anggota,
-        inspectorK3: hseData.inspectorK3 || '',
-        checklist: hseData.checklist,
-        photos: photos,
-        date: hseData.date,
-        reportType: hseData.reportType,
-        hseType: hseData.hseType || 'inspection',
-        maintenanceType: hseData.maintenanceType || 'OTHER'
-      };
-
-      const shouldAutoOpen = userRole === 'hse' && user?.email?.toLowerCase() !== 'hsemamik@gmail.com';
-      await generateHSEPdf(formData, shouldAutoOpen, userRole || undefined);
+      await buildHSEBlob(docData, true);
       toast.success('PDF HSE berhasil diunduh!', { id: 'download-hse' });
     } catch (error) {
       console.error('Download HSE error:', error);
       toast.error('Gagal mengunduh PDF HSE', { id: 'download-hse' });
+    }
+  };
+
+  const handleDownloadZip = async (docs: ExcelDocument[], zipFileName: string, titleLabel: string) => {
+    if (!docs || docs.length === 0) {
+      toast.error('Tidak ada dokumen di folder ini untuk diunduh');
+      return;
+    }
+    const toastId = toast.loading(`Menyiapkan ${docs.length} dokumen untuk di-download (${titleLabel})...`);
+    try {
+      const zip = new JSZip();
+      const usedNames = new Set<string>();
+
+      for (let i = 0; i < docs.length; i++) {
+        const docItem = docs[i];
+        toast.loading(`[${i + 1}/${docs.length}] Memproses file: ${docItem.maintenanceName || docItem.fileName}...`, { id: toastId });
+        
+        try {
+          const files = await getDocumentExportFiles(docItem);
+          for (const file of files) {
+            let uniqueName = file.name;
+            let counter = 1;
+            while (usedNames.has(uniqueName)) {
+              const dotIdx = file.name.lastIndexOf('.');
+              if (dotIdx !== -1) {
+                const base = file.name.substring(0, dotIdx);
+                const ext = file.name.substring(dotIdx);
+                uniqueName = `${base} (${counter})${ext}`;
+              } else {
+                uniqueName = `${file.name} (${counter})`;
+              }
+              counter++;
+            }
+            usedNames.add(uniqueName);
+            zip.file(uniqueName, file.blob);
+          }
+        } catch (docErr) {
+          console.error(`Gagal memproses dokumen ${docItem.id} untuk zip:`, docErr);
+        }
+      }
+
+      toast.loading(`Mengompres ${usedNames.size} file menjadi arsip .ZIP...`, { id: toastId });
+      const content = await zip.generateAsync({
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 }
+      });
+      const finalZipName = zipFileName.endsWith('.zip') ? zipFileName : `${zipFileName}.zip`;
+      saveAs(content, finalZipName);
+      toast.success(`Berhasil mengunduh folder ${titleLabel} (${usedNames.size} file)!`, { id: toastId });
+    } catch (err: any) {
+      console.error('Failed to create ZIP:', err);
+      toast.error('Gagal membuat file ZIP folder', { id: toastId });
     }
   };
 
@@ -1106,33 +1243,72 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               <p className="text-sm font-semibold text-slate-600">Tidak ada dokumen ditemukan</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {uniqueAccounts.map((account) => {
                 const count = filteredDocuments.filter(d => d.createdBy === account).length;
+                const accountItemDocs = filteredDocuments.filter(d => d.createdBy === account);
                 return (
-                  <motion.button
+                  <motion.div
                     key={account}
-                    whileHover={{ y: -2, scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={() => {
-                      setDmeSelectedAccount(account);
-                      setDmeLevel('month');
-                    }}
-                    className="flex items-center gap-3.5 p-3.5 bg-white hover:bg-amber-50/60 border border-slate-200 hover:border-amber-400 rounded-xl transition-all text-left group shadow-xs hover:shadow-md cursor-pointer"
+                    whileHover={{ y: -2 }}
+                    className="flex flex-col justify-between bg-white border border-slate-200/90 hover:border-amber-400/90 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all group"
                   >
-                    <div className="p-2.5 bg-amber-50 rounded-xl group-hover:bg-amber-100 transition-colors shrink-0">
-                      <Folder className="w-5 h-5 text-amber-600" />
+                    {/* Top Info Area - Clickable to open folder */}
+                    <div
+                      onClick={() => {
+                        setDmeSelectedAccount(account);
+                        setDmeLevel('month');
+                      }}
+                      className="flex items-start gap-3.5 cursor-pointer pb-3"
+                    >
+                      <div className="p-2.5 bg-gradient-to-br from-amber-50 to-amber-100/80 rounded-xl text-amber-600 border border-amber-200/60 shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                        <Folder className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm font-bold text-slate-900 group-hover:text-amber-900 transition-colors truncate">
+                          {account}
+                        </h3>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
+                            {count} Laporan
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <span className="text-sm font-bold text-slate-900 group-hover:text-amber-900 transition-colors truncate block">
-                        {account}
-                      </span>
-                      <span className="text-xs font-medium text-slate-500 block mt-0.5">
-                        {count} Laporan
-                      </span>
+
+                    {/* Bottom Action Buttons - Jelas & Terpisah */}
+                    <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDmeSelectedAccount(account);
+                          setDmeLevel('month');
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+                        title={`Buka Folder ${account}`}
+                      >
+                        <FolderOpen className="w-3.5 h-3.5" />
+                        <span>Buka Folder</span>
+                        <ChevronRight className="w-3.5 h-3.5 opacity-70" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadZip(
+                            accountItemDocs,
+                            `PM_${account.replace(/[^a-zA-Z0-9]/g, '_')}_Semua_Laporan.zip`,
+                            `Akun ${account}`
+                          );
+                        }}
+                        className="flex items-center justify-center gap-1.5 py-1.5 px-3 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 hover:border-emerald-600 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs shrink-0"
+                        title={`Download Semua Laporan (${account}) .ZIP`}
+                      >
+                        <FolderDown className="w-3.5 h-3.5" />
+                        <span>Download .ZIP</span>
+                      </button>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-amber-600 transition-colors shrink-0" />
-                  </motion.button>
+                  </motion.div>
                 );
               })}
             </div>
@@ -1151,20 +1327,37 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       });
 
       return (
-        <div className="bg-white/90 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 shadow-xl w-full max-w-6xl space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-3">
+        <div className="bg-white/90 backdrop-blur-xl p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-xl w-full max-w-6xl space-y-4 sm:space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-3">
             <button
               onClick={() => {
                 setDmeSelectedAccount(null);
                 setDmeLevel('account');
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg transition-colors text-xs font-bold cursor-pointer border border-slate-200"
+              className="flex items-center justify-center sm:justify-start gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg transition-colors text-xs font-bold cursor-pointer border border-slate-200 w-full sm:w-auto"
             >
               <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Akun
             </button>
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
-              <span>Folder:</span>
-              <span className="px-2.5 py-1 bg-amber-50 text-amber-800 rounded-md border border-amber-200">{dmeSelectedAccount}</span>
+            <div className="flex items-center justify-between sm:justify-end gap-2 flex-wrap w-full sm:w-auto">
+              <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <span>Folder:</span>
+                <span className="px-2 py-0.5 bg-amber-50 text-amber-800 rounded-md border border-amber-200 truncate max-w-[150px] sm:max-w-none inline-block align-middle">{dmeSelectedAccount}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDownloadZip(
+                  accountDocs,
+                  `PM_${(dmeSelectedAccount || 'Akun').replace(/[^a-zA-Z0-9]/g, '_')}_Semua_Laporan.zip`,
+                  `Akun ${dmeSelectedAccount}`
+                )}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-xs text-xs font-bold transition-all cursor-pointer hover:shadow-md shrink-0"
+                title="Download Semua Laporan Akun Ini (.ZIP)"
+              >
+                <FolderDown className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">Download Semua Bulan (.ZIP)</span>
+                <span className="xs:hidden">Download (.ZIP)</span>
+                <span className="px-1.5 py-0.2 bg-white/20 rounded-full text-[10px]">{accountDocs.length}</span>
+              </button>
             </div>
           </div>
 
@@ -1174,33 +1367,72 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               <p className="text-sm font-semibold text-slate-600">Tidak ada folder bulan</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {sortedMonths.map((month) => {
-                const count = accountDocs.filter(d => getMonthYearString(d.createdAt) === month).length;
+                const monthItemDocs = accountDocs.filter(d => getMonthYearString(d.createdAt) === month);
+                const count = monthItemDocs.length;
                 return (
-                  <motion.button
+                  <motion.div
                     key={month}
-                    whileHover={{ y: -2, scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={() => {
-                      setDmeSelectedMonth(month);
-                      setDmeLevel('date');
-                    }}
-                    className="flex items-center gap-3.5 p-3.5 bg-white hover:bg-amber-50/60 border border-slate-200 hover:border-amber-400 rounded-xl transition-all text-left group shadow-xs hover:shadow-md cursor-pointer"
+                    whileHover={{ y: -2 }}
+                    className="flex flex-col justify-between bg-white border border-slate-200/90 hover:border-amber-400/90 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all group"
                   >
-                    <div className="p-2.5 bg-amber-50 rounded-xl group-hover:bg-amber-100 transition-colors shrink-0">
-                      <Folder className="w-5 h-5 text-amber-600" />
+                    {/* Top Info Area - Clickable to open folder */}
+                    <div
+                      onClick={() => {
+                        setDmeSelectedMonth(month);
+                        setDmeLevel('date');
+                      }}
+                      className="flex items-start gap-3.5 cursor-pointer pb-3"
+                    >
+                      <div className="p-2.5 bg-gradient-to-br from-amber-50 to-amber-100/80 rounded-xl text-amber-600 border border-amber-200/60 shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                        <Folder className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm font-bold text-slate-900 group-hover:text-amber-900 transition-colors truncate">
+                          {month}
+                        </h3>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
+                            {count} Laporan
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <span className="text-sm font-bold text-slate-900 group-hover:text-amber-900 transition-colors truncate block">
-                        {month}
-                      </span>
-                      <span className="text-xs font-medium text-slate-500 block mt-0.5">
-                        {count} Laporan
-                      </span>
+
+                    {/* Bottom Action Buttons - Jelas & Terpisah */}
+                    <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDmeSelectedMonth(month);
+                          setDmeLevel('date');
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+                        title={`Buka Folder ${month}`}
+                      >
+                        <FolderOpen className="w-3.5 h-3.5" />
+                        <span>Buka Folder</span>
+                        <ChevronRight className="w-3.5 h-3.5 opacity-70" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadZip(
+                            monthItemDocs,
+                            `PM_${(dmeSelectedAccount || 'Akun').replace(/[^a-zA-Z0-9]/g, '_')}_${month.replace(/[^a-zA-Z0-9]/g, '_')}.zip`,
+                            `Bulan ${month}`
+                          );
+                        }}
+                        className="flex items-center justify-center gap-1.5 py-1.5 px-3 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 hover:border-emerald-600 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs shrink-0"
+                        title={`Download Semua Laporan Bulan ${month} (.ZIP)`}
+                      >
+                        <FolderDown className="w-3.5 h-3.5" />
+                        <span>Download .ZIP</span>
+                      </button>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-amber-600 transition-colors shrink-0" />
-                  </motion.button>
+                  </motion.div>
                 );
               })}
             </div>
@@ -1223,22 +1455,39 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       });
 
       return (
-        <div className="bg-white/90 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 shadow-xl w-full max-w-6xl space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-3">
+        <div className="bg-white/90 backdrop-blur-xl p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-xl w-full max-w-6xl space-y-4 sm:space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-3">
             <button
               onClick={() => {
                 setDmeSelectedMonth(null);
                 setDmeLevel('month');
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg transition-colors text-xs font-bold cursor-pointer border border-slate-200"
+              className="flex items-center justify-center sm:justify-start gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg transition-colors text-xs font-bold cursor-pointer border border-slate-200 w-full sm:w-auto"
             >
               <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Bulan
             </button>
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-wider flex-wrap">
-              <span>Folder:</span>
-              <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200">{dmeSelectedAccount}</span>
-              <span>/</span>
-              <span className="px-2 py-0.5 bg-amber-50 text-amber-800 rounded border border-amber-200">{dmeSelectedMonth}</span>
+            <div className="flex items-center justify-between sm:justify-end gap-2 flex-wrap w-full sm:w-auto">
+              <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider flex-wrap">
+                <span>Folder:</span>
+                <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200 truncate max-w-[120px] sm:max-w-none inline-block align-middle">{dmeSelectedAccount}</span>
+                <span>/</span>
+                <span className="px-2 py-0.5 bg-amber-50 text-amber-800 rounded border border-amber-200">{dmeSelectedMonth}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDownloadZip(
+                  monthDocs,
+                  `PM_${(dmeSelectedAccount || 'Akun').replace(/[^a-zA-Z0-9]/g, '_')}_${(dmeSelectedMonth || 'Bulan').replace(/[^a-zA-Z0-9]/g, '_')}.zip`,
+                  `Bulan ${dmeSelectedMonth}`
+                )}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-xs text-xs font-bold transition-all cursor-pointer hover:shadow-md shrink-0"
+                title="Download Semua Laporan Bulan Ini (.ZIP)"
+              >
+                <FolderDown className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">Download Semua Tanggal (.ZIP)</span>
+                <span className="xs:hidden">Download (.ZIP)</span>
+                <span className="px-1.5 py-0.2 bg-white/20 rounded-full text-[10px]">{monthDocs.length}</span>
+              </button>
             </div>
           </div>
 
@@ -1248,33 +1497,72 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               <p className="text-sm font-semibold text-slate-600">Tidak ada folder tanggal</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {sortedDates.map((dateStr) => {
-                const count = monthDocs.filter(d => getFullDateString(d.createdAt) === dateStr).length;
+                const dateItemDocs = monthDocs.filter(d => getFullDateString(d.createdAt) === dateStr);
+                const count = dateItemDocs.length;
                 return (
-                  <motion.button
+                  <motion.div
                     key={dateStr}
-                    whileHover={{ y: -2, scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                    onClick={() => {
-                      setDmeSelectedDate(dateStr);
-                      setDmeLevel('documents');
-                    }}
-                    className="flex items-center gap-3.5 p-3.5 bg-white hover:bg-amber-50/60 border border-slate-200 hover:border-amber-400 rounded-xl transition-all text-left group shadow-xs hover:shadow-md cursor-pointer"
+                    whileHover={{ y: -2 }}
+                    className="flex flex-col justify-between bg-white border border-slate-200/90 hover:border-amber-400/90 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all group"
                   >
-                    <div className="p-2.5 bg-amber-50 rounded-xl group-hover:bg-amber-100 transition-colors shrink-0">
-                      <Folder className="w-5 h-5 text-amber-600" />
+                    {/* Top Info Area - Clickable to open folder */}
+                    <div
+                      onClick={() => {
+                        setDmeSelectedDate(dateStr);
+                        setDmeLevel('documents');
+                      }}
+                      className="flex items-start gap-3.5 cursor-pointer pb-3"
+                    >
+                      <div className="p-2.5 bg-gradient-to-br from-amber-50 to-amber-100/80 rounded-xl text-amber-600 border border-amber-200/60 shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                        <Folder className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm font-bold text-slate-900 group-hover:text-amber-900 transition-colors truncate">
+                          {dateStr}
+                        </h3>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
+                            {count} Laporan
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <span className="text-sm font-bold text-slate-900 group-hover:text-amber-900 transition-colors truncate block">
-                        {dateStr}
-                      </span>
-                      <span className="text-xs font-medium text-slate-500 block mt-0.5">
-                        {count} Laporan
-                      </span>
+
+                    {/* Bottom Action Buttons - Jelas & Terpisah */}
+                    <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDmeSelectedDate(dateStr);
+                          setDmeLevel('documents');
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+                        title={`Buka Folder ${dateStr}`}
+                      >
+                        <FolderOpen className="w-3.5 h-3.5" />
+                        <span>Buka Folder</span>
+                        <ChevronRight className="w-3.5 h-3.5 opacity-70" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadZip(
+                            dateItemDocs,
+                            `PM_${(dmeSelectedAccount || 'Akun').replace(/[^a-zA-Z0-9]/g, '_')}_${dateStr.replace(/[^a-zA-Z0-9]/g, '_')}.zip`,
+                            `${dateStr}`
+                          );
+                        }}
+                        className="flex items-center justify-center gap-1.5 py-1.5 px-3 bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200 hover:border-emerald-600 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs shrink-0"
+                        title={`Download Semua Laporan Tanggal ${dateStr} (.ZIP)`}
+                      >
+                        <FolderDown className="w-3.5 h-3.5" />
+                        <span>Download .ZIP</span>
+                      </button>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-amber-600 transition-colors shrink-0" />
-                  </motion.button>
+                  </motion.div>
                 );
               })}
             </div>
@@ -1292,24 +1580,41 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     const dateDocs = monthDocs.filter(d => getFullDateString(d.createdAt) === dmeSelectedDate);
 
     return (
-      <div className="space-y-4 w-full max-w-6xl bg-white/90 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 shadow-xl">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-3">
+      <div className="space-y-4 w-full max-w-6xl bg-white/90 backdrop-blur-xl p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-3">
           <button
             onClick={() => {
               setDmeSelectedDate(null);
               setDmeLevel('date');
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg transition-colors text-xs font-bold cursor-pointer border border-slate-200"
+            className="flex items-center justify-center sm:justify-start gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg transition-colors text-xs font-bold cursor-pointer border border-slate-200 w-full sm:w-auto"
           >
             <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Tanggal
           </button>
-          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider flex-wrap">
-            <span>Folder:</span>
-            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200">{dmeSelectedAccount}</span>
-            <span>/</span>
-            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200">{dmeSelectedMonth}</span>
-            <span>/</span>
-            <span className="px-2 py-0.5 bg-amber-50 text-amber-800 rounded border border-amber-200">{dmeSelectedDate}</span>
+          <div className="flex items-center justify-between sm:justify-end gap-2 flex-wrap w-full sm:w-auto">
+            <div className="flex items-center gap-1 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider flex-wrap">
+              <span>Folder:</span>
+              <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200 truncate max-w-[90px] sm:max-w-none inline-block align-middle">{dmeSelectedAccount}</span>
+              <span>/</span>
+              <span className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200">{dmeSelectedMonth}</span>
+              <span>/</span>
+              <span className="px-1.5 py-0.5 bg-amber-50 text-amber-800 rounded border border-amber-200">{dmeSelectedDate}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleDownloadZip(
+                dateDocs,
+                `PM_${(dmeSelectedAccount || 'Akun').replace(/[^a-zA-Z0-9]/g, '_')}_${(dmeSelectedDate || 'Tanggal').replace(/[^a-zA-Z0-9]/g, '_')}.zip`,
+                `${dmeSelectedDate}`
+              )}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-xs text-xs font-bold transition-all cursor-pointer hover:shadow-md shrink-0"
+              title="Download Semua File Tanggal Ini (.ZIP)"
+            >
+              <FolderDown className="w-4 h-4" />
+              <span className="hidden xs:inline">Download Folder (.ZIP)</span>
+              <span className="xs:hidden">Download (.ZIP)</span>
+              <span className="px-1.5 py-0.2 bg-white/20 rounded-full text-[10px]">{dateDocs.length}</span>
+            </button>
           </div>
         </div>
         <div className="grid grid-cols-1 gap-4">

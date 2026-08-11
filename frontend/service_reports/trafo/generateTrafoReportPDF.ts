@@ -39,7 +39,8 @@ export async function generateTrafoReportPDF(
   customerInfo: TrafoCustomerInfo,
   reportData: TrafoReportData,
   timeSpent: TrafoTimeSpent,
-  originalReportCards?: Array<{ photoBase64?: string; description: string }>
+  originalReportCards?: Array<{ photoBase64?: string; description: string }>,
+  saveToFile: boolean = true
 ) {
   let optimizedCards = originalReportCards || [];
   if (originalReportCards && originalReportCards.length > 0) {
@@ -383,7 +384,10 @@ export async function generateTrafoReportPDF(
   addDocumentationPages(doc1, pageW, margin);
 
   // Save PDF 1
-  doc1.save(`Service_Report_Transformator_Format1_${cleanMop}.pdf`);
+  const filename1 = `Service_Report_Transformator_Format1_${cleanMop}.pdf`;
+  if (saveToFile) {
+    doc1.save(filename1);
+  }
 
 
   // ═════════════════════════════════════════════════════════════════════
@@ -613,6 +617,13 @@ export async function generateTrafoReportPDF(
   addDocumentationPages(doc2, pageW, margin);
 
   // Save PDF 2
-  doc2.save(`Service_Report_Transformator_Format2_${cleanMop}.pdf`);
-  toast.success('2 File PDF Service Report Transformator berhasil diunduh secara bersamaan!');
+  const filename2 = `Service_Report_Transformator_Format2_${cleanMop}.pdf`;
+  if (saveToFile) {
+    doc2.save(filename2);
+    toast.success('2 File PDF Service Report Transformator berhasil diunduh secara bersamaan!');
+  }
+  return [
+    { doc: doc1, filename: filename1, blob: doc1.output('blob') },
+    { doc: doc2, filename: filename2, blob: doc2.output('blob') }
+  ];
 }

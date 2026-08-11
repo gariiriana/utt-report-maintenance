@@ -46,8 +46,9 @@ export async function generateCapacitorbankReportPDF(
   customerInfo: CapacitorbankCustomerInfo,
   reportData: CapacitorbankReportData,
   timeSpent: CapacitorbankTimeSpent,
-  photos: ReportPhoto[] = []
-): Promise<void> {
+  photos: ReportPhoto[] = [],
+  saveToFile: boolean = true
+) {
   // Compress photos if present
   let optimizedPhotos = photos;
   if (photos && photos.length > 0) {
@@ -652,6 +653,9 @@ export async function generateCapacitorbankReportPDF(
 
   // Save PDF
   const filename = `Service_Report_Capacitor_Bank_${(customerInfo.companyName || 'NeutraDC').replace(/\s+/g, '_')}_${timeSpent.date || 'draft'}.pdf`;
-  doc.save(filename);
+  if (saveToFile) {
+    doc.save(filename);
+  }
+  return { doc, filename, blob: doc.output('blob') };
 }
 

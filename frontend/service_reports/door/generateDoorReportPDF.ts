@@ -18,8 +18,9 @@ export async function generateDoorReportPDF(
   customerInfo: DoorCustomerInfo,
   reportData: DoorReportData,
   timeSpent: DoorTimeSpent,
-  photos: ReportPhoto[] = []
-): Promise<void> {
+  photos: ReportPhoto[] = [],
+  saveToFile: boolean = true
+) {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -440,5 +441,8 @@ export async function generateDoorReportPDF(
 
   // Save PDF
   const filename = `Service_Report_Door_${customerInfo.companyName.replace(/\s+/g, '_')}_${timeSpent.date || 'draft'}.pdf`;
-  doc.save(filename);
+  if (saveToFile) {
+    doc.save(filename);
+  }
+  return { doc, filename, blob: doc.output('blob') };
 }

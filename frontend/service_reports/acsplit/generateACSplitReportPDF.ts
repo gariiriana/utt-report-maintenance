@@ -44,7 +44,8 @@ export async function generateACSplitReportPDF(
   customerInfo: ACSplitCustomerInfo,
   reportData: ACSplitReportData,
   timeSpent: ACSplitTimeSpent,
-  originalReportCards?: Array<{ photoBase64?: string; description: string }>
+  originalReportCards?: Array<{ photoBase64?: string; description: string }>,
+  saveToFile: boolean = true
 ) {
   let optimizedCards = originalReportCards || [];
   if (originalReportCards && originalReportCards.length > 0) {
@@ -394,5 +395,8 @@ export async function generateACSplitReportPDF(
 
   // Save PDF
   const filename = `Service_Report_AC_Split_${customerInfo.mopNo ? customerInfo.mopNo.replace(/[/\\?%*:|"<>]/g, '_') : 'NeutraDC'}.pdf`;
-  doc.save(filename);
+  if (saveToFile) {
+    doc.save(filename);
+  }
+  return { doc, filename, blob: doc.output('blob') };
 }

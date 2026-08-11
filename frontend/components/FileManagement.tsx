@@ -18,8 +18,12 @@ import {
     X,
     Loader2,
     ChevronLeft,
+    FileText,
+    FolderDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 import { db } from '@/api/firebase';
 import {
     collection,
@@ -40,7 +44,6 @@ import { generateCMReportPDF } from '@/utils/CMReportPdfExport';
 import { generatePIRReportPDF } from '@/utils/PIRReportPdfExport';
 import { exportCMReportToDocx, exportSLAReportToDocx, exportPIRReportToDocx, exportSLAMonthlyRecapToDocx } from '@/utils/docxReportExport';
 import { sendFileNotification } from '@/utils/notificationService';
-import { FileText } from 'lucide-react';
 import { useAuth } from './AuthContext';
 
 const YellowFolderIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
@@ -653,6 +656,98 @@ export function FileManagement({
         }
     };
 
+    const handleDownloadFolderZip = async () => {
+        if (displayFiles.length === 0) {
+            toast.error('Tidak ada file di folder ini untuk diunduh');
+            return;
+        }
+
+        const currentFolderName = selectedMType || selectedQuarter || selectedFolder || initialFolder || 'Folder';
+        const toastId = toast.loading(`Menyiapkan ${displayFiles.length} file untuk di-download (${currentFolderName})...`);
+        try {
+            const zip = new JSZip();
+            const usedNames = new Set<string>();
+
+            for (let i = 0; i < displayFiles.length; i++) {
+                const file = displayFiles[i];
+                toast.loading(`[${i + 1}/${displayFiles.length}] Mengambil file: ${file.fileName}...`, { id: toastId });
+
+                try {
+                    if (file.isCorrectiveReport) {
+                        continue;
+                    }
+                    const chunksSnapshot = await getDocs(query(collection(db, collectionName, file.id, 'chunks'), orderBy('index')));
+                    if (!chunksSnapshot.empty) {
+                        const byteArrays: Uint8Array[] = [];
+                        let mimeString = file.fileType || 'application/octet-stream';
+
+                        chunksSnapshot.forEach(docSnap => {
+                            const data = docSnap.data();
+                            if (data.data) {
+                                let base64Part = data.data;
+                                if (base64Part.includes(';base64,')) {
+                                    const parts = base64Part.split(';base64,');
+                                    if (parts[0].startsWith('data:')) {
+                                        const extractedMime = parts[0].replace('data:', '').trim();
+                                        if (extractedMime) mimeString = extractedMime;
+                                    }
+                                    base64Part = parts[1];
+                                } else if (base64Part.includes(',')) {
+                                    base64Part = base64Part.split(',')[1];
+                                }
+                                base64Part = base64Part.replace(/[\r\n\s]/g, '');
+
+                                const byteCharacters = atob(base64Part);
+                                const byteNumbers = new Array(byteCharacters.length);
+                                for (let k = 0; k < byteCharacters.length; k++) {
+                                    byteNumbers[k] = byteCharacters.charCodeAt(k);
+                                }
+                                byteArrays.push(new Uint8Array(byteNumbers));
+                            }
+                        });
+
+                        const blob = new Blob(byteArrays as any[], { type: mimeString });
+                        let uniqueName = file.fileName;
+                        let counter = 1;
+                        while (usedNames.has(uniqueName)) {
+                            const dotIdx = file.fileName.lastIndexOf('.');
+                            if (dotIdx !== -1) {
+                                const base = file.fileName.substring(0, dotIdx);
+                                const ext = file.fileName.substring(dotIdx);
+                                uniqueName = `${base} (${counter})${ext}`;
+                            } else {
+                                uniqueName = `${file.fileName} (${counter})`;
+                            }
+                            counter++;
+                        }
+                        usedNames.add(uniqueName);
+                        zip.file(uniqueName, blob);
+                    }
+                } catch (fileErr) {
+                    console.error(`Gagal memproses berkas ${file.fileName} untuk zip:`, fileErr);
+                }
+            }
+
+            if (usedNames.size === 0) {
+                toast.error('Tidak ada berkas yang dapat dikompres.', { id: toastId });
+                return;
+            }
+
+            toast.loading(`Mengompres ${usedNames.size} file menjadi .ZIP...`, { id: toastId });
+            const content = await zip.generateAsync({
+                type: 'blob',
+                compression: 'DEFLATE',
+                compressionOptions: { level: 6 }
+            });
+            const zipName = `Berkas_${currentFolderName.replace(/[^a-zA-Z0-9]/g, '_')}.zip`;
+            saveAs(content, zipName);
+            toast.success(`Berhasil mengunduh folder ${currentFolderName} (${usedNames.size} file)!`, { id: toastId });
+        } catch (err: any) {
+            console.error('Failed to create ZIP:', err);
+            toast.error('Gagal membuat file ZIP folder', { id: toastId });
+        }
+    };
+
     const isTypeMatch = (fMType?: string, targetType?: string | null) => {
         if (!targetType) return true;
         if (!fMType) return false;
@@ -1085,6 +1180,19 @@ export function FileManagement({
                             >
                                 <FileText className="w-4 h-4" />
                                 Export Rekap SLA (DOCX)
+                            </button>
+                        )}
+
+                        {((selectedFolder || selectedQuarter || selectedMType || initialFolder) && displayFiles.length > 0) && (
+                            <button
+                                type="button"
+                                onClick={handleDownloadFolderZip}
+                                className="text-xs sm:text-sm text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 font-bold flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all shadow-xs cursor-pointer shrink-0"
+                                title="Download Semua File di Folder Ini (.ZIP)"
+                            >
+                                <FolderDown className="w-4 h-4" />
+                                <span>Download Folder (.ZIP)</span>
+                                <span className="px-1.5 py-0.2 bg-white/20 rounded-full text-[10px]">{displayFiles.length}</span>
                             </button>
                         )}
 

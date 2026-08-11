@@ -40,7 +40,8 @@ export async function generateFCUServiceReportPDF(
   customerInfo: FCUCustomerInfo,
   reportData: FCUReportData,
   timeSpent: FCUTimeSpent,
-  originalReportCards?: Array<{ photoBase64?: string; description: string }>
+  originalReportCards?: Array<{ photoBase64?: string; description: string }>,
+  saveToFile: boolean = true
 ) {
   let optimizedCards = originalReportCards || [];
   if (originalReportCards && originalReportCards.length > 0) {
@@ -446,5 +447,8 @@ export async function generateFCUServiceReportPDF(
 
   // Save PDF file
   const fileName = `${customerInfo.companyName || 'FCU'}_Service_Report_${customerInfo.date || 'draft'}.pdf`.replace(/\s+/g, '_');
-  doc.save(fileName);
+  if (saveToFile) {
+    doc.save(fileName);
+  }
+  return { doc, fileName, blob: doc.output('blob') };
 }

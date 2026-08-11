@@ -52,7 +52,8 @@ export async function generateATSServiceReportPDF(
   customerInfo: ATSCustomerInfo,
   reportData: ATSReportData,
   timeSpent: ATSTimeSpent,
-  originalReportCards?: Array<{ photoBase64?: string; description: string }>
+  originalReportCards?: Array<{ photoBase64?: string; description: string }>,
+  saveToFile: boolean = true
 ) {
   let optimizedCards = originalReportCards || [];
   if (originalReportCards && originalReportCards.length > 0) {
@@ -568,5 +569,8 @@ export async function generateATSServiceReportPDF(
 
   // Save PDF file
   const filename = `Service_Report_ATS_${customerInfo.mapNo || 'Report'}_${customerInfo.date || 'undated'}.pdf`;
-  doc.save(filename);
+  if (saveToFile) {
+    doc.save(filename);
+  }
+  return { doc, filename, blob: doc.output('blob') };
 }

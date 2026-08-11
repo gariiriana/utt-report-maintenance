@@ -18,8 +18,9 @@ export async function generateLdbrdbReportPDF(
   customerInfo: LdbrdbCustomerInfo,
   reportData: LdbrdbReportData,
   timeSpent: LdbrdbTimeSpent,
-  photos: ReportPhoto[] = []
-): Promise<void> {
+  photos: ReportPhoto[] = [],
+  saveToFile: boolean = true
+) {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -472,5 +473,8 @@ export async function generateLdbrdbReportPDF(
 
   // Save PDF
   const filename = `Service_Report_Panel_LDB_RDB_${customerInfo.companyName.replace(/\s+/g, '_')}_${timeSpent.date || 'draft'}.pdf`;
-  doc.save(filename);
+  if (saveToFile) {
+    doc.save(filename);
+  }
+  return { doc, filename, blob: doc.output('blob') };
 }
