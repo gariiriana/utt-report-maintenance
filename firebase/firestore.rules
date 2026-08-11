@@ -106,16 +106,34 @@ service cloud.firestore {
 
     function isDME() {
       return request.auth != null 
-             && request.auth.uid != null
-             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['DME', 'dme', 'site_manager_dme'];
+             && (
+               (
+                 request.auth.uid != null
+                 && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+                 && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['DME', 'dme', 'site_manager_dme']
+               )
+               ||
+               (
+                 request.auth.token != null
+                 && (getEmail().matches('.*dme.*') || getEmail().matches('.*sitemanagerdme.*') || getEmail().matches('.*site_manager_dme.*'))
+               )
+             );
     }
 
     function isSiteManagerDME() {
       return request.auth != null 
-             && request.auth.uid != null
-             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'site_manager_dme';
+             && (
+               (
+                 request.auth.uid != null
+                 && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+                 && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['site_manager_dme', 'DME', 'dme']
+               )
+               ||
+               (
+                 request.auth.token != null
+                 && (getEmail().matches('.*sitemanagerdme.*') || getEmail().matches('.*site_manager_dme.*') || getEmail().matches('.*dme.*'))
+               )
+             );
     }
 
     function isDivision(div) {
@@ -385,38 +403,37 @@ service cloud.firestore {
     }
 
     match /mop_workflows/{docId} {
-      allow read: if request.auth != null 
-                  && (isAdminSafe() || isSiteManagerDME() || isDME() || isPrivilegedRole());
+      allow read: if request.auth != null;
       allow create: if request.auth != null
-                    && (isAdminSafe() || isSiteManagerDME())
+                    && (isAdminSafe() || isSiteManagerDME() || isDME() || isPrivilegedRole())
                     && hasAcceptableFieldCount(request.resource.data, 25);
       allow update: if request.auth != null
-                    && (isAdminSafe() || isSiteManagerDME())
+                    && (isAdminSafe() || isSiteManagerDME() || isDME() || isPrivilegedRole())
                     && hasAcceptableFieldCount(request.resource.data, 25);
-      allow delete: if request.auth != null && (isAdminSafe() || isSiteManagerDME());
+      allow delete: if request.auth != null && (isAdminSafe() || isSiteManagerDME() || isDME() || isPrivilegedRole());
 
       match /draft_chunks/{chunkId} {
         allow read: if request.auth != null;
         allow create: if request.auth != null
-                      && (isAdminSafe() || isSiteManagerDME())
+                      && (isAdminSafe() || isSiteManagerDME() || isDME() || isPrivilegedRole())
                       && hasAcceptableFieldCount(request.resource.data, 10);
-        allow delete: if request.auth != null && (isAdminSafe() || isSiteManagerDME());
+        allow delete: if request.auth != null && (isAdminSafe() || isSiteManagerDME() || isDME() || isPrivilegedRole());
       }
 
       match /ocs_approved_chunks/{chunkId} {
         allow read: if request.auth != null;
         allow create: if request.auth != null
-                      && (isAdminSafe() || isSiteManagerDME())
+                      && (isAdminSafe() || isSiteManagerDME() || isDME() || isPrivilegedRole())
                       && hasAcceptableFieldCount(request.resource.data, 10);
-        allow delete: if request.auth != null && (isAdminSafe() || isSiteManagerDME());
+        allow delete: if request.auth != null && (isAdminSafe() || isSiteManagerDME() || isDME() || isPrivilegedRole());
       }
 
       match /tde_approved_chunks/{chunkId} {
         allow read: if request.auth != null;
         allow create: if request.auth != null
-                      && (isAdminSafe() || isSiteManagerDME())
+                      && (isAdminSafe() || isSiteManagerDME() || isDME() || isPrivilegedRole())
                       && hasAcceptableFieldCount(request.resource.data, 10);
-        allow delete: if request.auth != null && (isAdminSafe() || isSiteManagerDME());
+        allow delete: if request.auth != null && (isAdminSafe() || isSiteManagerDME() || isDME() || isPrivilegedRole());
       }
     }
 

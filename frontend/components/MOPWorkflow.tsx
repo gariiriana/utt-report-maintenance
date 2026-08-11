@@ -688,6 +688,10 @@ export function MOPWorkflow() {
   // ─── Firestore Real-time Listener ─────────────────────────────────────────
 
   useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     const q = query(collection(db, 'mop_workflows'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs: MOPWorkflowDoc[] = snapshot.docs.map(doc => ({
@@ -698,13 +702,12 @@ export function MOPWorkflow() {
       setMopList(docs);
       setLoading(false);
     }, (error) => {
-      console.error('MOP Workflow listener error:', error);
-      toast.error('Gagal memuat data MOP');
+      console.warn('MOP Workflow listener note:', error);
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   // ─── Filtered list ────────────────────────────────────────────────────────
 

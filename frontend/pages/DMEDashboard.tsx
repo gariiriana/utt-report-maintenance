@@ -46,6 +46,7 @@ export function DMEDashboard() {
 
   // Global MOP listener for monitoring dashboard
   useEffect(() => {
+    if (!user) return;
     const q = query(collection(db, 'mop_workflows'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const docs: MOPWorkflowDoc[] = snapshot.docs.map(doc => ({
@@ -54,9 +55,11 @@ export function DMEDashboard() {
         remarks: doc.data().remarks || [],
       })) as MOPWorkflowDoc[];
       setMopList(docs);
+    }, (err) => {
+      console.warn('MOP listener note:', err);
     });
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   const handleLogout = async () => {
     try {
