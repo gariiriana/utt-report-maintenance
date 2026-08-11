@@ -79,7 +79,7 @@ interface ReportFormProps {
 
 export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const { user, userRole, companyType: authCompanyType } = useAuth();
-  const isDME = userRole === 'DME';
+  const isDME = userRole === 'DME' || user?.email?.toLowerCase() === 'dwimitra@co.id' || user?.email?.toLowerCase().includes('dwimitra');
   const [companyType, setCompanyType] = useState<'neutra' | 'bri'>('neutra');
   const [maintenanceName, setMaintenanceName] = useState('');
   const [maintenanceTime, setMaintenanceTime] = useState('');
@@ -1202,17 +1202,33 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         {!showPreview ? (
           <motion.div key="form" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-5">
-              <div className="flex gap-3">
-                <div className="bg-white/80 backdrop-blur-xl p-2.5 sm:p-3 rounded-xl border border-sky-100/80 shadow-sm min-w-[100px]">
-                  <p className="text-[10px] text-slate-400 uppercase font-bold">Foto</p>
-                  <p className="text-base sm:text-lg font-black text-slate-900">{uploadedCount} / {cards.length}</p>
-                </div>
-                <div className="bg-white/80 backdrop-blur-xl p-2.5 sm:p-3 rounded-xl border border-sky-100/80 shadow-sm min-w-[100px]">
-                  <p className="text-[10px] text-slate-400 uppercase font-bold">Template</p>
-                  <p className="text-base sm:text-lg font-black text-blue-600 uppercase">{companyType}</p>
+              <div className="flex items-center gap-3 flex-wrap">
+                {(isDME || editingData) && onClearEdit && (
+                  <motion.button
+                    whileHover={{ scale: 1.02, x: -2 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={onClearEdit}
+                    className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl shadow-md hover:shadow-lg transition-all text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer border border-emerald-400/30 shrink-0"
+                    title="Kembali ke Arsip Dokumen"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span>Kembali ke Arsip Dokumen</span>
+                  </motion.button>
+                )}
+
+                <div className="flex gap-2.5">
+                  <div className="bg-white/80 backdrop-blur-xl p-2.5 sm:p-3 rounded-xl border border-sky-100/80 shadow-sm min-w-[90px]">
+                    <p className="text-[10px] text-slate-400 uppercase font-bold">Foto</p>
+                    <p className="text-base sm:text-lg font-black text-slate-900">{uploadedCount} / {cards.length}</p>
+                  </div>
+                  <div className="bg-white/80 backdrop-blur-xl p-2.5 sm:p-3 rounded-xl border border-sky-100/80 shadow-sm min-w-[90px]">
+                    <p className="text-[10px] text-slate-400 uppercase font-bold">Template</p>
+                    <p className="text-base sm:text-lg font-black text-blue-600 uppercase">{companyType}</p>
+                  </div>
                 </div>
               </div>
-              {editingData && (
+
+              {editingData && !isDME && (
                 <button onClick={onClearEdit} className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-200 text-xs font-bold flex items-center gap-1.5 hover:bg-blue-100 transition-all shadow-sm">
                   <RefreshCw className="w-3.5 h-3.5" /> Batal Edit
                 </button>
@@ -1903,6 +1919,18 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             </div>
 
             <div className="grid grid-cols-2 sm:flex sm:flex-row sm:flex-wrap lg:flex-nowrap items-stretch justify-center gap-2 sm:gap-3 mt-4 bg-white/90 backdrop-blur-xl p-4 sm:p-5 rounded-[2rem] border border-sky-100/90 shadow-2xl shadow-sky-900/10 w-full">
+              {(isDME || editingData) && onClearEdit && (
+                <button
+                  type="button"
+                  onClick={onClearEdit}
+                  disabled={isSaving || isExporting}
+                  className="col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100 rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-sm transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 group-active:scale-90 transition-transform" />
+                  <span className="text-center leading-tight font-extrabold">KEMBALI KE ARSIP</span>
+                </button>
+              )}
+
               {!isDME && (
                 <button
                   onClick={handleManualSave}

@@ -48,7 +48,7 @@ const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby
   if (lowerEmail.includes('purchasing')) return 'purchasing';
   if (lowerEmail.includes('dirut')) return 'dirut';
   if (lowerEmail.includes('site_manager_dme') || lowerEmail.includes('sitemanagerdme')) return 'site_manager_dme';
-  if (lowerEmail.includes('dme')) return 'DME';
+  if (lowerEmail.includes('dme') || lowerEmail.includes('dwimitra')) return 'DME';
   // Email spesifik teknisi Standby Engineer UTT
   if (lowerEmail === 'agil@utt.com' || lowerEmail === 'krishna@utt.com' || lowerEmail === 'asep@utt.com' || lowerEmail === 'salman@utt.com' || lowerEmail === 'gilang@utt.com' || lowerEmail === 'dison@utt.com' || lowerEmail.includes('standby')) return 'standby_engineer';
   return 'engineer';

@@ -126,9 +126,7 @@ export function MainApp() {
   // Handler untuk membersihkan data edit (kembali ke tab arsip dokumen)
   const clearEditingData = () => {
     setEditingData(null);
-    if (userRole === 'DME') {
-      setActiveTab('documents');
-    }
+    setActiveTab('documents');
   };
 
   return (

@@ -26,6 +26,7 @@ import { FindingArchive } from './FindingArchive';
 import { generateHSEPdf } from '@/utils/HSEPdfExport';
 import { generateATSServiceReportPDF, generateFCUServiceReportPDF, generatePJUServiceReportPDF, generatePDUServiceReportPDF, generateCTReportPDF, generateGeneratorReportPDF, generateACSplitReportPDF, generateTrafoReportPDF, generateCapacitorbankReportPDF } from '@/service_reports';
 import { getDoc } from 'firebase/firestore';
+import { safeStorage } from '@/utils/safeStorage';
 
 interface PhotoData {
   index: number;
@@ -123,13 +124,47 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [selectedWeek, setSelectedWeek] = useState<number | null>(null);
 
-  const [dmeLevel, setDmeLevel] = useState<'root' | 'account' | 'month' | 'date' | 'documents' | 'management_files'>('root');
-  const [dmeSelectedFolder, setDmeSelectedFolder] = useState<string | null>(null);
-  const [dmeSelectedAccount, setDmeSelectedAccount] = useState<string | null>(null);
-  const [dmeSelectedMonth, setDmeSelectedMonth] = useState<string | null>(null);
-  const [dmeSelectedDate, setDmeSelectedDate] = useState<string | null>(null);
+  const [dmeLevel, setDmeLevel] = useState<'root' | 'account' | 'month' | 'date' | 'documents' | 'management_files'>(() => {
+    return (safeStorage.getItem('dme_folder_level') as any) || 'root';
+  });
+  const [dmeSelectedFolder, setDmeSelectedFolder] = useState<string | null>(() => {
+    return safeStorage.getItem('dme_folder_name') || null;
+  });
+  const [dmeSelectedAccount, setDmeSelectedAccount] = useState<string | null>(() => {
+    return safeStorage.getItem('dme_folder_account') || null;
+  });
+  const [dmeSelectedMonth, setDmeSelectedMonth] = useState<string | null>(() => {
+    return safeStorage.getItem('dme_folder_month') || null;
+  });
+  const [dmeSelectedDate, setDmeSelectedDate] = useState<string | null>(() => {
+    return safeStorage.getItem('dme_folder_date') || null;
+  });
   const [managementFilesCount, setManagementFilesCount] = useState(0);
   const [managementFilesSize, setManagementFilesSize] = useState(0);
+
+  useEffect(() => {
+    safeStorage.setItem('dme_folder_level', dmeLevel);
+  }, [dmeLevel]);
+
+  useEffect(() => {
+    if (dmeSelectedFolder) safeStorage.setItem('dme_folder_name', dmeSelectedFolder);
+    else safeStorage.removeItem('dme_folder_name');
+  }, [dmeSelectedFolder]);
+
+  useEffect(() => {
+    if (dmeSelectedAccount) safeStorage.setItem('dme_folder_account', dmeSelectedAccount);
+    else safeStorage.removeItem('dme_folder_account');
+  }, [dmeSelectedAccount]);
+
+  useEffect(() => {
+    if (dmeSelectedMonth) safeStorage.setItem('dme_folder_month', dmeSelectedMonth);
+    else safeStorage.removeItem('dme_folder_month');
+  }, [dmeSelectedMonth]);
+
+  useEffect(() => {
+    if (dmeSelectedDate) safeStorage.setItem('dme_folder_date', dmeSelectedDate);
+    else safeStorage.removeItem('dme_folder_date');
+  }, [dmeSelectedDate]);
 
   const getMonthYearString = (date: Date) => {
     return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
