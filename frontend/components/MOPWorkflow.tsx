@@ -6,13 +6,13 @@
 //            ke Firestore, inline remarks, dan progress tracking.
 // ============================================================================
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus, Search, FileUp, File, X, ChevronDown, ChevronUp,
   Send, CheckCircle2, Clock, Download, Loader2,
   MessageSquare, Upload, RotateCcw, Trash2,
-  FileText, Shield
+  FileText, Shield, Check
 } from 'lucide-react';
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc,
@@ -482,6 +482,199 @@ function TimelineItem({ label, timestamp, active }: { label: string; timestamp: 
   );
 }
 
+// ─── SUB-COMPONENT: Equipment Combobox (Typeahead / Searchable & Custom Input) ──
+
+interface EquipmentComboboxProps {
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  placeholder?: string;
+  options?: readonly string[];
+}
+
+function EquipmentCombobox({
+  value,
+  onChange,
+  required = false,
+  placeholder = "Pilih atau ketik...",
+  options = EQUIPMENT_TYPES,
+}: EquipmentComboboxProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [inputValue, setInputValue] = useState(value);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setInputValue(value);
+  }, [value]);
+
+  const filteredOptions = useMemo(() => {
+    const query = inputValue.trim().toLowerCase();
+    if (!query) return options;
+    return options.filter(opt => opt.toLowerCase().includes(query));
+  }, [inputValue, options]);
+
+  const exactMatch = useMemo(() => {
+    const query = inputValue.trim().toLowerCase();
+    return options.some(opt => opt.toLowerCase() === query);
+  }, [inputValue, options]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelect = (selectedVal: string) => {
+    setInputValue(selectedVal);
+    onChange(selectedVal);
+    setIsOpen(false);
+    setHighlightedIndex(-1);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setInputValue(val);
+    onChange(val);
+    setIsOpen(true);
+    setHighlightedIndex(0);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (!isOpen) {
+        setIsOpen(true);
+        return;
+      }
+      setHighlightedIndex(prev => 
+        prev < filteredOptions.length - 1 ? prev + 1 : 0
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!isOpen) return;
+      setHighlightedIndex(prev => 
+        prev > 0 ? prev - 1 : filteredOptions.length - 1
+      );
+    } else if (e.key === 'Enter') {
+      if (isOpen) {
+        e.preventDefault();
+        if (highlightedIndex >= 0 && filteredOptions[highlightedIndex]) {
+          handleSelect(filteredOptions[highlightedIndex]);
+        } else if (inputValue.trim()) {
+          handleSelect(inputValue.trim());
+        }
+      }
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
+    }
+  };
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      <div className="relative">
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          onFocus={() => setIsOpen(true)}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          required={required}
+          className="w-full pl-3 pr-14 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 transition-all"
+        />
+        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
+          {inputValue && (
+            <button
+              type="button"
+              onClick={() => {
+                setInputValue('');
+                onChange('');
+                inputRef.current?.focus();
+              }}
+              className="p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors cursor-pointer"
+              title="Hapus"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setIsOpen(prev => !prev);
+              inputRef.current?.focus();
+            }}
+            className="p-1.5 text-slate-400 hover:text-blue-500 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
+            title="Pilih equipment"
+          >
+            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180 text-blue-500' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.12 }}
+            className="absolute z-50 left-0 right-0 mt-1.5 max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-xl shadow-slate-900/10 py-1 text-sm font-medium"
+          >
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map((option, idx) => {
+                const isSelected = option.toLowerCase() === inputValue.trim().toLowerCase();
+                const isHighlighted = idx === highlightedIndex;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => handleSelect(option)}
+                    className={`w-full px-3.5 py-2 text-left flex items-center justify-between transition-colors cursor-pointer ${
+                      isSelected
+                        ? 'bg-blue-50 text-blue-700 font-bold'
+                        : isHighlighted
+                        ? 'bg-slate-100 text-slate-900'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>{option}</span>
+                    {isSelected && <Check className="w-4 h-4 text-blue-600 shrink-0" />}
+                  </button>
+                );
+              })
+            ) : (
+              <div className="px-3.5 py-2 text-xs text-slate-400 italic">
+                Tidak ada dalam daftar preset
+              </div>
+            )}
+
+            {/* Opsi Custom Equipment jika teks belum terdaftar */}
+            {inputValue.trim() && !exactMatch && (
+              <div className="p-1 border-t border-slate-100 mt-1">
+                <button
+                  type="button"
+                  onClick={() => handleSelect(inputValue.trim())}
+                  className="w-full px-3 py-2 text-left rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">Gunakan: <strong>"{inputValue.trim()}"</strong></span>
+                </button>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ─── SUB-COMPONENT: Create MOP Modal ──────────────────────────────────────────
 
 interface CreateMOPModalProps {
@@ -503,7 +696,7 @@ function CreateMOPModal({ isOpen, onClose, onSubmit, isSubmitting, nextNumber }:
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title.trim() || !formData.equipmentType) {
+    if (!formData.title.trim() || !formData.equipmentType.trim()) {
       toast.error('Judul dan Tipe Equipment wajib diisi');
       return;
     }
@@ -566,17 +759,12 @@ function CreateMOPModal({ isOpen, onClose, onSubmit, isSubmitting, nextNumber }:
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1.5">Tipe Equipment *</label>
-              <select
+              <EquipmentCombobox
                 value={formData.equipmentType}
-                onChange={(e) => setFormData(prev => ({ ...prev, equipmentType: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 bg-white"
+                onChange={(val) => setFormData(prev => ({ ...prev, equipmentType: val }))}
+                placeholder="Pilih / ketik equipment..."
                 required
-              >
-                <option value="">Pilih...</option>
-                {EQUIPMENT_TYPES.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
+              />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1.5">Quarter</label>

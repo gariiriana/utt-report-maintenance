@@ -116,7 +116,8 @@ export const EQUIPMENT_TYPES = [
   'ATS', 'FCU', 'CT', 'PDU', 'PJU', 'Generator', 'AC Split',
   'Trafo', 'Pump', 'MV', 'LPS', 'Grounding', 'LDB/RDB',
   'Busduct', 'Lighting System', 'CRAC', 'WLD', 'FLD',
-  'Rolling Door', 'Exhaust Fan', 'LV Panel', 'VRV', 'AHHU', 'Lainnya'
+  'Rolling Door', 'Exhaust Fan', 'LV Panel', 'VRV', 'AHHU',
+  'UPS', 'Battery', 'Chiller', 'PAC', 'Fire Alarm', 'CCTV', 'Access Control', 'FM200', 'Inergen', 'Lainnya'
 ] as const;
 
 /**
