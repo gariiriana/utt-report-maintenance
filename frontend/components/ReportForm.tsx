@@ -79,7 +79,7 @@ interface ReportFormProps {
 
 export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const { user, userRole, companyType: authCompanyType } = useAuth();
-  const isDME = userRole === 'DME' || user?.email?.toLowerCase() === 'dwimitra@co.id' || user?.email?.toLowerCase().includes('dwimitra');
+  const isDME = userRole === 'DME' || userRole === 'site_manager_dme' || Boolean(user?.email && (user.email.toLowerCase().includes('dwimitra') || user.email.toLowerCase().includes('dme')));
   const [companyType, setCompanyType] = useState<'neutra' | 'bri'>('neutra');
   const [maintenanceName, setMaintenanceName] = useState('');
   const [maintenanceTime, setMaintenanceTime] = useState('');

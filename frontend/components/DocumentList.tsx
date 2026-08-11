@@ -91,6 +91,7 @@ interface DocumentListProps {
 
 export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: DocumentListProps) {
   const { user, userRole, companyType } = useAuth();
+  const isDME = userRole === 'DME' || userRole === 'site_manager_dme' || Boolean(user?.email && (user.email.toLowerCase().includes('dwimitra') || user.email.toLowerCase().includes('dme')));
   const isAdmin = userRole === 'admin';
   const isPrivileged = isAdmin || userRole === 'manager' || userRole === 'site_manager' || userRole === 'hse' ||
     userRole === 'dirut' || userRole === 'direksiSDM' || userRole === 'DireksiKeuangan';
@@ -192,9 +193,9 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
         const userEmailClean = (user?.email || '').toLowerCase().trim();
 
         if (filterOverride !== 'hse_utt') {
-          const isPrivilegedOrDME = isPrivileged || userRole === 'DME' || (user?.email && user.email.toLowerCase().includes('dwimitra'));
+          const isPrivilegedOrDME = isPrivileged || isDME;
 
-          if (userRole !== 'DME') {
+          if (!isDME) {
             const excelQuery = isPrivilegedOrDME
               ? query(collection(db, 'excel_documents'))
               : query(collection(db, 'excel_documents'), where('createdBy', '==', userEmailClean));
@@ -212,7 +213,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           fetchPromises.push(Promise.resolve(null));
         }
 
-        const showHSE = (isAdmin || userRole === 'hse' || filterOverride === 'hse_utt') && userRole !== 'DME';
+        const showHSE = (isAdmin || userRole === 'hse' || filterOverride === 'hse_utt') && !isDME;
         if (showHSE) {
           let hseQuery;
           if (filterOverride === 'hse_utt') {
@@ -329,7 +330,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
         setDocuments(allDocs);
 
-        if (userRole === 'DME') {
+        if (isDME) {
           try {
             const [filesSnap, correctiveSnap] = await Promise.all([
               getDocs(query(collection(db, 'files'))),
@@ -837,7 +838,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
   const filteredDocuments = documents.filter(doc => {
     // Non-privileged accounts can ONLY see documents created by their own email
-    const isPrivilegedOrDME = isPrivileged || userRole === 'DME' || (user?.email && user.email.toLowerCase().includes('dwimitra'));
+    const isPrivilegedOrDME = isPrivileged || isDME;
     if (!isPrivilegedOrDME) {
       const userEmailClean = (user?.email || '').toLowerCase().trim();
       if ((doc.createdBy || '').toLowerCase().trim() !== userEmailClean) {
@@ -1319,7 +1320,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
   };
 
   const renderContent = () => {
-    if (userRole === 'DME') {
+    if (isDME) {
       return renderDmeContent();
     }
 
@@ -1608,9 +1609,9 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               whileTap={{ scale: 0.95 }}
               onClick={() => handleEditClick(document)}
               className="flex-1 sm:flex-initial p-2.5 sm:p-3 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-lg transition border border-blue-500/20"
-              title={userRole === 'DME' ? "View Report" : "Edit Report"}
+              title={isDME ? "View Report" : "Edit Report"}
             >
-              {userRole === 'DME' ? (
+              {isDME ? (
                 <Search className="w-4 h-4 sm:w-5 sm:h-5 mx-auto" />
               ) : (
                 <Pencil className="w-4 h-4 sm:w-5 sm:h-5 mx-auto" />
@@ -1697,7 +1698,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
         </div>
 
 
-        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${isAdmin ? 'xl:grid-cols-5' : userRole !== 'DME' ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-3 sm:gap-4 items-center`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${isAdmin ? 'xl:grid-cols-5' : !isDME ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-3 sm:gap-4 items-center`}>
 
           <div className="relative min-w-0">
             <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
@@ -1705,7 +1706,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={userRole === 'DME' ? "Cari dokumen / file..." : "Cari nama maintenance..."}
+              placeholder={isDME ? "Cari dokumen / file..." : "Cari nama maintenance..."}
               className="w-full pl-10 sm:pl-12 pr-10 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 placeholder-slate-400 text-sm font-medium"
             />
             {searchQuery && (
@@ -1761,7 +1762,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
             </select>
           </div>
 
-          {userRole !== 'DME' && (
+          {!isDME && (
             <div className="relative min-w-0">
               <FileType className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400 pointer-events-none" />
               <select
@@ -1795,7 +1796,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
         </div>
 
         {/* Status Filter Tabs (Foto Saja vs Foto + Service Report) - Hidden in HSE Role & DME Role */}
-        {filterOverride !== 'hse_utt' && userRole !== 'DME' && (
+        {filterOverride !== 'hse_utt' && !isDME && (
           <div className="mt-4 pt-4 border-t border-slate-200">
             <div className="inline-flex p-1 bg-slate-100/90 rounded-xl border border-slate-200 text-xs font-semibold gap-1 overflow-x-auto max-w-full">
               <button
@@ -1850,27 +1851,27 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           <div className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-2xs">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Dokumen</p>
             <p className="text-xl font-bold text-slate-900 mt-1">
-              {userRole === 'DME' ? documents.length + managementFilesCount : documents.length}
+              {isDME ? documents.length + managementFilesCount : documents.length}
             </p>
           </div>
           <div className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-2xs">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Hasil Filter</p>
             <p className="text-xl font-bold text-slate-900 mt-1">
-              {userRole === 'DME' && !(searchQuery || startDate || endDate) ? filteredDocuments.length + managementFilesCount : filteredDocuments.length}
+              {isDME && !(searchQuery || startDate || endDate) ? filteredDocuments.length + managementFilesCount : filteredDocuments.length}
             </p>
           </div>
           <div className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-2xs">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Ukuran</p>
             <p className="text-xl font-bold text-slate-900 mt-1">
-              {((documents.reduce((sum, doc) => sum + doc.fileSize, 0) + (userRole === 'DME' ? managementFilesSize : 0)) / (1024 * 1024)).toFixed(2)} MB
+              {((documents.reduce((sum, doc) => sum + doc.fileSize, 0) + (isDME ? managementFilesSize : 0)) / (1024 * 1024)).toFixed(2)} MB
             </p>
           </div>
           <div className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-2xs">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status Filter</p>
             <p className="text-sm font-bold text-slate-700 mt-1.5 flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${(searchQuery || startDate || endDate || (filterType !== 'all' && userRole !== 'DME') || (srStatusFilter !== 'all' && userRole !== 'DME')) ? 'bg-amber-500' : 'bg-slate-300'
+              <span className={`w-2 h-2 rounded-full ${(searchQuery || startDate || endDate || (filterType !== 'all' && !isDME) || (srStatusFilter !== 'all' && !isDME)) ? 'bg-amber-500' : 'bg-slate-300'
                 }`} />
-              {(searchQuery || startDate || endDate || (filterType !== 'all' && userRole !== 'DME') || (srStatusFilter !== 'all' && userRole !== 'DME')) ? 'Filter Aktif' : 'Tidak Ada'}
+              {(searchQuery || startDate || endDate || (filterType !== 'all' && !isDME) || (srStatusFilter !== 'all' && !isDME)) ? 'Filter Aktif' : 'Tidak Ada'}
             </p>
           </div>
         </div>

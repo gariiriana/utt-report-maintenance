@@ -35,8 +35,8 @@ export function PreviewReport({
     onBack,
     onExport
 }: PreviewReportProps) {
-    const { userRole } = useAuth();
-    const isDME = userRole === 'DME';
+    const { user, userRole } = useAuth();
+    const isDME = userRole === 'DME' || userRole === 'site_manager_dme' || Boolean(user?.email && (user.email.toLowerCase().includes('dwimitra') || user.email.toLowerCase().includes('dme')));
     const isATS = userEmail === 'ats@gmail.com';
     const isPDU = userEmail === 'pdu@gmail.com';
     const isLV = userEmail === 'lv@gmail.com';

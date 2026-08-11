@@ -14,7 +14,8 @@ import {
 import { useAuth } from '@/components/AuthContext';
 import { MOPWorkflow } from '@/components/MOPWorkflow';
 import { MOPMonitoringDashboard } from '@/components/MOPMonitoringDashboard';
-import { DocumentList } from '@/components/DocumentList';
+import { DocumentList, ExcelDocument } from '@/components/DocumentList';
+import { ReportForm } from '@/components/ReportForm';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import { NotificationCenter } from '@/components/NotificationCenter';
 import { Footer } from '@/components/Footer';
@@ -41,6 +42,7 @@ const TAB_ITEMS: { id: DMETab; label: string; icon: typeof FileText; color: stri
 export function DMEDashboard() {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<DMETab>('workflow');
+  const [editingData, setEditingData] = useState<ExcelDocument | null>(null);
   const [logoutModalOpen, setLogoutModalOpen] = useState(false);
   const [mopList, setMopList] = useState<MOPWorkflowDoc[]>([]);
 
@@ -125,7 +127,10 @@ export function DMEDashboard() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setEditingData(null);
+                  }}
                   className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                     isActive
                       ? `bg-gradient-to-r ${tab.color} text-white shadow-lg shadow-blue-500/10`
@@ -171,13 +176,20 @@ export function DMEDashboard() {
 
             {activeTab === 'documents' && (
               <motion.div
-                key="documents"
+                key={editingData ? 'report-detail' : 'documents'}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
               >
-                <DocumentList />
+                {editingData ? (
+                  <ReportForm 
+                    editingData={editingData} 
+                    onClearEdit={() => setEditingData(null)} 
+                  />
+                ) : (
+                  <DocumentList onEdit={(doc) => setEditingData(doc)} />
+                )}
               </motion.div>
             )}
           </AnimatePresence>
