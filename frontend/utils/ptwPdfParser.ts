@@ -122,24 +122,194 @@ export function parsePTWFromNumber(ptwNum: string): Partial<PTWExtractedData> | 
 }
 
 /**
- * Helper internal: Parse metadata PTW langsung dari Nama File (Filename Parsing Fallback)
- * Contoh input nama file: "TDE_PTW_0393_WLD_Q1_2026.pdf" atau "PTW 0393 WLD.pdf"
+ * Helper internal: Parse metadata PTW langsung dari Nama File (Filename Parsing)
+ * Mendukung berbagai format penamaan berkas PTW seperti:
+ * - "PTW CM UPS(MovementBattery) 10 Agustus 2026 0652.pdf"
+ * - "PTW PM Trafo 15 Januari 2026 0393.pdf"
+ * - "TDE_PTW_0393_WLD_Q1_2026.pdf"
+ * - "PTW 0393 WLD.pdf"
+ * - "PTW CM FCU 05 Mei 2026 0412.pdf"
+ * - "PTW PM CRAC Q3 2026 0520.pdf"
+ * - "PTW CM ATS 2026-08-10 0652.pdf"
  */
 export function parsePTWFromFilename(filename: string): Partial<PTWExtractedData> | null {
   if (!filename) return null;
 
-  // Bersihkan ekstensi file .pdf
+  // Bersihkan ekstensi file .pdf dan spasi berlebih
   const cleanName = filename.replace(/\.pdf$/i, '').trim();
+  const result: Partial<PTWExtractedData> = {};
 
-  // 1. Coba pencocokan Regex dengan nomor urut 4 digit dan kode perangkat
-  const matchSeq = cleanName.match(/(?:ptw[_\s\-]*)?(\d{3,4})[_\s\-]+([a-z0-9_\-]+)/i);
-  if (matchSeq) {
-    const seq = matchSeq[1].padStart(4, '0');
-    const eqCode = matchSeq[2].toUpperCase().split(/[_\-\s]/)[0]; // Ambil kode kata pertama
-    return {
-      sequenceNumber: seq,
-      equipmentCode: eqCode,
-    };
+  // ─── 1. Deteksi Jenis PTW: CM (Corrective) vs PM (Preventive) ───────────────
+  if (/\b(?:CM|CORRECTIVE|KOREKTIF)\b/i.test(cleanName)) {
+    result.ptwType = 'CM';
+  } else if (/\b(?:PM|PREVENTIVE|PREVENTIF)\b/i.test(cleanName)) {
+    result.ptwType = 'PM';
+  }
+
+  // ─── 2. Deteksi Tanggal & Bulan (Bahasa Indonesia & Inggris / ISO / Numeric) ──
+  let detectedMonth = 0;
+  let detectedYear = '';
+  let detectedDateStr = '';
+
+  // Pola A: Tanggal dengan nama bulan (misal: "10 Agustus 2026", "10 Agt 2026", "10 August 2026")
+  const dateNamedMatch = cleanName.match(/(\d{1,2})[\s\-_/]+([A-Za-z]+)[\s\-_/]+(20\d{2})/i);
+  if (dateNamedMatch) {
+    const day = dateNamedMatch[1].padStart(2, '0');
+    const monthRaw = dateNamedMatch[2];
+    const year = dateNamedMatch[3];
+    const monthDigit = cleanMonthName(monthRaw);
+    if (monthDigit) {
+      detectedMonth = parseInt(monthDigit, 10);
+      detectedYear = year;
+      detectedDateStr = `${year}-${monthDigit}-${day}`;
+    }
+  }
+
+  // Pola B: Format ISO "2026-08-10" atau "2026_08_10"
+  if (!detectedDateStr) {
+    const isoMatch = cleanName.match(/(20\d{2})[\-_/](\d{1,2})[\-_/](\d{1,2})/);
+    if (isoMatch) {
+      const year = isoMatch[1];
+      const month = isoMatch[2].padStart(2, '0');
+      const day = isoMatch[3].padStart(2, '0');
+      detectedMonth = parseInt(month, 10);
+      detectedYear = year;
+      detectedDateStr = `${year}-${month}-${day}`;
+    }
+  }
+
+  // Pola C: Format DD-MM-YYYY "10-08-2026" atau "10/08/2026"
+  if (!detectedDateStr) {
+    const numDateMatch = cleanName.match(/(\d{1,2})[\-_/](\d{1,2})[\-_/](20\d{2})/);
+    if (numDateMatch) {
+      const day = numDateMatch[1].padStart(2, '0');
+      const month = numDateMatch[2].padStart(2, '0');
+      const year = numDateMatch[3];
+      detectedMonth = parseInt(month, 10);
+      detectedYear = year;
+      detectedDateStr = `${year}-${month}-${day}`;
+    }
+  }
+
+  // Pola D: Hanya Bulan dan Tahun tanpa tanggal (misal: "Agustus 2026" atau "August 2026")
+  if (!detectedDateStr && !detectedMonth) {
+    const monthYearMatch = cleanName.match(/([A-Za-z]+)[\s\-_/]+(20\d{2})/i);
+    if (monthYearMatch) {
+      const monthDigit = cleanMonthName(monthYearMatch[1]);
+      if (monthDigit) {
+        detectedMonth = parseInt(monthDigit, 10);
+        detectedYear = monthYearMatch[2];
+        detectedDateStr = `${detectedYear}-${monthDigit}-01`;
+      }
+    }
+  }
+
+  if (detectedDateStr) {
+    result.startDate = detectedDateStr;
+    result.endDate = detectedDateStr;
+  }
+
+  // ─── 3. Deteksi Quarter (Kuartal) ───────────────────────────────────────────
+  // Cara A: Deteksi eksplisit Q1, Q2, Q3, Q4, Quarter 1-4, Kuartal 1-4
+  const explicitQMatch = cleanName.match(/\b(?:Q|QUARTER|KUARTAL|TRIWULAN)[\s\-_]*([1-4])\b/i);
+  if (explicitQMatch) {
+    result.quarter = explicitQMatch[1];
+  } else if (detectedMonth >= 1 && detectedMonth <= 12) {
+    // Cara B: Otomatis hitung Quarter dari Bulan (Agustus -> Bulan 8 -> Q3!)
+    // Bulan 1,2,3 -> Q1 ("1") | Bulan 4,5,6 -> Q2 ("2") | Bulan 7,8,9 -> Q3 ("3") | Bulan 10,11,12 -> Q4 ("4")
+    result.quarter = String(Math.ceil(detectedMonth / 3));
+  }
+
+  // ─── 4. Deteksi Nomor Urut (Sequence Number - 3 atau 4 digit) ─────────────────
+  // PENTING: Tahun 4-digit (misal: 2024, 2025, 2026) BUKAN nomor urut!
+  let seqNum = '';
+
+  // Pola A: Nomor 3-4 digit di ujung akhir nama file (misal: "... 2026 0652" -> "0652")
+  const endSeqMatch = cleanName.match(/[\s\-_](\d{3,4})$/);
+  if (endSeqMatch && endSeqMatch[1] !== detectedYear) {
+    seqNum = endSeqMatch[1].padStart(4, '0');
+  }
+
+  // Pola B: Format TDE/PTW/{SEQ} atau PTW_{SEQ} atau PTW {SEQ} di awal nama file
+  if (!seqNum) {
+    const startSeqMatch = cleanName.match(/(?:TDE[_\s\-]*)?PTW[_\s\-]+(?:[CP]M[_\s\-]+)?(\d{3,4})\b/i);
+    if (startSeqMatch && startSeqMatch[1] !== detectedYear) {
+      seqNum = startSeqMatch[1].padStart(4, '0');
+    }
+  }
+
+  // Pola C: Cari seluruh angka 3-4 digit di nama file, seleksi yang bukan tahun
+  if (!seqNum) {
+    const allDigits = cleanName.match(/\b\d{3,4}\b/g);
+    if (allDigits) {
+      const candidates = allDigits.filter(d => {
+        const val = parseInt(d, 10);
+        // Abaikan tahun yang terdeteksi atau angka tahun umum (2020-2035) jika ada angka lain
+        if (d === detectedYear || (val >= 2020 && val <= 2035 && allDigits.length > 1)) {
+          return false;
+        }
+        return true;
+      });
+      if (candidates.length > 0) {
+        // Prioritaskan yang memiliki leading zero (misal: "0652", "0393") atau kandidat terakhir
+        const withZero = candidates.find(c => c.startsWith('0'));
+        seqNum = (withZero || candidates[candidates.length - 1]).padStart(4, '0');
+      }
+    }
+  }
+
+  if (seqNum) {
+    result.sequenceNumber = seqNum;
+  }
+
+  // ─── 5. Deteksi Kode Equipment (Perangkat) ──────────────────────────────────
+  const KNOWN_EQUIPMENTS = [
+    'UPS', 'ATS', 'FCU', 'CT', 'PDU', 'PJU', 'GENERATOR', 'GENSET',
+    'AC SPLIT', 'AC', 'TRAFO', 'TRANSFORMATOR', 'PUMP', 'POMPA',
+    'MV', 'LPS', 'GROUNDING', 'LDB/RDB', 'LDB', 'RDB', 'BUSDUCT',
+    'LIGHTING', 'CRAC', 'PAC', 'WLD', 'FLD', 'ROLLING DOOR',
+    'EXHAUST FAN', 'LV PANEL', 'VRV', 'AHU', 'AHHU', 'CHILLER',
+    'BATTERY', 'FIRE ALARM', 'VESDA', 'CCTV', 'ACCESS CONTROL'
+  ];
+
+  let detectedEq = '';
+  const upperClean = cleanName.toUpperCase();
+
+  for (const eq of KNOWN_EQUIPMENTS) {
+    const escaped = eq.replace('/', '\\/');
+    const eqRegex = new RegExp(`(?:^|[\\s\\-_/(])${escaped}(?:[\\s\\-_/)]|$)`, 'i');
+    if (eqRegex.test(upperClean)) {
+      detectedEq = eq === 'GENSET' ? 'GENERATOR' : eq === 'TRANSFORMATOR' ? 'TRAFO' : eq === 'POMPA' ? 'PUMP' : eq;
+      break;
+    }
+  }
+
+  // Fallback: Ambil kata pertama setelah PTW [CM/PM]? jika belum cocok
+  if (!detectedEq) {
+    const fallbackEqMatch = cleanName.match(/(?:PTW[_\s\-]+)(?:(?:CM|PM)[_\s\-]+)?([A-Za-z0-9]+)/i);
+    if (fallbackEqMatch && !/^\d+$/.test(fallbackEqMatch[1])) {
+      detectedEq = fallbackEqMatch[1].toUpperCase();
+    }
+  }
+
+  if (detectedEq) {
+    result.equipmentCode = detectedEq;
+  }
+
+  // ─── 6. Ekstrak Deskripsi Tambahan / Nama Maintenance ───────────────────────
+  const descMatch = cleanName.match(/\(([^)]+)\)/);
+  const extraDesc = descMatch ? descMatch[1].trim() : '';
+
+  if (result.equipmentCode || extraDesc) {
+    const typePrefix = result.ptwType ? `${result.ptwType} ` : '';
+    const eqPart = result.equipmentCode || '';
+    const descPart = extraDesc ? ` (${extraDesc})` : '';
+    result.maintenanceName = `${typePrefix}${eqPart}${descPart}`.trim();
+  }
+
+  // Kembalikan objek jika berhasil mengekstrak minimal satu field utama
+  if (result.sequenceNumber || result.equipmentCode || result.quarter || result.startDate || result.ptwType) {
+    return result;
   }
 
   return null;
@@ -243,21 +413,18 @@ async function parsePTWPdfWithOCR(pdfDoc: pdfjsLib.PDFDocumentProxy): Promise<PT
  */
 function extractPTWDataFromText(text: string): PTWExtractedData | null {
   // 1. Cari Nomor PTW dengan Regex baku
-  const ptwMatch = text.match(/TDE\/PTW\/\d{3,4}\/[A-Z0-9_\-]+\/\d{1,2}\/\d{4}(?:\/\d{2}\/\d{2})?/i);
+  const ptwMatch = text.match(/TDE\/PTW\/(\d{3,4})\/([A-Z0-9_\-]+)\/(\d{1,2})\/(\d{4})(?:\/\d{2}\/\d{2})?/i);
   const ptwNumber = ptwMatch ? ptwMatch[0].toUpperCase() : '';
 
   // 2. Parse komponen dari Nomor PTW jika ditemukan
   let seqNum = '';
   let eqCode = '';
-  let quarter = '1';
+  let quarter = '';
 
-  if (ptwNumber) {
-    const parts = ptwNumber.split('/');
-    if (parts.length >= 4) {
-      seqNum = parts[2].padStart(4, '0');
-      eqCode = parts[3].toUpperCase();
-      if (parts[4]) quarter = String(parseInt(parts[4], 10) || 1);
-    }
+  if (ptwMatch) {
+    seqNum = ptwMatch[1].padStart(4, '0');
+    eqCode = ptwMatch[2].toUpperCase();
+    if (ptwMatch[3]) quarter = String(parseInt(ptwMatch[3], 10) || 1);
   }
 
   // 3. Cari Tanggal Pelaksanaan dari Teks PDF
@@ -268,21 +435,46 @@ function extractPTWDataFromText(text: string): PTWExtractedData | null {
   if (dateRangeMatch) {
     startDate = parseIndonesianDate(dateRangeMatch[1]);
     endDate = parseIndonesianDate(dateRangeMatch[2]);
+  } else {
+    // Single date search
+    const singleDateMatch = text.match(/(\d{1,2}[\s\/\-][A-Za-z\d]+[\s\/\-]\d{4})/i);
+    if (singleDateMatch) {
+      startDate = parseIndonesianDate(singleDateMatch[1]);
+      endDate = startDate;
+    }
+  }
+
+  // Jika Quarter belum ditemukan dari nomor PTW, hitung dari tanggal pelaksanaan
+  if (!quarter && startDate) {
+    const month = parseInt(startDate.split('-')[1], 10);
+    if (month >= 1 && month <= 12) {
+      quarter = String(Math.ceil(month / 3));
+    }
+  }
+
+  // Jika Quarter masih kosong, cari pola Q1-Q4 di teks
+  if (!quarter) {
+    const qTextMatch = text.match(/\b(?:Q|QUARTER|KUARTAL)[\s\-_]*([1-4])\b/i);
+    if (qTextMatch) {
+      quarter = qTextMatch[1];
+    } else {
+      quarter = '1'; // Fallback default
+    }
   }
 
   // 4. Tentukan Jenis Izin Kerja (CM / PM)
   let ptwType: 'CM' | 'PM' = 'PM';
-  if (text.toLowerCase().includes('corrective') || text.toLowerCase().includes('cm')) {
+  if (text.toLowerCase().includes('corrective') || /\bcm\b/i.test(text)) {
     ptwType = 'CM';
   }
 
   // Kembalikan objek data hasil ekstraksi jika nomor PTW atau nomor urut berhasil didapatkan
   if (ptwNumber || seqNum) {
     return {
-      ptwNumber: ptwNumber || `TDE/PTW/${seqNum}/${eqCode || 'GEN'}/01/2026`,
+      ptwNumber: ptwNumber || `TDE/PTW/${seqNum}/${eqCode || 'GEN'}/${quarter.padStart(2, '0')}/2026`,
       sequenceNumber: seqNum || '0000',
       equipmentCode: eqCode || 'GENERIC',
-      quarter: quarter,
+      quarter: quarter || '1',
       startDate: startDate || new Date().toISOString().split('T')[0],
       endDate: endDate || new Date().toISOString().split('T')[0],
       maintenanceName: ptwType === 'CM' ? 'Corrective Maintenance' : 'Preventive Maintenance',
@@ -292,3 +484,4 @@ function extractPTWDataFromText(text: string): PTWExtractedData | null {
 
   return null;
 }
+

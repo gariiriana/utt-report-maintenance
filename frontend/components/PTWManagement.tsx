@@ -341,9 +341,10 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
     setQueuedItems(prev => [...prev, ...newItems]);
     
     newItems.forEach(item => {
-      if (!item.sequenceNumber && item.file) {
+      const isComplete = Boolean(item.sequenceNumber && item.equipmentCode && item.quarter && item.startDate && item.endDate);
+      if (!isComplete && item.file) {
         runOcrOnItem(item.id, item.file);
-      } else if (item.sequenceNumber) {
+      } else if (isComplete) {
         toast.success(`⚡ Semua data berhasil diisi instan dari nama file: ${item.file?.name}`);
       }
     });
@@ -438,7 +439,8 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
           return updated;
         });
 
-        if (filenameData?.sequenceNumber) {
+        const isFullyExtracted = Boolean(filenameData?.sequenceNumber && filenameData?.equipmentCode && filenameData?.quarter && filenameData?.startDate);
+        if (isFullyExtracted) {
           toast.success(`⚡ Semua data berhasil diisi instan dari nama file!`, { duration: 4000 });
         } else {
           if (initialFields.length > 0) {

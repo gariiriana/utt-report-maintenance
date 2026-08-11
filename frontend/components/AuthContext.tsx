@@ -23,7 +23,7 @@ import { doc, setDoc, serverTimestamp, getDoc, onSnapshot } from 'firebase/fires
 interface UserData {
   email: string;
   uid: string;
-  role: 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME';
+  role: 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme';
   companyType?: 'neutra' | 'bri';
   createdAt: any;
 }
@@ -33,7 +33,7 @@ interface UserData {
  * @param email Alamat email user
  * @returns Kode role resmi (admin, standby_engineer, engineer, dsb.)
  */
-const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' => {
+const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' => {
   if (!email) return 'engineer';
   const lowerEmail = email.toLowerCase();
   if (lowerEmail.includes('admin')) return 'admin';
@@ -47,6 +47,7 @@ const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby
   if (lowerEmail.includes('presales')) return 'presales';
   if (lowerEmail.includes('purchasing')) return 'purchasing';
   if (lowerEmail.includes('dirut')) return 'dirut';
+  if (lowerEmail.includes('site_manager_dme') || lowerEmail.includes('sitemanagerdme')) return 'site_manager_dme';
   if (lowerEmail.includes('dme')) return 'DME';
   // Email spesifik teknisi Standby Engineer UTT
   if (lowerEmail === 'agil@utt.com' || lowerEmail === 'krishna@utt.com' || lowerEmail === 'asep@utt.com' || lowerEmail === 'salman@utt.com' || lowerEmail === 'gilang@utt.com' || lowerEmail === 'dison@utt.com' || lowerEmail.includes('standby')) return 'standby_engineer';
@@ -56,7 +57,7 @@ const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby
 // Interface konteks autentikasi React
 interface AuthContextType {
   user: User | null;
-  userRole: 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | null;
+  userRole: 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' | null;
   companyType: 'neutra' | 'bri' | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
@@ -67,7 +68,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' | null>(null);
   const [companyType, setCompanyType] = useState<'neutra' | 'bri' | null>(null);
   const [loading, setLoading] = useState(true);
 

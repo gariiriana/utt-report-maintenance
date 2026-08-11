@@ -13,6 +13,7 @@ import { MainApp } from '@/pages/MainApp';
 import { HSEApp } from '@/pages/HSEApp';
 import { DivisionApp } from '@/pages/DivisionApp';
 import { SiteManagerDashboard } from '@/pages/SiteManagerDashboard';
+import { DMEDashboard } from './pages/DMEDashboard';
 import { DataCenterBackground } from '@/components/DataCenterBackground';
 import { ServerLoadingIndicator } from '@/components/ServerLoadingIndicator';
 import { HSEReportViewer } from '@/components/HSEReportViewer';
@@ -91,6 +92,7 @@ function AppContent() {
               if (userRole === 'hse') return <HSEApp />;
               const isoRoles = ['pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
               if (isoRoles.includes(userRole || '')) return <DivisionApp />;
+              if (userRole === 'site_manager_dme') return <DMEDashboard />;
               if (userRole === 'site_manager' || userRole === 'manager') return <SiteManagerDashboard />;
               return <MainApp />;
             })()}
