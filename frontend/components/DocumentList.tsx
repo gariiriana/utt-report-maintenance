@@ -7,7 +7,7 @@
 //            Mendukung 14 jenis Service Report Perangkat M/E & Laporan Inspeksi HSE.
 // ============================================================================
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileSpreadsheet, Download, Trash2, Calendar, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen } from 'lucide-react';
 import { collection, query, getDocs, deleteDoc, doc, where, updateDoc, deleteField } from 'firebase/firestore';
@@ -182,6 +182,36 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     if (dmeSelectedDate) safeStorage.setItem('dme_folder_date', dmeSelectedDate);
     else safeStorage.removeItem('dme_folder_date');
   }, [dmeSelectedDate]);
+
+  const contentAreaRef = useRef<HTMLDivElement>(null);
+
+  const scrollToContent = (isRoot = false) => {
+    if (isRoot) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    setTimeout(() => {
+      if (contentAreaRef.current) {
+        const navOffset = 80;
+        const elementPosition = contentAreaRef.current.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - navOffset;
+        window.scrollTo({
+          top: Math.max(0, offsetPosition),
+          behavior: 'smooth',
+        });
+      }
+    }, 50);
+  };
+
+  useEffect(() => {
+    const isRoot = dmeLevel === 'root' && !dmeSelectedFolder;
+    scrollToContent(isRoot);
+  }, [dmeLevel, dmeSelectedFolder, dmeSelectedAccount, dmeSelectedMonth, dmeSelectedDate]);
+
+  useEffect(() => {
+    const isRoot = currentLevel === 'root' && !selectedCategory;
+    scrollToContent(isRoot);
+  }, [currentLevel, selectedCategory, selectedMonth, selectedWeek, selectedMaintenance]);
 
   const getMonthYearString = (date: Date) => {
     return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
@@ -2218,7 +2248,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           </p>
         </div>
       ) : (
-        <div className={`${currentLevel !== 'week' && filterOverride === 'hse_utt' ? 'block' : 'grid grid-cols-1 gap-3 sm:gap-4'}`}>
+        <div ref={contentAreaRef} className={`scroll-mt-20 ${currentLevel !== 'week' && filterOverride === 'hse_utt' ? 'block' : 'grid grid-cols-1 gap-3 sm:gap-4'}`}>
           <AnimatePresence mode="popLayout">
             {renderContent()}
           </AnimatePresence>

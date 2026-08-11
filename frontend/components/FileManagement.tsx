@@ -7,7 +7,7 @@
 //            serta sistem pengunduhan aman dan konfirmasi hapus data.
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
     Upload,
@@ -228,6 +228,30 @@ export function FileManagement({
             setSelectedMType(null);
         }
     }, [initialSearchQuery]);
+
+    const folderCardRef = useRef<HTMLDivElement>(null);
+
+    const scrollToFolder = (isRoot = false) => {
+        if (isRoot && !initialFolder) {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+        setTimeout(() => {
+            if (folderCardRef.current) {
+                const navOffset = 80;
+                const elementPosition = folderCardRef.current.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - navOffset;
+                window.scrollTo({
+                    top: Math.max(0, offsetPosition),
+                    behavior: 'smooth',
+                });
+            }
+        }, 50);
+    };
+
+    useEffect(() => {
+        scrollToFolder(selectedFolder === null);
+    }, [selectedFolder, selectedQuarter, selectedMType]);
 
     const matchCategory = (fCategory: string, targetFolder: string | null) => {
         if (!targetFolder) return true;
@@ -832,7 +856,7 @@ export function FileManagement({
     }
 
     return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className={initialFolder ? "w-full" : "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"}>
             {divisionName && (
                 <div className="mb-8">
                     <h1 className="text-2xl sm:text-3xl font-bold text-white mb-2">
@@ -1039,78 +1063,81 @@ export function FileManagement({
                 </motion.div>
             )}
 
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="bg-white/90 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-sky-100/90 shadow-md mb-6 text-slate-800"
-            >
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
-                    <div className="md:col-span-6 lg:col-span-7">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Cari file..."
-                                className="w-full pl-9 sm:pl-10 pr-10 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl text-slate-900 text-sm sm:text-base placeholder-slate-400 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
-                            />
-                            {searchQuery && (
-                                <button
-                                    onClick={() => setSearchQuery('')}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full transition-colors cursor-pointer"
-                                    title="Bersihkan pencarian"
+            {!initialFolder && (
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="bg-white/90 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-sky-100/90 shadow-md mb-6 text-slate-800"
+                >
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4">
+                        <div className="md:col-span-6 lg:col-span-7">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Cari file..."
+                                    className="w-full pl-9 sm:pl-10 pr-10 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl text-slate-900 text-sm sm:text-base placeholder-slate-400 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full transition-colors cursor-pointer"
+                                        title="Bersihkan pencarian"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="md:col-span-3 lg:col-span-3">
+                            <div className="relative">
+                                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <select
+                                    value={filterCategory}
+                                    onChange={(e) => setFilterCategory(e.target.value)}
+                                    className="w-full pl-9 pr-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl text-slate-900 text-sm sm:text-base font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer outline-none transition"
                                 >
-                                    <X className="w-4 h-4" />
-                                </button>
-                            )}
+                                    <option value="All">Semua Kategori</option>
+                                    {(FILE_CATEGORIES.filter((cat) => cat !== 'Custom')).map((cat) => (
+                                        <option key={cat} value={cat}>
+                                            {cat}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="md:col-span-3 lg:col-span-3">
-                        <div className="relative">
-                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <select
-                                value={filterCategory}
-                                onChange={(e) => setFilterCategory(e.target.value)}
-                                className="w-full pl-9 pr-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl text-slate-900 text-sm sm:text-base font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer outline-none transition"
-                            >
-                                <option value="All">Semua Kategori</option>
-                                {(FILE_CATEGORIES.filter((cat) => cat !== 'Custom')).map((cat) => (
-                                    <option key={cat} value={cat}>
-                                        {cat}
-                                    </option>
-                                ))}
-                            </select>
+                        <div className="md:col-span-3 lg:col-span-2">
+                            <div className="relative">
+                                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                <select
+                                    value={filterYear}
+                                    onChange={(e) => setFilterYear(e.target.value)}
+                                    className="w-full pl-9 pr-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl text-slate-900 text-sm sm:text-base font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer outline-none transition"
+                                >
+                                    <option value="All">Semua Tahun</option>
+                                    {YEARS.map((y) => (
+                                        <option key={y} value={y}>
+                                            {y}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                     </div>
-
-                    <div className="md:col-span-3 lg:col-span-2">
-                        <div className="relative">
-                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <select
-                                value={filterYear}
-                                onChange={(e) => setFilterYear(e.target.value)}
-                                className="w-full pl-9 pr-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl text-slate-900 text-sm sm:text-base font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer outline-none transition"
-                            >
-                                <option value="All">Semua Tahun</option>
-                                {YEARS.map((y) => (
-                                    <option key={y} value={y}>
-                                        {y}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </motion.div>
+                </motion.div>
+            )}
 
             <motion.div
+                ref={folderCardRef}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="bg-white/90 backdrop-blur-xl rounded-2xl p-6 border border-sky-100/90 shadow-lg text-slate-800"
+                className="bg-white/90 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-sky-100/90 shadow-lg text-slate-800 scroll-mt-20"
             >
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6 pb-3 border-b border-slate-100">
                     <div className="flex items-center gap-2 text-sm sm:text-base font-semibold text-slate-800 flex-wrap min-w-0">
