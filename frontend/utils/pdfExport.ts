@@ -164,13 +164,30 @@ export async function exportMonthlyPDF(
       title = r.ticketName || '-';
       action = r.remark || '-';
 
-      // Calculate SLA compliance: Memenuhi / Tidak Memenuhi
+      // Calculate SLA compliance dynamically based on priority targets: Memenuhi / Tidak Memenuhi
+      const getTargetByPriority = (prio?: string) => {
+        if (prio === 'Critical') return 120;
+        if (prio === 'High') return 240;
+        if (prio === 'Low') return 2880;
+        return 360;
+      };
+      const targetRST = r.targetRestoreMin || getTargetByPriority(r.priority);
+      const targetRSP = r.targetResolutionMin || getTargetByPriority(r.priority);
+
+      const isRestoreComply = (r.actualRestoreTimeMin !== undefined && r.actualRestoreTimeMin > 0)
+        ? r.actualRestoreTimeMin <= targetRST
+        : (r.restoreComply ?? true);
+
+      const isResolutionComply = (r.actualResolutionTimeMin !== undefined && r.actualResolutionTimeMin > 0)
+        ? r.actualResolutionTimeMin <= targetRSP
+        : (r.resolutionComply ?? true);
+
       let complies = 0;
       let total = 0;
       if (r.actualResponseTimeMin !== undefined) { total++; if (r.responseComply) complies++; }
       if (r.actualOnsiteTimeMin !== undefined) { total++; if (r.onsiteComply) complies++; }
-      if (r.actualRestoreTimeMin !== undefined) { total++; if (r.restoreComply) complies++; }
-      if (r.actualResolutionTimeMin !== undefined) { total++; if (r.resolutionComply) complies++; }
+      if (r.actualRestoreTimeMin !== undefined) { total++; if (isRestoreComply) complies++; }
+      if (r.actualResolutionTimeMin !== undefined) { total++; if (isResolutionComply) complies++; }
 
       statusLabel = (total > 0 && complies === total) ? 'Memenuhi' : 'Tidak Memenuhi';
     }
@@ -317,10 +334,25 @@ export async function exportMonthlyPDF(
         .text(complies ? 'MEMENUHI' : 'TIDAK MEMENUHI', x + cellW - 18, curY + 10);
     };
 
-    drawSLACell(margin, '1. RESPONSE TIME', `${report.actualResponseTimeMin} Min`, !!report.responseComply);
-    drawSLACell(margin + cellW + 3, '2. ONSITE SUPPORT', `${report.actualOnsiteTimeMin} Min`, !!report.onsiteComply);
-    drawSLACell(margin + (cellW + 3) * 2, '3. SERVICE RESTORE (RST)', `${report.actualRestoreTimeMin} Min`, !!report.restoreComply);
-    drawSLACell(margin + (cellW + 3) * 3, '4. TOTAL RESOLUTION (RT)', `${report.actualResolutionTimeMin} Min`, !!report.resolutionComply);
+    const getTargetByPriority = (prio?: string) => {
+      if (prio === 'Critical') return 120;
+      if (prio === 'High') return 240;
+      if (prio === 'Low') return 2880;
+      return 360;
+    };
+    const targetRST = report.targetRestoreMin || getTargetByPriority(report.priority);
+    const targetRSP = report.targetResolutionMin || getTargetByPriority(report.priority);
+    const isRestoreComply = (report.actualRestoreTimeMin !== undefined && report.actualRestoreTimeMin > 0)
+      ? report.actualRestoreTimeMin <= targetRST
+      : (report.restoreComply ?? true);
+    const isResolutionComply = (report.actualResolutionTimeMin !== undefined && report.actualResolutionTimeMin > 0)
+      ? report.actualResolutionTimeMin <= targetRSP
+      : (report.resolutionComply ?? true);
+
+    drawSLACell(margin, '1. RESPONSE TIME', `${report.actualResponseTimeMin ?? 0} Min`, !!report.responseComply);
+    drawSLACell(margin + cellW + 3, '2. ONSITE SUPPORT', `${report.actualOnsiteTimeMin ?? 0} Min`, !!report.onsiteComply);
+    drawSLACell(margin + (cellW + 3) * 2, '3. SERVICE RESTORE (RST)', `${report.actualRestoreTimeMin ?? 0} Min`, !!isRestoreComply);
+    drawSLACell(margin + (cellW + 3) * 3, '4. TOTAL RESOLUTION (RT)', `${report.actualResolutionTimeMin ?? 0} Min`, !!isResolutionComply);
 
     curY += cellH + 7;
 
@@ -333,11 +365,14 @@ export async function exportMonthlyPDF(
     const gridRowH = 32;
     const gridCapH = 5;
 
+    const rstLabelHour = targetRST >= 60 ? `${targetRST / 60} Jam` : `${targetRST} Min`;
+    const rspLabelHour = targetRSP >= 60 ? `${targetRSP / 60} Jam` : `${targetRSP} Min`;
+
     const photosSla = [
       { base64: report.photoResponse || (report.photosResponse && report.photosResponse[0]?.photo), label: '1. Bukti Response Time (< 5 Min)' },
       { base64: report.photoOnsite || (report.photosOnsite && report.photosOnsite[0]?.photo), label: '2. Bukti Onsite Principle (< 120 Min)' },
-      { base64: report.photoRestore || (report.photosRestore && report.photosRestore[0]?.photo), label: '3. Bukti Layanan Pulih / RST (< 120 Min)' },
-      { base64: report.photoResolution || (report.photosResolution && report.photosResolution[0]?.photo), label: '4. Bukti Resolution Time (RT)' },
+      { base64: report.photoRestore || (report.photosRestore && report.photosRestore[0]?.photo), label: `3. Bukti Layanan Pulih / RST (< ${rstLabelHour})` },
+      { base64: report.photoResolution || (report.photosResolution && report.photosResolution[0]?.photo), label: `4. Bukti Resolution Time (< ${rspLabelHour})` },
     ];
 
     for (let rowIdx = 0; rowIdx < 2; rowIdx++) {

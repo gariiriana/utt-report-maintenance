@@ -33,7 +33,8 @@ import {
     orderBy,
     onSnapshot,
     deleteDoc,
-    doc
+    doc,
+    updateDoc
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { SLAForm } from './SLAForm';
@@ -64,7 +65,7 @@ interface CorrectiveReport {
 
     // SLA fields
     ticketName?: string;
-    priority?: 'Low' | 'Medium' | 'High';
+    priority?: 'Critical' | 'High' | 'Medium' | 'Low';
     picDME?: string;
     picTDE?: string;
     remark?: string;
@@ -89,6 +90,11 @@ interface CorrectiveReport {
     resolutionComply?: boolean;
     photoResolution?: string;
     photosResolution?: Array<{ photo: string; description?: string }>;
+    slgScoreRT?: number;
+    slgScoreOTP?: number;
+    slgScoreRST?: number;
+    slgScoreRSP?: number;
+    totalIncidentSlgScore?: number;
 
     // PIR fields
     incidentName?: string;
@@ -178,6 +184,66 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
         return () => unsubscribe();
     }, [user]);
+
+    // Helper: compute accurate SLA compliance dynamically based on priority targets
+    const getSLACompliance = (r: CorrectiveReport) => {
+        const getTargetByPrio = (prio?: string) => {
+            if (prio === 'Critical') return 120;
+            if (prio === 'High') return 240;
+            if (prio === 'Low') return 2880;
+            return 360;
+        };
+        const targetRST = r.targetRestoreMin && r.targetRestoreMin !== 120 ? r.targetRestoreMin : getTargetByPrio(r.priority);
+        const targetRSP = r.targetResolutionMin && r.targetResolutionMin !== 360 ? r.targetResolutionMin : getTargetByPrio(r.priority);
+
+        const restoreComply = (r.actualRestoreTimeMin !== undefined && r.actualRestoreTimeMin > 0)
+            ? r.actualRestoreTimeMin <= targetRST
+            : (r.restoreComply ?? true);
+
+        const resolutionComply = (r.actualResolutionTimeMin !== undefined && r.actualResolutionTimeMin > 0)
+            ? r.actualResolutionTimeMin <= targetRSP
+            : (r.resolutionComply ?? true);
+
+        return { targetRST, targetRSP, restoreComply, resolutionComply };
+    };
+
+    // Auto-heal legacy SLA reports in Firestore to ensure dynamic priority targets and compliance
+    useEffect(() => {
+        if (!user || reports.length === 0) return;
+        const healLegacyReports = async () => {
+            for (const r of reports) {
+                if (r.reportType === 'SLA' && r.priority && r.id) {
+                    const expectedTarget = r.priority === 'Critical' ? 120 : r.priority === 'High' ? 240 : r.priority === 'Low' ? 2880 : 360;
+                    const needsTargetRestoreFix = r.targetRestoreMin === 120 && r.priority !== 'Critical';
+                    const expectedRestoreComply = (r.actualRestoreTimeMin !== undefined && r.actualRestoreTimeMin > 0)
+                        ? r.actualRestoreTimeMin <= expectedTarget
+                        : (r.restoreComply ?? true);
+                    const needsComplyFix = r.restoreComply !== expectedRestoreComply;
+
+                    if (needsTargetRestoreFix || needsComplyFix) {
+                        try {
+                            const actualRST = r.actualRestoreTimeMin || 0;
+                            const newScoreRST = actualRST > 0 ? Number((Math.min(100, (expectedTarget / actualRST) * 100) * 0.15).toFixed(2)) : 15.0;
+                            const scoreRT = r.slgScoreRT || 5.0;
+                            const scoreOTP = r.slgScoreOTP || 5.0;
+                            const scoreRSP = r.slgScoreRSP || 10.0;
+                            const newTotal = Number((scoreRT + scoreOTP + newScoreRST + scoreRSP).toFixed(2));
+
+                            await updateDoc(doc(db, 'corrective_reports', r.id), {
+                                targetRestoreMin: expectedTarget,
+                                restoreComply: expectedRestoreComply,
+                                slgScoreRST: newScoreRST,
+                                totalIncidentSlgScore: newTotal,
+                            });
+                        } catch (err) {
+                            console.warn('[SLA Auto-Heal] Failed to heal report:', r.id, err);
+                        }
+                    }
+                }
+            }
+        };
+        healLegacyReports();
+    }, [reports, user]);
 
     const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -890,8 +956,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             <span className="text-slate-600 font-medium">3. Restore Service</span>
                                                             <div className="flex items-center gap-2">
                                                                 <span className="font-bold text-slate-800">{report.actualRestoreTimeMin ?? 0} Min</span>
-                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${report.restoreComply ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
-                                                                    }`}>{report.restoreComply ? 'Comply' : 'No Comply'}</span>
+                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${getSLACompliance(report).restoreComply ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
+                                                                    }`}>{getSLACompliance(report).restoreComply ? 'Comply' : 'No Comply'}</span>
                                                             </div>
                                                         </div>
 
@@ -899,8 +965,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             <span className="text-slate-600 font-medium">4. Resolution Time</span>
                                                             <div className="flex items-center gap-2">
                                                                 <span className="font-bold text-slate-800">{report.actualResolutionTimeMin ?? 0} Min</span>
-                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${report.resolutionComply ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
-                                                                    }`}>{report.resolutionComply ? 'Comply' : 'No Comply'}</span>
+                                                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${getSLACompliance(report).resolutionComply ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-600 border border-rose-500/20'
+                                                                    }`}>{getSLACompliance(report).resolutionComply ? 'Comply' : 'No Comply'}</span>
                                                             </div>
                                                         </div>
                                                     </div>

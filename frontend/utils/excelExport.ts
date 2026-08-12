@@ -337,7 +337,7 @@ export async function exportSLAReportToExcel(report: any) {
   wsRestore.getCell('E6').value = 'MULAI ORDER\n(TANGGAL : JAM)';
   wsRestore.getCell('E6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsRestore.mergeCells('F6:F7');
-  wsRestore.getCell('F6').value = 'SELESAI ORDER\n(TARGET: 3 JAM)\nTANGGAL : JAM : MENIT';
+  wsRestore.getCell('F6').value = 'SELESAI ORDER\nTANGGAL : JAM : MENIT';
   wsRestore.getCell('F6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsRestore.mergeCells('G6:G7');
   wsRestore.getCell('G6').value = 'WAKTU PEMULIHAN AKTUAL\n(JAM : MENIT)';
@@ -365,6 +365,14 @@ export async function exportSLAReportToExcel(report: any) {
     c7.border = thinBorder;
   });
 
+  const getTargetByPriority = (prio?: string) => {
+    if (prio === 'Critical') return 120;
+    if (prio === 'High') return 240;
+    if (prio === 'Low') return 2880;
+    return 360;
+  };
+  const targetRST = report.targetRestoreMin || getTargetByPriority(report.priority);
+
   // Table Data (1 Row)
   const r8R = wsRestore.getRow(8);
   r8R.height = 25;
@@ -375,7 +383,7 @@ export async function exportSLAReportToExcel(report: any) {
   wsRestore.getCell('E8').value = formatExcelDate(report.startOrder || report.timeOrder);
   wsRestore.getCell('F8').value = formatExcelDate(report.finishOrder);
   wsRestore.getCell('G8').value = report.actualRestoreTimeMin;
-  wsRestore.getCell('H8').value = report.targetRestoreMin;
+  wsRestore.getCell('H8').value = targetRST;
   wsRestore.getCell('I8').value = report.restoreComply ? 'M' : 'TM';
   wsRestore.getCell('J8').value = report.remark || 'Team melaksanakan perbaikan corrective.';
 
@@ -402,7 +410,7 @@ export async function exportSLAReportToExcel(report: any) {
   wsRestore.getCell('G9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsRestore.getCell('G9').border = thinBorder;
 
-  wsRestore.getCell('H9').value = `${report.targetRestoreMin} menit`;
+  wsRestore.getCell('H9').value = `${targetRST} menit`;
   wsRestore.getCell('H9').font = headerFont;
   wsRestore.getCell('H9').alignment = { horizontal: 'center', vertical: 'middle' };
   wsRestore.getCell('H9').border = thinBorder;
@@ -451,7 +459,7 @@ export async function exportSLAReportToExcel(report: any) {
   wsRes.getCell('F6').value = 'MULAI ORDER\n(TANGGAL : JAM)';
   wsRes.getCell('F6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsRes.mergeCells('G6:G7');
-  wsRes.getCell('G6').value = 'SELESAI ORDER\n(TARGET: 3 JAM)\nTANGGAL : JAM : MENIT';
+  wsRes.getCell('G6').value = 'SELESAI ORDER\nTANGGAL : JAM : MENIT';
   wsRes.getCell('G6').alignment = { wrapText: true, horizontal: 'center', vertical: 'middle' };
   wsRes.mergeCells('H6:H7');
   wsRes.getCell('H6').value = 'WAKTU RESOLUSI AKTUAL\n(MENIT)';
@@ -479,6 +487,8 @@ export async function exportSLAReportToExcel(report: any) {
     c7.border = thinBorder;
   });
 
+  const targetRSP = report.targetResolutionMin || getTargetByPriority(report.priority);
+
   // Table Data (1 Row)
   const r8Res = wsRes.getRow(8);
   r8Res.height = 25;
@@ -490,7 +500,7 @@ export async function exportSLAReportToExcel(report: any) {
   wsRes.getCell('F8').value = formatExcelDate(report.startOrder || report.timeOrder);
   wsRes.getCell('G8').value = formatExcelDate(report.finishOrder);
   wsRes.getCell('H8').value = report.actualResolutionTimeMin;
-  wsRes.getCell('I8').value = report.targetResolutionMin;
+  wsRes.getCell('I8').value = targetRSP;
   wsRes.getCell('J8').value = report.resolutionComply ? 'M' : 'TM';
   wsRes.getCell('K8').value = report.remark || 'Team melaksanakan perbaikan corrective.';
 

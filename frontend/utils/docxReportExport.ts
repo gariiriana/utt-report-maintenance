@@ -916,10 +916,17 @@ export async function exportSLAReportToDocx(report: any): Promise<void> {
     loadImageAsUint8Array(logoNeutraDC),
   ]);
 
+  const getTargetByPriority = (prio?: string) => {
+    if (prio === 'Critical') return 120;
+    if (prio === 'High') return 240;
+    if (prio === 'Low') return 2880;
+    return 360;
+  };
+
   const targetResp = report.targetResponseMin || 5;
   const targetOnsite = report.targetOnsiteMin || 120;
-  const targetRestore = report.targetRestoreMin || 120;
-  const targetResolution = report.targetResolutionMin || 360;
+  const targetRestore = report.targetRestoreMin || getTargetByPriority(report.priority);
+  const targetResolution = report.targetResolutionMin || getTargetByPriority(report.priority);
 
   const actualResp = report.actualResponseTimeMin ?? (report.timeOrder ? 5 : 0);
   const actualOnsite = report.actualOnsiteTimeMin ?? (report.actualTimeOnsite ? 45 : 0);
@@ -1718,7 +1725,8 @@ export async function exportSLAMonthlyRecapToDocx(reports: any[], periodTitle: s
   const restoreWidths = [4, 20, 12, 13, 13, 9, 7, 7, 15];
 
   const restoreRows = reports.map((r, idx) => {
-    const comply = r.restoreComply !== undefined ? r.restoreComply : (r.actualRestoreTimeMin ? r.actualRestoreTimeMin <= (r.targetRestoreMin || 120) : true);
+    const targetRestore = r.targetRestoreMin || (r.priority === 'Critical' ? 120 : r.priority === 'High' ? 240 : r.priority === 'Low' ? 2880 : 360);
+    const comply = r.restoreComply !== undefined ? r.restoreComply : (r.actualRestoreTimeMin ? r.actualRestoreTimeMin <= targetRestore : true);
     return new TableRow({
       children: [
         String(idx + 1),
@@ -1727,7 +1735,7 @@ export async function exportSLAMonthlyRecapToDocx(reports: any[], periodTitle: s
         formatDateHour(r.startOrder || r.actualTimeOnsite),
         formatDateHour(r.finishOrder),
         formatMinToHHMM(r.actualRestoreTimeMin),
-        formatMinToHHMM(r.targetRestoreMin || 120),
+        formatMinToHHMM(targetRestore),
         comply ? 'M' : 'TM',
         r.actionTaken || r.remark || '-',
       ].map((val, cIdx) => new TableCell({
@@ -1782,7 +1790,8 @@ export async function exportSLAMonthlyRecapToDocx(reports: any[], periodTitle: s
   const resolutionWidths = [4, 20, 12, 13, 13, 9, 7, 7, 15];
 
   const resolutionRows = reports.map((r, idx) => {
-    const comply = r.resolutionComply !== undefined ? r.resolutionComply : (r.actualResolutionTimeMin ? r.actualResolutionTimeMin <= (r.targetResolutionMin || 360) : true);
+    const targetResolution = r.targetResolutionMin || (r.priority === 'Critical' ? 120 : r.priority === 'High' ? 240 : r.priority === 'Low' ? 2880 : 360);
+    const comply = r.resolutionComply !== undefined ? r.resolutionComply : (r.actualResolutionTimeMin ? r.actualResolutionTimeMin <= targetResolution : true);
     return new TableRow({
       children: [
         String(idx + 1),
@@ -1791,7 +1800,7 @@ export async function exportSLAMonthlyRecapToDocx(reports: any[], periodTitle: s
         formatDateHour(r.startOrder || r.actualTimeOnsite),
         formatDateHour(r.finishOrder),
         formatMinToHHMM(r.actualResolutionTimeMin),
-        formatMinToHHMM(r.targetResolutionMin || 360),
+        formatMinToHHMM(targetResolution),
         comply ? 'M' : 'TM',
         r.resolutionRemark || r.actionTaken || r.remark || '-',
       ].map((val, cIdx) => new TableCell({
