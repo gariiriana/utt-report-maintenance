@@ -16,7 +16,7 @@ export interface NotificationPayload {
   category: string;       // Kategori file (contoh: "Electrical", "Cooling")
   fileId?: string;        // ID file di Firestore (opsional)
   uploadedBy: string;     // Nama user yang mengupload
-  targetTab: 'documents' | 'files' | 'corrective_archive' | 'finding_archive' | 'ptw' | 'findings' | 'corrective';  // Tab tujuan saat notifikasi diklik
+  targetTab: 'documents' | 'files' | 'corrective_archive' | 'finding_archive' | 'ptw' | 'findings' | 'corrective' | 'pir';  // Tab tujuan saat notifikasi diklik
   searchQuery?: string;   // Query pencarian untuk navigasi otomatis
 }
 

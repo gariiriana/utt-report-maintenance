@@ -23,17 +23,17 @@ import { doc, setDoc, serverTimestamp, getDoc, onSnapshot } from 'firebase/fires
 interface UserData {
   email: string;
   uid: string;
-  role: 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme';
-  companyType?: 'neutra' | 'bri';
+  role: 'admin' | 'engineer' | 'Engineer_K2' | 'engineer_k2' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme';
+  companyType?: 'neutra' | 'bri' | 'k2';
   createdAt: any;
 }
 
 /**
  * Helper otomatis: Menentukan peranan (role) awal user berdasarkan format alamat email
  * @param email Alamat email user
- * @returns Kode role resmi (admin, standby_engineer, engineer, dsb.)
+ * @returns Kode role resmi (admin, standby_engineer, engineer, Engineer_K2, dsb.)
  */
-const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' => {
+const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'Engineer_K2' | 'engineer_k2' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' => {
   if (!email) return 'engineer';
   const lowerEmail = email.toLowerCase();
   if (lowerEmail.includes('admin')) return 'admin';
@@ -49,6 +49,7 @@ const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby
   if (lowerEmail.includes('dirut')) return 'dirut';
   if (lowerEmail.includes('site_manager_dme') || lowerEmail.includes('sitemanagerdme')) return 'site_manager_dme';
   if (lowerEmail.includes('dme') || lowerEmail.includes('dwimitra')) return 'DME';
+  if (lowerEmail.includes('k2') || lowerEmail.includes('engineer_k2')) return 'Engineer_K2';
   // Email spesifik teknisi Standby Engineer UTT
   if (lowerEmail === 'agil@utt.com' || lowerEmail === 'krishna@utt.com' || lowerEmail === 'asep@utt.com' || lowerEmail === 'salman@utt.com' || lowerEmail === 'gilang@utt.com' || lowerEmail === 'dison@utt.com' || lowerEmail.includes('standby')) return 'standby_engineer';
   return 'engineer';
@@ -57,8 +58,8 @@ const getRoleFromEmail = (email: string | null): 'admin' | 'engineer' | 'standby
 // Interface konteks autentikasi React
 interface AuthContextType {
   user: User | null;
-  userRole: 'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' | null;
-  companyType: 'neutra' | 'bri' | null;
+  userRole: 'admin' | 'engineer' | 'Engineer_K2' | 'engineer_k2' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' | null;
+  companyType: 'neutra' | 'bri' | 'k2' | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -68,8 +69,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<'admin' | 'engineer' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' | null>(null);
-  const [companyType, setCompanyType] = useState<'neutra' | 'bri' | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'engineer' | 'Engineer_K2' | 'engineer_k2' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' | null>(null);
+  const [companyType, setCompanyType] = useState<'neutra' | 'bri' | 'k2' | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -96,14 +97,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Jika user baru pertama kali login, buat dokumen profil awal di Firestore
           if (!userDoc.exists()) {
             const initialRole = getRoleFromEmail(user.email);
+            const initialCompanyType = (initialRole === 'Engineer_K2' || initialRole === 'engineer_k2') ? 'k2' : 'neutra';
             await setDoc(userDocRef, {
               email: user.email,
               uid: user.uid,
               role: initialRole,
-              companyType: 'neutra',
+              companyType: initialCompanyType,
               createdAt: serverTimestamp(),
             });
             setUserRole(initialRole);
+            setCompanyType(initialCompanyType);
           }
         } catch (error) {
           console.warn('Error creating/fetching user document (offline?):', error);
@@ -119,21 +122,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if ((finalRole as string) === 'dme') {
                 finalRole = 'DME';
               }
+              if ((finalRole as string).toLowerCase() === 'engineer_k2') {
+                finalRole = 'Engineer_K2';
+              }
 
+              const resolvedCompanyType = userData.companyType || (finalRole === 'Engineer_K2' ? 'k2' : 'neutra');
               setUserRole(finalRole);
-              setCompanyType(userData.companyType || 'neutra');
+              setCompanyType(resolvedCompanyType);
             } else {
               const defaultRole = getRoleFromEmail(user.email);
+              const defaultCompanyType = (defaultRole === 'Engineer_K2' || defaultRole === 'engineer_k2') ? 'k2' : 'neutra';
               setUserRole(defaultRole);
-              setCompanyType('neutra');
+              setCompanyType(defaultCompanyType);
             }
             setLoading(false);
           },
           (error) => {
             console.warn('Error listening to user document:', error.message);
             const defaultRole = getRoleFromEmail(user.email);
+            const defaultCompanyType = (defaultRole === 'Engineer_K2' || defaultRole === 'engineer_k2') ? 'k2' : 'neutra';
             setUserRole(defaultRole);
-            setCompanyType('neutra');
+            setCompanyType(defaultCompanyType);
             setLoading(false);
           }
         );
@@ -204,11 +213,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userDoc = await getDoc(userDocRef);
         if (!userDoc.exists()) {
           const initialRole = getRoleFromEmail(userEmail);
+          const initialCompanyType = (initialRole === 'Engineer_K2' || initialRole === 'engineer_k2') ? 'k2' : 'neutra';
           await setDoc(userDocRef, {
             email: userEmail,
             uid: uid,
             role: initialRole,
-            companyType: 'neutra',
+            companyType: initialCompanyType,
             createdAt: serverTimestamp(),
           });
         }
@@ -285,8 +295,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             setUser(fallbackUser);
             const initialRole = getRoleFromEmail(data.email || email);
+            const initialCompanyType = (initialRole === 'Engineer_K2' || initialRole === 'engineer_k2') ? 'k2' : 'neutra';
             setUserRole(initialRole);
-            setCompanyType('neutra');
+            setCompanyType(initialCompanyType);
             setLoading(false);
 
             try {

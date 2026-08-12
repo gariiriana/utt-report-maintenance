@@ -33,14 +33,18 @@ interface PIRReportFormModalProps {
 }
 
 export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFormModalProps) {
-  const { user } = useAuth();
+  const { user, userRole, companyType: authCompanyType } = useAuth();
+  const isK2User = userRole === 'Engineer_K2' || userRole === 'engineer_k2' || authCompanyType === 'k2';
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [editingPhotoIndex, setEditingPhotoIndex] = useState<number | null>(null);
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
 
   // Form State
-  const [formData, setFormData] = useState<PIRReportData>(INITIAL_PIR_REPORT_DATA);
+  const [formData, setFormData] = useState<PIRReportData>({
+    ...INITIAL_PIR_REPORT_DATA,
+    companyType: isK2User ? 'k2' : 'neutra'
+  });
 
   // Temporary Attendee Input State
   const [newTde, setNewTde] = useState('');
@@ -273,17 +277,19 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
     toast.loading('Menyimpan Laporan PIR...', { id: 'save-pir' });
 
     try {
+      const resolvedCompanyType = formData.companyType || (isK2User ? 'k2' : 'neutra');
       const docPayload = {
         reportType: 'PIR',
         issue: formData.incidentName,
-        location: 'Neutra DC Cikarang',
+        location: resolvedCompanyType === 'k2' ? 'K2 Data Centres' : 'Neutra DC Cikarang',
         ticketName: formData.incidentName,
         actionTaken: formData.resolution,
         status: 'Resolved',
         reportedBy: formData.reportAuthors,
-        reportedByEmail: user?.email || 'standby@dwimitra.co.id',
+        reportedByEmail: user?.email || (isK2User ? 'engineer_k2@dwimitra.co.id' : 'standby@dwimitra.co.id'),
         reportedAt: serverTimestamp(),
-        ...formData
+        ...formData,
+        companyType: resolvedCompanyType
       };
 
       if (editId) {
@@ -291,15 +297,15 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
         toast.success('Laporan PIR berhasil diperbarui!', { id: 'save-pir' });
       } else {
         await addDoc(collection(db, 'corrective_reports'), docPayload);
-        toast.success('Laporan PIR berhasil disimpan ke Arsip Standby!', { id: 'save-pir' });
+        toast.success('Laporan PIR berhasil disimpan!', { id: 'save-pir' });
         localStorage.removeItem('pir_report_draft');
 
         await sendFileNotification({
           title: `Report PIR Baru: ${formData.incidentName || 'Postmortem Incident Report'}`,
           fileName: formData.incidentName || 'Report PIR',
           category: 'Report PIR',
-          uploadedBy: user?.email || 'Standby Engineer',
-          targetTab: 'corrective_archive',
+          uploadedBy: user?.email || (isK2User ? 'Engineer K2' : 'Standby Engineer'),
+          targetTab: 'pir',
           searchQuery: formData.incidentName || ''
         });
       }
@@ -315,28 +321,31 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
 
   const handleExportPDFOnly = async () => {
     if (!validateStep(6)) return;
-    await generatePIRReportPDF(formData);
+    const resolvedCompanyType = formData.companyType || (isK2User ? 'k2' : 'neutra');
+    const enrichedData = { ...formData, companyType: resolvedCompanyType };
+    await generatePIRReportPDF(enrichedData);
     setSubmitting(true);
     try {
       const docPayload = {
         reportType: 'PIR',
         issue: formData.incidentName,
-        location: 'Neutra DC Cikarang',
+        location: resolvedCompanyType === 'k2' ? 'K2 Data Centres' : 'Neutra DC Cikarang',
         ticketName: formData.incidentName,
         actionTaken: formData.resolution,
         status: 'Resolved',
         reportedBy: formData.reportAuthors,
-        reportedByEmail: user?.email || 'standby@dwimitra.co.id',
+        reportedByEmail: user?.email || (isK2User ? 'engineer_k2@dwimitra.co.id' : 'standby@dwimitra.co.id'),
         reportedAt: serverTimestamp(),
-        ...formData
+        ...formData,
+        companyType: resolvedCompanyType
       };
 
       if (editId) {
         await updateDoc(doc(db, 'corrective_reports', editId), docPayload);
-        toast.success('Laporan PIR diekspor PDF & diperbarui di Arsip Standby!');
+        toast.success('Laporan PIR diekspor PDF & diperbarui!');
       } else {
         await addDoc(collection(db, 'corrective_reports'), docPayload);
-        toast.success('Laporan PIR diekspor PDF & disimpan ke Arsip Standby!');
+        toast.success('Laporan PIR diekspor PDF & disimpan!');
         localStorage.removeItem('pir_report_draft');
       }
 

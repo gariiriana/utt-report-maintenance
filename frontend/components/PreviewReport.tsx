@@ -3,6 +3,7 @@ import { ArrowLeft, FileDown, Info, FileType, ChevronRight } from 'lucide-react'
 import { useState } from 'react';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
+import logoK2 from '@/assets/logo_k2.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
 import { useAuth } from '@/components/AuthContext';
@@ -19,7 +20,7 @@ interface PreviewReportProps {
     maintenanceTime: string;
     specificDetail: string;
     cards: PhotoCard[];
-    companyType: 'neutra' | 'bri';
+    companyType: 'neutra' | 'bri' | 'k2';
     userEmail: string;
     onBack: () => void;
     onExport: () => void;
@@ -69,7 +70,7 @@ export function PreviewReport({
         : formatSingleDate(maintenanceTime);
 
     const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
-    const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
+    const rightLogo = companyType === 'bri' ? logoBRI : companyType === 'k2' ? logoK2 : logoNeutraDC;
 
     return (
         <motion.div

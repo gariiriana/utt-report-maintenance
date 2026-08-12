@@ -18,6 +18,7 @@ import ExcelJS from 'exceljs';
 import { generateReportPDF, loadLogoBase64 } from '@/utils/ReportPdfExport';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
+import logoK2 from '@/assets/logo_k2.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
 
@@ -39,6 +40,7 @@ interface DocumentData {
     hasPhoto: boolean;
   }>;
   type: 'excel' | 'pdf';
+  companyType?: 'neutra' | 'bri' | 'k2';
 }
 
 interface AdminDashboardProps {
@@ -301,7 +303,8 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         let logoNeutraDCId: number;
 
         try {
-          const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
+          const effectiveCompanyType = doc.companyType || companyType || 'neutra';
+          const leftLogo = effectiveCompanyType === 'bri' ? logoBRILeft : logoDwimitra;
           const logoLeftResponse = await fetch(leftLogo);
           const logoLeftBlob = await logoLeftResponse.blob();
           const logoLeftArrayBuffer = await logoLeftBlob.arrayBuffer();
@@ -310,7 +313,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
               (data, byte) => data + String.fromCharCode(byte), ''
             )
           );
-          const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
+          const rightLogo = effectiveCompanyType === 'bri' ? logoBRI : effectiveCompanyType === 'k2' ? logoK2 : logoNeutraDC;
           const logoRightResponse = await fetch(rightLogo);
           const logoRightBlob = await logoRightResponse.blob();
           const logoRightArrayBuffer = await logoRightBlob.arrayBuffer();
@@ -418,8 +421,9 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         URL.revokeObjectURL(url);
 
       } else {
-        const leftLogo = companyType === 'bri' ? logoBRILeft : logoDwimitra;
-        const rightLogo = companyType === 'bri' ? logoBRI : logoNeutraDC;
+        const effectiveCompanyType = doc.companyType || companyType || 'neutra';
+        const leftLogo = effectiveCompanyType === 'bri' ? logoBRILeft : logoDwimitra;
+        const rightLogo = effectiveCompanyType === 'bri' ? logoBRI : effectiveCompanyType === 'k2' ? logoK2 : logoNeutraDC;
         const [logoLeftB64, logoRightB64] = await Promise.all([
           loadLogoBase64(leftLogo),
           loadLogoBase64(rightLogo),
@@ -438,7 +442,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
           specificDetail: doc.specificDetail || '',
           vrvUnitDetail: '',
           cards,
-          companyType: companyType as 'neutra' | 'bri',
+          companyType: effectiveCompanyType as 'neutra' | 'bri' | 'k2',
           userEmail: doc.createdBy,
           logos: { left: logoLeftB64, right: logoRightB64 },
         });

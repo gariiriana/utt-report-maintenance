@@ -15,7 +15,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays } from 'lucide-react';
+import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 import { ReportForm } from '@/components/ReportForm';
@@ -24,6 +24,7 @@ import { AdminDashboard } from '@/pages/AdminDashboard';
 import { ExcelDocument } from '@/components/DocumentList';
 import { FileManagement } from '@/components/FileManagement';
 import { CorrectiveMaintenance } from '@/components/CorrectiveMaintenance';
+import { PIRManagement } from '@/components/PIRManagement';
 import { FindingManagement } from '../components/FindingManagement';
 import { FindingArchive } from '../components/FindingArchive';
 import { Footer } from '@/components/Footer';
@@ -37,7 +38,7 @@ import { NotificationPage } from '@/components/NotificationPage';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
 // Tipe Tab Navigasi yang Tersedia dalam Aplikasi
-type Tab = 'notifications' | 'report' | 'documents' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule';
+type Tab = 'notifications' | 'report' | 'documents' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule';
 
 export function MainApp() {
   // State autentikasi & peranan user dari AuthContext
@@ -47,6 +48,7 @@ export function MainApp() {
   const isAdmin = userRole === 'admin';
   const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
   const isStandby = userRole === 'standby_engineer';
+  const isK2Engineer = userRole === 'Engineer_K2' || userRole === 'engineer_k2';
 
   // State data laporan yang sedang disunting (edit mode)
   const [editingData, setEditingData] = useState<ExcelDocument | null>(null);
@@ -56,15 +58,16 @@ export function MainApp() {
     { id: 'admin', label: 'Dashboard', icon: Shield, color: 'from-purple-600 to-pink-600', show: isAdmin },
     { id: 'absen_tbm', label: 'Absen TBM', icon: Calendar, color: 'from-pink-500 to-rose-600', show: isAdmin },
     { id: 'absen_induction', label: 'Absen Induction', icon: Calendar, color: 'from-blue-500 to-blue-600', show: isAdmin },
-    { id: 'ptw', label: 'PTW', icon: Clipboard, color: 'from-indigo-600 to-blue-600', show: (isAdmin || userRole === 'engineer') && !isStandby },
-    { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: !isStandby && userRole !== 'DME' },
-    { id: 'corrective', label: 'Corrective Maint.', icon: PenTool, color: 'from-red-600 to-red-700', show: userRole !== 'DME' && !isAdmin && userRole !== 'engineer' },
-    { id: 'corrective_archive', label: 'Arsip Standby', icon: FolderOpen, color: 'from-rose-600 to-rose-700', show: userRole !== 'DME' && userRole !== 'engineer' },
-    { id: 'findings', label: 'Temuan', icon: Search, color: 'from-amber-500 to-orange-600', show: userRole !== 'DME' },
-    { id: 'finding_archive', label: 'Arsip Temuan', icon: FolderOpen, color: 'from-teal-600 to-teal-700', show: userRole !== 'DME' },
+    { id: 'ptw', label: 'PTW', icon: Clipboard, color: 'from-indigo-600 to-blue-600', show: (isAdmin || userRole === 'engineer') && !isStandby && !isK2Engineer },
+    { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: !isStandby && userRole !== 'DME' && !isK2Engineer },
+    { id: 'corrective', label: 'Corrective Maint.', icon: PenTool, color: 'from-red-600 to-red-700', show: userRole !== 'DME' && !isAdmin && userRole !== 'engineer' && !isK2Engineer },
+    { id: 'corrective_archive', label: 'Arsip Standby', icon: FolderOpen, color: 'from-rose-600 to-rose-700', show: userRole !== 'DME' && userRole !== 'engineer' && !isK2Engineer },
+    { id: 'findings', label: 'Temuan', icon: Search, color: 'from-amber-500 to-orange-600', show: userRole !== 'DME' && !isK2Engineer },
+    { id: 'finding_archive', label: 'Arsip Temuan', icon: FolderOpen, color: 'from-teal-600 to-teal-700', show: userRole !== 'DME' && !isK2Engineer },
     { id: 'report', label: userRole === 'DME' ? 'Detail Laporan' : 'Buat Laporan', icon: FileText, color: 'from-blue-600 to-blue-700', show: !isStandby && (userRole !== 'DME' || !!editingData) },
     { id: 'documents', label: 'Arsip Dokumen', icon: FolderOpen, color: 'from-emerald-600 to-emerald-700', show: !isStandby },
-    { id: 'pm_schedule', label: 'PM Schedule', icon: CalendarDays, color: 'from-blue-600 to-indigo-700', show: userRole === 'DME' || isAdmin },
+    { id: 'pir', label: 'Report PIR', icon: AlertTriangle, color: 'from-amber-600 to-red-600', show: isK2Engineer || isAdmin || isStandby },
+    { id: 'pm_schedule', label: 'PM Schedule', icon: CalendarDays, color: 'from-blue-600 to-indigo-700', show: (userRole === 'DME' || isAdmin) && !isK2Engineer },
   ] as const;
 
   // Menentukan tab awal default berdasarkan peranan user saat pertama kali dibuka
@@ -309,6 +312,8 @@ export function MainApp() {
                 editingData={editingData} 
                 onClearEdit={clearEditingData} 
               />
+            ) : activeTab === 'pir' ? (
+              <PIRManagement />
             ) : activeTab === 'corrective' ? (
               <CorrectiveMaintenance readOnly={isTDEorCBRE} initialSearchQuery={navSearchQuery} />
             ) : activeTab === 'corrective_archive' ? (

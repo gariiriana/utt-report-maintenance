@@ -26,7 +26,7 @@ interface ExportOptions {
   specificDetail: string;
   vrvUnitDetail: string;
   cards: PhotoCard[];
-  companyType: 'neutra' | 'bri';
+  companyType: 'neutra' | 'bri' | 'k2';
   userEmail?: string;
   logos: {
     left: string;
@@ -462,7 +462,7 @@ export const generateReportPDF = async (options: ExportOptions): Promise<PDFExpo
     doc.setPage(pg);
     doc.setFillColor(THEME_BLUE).rect(0, pageHeight - 2.5, pageWidth, 2.5, 'F');
     doc.setFontSize(7.5).setTextColor(GRAY);
-    const footerCompany = companyType === 'bri' ? 'BANK RAKYAT INDONESIA' : 'PT DWIMITRA EKATAMA MANDIRI';
+    const footerCompany = companyType === 'bri' ? 'BANK RAKYAT INDONESIA' : companyType === 'k2' ? 'K2 DATA CENTRES' : 'PT DWIMITRA EKATAMA MANDIRI';
     doc.text(`${footerCompany} — Dokumen Pemeliharaan`, margin, pageHeight - 6);
     doc.text(`Halaman ${pg} dari ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
   }

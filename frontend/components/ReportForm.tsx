@@ -19,6 +19,7 @@ import { collection, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, getDocs
 import { db, auth } from '@/api/firebase';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
+import logoK2 from '@/assets/logo_k2.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
 
@@ -80,7 +81,7 @@ interface ReportFormProps {
 export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const { user, userRole, companyType: authCompanyType } = useAuth();
   const isDME = userRole === 'DME' || userRole === 'site_manager_dme' || Boolean(user?.email && (user.email.toLowerCase().includes('dwimitra') || user.email.toLowerCase().includes('dme')));
-  const [companyType, setCompanyType] = useState<'neutra' | 'bri'>('neutra');
+  const [companyType, setCompanyType] = useState<'neutra' | 'bri' | 'k2'>(authCompanyType || (userRole === 'Engineer_K2' || userRole === 'engineer_k2' ? 'k2' : 'neutra'));
   const [maintenanceName, setMaintenanceName] = useState('');
   const [maintenanceTime, setMaintenanceTime] = useState('');
   const [paperDigitizerOpen, setPaperDigitizerOpen] = useState(false);
@@ -810,7 +811,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
   const generatePDFDocument = async (unit: ReportUnit) => {
     const logoLeftB64 = await loadLogoBase64(companyType === 'bri' ? logoBRILeft : logoDwimitra);
-    const logoRightB64 = await loadLogoBase64(companyType === 'bri' ? logoBRI : logoNeutraDC);
+    const logoRightB64 = await loadLogoBase64(companyType === 'bri' ? logoBRI : companyType === 'k2' ? logoK2 : logoNeutraDC);
 
     const finalSpecificDetail = (user?.email === 'vrv@gmail.com' && unit.vrvUnitDetail)
       ? `${unit.specificDetail.toUpperCase()} - ${unit.vrvUnitDetail.toUpperCase()}`
@@ -1313,11 +1314,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     id="company-type"
                     title="Situs / Proyek"
                     value={companyType}
-                    onChange={e => setCompanyType(e.target.value as 'neutra' | 'bri')}
+                    onChange={e => setCompanyType(e.target.value as 'neutra' | 'bri' | 'k2')}
                     disabled={isDME}
                     className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-3 text-slate-900 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer pr-10 disabled:opacity-70 disabled:cursor-not-allowed transition"
                   >
                     <option value="neutra">NeutraDC</option>
+                    <option value="k2">K2 Data Centres</option>
                     <option value="bri">Bank BRI</option>
                   </select>
                 </div>

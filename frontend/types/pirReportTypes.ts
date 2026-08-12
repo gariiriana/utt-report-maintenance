@@ -27,6 +27,7 @@ export interface PIRPhoto {
 export interface PIRReportData {
     id?: string;                            // ID unik dokumen di Firestore
     reportType?: 'PIR';                     // Penanda tipe laporan PIR
+    companyType?: 'neutra' | 'bri' | 'k2';  // Situs / Proyek Klien (NeutraDC, BRI, K2)
     reportedAt?: any;                       // Timestamp pengiriman
     reportedBy?: string;                    // Nama user pengirim
     reportedByEmail?: string;               // Email user pengirim

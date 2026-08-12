@@ -425,16 +425,23 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           // Repair Time
           new TableCell({
             width: { size: 20, type: WidthType.PERCENTAGE },
-            margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            margins: { top: 100, bottom: 100, left: 80, right: 80 },
             children: [
               new Paragraph({
+                spacing: { after: 50 },
                 children: [
-                  new TextRun({ text: `Start : ${data.repairTimeStart || '-'}`, size: 20, color: '1E293B', font: 'Century Gothic' }),
+                  new TextRun({ text: 'Start :', bold: true, size: 20, color: '000000', font: 'Century Gothic' }),
+                  ...(data.repairTimeStart
+                    ? data.repairTimeStart.split(/\r?\n/).map((line) => new TextRun({ text: line.trim(), size: 20, color: '1E293B', font: 'Century Gothic', break: 1 }))
+                    : [new TextRun({ text: ' -', size: 20, color: '1E293B', font: 'Century Gothic' })]),
                 ],
               }),
               new Paragraph({
                 children: [
-                  new TextRun({ text: `End   : ${data.repairTimeEnd || '-'}`, size: 20, color: '1E293B', font: 'Century Gothic' }),
+                  new TextRun({ text: 'End   :', bold: true, size: 20, color: '000000', font: 'Century Gothic' }),
+                  ...(data.repairTimeEnd
+                    ? data.repairTimeEnd.split(/\r?\n/).map((line) => new TextRun({ text: line.trim(), size: 20, color: '1E293B', font: 'Century Gothic', break: 1 }))
+                    : [new TextRun({ text: ' -', size: 20, color: '1E293B', font: 'Century Gothic' })]),
                 ],
               }),
             ],
@@ -498,7 +505,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
     borders: cellBorder,
     rows: [
       new TableRow({
-        children: ['No', 'LIST OF REQUIRED SPAREPART', 'BRAND', 'QTY'].map(
+        children: ['No', 'LIST OF REPLACED SPAREPART', 'BRAND', 'QTY'].map(
           (hText, idx) =>
             new TableCell({
               width: { size: [10, 50, 25, 15][idx], type: WidthType.PERCENTAGE },
@@ -536,7 +543,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
             children: [
               new ImageRun({
                 data: img1Bytes,
-                transformation: { width: 240, height: 145 },
+                transformation: { width: 235, height: 135 },
                 type: 'png',
               }),
             ],
@@ -545,11 +552,11 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
         cell1Children.push(
           new Paragraph({
             alignment: AlignmentType.LEFT,
-            spacing: { before: 40, after: 40 },
+            spacing: { before: 30, after: 30 },
             children: [
               new TextRun({
                 text: p1.description ? `Ket: ${p1.description}` : `Ket: Dokumentasi Foto #${i + 1}`,
-                size: 20,
+                size: 18,
                 color: '334155',
                 font: 'Century Gothic',
               }),
@@ -566,7 +573,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
             children: [
               new ImageRun({
                 data: img2Bytes,
-                transformation: { width: 240, height: 145 },
+                transformation: { width: 235, height: 135 },
                 type: 'png',
               }),
             ],
@@ -575,11 +582,11 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
         cell2Children.push(
           new Paragraph({
             alignment: AlignmentType.LEFT,
-            spacing: { before: 40, after: 40 },
+            spacing: { before: 30, after: 30 },
             children: [
               new TextRun({
                 text: p2.description ? `Ket: ${p2.description}` : `Ket: Dokumentasi Foto #${i + 2}`,
-                size: 20,
+                size: 18,
                 color: '334155',
                 font: 'Century Gothic',
               }),
@@ -861,20 +868,23 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           createBoxSection('CLEANING & PREVENTIVE METHOD', resolvedCleaningMethod),
           new Paragraph({ spacing: { after: 120 } }),
 
-          createBoxSection('SUMMARY CORRECTIVE REPORT (PROBLEM ANALYSIS)', resolvedProblemAnalysis),
-          new Paragraph({ spacing: { after: 240 } }),
+          // Halaman 2: Problem Analysis, Replaced Spareparts & Supporting Documentation
+          new Paragraph({ pageBreakBefore: true, children: [] }),
 
-          createSectionHeader('LIST OF REQUIRED SPAREPARTS'),
+          createBoxSection('SUMMARY CORRECTIVE REPORT (PROBLEM ANALYSIS)', resolvedProblemAnalysis),
+          new Paragraph({ spacing: { after: 180 } }),
+
+          createSectionHeader('LIST OF REPLACED SPAREPARTS', false),
           sparepartTable,
-          new Paragraph({ spacing: { after: 240 } }),
+          new Paragraph({ spacing: { after: 180 } }),
 
           ...(photoGridTable
-            ? [createSectionHeader('SUPPORTING DOCUMENTATION', true), photoGridTable]
+            ? [createSectionHeader('SUPPORTING DOCUMENTATION', false), photoGridTable]
             : []),
 
-          new Paragraph({ spacing: { after: 240 } }),
-
+          // Halaman 3: Khusus Tanda Tangan
           new Paragraph({
+            pageBreakBefore: true,
             spacing: { before: 180, after: 120 },
             children: [
               new TextRun({

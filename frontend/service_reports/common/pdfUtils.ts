@@ -7,6 +7,7 @@
 
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
+import logoK2 from '@/assets/logo_k2.png';
 
 /**
  * Helper 1: Mengonversi URL Sumber Gambar ke Format Base64 PNG
@@ -35,9 +36,9 @@ export async function loadImageBase64(src: string): Promise<string> {
 }
 
 /**
- * Helper 2: Memuat Logo Kiri (Dwimitra) & Logo Kanan (NeutraDC)
+ * Helper 2: Memuat Logo Kiri (Dwimitra) & Logo Kanan (NeutraDC / K2)
  */
-export async function loadCompanyLogos() {
+export async function loadCompanyLogos(companyType?: 'neutra' | 'bri' | 'k2') {
   let logoLeft: string | null = null;
   let logoRight: string | null = null;
 
@@ -48,10 +49,12 @@ export async function loadCompanyLogos() {
   }
 
   try {
-    logoRight = await loadImageBase64(logoNeutraDC);
+    const rightSrc = companyType === 'k2' ? logoK2 : logoNeutraDC;
+    logoRight = await loadImageBase64(rightSrc);
   } catch (e) {
     console.warn('Failed to load right logo:', e);
   }
 
   return { logoLeft, logoRight };
 }
+

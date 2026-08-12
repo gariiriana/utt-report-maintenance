@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { PIRReportData } from '@/types/pirReportTypes';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
+import logoK2 from '@/assets/logo_k2.png';
 import { compressBase64Image } from '@/utils/imageCompression';
 import { toast } from 'sonner';
 
@@ -42,7 +43,10 @@ export async function generatePIRReportPDF(data: PIRReportData) {
     let logoLeft = '';
     let logoRight = '';
     try { logoLeft = await loadImageBase64(logoDwimitra); } catch { /* ignore */ }
-    try { logoRight = await loadImageBase64(logoNeutraDC); } catch { /* ignore */ }
+    try { 
+      const rightSrc = data.companyType === 'k2' ? logoK2 : logoNeutraDC;
+      logoRight = await loadImageBase64(rightSrc); 
+    } catch { /* ignore */ }
 
     // Compress photos if any
     let processedPhotos: { base64: string; caption: string }[] = [];
@@ -69,7 +73,11 @@ export async function generatePIRReportPDF(data: PIRReportData) {
         doc.addImage(logoLeft, 'PNG', margin, 6, 22, 16);
       }
       if (logoRight) {
-        doc.addImage(logoRight, 'PNG', pageW - margin - 32, 8, 32, 11);
+        if (data.companyType === 'k2') {
+          doc.addImage(logoRight, 'PNG', pageW - margin - 20, 5, 20, 18);
+        } else {
+          doc.addImage(logoRight, 'PNG', pageW - margin - 32, 8, 32, 11);
+        }
       }
     };
 

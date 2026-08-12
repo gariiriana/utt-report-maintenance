@@ -24,7 +24,9 @@ import {
   Scissors,
   Download,
   Eye,
-  X
+  X,
+  Calendar,
+  Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -36,6 +38,76 @@ import { sendFileNotification } from '@/utils/notificationService';
 import { ImageEditor } from './ImageEditor';
 
 import { PREPARED_BY_SIGNATURES, ARIF_BUDIMAN_SIGNATURE_BASE64, normalizeEngineerName, getEngineerSignature, cleanSignature } from '@/utils/engineerSignatures';
+
+const INDO_MONTH_NAMES = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+];
+
+function formatToIndoDateTime(dateStr: string, timeStr: string): string {
+  if (!dateStr && !timeStr) return '';
+  if (!dateStr) return timeStr;
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const year = parts[0];
+    const monthIndex = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const monthName = INDO_MONTH_NAMES[monthIndex] || parts[1];
+    const formattedDate = `${day}-${monthName}-${year}`;
+    if (timeStr) {
+      return `${formattedDate}, ${timeStr}`;
+    }
+    return formattedDate;
+  }
+  return timeStr ? `${dateStr}, ${timeStr}` : dateStr;
+}
+
+function parseIndoDateTime(value: string): { date: string; time: string } {
+  if (!value) return { date: '', time: '' };
+  
+  let datePart = '';
+  let timePart = '';
+
+  const timeMatch = value.match(/\b([01]?\d|2[0-3])[:.]([0-5]\d)\b/);
+  if (timeMatch) {
+    timePart = `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`;
+  }
+
+  const isoMatch = value.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+  if (isoMatch) {
+    datePart = `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+  } else {
+    const indoMatch = value.match(/\b(\d{1,2})[\s\-\/]([a-zA-Z]+|\d{1,2})[\s\-\/](\d{4})\b/);
+    if (indoMatch) {
+      const day = indoMatch[1].padStart(2, '0');
+      const monthRaw = indoMatch[2].toLowerCase();
+      const year = indoMatch[3];
+      let month = '01';
+
+      const monthMap: Record<string, string> = {
+        jan: '01', januari: '01', '01': '01', '1': '01',
+        feb: '02', februari: '02', '02': '02', '2': '02',
+        mar: '03', maret: '03', '03': '03', '3': '03',
+        apr: '04', april: '04', '04': '04', '4': '04',
+        mei: '05', may: '05', '05': '05', '5': '05',
+        jun: '06', juni: '06', '06': '06', '6': '06',
+        jul: '07', juli: '07', '07': '07', '7': '07',
+        agu: '08', agustus: '08', aug: '08', '08': '08', '8': '08',
+        sep: '09', september: '09', '09': '09', '9': '09',
+        okt: '10', oktober: '10', oct: '10', '10': '10',
+        nov: '11', november: '11', '11': '11',
+        des: '12', desember: '12', dec: '12', '12': '12',
+      };
+
+      if (monthMap[monthRaw]) {
+        month = monthMap[monthRaw];
+      }
+      datePart = `${year}-${month}-${day}`;
+    }
+  }
+
+  return { date: datePart, time: timePart };
+}
 
 interface CMReportFormModalProps {
   onSuccess: () => void;
@@ -592,14 +664,33 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-slate-700 mb-1">INCIDENT DATE</label>
-                  <input
-                    type="text"
-                    value={formData.incidentDate}
-                    onChange={e => setFormData({ ...formData, incidentDate: e.target.value })}
-                    placeholder="e.g. 24-Juli-2026"
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-red-500 outline-none"
-                  />
+                  <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                    <span>INCIDENT DATE (Tanggal Kejadian)</span>
+                    {formData.incidentDate && (
+                      <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                        {formData.incidentDate}
+                      </span>
+                    )}
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="date"
+                      value={parseIndoDateTime(formData.incidentDate).date}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setFormData({ ...formData, incidentDate: formatToIndoDateTime(e.target.value, '') });
+                        }
+                      }}
+                      className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-red-500 outline-none cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={formData.incidentDate}
+                      onChange={e => setFormData({ ...formData, incidentDate: e.target.value })}
+                      placeholder="e.g. 24-Juli-2026"
+                      className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-red-500 outline-none"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -667,40 +758,111 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               exit={{ opacity: 0, x: 10 }}
               className="space-y-6"
             >
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-slate-700 mb-1">CORRECTIVE ACTION * (Bisa Multiline)</label>
-                  <textarea
-                    required
-                    rows={4}
-                    value={formData.correctiveAction}
-                    onChange={e => setFormData({ ...formData, correctiveAction: e.target.value })}
-                    placeholder="- Melakukan pengecekan unit...\n- Melakukan reset system..."
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-red-500 outline-none resize-y"
-                  />
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">CORRECTIVE ACTION * (Bisa Multiline)</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={formData.correctiveAction}
+                  onChange={e => setFormData({ ...formData, correctiveAction: e.target.value })}
+                  placeholder="- Melakukan pengecekan unit...\n- Melakukan reset system..."
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-red-500 outline-none resize-y"
+                />
+              </div>
+
+              <div className="space-y-3 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-red-600" />
+                    REPAIR TIME (Pilih Tanggal & Jam)
+                  </label>
                 </div>
 
-                <div className="space-y-3">
-                  <label className="block text-xs font-bold text-slate-700 mb-1">REPAIR TIME</label>
-                  <div>
-                    <span className="text-xs text-slate-500 block mb-1">Jam Start:</span>
-                    <input
-                      type="text"
-                      value={formData.repairTimeStart}
-                      onChange={e => setFormData({ ...formData, repairTimeStart: e.target.value })}
-                      placeholder="e.g. 12:49"
-                      className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-red-500 outline-none"
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* START TIME */}
+                  <div className="bg-white p-3.5 border border-slate-200 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                        Start (Waktu Mulai):
+                      </span>
+                      {formData.repairTimeStart && (
+                        <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                          {formData.repairTimeStart}
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-[11px] font-medium text-slate-500 block mb-1">📅 Pilih Tanggal:</span>
+                        <input
+                          type="date"
+                          value={parseIndoDateTime(formData.repairTimeStart).date}
+                          onChange={(e) => {
+                            const cur = parseIndoDateTime(formData.repairTimeStart);
+                            const updated = formatToIndoDateTime(e.target.value, cur.time);
+                            setFormData({ ...formData, repairTimeStart: updated });
+                          }}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 text-xs font-medium focus:ring-2 focus:ring-red-500 outline-none cursor-pointer"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-medium text-slate-500 block mb-1">⏰ Pilih Jam:</span>
+                        <input
+                          type="time"
+                          value={parseIndoDateTime(formData.repairTimeStart).time}
+                          onChange={(e) => {
+                            const cur = parseIndoDateTime(formData.repairTimeStart);
+                            const updated = formatToIndoDateTime(cur.date, e.target.value);
+                            setFormData({ ...formData, repairTimeStart: updated });
+                          }}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 text-xs font-medium focus:ring-2 focus:ring-red-500 outline-none cursor-pointer"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-xs text-slate-500 block mb-1">Jam End:</span>
-                    <input
-                      type="text"
-                      value={formData.repairTimeEnd}
-                      onChange={e => setFormData({ ...formData, repairTimeEnd: e.target.value })}
-                      placeholder="e.g. 14:56"
-                      className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-red-500 outline-none"
-                    />
+
+                  {/* END TIME */}
+                  <div className="bg-white p-3.5 border border-slate-200 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                        <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                        End (Waktu Selesai):
+                      </span>
+                      {formData.repairTimeEnd && (
+                        <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                          {formData.repairTimeEnd}
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-[11px] font-medium text-slate-500 block mb-1">📅 Pilih Tanggal:</span>
+                        <input
+                          type="date"
+                          value={parseIndoDateTime(formData.repairTimeEnd).date}
+                          onChange={(e) => {
+                            const cur = parseIndoDateTime(formData.repairTimeEnd);
+                            const updated = formatToIndoDateTime(e.target.value, cur.time);
+                            setFormData({ ...formData, repairTimeEnd: updated });
+                          }}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 text-xs font-medium focus:ring-2 focus:ring-red-500 outline-none cursor-pointer"
+                        />
+                      </div>
+                      <div>
+                        <span className="text-[11px] font-medium text-slate-500 block mb-1">⏰ Pilih Jam:</span>
+                        <input
+                          type="time"
+                          value={parseIndoDateTime(formData.repairTimeEnd).time}
+                          onChange={(e) => {
+                            const cur = parseIndoDateTime(formData.repairTimeEnd);
+                            const updated = formatToIndoDateTime(cur.date, e.target.value);
+                            setFormData({ ...formData, repairTimeEnd: updated });
+                          }}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 text-xs font-medium focus:ring-2 focus:ring-red-500 outline-none cursor-pointer"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -763,7 +925,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               {/* SPAREPARTS TABLE DYNAMIC */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-bold text-slate-800">LIST OF REQUIRED SPAREPART (Halaman 2)</h3>
+                  <h3 className="text-sm font-bold text-slate-800">LIST OF REPLACED SPAREPART (Halaman 2)</h3>
                   <button
                     type="button"
                     onClick={addSparepart}

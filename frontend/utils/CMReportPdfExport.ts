@@ -375,7 +375,7 @@ export async function generateCMReportPDF(data: CMReportData) {
     autoTable(doc, {
       startY: y,
       margin: { left: margin, right: margin },
-      head: [['No', 'LIST OF REQUIRED SPAREPART', 'BRAND', 'QTY']],
+      head: [['No', 'LIST OF REPLACED SPAREPART', 'BRAND', 'QTY']],
       body: sparepartRows,
       theme: 'grid',
       styles: { font: fontName },
