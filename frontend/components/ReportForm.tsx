@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, Save, ChevronLeft, ChevronRight, X, Eye, Download, Loader2, Languages, AlertTriangle, ChevronDown, Package, Sparkles } from 'lucide-react';
+import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, ChevronLeft, ChevronRight, X, Eye, Download, Loader2, Languages, AlertTriangle, ChevronDown, Package, Sparkles } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { ExcelDocument } from '@/components/DocumentList';
 import { ImageEditor } from '@/components/ImageEditor';
@@ -1146,54 +1146,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }
   };
 
-
-
-
-  const handleManualSave = async () => {
-    if (!activeUnit) return;
-    const result = await saveReportToFirestore(activeUnit);
-    if (result) {
-      if (onClearEdit) onClearEdit();
-      let freshCards = createDefaultCards(11);
-      const template = getAccountTemplate(user?.email);
-      if (template && template.length > 0) {
-        const lowerEmail = user?.email?.toLowerCase() || '';
-        if (lowerEmail === 'wld@gmail.com' || lowerEmail === 'fld@gmail.com') {
-          freshCards = await Promise.all(template.map(async (desc, idx) => {
-            let defaultUrl = WLD_DEFAULT_PHOTOS[desc];
-            if (lowerEmail === 'fld@gmail.com' && desc === 'Test Ping') defaultUrl = imgTesPingFld;
-            let b64 = defaultUrl ? await loadLogoBase64(defaultUrl) : undefined;
-            return { id: `${idx + 1}`, photo: null, photoBase64: b64, description: desc, parameter: '' };
-          }));
-        } else {
-          freshCards = template.map((desc, idx) => ({ id: `${idx + 1}`, photo: null, description: desc, parameter: '' }));
-        }
-      }
-
-      const newUnitId = Math.random().toString(36).substr(2, 9);
-      setUnits(prev => prev.map(u => {
-        if (u.id === activeUnit.id) {
-          return {
-            ...u,
-            id: newUnitId,
-            archiveId: undefined,
-            archiveType: undefined,
-            specificDetail: '',
-            vrvUnitDetail: '',
-            tabName: `Unit ${prev.indexOf(u) + 1}`,
-            templateMode: 'indoor',
-            isExported: false,
-            cards: freshCards
-          };
-        }
-        return u;
-      }));
-      setActiveUnitId(newUnitId);
-
-      toast.success('Form direset untuk report baru!', { icon: '🔄', duration: 3000 });
-    }
-  };
-
   const uploadedCount = cards.filter(c => c.photoBase64).length;
 
 
@@ -1930,21 +1882,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 >
                   <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 group-active:scale-90 transition-transform" />
                   <span className="text-center leading-tight font-extrabold">KEMBALI KE ARSIP</span>
-                </button>
-              )}
-
-              {!isDME && (
-                <button
-                  onClick={handleManualSave}
-                  disabled={isSaving || isExporting}
-                  className={`col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 hover:border-slate-300 rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-sm transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {isSaving ? (
-                    <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-slate-600" />
-                  ) : (
-                    <Save className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 group-active:scale-90 transition-transform" />
-                  )}
-                  <span className="text-center leading-tight">SIMPAN KE ARSIP</span>
                 </button>
               )}
 
