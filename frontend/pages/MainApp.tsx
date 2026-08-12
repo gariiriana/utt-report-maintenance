@@ -152,10 +152,12 @@ export function MainApp() {
 
             {/* Aksi Navbar Desktop (Pusat Notifikasi, Email User, Log Out) */}
             <div className="hidden md:flex items-center gap-4">
-              <NotificationCenter 
-                onSelectNotification={handleSelectNotification} 
-                onOpenNotificationPage={() => setActiveTab('notifications')}
-              />
+              {userRole !== 'engineer' && !isStandby && (
+                <NotificationCenter 
+                  onSelectNotification={handleSelectNotification} 
+                  onOpenNotificationPage={() => setActiveTab('notifications')}
+                />
+              )}
               <div className="text-right">
                 <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Masuk sebagai</p>
                 <p className="text-sm font-semibold text-slate-700 truncate max-w-[260px]">{user?.email}</p>
@@ -173,10 +175,12 @@ export function MainApp() {
 
             {/* Aksi Navbar Mobile (Tombol Hamburger Menu & Notifikasi) */}
             <div className="flex items-center gap-2 md:hidden">
-              <NotificationCenter 
-                onSelectNotification={handleSelectNotification} 
-                onOpenNotificationPage={() => setActiveTab('notifications')}
-              />
+              {userRole !== 'engineer' && !isStandby && (
+                <NotificationCenter 
+                  onSelectNotification={handleSelectNotification} 
+                  onOpenNotificationPage={() => setActiveTab('notifications')}
+                />
+              )}
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => setMobileMenuOpen(true)}
