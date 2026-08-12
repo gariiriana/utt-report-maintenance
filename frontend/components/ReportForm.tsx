@@ -1872,15 +1872,15 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               </AnimatePresence>
             </div>
 
-            <div className="grid grid-cols-2 sm:flex sm:flex-row sm:flex-wrap lg:flex-nowrap items-stretch justify-center gap-2 sm:gap-3 mt-4 bg-white/90 backdrop-blur-xl p-4 sm:p-5 rounded-[2rem] border border-sky-100/90 shadow-2xl shadow-sky-900/10 w-full">
+            <div className="flex flex-col sm:flex-row items-stretch justify-center gap-2.5 sm:gap-3 mt-4 bg-white/90 backdrop-blur-xl p-3.5 sm:p-5 rounded-2xl sm:rounded-[2rem] border border-sky-100/90 shadow-xl sm:shadow-2xl shadow-sky-900/10 w-full">
               {(isDME || editingData) && onClearEdit && (
                 <button
                   type="button"
                   onClick={onClearEdit}
                   disabled={isSaving || isExporting}
-                  className="col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100 rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-sm transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer"
+                  className="w-full sm:flex-1 sm:min-w-[140px] py-3 sm:py-3.5 px-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100 rounded-xl sm:rounded-2xl font-bold flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-xs sm:shadow-sm transition active:scale-95 text-xs sm:text-xs group cursor-pointer"
                 >
-                  <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 group-active:scale-90 transition-transform" />
+                  <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 group-active:scale-90 transition-transform shrink-0" />
                   <span className="text-center leading-tight font-extrabold">KEMBALI KE ARSIP</span>
                 </button>
               )}
@@ -1888,33 +1888,31 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               <button
                 onClick={() => setShowPreview(true)}
                 disabled={isSaving || isExporting}
-                className={`col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-emerald-50 border border-emerald-200 text-emerald-900 hover:bg-emerald-100 rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-sm transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`w-full sm:flex-1 sm:min-w-[140px] py-3 sm:py-3.5 px-3 bg-emerald-50 border border-emerald-200 text-emerald-900 hover:bg-emerald-100 rounded-xl sm:rounded-2xl font-bold flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-xs sm:shadow-sm transition active:scale-95 text-xs sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 group-active:scale-90 transition-transform" />
+                <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 group-active:scale-90 transition-transform shrink-0" />
                 <span className="text-center leading-tight">PREVIEW DOKUMENTASI</span>
               </button>
-
-
 
               <button
                 type="button"
                 onClick={() => setPaperDigitizerOpen(true)}
                 disabled={isSaving || isExporting}
-                className={`col-span-2 sm:col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-gradient-to-r from-sky-900 via-blue-800 to-indigo-950 text-white hover:from-sky-950 hover:to-indigo-900 border border-sky-400/30 rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-md shadow-sky-900/20 transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`w-full sm:flex-1 sm:min-w-[140px] py-3 sm:py-3.5 px-3 bg-gradient-to-r from-sky-900 via-blue-800 to-indigo-950 text-white hover:from-sky-950 hover:to-indigo-900 border border-sky-400/30 rounded-xl sm:rounded-2xl font-bold flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-md shadow-sky-900/20 transition active:scale-95 text-xs sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-sky-300 group-active:scale-90 transition-transform animate-pulse" />
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-sky-300 group-active:scale-90 transition-transform animate-pulse shrink-0" />
                 <span className="text-center leading-tight uppercase font-extrabold">UPLOAD & SCAN PAPER REPORT</span>
               </button>
 
               <button
                 onClick={() => handleExportPDF()}
                 disabled={isSaving || isExporting}
-                className={`col-span-2 sm:col-span-1 sm:flex-1 sm:min-w-[140px] py-3.5 px-2 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold flex flex-col items-center justify-center gap-1.5 shadow-md shadow-blue-600/20 transition active:scale-95 text-[10px] sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`w-full sm:flex-1 sm:min-w-[140px] py-3 sm:py-3.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl sm:rounded-2xl font-bold flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-md shadow-blue-600/20 transition active:scale-95 text-xs sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {isExporting ? (
-                  <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                  <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 animate-spin shrink-0" />
                 ) : (
-                  <FileType className="w-4 h-4 sm:w-5 sm:h-5 group-active:scale-90 transition-transform" />
+                  <FileType className="w-4 h-4 sm:w-5 sm:h-5 group-active:scale-90 transition-transform shrink-0" />
                 )}
                 <span className="text-center leading-tight">
                   {isExporting ? 'EXPORTING...' : 'EXPORT DOKUMENTASI (FOTO)'}
