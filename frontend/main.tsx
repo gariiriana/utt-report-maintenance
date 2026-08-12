@@ -12,6 +12,16 @@ import "./themes/index.css";
 import "./api/firebase";
 import { registerSW } from 'virtual:pwa-register';
 
+// Auto-redirect dari domain default Firebase ke Custom Domain resmi
+if (typeof window !== 'undefined') {
+  try {
+    const h = window.location.hostname.toLowerCase();
+    if (h === 'report-utt.web.app' || h === 'report-utt.firebaseapp.com') {
+      window.location.replace('https://dwimitrasystem.com' + window.location.pathname + window.location.search + window.location.hash);
+    }
+  } catch (_) {}
+}
+
 // Register Service Worker PWA secara otomatis untuk dukungan akses offline & caching
 registerSW({ immediate: true });
 

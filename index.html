@@ -6,6 +6,19 @@
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       <meta name="referrer" content="strict-origin-when-cross-origin" />
       <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+      <!-- Auto-redirect from default Firebase domains to official custom domain -->
+      <script>
+        (function () {
+          try {
+            var h = window.location.hostname.toLowerCase();
+            if (h === 'report-utt.web.app' || h === 'report-utt.firebaseapp.com') {
+              var target = 'https://dwimitrasystem.com' + window.location.pathname + window.location.search + window.location.hash;
+              window.location.replace(target);
+            }
+          } catch (e) {}
+        })();
+      </script>
+
       <!-- Microsoft Bing Webmaster Tools Verification -->
       <meta name="msvalidate.01" content="356AD1CFB695D7DAB8CA8FCEC9139115" />
 
