@@ -73,7 +73,7 @@ const FILE_CATEGORIES = [
     'Monthly'
 ];
 
-const ENGINEER_CATEGORIES = ['MOP', 'Risk Register', 'D-DAY', 'Report CM', 'Form SLA/SLG', 'Report PIR', 'SLD', 'Service Report', 'Service Report Approved'];
+const ENGINEER_CATEGORIES = ['MOP', 'Risk Register', 'D-DAY'];
 
 const MAINTENANCE_TYPES = [
     'Water Leak Detector',
@@ -255,6 +255,8 @@ export function FileManagement({
 
     const matchCategory = (fCategory: string, targetFolder: string | null) => {
         if (!targetFolder) return true;
+        if (!fCategory) return false;
+        if (fCategory.trim().toLowerCase() === targetFolder.trim().toLowerCase()) return true;
         if (fCategory === targetFolder) return true;
         if ((targetFolder === 'Form SLA/SLG' || targetFolder === 'SLA/SLG') && (fCategory === 'Form SLA/SLG' || fCategory === 'SLA/SLG')) return true;
         if (targetFolder === 'Report CM, SLA & PIR' && (fCategory === 'Report CM' || fCategory === 'Form SLA/SLG' || fCategory === 'SLA/SLG' || fCategory === 'Report PIR')) return true;
@@ -794,6 +796,10 @@ export function FileManagement({
     };
 
     const filteredFiles = files.filter((file) => {
+        if (isEngineer && !ENGINEER_CATEGORIES.some(cat => matchCategory(file.category, cat))) {
+            return false;
+        }
+
         const q = searchQuery.trim().toLowerCase();
         const matchesSearch = !q || [
             file.fileName,
@@ -805,7 +811,7 @@ export function FileManagement({
         ].filter(Boolean).some(val => String(val).toLowerCase().includes(q));
 
         const matchesCategory =
-            filterCategory === 'All' || file.category === filterCategory;
+            filterCategory === 'All' || matchCategory(file.category, filterCategory);
         const matchesYear =
             filterYear === 'All' || file.year === filterYear;
         return matchesSearch && matchesCategory && matchesYear;
@@ -1102,7 +1108,7 @@ export function FileManagement({
                                     className="w-full pl-9 pr-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl text-slate-900 text-sm sm:text-base font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer outline-none transition"
                                 >
                                     <option value="All">Semua Kategori</option>
-                                    {(FILE_CATEGORIES.filter((cat) => cat !== 'Custom')).map((cat) => (
+                                    {((isEngineer ? ENGINEER_CATEGORIES : FILE_CATEGORIES).filter((cat) => cat !== 'Custom')).map((cat) => (
                                         <option key={cat} value={cat}>
                                             {cat}
                                         </option>
@@ -1253,18 +1259,18 @@ export function FileManagement({
 
                 {!selectedFolder ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                        {[...new Set(filteredFiles.map(f => f.category))]
+                        {[...new Set(isEngineer ? ENGINEER_CATEGORIES : filteredFiles.map(f => f.category))]
                             .filter(category => category && !MAINTENANCE_TYPES.includes(category))
                             .filter(category => {
                                 if (!searchQuery.trim()) return true;
                                 const q = searchQuery.trim().toLowerCase();
                                 const catMatches = category.toLowerCase().includes(q);
-                                const hasMatchingFiles = filteredFiles.some(f => f.category === category);
+                                const hasMatchingFiles = filteredFiles.some(f => matchCategory(f.category, category));
                                 return catMatches || hasMatchingFiles;
                             })
                             .sort()
                             .map((category) => {
-                                const fileCount = filteredFiles.filter(f => f.category === category).length;
+                                const fileCount = filteredFiles.filter(f => matchCategory(f.category, category)).length;
                                 return (
                                     <motion.div
                                         key={category}
