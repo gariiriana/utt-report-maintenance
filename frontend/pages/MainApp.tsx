@@ -15,7 +15,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle } from 'lucide-react';
+import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle, Database } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 import { ReportForm } from '@/components/ReportForm';
@@ -33,12 +33,13 @@ import { PTWManagement } from '@/components/PTWManagement';
 import { AbsenTBM } from '@/components/AbsenTBM';
 import { AbsenInduction } from '@/components/AbsenInduction';
 import { PMSchedule } from '@/components/PMSchedule';
+import { BOQMasterAsset } from '@/components/BOQMasterAsset';
 import { NotificationCenter, AppNotificationItem } from '@/components/NotificationCenter';
 import { NotificationPage } from '@/components/NotificationPage';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
 // Tipe Tab Navigasi yang Tersedia dalam Aplikasi
-type Tab = 'notifications' | 'report' | 'documents' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule';
+type Tab = 'notifications' | 'report' | 'documents' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq';
 
 export function MainApp() {
   // State autentikasi & peranan user dari AuthContext
@@ -68,6 +69,7 @@ export function MainApp() {
     { id: 'documents', label: 'Arsip Dokumen', icon: FolderOpen, color: 'from-emerald-600 to-emerald-700', show: !isStandby },
     { id: 'pir', label: 'Report PIR', icon: AlertTriangle, color: 'from-amber-600 to-red-600', show: isK2Engineer || isAdmin || isStandby },
     { id: 'pm_schedule', label: 'PM Schedule', icon: CalendarDays, color: 'from-blue-600 to-indigo-700', show: (userRole === 'DME' || isAdmin) && !isK2Engineer },
+    { id: 'boq', label: 'Master Asset & BOQ', icon: Database, color: 'from-cyan-600 to-blue-700', show: (userRole === 'DME' || userRole === 'site_manager_dme' || isAdmin || !!user?.email?.toLowerCase().includes('dwimitra') || !!user?.email?.toLowerCase().includes('dme')) && !isK2Engineer },
   ] as const;
 
   // Menentukan tab awal default berdasarkan peranan user saat pertama kali dibuka
@@ -322,6 +324,8 @@ export function MainApp() {
               <FindingManagement />
             ) : activeTab === 'finding_archive' ? (
               <FindingArchive />
+            ) : activeTab === 'boq' ? (
+              <BOQMasterAsset />
             ) : activeTab === 'pm_schedule' ? (
               <PMSchedule />
             ) : (

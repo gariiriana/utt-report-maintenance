@@ -47,4 +47,5 @@ utt-report-maintenance/
 
 # WhatsApp Gateway Session Storage
 backend/wa_session/
+downloads/
 

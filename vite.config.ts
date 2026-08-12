@@ -49,7 +49,7 @@ export default defineConfig({
         ]
       },
       workbox: {
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg}'],
         runtimeCaching: [
           {
@@ -100,6 +100,12 @@ export default defineConfig({
       output: {
         // Pemisahan bundle library besar menjadi terpisah untuk pemuatan halaman cepat
         manualChunks(id) {
+          if (id.includes('boqAssetData')) {
+            return 'boq-data';
+          }
+          if (id.includes('xlsx')) {
+            return 'xlsx';
+          }
           if (id.includes('firebase')) {
             return 'firebase';
           }
@@ -118,6 +124,6 @@ export default defineConfig({
         },
       },
     },
-    chunkSizeWarningLimit: 500,
+    chunkSizeWarningLimit: 1500,
   },
 })
