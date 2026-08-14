@@ -207,7 +207,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
           if (parsed.formData) {
             let pName = parsed.formData.preparedByName;
             if (pName === 'Salman') pName = 'Muhammad Salman Abdurohman';
-            if (pName === 'Agil') pName = 'Agil Zakia Amanda';
+            if (pName === 'Agil' || pName === 'Agil Zakia Amanda') pName = 'Agil Zakia Rahman';
             if (pName === 'Asep') pName = 'Asep Mohammad Fauzi';
             pName = pName || 'Muhammad Salman Abdurohman';
 
@@ -1106,7 +1106,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                       className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-900 font-semibold outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
                     >
                       <option value="Muhammad Salman Abdurohman">Muhammad Salman Abdurohman</option>
-                      <option value="Agil Zakia Amanda">Agil Zakia Amanda</option>
+                      <option value="Agil Zakia Rahman">Agil Zakia Rahman</option>
                       <option value="Asep Mohammad Fauzi">Asep Mohammad Fauzi</option>
                     </select>
                     <input
