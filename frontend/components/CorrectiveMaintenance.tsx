@@ -253,15 +253,11 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
     const confirmDelete = async () => {
         if (!deleteId) return;
-        if (userRole === 'standby_engineer') {
-            toast.error('Standby Engineer tidak diizinkan menghapus laporan di Arsip Standby');
-            setDeleteId(null);
-            return;
-        }
         try {
             await deleteDoc(doc(db, 'corrective_reports', deleteId));
             toast.success('Laporan berhasil dihapus');
         } catch (error) {
+            console.error('Gagal menghapus laporan:', error);
             toast.error('Gagal menghapus laporan');
         } finally {
             setDeleteId(null);
@@ -789,7 +785,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             <PenTool className="w-4 h-4" />
                                                         </button>
                                                     )}
-                                                    {isAuthorizedRole && userRole !== 'standby_engineer' && (report.reportedBy === user?.uid || userRole === 'admin') && (
+                                                    {isAuthorizedRole && (
                                                         <button
                                                             onClick={() => handleDeleteClick(report.id)}
                                                             className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-200 transition cursor-pointer"
@@ -884,16 +880,16 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                 setReportFormType('sla');
                                                                 setShowForm(true);
                                                             }}
-                                                            className="p-2 bg-blue-500/10 text-blue-400 rounded-xl hover:bg-blue-500/20 border border-blue-500/20 transition cursor-pointer"
+                                                            className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 border border-blue-200 transition cursor-pointer"
                                                             title="Edit Laporan SLA"
                                                         >
                                                             <PenTool className="w-4 h-4" />
                                                         </button>
                                                     )}
-                                                    {isAuthorizedRole && userRole !== 'standby_engineer' && (report.reportedBy === user?.uid || userRole === 'admin') && (
+                                                    {isAuthorizedRole && (
                                                         <button
                                                             onClick={() => handleDeleteClick(report.id)}
-                                                            className="p-2 bg-red-500/10 text-red-400 rounded-xl hover:bg-red-500/20 border border-red-500/20 transition cursor-pointer"
+                                                            className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-200 transition cursor-pointer"
                                                             title="Hapus Laporan"
                                                         >
                                                             <Trash2 className="w-4 h-4" />
@@ -1079,16 +1075,16 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                     setReportFormType('cm_pdf');
                                                                     setShowForm(true);
                                                                 }}
-                                                                className="p-2 bg-blue-500/10 text-blue-600 rounded-xl hover:bg-blue-500/20 border border-blue-500/20 transition cursor-pointer"
+                                                                className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 border border-blue-200 transition cursor-pointer"
                                                                 title="Edit Laporan CM"
                                                             >
                                                                 <PenTool className="w-4 h-4" />
                                                             </button>
                                                         )}
-                                                        {isAuthorizedRole && userRole !== 'standby_engineer' && (report.reportedBy === user?.uid || userRole === 'admin') && (
+                                                        {isAuthorizedRole && (
                                                             <button
                                                                 onClick={() => handleDeleteClick(report.id)}
-                                                                className="p-2 bg-red-500/10 text-red-600 rounded-lg hover:bg-red-500/20 border border-red-500/20 transition cursor-pointer"
+                                                                className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-200 transition cursor-pointer"
                                                                 title="Hapus Laporan"
                                                             >
                                                                 <Trash2 className="w-4 h-4" />
@@ -1148,22 +1144,22 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                 <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
                                     <Trash2 className="w-6 h-6 text-red-500" />
                                 </div>
-                                <h3 className="text-xl font-bold text-slate-900 mb-2">Delete Report?</h3>
+                                <h3 className="text-xl font-bold text-slate-900 mb-2">Hapus Laporan?</h3>
                                 <p className="text-slate-500 mb-6">
-                                    Are you sure you want to delete this maintenance report? This action cannot be undone.
+                                    Apakah Anda yakin ingin menghapus laporan pemeliharaan ini? Tindakan ini tidak dapat dibatalkan.
                                 </p>
                                 <div className="flex gap-3 w-full">
                                     <button
                                         onClick={() => setDeleteId(null)}
                                         className="flex-1 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg font-medium transition cursor-pointer"
                                     >
-                                        Cancel
+                                        Batal
                                     </button>
                                     <button
                                         onClick={confirmDelete}
                                         className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition cursor-pointer"
                                     >
-                                        Delete
+                                        Hapus
                                     </button>
                                 </div>
                             </div>
