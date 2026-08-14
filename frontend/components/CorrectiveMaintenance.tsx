@@ -109,6 +109,25 @@ interface CorrectiveReport {
     summaryProblemAnalysis?: string;
     visualInspectionChecking?: string;
     correctiveAction?: string;
+    cleaningPreventiveMethod?: string;
+    spareparts?: any[];
+    photos?: any[];
+    authorName?: string;
+    preparedByName?: string;
+    preparedByTitle?: string;
+    preparedBySign?: string;
+    reviewedByName?: string;
+    reviewedByTitle?: string;
+    reviewedBySign?: string;
+    acknowledgedBy1Name?: string;
+    acknowledgedBy1Title?: string;
+    acknowledgedBy1Sign?: string;
+    acknowledgedBy2Name?: string;
+    acknowledgedBy2Title?: string;
+    acknowledgedBy2Sign?: string;
+    approvedByName?: string;
+    approvedByTitle?: string;
+    approvedBySign?: string;
 }
 
 interface CorrectiveMaintenanceProps {
