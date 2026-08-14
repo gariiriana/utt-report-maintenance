@@ -207,12 +207,16 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         return { targetRST, targetRSP, restoreComply, resolutionComply };
     };
 
-    // Auto-heal legacy SLA reports in Firestore to ensure dynamic priority targets and compliance
+    // Auto-heal legacy SLA reports and outdated engineer names in Firestore
     useEffect(() => {
         if (!user || reports.length === 0) return;
         const healLegacyReports = async () => {
             for (const r of reports) {
-                if (r.reportType === 'SLA' && r.priority && r.id) {
+                if (!r.id) continue;
+                const updatePayload: Record<string, any> = {};
+
+                // 1. Heal SLA metrics
+                if (r.reportType === 'SLA' && r.priority) {
                     const expectedTarget = r.priority === 'Critical' ? 120 : r.priority === 'High' ? 240 : r.priority === 'Low' ? 2880 : 360;
                     const needsTargetRestoreFix = r.targetRestoreMin === 120 && r.priority !== 'Critical';
                     const expectedRestoreComply = (r.actualRestoreTimeMin !== undefined && r.actualRestoreTimeMin > 0)
@@ -221,23 +225,39 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                     const needsComplyFix = r.restoreComply !== expectedRestoreComply;
 
                     if (needsTargetRestoreFix || needsComplyFix) {
-                        try {
-                            const actualRST = r.actualRestoreTimeMin || 0;
-                            const newScoreRST = actualRST > 0 ? Number((Math.min(100, (expectedTarget / actualRST) * 100) * 0.15).toFixed(2)) : 15.0;
-                            const scoreRT = r.slgScoreRT || 5.0;
-                            const scoreOTP = r.slgScoreOTP || 5.0;
-                            const scoreRSP = r.slgScoreRSP || 10.0;
-                            const newTotal = Number((scoreRT + scoreOTP + newScoreRST + scoreRSP).toFixed(2));
+                        const actualRST = r.actualRestoreTimeMin || 0;
+                        const newScoreRST = actualRST > 0 ? Number((Math.min(100, (expectedTarget / actualRST) * 100) * 0.15).toFixed(2)) : 15.0;
+                        const scoreRT = (r as any).slgScoreRT || 5.0;
+                        const scoreOTP = (r as any).slgScoreOTP || 5.0;
+                        const scoreRSP = (r as any).slgScoreRSP || 10.0;
+                        const newTotal = Number((scoreRT + scoreOTP + newScoreRST + scoreRSP).toFixed(2));
 
-                            await updateDoc(doc(db, 'corrective_reports', r.id), {
-                                targetRestoreMin: expectedTarget,
-                                restoreComply: expectedRestoreComply,
-                                slgScoreRST: newScoreRST,
-                                totalIncidentSlgScore: newTotal,
-                            });
-                        } catch (err) {
-                            console.warn('[SLA Auto-Heal] Failed to heal report:', r.id, err);
-                        }
+                        updatePayload.targetRestoreMin = expectedTarget;
+                        updatePayload.restoreComply = expectedRestoreComply;
+                        updatePayload.slgScoreRST = newScoreRST;
+                        updatePayload.totalIncidentSlgScore = newTotal;
+                    }
+                }
+
+                // 2. Heal Engineer Name (Agil Zakia Amanda -> Agil Zakia Rahman)
+                if (r.preparedByName && (r.preparedByName === 'Agil Zakia Amanda' || r.preparedByName === 'Agil')) {
+                    updatePayload.preparedByName = 'Agil Zakia Rahman';
+                }
+                if ((r as any).authorName && ((r as any).authorName === 'Agil Zakia Amanda' || (r as any).authorName === 'Agil')) {
+                    updatePayload.authorName = 'Agil Zakia Rahman';
+                }
+                if ((r as any).reportAuthors && typeof (r as any).reportAuthors === 'string' && (r as any).reportAuthors.includes('Agil Zakia Amanda')) {
+                    updatePayload.reportAuthors = (r as any).reportAuthors.replace(/Agil Zakia Amanda/g, 'Agil Zakia Rahman');
+                }
+                if ((r as any).postmortemOwner && (r as any).postmortemOwner === 'Agil Zakia Amanda') {
+                    updatePayload.postmortemOwner = 'Agil Zakia Rahman';
+                }
+
+                if (Object.keys(updatePayload).length > 0) {
+                    try {
+                        await updateDoc(doc(db, 'corrective_reports', r.id), updatePayload);
+                    } catch (err) {
+                        console.warn('[Auto-Heal] Failed to heal report:', r.id, err);
                     }
                 }
             }
