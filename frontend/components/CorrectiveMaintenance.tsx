@@ -259,7 +259,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 }
 
                 // 2. Heal Engineer Name (Agil Zakia Amanda -> Agil Zakia Rahman)
-                if (r.preparedByName && (r.preparedByName === 'Agil Zakia Amanda' || r.preparedByName === 'Agil')) {
+                if ((r as any).preparedByName && ((r as any).preparedByName === 'Agil Zakia Amanda' || (r as any).preparedByName === 'Agil')) {
                     updatePayload.preparedByName = 'Agil Zakia Rahman';
                 }
                 if ((r as any).authorName && ((r as any).authorName === 'Agil Zakia Amanda' || (r as any).authorName === 'Agil')) {
