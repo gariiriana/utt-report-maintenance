@@ -20,6 +20,7 @@ import {
     ChevronLeft,
     FileText,
     FolderDown,
+    Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import JSZip from 'jszip';
@@ -136,6 +137,120 @@ const ALLOWED_FILE_TYPES = [
 
 const MAX_FILE_SIZE = 60 * 1024 * 1024;
 const CHUNK_SIZE = 750 * 1024;
+
+export interface ParsedFileMetadata {
+    category?: string;
+    maintenanceType?: string;
+    quarter?: string;
+    year?: string;
+}
+
+/**
+ * Otomatis mendeteksi Kategori, Tipe Maintenance/Peralatan, Quarter, dan Tahun
+ * langsung dari nama berkas (misal: "JSEA - PM - AHU - Q3 - 2026.pdf").
+ */
+export function parseFilenameMetadata(filename: string): ParsedFileMetadata {
+    const cleanName = filename.replace(/\.[^/.]+$/, '').trim();
+    const result: ParsedFileMetadata = {};
+
+    // 1. Deteksi Quarter (misal: Q1, Q2, Q3, Q4, Quarter 1, Q-3, Q_3)
+    const quarterMatch = cleanName.match(/\b(?:Q|QUARTER)[\s_-]*([1-4])\b/i);
+    if (quarterMatch) {
+        result.quarter = `Q${quarterMatch[1]}`;
+    }
+
+    // 2. Deteksi Tahun (misal: 2024 s/d 2035)
+    const yearMatch = cleanName.match(/\b(202[0-9]|203[0-9])\b/);
+    if (yearMatch) {
+        result.year = yearMatch[1];
+    }
+
+    // 3. Deteksi Kategori Dokumen
+    if (/\b(?:JSEA|JSA)\b/i.test(cleanName)) {
+        result.category = 'JSEA';
+    } else if (/\b(?:MOP|SOP)\b/i.test(cleanName)) {
+        result.category = 'MOP';
+    } else if (/\bPTW\b/i.test(cleanName)) {
+        result.category = 'PTW';
+    } else if (/\bRISK[\s_-]*REGISTER\b/i.test(cleanName)) {
+        result.category = 'Risk Register';
+    } else if (/\bD[\s_-]*DAY\b/i.test(cleanName)) {
+        result.category = 'D-DAY';
+    } else if (/\bSERVICE[\s_-]*REPORT[\s_-]*APPROVED\b/i.test(cleanName)) {
+        result.category = 'Service Report Approved';
+    } else if (/\bSERVICE[\s_-]*REPORT\b/i.test(cleanName)) {
+        result.category = 'Service Report';
+    } else if (/\bREPORT[\s_-]*PIR\b|\bPIR\b/i.test(cleanName)) {
+        result.category = 'Report PIR';
+    } else if (/\bREPORT[\s_-]*CM\b/i.test(cleanName)) {
+        result.category = 'Report CM';
+    } else if (/\b(?:FORM[\s_-]*SLA|SLA[\s/_-]*SLG)\b/i.test(cleanName)) {
+        result.category = 'Form SLA/SLG';
+    } else if (/\bSLD\b/i.test(cleanName)) {
+        result.category = 'SLD';
+    } else if (/\bCHECKLIST[\s_-]*APD\b/i.test(cleanName)) {
+        result.category = 'Checklist APD';
+    } else if (/\bCHECKLIST[\s_-]*ALAT\b/i.test(cleanName)) {
+        result.category = 'Checklist Alat';
+    } else if (/\bLAPORAN[\s_-]*HARIAN\b/i.test(cleanName)) {
+        result.category = 'Laporan Harian';
+    } else if (/\bLAPORAN[\s_-]*BULANAN\b|\bMONTHLY\b/i.test(cleanName)) {
+        result.category = 'Laporan Bulanan';
+    }
+
+    // 4. Deteksi Tipe Maintenance / Peralatan (AHU, Chiller, Trafo, dll)
+    const sortedTypes = [...MAINTENANCE_TYPES].sort((a, b) => b.length - a.length);
+
+    for (const mType of sortedTypes) {
+        const pattern = mType
+            .replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
+            .replace(/\\\s\+?|\\\/\+?|\\&/g, '[\\s/_&\\-]+');
+        const regex = new RegExp(`\\b${pattern}\\b`, 'i');
+        if (regex.test(cleanName)) {
+            result.maintenanceType = mType;
+            break;
+        }
+    }
+
+    // Alias / Singkatan Nama Peralatan
+    if (!result.maintenanceType) {
+        if (/\b(?:TRAFO|TRANSFORMATOR)\b/i.test(cleanName)) {
+            result.maintenanceType = 'Transformer / Trafo';
+        } else if (/\b(?:GENSET|GEN[-_ ]?SET)\b/i.test(cleanName)) {
+            result.maintenanceType = 'Generator';
+        } else if (/\b(?:WLD|WATER[\s_-]*LEAK)\b/i.test(cleanName)) {
+            result.maintenanceType = 'Water Leak Detector';
+        } else if (/\b(?:CRAC|PAC)\b/i.test(cleanName)) {
+            result.maintenanceType = 'CRAC Data Hall & Supporting Room';
+        } else if (/\b(?:CAPACITOR)\b/i.test(cleanName)) {
+            result.maintenanceType = 'Capacitor Bank';
+        } else if (/\b(?:LIGHTNING|PENANGKAL[\s_-]*PETIR)\b/i.test(cleanName)) {
+            result.maintenanceType = 'Lightning Protection System';
+        } else if (/\b(?:GROUNDING)\b/i.test(cleanName)) {
+            result.maintenanceType = 'Grounding System';
+        } else if (/\b(?:PRE[\s_-]*ACTION)\b/i.test(cleanName)) {
+            result.maintenanceType = 'Pre-Action System';
+        } else if (/\b(?:PDU)\b/i.test(cleanName)) {
+            result.maintenanceType = 'PDU Panel';
+        } else if (/\b(?:LDB|RDB)\b/i.test(cleanName)) {
+            result.maintenanceType = 'Panel LDB & RDB (Distribution)';
+        } else if (/\b(?:MV[\s_-]*PANEL|MV)\b/i.test(cleanName) && !/\bRMU\b/i.test(cleanName)) {
+            result.maintenanceType = 'MV Panel';
+        } else if (/\b(?:LV[\s_-]*PANEL|LV)\b/i.test(cleanName)) {
+            result.maintenanceType = 'LV Panel';
+        } else if (/\b(?:RMU[\s_-]*PANEL|RMU)\b/i.test(cleanName)) {
+            result.maintenanceType = 'RMU Panel';
+        } else if (/\b(?:AC[\s_-]*SPLIT|SPLIT)\b/i.test(cleanName)) {
+            result.maintenanceType = 'AC Splits';
+        } else if (/\b(?:STP|PLUMBING)\b/i.test(cleanName)) {
+            result.maintenanceType = 'STP & Plumbing';
+        } else if (/\b(?:PJU)\b/i.test(cleanName)) {
+            result.maintenanceType = 'PJU';
+        }
+    }
+
+    return result;
+}
 
 interface FileData {
     id: string;
@@ -401,6 +516,33 @@ export function FileManagement({
                 validFiles.push(file);
             });
 
+            if (validFiles.length > 0) {
+                // Auto-detect metadata dari berkas pertama untuk otomatis mengisi pilihan form
+                const firstParsed = parseFilenameMetadata(validFiles[0].name);
+                const detectedParts: string[] = [];
+
+                if (firstParsed.category && !simpleMode) {
+                    setSelectedCategory(firstParsed.category);
+                    detectedParts.push(`Kategori: ${firstParsed.category}`);
+                }
+                if (firstParsed.maintenanceType) {
+                    setSelectedMaintenance(firstParsed.maintenanceType);
+                    detectedParts.push(`Tipe: ${firstParsed.maintenanceType}`);
+                }
+                if (firstParsed.quarter) {
+                    setSelectedUploadQuarter(firstParsed.quarter);
+                    detectedParts.push(`Quarter: ${firstParsed.quarter}`);
+                }
+                if (firstParsed.year) {
+                    setSelectedUploadYear(firstParsed.year);
+                    detectedParts.push(`Tahun: ${firstParsed.year}`);
+                }
+
+                if (detectedParts.length > 0) {
+                    toast.success(`✨ Otomatis terdeteksi: ${detectedParts.join(' | ')}`);
+                }
+            }
+
             setSelectedFiles(prev => [...prev, ...validFiles]);
             e.target.value = '';
         }
@@ -432,15 +574,24 @@ export function FileManagement({
                 const file = selectedFiles[f];
                 const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
+                // Ekstraksi metadata pintar per-berkas (misal: "JSEA - PM - AHU - Q3 - 2026.pdf")
+                const parsed = parseFilenameMetadata(file.name);
+                const fileCategory = parsed.category || finalCategory;
+                const fileMaintenance = (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'].includes(fileCategory))
+                    ? (parsed.maintenanceType || selectedMaintenance)
+                    : null;
+                const fileQuarter = fileCategory === 'SLD' ? 'N/A' : (parsed.quarter || selectedUploadQuarter);
+                const fileYear = parsed.year || selectedUploadYear;
+
                 const fileDocRef = await addDoc(collection(db, collectionName), {
                     fileName: file.name,
                     fileSize: file.size,
                     fileType: file.type || 'application/pdf',
-                    category: finalCategory,
-                    maintenanceType: (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'].includes(finalCategory)) ? selectedMaintenance : null,
-                    quarter: finalCategory === 'SLD' ? 'N/A' : selectedUploadQuarter,
-                    year: selectedUploadYear,
-                    customCategory: selectedCategory === 'Custom' ? customCategory : null,
+                    category: fileCategory,
+                    maintenanceType: fileMaintenance,
+                    quarter: fileQuarter,
+                    year: fileYear,
+                    customCategory: (selectedCategory === 'Custom' && !parsed.category) ? customCategory : null,
                     uploadedBy: user.uid,
                     uploadedByEmail: (user.email || '').toLowerCase(),
                     uploadedAt: serverTimestamp(),
@@ -482,7 +633,7 @@ export function FileManagement({
                 await sendFileNotification({
                     title: `File Baru: ${file.name}`,
                     fileName: file.name,
-                    category: finalCategory,
+                    category: fileCategory,
                     uploadedBy: user?.email || 'User DME',
                     targetTab: 'files',
                     searchQuery: file.name
@@ -901,22 +1052,58 @@ export function FileManagement({
                         </div>
 
                         {selectedFiles.length > 0 && (
-                            <div className="space-y-2 max-h-40 overflow-y-auto pr-2 scrollbar-none">
-                                {selectedFiles.map((file, idx) => (
-                                    <div key={idx} className="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                            <span className="text-lg">{getFileIcon(file.type)}</span>
-                                            <span className="text-xs text-slate-900 font-bold truncate">{file.name}</span>
-                                            <span className="text-[10px] text-slate-500 font-medium">{formatFileSize(file.size)}</span>
+                            <div className="space-y-2 max-h-48 overflow-y-auto pr-2 scrollbar-none">
+                                {selectedFiles.map((file, idx) => {
+                                    const parsed = parseFilenameMetadata(file.name);
+                                    const hasAnyParsed = parsed.category || parsed.maintenanceType || parsed.quarter || parsed.year;
+                                    return (
+                                        <div key={idx} className="flex items-center justify-between bg-slate-50 p-2.5 sm:p-3 rounded-xl border border-slate-200 hover:border-blue-300 transition-all">
+                                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                                <span className="text-lg flex-shrink-0">{getFileIcon(file.type)}</span>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="text-xs text-slate-900 font-bold truncate max-w-[280px] sm:max-w-md">{file.name}</span>
+                                                        <span className="text-[10px] text-slate-500 font-medium">({formatFileSize(file.size)})</span>
+                                                    </div>
+                                                    {hasAnyParsed && (
+                                                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                                                                <Sparkles className="w-3 h-3 text-amber-500 inline" /> Auto:
+                                                            </span>
+                                                            {parsed.category && (
+                                                                <span className="px-1.5 py-0.5 bg-blue-100/80 text-blue-800 border border-blue-200/60 rounded-md text-[10px] font-bold">
+                                                                    {parsed.category}
+                                                                </span>
+                                                            )}
+                                                            {parsed.maintenanceType && (
+                                                                <span className="px-1.5 py-0.5 bg-indigo-100/80 text-indigo-800 border border-indigo-200/60 rounded-md text-[10px] font-bold">
+                                                                    {parsed.maintenanceType}
+                                                                </span>
+                                                            )}
+                                                            {parsed.quarter && (
+                                                                <span className="px-1.5 py-0.5 bg-emerald-100/80 text-emerald-800 border border-emerald-200/60 rounded-md text-[10px] font-bold">
+                                                                    {parsed.quarter}
+                                                                </span>
+                                                            )}
+                                                            {parsed.year && (
+                                                                <span className="px-1.5 py-0.5 bg-amber-100/80 text-amber-800 border border-amber-200/60 rounded-md text-[10px] font-bold">
+                                                                    {parsed.year}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => removeFile(idx)}
+                                                className="p-1.5 hover:bg-red-100 text-slate-400 hover:text-red-600 rounded-lg transition-colors ml-2 cursor-pointer flex-shrink-0"
+                                                title="Hapus file dari antrean"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
                                         </div>
-                                        <button
-                                            onClick={() => removeFile(idx)}
-                                            className="p-1 hover:bg-red-100 text-slate-400 hover:text-red-600 rounded transition-colors"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
 
