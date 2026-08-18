@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, ChevronLeft, X, Eye, Download, Loader2, Languages, AlertTriangle, ChevronDown, Package, Sparkles, Save, CheckCircle2, FileEdit } from 'lucide-react';
+import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, ChevronLeft, X, Eye, Download, Loader2, Languages, AlertTriangle, ChevronDown, Package, Sparkles, Save, FileEdit } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { ExcelDocument } from '@/components/DocumentList';
 import { ImageEditor } from '@/components/ImageEditor';
