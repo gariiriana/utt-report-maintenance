@@ -209,6 +209,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
             if (pName === 'Salman') pName = 'Muhammad Salman Abdurohman';
             if (pName === 'Agil' || pName === 'Agil Zakia Amanda') pName = 'Agil Zakia Rahman';
             if (pName === 'Asep') pName = 'Asep Mohammad Fauzi';
+            if (pName === 'Gilang' || pName === 'Nugroho' || pName?.toLowerCase()?.includes('gilang')) pName = 'Nugroho Gilang Ramadhan';
             pName = pName || 'Muhammad Salman Abdurohman';
 
             const rName = parsed.formData.reviewedByName || 'Arif Budiman';
@@ -1108,6 +1109,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                       <option value="Muhammad Salman Abdurohman">Muhammad Salman Abdurohman</option>
                       <option value="Agil Zakia Rahman">Agil Zakia Rahman</option>
                       <option value="Asep Mohammad Fauzi">Asep Mohammad Fauzi</option>
+                      <option value="Nugroho Gilang Ramadhan">Nugroho Gilang Ramadhan</option>
                     </select>
                     <input
                       type="text"
