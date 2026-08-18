@@ -303,7 +303,6 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
   const resolvedAction = data.correctiveAction || (data as any).actionTaken || '-';
   const resolvedResult = data.result || (data as any).remark || 'Status perbaikan telah selesai dilaksanakan dengan baik.';
   const resolvedVisualInsp = data.visualInspectionChecking || (data as any).issue || 'Pengecekan kondisi fisik dan fungsi operasional peralatan.';
-  const resolvedCleaningMethod = data.cleaningPreventiveMethod || 'Pembersihan area kerja dan komponen pendukung.';
   const resolvedProblemAnalysis = data.summaryProblemAnalysis || (data as any).issue || (data as any).summary || (data as any).actionTaken || 'Analisis masalah dan perbaikan unit.';
 
   // Table 1: Incident Info
