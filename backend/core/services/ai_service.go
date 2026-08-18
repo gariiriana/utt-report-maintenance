@@ -1538,9 +1538,9 @@ func (s *aiService) AnalyzePDUPhotos(ctx context.Context, photos []models.PDUPho
 			report.GroundingResistance.Result = param
 		} else if strings.Contains(label, "noise") || strings.Contains(label, "75 db") || strings.Contains(label, "kebisingan") {
 			report.NoiseMeasurement.Result = param
-		} else if strings.Contains(label, "thermal") || strings.Contains(label, "breaker") || strings.Contains(label, "hot spot") {
+		} else if strings.Contains(label, "thermal") || strings.Contains(label, "breaker") || strings.Contains(label, "hot spot") || strings.Contains(label, "flir") {
 			report.ThermalMeasurement.ResultTemp = param
-		} else if strings.Contains(label, "iso-trans") || strings.Contains(label, "trafo") {
+		} else if strings.Contains(label, "iso-trans") || strings.Contains(label, "isotrans") || strings.Contains(label, "trafo") {
 			parts := strings.Split(param, ",")
 			if len(parts) >= 3 {
 				report.ISOTransTemp.RTemp = strings.TrimSpace(parts[0])
@@ -1549,6 +1549,8 @@ func (s *aiService) AnalyzePDUPhotos(ctx context.Context, photos []models.PDUPho
 			} else {
 				report.ISOTransTemp.RTemp = param
 			}
+		} else if strings.Contains(label, "factor daya") || strings.Contains(label, "power factor") || strings.Contains(label, "cos") {
+			report.DPMRecording.CosP = param
 		}
 	}
 

@@ -82,7 +82,6 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Measurement Panel',
     'Pengecekan Digital Power Meter (KW)',
     'Pengecekan Digital Power Meter (Volt)',
-    'Pengecekan Digital Power Meter (Volt)',
     'Pengecekan Digital Power Meter (Ampere)',
     'Measurement Voltage R-S',
     'Measurement Voltage S-T',
@@ -95,7 +94,11 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Measurement Ampere (S)',
     'Measurement Ampere (T)',
     'Measurement Ampere (N)',
-    'Measurement Grounding'
+    'Measurement Grounding',
+    'Flir',
+    'Temperature Isotrans',
+    'Measurement Noise',
+    'Factor daya'
   ],
   'coolingtower@gmail.com': [
     // Visual Inspection & Maintenance - CT Devices
