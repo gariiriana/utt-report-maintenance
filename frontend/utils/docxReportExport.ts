@@ -665,8 +665,8 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
       children.push(
         new Paragraph({
           alignment: AlignmentType.CENTER,
-          spacing: { before: 80, after: 80 },
-          children: [new ImageRun({ data: signBytes, transformation: { width: 110, height: 45 }, type: 'png' })],
+          spacing: { before: 60, after: 60 },
+          children: [new ImageRun({ data: signBytes, transformation: { width: 125, height: 52 }, type: 'png' })],
         })
       );
     } else {
