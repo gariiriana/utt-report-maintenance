@@ -1031,14 +1031,36 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
         .replace(/^laporan service:\s*/i, '')
         .trim();
 
-      const targetStr = `${doc.maintenanceName} ${doc.specificDetail || ''} ${doc.fileName} ${doc.createdBy || ''}`.toLowerCase();
+      if (cleanQuery) {
+        // Raw target string
+        const targetStr = `${doc.maintenanceName || ''} ${doc.specificDetail || ''} ${doc.fileName || ''} ${doc.createdBy || ''} ${doc.maintenanceType || ''} ${doc.hseType || ''}`.toLowerCase();
+        
+        // Normalized string where dashes, slashes, underscores become spaces
+        const targetNormalized = targetStr.replace(/[-_./]/g, ' ');
+        const queryNormalized = cleanQuery.replace(/[-_./]/g, ' ');
 
-      const directMatch = targetStr.includes(lowerQuery);
-      const cleanMatch = cleanQuery ? targetStr.includes(cleanQuery) : false;
-      const tokenMatch = cleanQuery ? cleanQuery.split(/\s+/).some(t => t.length >= 2 && targetStr.includes(t)) : false;
+        // Stripped alphanumeric string (e.g. "1fdh1pduhb")
+        const targetStripped = targetStr.replace(/[^a-z0-9]/g, '');
+        const queryStripped = cleanQuery.replace(/[^a-z0-9]/g, '');
 
-      if (!directMatch && !cleanMatch && !tokenMatch) {
-        return false;
+        // 1. Direct exact or substring match
+        const directMatch = targetStr.includes(lowerQuery) || targetStr.includes(cleanQuery);
+        
+        // 2. Normalized match (handles "1F DH1 PDU HB" matching "1F-DH1-PDU-HB")
+        const normalizedMatch = targetNormalized.includes(queryNormalized);
+
+        // 3. Stripped alphanumeric match (handles "1FDH1PDUHB" matching "1F-DH1-PDU-HB")
+        const strippedMatch = queryStripped.length >= 2 && targetStripped.includes(queryStripped);
+
+        // 4. Token ALL-match (every word in the query must be found in the target document)
+        const tokens = queryNormalized.split(/\s+/).filter(t => t.length > 0);
+        const allTokensMatch = tokens.length > 0 && tokens.every(token => 
+          targetNormalized.includes(token) || targetStr.includes(token)
+        );
+
+        if (!directMatch && !normalizedMatch && !strippedMatch && !allTokensMatch) {
+          return false;
+        }
       }
     }
 
