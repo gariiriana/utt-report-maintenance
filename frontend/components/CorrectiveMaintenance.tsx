@@ -23,7 +23,8 @@ import {
     Clock,
     FolderOpen,
     AlertTriangle,
-    Plus
+    Plus,
+    X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
