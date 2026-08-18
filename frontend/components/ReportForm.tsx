@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, ChevronLeft, ChevronRight, X, Eye, Download, Loader2, Languages, AlertTriangle, ChevronDown, Package, Sparkles } from 'lucide-react';
+import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, ChevronLeft, X, Eye, Download, Loader2, Languages, AlertTriangle, ChevronDown, Package, Sparkles } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { ExcelDocument } from '@/components/DocumentList';
 import { ImageEditor } from '@/components/ImageEditor';
@@ -121,16 +121,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [units, setUnits] = useState<ReportUnit[]>([]);
   // State 2: ID unit tab yang sedang aktif dipilih teknisi
   const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
-  // Ref 1: Elemen DOM container tab untuk animasi scroll horizontal
-  const tabContainerRef = useRef<HTMLDivElement>(null);
-
-  // Handler 3: Scroll tab navigasi ke kiri atau ke kanan secara halus (smooth)
-  const scrollTabs = (direction: 'left' | 'right') => {
-    if (tabContainerRef.current) {
-      const scrollAmount = 200;
-      tabContainerRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
-    }
-  };
 
   // State UI Modal & Card photo editor
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
@@ -212,29 +202,21 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }));
   };
 
-  // Helper 3: Update nama label tab unit aktif
-  const setTabName = (val: string) => {
-    if (!activeUnitId) return;
-    setUnits(prev => prev.map(u => u.id === activeUnitId ? { ...u, tabName: val } : u));
-  };
-
-  // Helper 4: Update rincian detail spesifik unit (auto-fill nama tab jika masih default)
+  // Helper 4: Update rincian detail spesifik unit
   const setSpecificDetail = (val: string) => {
     if (!activeUnitId) return;
     setUnits(prev => prev.map(u => {
       if (u.id === activeUnitId) {
-        const isDefaultTab = !u.tabName || /^Unit \d+$/i.test(u.tabName);
         return {
           ...u,
           specificDetail: val,
-          tabName: isDefaultTab ? (val || u.tabName) : u.tabName
+          tabName: val || u.tabName
         };
       }
       return u;
     }));
   };
 
-  const tabName = activeUnit?.tabName || '';
   const specificDetail = activeUnit?.specificDetail || '';
   const vrvUnitDetail = activeUnit?.vrvUnitDetail || '';
 
@@ -1278,167 +1260,14 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               </div>
 
 
-              <div className="mt-8 select-none">
-                {/* Desktop Tab Bar */}
-                <div className="hidden md:flex items-center bg-slate-100/90 backdrop-blur-md border border-slate-200 rounded-t-xl overflow-hidden h-10 shadow-sm">
-                  <div className="flex items-center px-2 border-r border-slate-200 gap-1 shrink-0">
-                    <button onClick={() => scrollTabs('left')} title="Geser Tab Kiri" aria-label="Geser tab ke kiri" className="p-1.5 hover:bg-slate-200 transition-colors rounded-lg text-slate-600 hover:text-blue-600"><ChevronLeft className="w-4 h-4" /></button>
-                    <button onClick={() => scrollTabs('right')} title="Geser Tab Kanan" aria-label="Geser tab ke kanan" className="p-1.5 hover:bg-slate-200 transition-colors rounded-lg text-slate-600 hover:text-blue-600"><ChevronRight className="w-4 h-4" /></button>
-                  </div>
-
-                  <div ref={tabContainerRef} className="flex-1 flex items-end overflow-x-auto no-scrollbar h-full scroll-smooth">
-                    {units.map((unit, idx) => (
-                      <div
-                        key={unit.id}
-                        onClick={() => setActiveUnitId(unit.id)}
-                        className={`group relative flex items-center min-w-[110px] sm:min-w-[140px] h-full px-3 sm:px-5 cursor-pointer transition-all duration-200 border-r border-slate-200 shrink-0 ${activeUnitId === unit.id
-                            ? 'bg-white z-10 shadow-sm'
-                            : 'bg-transparent hover:bg-slate-200/50'
-                          }`}
-                      >
-                        {activeUnitId === unit.id ? (
-                          <div className="flex items-center gap-2 sm:gap-3 w-full">
-                            <input
-                              autoFocus
-                              title="Nama Unit"
-                              value={tabName}
-                              onChange={(e) => setTabName(e.target.value)}
-                              disabled={isDME}
-                              className="bg-transparent border-none outline-none text-blue-600 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider w-full disabled:cursor-not-allowed"
-                              placeholder="NAMA UNIT..."
-                            />
-                            {!isDME && units.length > 1 && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (units.length > 1) {
-                                    const targetUnit = units.find(u => u.id === unit.id);
-                                    const unitName = targetUnit?.tabName || `Unit ${idx + 1}`;
-                                    if (window.confirm(`Yakin ingin menghapus "${unitName}" beserta seluruh fotonya?`)) {
-                                      setUnits(prev => prev.filter(u => u.id !== unit.id));
-                                      if (activeUnitId === unit.id) setActiveUnitId(units[idx === 0 ? 1 : idx - 1].id);
-                                      toast.success('Unit berhasil dihapus');
-                                    }
-                                  }
-                                }}
-                                title="Hapus Unit"
-                                aria-label="Hapus unit ini"
-                                className="p-1 text-slate-400 hover:text-red-600 transition-colors shrink-0"
-                              >
-                                <X className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 w-full">
-                            <span className="text-slate-600 font-bold text-[9px] sm:text-[10px] uppercase tracking-wider truncate group-hover:text-slate-900">
-                              {unit.tabName || `Unit ${idx + 1}`}
-                            </span>
-                          </div>
-                        )}
-
-                        {activeUnitId === unit.id && (
-                          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.5)]" />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  {!isDME && (
-                    <div className="flex items-center px-1 border-l border-slate-200 shrink-0 bg-slate-100">
-                      <button
-                        onClick={() => addNewUnit(`Unit ${units.length + 1}`)}
-                        className="p-2 hover:bg-blue-100 text-blue-600 flex items-center justify-center transition-all rounded-lg"
-                        title="Tambah Unit Baru"
-                      >
-                        <Plus className="w-5 h-5" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Mobile Dropdown & Edit Block */}
-                <div className="block md:hidden space-y-4 bg-white/90 backdrop-blur-md p-4 rounded-xl border border-slate-200 shadow-lg">
-                  <div>
-                    <label htmlFor="mobile-unit-select" className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                      Pilih Unit Maintenance
-                    </label>
-                    <select
-                      id="mobile-unit-select"
-                      value={activeUnitId || ''}
-                      onChange={(e) => setActiveUnitId(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 text-slate-900 font-bold rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer text-xs"
-                    >
-                      {units.map((unit, idx) => (
-                        <option key={unit.id} value={unit.id} className="bg-white">
-                          {unit.tabName || `Unit ${idx + 1}`}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {!isDME && (
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => addNewUnit(`Unit ${units.length + 1}`)}
-                        className="flex-1 py-2.5 px-4 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 rounded-xl font-bold transition flex items-center justify-center gap-1.5 text-xs shadow-sm"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Tambah Unit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (units.length > 1) {
-                            const currentUnit = units.find(u => u.id === activeUnitId);
-                            const unitLabel = currentUnit?.tabName || 'Unit ini';
-                            if (window.confirm(`Yakin ingin menghapus "${unitLabel}" beserta seluruh fotonya?`)) {
-                              const idx = units.findIndex(u => u.id === activeUnitId);
-                              setUnits(prev => prev.filter(u => u.id !== activeUnitId));
-                              setActiveUnitId(units[idx === 0 ? 1 : idx - 1].id);
-                              toast.success('Unit berhasil dihapus');
-                            }
-                          } else {
-                            toast.error('Minimal harus ada 1 unit');
-                          }
-                        }}
-                        className="flex-1 py-2.5 px-4 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl font-bold transition flex items-center justify-center gap-1.5 text-xs shadow-sm"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Hapus Unit
-                      </button>
-                    </div>
-                  )}
-
-                  {!isDME && (
-                    <div className="pt-3 border-t border-slate-200">
-                      <label htmlFor="mobile-unit-rename" className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-                        Ubah Nama Unit Aktif
-                      </label>
-                      <input
-                        id="mobile-unit-rename"
-                        type="text"
-                        value={tabName}
-                        onChange={(e) => setTabName(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 text-blue-600 font-bold rounded-xl p-3 outline-none focus:ring-2 focus:ring-blue-500 text-xs"
-                        placeholder="Masukkan nama unit..."
-                      />
-                    </div>
-                  )}
-                </div>
-
-                <div className="h-1 bg-slate-200/60 border-b border-slate-200 mb-10 shadow-sm" />
-              </div>
-
-
               {activeUnit && (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 px-2 gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-8 mb-6 px-2 gap-4">
                   <div className="flex-1 flex flex-wrap items-center gap-3 sm:gap-4">
                     <h2 className="text-base sm:text-lg md:text-xl font-black text-slate-900 tracking-tight flex items-center gap-2 sm:gap-3">
-                      <span className="px-2 py-0.5 bg-blue-600 text-white text-[10px] rounded-md flex items-center justify-center font-mono font-bold">#{units.findIndex(u => u.id === activeUnitId) + 1}</span>
-                      <span className="whitespace-nowrap">DOKUMENTASI:</span>
-                      <span className="text-blue-600 truncate max-w-[150px] sm:max-w-none ml-1">{activeUnit.specificDetail || '(Tanpa Nama Unit)'}</span>
+                      <span className="whitespace-nowrap">DOKUMENTASI FOTO PEMELIHARAAN</span>
+                      {activeUnit.specificDetail && (
+                        <span className="text-blue-600 truncate max-w-[200px] sm:max-w-none ml-1">({activeUnit.specificDetail})</span>
+                      )}
                     </h2>
 
                     {(() => {
