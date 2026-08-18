@@ -1213,46 +1213,46 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-5 relative z-10">
+    <div className="w-full max-w-7xl mx-auto px-2.5 sm:px-6 py-3 sm:py-5 relative z-10 min-w-0 overflow-x-hidden pb-32 sm:pb-16">
       <AnimatePresence mode="wait">
         {!showPreview ? (
-          <motion.div key="form" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }}>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-5">
-              <div className="flex items-center gap-3 flex-wrap">
+          <motion.div key="form" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="w-full min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 mb-3.5 sm:mb-5 w-full min-w-0">
+              <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3 w-full sm:w-auto">
                 {(isDME || editingData) && onClearEdit && (
                   <motion.button
                     whileHover={{ scale: 1.02, x: -2 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={onClearEdit}
-                    className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl shadow-md hover:shadow-lg transition-all text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer border border-emerald-400/30 shrink-0"
+                    className="px-3 sm:px-4 py-2 sm:py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl shadow-md transition-all text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 cursor-pointer border border-emerald-400/30 shrink-0"
                     title="Kembali ke Arsip Dokumen"
                   >
                     <ChevronLeft className="w-4 h-4" />
-                    <span>Kembali ke Arsip Dokumen</span>
+                    <span>Kembali</span>
                   </motion.button>
                 )}
 
-                <div className="flex gap-2.5">
-                  <div className="bg-white/80 backdrop-blur-xl p-2.5 sm:p-3 rounded-xl border border-sky-100/80 shadow-sm min-w-[90px]">
-                    <p className="text-[10px] text-slate-400 uppercase font-bold">Foto</p>
-                    <p className="text-base sm:text-lg font-black text-slate-900">{uploadedCount} / {cards.length}</p>
+                <div className="flex items-center gap-1.5 sm:gap-2.5 ml-auto sm:ml-0">
+                  <div className="bg-white/90 backdrop-blur-xl px-2.5 py-1.5 sm:p-2.5 rounded-xl border border-sky-100/80 shadow-2xs text-center min-w-[75px] sm:min-w-[90px]">
+                    <p className="text-[9px] text-slate-400 uppercase font-bold">Foto</p>
+                    <p className="text-xs sm:text-base font-black text-slate-900 leading-tight">{uploadedCount} / {cards.length}</p>
                   </div>
-                  <div className="bg-white/80 backdrop-blur-xl p-2.5 sm:p-3 rounded-xl border border-sky-100/80 shadow-sm min-w-[90px]">
-                    <p className="text-[10px] text-slate-400 uppercase font-bold">Template</p>
-                    <p className="text-base sm:text-lg font-black text-blue-600 uppercase">{companyType}</p>
+                  <div className="bg-white/90 backdrop-blur-xl px-2.5 py-1.5 sm:p-2.5 rounded-xl border border-sky-100/80 shadow-2xs text-center min-w-[75px] sm:min-w-[90px]">
+                    <p className="text-[9px] text-slate-400 uppercase font-bold">Template</p>
+                    <p className="text-xs sm:text-base font-black text-blue-600 uppercase leading-tight">{companyType}</p>
                   </div>
                 </div>
               </div>
 
               {editingData && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <motion.button
                     type="button"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handleSaveChanges()}
                     disabled={isSaving || isExporting}
-                    className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-md font-bold text-xs sm:text-sm flex items-center gap-2 cursor-pointer transition-all border border-emerald-400/30"
+                    className="flex-1 sm:flex-initial px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-md font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-all border border-emerald-400/30"
                   >
                     {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     <span>{isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
@@ -1261,7 +1261,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     <button
                       type="button"
                       onClick={onClearEdit}
-                      className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl border border-slate-200 text-xs font-bold flex items-center gap-1.5 hover:bg-slate-200 transition-all cursor-pointer"
+                      className="px-3 py-2.5 bg-slate-100 text-slate-600 rounded-xl border border-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-slate-200 transition-all cursor-pointer shrink-0"
                     >
                       <X className="w-3.5 h-3.5" /> Batal
                     </button>
@@ -1271,29 +1271,29 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             </div>
 
             {editingData && (
-              <div className="mb-4 p-3.5 bg-gradient-to-r from-emerald-500/10 via-teal-50 to-emerald-500/10 border border-emerald-300/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
-                    <FileEdit className="w-4 h-4" />
+              <div className="mb-3.5 p-3 sm:p-3.5 bg-gradient-to-r from-emerald-500/10 via-teal-50 to-emerald-500/10 border border-emerald-300/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 shadow-xs w-full min-w-0 overflow-hidden">
+                <div className="flex items-start sm:items-center gap-2.5 min-w-0 w-full">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0 mt-0.5 sm:mt-0">
+                    <FileEdit className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
-                  <div>
-                    <p className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
-                      MODE EDIT LAPORAN ARSIP
-                      <span className="text-[10px] font-semibold px-2 py-0.5 bg-emerald-200/80 text-emerald-900 rounded-full">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-black text-emerald-950">MODE EDIT LAPORAN ARSIP</span>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-200/80 text-emerald-900 rounded-full">
                         {editingData.documentType?.toUpperCase() || 'PDF'}
                       </span>
-                    </p>
-                    <p className="text-[11px] text-slate-600 font-medium">
-                      Mengubah dokumen: <span className="font-bold text-slate-800">{editingData.fileName || editingData.maintenanceName}</span>. Klik tombol <b>Simpan Perubahan</b> untuk memperbarui data langsung di arsip tanpa membuat duplikat.
+                    </div>
+                    <p className="text-[11px] text-slate-600 font-medium break-words mt-0.5">
+                      Mengubah dokumen: <span className="font-bold text-slate-800 break-all">{editingData.fileName || editingData.maintenanceName}</span>. Klik <b>Simpan Perubahan</b> untuk memperbarui data langsung di arsip tanpa membuat duplikat.
                     </p>
                   </div>
                 </div>
               </div>
             )}
 
-            <div className="bg-white/90 backdrop-blur-xl p-4 sm:p-6 rounded-2xl border border-sky-100/90 shadow-lg shadow-sky-900/5 mb-5 font-geist">
+            <div className="bg-white/90 backdrop-blur-xl p-3.5 sm:p-6 rounded-2xl border border-sky-100/90 shadow-lg shadow-sky-900/5 mb-4 sm:mb-5 font-geist w-full max-w-full overflow-hidden">
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 mb-3 sm:mb-6 w-full min-w-0">
                 <div>
                   <label htmlFor="maintenance-name" className="block text-xs font-bold text-slate-700 mb-1">Nama Maintenance</label>
                   <input
@@ -1321,10 +1321,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   />
                 </div>
                 <div>
-                  <label htmlFor="maintenance-time" className="block text-sm font-bold text-slate-700 mb-2">Waktu Maintenance</label>
+                  <label htmlFor="maintenance-time" className="block text-xs font-bold text-slate-700 mb-1">Waktu Maintenance</label>
                   {isFssAccount ? (
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex-1 min-w-0">
                         <input
                           id="maintenance-time-start"
                           title="Tanggal Mulai"
@@ -1333,11 +1333,11 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                           value={fssStart}
                           onChange={(e) => handleFssStartChange(e.target.value)}
                           disabled={isDME}
-                          className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-2.5 sm:p-3 text-xs sm:text-sm text-slate-900 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition disabled:opacity-70 disabled:cursor-not-allowed"
+                          className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-2 sm:p-2.5 text-xs sm:text-sm text-slate-900 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition disabled:opacity-70 disabled:cursor-not-allowed min-w-0"
                         />
                       </div>
-                      <span className="text-slate-400 font-bold text-sm select-none px-0.5">-</span>
-                      <div className="flex-1">
+                      <span className="text-slate-400 font-bold text-xs select-none px-0.5">-</span>
+                      <div className="flex-1 min-w-0">
                         <input
                           id="maintenance-time-end"
                           title="Tanggal Selesai"
@@ -1346,7 +1346,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                           value={fssEnd}
                           onChange={(e) => handleFssEndChange(e.target.value)}
                           disabled={isDME}
-                          className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-2.5 sm:p-3 text-xs sm:text-sm text-slate-900 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition disabled:opacity-70 disabled:cursor-not-allowed"
+                          className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-2 sm:p-2.5 text-xs sm:text-sm text-slate-900 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition disabled:opacity-70 disabled:cursor-not-allowed min-w-0"
                         />
                       </div>
                     </div>
@@ -1359,19 +1359,19 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       value={maintenanceTime}
                       onChange={(e) => setMaintenanceTime(e.target.value)}
                       disabled={isDME}
-                      className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-3 text-slate-900 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition disabled:opacity-70 disabled:cursor-not-allowed"
+                      className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-2 sm:p-2.5 text-xs sm:text-sm text-slate-900 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition disabled:opacity-70 disabled:cursor-not-allowed min-w-0"
                     />
                   )}
                 </div>
                 <div>
-                  <label htmlFor="company-type" className="block text-sm font-bold text-slate-700 mb-2">Situs / Proyek</label>
+                  <label htmlFor="company-type" className="block text-xs font-bold text-slate-700 mb-1">Situs / Proyek</label>
                   <select
                     id="company-type"
                     title="Situs / Proyek"
                     value={companyType}
                     onChange={e => setCompanyType(e.target.value as 'neutra' | 'bri' | 'k2')}
                     disabled={isDME}
-                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-3 text-slate-900 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer pr-10 disabled:opacity-70 disabled:cursor-not-allowed transition"
+                    className="w-full bg-slate-50/80 border border-slate-200 rounded-xl p-2 sm:p-2.5 text-xs sm:text-sm text-slate-900 font-medium outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 appearance-none cursor-pointer pr-8 disabled:opacity-70 disabled:cursor-not-allowed transition"
                   >
                     <option value="neutra">NeutraDC</option>
                     <option value="k2">K2 Data Centres</option>
@@ -1382,12 +1382,12 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
 
               {activeUnit && (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-8 mb-6 px-2 gap-4">
-                  <div className="flex-1 flex flex-wrap items-center gap-3 sm:gap-4">
-                    <h2 className="text-base sm:text-lg md:text-xl font-black text-slate-900 tracking-tight flex items-center gap-2 sm:gap-3">
-                      <span className="whitespace-nowrap">DOKUMENTASI FOTO PEMELIHARAAN</span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-5 sm:mt-8 mb-3 sm:mb-6 px-1 sm:px-2 gap-3 w-full min-w-0">
+                  <div className="flex-1 flex flex-wrap items-center gap-2 sm:gap-4 min-w-0">
+                    <h2 className="text-sm sm:text-lg md:text-xl font-black text-slate-900 tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
+                      <span>DOKUMENTASI FOTO PEMELIHARAAN</span>
                       {activeUnit.specificDetail && (
-                        <span className="text-blue-600 truncate max-w-[200px] sm:max-w-none ml-1">({activeUnit.specificDetail})</span>
+                        <span className="text-blue-600 break-all">({activeUnit.specificDetail})</span>
                       )}
                     </h2>
 
@@ -1415,8 +1415,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     })()}
                   </div>
                   {userRole !== 'engineer' && userRole !== 'standby_engineer' && (
-                    <div className="flex items-center gap-3 self-start sm:self-auto">
-                      <div className="px-3 py-1.5 bg-white/80 backdrop-blur-md border border-slate-200 rounded-full flex items-center gap-2 shadow-sm">
+                    <div className="flex items-center gap-3 self-start sm:self-auto shrink-0">
+                      <div className="px-3 py-1 bg-white/80 backdrop-blur-md border border-slate-200 rounded-full flex items-center gap-1.5 shadow-2xs">
                         <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse shadow-[0_0_8px_rgba(37,99,235,0.5)]" />
                         <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">SEDANG DIEDIT</span>
                       </div>
@@ -1427,23 +1427,23 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             </div>
 
             {!isDME && (
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <button onClick={() => document.getElementById('bulk')?.click()} className="flex-1 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white p-3.5 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20">
-                  <Upload className="w-5 h-5" /> Unggah Banyak Foto Sekaligus
+              <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4 mb-4 sm:mb-6 w-full">
+                <button onClick={() => document.getElementById('bulk')?.click()} className="flex-1 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white p-3 sm:p-3.5 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-md shadow-indigo-500/20 cursor-pointer">
+                  <Upload className="w-4 h-4 sm:w-5 sm:h-5" /> Unggah Banyak Foto Sekaligus
                 </button>
                 <input id="bulk" title="Unggah banyak foto" type="file" multiple accept="image/*" className="hidden" onChange={handleBulkPhotoUpload} />
-                <button onClick={() => setAddCardModalOpen(true)} className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white p-3.5 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20">
-                  <Plus className="w-5 h-5" /> Tambah Kartu Manual
+                <button onClick={() => setAddCardModalOpen(true)} className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white p-3 sm:p-3.5 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 cursor-pointer">
+                  <Plus className="w-4 h-4 sm:w-5 sm:h-5" /> Tambah Kartu Manual
                 </button>
               </div>
             )}
 
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 w-full min-w-0">
               {cards.map((card, idx) => (
                 <div
                   key={card.id}
                   onClick={() => setFocusedCardId(card.id)}
-                  className={`bg-white p-3 sm:p-4 rounded-2xl border relative group transition-all duration-300 shadow-md ${focusedCardId === card.id
+                  className={`bg-white p-3 sm:p-4 rounded-2xl border relative group transition-all duration-300 shadow-md w-full min-w-0 overflow-hidden ${focusedCardId === card.id
                       ? 'border-blue-500 shadow-blue-500/10 ring-2 ring-blue-500/30'
                       : 'border-sky-100 hover:border-blue-300 hover:shadow-lg'
                     }`}
@@ -1451,89 +1451,64 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   <div className="flex justify-between items-center mb-2 sm:mb-3">
                     <span className="text-[10px] sm:text-xs font-bold text-slate-500 tracking-wider uppercase">Doc #{idx + 1}</span>
                     {!isDME && (
-                      <button onClick={() => removeCard(card.id)} className="text-slate-500 hover:text-red-400 transition" title="Hapus Card"><Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
+                      <button onClick={() => removeCard(card.id)} className="text-slate-400 hover:text-red-500 transition p-1 cursor-pointer" title="Hapus Card"><Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /></button>
                     )}
                   </div>
-                  <div className="aspect-video bg-slate-100 rounded-lg mb-2 sm:mb-4 overflow-hidden relative border border-slate-200">
+                  <div className="aspect-video bg-slate-100 rounded-xl mb-2.5 sm:mb-4 overflow-hidden relative border border-slate-200">
                     {card.photoBase64 ? (
                       <>
                         <img src={card.photoBase64} alt={card.description || `Foto dokumentasi ${idx + 1}`} title={card.description || `Foto dokumentasi ${idx + 1}`} className="w-full h-full object-cover" />
                         <div
-                          onClick={() => setPreviewImage({ src: card.photoBase64!, title: card.description || `Doc #${idx + 1}` })}
-                          className="absolute inset-0 bg-black/20 flex items-center justify-center gap-1.5 sm:gap-3 opacity-100 transition-opacity cursor-zoom-in"
+                          className="absolute inset-0 bg-black/30 flex items-center justify-center gap-2 opacity-100 transition-opacity"
                         >
                           <button
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              setPreviewImage({ src: card.photoBase64!, title: card.description || `Doc #${idx + 1}` });
+                              const photoData = card.photoBase64 || (card.photo ? URL.createObjectURL(card.photo) : '');
+                              if (photoData) {
+                                setPreviewImage({ src: photoData, title: card.description || `Doc #${idx + 1}` });
+                              }
                             }}
-                            className="p-1.5 sm:p-2.5 bg-blue-600/20 backdrop-blur-md rounded-lg hover:bg-blue-600/30 transition shadow-xl"
-                            title="Detail Foto"
+                            className="p-2 bg-slate-800/90 hover:bg-slate-900 text-white rounded-xl transition shadow-md cursor-pointer"
+                            title="Lihat Foto Fullscreen"
                           >
-                            <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDownloadPhoto(card.photoBase64!, card.description, idx);
-                            }}
-                            className="p-1.5 sm:p-2.5 bg-emerald-600/20 backdrop-blur-md rounded-lg hover:bg-emerald-600/30 transition shadow-xl"
-                            title="Download Foto"
-                          >
-                            <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+                            <Eye className="w-4 h-4" />
                           </button>
                           {!isDME && (
                             <>
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const photoData = card.photoBase64 || (card.photo ? URL.createObjectURL(card.photo) : '');
-                                  if (photoData) {
-                                    setPreviewImage({ src: photoData, title: card.description || `Foto ${card.id}` });
-                                  }
-                                }}
-                                className="p-1.5 sm:p-2 bg-slate-800/90 hover:bg-slate-900 text-white rounded-lg transition shadow-md cursor-pointer"
-                                title="Lihat Foto Fullscreen"
-                              >
-                                <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                              </button>
-                              <button
+                                type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setEditingCardId(card.id);
                                 }}
-                                className="p-1.5 sm:p-2 bg-blue-600/90 hover:bg-blue-700 text-white rounded-lg transition shadow-md cursor-pointer"
+                                className="p-2 bg-blue-600/90 hover:bg-blue-700 text-white rounded-xl transition shadow-md cursor-pointer"
                                 title="Crop / Edit Foto"
                               >
-                                <Scissors className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                <Scissors className="w-4 h-4" />
                               </button>
                               <button
+                                type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  const photoData = card.photoBase64 || (card.photo ? URL.createObjectURL(card.photo) : '');
-                                  if (photoData) {
-                                    const link = document.createElement('a');
-                                    link.href = photoData;
-                                    link.download = `foto_maintenance_${card.description || 'report'}.png`;
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
-                                  }
+                                  handleDownloadPhoto(card.photoBase64!, card.description, idx);
                                 }}
-                                className="p-1.5 sm:p-2 bg-emerald-600/90 hover:bg-emerald-700 text-white rounded-lg transition shadow-md cursor-pointer"
+                                className="p-2 bg-emerald-600/90 hover:bg-emerald-700 text-white rounded-xl transition shadow-md cursor-pointer"
                                 title="Unduh Foto"
                               >
-                                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                <Download className="w-4 h-4" />
                               </button>
                               <button
+                                type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePhotoChange(card.id, null);
                                 }}
-                                className="p-1.5 sm:p-2 bg-red-600/90 hover:bg-red-700 text-white rounded-lg transition shadow-md cursor-pointer"
+                                className="p-2 bg-red-600/90 hover:bg-red-700 text-white rounded-xl transition shadow-md cursor-pointer"
                                 title="Hapus Foto"
                               >
-                                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </>
                           )}
@@ -1549,22 +1524,22 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                           <>
                             <button
                               onClick={() => setActiveCameraCardId(card.id)}
-                              className="flex-1 flex flex-col items-center justify-center gap-1 sm:gap-2 hover:bg-blue-100/60 transition-colors group/camera border-r border-sky-200/80"
+                              className="flex-1 flex flex-col items-center justify-center gap-1 sm:gap-2 hover:bg-blue-100/60 transition-colors group/camera border-r border-sky-200/80 cursor-pointer"
                             >
-                              <Camera className="w-5.5 h-5.5 sm:w-7 sm:h-7 text-slate-500 group-hover/camera:text-blue-600 transition-colors" />
-                              <span className="text-[8px] sm:text-[9px] text-slate-600 font-bold uppercase tracking-tight group-hover/camera:text-blue-600">Ambil Foto</span>
+                              <Camera className="w-5 h-5 sm:w-7 sm:h-7 text-slate-500 group-hover/camera:text-blue-600 transition-colors" />
+                              <span className="text-[9px] text-slate-600 font-bold uppercase tracking-tight group-hover/camera:text-blue-600">Ambil Foto</span>
                             </button>
 
                             <label className="flex-1 flex flex-col items-center justify-center gap-1 sm:gap-2 cursor-pointer hover:bg-emerald-100/60 transition-colors group/upload">
-                              <Upload className="w-5.5 h-5.5 sm:w-7 sm:h-7 text-slate-500 group-hover/upload:text-emerald-600 transition-colors" />
-                              <span className="text-[8px] sm:text-[9px] text-slate-600 font-bold uppercase tracking-tight group-hover/upload:text-emerald-600">Unggah Foto</span>
+                              <Upload className="w-5 h-5 sm:w-7 sm:h-7 text-slate-500 group-hover/upload:text-emerald-600 transition-colors" />
+                              <span className="text-[9px] text-slate-600 font-bold uppercase tracking-tight group-hover/upload:text-emerald-600">Unggah Foto</span>
                               <input type="file" className="hidden" accept="image/*" onChange={e => handlePhotoChange(card.id, e.target.files?.[0] || null)} />
                             </label>
                           </>
                         ) : (
                           <label className="w-full h-full flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-sky-100/80 transition-colors group/upload">
                             <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-slate-500 group-hover/upload:text-blue-600 transition-colors" />
-                            <span className="text-[8px] sm:text-[10px] text-slate-600 font-bold uppercase mt-1 group-hover/upload:text-blue-600">Unggah Foto</span>
+                            <span className="text-[9px] sm:text-[10px] text-slate-600 font-bold uppercase mt-1 group-hover/upload:text-blue-600">Unggah Foto</span>
                             <input type="file" className="hidden" accept="image/*" onChange={e => handlePhotoChange(card.id, e.target.files?.[0] || null)} />
                           </label>
                         )}
@@ -1572,7 +1547,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     )}
                   </div>
                   <div className="relative w-full">
-                    <textarea title="Deskripsi Foto" value={card.description} onChange={e => handleDescriptionChange(card.id, e.target.value)} disabled={isDME || translatingCardId === card.id} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 pr-9 sm:p-3 sm:pr-10 text-xs sm:text-sm text-slate-900 font-medium outline-none focus:bg-white focus:border-blue-500 transition placeholder:text-slate-400 disabled:opacity-75 disabled:cursor-not-allowed" rows={2} placeholder="Masukkan deskripsi dokumentasi..." />
+                    <textarea title="Deskripsi Foto" value={card.description} onChange={e => handleDescriptionChange(card.id, e.target.value)} disabled={isDME || translatingCardId === card.id} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 pr-9 sm:p-3 sm:pr-10 text-xs sm:text-sm text-slate-900 font-medium outline-none focus:bg-white focus:border-blue-500 transition placeholder:text-slate-400 disabled:opacity-75 disabled:cursor-not-allowed resize-none" rows={2} placeholder="Masukkan deskripsi dokumentasi..." />
                     {(user?.email === 'ats@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com' || user?.email === 'dockleveler@gmail.com' || user?.email === 'door@gmail.com' || user?.email === 'gate@gmail.com' || user?.email === 'capacitorbank@gmail.com' || user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') && (
                       <button
                         type="button"
@@ -1594,11 +1569,11 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             </div>
 
             {/* Status Abnormal / Temuan Section (Below Photo Cards Grid, Above Action Bar) */}
-            <div ref={abnormalSectionRef} className="bg-white/95 backdrop-blur-xl border-2 border-slate-200 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4 my-8 transition-all">
+            <div ref={abnormalSectionRef} className="bg-white/95 backdrop-blur-xl border-2 border-slate-200 rounded-3xl p-4 sm:p-6 shadow-xl space-y-3.5 sm:space-y-4 my-6 sm:my-8 transition-all w-full min-w-0 overflow-hidden">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className={`w-5 h-5 sm:w-6 sm:h-6 ${abnormalStatus === 'abnormal' ? 'text-red-600 animate-bounce' : abnormalStatus === 'normal' ? 'text-emerald-600' : 'text-slate-400'}`} />
-                  <h3 className="font-extrabold text-slate-900 text-sm sm:text-base uppercase tracking-wider">
+                  <h3 className="font-extrabold text-slate-900 text-xs sm:text-base uppercase tracking-wider">
                     Status Pemeriksaan Abnormal / Temuan Peralatan *
                   </h3>
                 </div>
@@ -1609,13 +1584,13 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                 {/* Choice 1: Checkbox Box "Tidak Ada Abnormal" */}
                 <div
                   onClick={() => {
                     setAbnormalStatus(abnormalStatus === 'normal' ? 'none' : 'normal');
                   }}
-                  className={`p-4 rounded-2xl border-2 transition cursor-pointer flex items-center gap-3 ${
+                  className={`p-3.5 sm:p-4 rounded-2xl border-2 transition cursor-pointer flex items-center gap-3 ${
                     abnormalStatus === 'normal'
                       ? 'bg-emerald-50 border-emerald-500 text-emerald-900 shadow-md ring-2 ring-emerald-400/20'
                       : 'bg-slate-50/80 border-slate-200 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/30'
@@ -1638,7 +1613,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   onClick={() => {
                     setAbnormalStatus(abnormalStatus === 'abnormal' ? 'none' : 'abnormal');
                   }}
-                  className={`p-4 rounded-2xl border-2 transition cursor-pointer flex items-center justify-between ${
+                  className={`p-3.5 sm:p-4 rounded-2xl border-2 transition cursor-pointer flex items-center justify-between ${
                     abnormalStatus === 'abnormal'
                       ? 'bg-red-50 border-red-600 text-red-900 shadow-md ring-2 ring-red-400/20'
                       : 'bg-slate-50/80 border-slate-200 text-slate-700 hover:border-red-300 hover:bg-red-50/30'
@@ -1662,7 +1637,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="bg-red-50/60 border border-red-200 rounded-2xl p-4 sm:p-5 space-y-4 pt-4 mt-2 overflow-hidden shadow-inner"
+                    className="bg-red-50/60 border border-red-200 rounded-2xl p-3.5 sm:p-5 space-y-3.5 sm:space-y-4 pt-4 mt-2 overflow-hidden shadow-inner"
                   >
                     <div className="border-b border-red-200 pb-2 flex items-center justify-between flex-wrap gap-2">
                       <h4 className="font-extrabold text-xs sm:text-sm text-red-700 flex items-center gap-2">
@@ -1673,7 +1648,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                       <div>
                         <label className="block text-xs font-bold text-slate-700 mb-1">Nama Part / Peralatan Temuan *</label>
                         <input
@@ -1741,7 +1716,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                       </div>
 
                       {findingPhotos.length > 0 && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                           {findingPhotos.map((p, idx) => (
                             <div key={idx} className="bg-white p-2.5 rounded-2xl border border-red-200 shadow-xs flex flex-col gap-2 relative group">
                               <div className="relative aspect-video rounded-xl overflow-hidden bg-slate-100 border border-slate-200">
@@ -1822,13 +1797,13 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               </AnimatePresence>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-stretch justify-center gap-2.5 sm:gap-3 mt-4 bg-white/90 backdrop-blur-xl p-3.5 sm:p-5 rounded-2xl sm:rounded-[2rem] border border-sky-100/90 shadow-xl sm:shadow-2xl shadow-sky-900/10 w-full">
+            <div className="flex flex-col sm:flex-row items-stretch justify-center gap-2 sm:gap-3 mt-4 bg-white/90 backdrop-blur-xl p-3 sm:p-5 rounded-2xl sm:rounded-[2rem] border border-sky-100/90 shadow-xl sm:shadow-2xl shadow-sky-900/10 w-full min-w-0 overflow-hidden">
               {(isDME || editingData) && onClearEdit && (
                 <button
                   type="button"
                   onClick={onClearEdit}
                   disabled={isSaving || isExporting}
-                  className="w-full sm:flex-1 sm:min-w-[140px] py-3 sm:py-3.5 px-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100 rounded-xl sm:rounded-2xl font-bold flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-xs sm:shadow-sm transition active:scale-95 text-xs sm:text-xs group cursor-pointer"
+                  className="w-full sm:flex-1 sm:min-w-[140px] py-2.5 sm:py-3.5 px-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 text-emerald-800 hover:bg-emerald-100 rounded-xl sm:rounded-2xl font-bold flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-xs sm:shadow-sm transition active:scale-95 text-xs sm:text-xs group cursor-pointer"
                 >
                   <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 group-active:scale-90 transition-transform shrink-0" />
                   <span className="text-center leading-tight font-extrabold">KEMBALI KE ARSIP</span>
@@ -1840,7 +1815,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   type="button"
                   onClick={() => handleSaveChanges()}
                   disabled={isSaving || isExporting}
-                  className={`w-full sm:flex-1 sm:min-w-[150px] py-3 sm:py-3.5 px-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl sm:rounded-2xl font-black flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-lg shadow-emerald-600/30 transition active:scale-95 text-xs sm:text-xs group cursor-pointer border border-emerald-400/40 ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`w-full sm:flex-1 sm:min-w-[150px] py-2.5 sm:py-3.5 px-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl sm:rounded-2xl font-black flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-lg shadow-emerald-600/30 transition active:scale-95 text-xs sm:text-xs group cursor-pointer border border-emerald-400/40 ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {isSaving ? (
                     <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 animate-spin shrink-0" />
@@ -1856,7 +1831,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               <button
                 onClick={() => setShowPreview(true)}
                 disabled={isSaving || isExporting}
-                className={`w-full sm:flex-1 sm:min-w-[140px] py-3 sm:py-3.5 px-3 bg-emerald-50 border border-emerald-200 text-emerald-900 hover:bg-emerald-100 rounded-xl sm:rounded-2xl font-bold flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-xs sm:shadow-sm transition active:scale-95 text-xs sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`w-full sm:flex-1 sm:min-w-[140px] py-2.5 sm:py-3.5 px-3 bg-emerald-50 border border-emerald-200 text-emerald-900 hover:bg-emerald-100 rounded-xl sm:rounded-2xl font-bold flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-xs sm:shadow-sm transition active:scale-95 text-xs sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 group-active:scale-90 transition-transform shrink-0" />
                 <span className="text-center leading-tight">PREVIEW DOKUMENTASI</span>
@@ -1866,7 +1841,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 type="button"
                 onClick={() => setPaperDigitizerOpen(true)}
                 disabled={isSaving || isExporting}
-                className={`w-full sm:flex-1 sm:min-w-[140px] py-3 sm:py-3.5 px-3 bg-gradient-to-r from-sky-900 via-blue-800 to-indigo-950 text-white hover:from-sky-950 hover:to-indigo-900 border border-sky-400/30 rounded-xl sm:rounded-2xl font-bold flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-md shadow-sky-900/20 transition active:scale-95 text-xs sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`w-full sm:flex-1 sm:min-w-[140px] py-2.5 sm:py-3.5 px-3 bg-gradient-to-r from-sky-900 via-blue-800 to-indigo-950 text-white hover:from-sky-950 hover:to-indigo-900 border border-sky-400/30 rounded-xl sm:rounded-2xl font-bold flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-md shadow-sky-900/20 transition active:scale-95 text-xs sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-sky-300 group-active:scale-90 transition-transform animate-pulse shrink-0" />
                 <span className="text-center leading-tight uppercase font-extrabold">UPLOAD & SCAN PAPER REPORT</span>
@@ -1875,7 +1850,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               <button
                 onClick={() => handleExportPDF()}
                 disabled={isSaving || isExporting}
-                className={`w-full sm:flex-1 sm:min-w-[140px] py-3 sm:py-3.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl sm:rounded-2xl font-bold flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-md shadow-blue-600/20 transition active:scale-95 text-xs sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`w-full sm:flex-1 sm:min-w-[140px] py-2.5 sm:py-3.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl sm:rounded-2xl font-bold flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-md shadow-blue-600/20 transition active:scale-95 text-xs sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {isExporting ? (
                   <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 animate-spin shrink-0" />
