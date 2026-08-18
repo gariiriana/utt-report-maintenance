@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, ChevronLeft, X, Eye, Download, Loader2, Languages, AlertTriangle, ChevronDown, Package, Sparkles } from 'lucide-react';
+import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, ChevronLeft, X, Eye, Download, Loader2, Languages, AlertTriangle, ChevronDown, Package, Sparkles, Save, CheckCircle2, FileEdit } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { ExcelDocument } from '@/components/DocumentList';
 import { ImageEditor } from '@/components/ImageEditor';
@@ -521,6 +521,13 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       setMaintenanceName(editingData.maintenanceName);
       setMaintenanceTime(editingData.maintenanceTime);
 
+      if (editingData.companyType) {
+        setCompanyType(editingData.companyType);
+      }
+      if (editingData.hasAbnormal !== undefined) {
+        setAbnormalStatus(editingData.hasAbnormal ? 'abnormal' : 'normal');
+      }
+
       let finalSpec = editingData.specificDetail || '';
       let finalVrv = '';
 
@@ -535,10 +542,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           id: `${p.index}`,
           photo: null,
           photoBase64: p.photoBase64 || null,
-          description: p.description || ''
+          description: p.description || '',
+          parameter: p.parameter || ''
         }))
         : createDefaultCards(11);
-
 
       const editUnit: ReportUnit = {
         id: `edit-${Date.now()}`,
@@ -861,7 +868,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       ? `${unit.specificDetail.toUpperCase()} - ${unit.vrvUnitDetail.toUpperCase()}`
       : unit.specificDetail;
 
-    const cardsToSave = pdfData ? pdfData.filled : unit.cards.filter(c => c.photoBase64 || c.description);
+    const cardsToSave = pdfData ? pdfData.filled : unit.cards.filter(c => c.photoBase64 || c.description || c.parameter);
     if (!cardsToSave.length) return toast.error(`Unit ${unit.specificDetail || 'Untitled'} minimal 1 card filled`), null;
 
     const toastId = toast.loading(`Saving unit ${unit.specificDetail || '#'}...`);
@@ -888,14 +895,14 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
     try {
       const photosWithImage = cardsToSave.filter(c => c.photoBase64).length;
-      const fileName = pdfData?.fileName || `${maintenanceName}${finalSpecificDetail ? ` (${finalSpecificDetail})` : ''}`.trim().replace(/\s+/g, ' ') + '.pdf';
+      const fileName = pdfData?.fileName || editingData?.fileName || `${maintenanceName}${finalSpecificDetail ? ` (${finalSpecificDetail})` : ''}`.trim().replace(/\s+/g, ' ') + '.pdf';
 
       const reportData: any = {
         fileName,
         maintenanceName,
         maintenanceTime,
         specificDetail: finalSpecificDetail,
-        fileSize: pdfData?.doc ? ((pdfData.doc as any).output('arraybuffer')?.byteLength || 0) : 0,
+        fileSize: pdfData?.doc ? ((pdfData.doc as any).output('arraybuffer')?.byteLength || 0) : (editingData?.fileSize || 0),
         updatedAt: serverTimestamp(),
         totalPhotos: cardsToSave.length,
         photosWithImage,
@@ -1024,7 +1031,81 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }
   };
 
+  const handleSaveChanges = async (unit?: ReportUnit) => {
+    const targetUnit = unit || activeUnit;
+    if (!targetUnit) return toast.error('Unit tidak terpilih');
 
+    if (!maintenanceName.trim() || !maintenanceTime.trim()) {
+      toast.error('Nama dan Waktu Maintenance wajib diisi!');
+      return;
+    }
+
+    // Validation for Abnormal / Temuan Selection
+    if (abnormalStatus === 'none') {
+      toast.error('Wajib memilih Status Abnormal (Pilih "Tidak Ada Abnormal" atau "Ada Abnormal") terlebih dahulu!');
+      abnormalSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    if (abnormalStatus === 'abnormal') {
+      if (!findingData.partName.trim() || !findingData.partNumber.trim()) {
+        toast.error('Nama Part dan Nomor Part Temuan Wajib Diisi!');
+        abnormalSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      if (!findingData.brandName.trim()) {
+        toast.error('Merk / Brand Temuan Wajib Diisi!');
+        abnormalSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      if (!findingData.findingDate) {
+        toast.error('Tanggal Temuan Wajib Diisi!');
+        abnormalSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    const toastId = toast.loading('Menyimpan pembaruan dokumen ke arsip...');
+    try {
+      // Save finding to Firestore collection 'findings' if abnormal
+      if (abnormalStatus === 'abnormal' && user) {
+        try {
+          await addDoc(collection(db, 'findings'), {
+            partName: findingData.partName,
+            partNumber: findingData.partNumber,
+            brandName: findingData.brandName,
+            quantity: findingData.quantity,
+            findingDate: findingData.findingDate,
+            photos: findingPhotos,
+            remark: findingData.remark,
+            maintenanceName: maintenanceName,
+            specificDetail: targetUnit.specificDetail,
+            createdBy: user.uid,
+            createdByEmail: (user.email || '').toLowerCase(),
+            createdAt: serverTimestamp(),
+          });
+        } catch (fErr) {
+          console.error('Error saving finding:', fErr);
+        }
+      }
+
+      const saveResult = await saveReportToFirestore(targetUnit);
+      if (saveResult) {
+        toast.success('Perubahan laporan berhasil diperbarui di Arsip Dokumen!', { id: toastId });
+        if (onClearEdit) {
+          onClearEdit();
+        }
+      } else {
+        toast.error('Gagal memperbarui data laporan ke database', { id: toastId });
+      }
+    } catch (err: any) {
+      console.error('Save edit error:', err);
+      toast.error('Terjadi kesalahan saat menyimpan perubahan', { id: toastId });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleExportPDF = async (unit?: ReportUnit) => {
     const targetUnit = unit || activeUnit;
@@ -1163,12 +1244,52 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 </div>
               </div>
 
-              {editingData && !isDME && (
-                <button onClick={onClearEdit} className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-200 text-xs font-bold flex items-center gap-1.5 hover:bg-blue-100 transition-all shadow-sm">
-                  <RefreshCw className="w-3.5 h-3.5" /> Batal Edit
-                </button>
+              {editingData && (
+                <div className="flex items-center gap-2">
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleSaveChanges()}
+                    disabled={isSaving || isExporting}
+                    className="px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl shadow-md font-bold text-xs sm:text-sm flex items-center gap-2 cursor-pointer transition-all border border-emerald-400/30"
+                  >
+                    {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    <span>{isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}</span>
+                  </motion.button>
+                  {onClearEdit && (
+                    <button
+                      type="button"
+                      onClick={onClearEdit}
+                      className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl border border-slate-200 text-xs font-bold flex items-center gap-1.5 hover:bg-slate-200 transition-all cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" /> Batal
+                    </button>
+                  )}
+                </div>
               )}
             </div>
+
+            {editingData && (
+              <div className="mb-4 p-3.5 bg-gradient-to-r from-emerald-500/10 via-teal-50 to-emerald-500/10 border border-emerald-300/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+                    <FileEdit className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                      MODE EDIT LAPORAN ARSIP
+                      <span className="text-[10px] font-semibold px-2 py-0.5 bg-emerald-200/80 text-emerald-900 rounded-full">
+                        {editingData.documentType?.toUpperCase() || 'PDF'}
+                      </span>
+                    </p>
+                    <p className="text-[11px] text-slate-600 font-medium">
+                      Mengubah dokumen: <span className="font-bold text-slate-800">{editingData.fileName || editingData.maintenanceName}</span>. Klik tombol <b>Simpan Perubahan</b> untuk memperbarui data langsung di arsip tanpa membuat duplikat.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="bg-white/90 backdrop-blur-xl p-4 sm:p-6 rounded-2xl border border-sky-100/90 shadow-lg shadow-sky-900/5 mb-5 font-geist">
 
@@ -1711,6 +1832,24 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 >
                   <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 group-active:scale-90 transition-transform shrink-0" />
                   <span className="text-center leading-tight font-extrabold">KEMBALI KE ARSIP</span>
+                </button>
+              )}
+
+              {editingData && (
+                <button
+                  type="button"
+                  onClick={() => handleSaveChanges()}
+                  disabled={isSaving || isExporting}
+                  className={`w-full sm:flex-1 sm:min-w-[150px] py-3 sm:py-3.5 px-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl sm:rounded-2xl font-black flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-lg shadow-emerald-600/30 transition active:scale-95 text-xs sm:text-xs group cursor-pointer border border-emerald-400/40 ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isSaving ? (
+                    <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 animate-spin shrink-0" />
+                  ) : (
+                    <Save className="w-4 h-4 sm:w-5 sm:h-5 group-active:scale-90 transition-transform shrink-0" />
+                  )}
+                  <span className="text-center leading-tight font-extrabold uppercase tracking-wide">
+                    {isSaving ? 'MENYIMPAN...' : 'SIMPAN PERUBAHAN'}
+                  </span>
                 </button>
               )}
 
