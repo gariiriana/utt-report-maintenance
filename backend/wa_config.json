@@ -2,6 +2,6 @@
   "targetPhone": "6281299422789",
   "targetGroup": "",
   "autoRemindEnabled": true,
-  "checkIntervalHours": 24,
+  "reminderSchedule": "weekly_monday",
   "lastCheckDate": ""
 }

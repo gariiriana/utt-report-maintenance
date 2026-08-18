@@ -49,3 +49,7 @@ utt-report-maintenance/
 backend/wa_session/
 downloads/
 
+# Logs
+*.log
+backend/*.log
+
