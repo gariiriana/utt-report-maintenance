@@ -1859,10 +1859,10 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.2, delay: index * 0.05 }}
-      className="bg-white/90 backdrop-blur-xl rounded-2xl p-4 sm:p-5 border border-sky-100/90 hover:border-blue-300 shadow-md text-slate-800 transition group"
+      className="bg-white/90 backdrop-blur-xl rounded-2xl p-3.5 sm:p-5 border border-sky-100/90 hover:border-blue-300 shadow-md text-slate-800 transition group w-full max-w-full overflow-hidden"
     >
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-        <div className="p-2.5 sm:p-3 bg-emerald-50 rounded-lg border border-emerald-200 flex-shrink-0">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full min-w-0">
+        <div className="p-2 sm:p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex-shrink-0">
           {document.documentType === 'pdf' ? (
             <FileType className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
           ) : (
@@ -1870,44 +1870,44 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           )}
         </div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="text-base sm:text-lg font-bold text-slate-900 truncate">
+        <div className="flex-1 min-w-0 w-full">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <h3 className="text-sm sm:text-lg font-black text-slate-900 truncate">
               {document.maintenanceName}
             </h3>
-            <span className={`px-2 py-0.5 rounded text-xs font-medium ${document.documentType === 'pdf'
-              ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-              : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${document.documentType === 'pdf'
+              ? 'bg-red-50 text-red-600 border border-red-200'
+              : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
               }`}>
               {document.documentType.toUpperCase()}
             </span>
             {document.hasAbnormal && (
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-600 text-white border border-red-700 shadow-xs flex items-center gap-1 animate-pulse">
-                <AlertTriangle className="w-3 h-3" /> Abnormal (Ditemukan Temuan)
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-red-600 text-white border border-red-700 shadow-xs flex items-center gap-1 animate-pulse">
+                <AlertTriangle className="w-3 h-3 shrink-0" /> Abnormal
               </span>
             )}
             {(document.createdBy === 'ats@gmail.com' || document.createdBy === 'fcu@gmail.com' || document.atsCustomerInfo || document.fcuCustomerInfo) && (
               <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${(document.atsCustomerInfo || document.fcuCustomerInfo)
-                  ? 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30'
-                  : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                  : 'bg-amber-50 text-amber-700 border-amber-200'
                 }`}>
                 {(document.atsCustomerInfo || document.fcuCustomerInfo) ? 'FOTO + SR' : 'FOTO SAJA'}
               </span>
             )}
             {document.hseType && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase">
                 {document.hseType}
               </span>
             )}
             {document.deleteRequested && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 animate-pulse uppercase">
-                Menunggu Persetujuan Hapus
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse uppercase">
+                Menunggu Hapus
               </span>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-3 sm:gap-4 mt-1 text-xs sm:text-sm text-slate-400">
-            <div className="flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-1.5 text-xs text-slate-500">
+            <div className="flex items-center gap-1 shrink-0">
+              <Clock className="w-3.5 h-3.5 text-slate-400" />
               <span>
                 {(() => {
                   const d = new Date(document.maintenanceTime);
@@ -1918,75 +1918,72 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               </span>
             </div>
             {document.documentType !== 'hse' && (
-              <div className="flex items-center gap-1.5">
-                <FileDown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <div className="flex items-center gap-1 shrink-0">
+                <FileDown className="w-3.5 h-3.5 text-slate-400" />
                 <span>{(document.fileSize / 1024).toFixed(0)} KB</span>
               </div>
             )}
             {document.specificDetail && (
-              <div className="flex items-center gap-1.5 min-w-0">
-                <Box className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 text-blue-400" />
-                <span className="truncate text-blue-300 font-medium">{document.specificDetail}</span>
+              <div className="flex items-center gap-1 min-w-0 max-w-full">
+                <Box className="w-3.5 h-3.5 flex-shrink-0 text-blue-500" />
+                <span className="truncate text-blue-600 font-semibold">{document.specificDetail}</span>
               </div>
             )}
             {document.maintenanceType && (
-              <div className="flex items-center gap-1.5">
-                <FileType className="w-3.5 h-3.5 text-orange-400" />
-                <span className="text-orange-300 font-bold">{document.maintenanceType}</span>
+              <div className="flex items-center gap-1 shrink-0">
+                <FileType className="w-3.5 h-3.5 text-orange-500" />
+                <span className="text-orange-600 font-bold">{document.maintenanceType}</span>
               </div>
             )}
           </div>
-          <p className="text-xs text-slate-500 mt-1 hidden sm:block">
-            Dibuat: {document.createdAt.toLocaleString('id-ID')}
-          </p>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0">
           {onEdit && (
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => handleEditClick(document)}
-              className="flex-1 sm:flex-initial py-2 sm:p-3 px-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl transition border border-blue-200/80 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+              className="flex-1 sm:flex-initial py-2 sm:py-2.5 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition border border-blue-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
               title={isDME ? "View Report" : "Edit Report"}
             >
               {isDME ? (
                 <>
-                  <Search className="w-4 h-4" />
+                  <Search className="w-3.5 h-3.5" />
                   <span className="sm:hidden font-bold">Lihat</span>
                 </>
               ) : (
                 <>
-                  <Pencil className="w-4 h-4" />
+                  <Pencil className="w-3.5 h-3.5" />
                   <span className="sm:hidden font-bold">Edit</span>
                 </>
               )}
             </motion.button>
           )}
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => {
               if (document.documentType === 'pdf') handleDownloadPDF(document);
               else if (document.documentType === 'hse') handleDownloadHSE(document);
               else handleDownload(document);
             }}
-            className="flex-1 sm:flex-initial py-2 sm:p-3 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl transition border border-emerald-200/80 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+            className="flex-1 sm:flex-initial py-2 sm:py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl transition border border-emerald-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
             title={`Download ${document.documentType === 'pdf' ? 'PDF' : 'Excel'}`}
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-3.5 h-3.5" />
             <span className="sm:hidden font-bold">Download</span>
           </motion.button>
           {canDelete && (
             <motion.button
-              whileHover={{ scale: document.deleteRequested && !isAdmin ? 1 : 1.05 }}
-              whileTap={{ scale: document.deleteRequested && !isAdmin ? 1 : 0.95 }}
+              whileHover={{ scale: document.deleteRequested && !isAdmin ? 1 : 1.02 }}
+              whileTap={{ scale: document.deleteRequested && !isAdmin ? 1 : 0.98 }}
               onClick={() => {
                 if (document.deleteRequested && !isAdmin) return;
                 openDeleteModal(document);
               }}
               disabled={document.deleteRequested && !isAdmin}
-              className={`flex-1 sm:flex-initial py-2 sm:p-3 px-3 rounded-xl transition border font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${document.deleteRequested
+              className={`flex-1 sm:flex-initial py-2 sm:py-2.5 px-3 rounded-xl transition border font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${document.deleteRequested
                   ? isAdmin
                     ? 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-300'
                     : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50'
@@ -1994,7 +1991,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                 }`}
               title={document.deleteRequested ? isAdmin ? "Tinjau Pengajuan Hapus" : "Menunggu Persetujuan Hapus" : "Delete"}
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5" />
               <span className="sm:hidden font-bold">{document.deleteRequested ? 'Tinjau' : 'Hapus'}</span>
             </motion.button>
           )}
@@ -2036,25 +2033,25 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 relative z-10 pb-32 sm:pb-16">
+    <div className="w-full max-w-7xl mx-auto px-2.5 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-6 lg:py-8 relative z-10 pb-32 sm:pb-16 min-w-0 overflow-x-hidden">
       { }
-      <div className="bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 mb-4 sm:mb-6 border border-sky-100/90 shadow-xl shadow-sky-900/5 text-slate-800">
-        <div className="mb-3.5 sm:mb-6">
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Arsip Dokumen & Laporan</h1>
+      <div className="bg-white/95 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-3 sm:p-6 mb-3.5 sm:mb-6 border border-sky-100/90 shadow-xl shadow-sky-900/5 text-slate-800 w-full max-w-full overflow-hidden">
+        <div className="mb-3 sm:mb-6">
+          <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">Arsip Dokumen & Laporan</h1>
           <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed mt-0.5">Semua dokumen Excel, PDF & Service Report maintenance yang telah diekspor</p>
         </div>
 
 
-        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${isAdmin ? 'xl:grid-cols-5' : !isDME ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-2.5 sm:gap-4 items-center`}>
+        <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${isAdmin ? 'xl:grid-cols-5' : !isDME ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-2 sm:gap-4 items-center w-full min-w-0`}>
 
-          <div className="relative min-w-0">
+          <div className="relative min-w-0 w-full">
             <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={isDME ? "Cari dokumen / file..." : "Cari nama maintenance..."}
-              className="w-full pl-9 sm:pl-12 pr-10 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 placeholder-slate-400 text-xs sm:text-sm font-medium"
+              className="w-full pl-9 sm:pl-12 pr-10 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 placeholder-slate-400 text-xs sm:text-sm font-medium"
             />
             {searchQuery && (
               <button
@@ -2071,34 +2068,40 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           </div>
 
 
-          <div className="grid grid-cols-2 gap-1.5 sm:gap-2 items-center w-full min-w-0">
-            <div className="relative min-w-0">
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-2 sm:px-3 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 text-xs font-medium min-w-0"
-                title="Dari tanggal"
-              />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 items-center w-full min-w-0">
+            <div className="relative min-w-0 w-full">
+              <div className="flex items-center gap-1.5 bg-slate-50/90 border border-slate-200 rounded-xl px-2.5 py-1.5 sm:py-2 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider shrink-0">Dari:</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full bg-transparent outline-none text-slate-900 text-xs font-semibold min-w-0"
+                  title="Dari tanggal"
+                />
+              </div>
             </div>
-            <div className="relative min-w-0">
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-2 sm:px-3 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 text-xs font-medium min-w-0"
-                title="Sampai tanggal"
-              />
+            <div className="relative min-w-0 w-full">
+              <div className="flex items-center gap-1.5 bg-slate-50/90 border border-slate-200 rounded-xl px-2.5 py-1.5 sm:py-2 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition">
+                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider shrink-0">Sampai:</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full bg-transparent outline-none text-slate-900 text-xs font-semibold min-w-0"
+                  title="Sampai tanggal"
+                />
+              </div>
             </div>
           </div>
 
 
-          <div className="relative min-w-0">
+          <div className="relative min-w-0 w-full">
             <Filter className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest')}
-              className="w-full pl-9 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-xs sm:text-sm font-medium"
+              className="w-full pl-9 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-xs sm:text-sm font-medium"
               title="Urutkan dokumen"
             >
               <option value="newest">Terbaru</option>
@@ -2107,12 +2110,12 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           </div>
 
           {!isDME && (
-            <div className="relative min-w-0">
+            <div className="relative min-w-0 w-full">
               <FileType className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value as any)}
-                className="w-full pl-9 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-xs sm:text-sm font-medium"
+                className="w-full pl-9 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-xs sm:text-sm font-medium"
                 title="Filter tipe dokumen"
               >
                 <option value="all">Semua Tipe</option>
@@ -2124,12 +2127,12 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           )}
 
           {isAdmin && (
-            <div className="relative min-w-0">
+            <div className="relative min-w-0 w-full">
               <Shield className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
               <select
                 value={adminDeleteFilter}
                 onChange={(e) => setAdminDeleteFilter(e.target.value as any)}
-                className="w-full pl-9 sm:pl-12 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-xs sm:text-sm font-medium truncate"
+                className="w-full pl-9 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-xs sm:text-sm font-medium truncate"
                 title="Filter pengajuan admin"
               >
                 <option value="all">Semua Dokumen ({documents.length})</option>
@@ -2141,11 +2144,11 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
         {/* Status Filter Tabs (Foto Saja vs Foto + Service Report) - Hidden in HSE Role & DME Role */}
         {filterOverride !== 'hse_utt' && !isDME && (
-          <div className="mt-3.5 pt-3.5 border-t border-slate-200/80">
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
+          <div className="mt-3 pt-3 border-t border-slate-200/80 w-full overflow-hidden">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5 w-full">
               <button
                 onClick={() => setSrStatusFilter('all')}
-                className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap text-xs shrink-0 cursor-pointer ${srStatusFilter === 'all'
+                className={`px-3 py-1.5 sm:py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap text-xs shrink-0 cursor-pointer ${srStatusFilter === 'all'
                     ? 'bg-slate-900 text-white shadow-sm font-bold'
                     : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200/80 font-semibold'
                   }`}
@@ -2160,7 +2163,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
               <button
                 onClick={() => setSrStatusFilter('photos_only')}
-                className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap text-xs shrink-0 cursor-pointer ${srStatusFilter === 'photos_only'
+                className={`px-3 py-1.5 sm:py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap text-xs shrink-0 cursor-pointer ${srStatusFilter === 'photos_only'
                     ? 'bg-slate-900 text-white shadow-sm font-bold'
                     : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200/80 font-semibold'
                   }`}
@@ -2175,7 +2178,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
               <button
                 onClick={() => setSrStatusFilter('with_sr')}
-                className={`px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap text-xs shrink-0 cursor-pointer ${srStatusFilter === 'with_sr'
+                className={`px-3 py-1.5 sm:py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap text-xs shrink-0 cursor-pointer ${srStatusFilter === 'with_sr'
                     ? 'bg-slate-900 text-white shadow-sm font-bold'
                     : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200/80 font-semibold'
                   }`}
@@ -2191,26 +2194,26 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           </div>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3.5 mt-3.5">
-          <div className="bg-slate-50/80 rounded-2xl p-3 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3.5 mt-3 w-full">
+          <div className="bg-slate-50/80 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0 overflow-hidden">
             <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">Total Dokumen</p>
             <p className="text-base sm:text-xl font-bold text-slate-900 mt-0.5 truncate">
               {isDME ? documents.length + managementFilesCount : documents.length}
             </p>
           </div>
-          <div className="bg-slate-50/80 rounded-2xl p-3 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0">
+          <div className="bg-slate-50/80 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0 overflow-hidden">
             <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">Hasil Filter</p>
             <p className="text-base sm:text-xl font-bold text-slate-900 mt-0.5 truncate">
               {isDME && !(searchQuery || startDate || endDate) ? filteredDocuments.length + managementFilesCount : filteredDocuments.length}
             </p>
           </div>
-          <div className="bg-slate-50/80 rounded-2xl p-3 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0">
+          <div className="bg-slate-50/80 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0 overflow-hidden">
             <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">Total Ukuran</p>
             <p className="text-base sm:text-xl font-bold text-slate-900 mt-0.5 truncate">
               {((documents.reduce((sum, doc) => sum + doc.fileSize, 0) + (isDME ? managementFilesSize : 0)) / (1024 * 1024)).toFixed(2)} MB
             </p>
           </div>
-          <div className="bg-slate-50/80 rounded-2xl p-3 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0">
+          <div className="bg-slate-50/80 rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 border border-slate-200/80 shadow-2xs min-w-0 overflow-hidden">
             <p className="text-[10px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">Status Filter</p>
             <p className="text-xs sm:text-sm font-bold text-slate-700 mt-1 flex items-center gap-1.5 truncate">
               <span className={`w-2 h-2 rounded-full shrink-0 ${(searchQuery || startDate || endDate || (filterType !== 'all' && !isDME) || (srStatusFilter !== 'all' && !isDME)) ? 'bg-amber-500 animate-pulse' : 'bg-slate-300'
