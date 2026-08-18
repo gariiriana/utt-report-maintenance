@@ -58,7 +58,7 @@ export function DivisionApp() {
     const getDivisionDetails = (id: string) => DIVISIONS.find(d => d.id === id);
 
     return (
-        <div className="min-h-screen flex flex-col">
+        <div className="flex-1 flex flex-col w-full">
 
             {/* Navbar Atas — Menampilkan Logo, Status User, Notifikasi, dan Tombol Logout */}
             <div className="bg-white/80 backdrop-blur-xl border-b border-sky-100/80 sticky top-0 z-50 shadow-sm text-slate-800">

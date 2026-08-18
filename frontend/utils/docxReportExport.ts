@@ -1469,7 +1469,13 @@ export async function exportPIRReportToDocx(data: PIRReportData): Promise<void> 
 // ==========================================
 // 4. EXPORT SLA / SLG MONTHLY RECAP TO DOCX
 // ==========================================
-export async function exportSLAMonthlyRecapToDocx(reports: any[], periodTitle: string = 'Bulanan'): Promise<void> {
+export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle: string = 'Bulanan'): Promise<void> {
+  // Exclude any reports that are currently requested for deletion
+  const reports = (rawReports || []).filter(r => !r.deleteRequested && !(r.originalReport && r.originalReport.deleteRequested));
+  if (reports.length === 0) {
+    throw new Error('Tidak ada data laporan SLA yang valid (non-pengajuan hapus) untuk diekspor.');
+  }
+
   const [logoLeftBytes, logoRightBytes] = await Promise.all([
     loadImageAsUint8Array(logoDwimitra),
     loadImageAsUint8Array(logoNeutraDC),

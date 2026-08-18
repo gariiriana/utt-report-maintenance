@@ -52,7 +52,7 @@ export function HSEApp() {
     ];
 
     return (
-        <div className="min-h-screen font-geist text-slate-800">
+        <div className="flex-1 flex flex-col w-full font-geist text-slate-800">
             {/* Drawer Sidebar Navigasi Layar HP / Mobile */}
             <AnimatePresence>
                 {sidebarOpen && (

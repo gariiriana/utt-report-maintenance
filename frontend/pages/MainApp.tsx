@@ -15,7 +15,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle, Database } from 'lucide-react';
+import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle, Database, Package, Award } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 import { ReportForm } from '@/components/ReportForm';
@@ -34,12 +34,15 @@ import { AbsenTBM } from '@/components/AbsenTBM';
 import { AbsenInduction } from '@/components/AbsenInduction';
 import { PMSchedule } from '@/components/PMSchedule';
 import { BOQMasterAsset } from '@/components/BOQMasterAsset';
+import { SparepartManagement } from '@/components/SparepartManagement';
+import { MonthlyReportGenerator } from '@/components/MonthlyReportGenerator';
 import { NotificationCenter, AppNotificationItem } from '@/components/NotificationCenter';
+import { StandbyKPIInput } from '@/components/StandbyKPIInput';
 import { NotificationPage } from '@/components/NotificationPage';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
 // Tipe Tab Navigasi yang Tersedia dalam Aplikasi
-type Tab = 'notifications' | 'report' | 'documents' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq';
+type Tab = 'notifications' | 'report' | 'documents' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'spareparts' | 'monthly_report' | 'standby_kpi';
 
 export function MainApp() {
   // State autentikasi & peranan user dari AuthContext
@@ -62,13 +65,16 @@ export function MainApp() {
     { id: 'ptw', label: 'PTW', icon: Clipboard, color: 'from-indigo-600 to-blue-600', show: (isAdmin || userRole === 'engineer') && !isStandby && !isK2Engineer },
     { id: 'files', label: 'Manajemen File', icon: Files, color: 'from-orange-600 to-orange-700', show: !isStandby && userRole !== 'DME' && !isK2Engineer },
     { id: 'corrective', label: 'Corrective Maint.', icon: PenTool, color: 'from-red-600 to-red-700', show: userRole !== 'DME' && !isAdmin && userRole !== 'engineer' && !isK2Engineer },
+    { id: 'standby_kpi', label: 'Input KPI Monthly', icon: Award, color: 'from-emerald-600 to-teal-700', show: isStandby || isAdmin },
+    { id: 'spareparts', label: 'Log Sparepart', icon: Package, color: 'from-indigo-600 to-violet-700', show: isStandby || isAdmin || userRole === 'DME' || userRole === 'site_manager_dme' },
     { id: 'corrective_archive', label: 'Arsip Standby', icon: FolderOpen, color: 'from-rose-600 to-rose-700', show: userRole !== 'DME' && userRole !== 'engineer' && !isK2Engineer },
-    { id: 'findings', label: 'Temuan', icon: Search, color: 'from-amber-500 to-orange-600', show: userRole !== 'DME' && !isK2Engineer },
+    { id: 'findings', label: 'Temuan', icon: Search, color: 'from-amber-500 to-orange-600', show: userRole !== 'DME' && !isK2Engineer && !isStandby },
     { id: 'finding_archive', label: 'Arsip Temuan', icon: FolderOpen, color: 'from-teal-600 to-teal-700', show: userRole !== 'DME' && !isK2Engineer },
     { id: 'report', label: userRole === 'DME' ? 'Detail Laporan' : 'Buat Laporan', icon: FileText, color: 'from-blue-600 to-blue-700', show: !isStandby && (userRole !== 'DME' || !!editingData) },
     { id: 'documents', label: 'Arsip Dokumen', icon: FolderOpen, color: 'from-emerald-600 to-emerald-700', show: !isStandby },
-    { id: 'pir', label: 'Report PIR', icon: AlertTriangle, color: 'from-amber-600 to-red-600', show: isK2Engineer || isAdmin || isStandby },
+    { id: 'pir', label: 'Report PIR', icon: AlertTriangle, color: 'from-amber-600 to-red-600', show: (isK2Engineer || isAdmin) && !isStandby },
     { id: 'pm_schedule', label: 'PM Schedule', icon: CalendarDays, color: 'from-blue-600 to-indigo-700', show: (userRole === 'DME' || isAdmin) && !isK2Engineer },
+    { id: 'monthly_report', label: 'Monthly Report (1-Klik)', icon: FileText, color: 'from-blue-600 to-indigo-700', show: (userRole === 'DME' || userRole === 'site_manager_dme' || isAdmin || user?.email?.toLowerCase() === 'dwimitra@co.id') && !isStandby && !isK2Engineer },
     { id: 'boq', label: 'Master Asset & BOQ', icon: Database, color: 'from-cyan-600 to-blue-700', show: (userRole === 'DME' || userRole === 'site_manager_dme' || isAdmin || !!user?.email?.toLowerCase().includes('dwimitra') || !!user?.email?.toLowerCase().includes('dme')) && !isK2Engineer },
   ] as const;
 
@@ -135,7 +141,7 @@ export function MainApp() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex-1 flex flex-col w-full">
       {/* Navbar Top Bar Desktop & Mobile */}
       <div className="bg-white/80 backdrop-blur-xl border-b border-sky-100/80 shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
@@ -158,8 +164,8 @@ export function MainApp() {
             {/* Aksi Navbar Desktop (Pusat Notifikasi, Email User, Log Out) */}
             <div className="hidden md:flex items-center gap-4">
               {userRole !== 'engineer' && !isStandby && (
-                <NotificationCenter 
-                  onSelectNotification={handleSelectNotification} 
+                <NotificationCenter
+                  onSelectNotification={handleSelectNotification}
                   onOpenNotificationPage={() => setActiveTab('notifications')}
                 />
               )}
@@ -181,8 +187,8 @@ export function MainApp() {
             {/* Aksi Navbar Mobile (Tombol Hamburger Menu & Notifikasi) */}
             <div className="flex items-center gap-2 md:hidden">
               {userRole !== 'engineer' && !isStandby && (
-                <NotificationCenter 
-                  onSelectNotification={handleSelectNotification} 
+                <NotificationCenter
+                  onSelectNotification={handleSelectNotification}
                   onOpenNotificationPage={() => setActiveTab('notifications')}
                 />
               )}
@@ -262,7 +268,7 @@ export function MainApp() {
                     className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl font-bold transition-all border ${activeTab === item.id
                       ? `bg-gradient-to-r ${item.color} text-white border-transparent shadow-md shadow-blue-500/20`
                       : 'bg-slate-50 text-slate-700 border-slate-200/80 hover:bg-white hover:text-slate-900'
-                    }`}
+                      }`}
                   >
                     <item.icon className="w-5 h-5" />
                     <span>{item.label}</span>
@@ -288,7 +294,7 @@ export function MainApp() {
       </AnimatePresence>
 
       {/* Konten Utama Aplikasi (Render Dinamis Berdasarkan activeTab) */}
-      <main className="flex-1 relative w-full min-w-0 overflow-x-hidden">
+      <main className="flex-1 flex flex-col relative w-full min-w-0 overflow-x-hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -296,6 +302,7 @@ export function MainApp() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
+            className="flex-1 flex flex-col w-full"
           >
             {activeTab === 'notifications' ? (
               <NotificationPage onSelectNotification={handleSelectNotification} />
@@ -310,9 +317,9 @@ export function MainApp() {
             ) : activeTab === 'files' ? (
               <FileManagement initialSearchQuery={navSearchQuery} />
             ) : activeTab === 'report' ? (
-              <ReportForm 
-                editingData={editingData} 
-                onClearEdit={clearEditingData} 
+              <ReportForm
+                editingData={editingData}
+                onClearEdit={clearEditingData}
               />
             ) : activeTab === 'pir' ? (
               <PIRManagement />
@@ -320,12 +327,18 @@ export function MainApp() {
               <CorrectiveMaintenance readOnly={isTDEorCBRE} initialSearchQuery={navSearchQuery} />
             ) : activeTab === 'corrective_archive' ? (
               <CorrectiveMaintenance readOnly={true} initialSearchQuery={navSearchQuery} />
+            ) : activeTab === 'spareparts' ? (
+              <SparepartManagement />
             ) : activeTab === 'findings' ? (
               <FindingManagement />
             ) : activeTab === 'finding_archive' ? (
               <FindingArchive />
             ) : activeTab === 'boq' ? (
               <BOQMasterAsset />
+            ) : activeTab === 'monthly_report' ? (
+              <MonthlyReportGenerator />
+            ) : activeTab === 'standby_kpi' ? (
+              <StandbyKPIInput />
             ) : activeTab === 'pm_schedule' ? (
               <PMSchedule />
             ) : (

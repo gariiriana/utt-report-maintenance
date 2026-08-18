@@ -9,13 +9,15 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LogOut, ShieldCheck, UserCircle, FileText, BarChart3,
-  FolderOpen
+  FolderOpen, Sparkles, Package
 } from 'lucide-react';
 import { useAuth } from '@/components/AuthContext';
 import { MOPWorkflow } from '@/components/MOPWorkflow';
 import { MOPMonitoringDashboard } from '@/components/MOPMonitoringDashboard';
 import { DocumentList, ExcelDocument } from '@/components/DocumentList';
 import { ReportForm } from '@/components/ReportForm';
+import { MonthlyReportGenerator } from '@/components/MonthlyReportGenerator';
+import { SparepartManagement } from '@/components/SparepartManagement';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import { NotificationCenter } from '@/components/NotificationCenter';
 import { Footer } from '@/components/Footer';
@@ -29,9 +31,11 @@ import type { MOPWorkflowDoc } from '@/types/mopTypes';
 
 // ─── TAB DEFINITIONS ──────────────────────────────────────────────────────────
 
-type DMETab = 'workflow' | 'monitoring' | 'documents';
+type DMETab = 'workflow' | 'monitoring' | 'monthly_report' | 'spareparts' | 'documents';
 
 const TAB_ITEMS: { id: DMETab; label: string; icon: typeof FileText; color: string }[] = [
+  { id: 'monthly_report', label: 'Monthly Report (1-Klik)', icon: Sparkles, color: 'from-blue-600 to-indigo-600' },
+  { id: 'spareparts', label: 'Log Sparepart', icon: Package, color: 'from-purple-600 to-pink-600' },
   { id: 'workflow', label: 'MOP Workflow', icon: FileText, color: 'from-blue-500 to-sky-500' },
   { id: 'monitoring', label: 'Monitoring', icon: BarChart3, color: 'from-emerald-500 to-teal-500' },
   { id: 'documents', label: 'Arsip Dokumen', icon: FolderOpen, color: 'from-amber-500 to-orange-500' },
@@ -73,7 +77,7 @@ export function DMEDashboard() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex-1 flex flex-col w-full">
       {/* ─── Navbar ──────────────────────────────────────────────────────────── */}
       <div className="bg-white/80 backdrop-blur-xl border-b border-sky-100/80 sticky top-0 z-50 shadow-sm text-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
@@ -100,7 +104,7 @@ export function DMEDashboard() {
 
             {/* Right Actions */}
             <div className="flex items-center gap-2">
-              <NotificationCenter onSelectNotification={() => {}} />
+              <NotificationCenter onSelectNotification={() => { }} />
 
               {/* User Info */}
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-200">
@@ -131,11 +135,10 @@ export function DMEDashboard() {
                     setActiveTab(tab.id);
                     setEditingData(null);
                   }}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-                    isActive
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${isActive
                       ? `bg-gradient-to-r ${tab.color} text-white shadow-lg shadow-blue-500/10`
                       : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
-                  }`}
+                    }`}
                 >
                   <TabIcon className="w-3.5 h-3.5" />
                   {tab.label}
@@ -150,6 +153,30 @@ export function DMEDashboard() {
       <div className="flex-1">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
           <AnimatePresence mode="wait">
+            {activeTab === 'monthly_report' && (
+              <motion.div
+                key="monthly_report"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                <MonthlyReportGenerator />
+              </motion.div>
+            )}
+
+            {activeTab === 'spareparts' && (
+              <motion.div
+                key="spareparts"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                <SparepartManagement />
+              </motion.div>
+            )}
+
             {activeTab === 'workflow' && (
               <motion.div
                 key="workflow"
@@ -183,9 +210,9 @@ export function DMEDashboard() {
                 transition={{ duration: 0.2 }}
               >
                 {editingData ? (
-                  <ReportForm 
-                    editingData={editingData} 
-                    onClearEdit={() => setEditingData(null)} 
+                  <ReportForm
+                    editingData={editingData}
+                    onClearEdit={() => setEditingData(null)}
                   />
                 ) : (
                   <DocumentList onEdit={(doc) => setEditingData(doc)} />

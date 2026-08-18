@@ -77,7 +77,7 @@ function AppContent() {
   }
 
   return (
-    <div className="relative z-10 w-full min-h-screen">
+    <div className="relative z-10 w-full flex-1 flex flex-col">
       <AnimatePresence mode="wait" initial={false}>
         {user ? (
           <motion.div
@@ -86,16 +86,19 @@ function AppContent() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
+            className="flex-1 flex flex-col w-full"
           >
             {/* Routing Komponen Berdasarkan Role User */}
-            {(() => {
-              if (userRole === 'hse') return <HSEApp />;
-              const isoRoles = ['pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
-              if (isoRoles.includes(userRole || '')) return <DivisionApp />;
-              if (userRole === 'site_manager_dme') return <DMEDashboard />;
-              if (userRole === 'site_manager' || userRole === 'manager') return <SiteManagerDashboard />;
-              return <MainApp />;
-            })()}
+            <div className="flex-1 flex flex-col w-full">
+              {(() => {
+                if (userRole === 'hse') return <HSEApp />;
+                const isoRoles = ['pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
+                if (isoRoles.includes(userRole || '')) return <DivisionApp />;
+                if (userRole === 'site_manager_dme') return <DMEDashboard />;
+                if (userRole === 'site_manager' || userRole === 'manager') return <SiteManagerDashboard />;
+                return <MainApp />;
+              })()}
+            </div>
             
             {/* Widget Asisten Chatbot AI (Tampil untuk semua user login) */}
             <AIChatWidget />
@@ -107,6 +110,7 @@ function AppContent() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
+            className="flex-1 flex flex-col w-full"
           >
             <Login />
           </motion.div>
@@ -125,7 +129,7 @@ function AppWithBackground() {
     <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-sky-50 to-blue-100 text-slate-800 overflow-x-hidden">
       {/* Visual Animasi Data Center Canvas Background */}
       <DataCenterBackground />
-      
+
       {/* Tampilkan Viewer Publik jika URL mengarah ke Laporan HSE */}
       {PUBLIC_HSE_REPORT_ID ? (
         <div className="relative z-10">
@@ -134,7 +138,7 @@ function AppWithBackground() {
       ) : (
         <AppContent />
       )}
-      
+
       {/* Notifikasi Toast Terpusat Aplikasi */}
       <Toaster position="top-center" theme="light" richColors />
     </div>

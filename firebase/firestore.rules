@@ -500,6 +500,33 @@ service cloud.firestore {
       allow create, update, delete: if request.auth != null;
     }
 
+    match /sparepart_logs/{logId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null 
+                    && (isAdminSafe() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME())
+                    && hasAcceptableFieldCount(request.resource.data, 20);
+      allow update: if request.auth != null 
+                    && (isAdminSafe() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME() || resource.data.createdBy == request.auth.uid)
+                    && hasAcceptableFieldCount(request.resource.data, 20);
+      allow delete: if request.auth != null 
+                    && (isAdminSafe() || isPrivilegedRole() || resource.data.createdBy == request.auth.uid || isStandbyEngineer());
+    }
+
+    match /corrective_reports/{reportId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null 
+                    && (isAdminSafe() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME());
+      allow update: if request.auth != null 
+                    && (isAdminSafe() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME() || resource.data.createdBy == request.auth.uid);
+      allow delete: if request.auth != null 
+                    && (isAdminSafe() || isPrivilegedRole() || resource.data.createdBy == request.auth.uid || isStandbyEngineer());
+    }
+
+    match /standby_kpi_inputs/{docId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && (isAdminSafe() || isStandbyEngineer() || isPrivilegedRole() || isEngineer() || isDME());
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

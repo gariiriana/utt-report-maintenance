@@ -34,12 +34,16 @@ import {
     onSnapshot,
     deleteDoc,
     doc,
-    updateDoc
+    updateDoc,
+    deleteField,
+    serverTimestamp
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { SLAForm } from './SLAForm';
 import { CMReportFormModal } from './CMReportFormModal';
 import { PIRReportFormModal } from './PIRReportFormModal';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { sendFileNotification } from '@/utils/notificationService';
 import { exportSLAReportToExcel } from '../utils/excelExport';
 import { exportCMReportToDocx, exportSLAReportToDocx, exportSLAMonthlyRecapToDocx } from '@/utils/docxReportExport';
 import { normalizeEngineerName } from '@/utils/engineerSignatures';
@@ -59,6 +63,12 @@ interface CorrectiveReport {
     reportedBy: string;
     reportedByEmail: string;
     reportedAt: any;
+
+    // Deletion Request fields
+    deleteRequested?: boolean;
+    deleteRequestedBy?: string;
+    deleteReason?: string;
+    deleteRequestedAt?: any;
 
     // Report Type discriminator
     reportType?: 'SLA' | 'CM_PDF' | 'PIR';
@@ -152,6 +162,7 @@ const INDO_MONTHS = [
 
 export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: CorrectiveMaintenanceProps) {
     const { user, userRole } = useAuth();
+    const isAdmin = userRole === 'admin';
     const isAuthorizedRole = userRole === 'admin' || userRole === 'engineer' || userRole === 'standby_engineer';
 
     const [reports, setReports] = useState<CorrectiveReport[]>([]);
@@ -165,6 +176,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     // Filters State
     const [archiveFolder, setArchiveFolder] = useState<'cm_pdf' | 'sla' | 'pir'>('cm_pdf');
     const [searchQuery, setSearchQuery] = useState<string>(initialSearchQuery || '');
+    const [adminDeleteFilter, setAdminDeleteFilter] = useState<'all' | 'pending_delete'>('all');
 
     useEffect(() => {
         if (initialSearchQuery !== undefined) {
@@ -284,23 +296,180 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         healLegacyReports();
     }, [reports, user]);
 
-    const [deleteId, setDeleteId] = useState<string | null>(null);
+    const [selectedReportForDelete, setSelectedReportForDelete] = useState<CorrectiveReport | null>(null);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
 
-    const handleDeleteClick = (id: string) => {
-        setDeleteId(id);
+    const handleDeleteClick = (report: CorrectiveReport) => {
+        setSelectedReportForDelete(report);
+        setDeleteModalOpen(true);
     };
 
-    const confirmDelete = async () => {
-        if (!deleteId) return;
+    const confirmDelete = async (reason?: string) => {
+        if (!selectedReportForDelete) return;
         try {
-            await deleteDoc(doc(db, 'corrective_reports', deleteId));
-            toast.success('Laporan berhasil dihapus');
+            setDeleteLoading(true);
+            if (isAdmin) {
+                // Admins approve delete and delete the document permanently
+                const toastId = toast.loading('Menghapus dokumen secara permanen...');
+                await deleteDoc(doc(db, 'corrective_reports', selectedReportForDelete.id));
+                toast.success('Laporan berhasil dihapus secara permanen', { id: toastId });
+            } else {
+                // Non-admins (Standby Engineers) request deletion with mandatory remark
+                if (!reason || !reason.trim()) {
+                    toast.error('Wajib menyertakan remark/alasan sebelum mengajukan hapus dokumen!');
+                    setDeleteLoading(false);
+                    return;
+                }
+                const toastId = toast.loading('Mengajukan permohonan hapus ke Admin...');
+                const docRef = doc(db, 'corrective_reports', selectedReportForDelete.id);
+                await updateDoc(docRef, {
+                    deleteRequested: true,
+                    deleteRequestedBy: user?.email || 'Standby Engineer',
+                    deleteReason: reason.trim(),
+                    deleteRequestedAt: serverTimestamp()
+                });
+
+                // Send real-time notification to Admin
+                const docLabel = selectedReportForDelete.incidentName || selectedReportForDelete.ticketName || selectedReportForDelete.equipmentName || selectedReportForDelete.issue || 'Laporan Standby';
+                await sendFileNotification({
+                    title: 'Pengajuan Hapus Dokumen Standby',
+                    fileName: docLabel,
+                    category: 'Arsip Standby',
+                    fileId: selectedReportForDelete.id,
+                    uploadedBy: user?.email || 'Standby Engineer',
+                    targetTab: 'corrective_archive',
+                    searchQuery: docLabel
+                });
+
+                toast.success('Pengajuan hapus dokumen telah dikirim ke Admin. Menunggu persetujuan Admin.', { id: toastId });
+            }
+            setDeleteModalOpen(false);
+            setSelectedReportForDelete(null);
         } catch (error) {
-            console.error('Gagal menghapus laporan:', error);
-            toast.error('Gagal menghapus laporan');
+            console.error('Gagal memproses penghapusan:', error);
+            toast.error('Gagal memproses penghapusan laporan');
         } finally {
-            setDeleteId(null);
+            setDeleteLoading(false);
         }
+    };
+
+    const rejectDeleteRequest = async () => {
+        if (!selectedReportForDelete) return;
+        try {
+            setDeleteLoading(true);
+            const toastId = toast.loading('Menolak pengajuan hapus...');
+            const docRef = doc(db, 'corrective_reports', selectedReportForDelete.id);
+            await updateDoc(docRef, {
+                deleteRequested: deleteField(),
+                deleteRequestedBy: deleteField(),
+                deleteReason: deleteField(),
+                deleteRequestedAt: deleteField()
+            });
+            toast.success('Pengajuan hapus ditolak. Dokumen tetap tersimpan di arsip.', { id: toastId });
+            setDeleteModalOpen(false);
+            setSelectedReportForDelete(null);
+        } catch (error) {
+            console.error('Gagal menolak pengajuan:', error);
+            toast.error('Gagal menolak pengajuan');
+        } finally {
+            setDeleteLoading(false);
+        }
+    };
+
+    const cancelDeleteRequest = async (reportId?: string) => {
+        const targetId = reportId || selectedReportForDelete?.id;
+        if (!targetId) return;
+        try {
+            setDeleteLoading(true);
+            const toastId = toast.loading('Membatalkan pengajuan hapus...');
+            const docRef = doc(db, 'corrective_reports', targetId);
+            await updateDoc(docRef, {
+                deleteRequested: deleteField(),
+                deleteRequestedBy: deleteField(),
+                deleteReason: deleteField(),
+                deleteRequestedAt: deleteField()
+            });
+            toast.success('Pengajuan hapus berhasil dibatalkan. Dokumen kembali normal.', { id: toastId });
+            setDeleteModalOpen(false);
+            setSelectedReportForDelete(null);
+        } catch (error) {
+            console.error('Gagal membatalkan pengajuan:', error);
+            toast.error('Gagal membatalkan pengajuan');
+        } finally {
+            setDeleteLoading(false);
+        }
+    };
+
+    const parseDateToTimestamp = (dateVal: any): number => {
+        if (!dateVal) return 0;
+        if (typeof dateVal === 'number') return dateVal;
+        if (typeof dateVal.toDate === 'function') return dateVal.toDate().getTime();
+        if (dateVal instanceof Date) return dateVal.getTime();
+        if (typeof dateVal === 'string') {
+            const trimmed = dateVal.trim();
+            if (!trimmed) return 0;
+
+            // Standard ISO format (YYYY-MM-DD...)
+            if (/^\d{4}-\d{1,2}-\d{1,2}/.test(trimmed)) {
+                const parsed = new Date(trimmed);
+                if (!isNaN(parsed.getTime())) return parsed.getTime();
+            }
+
+            // Split date part
+            const clean = trimmed.split(/[,T\s]+/)[0];
+            const parts = clean.split(/[-/]/);
+            if (parts.length === 3) {
+                let day = parseInt(parts[0], 10);
+                let month = parseInt(parts[1], 10) - 1;
+                let year = parseInt(parts[2], 10);
+
+                if (parts[0].length === 4) {
+                    year = parseInt(parts[0], 10);
+                    month = parseInt(parts[1], 10) - 1;
+                    day = parseInt(parts[2], 10);
+                } else if (isNaN(month)) {
+                    const mIndex = INDO_MONTHS.findIndex(m => m.label.toLowerCase() === parts[1].toLowerCase());
+                    if (mIndex !== -1) month = mIndex;
+                }
+
+                if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+                    const parsed = new Date(year, month, day);
+                    if (!isNaN(parsed.getTime())) return parsed.getTime();
+                }
+            }
+
+            const fallback = new Date(trimmed);
+            if (!isNaN(fallback.getTime())) return fallback.getTime();
+        }
+        return 0;
+    };
+
+    const getReportIncidentTime = (r: CorrectiveReport): number => {
+        // 1. Incident Date (PIR & CM reports)
+        if (r.incidentDate) {
+            const t = parseDateToTimestamp(r.incidentDate);
+            if (t > 0) return t;
+        }
+        // 2. SLA timeOrder or startOrder
+        if ((r as any).timeOrder) {
+            const t = parseDateToTimestamp((r as any).timeOrder);
+            if (t > 0) return t;
+        }
+        if ((r as any).startOrder) {
+            const t = parseDateToTimestamp((r as any).startOrder);
+            if (t > 0) return t;
+        }
+        // 3. Fallback to reportedAt or createdAt
+        if (r.reportedAt) {
+            const t = parseDateToTimestamp(r.reportedAt);
+            if (t > 0) return t;
+        }
+        if ((r as any).createdAt) {
+            const t = parseDateToTimestamp((r as any).createdAt);
+            if (t > 0) return t;
+        }
+        return 0;
     };
 
     const getStatusColor = (status: string) => {
@@ -311,8 +480,13 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         }
     };
 
-    // Filter Logic
+    // Filter Logic and Sorting by Incident Date (Newest First)
     const filteredReports = reports.filter((report) => {
+        // Admin pending delete filter
+        if (adminDeleteFilter === 'pending_delete' && !report.deleteRequested) {
+            return false;
+        }
+
         // Folder filter in Arsip Standby
         if (readOnly) {
             if (archiveFolder === 'cm_pdf' && (report.reportType === 'SLA' || report.reportType === 'PIR')) {
@@ -326,8 +500,21 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             }
         }
 
-        // Date check
-        if (report.reportedAt) {
+        // Incident Date Filter (Month / Year)
+        const reportTimestamp = getReportIncidentTime(report);
+        if (reportTimestamp > 0) {
+            const reportDate = new Date(reportTimestamp);
+            if (selectedMonth !== 'all') {
+                if (reportDate.getMonth().toString() !== selectedMonth) {
+                    return false;
+                }
+            }
+            if (selectedYear !== 'all') {
+                if (reportDate.getFullYear().toString() !== selectedYear) {
+                    return false;
+                }
+            }
+        } else if (report.reportedAt) {
             const reportDate = report.reportedAt.toDate?.();
             if (reportDate) {
                 if (selectedMonth !== 'all') {
@@ -352,11 +539,15 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             const ticketMatch = report.ticketName?.toLowerCase().includes(queryText);
             const remarkMatch = report.remark?.toLowerCase().includes(queryText);
             const incidentMatch = report.incidentName?.toLowerCase().includes(queryText);
+            const reasonMatch = report.deleteReason?.toLowerCase().includes(queryText);
+            const requestedByMatch = report.deleteRequestedBy?.toLowerCase().includes(queryText);
 
-            return locationMatch || issueMatch || actionMatch || ticketMatch || remarkMatch || incidentMatch;
+            return locationMatch || issueMatch || actionMatch || ticketMatch || remarkMatch || incidentMatch || reasonMatch || requestedByMatch;
         }
 
         return true;
+    }).sort((a, b) => {
+        return getReportIncidentTime(b) - getReportIncidentTime(a);
     });
 
 
@@ -710,6 +901,21 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                     <option value="2029">2029</option>
                                     <option value="2030">2030</option>
                                 </select>
+
+                                <select
+                                    value={adminDeleteFilter}
+                                    onChange={(e) => setAdminDeleteFilter(e.target.value as 'all' | 'pending_delete')}
+                                    title="Filter Status Approval"
+                                    aria-label="Filter Status Approval"
+                                    className={`w-full sm:w-auto px-3.5 py-2.5 rounded-xl text-sm font-semibold outline-none transition cursor-pointer shadow-sm border ${
+                                        adminDeleteFilter === 'pending_delete'
+                                            ? 'bg-amber-50 border-amber-300 text-amber-900 focus:ring-2 focus:ring-amber-500'
+                                            : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-red-500'
+                                    }`}
+                                >
+                                    <option value="all">Semua Status</option>
+                                    <option value="pending_delete">Menunggu Approval Hapus ({reports.filter(r => r.deleteRequested).length})</option>
+                                </select>
                             </div>
 
                             <div className="flex items-center gap-2 flex-wrap w-full md:w-auto justify-end">
@@ -736,9 +942,9 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                     <button
                                         type="button"
                                         onClick={async () => {
-                                            const slaReports = filteredReports.filter(r => r.reportType === 'SLA');
+                                            const slaReports = filteredReports.filter(r => r.reportType === 'SLA' && !r.deleteRequested);
                                             if (slaReports.length === 0) {
-                                                toast.error('Tidak ada laporan SLA yang sesuai filter untuk direkap.');
+                                                toast.error('Tidak ada laporan SLA valid (non-pengajuan hapus) yang sesuai filter untuk direkap.');
                                                 return;
                                             }
                                             const toastId = toast.loading('Memproses Rekap SLA (DOCX)...');
@@ -780,13 +986,51 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                     key={report.id}
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className={`bg-white/90 backdrop-blur-sm rounded-2xl border overflow-hidden hover:border-blue-300 transition shadow-lg relative ${report.reportType === 'PIR'
-                                        ? 'border-red-400'
-                                        : report.reportType === 'SLA'
-                                            ? 'border-red-300'
-                                            : 'border-slate-200'
+                                    className={`bg-white/90 backdrop-blur-sm rounded-2xl border overflow-hidden hover:border-blue-300 transition shadow-lg relative ${report.deleteRequested
+                                        ? 'border-amber-400 ring-2 ring-amber-400/20'
+                                        : report.reportType === 'PIR'
+                                            ? 'border-red-400'
+                                            : report.reportType === 'SLA'
+                                                ? 'border-red-300'
+                                                : 'border-slate-200'
                                         }`}
                                 >
+                                    {/* Amber Banner when Deletion is Requested */}
+                                    {report.deleteRequested && (
+                                        <div className="bg-amber-500/10 border-b border-amber-500/30 px-5 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                                            <div className="flex items-center gap-2 text-amber-700 font-bold text-xs">
+                                                <span className="flex h-2 w-2 relative">
+                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                                </span>
+                                                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                                                <span>MENUNGGU PERSETUJUAN HAPUS DARI ADMIN</span>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
+                                                <span>Diajukan oleh: <strong className="text-amber-800 font-semibold">{report.deleteRequestedBy || 'Standby Engineer'}</strong></span>
+                                                {report.deleteReason && (
+                                                    <>
+                                                        <span className="text-slate-300">•</span>
+                                                        <span className="italic bg-white/90 px-2.5 py-0.5 rounded-lg border border-amber-200 text-amber-900 font-medium shadow-xs">
+                                                            Remark: "{report.deleteReason}"
+                                                        </span>
+                                                    </>
+                                                )}
+                                                {isAuthorizedRole && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => cancelDeleteRequest(report.id)}
+                                                        className="ml-1 px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-lg font-bold border border-amber-300 transition cursor-pointer flex items-center gap-1 text-[10px]"
+                                                        title="Batalkan Pengajuan Hapus Dokumen Ini"
+                                                    >
+                                                        <X className="w-3 h-3" />
+                                                        <span>Batalkan Pengajuan</span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {report.reportType === 'PIR' ? (
                                         /* PIR REPORT CARD LAYOUT */
                                         <div className="p-5 sm:p-6">
@@ -798,7 +1042,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                     </div>
                                                     <div className="flex items-center gap-1.5 text-xs text-slate-500">
                                                         <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                                                        <span>{report.reportedAt?.toDate?.()?.toLocaleDateString() || report.incidentDate}</span>
+                                                        <span>{report.incidentDate || (report.reportedAt?.toDate ? report.reportedAt.toDate().toLocaleDateString() : '-')}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1.5 text-xs text-slate-500">
                                                         <User className="w-3.5 h-3.5 text-slate-400" />
@@ -810,7 +1054,6 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                 </div>
 
                                                 <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
-
                                                     {isAuthorizedRole && (
                                                         <button
                                                             onClick={() => {
@@ -826,11 +1069,30 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                     )}
                                                     {isAuthorizedRole && (
                                                         <button
-                                                            onClick={() => handleDeleteClick(report.id)}
-                                                            className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-200 transition cursor-pointer"
-                                                            title="Hapus Laporan"
+                                                            onClick={() => handleDeleteClick(report)}
+                                                            className={`p-2 rounded-xl transition cursor-pointer flex items-center gap-1.5 border text-xs font-semibold ${
+                                                                report.deleteRequested
+                                                                    ? isAdmin
+                                                                        ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200 shadow-sm animate-pulse'
+                                                                        : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                                                                    : 'bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-200'
+                                                            }`}
+                                                            title={
+                                                                report.deleteRequested
+                                                                    ? isAdmin
+                                                                        ? 'Tinjau Pengajuan Hapus Dokumen'
+                                                                        : 'Menunggu Persetujuan Hapus Admin (Klik untuk batalkan pengajuan)'
+                                                                    : isAdmin
+                                                                        ? 'Hapus Laporan Permanen'
+                                                                        : 'Ajukan Hapus Laporan ke Admin'
+                                                            }
                                                         >
                                                             <Trash2 className="w-4 h-4" />
+                                                            {report.deleteRequested && (
+                                                                <span className="text-[11px] font-bold">
+                                                                    {isAdmin ? 'Tinjau Hapus' : 'Menunggu Approval'}
+                                                                </span>
+                                                            )}
                                                         </button>
                                                     )}
                                                 </div>
@@ -863,7 +1125,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                     </div>
                                                     <div className="flex items-center gap-1.5 text-xs text-slate-400">
                                                         <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                                                        <span>{report.reportedAt?.toDate?.()?.toLocaleDateString()}</span>
+                                                        <span>{(report as any).timeOrder ? new Date((report as any).timeOrder).toLocaleDateString() : (report.reportedAt?.toDate?.()?.toLocaleDateString() || '-')}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1.5 text-xs text-slate-400">
                                                         <User className="w-3.5 h-3.5 text-slate-500" />
@@ -927,11 +1189,30 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                     )}
                                                     {isAuthorizedRole && (
                                                         <button
-                                                            onClick={() => handleDeleteClick(report.id)}
-                                                            className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-200 transition cursor-pointer"
-                                                            title="Hapus Laporan"
+                                                            onClick={() => handleDeleteClick(report)}
+                                                            className={`p-2 rounded-xl transition cursor-pointer flex items-center gap-1.5 border text-xs font-semibold ${
+                                                                report.deleteRequested
+                                                                    ? isAdmin
+                                                                        ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200 shadow-sm animate-pulse'
+                                                                        : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                                                                    : 'bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-200'
+                                                            }`}
+                                                            title={
+                                                                report.deleteRequested
+                                                                    ? isAdmin
+                                                                        ? 'Tinjau Pengajuan Hapus Dokumen'
+                                                                        : 'Menunggu Persetujuan Hapus Admin (Klik untuk batalkan pengajuan)'
+                                                                    : isAdmin
+                                                                        ? 'Hapus Laporan Permanen'
+                                                                        : 'Ajukan Hapus Laporan ke Admin'
+                                                            }
                                                         >
                                                             <Trash2 className="w-4 h-4" />
+                                                            {report.deleteRequested && (
+                                                                <span className="text-[11px] font-bold">
+                                                                    {isAdmin ? 'Tinjau Hapus' : 'Menunggu Approval'}
+                                                                </span>
+                                                            )}
                                                         </button>
                                                     )}
                                                 </div>
@@ -1093,7 +1374,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             <span>Area / Lokasi: <strong className="text-slate-800">{report.location}</strong></span>
                                                         </div>
                                                         <p className="text-xs text-slate-500 mt-1">
-                                                            Reported by <span className="text-slate-700">{report.reportedByEmail}</span> • {report.reportedAt?.toDate?.()?.toLocaleDateString() || report.incidentDate || 'Baru Saja'}
+                                                            Reported by <span className="text-slate-700">{report.reportedByEmail}</span> • {report.incidentDate || (report.reportedAt?.toDate ? report.reportedAt.toDate().toLocaleDateString() : 'Baru Saja')}
                                                         </p>
                                                     </div>
 
@@ -1122,11 +1403,30 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                         )}
                                                         {isAuthorizedRole && (
                                                             <button
-                                                                onClick={() => handleDeleteClick(report.id)}
-                                                                className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-200 transition cursor-pointer"
-                                                                title="Hapus Laporan"
+                                                                onClick={() => handleDeleteClick(report)}
+                                                                className={`p-2 rounded-xl transition cursor-pointer flex items-center gap-1.5 border text-xs font-semibold ${
+                                                                    report.deleteRequested
+                                                                        ? isAdmin
+                                                                            ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200 shadow-sm animate-pulse'
+                                                                            : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                                                                        : 'bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-200'
+                                                                }`}
+                                                                title={
+                                                                    report.deleteRequested
+                                                                        ? isAdmin
+                                                                            ? 'Tinjau Pengajuan Hapus Dokumen'
+                                                                            : 'Menunggu Persetujuan Hapus Admin (Klik untuk batalkan pengajuan)'
+                                                                        : isAdmin
+                                                                            ? 'Hapus Laporan Permanen'
+                                                                            : 'Ajukan Hapus Laporan ke Admin'
+                                                                }
                                                             >
                                                                 <Trash2 className="w-4 h-4" />
+                                                                {report.deleteRequested && (
+                                                                    <span className="text-[11px] font-bold">
+                                                                        {isAdmin ? 'Tinjau Hapus' : 'Menunggu Approval'}
+                                                                    </span>
+                                                                )}
                                                             </button>
                                                         )}
                                                     </div>
@@ -1165,47 +1465,29 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 </>
             )}
 
-            <AnimatePresence>
-                {deleteId && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-                    >
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-white border border-slate-200 rounded-2xl p-6 max-w-sm w-full shadow-2xl relative"
-                        >
-                            <div className="flex flex-col items-center text-center">
-                                <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mb-4">
-                                    <Trash2 className="w-6 h-6 text-red-500" />
-                                </div>
-                                <h3 className="text-xl font-bold text-slate-900 mb-2">Hapus Laporan?</h3>
-                                <p className="text-slate-500 mb-6">
-                                    Apakah Anda yakin ingin menghapus laporan pemeliharaan ini? Tindakan ini tidak dapat dibatalkan.
-                                </p>
-                                <div className="flex gap-3 w-full">
-                                    <button
-                                        onClick={() => setDeleteId(null)}
-                                        className="flex-1 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg font-medium transition cursor-pointer"
-                                    >
-                                        Batal
-                                    </button>
-                                    <button
-                                        onClick={confirmDelete}
-                                        className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition cursor-pointer"
-                                    >
-                                        Hapus
-                                    </button>
-                                </div>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {/* Standardized Delete / Approval Modal */}
+            <DeleteConfirmModal
+                isOpen={deleteModalOpen}
+                onClose={() => {
+                    setDeleteModalOpen(false);
+                    setSelectedReportForDelete(null);
+                }}
+                onConfirm={confirmDelete}
+                onRejectRequest={isAdmin ? rejectDeleteRequest : () => cancelDeleteRequest()}
+                documentName={
+                    selectedReportForDelete?.incidentName ||
+                    selectedReportForDelete?.ticketName ||
+                    selectedReportForDelete?.equipmentName ||
+                    selectedReportForDelete?.issue ||
+                    'Laporan Standby'
+                }
+                loading={deleteLoading}
+                isRequested={selectedReportForDelete?.deleteRequested || false}
+                requestedBy={selectedReportForDelete?.deleteRequestedBy || ''}
+                deleteReason={selectedReportForDelete?.deleteReason || ''}
+                isAdmin={isAdmin}
+                requireReason={!isAdmin}
+            />
         </div>
     );
 }
