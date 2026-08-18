@@ -209,13 +209,13 @@ function cleanBulletLines(content: string): string[] {
   });
 }
 
-function createBulletParagraphs(content: string, fontSize = 20): Paragraph[] {
+function createBulletParagraphs(content: string, fontSize = 18, spacingAfter = 30): Paragraph[] {
   const cleanItems = cleanBulletLines(content);
   return cleanItems.map(
     (text) =>
       new Paragraph({
-        indent: { left: 320, hanging: 240 },
-        spacing: { after: 60 },
+        indent: { left: 280, hanging: 200 },
+        spacing: { after: spacingAfter },
         children: [
           new TextRun({
             text: '•\t',
@@ -235,7 +235,7 @@ function createBulletParagraphs(content: string, fontSize = 20): Paragraph[] {
   );
 }
 
-function createBoxSection(title: string, content: string): Table {
+function createBoxSection(title: string, content: string, fontSize = 18): Table {
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: cellBorder,
@@ -244,14 +244,14 @@ function createBoxSection(title: string, content: string): Table {
         children: [
           new TableCell({
             shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
-            margins: { top: 100, bottom: 100, left: 150, right: 150 },
+            margins: { top: 60, bottom: 60, left: 100, right: 100 },
             children: [
               new Paragraph({
                 children: [
                   new TextRun({
                     text: title,
                     bold: true,
-                    size: 20,
+                    size: fontSize,
                     color: '000000',
                     font: 'Century Gothic',
                   }),
@@ -264,8 +264,8 @@ function createBoxSection(title: string, content: string): Table {
       new TableRow({
         children: [
           new TableCell({
-            margins: { top: 120, bottom: 120, left: 150, right: 150 },
-            children: createBulletParagraphs(content, 20),
+            margins: { top: 60, bottom: 60, left: 100, right: 100 },
+            children: createBulletParagraphs(content, fontSize, 30),
           }),
         ],
       }),
@@ -317,11 +317,11 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
             new TableCell({
               width: { size: [45, 30, 25][idx], type: WidthType.PERCENTAGE },
               shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
-              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+              margins: { top: 60, bottom: 60, left: 80, right: 80 },
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: headText, bold: true, size: 20, color: '000000', font: 'Century Gothic' })],
+                  children: [new TextRun({ text: headText, bold: true, size: 18, color: '000000', font: 'Century Gothic' })],
                 }),
               ],
             })
@@ -336,11 +336,11 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           (val, idx) =>
             new TableCell({
               width: { size: [45, 30, 25][idx], type: WidthType.PERCENTAGE },
-              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+              margins: { top: 60, bottom: 60, left: 80, right: 80 },
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: val, size: 20, color: '1E293B', font: 'Century Gothic' })],
+                  children: [new TextRun({ text: val, size: 18, color: '1E293B', font: 'Century Gothic' })],
                 }),
               ],
             })
@@ -360,11 +360,11 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
             new TableCell({
               width: { size: [35, 25, 20, 20][idx], type: WidthType.PERCENTAGE },
               shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
-              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+              margins: { top: 60, bottom: 60, left: 80, right: 80 },
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: headText, bold: true, size: 20, color: '000000', font: 'Century Gothic' })],
+                  children: [new TextRun({ text: headText, bold: true, size: 18, color: '000000', font: 'Century Gothic' })],
                 }),
               ],
             })
@@ -380,11 +380,11 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           (val, idx) =>
             new TableCell({
               width: { size: [35, 25, 20, 20][idx], type: WidthType.PERCENTAGE },
-              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+              margins: { top: 60, bottom: 60, left: 80, right: 80 },
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: val, size: 20, color: '1E293B', font: 'Century Gothic' })],
+                  children: [new TextRun({ text: val, size: 18, color: '1E293B', font: 'Century Gothic' })],
                 }),
               ],
             })
@@ -404,11 +404,11 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
             new TableCell({
               width: { size: [50, 20, 30][idx], type: WidthType.PERCENTAGE },
               shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
-              margins: { top: 100, bottom: 100, left: 100, right: 100 },
+              margins: { top: 60, bottom: 60, left: 80, right: 80 },
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: headText, bold: true, size: 20, color: '000000', font: 'Century Gothic' })],
+                  children: [new TextRun({ text: headText, bold: true, size: 18, color: '000000', font: 'Century Gothic' })],
                 }),
               ],
             })
@@ -419,29 +419,29 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           // Corrective Action Paragraphs
           new TableCell({
             width: { size: 50, type: WidthType.PERCENTAGE },
-            margins: { top: 100, bottom: 100, left: 100, right: 100 },
-            children: createBulletParagraphs(resolvedAction, 20),
+            margins: { top: 60, bottom: 60, left: 80, right: 80 },
+            children: createBulletParagraphs(resolvedAction, 18, 25),
           }),
           // Repair Time
           new TableCell({
             width: { size: 20, type: WidthType.PERCENTAGE },
-            margins: { top: 100, bottom: 100, left: 80, right: 80 },
+            margins: { top: 60, bottom: 60, left: 60, right: 60 },
             children: [
               new Paragraph({
-                spacing: { after: 50 },
+                spacing: { after: 30 },
                 children: [
-                  new TextRun({ text: 'Start :', bold: true, size: 20, color: '000000', font: 'Century Gothic' }),
+                  new TextRun({ text: 'Start :', bold: true, size: 18, color: '000000', font: 'Century Gothic' }),
                   ...(data.repairTimeStart
-                    ? data.repairTimeStart.split(/\r?\n/).map((line) => new TextRun({ text: line.trim(), size: 20, color: '1E293B', font: 'Century Gothic', break: 1 }))
-                    : [new TextRun({ text: ' -', size: 20, color: '1E293B', font: 'Century Gothic' })]),
+                    ? data.repairTimeStart.split(/\r?\n/).map((line) => new TextRun({ text: line.trim(), size: 18, color: '1E293B', font: 'Century Gothic', break: 1 }))
+                    : [new TextRun({ text: ' -', size: 18, color: '1E293B', font: 'Century Gothic' })]),
                 ],
               }),
               new Paragraph({
                 children: [
-                  new TextRun({ text: 'End   :', bold: true, size: 20, color: '000000', font: 'Century Gothic' }),
+                  new TextRun({ text: 'End   :', bold: true, size: 18, color: '000000', font: 'Century Gothic' }),
                   ...(data.repairTimeEnd
-                    ? data.repairTimeEnd.split(/\r?\n/).map((line) => new TextRun({ text: line.trim(), size: 20, color: '1E293B', font: 'Century Gothic', break: 1 }))
-                    : [new TextRun({ text: ' -', size: 20, color: '1E293B', font: 'Century Gothic' })]),
+                    ? data.repairTimeEnd.split(/\r?\n/).map((line) => new TextRun({ text: line.trim(), size: 18, color: '1E293B', font: 'Century Gothic', break: 1 }))
+                    : [new TextRun({ text: ' -', size: 18, color: '1E293B', font: 'Century Gothic' })]),
                 ],
               }),
             ],
@@ -449,10 +449,10 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           // Result
           new TableCell({
             width: { size: 30, type: WidthType.PERCENTAGE },
-            margins: { top: 100, bottom: 100, left: 100, right: 100 },
+            margins: { top: 60, bottom: 60, left: 80, right: 80 },
             children: [
               new Paragraph({
-                children: [new TextRun({ text: resolvedResult || '-', size: 20, color: '1E293B', font: 'Century Gothic' })],
+                children: [new TextRun({ text: resolvedResult || '-', size: 18, color: '1E293B', font: 'Century Gothic' })],
               }),
             ],
           }),
@@ -838,15 +838,15 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           }),
         },
         children: [
-          // Title (18pt = size 36)
+          // Title (15pt = size 30)
           new Paragraph({
             alignment: AlignmentType.CENTER,
-            spacing: { before: 180, after: 240 },
+            spacing: { before: 100, after: 120 },
             children: [
               new TextRun({
                 text: 'REPORT CORRECTIVE MAINTENANCE',
                 bold: true,
-                size: 36, // 18pt in Word
+                size: 30, // 15pt in Word
                 color: '475569',
                 font: 'Century Gothic',
               }),
@@ -854,29 +854,25 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           }),
 
           incidentTable,
-          new Paragraph({ spacing: { after: 120 } }),
+          new Paragraph({ spacing: { after: 60 } }),
 
           equipmentTable,
-          new Paragraph({ spacing: { after: 120 } }),
+          new Paragraph({ spacing: { after: 60 } }),
 
           actionTable,
-          new Paragraph({ spacing: { after: 180 } }),
+          new Paragraph({ spacing: { after: 60 } }),
 
-          createBoxSection('VISUAL INSPECTION & CHECKING', resolvedVisualInsp),
-          new Paragraph({ spacing: { after: 120 } }),
+          createBoxSection('VISUAL INSPECTION & CHECKING', resolvedVisualInsp, 18),
+          new Paragraph({ spacing: { after: 60 } }),
 
-          createBoxSection('CLEANING & PREVENTIVE METHOD', resolvedCleaningMethod),
-          new Paragraph({ spacing: { after: 120 } }),
+          createBoxSection('SUMMARY CORRECTIVE REPORT (PROBLEM ANALYSIS)', resolvedProblemAnalysis, 18),
 
-          // Halaman 2: Problem Analysis, Replaced Spareparts & Supporting Documentation
+          // Halaman 2: Replaced Spareparts & Supporting Documentation
           new Paragraph({ pageBreakBefore: true, children: [] }),
 
-          createBoxSection('SUMMARY CORRECTIVE REPORT (PROBLEM ANALYSIS)', resolvedProblemAnalysis),
-          new Paragraph({ spacing: { after: 180 } }),
-
-          createSectionHeader('LIST OF REPLACED SPAREPARTS', false),
-          sparepartTable,
-          new Paragraph({ spacing: { after: 180 } }),
+          ...(data.spareparts && data.spareparts.length > 0
+            ? [createSectionHeader('LIST OF REPLACED SPAREPARTS', false), sparepartTable, new Paragraph({ spacing: { after: 120 } })]
+            : []),
 
           ...(photoGridTable
             ? [createSectionHeader('SUPPORTING DOCUMENTATION', false), photoGridTable]
@@ -885,7 +881,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           // Halaman 3: Khusus Tanda Tangan
           new Paragraph({
             pageBreakBefore: true,
-            spacing: { before: 180, after: 120 },
+            spacing: { before: 120, after: 80 },
             children: [
               new TextRun({
                 text: `AUTHOR BY, ${data.authorName || 'Rizki Novri Yanda - Data Center Operation'}`,
