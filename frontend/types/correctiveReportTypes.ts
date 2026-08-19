@@ -27,6 +27,7 @@ export interface CMReportData {
   // Klasifikasi Troubleshoot (Apakah Pergantian Sparepart atau Bukan)
   troubleshootType?: 'non_sparepart' | 'sparepart_replacement'; // 'non_sparepart' = Wajib SLA, 'sparepart_replacement' = Tanpa SLA
   isSparepartReplacement?: boolean;                             // Flag pembantu cepat
+  isTroubleshootSelected?: boolean;                             // Flag eksplisit user telah memilih salah satu opsi
 
   // Halaman 1: Informasi Insiden & Spesifikasi Perangkat
   incidentName: string;                     // Nama Insiden/Gangguan (misal "Alarm High Temp CRAC 03")
