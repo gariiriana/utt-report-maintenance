@@ -28,7 +28,8 @@ import {
   Calendar,
   Clock,
   AlertCircle,
-  Zap
+  Zap,
+  ClipboardList
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -148,10 +149,8 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     cleaningPreventiveMethod: '',
     summaryProblemAnalysis: '',
 
-    spareparts: [
-      { name: '-', brand: '-', qty: '-' },
-      { name: '-', brand: '-', qty: '-' }
-    ],
+    spareparts: [],
+    requestSpareparts: [],
 
     photos: [],
 
@@ -195,10 +194,8 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               preparedBySign: prepSign,
               reviewedByName: normalizedRevName,
               reviewedBySign: revSign,
-              spareparts: data.spareparts || [
-                { name: '-', brand: '-', qty: '-' },
-                { name: '-', brand: '-', qty: '-' }
-              ],
+              spareparts: data.spareparts || [],
+              requestSpareparts: data.requestSpareparts || [],
               photos: data.photos || (data.photoBase64 ? [{ photoBase64: data.photoBase64 }] : [])
             });
           }
@@ -236,6 +233,8 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               reviewedBySign: rSign,
               troubleshootType: tType,
               isSparepartReplacement: tType === 'sparepart_replacement',
+              spareparts: parsed.formData.spareparts || [],
+              requestSpareparts: parsed.formData.requestSpareparts || [],
             });
           }
           if (parsed.currentStep) {
@@ -269,10 +268,8 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
       visualInspectionChecking: '',
       cleaningPreventiveMethod: '',
       summaryProblemAnalysis: '',
-      spareparts: [
-        { name: '-', brand: '-', qty: '-' },
-        { name: '-', brand: '-', qty: '-' }
-      ],
+      spareparts: [],
+      requestSpareparts: [],
       photos: [],
       authorName: 'Rizki Novri Yanda – Data Center Operation',
       preparedByName: 'Muhammad Salman Abdurohman',
@@ -403,16 +400,16 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     }
   };
 
-  // Sparepart Dynamic Handlers
+  // Replaced Spareparts Dynamic Handlers
   const addSparepart = () => {
     setFormData(prev => ({
       ...prev,
-      spareparts: [...prev.spareparts, { name: '', brand: '', qty: '' }]
+      spareparts: [...(prev.spareparts || []), { name: '', brand: '', qty: '' }]
     }));
   };
 
   const updateSparepart = (index: number, field: keyof CMSparepartItem, val: string) => {
-    const updated = [...formData.spareparts];
+    const updated = [...(formData.spareparts || [])];
     updated[index] = { ...updated[index], [field]: val };
     setFormData(prev => ({ ...prev, spareparts: updated }));
   };
@@ -420,7 +417,28 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
   const removeSparepart = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      spareparts: prev.spareparts.filter((_, i) => i !== index)
+      spareparts: (prev.spareparts || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  // Request Spareparts Dynamic Handlers
+  const addRequestSparepart = () => {
+    setFormData(prev => ({
+      ...prev,
+      requestSpareparts: [...(prev.requestSpareparts || []), { name: '', brand: '', qty: '' }]
+    }));
+  };
+
+  const updateRequestSparepart = (index: number, field: keyof CMSparepartItem, val: string) => {
+    const updated = [...(formData.requestSpareparts || [])];
+    updated[index] = { ...updated[index], [field]: val };
+    setFormData(prev => ({ ...prev, requestSpareparts: updated }));
+  };
+
+  const removeRequestSparepart = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      requestSpareparts: (prev.requestSpareparts || []).filter((_, i) => i !== index)
     }));
   };
 
@@ -681,11 +699,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
           {[
             { step: 1, label: '1. Incident & Peralatan', shortLabel: '1. Incident' },
             { step: 2, label: '2. Perbaikan & Analisis', shortLabel: '2. Perbaikan' },
-            { 
-              step: 3, 
-              label: formData.troubleshootType === 'non_sparepart' ? '3. Foto Dokumentasi' : '3. Sparepart & Foto', 
-              shortLabel: formData.troubleshootType === 'non_sparepart' ? '3. Foto' : '3. Sparepart' 
-            },
+            { step: 3, label: '3. Sparepart & Foto', shortLabel: '3. Sparepart' },
             { step: 4, label: '4. TTD & Export DOCX', shortLabel: '4. Export' }
           ].map((item) => (
             <button
@@ -1121,24 +1135,35 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               exit={{ opacity: 0, x: 10 }}
               className="space-y-6"
             >
-              {/* SPAREPARTS TABLE DYNAMIC (HANYA MUNCUL JIKA PERGANTIAN SPAREPART) */}
-              {formData.troubleshootType === 'sparepart_replacement' ? (
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3">
+              {/* 1. LIST OF REPLACED SPAREPART (Halaman 2) - OPSIONAL */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
                     <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
                       <Wrench className="w-4 h-4 text-blue-600" />
                       LIST OF REPLACED SPAREPART (Halaman 2)
                     </h3>
-                    <button
-                      type="button"
-                      onClick={addSparepart}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Tambah Baris
-                    </button>
+                    <span className="text-[10px] font-semibold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-full">
+                      Opsional
+                    </span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={addSparepart}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Tambah Baris
+                  </button>
+                </div>
 
+                {(!formData.spareparts || formData.spareparts.length === 0) ? (
+                  <div className="text-center py-4 bg-white/70 border border-dashed border-slate-200 rounded-xl">
+                    <p className="text-xs text-slate-500">
+                      Belum ada suku cadang yang diganti. Klik <strong>"+ Tambah Baris"</strong> jika ada penggantian sparepart.
+                    </p>
+                  </div>
+                ) : (
                   <div className="space-y-2">
                     {formData.spareparts.map((item, idx) => (
                       <div key={idx} className="flex items-center gap-2 bg-white p-2 border border-slate-200 rounded-xl">
@@ -1147,7 +1172,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                           type="text"
                           value={item.name}
                           onChange={e => updateSparepart(idx, 'name', e.target.value)}
-                          placeholder="Nama Sparepart (e.g. Thermostat / Module)"
+                          placeholder="Nama Sparepart (e.g. Thermostat / Relay)"
                           className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 outline-none"
                         />
                         <input
@@ -1167,27 +1192,84 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                         <button
                           type="button"
                           onClick={() => removeSparepart(idx)}
-                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition"
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                          title="Hapus Baris"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     ))}
                   </div>
-                </div>
-              ) : (
-                <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
-                  <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl shrink-0 mt-0.5">
-                    <Zap className="w-5 h-5" />
+                )}
+              </div>
+
+              {/* 2. LIST OF REQUEST SPAREPART (Halaman 2) - OPSIONAL */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                      <ClipboardList className="w-4 h-4 text-amber-600" />
+                      LIST OF REQUEST SPAREPART (Halaman 2)
+                    </h3>
+                    <span className="text-[10px] font-semibold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-full">
+                      Opsional
+                    </span>
                   </div>
-                  <div>
-                    <h4 className="text-xs sm:text-sm font-bold text-emerald-950">Bukan Pergantian Sparepart (Troubleshoot Gangguan)</h4>
-                    <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
-                      Perbaikan ini tidak melibatkan penggantian suku cadang/material. Tabel <strong>List of Replaced Sparepart</strong> otomatis ditiadakan pada dokumen Word (DOCX) & PDF.
+                  <button
+                    type="button"
+                    onClick={addRequestSparepart}
+                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Tambah Baris
+                  </button>
+                </div>
+
+                {(!formData.requestSpareparts || formData.requestSpareparts.length === 0) ? (
+                  <div className="text-center py-4 bg-white/70 border border-dashed border-slate-200 rounded-xl">
+                    <p className="text-xs text-slate-500">
+                      Belum ada permintaan suku cadang. Klik <strong>"+ Tambah Baris"</strong> jika ada kebutuhan pengadaan sparepart.
                     </p>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="space-y-2">
+                    {formData.requestSpareparts.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-white p-2 border border-slate-200 rounded-xl">
+                        <span className="text-xs font-bold text-slate-400 w-6 text-center">{idx + 1}</span>
+                        <input
+                          type="text"
+                          value={item.name}
+                          onChange={e => updateRequestSparepart(idx, 'name', e.target.value)}
+                          placeholder="Nama Sparepart (e.g. Filter Udara / Modul)"
+                          className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-amber-500 outline-none"
+                        />
+                        <input
+                          type="text"
+                          value={item.brand}
+                          onChange={e => updateRequestSparepart(idx, 'brand', e.target.value)}
+                          placeholder="Brand (e.g. Schneider / ABB)"
+                          className="w-28 sm:w-36 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-amber-500 outline-none"
+                        />
+                        <input
+                          type="text"
+                          value={item.qty}
+                          onChange={e => updateRequestSparepart(idx, 'qty', e.target.value)}
+                          placeholder="Qty (e.g. 2 Pcs)"
+                          className="w-20 sm:w-24 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-amber-500 outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeRequestSparepart(idx)}
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                          title="Hapus Baris"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* PHOTOS DOKUMENTASI (Max 10, layout grid di PDF) */}
               <div>

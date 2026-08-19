@@ -51,7 +51,8 @@ export interface CMReportData {
   summaryProblemAnalysis: string;           // Rincian Analisis Akar Masalah (Root Cause Analysis)
   
   // Halaman 2: Pengadaan Suku Cadang & Foto Dokumentasi
-  spareparts: CMSparepartItem[];            // Array rincian suku cadang terpakai
+  spareparts?: CMSparepartItem[];           // Array rincian suku cadang diganti (LIST OF REPLACED SPAREPART)
+  requestSpareparts?: CMSparepartItem[];    // Array rincian suku cadang diminta (LIST OF REQUEST SPAREPART)
   photos: CMPhotoItem[];                    // Array foto dokumentasi perbaikan
   
   // Halaman 3: Otorisasi & Tanda Tangan Digital Insinyur / Manajemen

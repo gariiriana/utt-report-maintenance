@@ -26,7 +26,7 @@ import {
   PageNumber,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { CMReportData } from '@/types/correctiveReportTypes';
+import { CMReportData, CMSparepartItem } from '@/types/correctiveReportTypes';
 import {
   PREPARED_BY_SIGNATURES,
   ARIF_BUDIMAN_SIGNATURE_BASE64,
@@ -460,68 +460,69 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
     ],
   });
 
-  // Spareparts Table
-  const sparepartRows =
-    data.spareparts && data.spareparts.length > 0
-      ? data.spareparts.map(
-        (sp, idx) =>
-          new TableRow({
-            children: [(idx + 1).toString(), sp.name || '-', sp.brand || '-', sp.qty || '-'].map(
-              (cellVal, cIdx) =>
-                new TableCell({
-                  width: { size: [10, 50, 25, 15][cIdx], type: WidthType.PERCENTAGE },
-                  margins: { top: 80, bottom: 80, left: 100, right: 100 },
-                  children: [
-                    new Paragraph({
-                      alignment: cIdx === 1 ? AlignmentType.LEFT : AlignmentType.CENTER,
-                      children: [new TextRun({ text: cellVal, size: 20, color: '1E293B', font: 'Century Gothic' })],
-                    }),
-                  ],
-                })
-            ),
-          })
-      )
-      : [
+  // Helper to build Spareparts Table (Replaced or Request)
+  const createSparepartDocxTable = (items: CMSparepartItem[], headerTitle: string) => {
+    const validItems = (items || []).filter(
+      (sp) => (sp.name && sp.name.trim() !== '' && sp.name.trim() !== '-') || (sp.brand && sp.brand.trim() !== '' && sp.brand.trim() !== '-')
+    );
+
+    const rows = validItems.map(
+      (sp, idx) =>
         new TableRow({
-          children: ['-', '-', '-', '-'].map(
+          children: [(idx + 1).toString(), sp.name || '-', sp.brand || '-', sp.qty || '-'].map(
             (cellVal, cIdx) =>
               new TableCell({
                 width: { size: [10, 50, 25, 15][cIdx], type: WidthType.PERCENTAGE },
                 margins: { top: 80, bottom: 80, left: 100, right: 100 },
                 children: [
                   new Paragraph({
-                    alignment: AlignmentType.CENTER,
+                    alignment: cIdx === 1 ? AlignmentType.LEFT : AlignmentType.CENTER,
                     children: [new TextRun({ text: cellVal, size: 20, color: '1E293B', font: 'Century Gothic' })],
                   }),
                 ],
               })
           ),
-        }),
-      ];
+        })
+    );
 
-  const sparepartTable = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: cellBorder,
-    rows: [
-      new TableRow({
-        children: ['No', 'LIST OF REPLACED SPAREPART', 'BRAND', 'QTY'].map(
-          (hText, idx) =>
-            new TableCell({
-              width: { size: [10, 50, 25, 15][idx], type: WidthType.PERCENTAGE },
-              shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
-              margins: { top: 100, bottom: 100, left: 100, right: 100 },
-              children: [
-                new Paragraph({
-                  alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: hText, bold: true, size: 20, color: '000000', font: 'Century Gothic' })],
-                }),
-              ],
-            })
-        ),
-      }),
-      ...sparepartRows,
-    ],
-  });
+    return new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      borders: cellBorder,
+      rows: [
+        new TableRow({
+          children: ['No', headerTitle, 'BRAND', 'QTY'].map(
+            (hText, idx) =>
+              new TableCell({
+                width: { size: [10, 50, 25, 15][idx], type: WidthType.PERCENTAGE },
+                shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
+                margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                children: [
+                  new Paragraph({
+                    alignment: AlignmentType.CENTER,
+                    children: [new TextRun({ text: hText, bold: true, size: 20, color: '000000', font: 'Century Gothic' })],
+                  }),
+                ],
+              })
+          ),
+        }),
+        ...rows,
+      ],
+    });
+  };
+
+  const hasReplacedSpareparts =
+    data.spareparts &&
+    data.spareparts.length > 0 &&
+    data.spareparts.some(
+      (sp) => (sp.name && sp.name.trim() !== '' && sp.name.trim() !== '-') || (sp.brand && sp.brand.trim() !== '' && sp.brand.trim() !== '-')
+    );
+
+  const hasRequestSpareparts =
+    data.requestSpareparts &&
+    data.requestSpareparts.length > 0 &&
+    data.requestSpareparts.some(
+      (sp) => (sp.name && sp.name.trim() !== '' && sp.name.trim() !== '-') || (sp.brand && sp.brand.trim() !== '' && sp.brand.trim() !== '-')
+    );
 
   // Photo Documentation 2-Column Table Grid
   const photoTableRows: TableRow[] = [];
@@ -866,11 +867,23 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
 
           createBoxSection('SUMMARY CORRECTIVE REPORT (PROBLEM ANALYSIS)', resolvedProblemAnalysis, 18),
 
-          // Halaman 2: Replaced Spareparts & Supporting Documentation
+          // Halaman 2: Replaced Spareparts, Request Spareparts & Supporting Documentation
           new Paragraph({ pageBreakBefore: true, children: [] }),
 
-          ...(data.troubleshootType === 'sparepart_replacement' || (data.isSparepartReplacement === true && data.spareparts && data.spareparts.length > 0)
-            ? [createSectionHeader('LIST OF REPLACED SPAREPARTS', false), sparepartTable, new Paragraph({ spacing: { after: 120 } })]
+          ...(hasReplacedSpareparts
+            ? [
+                createSectionHeader('LIST OF REPLACED SPAREPARTS', false),
+                createSparepartDocxTable(data.spareparts!, 'LIST OF REPLACED SPAREPART'),
+                new Paragraph({ spacing: { after: 120 } })
+              ]
+            : []),
+
+          ...(hasRequestSpareparts
+            ? [
+                createSectionHeader('LIST OF REQUEST SPAREPARTS', false),
+                createSparepartDocxTable(data.requestSpareparts!, 'LIST OF REQUEST SPAREPART'),
+                new Paragraph({ spacing: { after: 120 } })
+              ]
             : []),
 
           ...(photoGridTable
