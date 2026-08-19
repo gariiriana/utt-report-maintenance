@@ -972,50 +972,53 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
     if (!readOnly) {
         return (
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 sm:mb-8 border-b border-slate-200 pb-5 gap-4">
+            <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-4 sm:py-8 relative w-full min-w-0 overflow-x-hidden">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-8 border-b border-slate-200 pb-4 sm:pb-5 gap-3 sm:gap-4">
                     <div>
-                        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
+                        <h1 className="text-lg sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
                             <PenTool className="w-5 h-5 sm:w-6 sm:h-6 text-red-600 shrink-0" />
                             Corrective Maintenance (CM)
                         </h1>
-                        <p className="text-slate-500 text-xs sm:text-sm mt-1">Pembuatan Laporan Pemeliharaan Corrective Standby Engineer</p>
+                        <p className="text-slate-500 text-xs sm:text-sm mt-0.5 sm:mt-1">Pembuatan Laporan Pemeliharaan Corrective Standby Engineer</p>
                     </div>
 
                     {/* 3 Navbar Tabs for Standby Engineer */}
-                    <div className="grid grid-cols-3 sm:flex bg-slate-100 p-1 rounded-xl border border-slate-200 self-stretch sm:self-auto gap-1">
+                    <div className="grid grid-cols-3 sm:flex bg-slate-100 p-1 rounded-xl border border-slate-200 w-full sm:w-auto gap-1">
                         <button
                             type="button"
                             onClick={() => setActiveFormTab('cm_pdf')}
-                            className={`px-2.5 sm:px-4 py-2 sm:py-2 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${activeFormTab === 'cm_pdf'
+                            className={`min-w-0 px-2 sm:px-4 py-2 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 sm:gap-2 ${activeFormTab === 'cm_pdf'
                                 ? 'bg-red-600 text-white shadow-md'
                                 : 'text-slate-600 hover:text-slate-900'
                                 }`}
                         >
                             <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                            <span className="truncate">Report CM (3-Hal)</span>
+                            <span className="truncate hidden sm:inline">Report CM (3-Hal)</span>
+                            <span className="truncate inline sm:hidden">Report CM</span>
                         </button>
                         <button
                             type="button"
                             onClick={() => setActiveFormTab('sla')}
-                            className={`px-2.5 sm:px-4 py-2 sm:py-2 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${activeFormTab === 'sla'
+                            className={`min-w-0 px-2 sm:px-4 py-2 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 sm:gap-2 ${activeFormTab === 'sla'
                                 ? 'bg-red-600 text-white shadow-md'
                                 : 'text-slate-600 hover:text-slate-900'
                                 }`}
                         >
                             <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                            <span className="truncate">Form SLA / SLG (4-Step)</span>
+                            <span className="truncate hidden sm:inline">Form SLA / SLG (4-Step)</span>
+                            <span className="truncate inline sm:hidden">Form SLA</span>
                         </button>
                         <button
                             type="button"
                             onClick={() => setActiveFormTab('pir')}
-                            className={`px-2.5 sm:px-4 py-2 sm:py-2 rounded-lg text-[11px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 ${activeFormTab === 'pir'
+                            className={`min-w-0 px-2 sm:px-4 py-2 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 sm:gap-2 ${activeFormTab === 'pir'
                                 ? 'bg-red-600 text-white shadow-md'
                                 : 'text-slate-600 hover:text-slate-900'
                                 }`}
                         >
                             <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                            <span className="truncate">Report PIR (Postmortem)</span>
+                            <span className="truncate hidden sm:inline">Report PIR (Postmortem)</span>
+                            <span className="truncate inline sm:hidden">Report PIR</span>
                         </button>
                     </div>
                 </div>
