@@ -185,6 +185,20 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
             const isSparepart = data.troubleshootType === 'sparepart_replacement' || data.isSparepartReplacement === true;
             const tType = data.troubleshootType || (isSparepart ? 'sparepart_replacement' : (data.isSparepartReplacement === false ? 'non_sparepart' : undefined));
 
+            const rawSpareparts = data.spareparts || data.replacedSpareparts || data.replaced_spareparts || data.spareParts || data.spare_parts;
+            const initialSpareparts = Array.isArray(rawSpareparts)
+              ? rawSpareparts
+              : (typeof rawSpareparts === 'string' && rawSpareparts.trim() !== '' && rawSpareparts.trim() !== '-'
+                ? [{ name: rawSpareparts.trim(), brand: '-', qty: '1 Pcs' }]
+                : []);
+
+            const rawRequestSpareparts = data.requestSpareparts || data.request_spareparts || data.requestedSpareparts || data.sparepartsRequest || data.sparepartRequest;
+            const initialRequestSpareparts = Array.isArray(rawRequestSpareparts)
+              ? rawRequestSpareparts
+              : (typeof rawRequestSpareparts === 'string' && rawRequestSpareparts.trim() !== '' && rawRequestSpareparts.trim() !== '-'
+                ? [{ name: rawRequestSpareparts.trim(), brand: '-', qty: '1 Pcs' }]
+                : []);
+
             setFormData({
               ...formData,
               ...data,
@@ -194,8 +208,8 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               preparedBySign: prepSign,
               reviewedByName: normalizedRevName,
               reviewedBySign: revSign,
-              spareparts: data.spareparts || [],
-              requestSpareparts: data.requestSpareparts || [],
+              spareparts: initialSpareparts,
+              requestSpareparts: initialRequestSpareparts,
               photos: data.photos || (data.photoBase64 ? [{ photoBase64: data.photoBase64 }] : [])
             });
           }

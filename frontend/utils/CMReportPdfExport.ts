@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { CMReportData } from '@/types/correctiveReportTypes';
+import { CMReportData, CMSparepartItem } from '@/types/correctiveReportTypes';
 import { PREPARED_BY_SIGNATURES, ARIF_BUDIMAN_SIGNATURE_BASE64, normalizeEngineerName, getEngineerSignature, cleanSignature } from '@/utils/engineerSignatures';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
@@ -359,19 +359,31 @@ export async function generateCMReportPDF(data: CMReportData) {
 
     y = 28;
 
-    // 1. REPLACED SPAREPARTS TABLE (Hanya jika diisi user)
-    const hasReplacedSpareparts =
-      data.spareparts &&
-      data.spareparts.length > 0 &&
-      data.spareparts.some(
-        (sp) => (sp.name && sp.name.trim() !== '' && sp.name.trim() !== '-') || (sp.brand && sp.brand.trim() !== '' && sp.brand.trim() !== '-')
-      );
+    // Helper to normalize spareparts for PDF
+    const normalizePdfSpareparts = (raw: any): CMSparepartItem[] => {
+      if (!raw) return [];
+      if (Array.isArray(raw)) {
+        return raw.map(sp => {
+          if (!sp) return { name: '', brand: '', qty: '' };
+          if (typeof sp === 'string') return { name: sp.trim(), brand: '-', qty: '1 Pcs' };
+          const name = (sp.name || sp.nama || sp.sparepart || sp.sparePart || sp.partName || sp.item || sp.component || '').toString().trim();
+          const brand = (sp.brand || sp.merk || sp.manufaktur || sp.maker || '-').toString().trim() || '-';
+          const qty = (sp.qty || sp.jumlah || sp.quantity || sp.kuantitas || sp.count || '-').toString().trim() || '-';
+          return { name, brand, qty };
+        }).filter(sp => (sp.name && sp.name !== '-') || (sp.brand && sp.brand !== '-') || (sp.qty && sp.qty !== '-'));
+      }
+      if (typeof raw === 'string' && raw.trim() && raw.trim() !== '-') {
+        return [{ name: raw.trim(), brand: '-', qty: '1 Pcs' }];
+      }
+      return [];
+    };
 
-    if (hasReplacedSpareparts) {
-      const validItems = data.spareparts!.filter(
-        (sp) => (sp.name && sp.name.trim() !== '' && sp.name.trim() !== '-') || (sp.brand && sp.brand.trim() !== '' && sp.brand.trim() !== '-')
-      );
-      const sparepartRows = validItems.map((sp, idx) => [
+    // 1. REPLACED SPAREPARTS TABLE (Hanya jika diisi user)
+    const rawSpareparts = data.spareparts || (data as any).replacedSpareparts || (data as any).replaced_spareparts || (data as any).spareParts || (data as any).spare_parts;
+    const resolvedSpareparts = normalizePdfSpareparts(rawSpareparts);
+
+    if (resolvedSpareparts.length > 0) {
+      const sparepartRows = resolvedSpareparts.map((sp, idx) => [
         (idx + 1).toString(),
         sanitizePdfText(sp.name) || '-',
         sanitizePdfText(sp.brand) || '-',
@@ -417,18 +429,11 @@ export async function generateCMReportPDF(data: CMReportData) {
     }
 
     // 2. REQUEST SPAREPARTS TABLE (Hanya jika diisi user)
-    const hasRequestSpareparts =
-      data.requestSpareparts &&
-      data.requestSpareparts.length > 0 &&
-      data.requestSpareparts.some(
-        (sp) => (sp.name && sp.name.trim() !== '' && sp.name.trim() !== '-') || (sp.brand && sp.brand.trim() !== '' && sp.brand.trim() !== '-')
-      );
+    const rawRequestSpareparts = data.requestSpareparts || (data as any).request_spareparts || (data as any).requestedSpareparts || (data as any).sparepartsRequest || (data as any).sparepartRequest;
+    const resolvedRequestSpareparts = normalizePdfSpareparts(rawRequestSpareparts);
 
-    if (hasRequestSpareparts) {
-      const validReqItems = data.requestSpareparts!.filter(
-        (sp) => (sp.name && sp.name.trim() !== '' && sp.name.trim() !== '-') || (sp.brand && sp.brand.trim() !== '' && sp.brand.trim() !== '-')
-      );
-      const reqRows = validReqItems.map((sp, idx) => [
+    if (resolvedRequestSpareparts.length > 0) {
+      const reqRows = resolvedRequestSpareparts.map((sp, idx) => [
         (idx + 1).toString(),
         sanitizePdfText(sp.name) || '-',
         sanitizePdfText(sp.brand) || '-',

@@ -460,10 +460,33 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
     ],
   });
 
+  // Helper to normalize sparepart item with all possible field naming conventions
+  const normalizeSparepartItem = (sp: any): CMSparepartItem => {
+    if (!sp) return { name: '', brand: '', qty: '' };
+    if (typeof sp === 'string') return { name: sp.trim(), brand: '-', qty: '1 Pcs' };
+    const name = (sp.name || sp.nama || sp.sparepart || sp.sparePart || sp.partName || sp.item || sp.component || '').toString().trim();
+    const brand = (sp.brand || sp.merk || sp.manufaktur || sp.maker || '-').toString().trim() || '-';
+    const qty = (sp.qty || sp.jumlah || sp.quantity || sp.kuantitas || sp.count || '-').toString().trim() || '-';
+    return { name, brand, qty };
+  };
+
+  const normalizeSparepartList = (raw: any): CMSparepartItem[] => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) {
+      return raw
+        .map(normalizeSparepartItem)
+        .filter(sp => (sp.name && sp.name !== '-') || (sp.brand && sp.brand !== '-') || (sp.qty && sp.qty !== '-'));
+    }
+    if (typeof raw === 'string' && raw.trim() && raw.trim() !== '-') {
+      return [{ name: raw.trim(), brand: '-', qty: '1 Pcs' }];
+    }
+    return [];
+  };
+
   // Helper to build Spareparts Table (Replaced or Request)
   const createSparepartDocxTable = (items: CMSparepartItem[], headerTitle: string) => {
-    const validItems = (items || []).filter(
-      (sp) => sp && (sp.name?.trim() || sp.brand?.trim() || sp.qty?.trim())
+    const validItems = items.map(normalizeSparepartItem).filter(
+      (sp) => sp && (sp.name || sp.brand || sp.qty)
     );
 
     const rows = validItems.map(
@@ -510,19 +533,14 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
     });
   };
 
-  const hasReplacedSpareparts =
-    data.spareparts &&
-    data.spareparts.length > 0 &&
-    data.spareparts.some(
-      (sp) => (sp.name && sp.name.trim() !== '' && sp.name.trim() !== '-') || (sp.brand && sp.brand.trim() !== '' && sp.brand.trim() !== '-')
-    );
+  const rawSpareparts = data.spareparts || (data as any).replacedSpareparts || (data as any).replaced_spareparts || (data as any).spareParts || (data as any).spare_parts;
+  const resolvedSpareparts = normalizeSparepartList(rawSpareparts);
 
-  const hasRequestSpareparts =
-    data.requestSpareparts &&
-    data.requestSpareparts.length > 0 &&
-    data.requestSpareparts.some(
-      (sp) => (sp.name && sp.name.trim() !== '' && sp.name.trim() !== '-') || (sp.brand && sp.brand.trim() !== '' && sp.brand.trim() !== '-')
-    );
+  const rawRequestSpareparts = data.requestSpareparts || (data as any).request_spareparts || (data as any).requestedSpareparts || (data as any).sparepartsRequest || (data as any).sparepartRequest;
+  const resolvedRequestSpareparts = normalizeSparepartList(rawRequestSpareparts);
+
+  const hasReplacedSpareparts = resolvedSpareparts.length > 0;
+  const hasRequestSpareparts = resolvedRequestSpareparts.length > 0;
 
   // Photo Documentation 2-Column Table Grid
   const photoTableRows: TableRow[] = [];
@@ -872,7 +890,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
             ? [
                 new Paragraph({ spacing: { after: 40 } }),
                 createSectionHeader('LIST OF REPLACED SPAREPARTS', false),
-                createSparepartDocxTable(data.spareparts!, 'LIST OF REPLACED SPAREPART'),
+                createSparepartDocxTable(resolvedSpareparts, 'LIST OF REPLACED SPAREPART'),
               ]
             : []),
 
@@ -881,7 +899,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
             ? [
                 new Paragraph({ spacing: { after: 40 } }),
                 createSectionHeader('LIST OF REQUEST SPAREPARTS', false),
-                createSparepartDocxTable(data.requestSpareparts!, 'LIST OF REQUEST SPAREPART'),
+                createSparepartDocxTable(resolvedRequestSpareparts, 'LIST OF REQUEST SPAREPART'),
               ]
             : []),
 

@@ -845,14 +845,19 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         const visInsp = report.visualInspectionChecking || report.issue || 'Pengecekan kondisi fisik dan fungsi operasional peralatan.';
         const probAnal = report.summaryProblemAnalysis || report.issue || report.remark || report.actionTaken || 'Analisis dan pemulihan sistem operasional peralatan.';
 
-        const spareList = report.spareparts && report.spareparts.length > 0
-            ? report.spareparts
-            : (report.spareParts
-                ? [{ name: report.spareParts, brand: '-', qty: '1' }]
-                : [
-                    { name: '-', brand: '-', qty: '-' },
-                    { name: '-', brand: '-', qty: '-' }
-                ]);
+        const rawSpareparts = report.spareparts || report.replacedSpareparts || report.replaced_spareparts || report.spareParts || report.spare_parts;
+        const spareList = Array.isArray(rawSpareparts)
+            ? rawSpareparts
+            : (typeof rawSpareparts === 'string' && rawSpareparts.trim() !== '' && rawSpareparts.trim() !== '-'
+                ? [{ name: rawSpareparts.trim(), brand: '-', qty: '1 Pcs' }]
+                : []);
+
+        const rawRequestSpareparts = report.requestSpareparts || report.request_spareparts || report.requestedSpareparts || report.sparepartsRequest || report.sparepartRequest;
+        const requestSpareList = Array.isArray(rawRequestSpareparts)
+            ? rawRequestSpareparts
+            : (typeof rawRequestSpareparts === 'string' && rawRequestSpareparts.trim() !== '' && rawRequestSpareparts.trim() !== '-'
+                ? [{ name: rawRequestSpareparts.trim(), brand: '-', qty: '1 Pcs' }]
+                : []);
 
         let photoList: any[] = [];
         if (report.photos && report.photos.length > 0) {
@@ -872,6 +877,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         }
 
         return {
+            ...report,
             incidentName: incName,
             location: report.location || '-',
             incidentDate: dateFormatted,
@@ -892,6 +898,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             summaryProblemAnalysis: probAnal,
 
             spareparts: spareList,
+            requestSpareparts: requestSpareList,
             photos: photoList,
 
             authorName: report.authorName || report.reportedByEmail || 'Standby Engineer',
