@@ -127,8 +127,8 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
   // Form State initialized with empty guide fields
   const [formData, setFormData] = useState<CMReportData>({
     reportType: 'CM_PDF',
-    troubleshootType: 'non_sparepart',
-    isSparepartReplacement: false,
+    troubleshootType: undefined,
+    isSparepartReplacement: undefined,
     incidentName: '',
     location: '',
     incidentDate: '',
@@ -184,11 +184,12 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
             const revSign = cleanSignature(data.reviewedBySign) || (normalizedRevName.toLowerCase().includes('arif') || normalizedRevName.toLowerCase().includes('budiman') ? ARIF_BUDIMAN_SIGNATURE_BASE64 : '');
 
             const isSparepart = data.troubleshootType === 'sparepart_replacement' || data.isSparepartReplacement === true;
+            const tType = data.troubleshootType || (isSparepart ? 'sparepart_replacement' : (data.isSparepartReplacement === false ? 'non_sparepart' : undefined));
 
             setFormData({
               ...formData,
               ...data,
-              troubleshootType: isSparepart ? 'sparepart_replacement' : (data.troubleshootType || 'non_sparepart'),
+              troubleshootType: tType,
               isSparepartReplacement: isSparepart,
               preparedByName: normalizedPrepName,
               preparedBySign: prepSign,
@@ -230,7 +231,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               preparedBySign: pSign,
               reviewedByName: rName,
               reviewedBySign: rSign,
-              troubleshootType: parsed.formData.troubleshootType || 'non_sparepart',
+              troubleshootType: parsed.formData.troubleshootType || undefined,
               isSparepartReplacement: parsed.formData.troubleshootType === 'sparepart_replacement' || parsed.formData.isSparepartReplacement === true,
             });
           }
@@ -382,6 +383,11 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
 
     // Step 1 Validation
     if (targetStep > 1) {
+      if (!formData.troubleshootType) {
+        toast.error('Mohon pilih Jenis Troubleshoot / Penanganan CM terlebih dahulu di Step 1!');
+        setCurrentStep(1);
+        return false;
+      }
       if (!formData.incidentName?.trim()) {
         toast.error('Mohon isi Incident Name di Step 1');
         setCurrentStep(1);
@@ -441,6 +447,11 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
   // Handle Export DOCX (Word)
   const handleExportDocx = async () => {
     try {
+      if (!formData.troubleshootType) {
+        toast.error('Mohon pilih Jenis Troubleshoot / Penanganan CM terlebih dahulu di Step 1!');
+        setCurrentStep(1);
+        return;
+      }
       let dateFormatted = formData.incidentDate;
       if (formData.incidentDate) {
         const d = new Date(formData.incidentDate);
@@ -519,6 +530,11 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
   // Submit Handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.troubleshootType) {
+      toast.error('Mohon pilih Jenis Troubleshoot / Penanganan CM terlebih dahulu di Step 1!');
+      setCurrentStep(1);
+      return;
+    }
     if (currentStep < 4) {
       handleStepClick(currentStep + 1);
       return;
@@ -643,7 +659,9 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               className="space-y-6"
             >
               {/* KLASIFIKASI TROUBLESHOOT: PERGANTIAN SPAREPART ATAU BUKAN */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs">
+              <div className={`bg-slate-50 border rounded-2xl p-4 sm:p-5 shadow-xs transition-all ${
+                !formData.troubleshootType ? 'border-amber-300 ring-2 ring-amber-400/30' : 'border-slate-200'
+              }`}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                   <div>
                     <label className="block text-xs sm:text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -654,12 +672,18 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                       Pilih apakah perbaikan ini merupakan <strong>penggantian sparepart</strong> atau <strong>troubleshoot gangguan</strong>.
                     </p>
                   </div>
-                  <span className={`inline-flex items-center self-start sm:self-auto px-2.5 py-1 rounded-full text-xs font-bold border ${
+                  <span className={`inline-flex items-center self-start sm:self-auto px-2.5 py-1 rounded-full text-xs font-bold border transition-all ${
                     formData.troubleshootType === 'sparepart_replacement'
                       ? 'bg-blue-50 text-blue-700 border-blue-200'
-                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : formData.troubleshootType === 'non_sparepart'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-300 animate-pulse'
                   }`}>
-                    {formData.troubleshootType === 'sparepart_replacement' ? 'ℹ Tidak Dibuatkan SLA/SLG' : '⚡ Wajib Dibuatkan SLA/SLG'}
+                    {formData.troubleshootType === 'sparepart_replacement'
+                      ? 'ℹ Tidak Dibuatkan SLA/SLG'
+                      : formData.troubleshootType === 'non_sparepart'
+                      ? '⚡ Wajib Dibuatkan SLA/SLG'
+                      : '⚠️ Wajib Pilih Salah Satu'}
                   </span>
                 </div>
 
@@ -668,13 +692,13 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                   <div
                     onClick={() => setFormData({ ...formData, troubleshootType: 'non_sparepart', isSparepartReplacement: false })}
                     className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-3.5 relative overflow-hidden ${
-                      formData.troubleshootType !== 'sparepart_replacement'
+                      formData.troubleshootType === 'non_sparepart'
                         ? 'bg-gradient-to-br from-red-50/70 to-white border-red-500 shadow-sm ring-2 ring-red-500/10'
                         : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
                     }`}
                   >
                     <div className={`p-2.5 rounded-xl shrink-0 transition-colors ${
-                      formData.troubleshootType !== 'sparepart_replacement'
+                      formData.troubleshootType === 'non_sparepart'
                         ? 'bg-red-600 text-white shadow-md shadow-red-500/20'
                         : 'bg-slate-100 text-slate-500'
                     }`}>
