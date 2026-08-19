@@ -9,7 +9,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { FileText, FileSpreadsheet, Download, Search, Filter, Calendar, User, Database, Activity, TrendingUp, Pencil, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
-import { collection, getDocs, query, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, Timestamp, getCountFromServer, limit } from 'firebase/firestore';
 import { ExcelDocument } from '@/components/DocumentList';
 import { db } from '@/api/firebase';
 import { useAuth } from '@/components/AuthContext';
@@ -137,13 +137,27 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
   const loadAllDocuments = async () => {
     try {
       setLoading(true);
+
+      // 1. Get exact total counts cheaply using getCountFromServer (1 read per collection!)
+      const [excelCountSnap, pdfCountSnap] = await Promise.all([
+        getCountFromServer(collection(db, 'excel_documents')),
+        getCountFromServer(collection(db, 'pdf_documents')),
+      ]);
+
+      const totalExcelCount = excelCountSnap.data().count;
+      const totalPDFCount = pdfCountSnap.data().count;
+      const totalDocsCount = totalExcelCount + totalPDFCount;
+
+      // 2. Fetch the latest documents with limit(50) for fast & lightweight display
       const excelQuery = query(
         collection(db, 'excel_documents'),
-        orderBy('createdAt', 'desc')
+        orderBy('createdAt', 'desc'),
+        limit(50)
       );
       const pdfQuery = query(
         collection(db, 'pdf_documents'),
-        orderBy('createdAt', 'desc')
+        orderBy('createdAt', 'desc'),
+        limit(50)
       );
 
       const [excelSnapshot, pdfSnapshot] = await Promise.all([
@@ -195,10 +209,10 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
 
       const uniqueUsers = new Set(allDocs.map(doc => doc.createdBy));
       setStats({
-        totalDocuments: allDocs.length,
-        totalExcel: excelDocs.length,
-        totalPDF: pdfDocs.length,
-        totalUsers: uniqueUsers.size,
+        totalDocuments: totalDocsCount,
+        totalExcel: totalExcelCount,
+        totalPDF: totalPDFCount,
+        totalUsers: Math.max(uniqueUsers.size, 1),
       });
 
       setLoading(false);

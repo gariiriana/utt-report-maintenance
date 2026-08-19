@@ -15,7 +15,7 @@ import {
   Folder, ChevronLeft, Pencil, Camera, Upload, X, UserPlus, Save,
   Clock
 } from 'lucide-react';
-import { collection, addDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, where, updateDoc, writeBatch, getDocs, setDoc } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, where, updateDoc, writeBatch, getDocs, setDoc, orderBy } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
@@ -392,9 +392,24 @@ export function AbsenTBM() {
     setManualChecklist(prev => prev.filter((_, idx) => idx !== index));
   };
 
-  // Firestore Realtime Listener for logs & documentation
+  // Effective start date for real-time query (defaults to 45 days ago or user's custom startDate)
+  const effectiveStartDate = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 45);
+    const fortyFiveDaysAgo = d.toISOString().split('T')[0];
+    if (startDate && startDate < fortyFiveDaysAgo) {
+      return startDate;
+    }
+    return fortyFiveDaysAgo;
+  }, [startDate]);
+
+  // Firestore Realtime Listener for logs & documentation (scoped to prevent 3500+ document reads per load)
   useEffect(() => {
-    const q = query(collection(db, 'absen_tbm'));
+    const q = query(
+      collection(db, 'absen_tbm'),
+      where('tanggal', '>=', effectiveStartDate),
+      orderBy('tanggal', 'desc')
+    );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const records: AttendanceRecord[] = [];
       const docs: DocumentationRecord[] = [];
@@ -437,7 +452,7 @@ export function AbsenTBM() {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [effectiveStartDate]);
 
   // Filtered Records for statistics / search
   const filteredRecords = useMemo(() => {
