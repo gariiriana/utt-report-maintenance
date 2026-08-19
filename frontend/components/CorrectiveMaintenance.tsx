@@ -8,7 +8,7 @@
 //            Dilengkapi filter pencarian cepat, ekspor DOCX/Excel, serta konfirmasi hapus data.
 // ============================================================================
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
     MapPin,
@@ -188,6 +188,55 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     const [editingReportId, setEditingReportId] = useState<string | null>(null);
     const [prefillSlaData, setPrefillSlaData] = useState<SLAPrefillData | null>(null);
     const [isPendingSlaExpanded, setIsPendingSlaExpanded] = useState<boolean>(true);
+
+    // Scroll & Card Position Memory Refs
+    const lastInteractedReportIdRef = useRef<string | null>(null);
+    const savedScrollYRef = useRef<number>(0);
+    const formContainerRef = useRef<HTMLDivElement | null>(null);
+
+    const handleOpenForm = (type: 'standard' | 'sla' | 'cm_pdf' | 'pir', reportId?: string) => {
+        savedScrollYRef.current = window.scrollY;
+        lastInteractedReportIdRef.current = reportId || null;
+        setEditingReportId(reportId || null);
+        setReportFormType(type);
+        setShowForm(true);
+
+        // Smooth scroll langsung ke bagian atas form agar user tidak melihat footer
+        setTimeout(() => {
+            if (formContainerRef.current) {
+                formContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }, 50);
+    };
+
+    const handleCloseForm = () => {
+        const targetId = lastInteractedReportIdRef.current;
+        const prevScrollY = savedScrollYRef.current;
+        setShowForm(false);
+        setReportFormType(null);
+        setEditingReportId(null);
+        setPrefillSlaData(null);
+
+        // Smooth scroll kembali persis ke kartu laporan yang sebelumnya diedit/dilihat
+        setTimeout(() => {
+            if (targetId) {
+                const el = document.getElementById(`cm-report-card-${targetId}`);
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.classList.add('ring-4', 'ring-red-500/50', 'transition-all', 'duration-500');
+                    setTimeout(() => {
+                        el.classList.remove('ring-4', 'ring-red-500/50');
+                    }, 2500);
+                    return;
+                }
+            }
+            if (prevScrollY > 0) {
+                window.scrollTo({ top: prevScrollY, behavior: 'smooth' });
+            }
+        }, 100);
+    };
 
     // Filters State
     const [archiveFolder, setArchiveFolder] = useState<'cm_pdf' | 'sla' | 'pir'>('cm_pdf');
@@ -783,6 +832,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     });
 
     const handleCreateSLAFromCM = (cm: CorrectiveReport) => {
+        savedScrollYRef.current = window.scrollY;
+        lastInteractedReportIdRef.current = cm.id || null;
         setEditingReportId(null);
         setPrefillSlaData({
             ticketName: cm.incidentName || cm.equipmentName || cm.issue || 'Corrective Maintenance',
@@ -794,6 +845,14 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         });
         setReportFormType('sla');
         setShowForm(true);
+
+        setTimeout(() => {
+            if (formContainerRef.current) {
+                formContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }, 50);
     };
 
     const [activeFormTab, setActiveFormTab] = useState<'cm_pdf' | 'sla' | 'pir'>('cm_pdf');
@@ -1055,7 +1114,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
             <AnimatePresence>
                 {showForm && (
-                    <div className="mb-8">
+                    <div className="mb-8" ref={formContainerRef}>
                         {reportFormType === 'sla' ? (
                             <motion.div
                                 initial={{ opacity: 0, y: 10 }}
@@ -1065,18 +1124,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                 <SLAForm
                                     editId={editingReportId || undefined}
                                     prefillData={prefillSlaData || undefined}
-                                    onSuccess={() => {
-                                        setShowForm(false);
-                                        setReportFormType(null);
-                                        setEditingReportId(null);
-                                        setPrefillSlaData(null);
-                                    }}
-                                    onCancel={() => {
-                                        setShowForm(false);
-                                        setReportFormType(null);
-                                        setEditingReportId(null);
-                                        setPrefillSlaData(null);
-                                    }}
+                                    onSuccess={handleCloseForm}
+                                    onCancel={handleCloseForm}
                                 />
                             </motion.div>
                         ) : reportFormType === 'pir' ? (
@@ -1087,18 +1136,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                             >
                                 <PIRReportFormModal
                                     editId={editingReportId || undefined}
-                                    onSuccess={() => {
-                                        setShowForm(false);
-                                        setReportFormType(null);
-                                        setEditingReportId(null);
-                                        setPrefillSlaData(null);
-                                    }}
-                                    onCancel={() => {
-                                        setShowForm(false);
-                                        setReportFormType(null);
-                                        setEditingReportId(null);
-                                        setPrefillSlaData(null);
-                                    }}
+                                    onSuccess={handleCloseForm}
+                                    onCancel={handleCloseForm}
                                 />
                             </motion.div>
                         ) : (
@@ -1109,18 +1148,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                             >
                                 <CMReportFormModal
                                     editId={editingReportId || undefined}
-                                    onSuccess={() => {
-                                        setShowForm(false);
-                                        setReportFormType(null);
-                                        setEditingReportId(null);
-                                        setPrefillSlaData(null);
-                                    }}
-                                    onCancel={() => {
-                                        setShowForm(false);
-                                        setReportFormType(null);
-                                        setEditingReportId(null);
-                                        setPrefillSlaData(null);
-                                    }}
+                                    onSuccess={handleCloseForm}
+                                    onCancel={handleCloseForm}
                                 />
                             </motion.div>
                         )}
@@ -1289,11 +1318,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                 {isAuthorizedRole && (
                                     <button
                                         type="button"
-                                        onClick={() => {
-                                            setEditingReportId(null);
-                                            setReportFormType(archiveFolder);
-                                            setShowForm(true);
-                                        }}
+                                        onClick={() => handleOpenForm(archiveFolder)}
                                         className="w-full md:w-auto px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-md shadow-red-500/10 cursor-pointer text-xs shrink-0"
                                     >
                                         <Plus className="w-4 h-4" />
@@ -1351,6 +1376,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                             {filteredReports.map((report, index) => (
                                 <motion.div
                                     key={report.id}
+                                    id={`cm-report-card-${report.id}`}
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     className={`bg-white/90 backdrop-blur-sm rounded-2xl border overflow-hidden hover:border-blue-300 transition shadow-lg relative ${report.deleteRequested
@@ -1426,11 +1452,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                 <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
                                                     {isAuthorizedRole && (
                                                         <button
-                                                            onClick={() => {
-                                                                setEditingReportId(report.id);
-                                                                setReportFormType('pir');
-                                                                setShowForm(true);
-                                                            }}
+                                                            onClick={() => handleOpenForm('pir', report.id)}
                                                             className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 border border-blue-200 transition cursor-pointer"
                                                             title="Edit Laporan PIR"
                                                         >
@@ -1549,11 +1571,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
                                                     {isAuthorizedRole && (
                                                         <button
-                                                            onClick={() => {
-                                                                setEditingReportId(report.id);
-                                                                setReportFormType('sla');
-                                                                setShowForm(true);
-                                                            }}
+                                                            onClick={() => handleOpenForm('sla', report.id)}
                                                             className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 border border-blue-200 transition cursor-pointer"
                                                             title="Edit Laporan SLA"
                                                         >
@@ -1814,11 +1832,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
                                                         {isAuthorizedRole && (
                                                             <button
-                                                                onClick={() => {
-                                                                    setEditingReportId(report.id);
-                                                                    setReportFormType('cm_pdf');
-                                                                    setShowForm(true);
-                                                                }}
+                                                                onClick={() => handleOpenForm('cm_pdf', report.id)}
                                                                 className="p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 border border-blue-200 transition cursor-pointer"
                                                                 title="Edit Laporan CM"
                                                             >

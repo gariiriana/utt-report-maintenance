@@ -786,6 +786,45 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData }: SLAFormPro
 
   return (
     <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 shadow-xl overflow-hidden relative text-slate-800">
+      {/* Header Modal with Close Button */}
+      <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-100">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-0.5 bg-red-100 text-red-700 font-extrabold text-[11px] rounded-full uppercase tracking-wider">
+              FORM AUDIT SLA / SLG
+            </span>
+            {formData.priority && (
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                formData.priority === 'Critical' ? 'bg-red-500 text-white' :
+                formData.priority === 'High' ? 'bg-orange-500 text-white' :
+                formData.priority === 'Medium' ? 'bg-blue-500 text-white' :
+                'bg-slate-500 text-white'
+              }`}>
+                Prioritas: {formData.priority}
+              </span>
+            )}
+          </div>
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900 mt-1 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-red-600" />
+            Audit Pencapaian SLA / SLG Waktu Respon & Resolusi
+          </h2>
+          <p className="text-slate-500 text-xs mt-0.5">
+            Format Resmi Word (DOCX) & Excel Rekapitulasi SLA Bulanan
+          </p>
+        </div>
+
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition cursor-pointer"
+            title="Tutup Form"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+
       {/* Step Indicators */}
       <div className="mb-6 sm:mb-8">
         <div className="flex items-center justify-between">
