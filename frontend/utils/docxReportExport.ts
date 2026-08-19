@@ -463,7 +463,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
   // Helper to build Spareparts Table (Replaced or Request)
   const createSparepartDocxTable = (items: CMSparepartItem[], headerTitle: string) => {
     const validItems = (items || []).filter(
-      (sp) => (sp.name && sp.name.trim() !== '' && sp.name.trim() !== '-') || (sp.brand && sp.brand.trim() !== '' && sp.brand.trim() !== '-')
+      (sp) => sp && (sp.name?.trim() || sp.brand?.trim() || sp.qty?.trim())
     );
 
     const rows = validItems.map(
@@ -473,11 +473,11 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
             (cellVal, cIdx) =>
               new TableCell({
                 width: { size: [10, 50, 25, 15][cIdx], type: WidthType.PERCENTAGE },
-                margins: { top: 80, bottom: 80, left: 100, right: 100 },
+                margins: { top: 50, bottom: 50, left: 80, right: 80 },
                 children: [
                   new Paragraph({
                     alignment: cIdx === 1 ? AlignmentType.LEFT : AlignmentType.CENTER,
-                    children: [new TextRun({ text: cellVal, size: 20, color: '1E293B', font: 'Century Gothic' })],
+                    children: [new TextRun({ text: cellVal, size: 18, color: '1E293B', font: 'Century Gothic' })],
                   }),
                 ],
               })
@@ -495,11 +495,11 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               new TableCell({
                 width: { size: [10, 50, 25, 15][idx], type: WidthType.PERCENTAGE },
                 shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
-                margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                margins: { top: 60, bottom: 60, left: 80, right: 80 },
                 children: [
                   new Paragraph({
                     alignment: AlignmentType.CENTER,
-                    children: [new TextRun({ text: hText, bold: true, size: 20, color: '000000', font: 'Century Gothic' })],
+                    children: [new TextRun({ text: hText, bold: true, size: 18, color: '000000', font: 'Century Gothic' })],
                   }),
                 ],
               })
@@ -854,40 +854,44 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           }),
 
           incidentTable,
-          new Paragraph({ spacing: { after: 60 } }),
+          new Paragraph({ spacing: { after: 50 } }),
 
           equipmentTable,
-          new Paragraph({ spacing: { after: 60 } }),
+          new Paragraph({ spacing: { after: 50 } }),
 
           actionTable,
-          new Paragraph({ spacing: { after: 60 } }),
+          new Paragraph({ spacing: { after: 50 } }),
 
           createBoxSection('VISUAL INSPECTION & CHECKING', resolvedVisualInsp, 18),
-          new Paragraph({ spacing: { after: 60 } }),
+          new Paragraph({ spacing: { after: 50 } }),
 
           createBoxSection('SUMMARY CORRECTIVE REPORT (PROBLEM ANALYSIS)', resolvedProblemAnalysis, 18),
 
-          // Halaman 2: Replaced Spareparts, Request Spareparts & Supporting Documentation
-          new Paragraph({ pageBreakBefore: true, children: [] }),
-
+          // LIST OF REPLACED SPAREPARTS (Halaman 1)
           ...(hasReplacedSpareparts
             ? [
+                new Paragraph({ spacing: { after: 40 } }),
                 createSectionHeader('LIST OF REPLACED SPAREPARTS', false),
                 createSparepartDocxTable(data.spareparts!, 'LIST OF REPLACED SPAREPART'),
-                new Paragraph({ spacing: { after: 120 } })
               ]
             : []),
 
+          // LIST OF REQUEST SPAREPARTS (Halaman 1)
           ...(hasRequestSpareparts
             ? [
+                new Paragraph({ spacing: { after: 40 } }),
                 createSectionHeader('LIST OF REQUEST SPAREPARTS', false),
                 createSparepartDocxTable(data.requestSpareparts!, 'LIST OF REQUEST SPAREPART'),
-                new Paragraph({ spacing: { after: 120 } })
               ]
             : []),
 
+          // Halaman 2: Khusus Supporting Documentation (Foto)
           ...(photoGridTable
-            ? [createSectionHeader('SUPPORTING DOCUMENTATION', false), photoGridTable]
+            ? [
+                new Paragraph({ pageBreakBefore: true, children: [] }),
+                createSectionHeader('SUPPORTING DOCUMENTATION', false),
+                photoGridTable,
+              ]
             : []),
 
           // Halaman 3: Khusus Tanda Tangan
