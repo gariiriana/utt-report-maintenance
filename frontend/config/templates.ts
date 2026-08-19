@@ -79,7 +79,7 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
   'pdu@gmail.com': [
     'Name Plate',
     'Cleaning Panels menggunakan vacuum cleaner',
-    'Measurement Panel',
+    'Pengecekan Digital Power Meter (Volt)',
     'Pengecekan Digital Power Meter (KW)',
     'Pengecekan Digital Power Meter (Volt)',
     'Pengecekan Digital Power Meter (Ampere)',
