@@ -869,7 +869,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           // Halaman 2: Replaced Spareparts & Supporting Documentation
           new Paragraph({ pageBreakBefore: true, children: [] }),
 
-          ...(data.spareparts && data.spareparts.length > 0
+          ...(data.troubleshootType === 'sparepart_replacement' || (data.isSparepartReplacement === true && data.spareparts && data.spareparts.length > 0)
             ? [createSectionHeader('LIST OF REPLACED SPAREPARTS', false), sparepartTable, new Paragraph({ spacing: { after: 120 } })]
             : []),
 

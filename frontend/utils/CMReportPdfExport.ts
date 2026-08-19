@@ -359,55 +359,58 @@ export async function generateCMReportPDF(data: CMReportData) {
 
     y = 28;
 
-    // SPAREPARTS TABLE
-    const sparepartRows = (data.spareparts && data.spareparts.length > 0)
-      ? data.spareparts.map((sp, idx) => [
-          (idx + 1).toString(),
-          sanitizePdfText(sp.name) || '-',
-          sanitizePdfText(sp.brand) || '-',
-          sanitizePdfText(sp.qty) || '-'
-        ])
-      : [
-          ['-', '-', '-', '-'],
-          ['-', '-', '-', '-']
-        ];
+    // SPAREPARTS TABLE (Hanya jika pergantian sparepart)
+    const isSparepart = data.troubleshootType === 'sparepart_replacement' || data.isSparepartReplacement === true;
+    if (isSparepart) {
+      const sparepartRows = (data.spareparts && data.spareparts.length > 0)
+        ? data.spareparts.map((sp, idx) => [
+            (idx + 1).toString(),
+            sanitizePdfText(sp.name) || '-',
+            sanitizePdfText(sp.brand) || '-',
+            sanitizePdfText(sp.qty) || '-'
+          ])
+        : [
+            ['-', '-', '-', '-'],
+            ['-', '-', '-', '-']
+          ];
 
-    autoTable(doc, {
-      startY: y,
-      margin: { left: margin, right: margin },
-      head: [['No', 'LIST OF REPLACED SPAREPART', 'BRAND', 'QTY']],
-      body: sparepartRows,
-      theme: 'grid',
-      styles: { font: fontName },
-      headStyles: {
-        font: fontName,
-        fillColor: HEADER_FILL,
-        textColor: [0, 0, 0],
-        fontStyle: 'bold',
-        fontSize: 8.5,
-        halign: 'center',
-        valign: 'middle',
-        lineWidth: 0.2,
-        lineColor: BORDER_COLOR,
-      },
-      bodyStyles: {
-        font: fontName,
-        textColor: [20, 20, 20],
-        fontSize: 8.5,
-        halign: 'center',
-        valign: 'middle',
-        lineWidth: 0.2,
-        lineColor: BORDER_COLOR,
-      },
-      columnStyles: {
-        0: { cellWidth: contentW * 0.10 },
-        1: { cellWidth: contentW * 0.50, halign: 'left' },
-        2: { cellWidth: contentW * 0.25 },
-        3: { cellWidth: contentW * 0.15 },
-      }
-    });
+      autoTable(doc, {
+        startY: y,
+        margin: { left: margin, right: margin },
+        head: [['No', 'LIST OF REPLACED SPAREPART', 'BRAND', 'QTY']],
+        body: sparepartRows,
+        theme: 'grid',
+        styles: { font: fontName },
+        headStyles: {
+          font: fontName,
+          fillColor: HEADER_FILL,
+          textColor: [0, 0, 0],
+          fontStyle: 'bold',
+          fontSize: 8.5,
+          halign: 'center',
+          valign: 'middle',
+          lineWidth: 0.2,
+          lineColor: BORDER_COLOR,
+        },
+        bodyStyles: {
+          font: fontName,
+          textColor: [20, 20, 20],
+          fontSize: 8.5,
+          halign: 'center',
+          valign: 'middle',
+          lineWidth: 0.2,
+          lineColor: BORDER_COLOR,
+        },
+        columnStyles: {
+          0: { cellWidth: contentW * 0.10 },
+          1: { cellWidth: contentW * 0.50, halign: 'left' },
+          2: { cellWidth: contentW * 0.25 },
+          3: { cellWidth: contentW * 0.15 },
+        }
+      });
 
-    y = (doc as any).lastAutoTable.finalY + 8;
+      y = (doc as any).lastAutoTable.finalY + 8;
+    }
 
     // Section Header: SUPPORTING DOCUMENTATION
     doc.setFont(fontName, 'bold');

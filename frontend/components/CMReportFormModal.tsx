@@ -681,7 +681,11 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
           {[
             { step: 1, label: '1. Incident & Peralatan', shortLabel: '1. Incident' },
             { step: 2, label: '2. Perbaikan & Analisis', shortLabel: '2. Perbaikan' },
-            { step: 3, label: '3. Sparepart & Foto', shortLabel: '3. Sparepart' },
+            { 
+              step: 3, 
+              label: formData.troubleshootType === 'non_sparepart' ? '3. Foto Dokumentasi' : '3. Sparepart & Foto', 
+              shortLabel: formData.troubleshootType === 'non_sparepart' ? '3. Foto' : '3. Sparepart' 
+            },
             { step: 4, label: '4. TTD & Export DOCX', shortLabel: '4. Export' }
           ].map((item) => (
             <button
@@ -1117,56 +1121,73 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               exit={{ opacity: 0, x: 10 }}
               className="space-y-6"
             >
-              {/* SPAREPARTS TABLE DYNAMIC */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-bold text-slate-800">LIST OF REPLACED SPAREPART (Halaman 2)</h3>
-                  <button
-                    type="button"
-                    onClick={addSparepart}
-                    className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Tambah Baris
-                  </button>
-                </div>
+              {/* SPAREPARTS TABLE DYNAMIC (HANYA MUNCUL JIKA PERGANTIAN SPAREPART) */}
+              {formData.troubleshootType === 'sparepart_replacement' ? (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                      <Wrench className="w-4 h-4 text-blue-600" />
+                      LIST OF REPLACED SPAREPART (Halaman 2)
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={addSparepart}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Tambah Baris
+                    </button>
+                  </div>
 
-                <div className="space-y-2">
-                  {formData.spareparts.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2 bg-white p-2 border border-slate-200 rounded-xl">
-                      <span className="text-xs font-bold text-slate-400 w-6 text-center">{idx + 1}</span>
-                      <input
-                        type="text"
-                        value={item.name}
-                        onChange={e => updateSparepart(idx, 'name', e.target.value)}
-                        placeholder="Nama Sparepart (e.g. - atau Thermostat)"
-                        className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-red-500 outline-none"
-                      />
-                      <input
-                        type="text"
-                        value={item.brand}
-                        onChange={e => updateSparepart(idx, 'brand', e.target.value)}
-                        placeholder="Brand (e.g. DAIKIN)"
-                        className="w-28 sm:w-36 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-red-500 outline-none"
-                      />
-                      <input
-                        type="text"
-                        value={item.qty}
-                        onChange={e => updateSparepart(idx, 'qty', e.target.value)}
-                        placeholder="Qty (e.g. 1 Pcs)"
-                        className="w-20 sm:w-24 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-red-500 outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeSparepart(idx)}
-                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
+                  <div className="space-y-2">
+                    {formData.spareparts.map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-white p-2 border border-slate-200 rounded-xl">
+                        <span className="text-xs font-bold text-slate-400 w-6 text-center">{idx + 1}</span>
+                        <input
+                          type="text"
+                          value={item.name}
+                          onChange={e => updateSparepart(idx, 'name', e.target.value)}
+                          placeholder="Nama Sparepart (e.g. Thermostat / Module)"
+                          className="flex-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                        />
+                        <input
+                          type="text"
+                          value={item.brand}
+                          onChange={e => updateSparepart(idx, 'brand', e.target.value)}
+                          placeholder="Brand (e.g. DAIKIN / Omron)"
+                          className="w-28 sm:w-36 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                        />
+                        <input
+                          type="text"
+                          value={item.qty}
+                          onChange={e => updateSparepart(idx, 'qty', e.target.value)}
+                          placeholder="Qty (e.g. 1 Pcs)"
+                          className="w-20 sm:w-24 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-blue-500 outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeSparepart(idx)}
+                          className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
+                  <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl shrink-0 mt-0.5">
+                    <Zap className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs sm:text-sm font-bold text-emerald-950">Bukan Pergantian Sparepart (Troubleshoot Gangguan)</h4>
+                    <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
+                      Perbaikan ini tidak melibatkan penggantian suku cadang/material. Tabel <strong>List of Replaced Sparepart</strong> otomatis ditiadakan pada dokumen Word (DOCX) & PDF.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* PHOTOS DOKUMENTASI (Max 10, layout grid di PDF) */}
               <div>
