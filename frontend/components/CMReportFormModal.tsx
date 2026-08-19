@@ -26,7 +26,9 @@ import {
   Eye,
   X,
   Calendar,
-  Clock
+  Clock,
+  AlertCircle,
+  Zap
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -125,6 +127,8 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
   // Form State initialized with empty guide fields
   const [formData, setFormData] = useState<CMReportData>({
     reportType: 'CM_PDF',
+    troubleshootType: 'non_sparepart',
+    isSparepartReplacement: false,
     incidentName: '',
     location: '',
     incidentDate: '',
@@ -179,9 +183,13 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
             const prepSign = cleanSignature(data.preparedBySign) || getEngineerSignature(normalizedPrepName) || cleanSignature(PREPARED_BY_SIGNATURES[normalizedPrepName]) || '';
             const revSign = cleanSignature(data.reviewedBySign) || (normalizedRevName.toLowerCase().includes('arif') || normalizedRevName.toLowerCase().includes('budiman') ? ARIF_BUDIMAN_SIGNATURE_BASE64 : '');
 
+            const isSparepart = data.troubleshootType === 'sparepart_replacement' || data.isSparepartReplacement === true;
+
             setFormData({
               ...formData,
               ...data,
+              troubleshootType: isSparepart ? 'sparepart_replacement' : (data.troubleshootType || 'non_sparepart'),
+              isSparepartReplacement: isSparepart,
               preparedByName: normalizedPrepName,
               preparedBySign: prepSign,
               reviewedByName: normalizedRevName,
@@ -222,6 +230,8 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               preparedBySign: pSign,
               reviewedByName: rName,
               reviewedBySign: rSign,
+              troubleshootType: parsed.formData.troubleshootType || 'non_sparepart',
+              isSparepartReplacement: parsed.formData.troubleshootType === 'sparepart_replacement' || parsed.formData.isSparepartReplacement === true,
             });
           }
           if (parsed.currentStep) {
@@ -632,9 +642,91 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               exit={{ opacity: 0, x: 10 }}
               className="space-y-6"
             >
+              {/* KLASIFIKASI TROUBLESHOOT: PERGANTIAN SPAREPART ATAU BUKAN */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                  <div>
+                    <label className="block text-xs sm:text-sm font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-red-600" />
+                      JENIS TROUBLESHOOT / PENANGANAN CM *
+                    </label>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Pilih apakah perbaikan ini merupakan <strong>penggantian sparepart</strong> atau <strong>troubleshoot gangguan</strong>.
+                    </p>
+                  </div>
+                  <span className={`inline-flex items-center self-start sm:self-auto px-2.5 py-1 rounded-full text-xs font-bold border ${
+                    formData.troubleshootType === 'sparepart_replacement'
+                      ? 'bg-blue-50 text-blue-700 border-blue-200'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  }`}>
+                    {formData.troubleshootType === 'sparepart_replacement' ? 'ℹ Tidak Dibuatkan SLA/SLG' : '⚡ Wajib Dibuatkan SLA/SLG'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Opsi 1: Bukan Pergantian Sparepart */}
+                  <div
+                    onClick={() => setFormData({ ...formData, troubleshootType: 'non_sparepart', isSparepartReplacement: false })}
+                    className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-3.5 relative overflow-hidden ${
+                      formData.troubleshootType !== 'sparepart_replacement'
+                        ? 'bg-gradient-to-br from-red-50/70 to-white border-red-500 shadow-sm ring-2 ring-red-500/10'
+                        : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+                    }`}
+                  >
+                    <div className={`p-2.5 rounded-xl shrink-0 transition-colors ${
+                      formData.troubleshootType !== 'sparepart_replacement'
+                        ? 'bg-red-600 text-white shadow-md shadow-red-500/20'
+                        : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      <Zap className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className="text-xs sm:text-sm font-bold text-slate-900">Bukan Pergantian Sparepart</span>
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase shrink-0">
+                          Wajib SLA
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        Troubleshoot gangguan, perbaikan setting, reset alarm, atau recovery darurat.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Opsi 2: Pergantian Sparepart */}
+                  <div
+                    onClick={() => setFormData({ ...formData, troubleshootType: 'sparepart_replacement', isSparepartReplacement: true })}
+                    className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-3.5 relative overflow-hidden ${
+                      formData.troubleshootType === 'sparepart_replacement'
+                        ? 'bg-gradient-to-br from-blue-50/70 to-white border-blue-500 shadow-sm ring-2 ring-blue-500/10'
+                        : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+                    }`}
+                  >
+                    <div className={`p-2.5 rounded-xl shrink-0 transition-colors ${
+                      formData.troubleshootType === 'sparepart_replacement'
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                        : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      <Wrench className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className="text-xs sm:text-sm font-bold text-slate-900">Pergantian Sparepart</span>
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 border border-blue-300 uppercase shrink-0">
+                          Tanpa SLA
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        Penggantian komponen / modul / material (tidak dibuatkan form SLA/SLG).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="bg-red-50/50 border border-red-100 rounded-xl p-4 mb-2">
                 <h3 className="text-sm font-bold text-red-900 flex items-center gap-2">
-                  <AlertCircleIcon className="w-4 h-4 text-red-600" />
+                  <AlertCircle className="w-4 h-4 text-red-600" />
                   Informasi Kejadian (Incident Metadata)
                 </h3>
               </div>
@@ -1281,15 +1373,5 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
         </div>
       )}
     </div>
-  );
-}
-
-function AlertCircleIcon(props: any) {
-  return (
-    <svg {...props} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <circle cx="12" cy="12" r="10" strokeWidth="2"/>
-      <line x1="12" y1="8" x2="12" y2="12" strokeWidth="2"/>
-      <line x1="12" y1="16" x2="12.01" y2="16" strokeWidth="2"/>
-    </svg>
   );
 }

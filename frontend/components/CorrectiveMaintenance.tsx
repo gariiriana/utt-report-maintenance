@@ -24,7 +24,13 @@ import {
     FolderOpen,
     AlertTriangle,
     Plus,
-    X
+    X,
+    Zap,
+    ChevronDown,
+    ChevronUp,
+    ArrowRight,
+    Check,
+    Wrench
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -40,7 +46,7 @@ import {
     serverTimestamp
 } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
-import { SLAForm } from './SLAForm';
+import { SLAForm, SLAPrefillData } from './SLAForm';
 import { CMReportFormModal } from './CMReportFormModal';
 import { PIRReportFormModal } from './PIRReportFormModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
@@ -65,6 +71,9 @@ interface CorrectiveReport {
     reportedByEmail: string;
     reportedAt: any;
 
+    // Linked CM relation
+    cmReportId?: string;
+
     // Deletion Request fields
     deleteRequested?: boolean;
     deleteRequestedBy?: string;
@@ -73,6 +82,10 @@ interface CorrectiveReport {
 
     // Report Type discriminator
     reportType?: 'SLA' | 'CM_PDF' | 'PIR';
+
+    // Troubleshoot classification
+    troubleshootType?: 'non_sparepart' | 'sparepart_replacement';
+    isSparepartReplacement?: boolean;
 
     // SLA fields
     ticketName?: string;
@@ -173,6 +186,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     const [formKey, setFormKey] = useState(0);
 
     const [editingReportId, setEditingReportId] = useState<string | null>(null);
+    const [prefillSlaData, setPrefillSlaData] = useState<SLAPrefillData | null>(null);
+    const [isPendingSlaExpanded, setIsPendingSlaExpanded] = useState<boolean>(true);
 
     // Filters State
     const [archiveFolder, setArchiveFolder] = useState<'cm_pdf' | 'sla' | 'pir'>('cm_pdf');
@@ -551,6 +566,235 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         return getReportIncidentTime(b) - getReportIncidentTime(a);
     });
 
+    // Helper: Algoritma Matching CM vs SLA (4-Layer: Direct ID -> Incident ID -> Incident Date -> Title Match)
+    const cleanStringForMatch = (s?: string) => {
+        if (!s) return '';
+        return s
+            .toLowerCase()
+            .replace(/\[sla\s*\/?\s*slg\]/gi, '')
+            .replace(/laporan\s+corrective\s+maintenance/gi, '')
+            .replace(/laporan\s+cm/gi, '')
+            .replace(/corrective\s+maintenance/gi, '')
+            .replace(/pemeliharaan\s+corrective/gi, '')
+            .replace(/wo[-_:\s]*/gi, '')
+            .replace(/[^a-z0-9]/g, '')
+            .trim();
+    };
+
+    // Normalize tanggal ke format YYYY-MM-DD agar bisa dicocokkan (abaikan jam/menit)
+    const getDateKey = (r: CorrectiveReport): string => {
+        const ts = getReportIncidentTime(r);
+        if (ts > 0) {
+            const d = new Date(ts);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+        return '';
+    };
+
+    const getCMTitles = (cm: CorrectiveReport): string[] => {
+        const candidates = [cm.incidentName, cm.equipmentName, cm.issue];
+        return candidates
+            .map(c => cleanStringForMatch(c))
+            .filter(c => c.length >= 5);
+    };
+
+    const getSLATitles = (sla: CorrectiveReport): string[] => {
+        const candidates = [sla.ticketName, sla.issue];
+        return candidates
+            .map(c => cleanStringForMatch(c))
+            .filter(c => c.length >= 5);
+    };
+
+    // Helper: Ekstrak kata-kata penting (tokens >= 4 chars) untuk fuzzy token matching
+    const extractSignificantTokens = (s?: string): string[] => {
+        if (!s) return [];
+        const clean = s.toLowerCase()
+            .replace(/\[sla\s*\/?\s*slg\]/gi, ' ')
+            .replace(/laporan\s+corrective\s+maintenance/gi, ' ')
+            .replace(/laporan\s+cm/gi, ' ')
+            .replace(/corrective\s+maintenance/gi, ' ')
+            .replace(/pemeliharaan\s+corrective/gi, ' ')
+            .replace(/neutra\s+dc\s+cikarang/gi, ' ')
+            .replace(/[^a-z0-9]/g, ' ');
+        
+        const stopWords = new Set(['laporan', 'report', 'pada', 'unit', 'dan', 'atau', 'yang', 'room', 'area', 'gedung', 'office', 'lantai', 'kondisi', 'terdapat', 'mengalami', 'sudah', 'telah']);
+        return clean.split(/\s+/)
+            .filter(w => w.length >= 4 && !stopWords.has(w));
+    };
+
+    // ===== Global 1-to-1 CM↔SLA Matching (each SLA can only be claimed once) =====
+    const buildCMSLAMapping = (cmList: CorrectiveReport[], slaList: CorrectiveReport[]): Set<string> => {
+        const claimedSLAIds = new Set<string>();  // SLA IDs yang sudah dipasangkan
+        const matchedCMIds = new Set<string>();    // CM IDs yang sudah punya SLA
+
+        // Helper: try to claim an SLA for a CM
+        const tryClaim = (cmId: string, sla: CorrectiveReport): boolean => {
+            if (!sla.id || claimedSLAIds.has(sla.id)) return false;
+            claimedSLAIds.add(sla.id);
+            matchedCMIds.add(cmId);
+            return true;
+        };
+
+        // Pass 1: Direct cmReportId matching (Exact 100%)
+        for (const cm of cmList) {
+            if (!cm.id || matchedCMIds.has(cm.id)) continue;
+            const match = slaList.find(s => s.id && !claimedSLAIds.has(s.id) && (s as any).cmReportId === cm.id);
+            if (match) tryClaim(cm.id, match);
+        }
+
+        // Pass 2: Incident ID / Ticket ID matching
+        for (const cm of cmList) {
+            if (!cm.id || matchedCMIds.has(cm.id)) continue;
+            if (!cm.incidentId || cm.incidentId === 'N/A' || cm.incidentId.trim() === '') continue;
+            const match = slaList.find(s => s.id && !claimedSLAIds.has(s.id) && (s.incidentId === cm.incidentId || (s as any).ticketId === cm.incidentId));
+            if (match) tryClaim(cm.id, match);
+        }
+
+        // Pass 3: Specific Title / Equipment Substring Matching (±60 hari)
+        for (const cm of cmList) {
+            if (!cm.id || matchedCMIds.has(cm.id)) continue;
+            const cmTitles = getCMTitles(cm);
+            if (cmTitles.length === 0) continue;
+            const cmTime = getReportIncidentTime(cm);
+
+            const match = slaList.find(s => {
+                if (!s.id || claimedSLAIds.has(s.id)) return false;
+                const slaTitles = getSLATitles(s);
+                if (slaTitles.length === 0) return false;
+
+                const slaTime = getReportIncidentTime(s);
+                const isDateClose = (cmTime > 0 && slaTime > 0)
+                    ? Math.abs(cmTime - slaTime) <= 60 * 24 * 60 * 60 * 1000
+                    : true;
+                if (!isDateClose) return false;
+
+                for (const cmTitle of cmTitles) {
+                    for (const slaTitle of slaTitles) {
+                        if (cmTitle === slaTitle) return true;
+                        if (cmTitle.length >= 5 && slaTitle.includes(cmTitle)) return true;
+                        if (slaTitle.length >= 5 && cmTitle.includes(slaTitle)) return true;
+                    }
+                }
+                return false;
+            });
+            if (match) tryClaim(cm.id, match);
+        }
+
+        // Pass 4: Multi-Token Keyword Overlap Match (±45 hari, minimal 2 kata kunci cocok)
+        for (const cm of cmList) {
+            if (!cm.id || matchedCMIds.has(cm.id)) continue;
+            const cmTokens = extractSignificantTokens(`${cm.incidentName || ''} ${cm.equipmentName || ''} ${cm.issue || ''}`);
+            if (cmTokens.length === 0) continue;
+            const cmTime = getReportIncidentTime(cm);
+
+            const match = slaList.find(s => {
+                if (!s.id || claimedSLAIds.has(s.id)) return false;
+                const slaTokens = extractSignificantTokens(`${s.ticketName || ''} ${s.issue || ''} ${s.remark || ''}`);
+                if (slaTokens.length === 0) return false;
+
+                const slaTime = getReportIncidentTime(s);
+                const isDateClose = (cmTime > 0 && slaTime > 0)
+                    ? Math.abs(cmTime - slaTime) <= 45 * 24 * 60 * 60 * 1000
+                    : true;
+                if (!isDateClose) return false;
+
+                // Hitung berapa token yang sama
+                const sharedTokens = cmTokens.filter(t => slaTokens.some(st => st === t || (st.length >= 5 && st.includes(t)) || (t.length >= 5 && t.includes(st))));
+                return sharedTokens.length >= 2 || (cmTokens.length === 1 && sharedTokens.length === 1);
+            });
+            if (match) tryClaim(cm.id, match);
+        }
+
+        // Pass 5: Fallback Tanggal Sama (Date-based 1-to-1)
+        for (const cm of cmList) {
+            if (!cm.id || matchedCMIds.has(cm.id)) continue;
+            const cmDate = getDateKey(cm);
+            if (!cmDate) continue;
+            const match = slaList.find(s => s.id && !claimedSLAIds.has(s.id) && getDateKey(s) === cmDate);
+            if (match) tryClaim(cm.id, match);
+        }
+
+        return matchedCMIds;
+    };
+
+    const allCMReports = reports.filter(r => r.reportType !== 'SLA' && r.reportType !== 'PIR');
+    const allSLAReports = reports.filter(r => r.reportType === 'SLA' && !r.deleteRequested);
+    const allPIRReports = reports.filter(r => r.reportType === 'PIR');
+
+    // Helper: Menentukan apakah Laporan CM memerlukan SLA/SLG
+    // Jika jenis penanganan adalah Pergantian Sparepart -> TIDAK DIBUATKAN SLA/SLG
+    // Jika bukan pergantian sparepart (Troubleshoot Gangguan) -> WAJIB DIBUATKAN SLA/SLG
+    const isCMRequiringSLA = (cm: CorrectiveReport): boolean => {
+        // 1. Cek field eksplisit dari Form CM
+        if (cm.troubleshootType === 'sparepart_replacement' || cm.isSparepartReplacement === true) {
+            return false;
+        }
+        if (cm.troubleshootType === 'non_sparepart' || cm.isSparepartReplacement === false) {
+            return true;
+        }
+        // 2. Fallback untuk data lama: Cek apakah ada daftar sparepart yang diisi (bukan '-')
+        if (cm.spareparts && Array.isArray(cm.spareparts)) {
+            const hasRealSpareparts = cm.spareparts.some((s: any) => s && s.name && s.name !== '-' && s.name.trim() !== '');
+            if (hasRealSpareparts) return false;
+        }
+        // 3. Fallback kata kunci pada judul / tindakan
+        const textCheck = `${cm.incidentName || ''} ${cm.equipmentName || ''} ${cm.issue || ''} ${cm.correctiveAction || ''}`.toLowerCase();
+        if (textCheck.includes('pergantian sparepart') || textCheck.includes('penggantian sparepart') || textCheck.includes('ganti sparepart')) {
+            return false;
+        }
+        return true;
+    };
+
+    const matchedCMIds = buildCMSLAMapping(
+        allCMReports.filter(cm => !cm.deleteRequested),
+        allSLAReports
+    );
+    
+    // Hanya CM yang WAJIB SLA (bukan pergantian sparepart) dan belum punya SLA yang masuk antrean
+    const cmRequiringSLAReports = allCMReports.filter(cm => !cm.deleteRequested && isCMRequiringSLA(cm));
+    const unlinkedCMReports = cmRequiringSLAReports.filter(cm => cm.id && !matchedCMIds.has(cm.id));
+
+    // ===== DEBUG: Temporary logging =====
+    if (allCMReports.length > 0 && allSLAReports.length > 0) {
+        console.group('🔍 DEBUG: CM vs SLA Matching (1-to-1)');
+        console.log(`Total CM: ${allCMReports.filter(c=>!c.deleteRequested).length}, Total SLA: ${allSLAReports.length}, Matched: ${matchedCMIds.size}, Wajib SLA: ${cmRequiringSLAReports.length}, Unlinked (Belum Ada SLA): ${unlinkedCMReports.length}`);
+        console.log('--- UNLINKED CMs (Belum Ada SLA) ---');
+        unlinkedCMReports.forEach(cm => {
+            console.log(`CM [${cm.id?.slice(0,8)}]: date=${getDateKey(cm)} | "${cm.incidentName || cm.equipmentName || ''}"`);
+        });
+        console.groupEnd();
+    }
+    // ===== END DEBUG =====
+
+    // Period-filtered pending CMs (based on active Month & Year filter)
+    const periodFilteredUnlinkedCMReports = unlinkedCMReports.filter((cm) => {
+        if (selectedMonth === 'all' && selectedYear === 'all') return true;
+        const reportTimestamp = getReportIncidentTime(cm);
+        if (reportTimestamp > 0) {
+            const reportDate = new Date(reportTimestamp);
+            if (selectedMonth !== 'all' && reportDate.getMonth().toString() !== selectedMonth) {
+                return false;
+            }
+            if (selectedYear !== 'all' && reportDate.getFullYear().toString() !== selectedYear) {
+                return false;
+            }
+        }
+        return true;
+    });
+
+    const handleCreateSLAFromCM = (cm: CorrectiveReport) => {
+        setEditingReportId(null);
+        setPrefillSlaData({
+            ticketName: cm.incidentName || cm.equipmentName || cm.issue || 'Corrective Maintenance',
+            location: cm.location || 'Neutra DC Cikarang',
+            timeOrder: cm.incidentDate || (cm.reportedAt?.toDate ? cm.reportedAt.toDate().toLocaleDateString('id-ID') : ''),
+            cmReportId: cm.id,
+            remark: cm.actionTaken || cm.summaryProblemAnalysis || '',
+            equipmentName: cm.equipmentName || '',
+        });
+        setReportFormType('sla');
+        setShowForm(true);
+    };
 
     const [activeFormTab, setActiveFormTab] = useState<'cm_pdf' | 'sla' | 'pir'>('cm_pdf');
 
@@ -744,6 +988,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         setShowForm(false);
                         setEditingReportId(null);
                         setReportFormType(null);
+                        setPrefillSlaData(null);
                     }}
                     className={`px-1.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'cm_pdf'
                         ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
@@ -751,8 +996,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         }`}
                 >
                     <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                    <span className="sm:hidden">CM ({reports.filter(r => r.reportType !== 'SLA' && r.reportType !== 'PIR').length})</span>
-                    <span className="hidden sm:inline">Report CM ({reports.filter(r => r.reportType !== 'SLA' && r.reportType !== 'PIR').length})</span>
+                    <span className="sm:hidden">CM ({allCMReports.length})</span>
+                    <span className="hidden sm:inline">Report CM ({allCMReports.length})</span>
                 </button>
                 <button
                     type="button"
@@ -761,6 +1006,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         setShowForm(false);
                         setEditingReportId(null);
                         setReportFormType(null);
+                        setPrefillSlaData(null);
                     }}
                     className={`px-1.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'sla'
                         ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
@@ -768,8 +1014,24 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         }`}
                 >
                     <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                    <span className="sm:hidden">SLA ({reports.filter(r => r.reportType === 'SLA').length})</span>
-                    <span className="hidden sm:inline">Form SLA / SLG ({reports.filter(r => r.reportType === 'SLA').length})</span>
+                    <span className="sm:hidden flex items-center gap-1">
+                        SLA ({allSLAReports.length})
+                        {unlinkedCMReports.length > 0 && (
+                            <span className="px-1.5 py-0.2 text-[9px] font-black bg-amber-500 text-white rounded-full">
+                                {unlinkedCMReports.length}
+                            </span>
+                        )}
+                    </span>
+                    <span className="hidden sm:inline-flex items-center gap-1.5">
+                        Form SLA / SLG ({allSLAReports.length})
+                        {unlinkedCMReports.length > 0 && (
+                            <span className={`px-2 py-0.5 text-[10px] font-black rounded-full shadow-xs transition ${
+                                archiveFolder === 'sla' ? 'bg-amber-400 text-slate-950 animate-pulse' : 'bg-amber-500 text-white'
+                            }`}>
+                                {unlinkedCMReports.length} Belum Ada SLA ⚠️
+                            </span>
+                        )}
+                    </span>
                 </button>
                 <button
                     type="button"
@@ -778,6 +1040,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         setShowForm(false);
                         setEditingReportId(null);
                         setReportFormType(null);
+                        setPrefillSlaData(null);
                     }}
                     className={`px-1.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-extrabold uppercase tracking-wider flex items-center justify-center gap-1 sm:gap-2 transition cursor-pointer border text-center ${archiveFolder === 'pir'
                         ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
@@ -785,8 +1048,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         }`}
                 >
                     <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                    <span className="sm:hidden">PIR ({reports.filter(r => r.reportType === 'PIR').length})</span>
-                    <span className="hidden sm:inline">Report PIR ({reports.filter(r => r.reportType === 'PIR').length})</span>
+                    <span className="sm:hidden">PIR ({allPIRReports.length})</span>
+                    <span className="hidden sm:inline">Report PIR ({allPIRReports.length})</span>
                 </button>
             </div>
 
@@ -801,15 +1064,18 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                             >
                                 <SLAForm
                                     editId={editingReportId || undefined}
+                                    prefillData={prefillSlaData || undefined}
                                     onSuccess={() => {
                                         setShowForm(false);
                                         setReportFormType(null);
                                         setEditingReportId(null);
+                                        setPrefillSlaData(null);
                                     }}
                                     onCancel={() => {
                                         setShowForm(false);
                                         setReportFormType(null);
                                         setEditingReportId(null);
+                                        setPrefillSlaData(null);
                                     }}
                                 />
                             </motion.div>
@@ -825,11 +1091,13 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                         setShowForm(false);
                                         setReportFormType(null);
                                         setEditingReportId(null);
+                                        setPrefillSlaData(null);
                                     }}
                                     onCancel={() => {
                                         setShowForm(false);
                                         setReportFormType(null);
                                         setEditingReportId(null);
+                                        setPrefillSlaData(null);
                                     }}
                                 />
                             </motion.div>
@@ -845,11 +1113,13 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                         setShowForm(false);
                                         setReportFormType(null);
                                         setEditingReportId(null);
+                                        setPrefillSlaData(null);
                                     }}
                                     onCancel={() => {
                                         setShowForm(false);
                                         setReportFormType(null);
                                         setEditingReportId(null);
+                                        setPrefillSlaData(null);
                                     }}
                                 />
                             </motion.div>
@@ -860,6 +1130,105 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
             {!showForm && (
                 <>
+                    {/* Banner Interaktif: CM yang Belum Memiliki SLA / SLG */}
+                    {archiveFolder === 'sla' && unlinkedCMReports.length > 0 && (
+                        <div className="mb-6 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-white border border-amber-300 rounded-2xl p-4 sm:p-5 shadow-sm transition">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="flex items-start sm:items-center gap-3">
+                                    <div className="p-2.5 bg-amber-500 text-white rounded-xl shadow-md shadow-amber-500/20 shrink-0">
+                                        <Zap className="w-5 h-5 fill-current" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <h3 className="text-sm sm:text-base font-bold text-slate-900">
+                                                {selectedMonth !== 'all' || selectedYear !== 'all' ? (
+                                                    <span>{periodFilteredUnlinkedCMReports.length} CM Belum Dibuatkan SLA pada Periode Ini <span className="text-xs font-normal text-slate-500">(Total: {unlinkedCMReports.length})</span></span>
+                                                ) : (
+                                                    <span>{unlinkedCMReports.length} Laporan CM Belum Dibuatkan SLA / SLG</span>
+                                                )}
+                                            </h3>
+                                            <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-extrabold uppercase border border-amber-300 shadow-2xs">
+                                                Perlu Tindakan
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-slate-600 mt-0.5">
+                                            Daftar insiden corrective yang belum dilengkapi audit waktu respon & pemulihan target SLA.
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsPendingSlaExpanded(prev => !prev)}
+                                    className="self-start sm:self-auto px-3.5 py-2 bg-white hover:bg-amber-50 border border-amber-300 text-amber-900 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                >
+                                    <span>{isPendingSlaExpanded ? 'Sembunyikan Daftar' : `Tinjau ${periodFilteredUnlinkedCMReports.length || unlinkedCMReports.length} CM`}</span>
+                                    {isPendingSlaExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                </button>
+                            </div>
+
+                            {isPendingSlaExpanded && (
+                                <div className="mt-4 pt-4 border-t border-amber-200/80">
+                                    {(periodFilteredUnlinkedCMReports.length > 0 ? periodFilteredUnlinkedCMReports : unlinkedCMReports).length === 0 ? (
+                                        <p className="text-xs text-slate-500 italic py-2">Semua CM pada filter periode ini sudah memiliki SLA.</p>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                            {(periodFilteredUnlinkedCMReports.length > 0 ? periodFilteredUnlinkedCMReports : unlinkedCMReports).map((cm, idx) => (
+                                                <div
+                                                    key={cm.id}
+                                                    className="bg-white rounded-xl border border-amber-200/90 p-4 shadow-xs hover:border-amber-400 hover:shadow-md transition flex flex-col justify-between"
+                                                >
+                                                    <div>
+                                                        <div className="flex items-center justify-between gap-2 mb-2">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="px-2 py-0.5 bg-slate-900 text-white rounded-md text-[10px] font-black shadow-2xs">
+                                                                    #{idx + 1}
+                                                                </span>
+                                                                <span className="text-[10px] font-extrabold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 uppercase tracking-wider">
+                                                                    Belum Ada SLA
+                                                                </span>
+                                                            </div>
+                                                            <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
+                                                                <Calendar className="w-3 h-3 text-slate-400" />
+                                                                {cm.incidentDate || (cm.reportedAt?.toDate ? cm.reportedAt.toDate().toLocaleDateString('id-ID') : '-')}
+                                                            </span>
+                                                        </div>
+
+                                                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 line-clamp-1 mb-1" title={cm.incidentName || cm.equipmentName || cm.issue}>
+                                                            {cm.incidentName || cm.equipmentName || cm.issue || 'Corrective Maintenance'}
+                                                        </h4>
+
+                                                        <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-2">
+                                                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                                            <span className="truncate">{cm.location || 'Neutra DC Cikarang'}</span>
+                                                        </div>
+
+                                                        {cm.actionTaken && (
+                                                            <p className="text-[11px] text-slate-600 line-clamp-2 italic bg-slate-50 p-2 rounded-lg border border-slate-100 mb-3 leading-relaxed">
+                                                                "{cm.actionTaken}"
+                                                            </p>
+                                                        )}
+                                                    </div>
+
+                                                    {isAuthorizedRole && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleCreateSLAFromCM(cm)}
+                                                            className="w-full mt-2 py-2 px-3 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer"
+                                                        >
+                                                            <Zap className="w-3.5 h-3.5 fill-current" />
+                                                            <span>+ Buat Form SLA</span>
+                                                            <ArrowRight className="w-3 h-3 ml-0.5" />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {!loading && (
                         <div className="mb-6 bg-white/90 backdrop-blur-xl border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm">
                             <div className="flex flex-col sm:flex-row gap-3 items-center w-full md:w-auto">
@@ -879,7 +1248,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                     onChange={(e) => setSelectedMonth(e.target.value)}
                                     title="Filter Bulan"
                                     aria-label="Filter Bulan"
-                                    className="w-full sm:w-auto px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-orange-500 outline-none transition cursor-pointer shadow-sm"
+                                    className="w-full sm:w-auto px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm font-semibold focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition shadow-sm cursor-pointer"
                                 >
                                     <option value="all">Semua Bulan</option>
                                     {INDO_MONTHS.map((m) => (
@@ -892,15 +1261,12 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                     onChange={(e) => setSelectedYear(e.target.value)}
                                     title="Filter Tahun"
                                     aria-label="Filter Tahun"
-                                    className="w-full sm:w-auto px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-red-500 outline-none transition cursor-pointer shadow-sm"
+                                    className="w-full sm:w-auto px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 text-sm font-semibold focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition shadow-sm cursor-pointer"
                                 >
                                     <option value="all">Semua Tahun</option>
-                                    <option value="2025">2025</option>
-                                    <option value="2026">2026</option>
-                                    <option value="2027">2027</option>
-                                    <option value="2028">2028</option>
-                                    <option value="2029">2029</option>
-                                    <option value="2030">2030</option>
+                                    {['2024', '2025', '2026', '2027', '2028', '2029', '2030'].map((y) => (
+                                        <option key={y} value={y}>{y}</option>
+                                    ))}
                                 </select>
 
                                 <select
@@ -982,7 +1348,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-4">
-                            {filteredReports.map((report) => (
+                            {filteredReports.map((report, index) => (
                                 <motion.div
                                     key={report.id}
                                     initial={{ opacity: 0, y: 10 }}
@@ -1037,6 +1403,9 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                         <div className="p-5 sm:p-6">
                                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-4 mb-4">
                                                 <div className="flex flex-wrap items-center gap-3">
+                                                    <span className="px-2.5 py-1 bg-slate-900 text-white rounded-lg text-xs font-black shadow-xs">
+                                                        #{index + 1}
+                                                    </span>
                                                     <div className="px-3 py-1 bg-red-100 border border-red-300 rounded-lg text-xs font-bold text-red-700 uppercase tracking-wider flex items-center gap-1.5">
                                                         <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
                                                         REPORT PIR (POSTMORTEM)
@@ -1121,7 +1490,10 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                         <div className="p-5 sm:p-6">
                                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-700/50 pb-4 mb-4">
                                                 <div className="flex flex-wrap items-center gap-3">
-                                                    <div className="px-2.5 py-1 bg-red-500/10 border border-red-500/30 rounded-lg text-xs font-bold text-red-400 uppercase tracking-wider">
+                                                    <span className="px-2.5 py-1 bg-slate-900 text-white rounded-lg text-xs font-black shadow-xs">
+                                                        #{index + 1}
+                                                    </span>
+                                                    <div className="px-2.5 py-1 bg-red-500/10 border border-red-500/30 rounded-lg text-xs font-bold text-red-600 uppercase tracking-wider">
                                                         SLA / SLG
                                                     </div>
                                                     <div className="flex items-center gap-1.5 text-xs text-slate-400">
@@ -1151,7 +1523,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                 toast.error(`Gagal mengunduh Excel: ${err.message || err}`, { id: toastId });
                                                             }
                                                         }}
-                                                        className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-xl flex items-center gap-1.5 text-xs font-bold transition shadow-lg shadow-emerald-500/5 cursor-pointer"
+                                                        className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-600 rounded-xl flex items-center gap-1.5 text-xs font-bold transition shadow-xs cursor-pointer"
                                                         title="Export to Excel"
                                                     >
                                                         <FileText className="w-3.5 h-3.5" />
@@ -1168,7 +1540,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                 toast.error(`Gagal mengunduh Word: ${err.message || err}`, { id: toastId });
                                                             }
                                                         }}
-                                                        className="px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 rounded-xl flex items-center gap-1.5 text-xs font-bold transition shadow-lg shadow-blue-500/5 cursor-pointer"
+                                                        className="px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-600 rounded-xl flex items-center gap-1.5 text-xs font-bold transition shadow-xs cursor-pointer"
                                                         title="Export to Word (DOCX)"
                                                     >
                                                         <FileText className="w-3.5 h-3.5" />
@@ -1362,8 +1734,59 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                                                     <div>
-                                                        <div className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(report.status)} mb-2`}>
-                                                            {report.status}
+                                                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                                            <span className="px-2.5 py-1 bg-slate-900 text-white rounded-lg text-xs font-black shadow-xs">
+                                                                #{index + 1}
+                                                            </span>
+                                                            <div className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(report.status)}`}>
+                                                                {report.status}
+                                                            </div>
+                                                            {(() => {
+                                                                const requiresSLA = isCMRequiringSLA(report);
+                                                                if (!requiresSLA) {
+                                                                    return (
+                                                                        <span
+                                                                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200"
+                                                                            title="Jenis penanganan: Pergantian Sparepart (Tidak dibuatkan form SLA/SLG)"
+                                                                        >
+                                                                            <Wrench className="w-3 h-3 text-blue-600" />
+                                                                            Pergantian Sparepart (Tanpa SLA)
+                                                                        </span>
+                                                                    );
+                                                                }
+
+                                                                const hasSLA = report.id ? matchedCMIds.has(report.id) : false;
+                                                                if (hasSLA) {
+                                                                    return (
+                                                                        <span
+                                                                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                                                            title="SLA sudah terbit"
+                                                                        >
+                                                                            <Check className="w-3 h-3 text-emerald-600" />
+                                                                            SLA Terbit
+                                                                        </span>
+                                                                    );
+                                                                }
+                                                                return (
+                                                                    <div className="inline-flex items-center gap-1.5">
+                                                                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                                                                            <AlertCircle className="w-3 h-3 text-amber-600" />
+                                                                            SLA Belum Ada
+                                                                        </span>
+                                                                        {isAuthorizedRole && (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleCreateSLAFromCM(report)}
+                                                                                className="px-2 py-0.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white text-[10px] font-bold rounded-md transition shadow-2xs flex items-center gap-1 cursor-pointer"
+                                                                                title="Buat Form SLA otomatis dari CM ini"
+                                                                            >
+                                                                                <Zap className="w-2.5 h-2.5 fill-current" />
+                                                                                <span>+ Buat SLA</span>
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })()}
                                                         </div>
                                                         <span className="text-[10px] font-extrabold text-red-600 uppercase tracking-wider block mb-0.5">NAMA ISSUE / PERALATAN</span>
                                                         <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -1382,7 +1805,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                     <div className="flex items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
                                                         <button
                                                             onClick={() => handleExportSingleCMDocx(report)}
-                                                            className="px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-600 rounded-xl flex items-center gap-1.5 text-xs font-bold transition shadow-lg shadow-blue-500/5 cursor-pointer"
+                                                            className="px-3 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-600 rounded-xl flex items-center gap-1.5 text-xs font-bold transition shadow-xs cursor-pointer"
                                                             title="Export to Word (DOCX)"
                                                         >
                                                             <FileText className="w-3.5 h-3.5" />

@@ -24,6 +24,10 @@ export interface CMReportData {
   id?: string;                              // ID unik dokumen di Firestore
   reportType?: 'CM_STANDARD' | 'SLA' | 'CM_PDF'; // Tipe laporan
   
+  // Klasifikasi Troubleshoot (Apakah Pergantian Sparepart atau Bukan)
+  troubleshootType?: 'non_sparepart' | 'sparepart_replacement'; // 'non_sparepart' = Wajib SLA, 'sparepart_replacement' = Tanpa SLA
+  isSparepartReplacement?: boolean;                             // Flag pembantu cepat
+
   // Halaman 1: Informasi Insiden & Spesifikasi Perangkat
   incidentName: string;                     // Nama Insiden/Gangguan (misal "Alarm High Temp CRAC 03")
   location: string;                         // Lokasi Ruangan (misal "CRAC Room 3 - Campus 5")

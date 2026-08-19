@@ -115,13 +115,24 @@ interface PhotoItem {
   description: string;
 }
 
+export interface SLAPrefillData {
+  ticketName?: string;
+  location?: string;
+  timeOrder?: string;
+  priority?: 'Critical' | 'High' | 'Medium' | 'Low';
+  cmReportId?: string;
+  remark?: string;
+  equipmentName?: string;
+}
+
 interface SLAFormProps {
   onSuccess: () => void;
   onCancel: () => void;
   editId?: string;
+  prefillData?: SLAPrefillData;
 }
 
-export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
+export function SLAForm({ onSuccess, onCancel, editId, prefillData }: SLAFormProps) {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -141,12 +152,13 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
 
   // Form State
   const [formData, setFormData] = useState({
-    ticketName: '',
-    location: '',
-    priority: 'Medium' as 'Critical' | 'High' | 'Medium' | 'Low',
+    ticketName: prefillData?.ticketName || '',
+    location: prefillData?.location || '',
+    priority: (prefillData?.priority || 'Medium') as 'Critical' | 'High' | 'Medium' | 'Low',
     picDME: '',
     picTDE: '',
-    remark: '',
+    remark: prefillData?.remark || '',
+    cmReportId: prefillData?.cmReportId || '',
 
     // Response Time (Step 1) - Target < 5 Menit
     timeOrder: '',
@@ -223,6 +235,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
               picDME: data.picDME || '',
               picTDE: data.picTDE || '',
               remark: data.remark || '',
+              cmReportId: data.cmReportId || '',
               timeOrder: data.timeOrder || '',
               actualTimeResponse: data.actualTimeResponse || '',
               targetResponseMin: data.targetResponseMin || 5,
@@ -245,6 +258,34 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
         }
       };
       fetchReport();
+    } else if (prefillData) {
+      // Prioritize prefill data from CM report and auto-detect catalog equipment
+      const rawText = `${prefillData.equipmentName || ''} ${prefillData.ticketName || ''}`.toLowerCase();
+      const matchedCatalog = EQUIPMENT_SLA_CATALOG.find(eq => {
+        const devName = eq.device.toLowerCase();
+        const idName = eq.id.toLowerCase();
+        const firstWord = devName.split(/[\s(]+/)[0];
+        return devName.includes(rawText) || rawText.includes(idName) || (firstWord.length >= 3 && rawText.includes(firstWord));
+      });
+
+      const finalPriority = prefillData.priority || matchedCatalog?.defaultPriority || 'Medium';
+
+      setFormData(prev => ({
+        ...prev,
+        ticketName: prefillData.ticketName || prev.ticketName,
+        location: prefillData.location || prev.location,
+        timeOrder: prefillData.timeOrder || prev.timeOrder,
+        priority: finalPriority,
+        remark: prefillData.remark || prev.remark,
+        cmReportId: prefillData.cmReportId || prev.cmReportId,
+      }));
+
+      if (matchedCatalog) {
+        setSelectedEquipmentItem(matchedCatalog);
+        setEquipmentSearch(matchedCatalog.device);
+      } else if (prefillData.equipmentName) {
+        setEquipmentSearch(prefillData.equipmentName);
+      }
     } else {
       const savedDraft = localStorage.getItem('sla_form_draft');
       if (savedDraft) {
@@ -268,7 +309,7 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
         }
       }
     }
-  }, [editId]);
+  }, [editId, prefillData]);
 
   // Update targetRestoreMin & targetResolutionMin dynamically based on priority category
   useEffect(() => {
@@ -674,6 +715,9 @@ export function SLAForm({ onSuccess, onCancel, editId }: SLAFormProps) {
         slgScoreRST: Number(calcs.slgScoreRST) || 0,
         slgScoreRSP: Number(calcs.slgScoreRSP) || 0,
         totalIncidentSlgScore: Number(calcs.totalIncidentSlgScore) || 0,
+
+        // Linked CM Report
+        cmReportId: (formData as any).cmReportId || prefillData?.cmReportId || '',
 
         // Metadata
         reportedBy: user.uid,

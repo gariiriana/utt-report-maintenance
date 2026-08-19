@@ -22,7 +22,6 @@ import {
   ImageRun,
   Header,
   Footer,
-  PageNumber,
   HeadingLevel
 } from 'docx';
 import { saveAs } from 'file-saver';

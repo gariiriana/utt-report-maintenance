@@ -148,7 +148,7 @@ function MonthlyTrend({ mops }: { mops: MOPWorkflowDoc[] }) {
         const key = d.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' });
         if (months[key]) months[key].created++;
       }
-      if (mop.completedAt) {
+      if (mop.completedAt) { 
         const d = mop.completedAt.toDate();
         const key = d.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' });
         if (months[key]) months[key].completed++;
