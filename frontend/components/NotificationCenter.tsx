@@ -31,8 +31,158 @@ interface NotificationCenterProps {
     onOpenNotificationPage?: () => void;
 }
 
+// Shared notification listeners & subscriber store across multiple component instances (Desktop & Mobile navbar)
+let sharedNotifications: AppNotificationItem[] = [];
+const subscribers = new Set<(items: AppNotificationItem[]) => void>();
+let unsubscribers: (() => void)[] | null = null;
+const notifItemsMap: { [id: string]: AppNotificationItem } = {};
+
+function notifySubscribers() {
+    const list = Object.values(notifItemsMap).sort((a, b) => {
+        const timeA = a.uploadedAt instanceof Date ? a.uploadedAt.getTime() : Date.now();
+        const timeB = b.uploadedAt instanceof Date ? b.uploadedAt.getTime() : Date.now();
+        return timeB - timeA;
+    });
+    sharedNotifications = list;
+    subscribers.forEach(cb => cb(list));
+}
+
+function subscribeToFirestoreNotifications() {
+    if (unsubscribers) return; // Already subscribed
+
+    // 1. Listen to explicit notifications collection
+    const qNotif = query(collection(db, 'notifications'), orderBy('createdAt', 'desc'), limit(15));
+    const unsubNotif = onSnapshot(qNotif, (snapshot) => {
+        snapshot.docs.forEach(docSnap => {
+            const data = docSnap.data();
+            notifItemsMap[docSnap.id] = {
+                id: docSnap.id,
+                title: data.title || 'File Baru Diunggah',
+                fileName: data.fileName || 'Dokumen Maintenance',
+                category: data.category || 'Manajemen File',
+                uploadedBy: data.uploadedBy || 'User',
+                uploadedAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+                targetTab: data.targetTab || 'files',
+                fileId: data.fileId || '',
+                searchQuery: data.searchQuery || data.fileName || ''
+            };
+        });
+        notifySubscribers();
+    });
+
+    // 2. Listen to uploaded_files collection
+    const qFiles = query(collection(db, 'uploaded_files'), orderBy('uploadedAt', 'desc'), limit(10));
+    const unsubFiles = onSnapshot(qFiles, (snapshot) => {
+        snapshot.docs.forEach(docSnap => {
+            const data = docSnap.data();
+            const notifId = `file_${docSnap.id}`;
+            if (!notifItemsMap[notifId]) {
+                notifItemsMap[notifId] = {
+                    id: notifId,
+                    title: `File Upload: ${data.fileName || 'Dokumen Baru'}`,
+                    fileName: data.fileName || 'File Dokumen',
+                    category: data.category || 'Manajemen File',
+                    uploadedBy: data.uploadedBy || 'Teknisi DME',
+                    uploadedAt: data.uploadedAt?.toDate ? data.uploadedAt.toDate() : new Date(),
+                    targetTab: 'files',
+                    fileId: docSnap.id,
+                    searchQuery: data.fileName || ''
+                };
+            }
+        });
+        notifySubscribers();
+    });
+
+    // 3. Listen to corrective_reports collection
+    const qCorrective = query(collection(db, 'corrective_reports'), orderBy('reportedAt', 'desc'), limit(10));
+    const unsubCorrective = onSnapshot(qCorrective, (snapshot) => {
+        snapshot.docs.forEach(docSnap => {
+            const data = docSnap.data();
+            const notifId = `cm_${docSnap.id}`;
+            const isSLA = data.reportType === 'SLA';
+            const isPIR = data.reportType === 'PIR';
+            const typeLabel = isSLA ? 'Laporan SLA' : isPIR ? 'Report PIR' : 'Laporan CM';
+            const nameStr = data.incidentName || data.ticketName || data.issue || 'Corrective Maintenance';
+
+            if (!notifItemsMap[notifId]) {
+                notifItemsMap[notifId] = {
+                    id: notifId,
+                    title: `${typeLabel} Baru: ${nameStr}`,
+                    fileName: nameStr,
+                    category: isSLA ? 'Form SLA/SLG' : isPIR ? 'Report PIR' : 'Report CM',
+                    uploadedBy: data.reportedByEmail || 'Standby Engineer',
+                    uploadedAt: data.reportedAt?.toDate ? data.reportedAt.toDate() : new Date(),
+                    targetTab: 'corrective_archive',
+                    fileId: docSnap.id,
+                    searchQuery: nameStr
+                };
+            }
+        });
+        notifySubscribers();
+    });
+
+    // 4. Listen to pdf_documents collection (Dokumentasi Maintenance)
+    const qPdfDocs = query(collection(db, 'pdf_documents'), orderBy('createdAt', 'desc'), limit(10));
+    const unsubPdfDocs = onSnapshot(qPdfDocs, (snapshot) => {
+        snapshot.docs.forEach(docSnap => {
+            const data = docSnap.data();
+            const notifId = `pdfdoc_${docSnap.id}`;
+            if (!notifItemsMap[notifId]) {
+                const dateObj = data.createdAt?.toDate ? data.createdAt.toDate() : (data.date ? new Date(data.date) : new Date());
+                const mName = data.maintenanceName || data.equipmentName || data.system || data.maintenanceType || '';
+                const displayFileName = (data.fileName && data.fileName !== 'Service Report.pdf') 
+                    ? data.fileName 
+                    : (mName ? `Dokumentasi Maintenance ${mName}.pdf` : 'Dokumentasi Maintenance.pdf');
+                const displayTitle = mName ? `Dokumentasi Maintenance ${mName}` : (data.fileName || 'Dokumentasi Maintenance');
+                const uploaderEmail = data.createdBy || data.uploadedByEmail || data.uploadedBy || data.author || 'Teknisi DME';
+
+                notifItemsMap[notifId] = {
+                    id: notifId,
+                    title: displayTitle,
+                    fileName: displayFileName,
+                    category: 'Arsip Dokumen',
+                    uploadedBy: uploaderEmail,
+                    uploadedAt: dateObj,
+                    targetTab: 'documents',
+                    fileId: docSnap.id,
+                    searchQuery: displayFileName || mName
+                };
+            }
+        });
+        notifySubscribers();
+    });
+
+    unsubscribers = [unsubNotif, unsubFiles, unsubCorrective, unsubPdfDocs];
+}
+
+function unsubscribeFromFirestoreNotifications() {
+    if (subscribers.size === 0 && unsubscribers) {
+        unsubscribers.forEach(unsub => unsub());
+        unsubscribers = null;
+    }
+}
+
+export function useSharedNotifications() {
+    const [notifications, setNotifications] = useState<AppNotificationItem[]>(sharedNotifications);
+
+    useEffect(() => {
+        subscribers.add(setNotifications);
+        subscribeToFirestoreNotifications();
+        if (sharedNotifications.length > 0) {
+            setNotifications(sharedNotifications);
+        }
+
+        return () => {
+            subscribers.delete(setNotifications);
+            unsubscribeFromFirestoreNotifications();
+        };
+    }, []);
+
+    return notifications;
+}
+
 export function NotificationCenter({ onSelectNotification, onOpenNotificationPage }: NotificationCenterProps) {
-    const [notifications, setNotifications] = useState<AppNotificationItem[]>([]);
+    const notifications = useSharedNotifications();
     const [readIds, setReadIds] = useState<string[]>(() => {
         try {
             const saved = safeStorage.getItem('dwimitra_read_notifications');
@@ -44,129 +194,6 @@ export function NotificationCenter({ onSelectNotification, onOpenNotificationPag
 
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
-
-    // Sync real-time uploads from Firestore (uploaded_files, corrective_reports, notifications)
-    useEffect(() => {
-        const notifItemsMap: { [id: string]: AppNotificationItem } = {};
-
-        // 1. Listen to explicit notifications collection
-        const qNotif = query(collection(db, 'notifications'), orderBy('createdAt', 'desc'), limit(15));
-        const unsubNotif = onSnapshot(qNotif, (snapshot) => {
-            snapshot.docs.forEach(docSnap => {
-                const data = docSnap.data();
-                notifItemsMap[docSnap.id] = {
-                    id: docSnap.id,
-                    title: data.title || 'File Baru Diunggah',
-                    fileName: data.fileName || 'Dokumen Maintenance',
-                    category: data.category || 'Manajemen File',
-                    uploadedBy: data.uploadedBy || 'User',
-                    uploadedAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
-                    targetTab: data.targetTab || 'files',
-                    fileId: data.fileId || '',
-                    searchQuery: data.searchQuery || data.fileName || ''
-                };
-            });
-            updateState();
-        });
-
-        // 2. Listen to uploaded_files collection
-        const qFiles = query(collection(db, 'uploaded_files'), orderBy('uploadedAt', 'desc'), limit(10));
-        const unsubFiles = onSnapshot(qFiles, (snapshot) => {
-            snapshot.docs.forEach(docSnap => {
-                const data = docSnap.data();
-                const notifId = `file_${docSnap.id}`;
-                if (!notifItemsMap[notifId]) {
-                    notifItemsMap[notifId] = {
-                        id: notifId,
-                        title: `File Upload: ${data.fileName || 'Dokumen Baru'}`,
-                        fileName: data.fileName || 'File Dokumen',
-                        category: data.category || 'Manajemen File',
-                        uploadedBy: data.uploadedBy || 'Teknisi DME',
-                        uploadedAt: data.uploadedAt?.toDate ? data.uploadedAt.toDate() : new Date(),
-                        targetTab: 'files',
-                        fileId: docSnap.id,
-                        searchQuery: data.fileName || ''
-                    };
-                }
-            });
-            updateState();
-        });
-
-        // 3. Listen to corrective_reports collection
-        const qCorrective = query(collection(db, 'corrective_reports'), orderBy('reportedAt', 'desc'), limit(10));
-        const unsubCorrective = onSnapshot(qCorrective, (snapshot) => {
-            snapshot.docs.forEach(docSnap => {
-                const data = docSnap.data();
-                const notifId = `cm_${docSnap.id}`;
-                const isSLA = data.reportType === 'SLA';
-                const isPIR = data.reportType === 'PIR';
-                const typeLabel = isSLA ? 'Laporan SLA' : isPIR ? 'Report PIR' : 'Laporan CM';
-                const nameStr = data.incidentName || data.ticketName || data.issue || 'Corrective Maintenance';
-
-                if (!notifItemsMap[notifId]) {
-                    notifItemsMap[notifId] = {
-                        id: notifId,
-                        title: `${typeLabel} Baru: ${nameStr}`,
-                        fileName: nameStr,
-                        category: isSLA ? 'Form SLA/SLG' : isPIR ? 'Report PIR' : 'Report CM',
-                        uploadedBy: data.reportedByEmail || 'Standby Engineer',
-                        uploadedAt: data.reportedAt?.toDate ? data.reportedAt.toDate() : new Date(),
-                        targetTab: 'corrective_archive',
-                        fileId: docSnap.id,
-                        searchQuery: nameStr
-                    };
-                }
-            });
-            updateState();
-        });
-
-        // 4. Listen to pdf_documents collection (Dokumentasi Maintenance)
-        const qPdfDocs = query(collection(db, 'pdf_documents'), orderBy('createdAt', 'desc'), limit(10));
-        const unsubPdfDocs = onSnapshot(qPdfDocs, (snapshot) => {
-            snapshot.docs.forEach(docSnap => {
-                const data = docSnap.data();
-                const notifId = `pdfdoc_${docSnap.id}`;
-                if (!notifItemsMap[notifId]) {
-                    const dateObj = data.createdAt?.toDate ? data.createdAt.toDate() : (data.date ? new Date(data.date) : new Date());
-                    const mName = data.maintenanceName || data.equipmentName || data.system || data.maintenanceType || '';
-                    const displayFileName = (data.fileName && data.fileName !== 'Service Report.pdf') 
-                        ? data.fileName 
-                        : (mName ? `Dokumentasi Maintenance ${mName}.pdf` : 'Dokumentasi Maintenance.pdf');
-                    const displayTitle = mName ? `Dokumentasi Maintenance ${mName}` : (data.fileName || 'Dokumentasi Maintenance');
-                    const uploaderEmail = data.createdBy || data.uploadedByEmail || data.uploadedBy || data.author || 'Teknisi DME';
-
-                    notifItemsMap[notifId] = {
-                        id: notifId,
-                        title: displayTitle,
-                        fileName: displayFileName,
-                        category: 'Arsip Dokumen',
-                        uploadedBy: uploaderEmail,
-                        uploadedAt: dateObj,
-                        targetTab: 'documents',
-                        fileId: docSnap.id,
-                        searchQuery: displayFileName || mName
-                    };
-                }
-            });
-            updateState();
-        });
-
-        function updateState() {
-            const list = Object.values(notifItemsMap).sort((a, b) => {
-                const timeA = a.uploadedAt instanceof Date ? a.uploadedAt.getTime() : Date.now();
-                const timeB = b.uploadedAt instanceof Date ? b.uploadedAt.getTime() : Date.now();
-                return timeB - timeA;
-            });
-            setNotifications(list);
-        }
-
-        return () => {
-            unsubNotif();
-            unsubFiles();
-            unsubCorrective();
-            unsubPdfDocs();
-        };
-    }, []);
 
     // Count unread items
     const unreadCount = notifications.filter(item => !readIds.includes(item.id)).length;

@@ -325,64 +325,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         return { targetRST, targetRSP, restoreComply, resolutionComply };
     };
 
-    // Auto-heal legacy SLA reports and outdated engineer names in Firestore
-    useEffect(() => {
-        if (!user || reports.length === 0) return;
-        const healLegacyReports = async () => {
-            for (const r of reports) {
-                if (!r.id) continue;
-                const updatePayload: Record<string, any> = {};
-
-                // 1. Heal SLA metrics
-                if (r.reportType === 'SLA' && r.priority) {
-                    const expectedTarget = r.priority === 'Critical' ? 120 : r.priority === 'High' ? 240 : r.priority === 'Low' ? 2880 : 360;
-                    const needsTargetRestoreFix = r.targetRestoreMin === 120 && r.priority !== 'Critical';
-                    const expectedRestoreComply = (r.actualRestoreTimeMin !== undefined && r.actualRestoreTimeMin > 0)
-                        ? r.actualRestoreTimeMin <= expectedTarget
-                        : (r.restoreComply ?? true);
-                    const needsComplyFix = r.restoreComply !== expectedRestoreComply;
-
-                    if (needsTargetRestoreFix || needsComplyFix) {
-                        const actualRST = r.actualRestoreTimeMin || 0;
-                        const newScoreRST = actualRST > 0 ? Number((Math.min(100, (expectedTarget / actualRST) * 100) * 0.15).toFixed(2)) : 15.0;
-                        const scoreRT = (r as any).slgScoreRT || 5.0;
-                        const scoreOTP = (r as any).slgScoreOTP || 5.0;
-                        const scoreRSP = (r as any).slgScoreRSP || 10.0;
-                        const newTotal = Number((scoreRT + scoreOTP + newScoreRST + scoreRSP).toFixed(2));
-
-                        updatePayload.targetRestoreMin = expectedTarget;
-                        updatePayload.restoreComply = expectedRestoreComply;
-                        updatePayload.slgScoreRST = newScoreRST;
-                        updatePayload.totalIncidentSlgScore = newTotal;
-                    }
-                }
-
-                // 2. Heal Engineer Name (Agil Zakia Amanda -> Agil Zakia Rahman)
-                if ((r as any).preparedByName && ((r as any).preparedByName === 'Agil Zakia Amanda' || (r as any).preparedByName === 'Agil')) {
-                    updatePayload.preparedByName = 'Agil Zakia Rahman';
-                }
-                if ((r as any).authorName && ((r as any).authorName === 'Agil Zakia Amanda' || (r as any).authorName === 'Agil')) {
-                    updatePayload.authorName = 'Agil Zakia Rahman';
-                }
-                if ((r as any).reportAuthors && typeof (r as any).reportAuthors === 'string' && (r as any).reportAuthors.includes('Agil Zakia Amanda')) {
-                    updatePayload.reportAuthors = (r as any).reportAuthors.replace(/Agil Zakia Amanda/g, 'Agil Zakia Rahman');
-                }
-                if ((r as any).postmortemOwner && (r as any).postmortemOwner === 'Agil Zakia Amanda') {
-                    updatePayload.postmortemOwner = 'Agil Zakia Rahman';
-                }
-
-                if (Object.keys(updatePayload).length > 0) {
-                    try {
-                        await updateDoc(doc(db, 'corrective_reports', r.id), updatePayload);
-                    } catch (err) {
-                        console.warn('[Auto-Heal] Failed to heal report:', r.id, err);
-                    }
-                }
-            }
-        };
-        healLegacyReports();
-    }, [reports, user]);
-
+    // SLA calculations & engineer name formatting are normalized dynamically in memory
     const [selectedReportForDelete, setSelectedReportForDelete] = useState<CorrectiveReport | null>(null);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [deleteLoading, setDeleteLoading] = useState(false);
@@ -687,7 +630,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             .replace(/pemeliharaan\s+corrective/gi, ' ')
             .replace(/neutra\s+dc\s+cikarang/gi, ' ')
             .replace(/[^a-z0-9]/g, ' ');
-        
+
         const stopWords = new Set(['laporan', 'report', 'pada', 'unit', 'dan', 'atau', 'yang', 'room', 'area', 'gedung', 'office', 'lantai', 'kondisi', 'terdapat', 'mengalami', 'sudah', 'telah']);
         return clean.split(/\s+/)
             .filter(w => w.length >= 4 && !stopWords.has(w));
@@ -820,7 +763,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         allCMReports.filter(cm => !cm.deleteRequested),
         allSLAReports
     );
-    
+
     // Hanya CM yang WAJIB SLA (bukan pergantian sparepart) dan belum punya SLA yang masuk antrean
     const cmRequiringSLAReports = allCMReports.filter(cm => !cm.deleteRequested && isCMRequiringSLA(cm));
     const unlinkedCMReports = cmRequiringSLAReports.filter(cm => cm.id && !matchedCMIds.has(cm.id));
@@ -828,10 +771,10 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     // ===== DEBUG: Temporary logging =====
     if (allCMReports.length > 0 && allSLAReports.length > 0) {
         console.group('🔍 DEBUG: CM vs SLA Matching (1-to-1)');
-        console.log(`Total CM: ${allCMReports.filter(c=>!c.deleteRequested).length}, Total SLA: ${allSLAReports.length}, Matched: ${matchedCMIds.size}, Wajib SLA: ${cmRequiringSLAReports.length}, Unlinked (Belum Ada SLA): ${unlinkedCMReports.length}`);
+        console.log(`Total CM: ${allCMReports.filter(c => !c.deleteRequested).length}, Total SLA: ${allSLAReports.length}, Matched: ${matchedCMIds.size}, Wajib SLA: ${cmRequiringSLAReports.length}, Unlinked (Belum Ada SLA): ${unlinkedCMReports.length}`);
         console.log('--- UNLINKED CMs (Belum Ada SLA) ---');
         unlinkedCMReports.forEach(cm => {
-            console.log(`CM [${cm.id?.slice(0,8)}]: date=${getDateKey(cm)} | "${cm.incidentName || cm.equipmentName || ''}"`);
+            console.log(`CM [${cm.id?.slice(0, 8)}]: date=${getDateKey(cm)} | "${cm.incidentName || cm.equipmentName || ''}"`);
         });
         console.groupEnd();
     }
@@ -1120,9 +1063,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                     <span className="hidden sm:inline-flex items-center gap-1.5">
                         Form SLA / SLG ({allSLAReports.length})
                         {unlinkedCMReports.length > 0 && (
-                            <span className={`px-2 py-0.5 text-[10px] font-black rounded-full shadow-xs transition ${
-                                archiveFolder === 'sla' ? 'bg-amber-400 text-slate-950 animate-pulse' : 'bg-amber-500 text-white'
-                            }`}>
+                            <span className={`px-2 py-0.5 text-[10px] font-black rounded-full shadow-xs transition ${archiveFolder === 'sla' ? 'bg-amber-400 text-slate-950 animate-pulse' : 'bg-amber-500 text-white'
+                                }`}>
                                 {unlinkedCMReports.length} Belum Ada SLA ⚠️
                             </span>
                         )}
@@ -1339,11 +1281,10 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                     onChange={(e) => setAdminDeleteFilter(e.target.value as 'all' | 'pending_delete')}
                                     title="Filter Status Approval"
                                     aria-label="Filter Status Approval"
-                                    className={`w-full sm:w-auto px-3.5 py-2.5 rounded-xl text-sm font-semibold outline-none transition cursor-pointer shadow-sm border ${
-                                        adminDeleteFilter === 'pending_delete'
+                                    className={`w-full sm:w-auto px-3.5 py-2.5 rounded-xl text-sm font-semibold outline-none transition cursor-pointer shadow-sm border ${adminDeleteFilter === 'pending_delete'
                                             ? 'bg-amber-50 border-amber-300 text-amber-900 focus:ring-2 focus:ring-amber-500'
                                             : 'bg-white border-slate-200 text-slate-900 focus:ring-2 focus:ring-red-500'
-                                    }`}
+                                        }`}
                                 >
                                     <option value="all">Semua Status</option>
                                     <option value="pending_delete">Menunggu Approval Hapus ({reports.filter(r => r.deleteRequested).length})</option>
@@ -1498,13 +1439,12 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                     {isAuthorizedRole && (
                                                         <button
                                                             onClick={() => handleDeleteClick(report)}
-                                                            className={`p-2 rounded-xl transition cursor-pointer flex items-center gap-1.5 border text-xs font-semibold ${
-                                                                report.deleteRequested
+                                                            className={`p-2 rounded-xl transition cursor-pointer flex items-center gap-1.5 border text-xs font-semibold ${report.deleteRequested
                                                                     ? isAdmin
                                                                         ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200 shadow-sm animate-pulse'
                                                                         : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
                                                                     : 'bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-200'
-                                                            }`}
+                                                                }`}
                                                             title={
                                                                 report.deleteRequested
                                                                     ? isAdmin
@@ -1617,13 +1557,12 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                     {isAuthorizedRole && (
                                                         <button
                                                             onClick={() => handleDeleteClick(report)}
-                                                            className={`p-2 rounded-xl transition cursor-pointer flex items-center gap-1.5 border text-xs font-semibold ${
-                                                                report.deleteRequested
+                                                            className={`p-2 rounded-xl transition cursor-pointer flex items-center gap-1.5 border text-xs font-semibold ${report.deleteRequested
                                                                     ? isAdmin
                                                                         ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200 shadow-sm animate-pulse'
                                                                         : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
                                                                     : 'bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-200'
-                                                            }`}
+                                                                }`}
                                                             title={
                                                                 report.deleteRequested
                                                                     ? isAdmin
@@ -1878,13 +1817,12 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                         {isAuthorizedRole && (
                                                             <button
                                                                 onClick={() => handleDeleteClick(report)}
-                                                                className={`p-2 rounded-xl transition cursor-pointer flex items-center gap-1.5 border text-xs font-semibold ${
-                                                                    report.deleteRequested
+                                                                className={`p-2 rounded-xl transition cursor-pointer flex items-center gap-1.5 border text-xs font-semibold ${report.deleteRequested
                                                                         ? isAdmin
                                                                             ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200 shadow-sm animate-pulse'
                                                                             : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
                                                                         : 'bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-200'
-                                                                }`}
+                                                                    }`}
                                                                 title={
                                                                     report.deleteRequested
                                                                         ? isAdmin
