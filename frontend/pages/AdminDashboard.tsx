@@ -48,10 +48,10 @@ interface AdminDashboardProps {
 }
 
 const YellowFolderIcon = ({ className = "w-6 h-6" }: { className?: string }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M2.5 7C2.5 5.61929 3.61929 4.5 5 4.5H9.17157C9.83464 4.5 10.4705 4.76339 10.9393 5.23223L12.4142 6.70711C12.5549 6.84776 12.7456 6.92678 12.9445 6.92678H19C20.3807 6.92678 21.5 8.04607 21.5 9.42678V17C21.5 18.3807 20.3807 19.5 19 19.5H5C3.61929 19.5 2.5 18.3807 2.5 17V7Z" fill="#F59E0B" stroke="#D97706" strokeWidth="1"/>
-        <path d="M2.5 9.5H21.5V17C21.5 18.3807 20.3807 19.5 19 19.5H5C3.61929 19.5 2.5 18.3807 2.5 17V9.5Z" fill="#FBBF24" stroke="#D97706" strokeWidth="1"/>
-    </svg>
+  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M2.5 7C2.5 5.61929 3.61929 4.5 5 4.5H9.17157C9.83464 4.5 10.4705 4.76339 10.9393 5.23223L12.4142 6.70711C12.5549 6.84776 12.7456 6.92678 12.9445 6.92678H19C20.3807 6.92678 21.5 8.04607 21.5 9.42678V17C21.5 18.3807 20.3807 19.5 19 19.5H5C3.61929 19.5 2.5 18.3807 2.5 17V7Z" fill="#F59E0B" stroke="#D97706" strokeWidth="1" />
+    <path d="M2.5 9.5H21.5V17C21.5 18.3807 20.3807 19.5 19 19.5H5C3.61929 19.5 2.5 18.3807 2.5 17V9.5Z" fill="#FBBF24" stroke="#D97706" strokeWidth="1" />
+  </svg>
 );
 
 export function AdminDashboard({ onEdit }: AdminDashboardProps) {
@@ -608,11 +608,10 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
             onClick={() => {
               setViewMode('folder');
             }}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${
-              viewMode === 'folder'
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${viewMode === 'folder'
                 ? 'bg-amber-500 text-white shadow-sm shadow-amber-500/20'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-            }`}
+              }`}
           >
             <YellowFolderIcon className="w-4 h-4" />
             Mode Folder
@@ -621,11 +620,10 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
             onClick={() => {
               setViewMode('table');
             }}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${
-              viewMode === 'table'
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${viewMode === 'table'
                 ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-            }`}
+              }`}
           >
             <FileText className="w-4 h-4" />
             Mode Tabel
@@ -922,12 +920,11 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
               )}
 
               <div className="relative group">
-                <div 
-                  className={`absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-white via-white/40 to-transparent pointer-events-none transition-all duration-300 flex items-center justify-start pl-3 z-10 ${
-                    showLeftScroll ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'
-                  }`}
+                <div
+                  className={`absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-white via-white/40 to-transparent pointer-events-none transition-all duration-300 flex items-center justify-start pl-3 z-10 ${showLeftScroll ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'
+                    }`}
                 >
-                  <button 
+                  <button
                     onClick={() => scrollTable('left')}
                     className="pointer-events-auto bg-white/95 border border-slate-200 p-2 rounded-full shadow-lg hover:bg-slate-100 transition-all cursor-pointer backdrop-blur-md"
                     title="Scroll left"
@@ -936,12 +933,11 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
                   </button>
                 </div>
 
-                <div 
-                  className={`absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-white via-white/40 to-transparent pointer-events-none transition-all duration-300 flex items-center justify-end pr-3 z-10 ${
-                    showRightScroll ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
-                  }`}
+                <div
+                  className={`absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-white via-white/40 to-transparent pointer-events-none transition-all duration-300 flex items-center justify-end pr-3 z-10 ${showRightScroll ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'
+                    }`}
                 >
-                  <button 
+                  <button
                     onClick={() => scrollTable('right')}
                     className="pointer-events-auto bg-white/95 border border-slate-200 p-2 rounded-full shadow-lg hover:bg-slate-100 transition-all cursor-pointer backdrop-blur-md"
                     title="Scroll right"
@@ -950,7 +946,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
                   </button>
                 </div>
 
-                <div 
+                <div
                   ref={containerRef}
                   onScroll={checkScroll}
                   className="overflow-x-auto scrollbar-none w-full"
@@ -1026,28 +1022,28 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
                             </td>
                             <td className="px-4 py-3.5">
                               <div className="flex items-center justify-center gap-2">
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => handleRegenerate(doc)}
-                              className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition border border-blue-200 shadow-sm"
-                              title="Download"
-                            >
-                              <Download className="w-4 h-4" />
-                            </motion.button>
-                          </div>
-                        </td>
-                      </motion.tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                                <motion.button
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  onClick={() => handleRegenerate(doc)}
+                                  className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition border border-blue-200 shadow-sm"
+                                  title="Download"
+                                >
+                                  <Download className="w-4 h-4" />
+                                </motion.button>
+                              </div>
+                            </td>
+                          </motion.tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      </>
-    )}
-  </div>
+          </>
+        )}
+      </div>
       <div className="mt-6 text-center">
         <p className="text-sm text-slate-500">
           Menampilkan {filteredDocuments.length} dari {documents.length} dokumen
