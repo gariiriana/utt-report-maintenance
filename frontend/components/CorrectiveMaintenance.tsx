@@ -195,8 +195,19 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     const formContainerRef = useRef<HTMLDivElement | null>(null);
 
     const handleOpenForm = (type: 'standard' | 'sla' | 'cm_pdf' | 'pir', reportId?: string) => {
-        savedScrollYRef.current = window.scrollY;
         lastInteractedReportIdRef.current = reportId || null;
+        if (reportId) {
+            const el = document.getElementById(`cm-report-card-${reportId}`);
+            if (el) {
+                const rect = el.getBoundingClientRect();
+                savedScrollYRef.current = Math.max(0, rect.top + window.scrollY - 80);
+            } else {
+                savedScrollYRef.current = window.scrollY;
+            }
+        } else {
+            savedScrollYRef.current = window.scrollY;
+        }
+
         setEditingReportId(reportId || null);
         setReportFormType(type);
         setShowForm(true);
@@ -213,29 +224,40 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
     const handleCloseForm = () => {
         const targetId = lastInteractedReportIdRef.current;
-        const prevScrollY = savedScrollYRef.current;
+        const targetScrollY = savedScrollYRef.current;
+
         setShowForm(false);
         setReportFormType(null);
         setEditingReportId(null);
         setPrefillSlaData(null);
 
-        // Smooth scroll kembali persis ke kartu laporan yang sebelumnya diedit/dilihat
-        setTimeout(() => {
+        // Kembalikan posisi scroll tepat ke kartu laporan yang bersangkutan di bagian atas viewport
+        const restoreScroll = () => {
             if (targetId) {
                 const el = document.getElementById(`cm-report-card-${targetId}`);
                 if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    el.classList.add('ring-4', 'ring-red-500/50', 'transition-all', 'duration-500');
+                    const y = el.getBoundingClientRect().top + window.scrollY - 80;
+                    window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+
+                    // Visual highlight indicator
+                    el.classList.add('ring-4', 'ring-red-500/70', 'shadow-2xl', 'transition-all', 'duration-500');
                     setTimeout(() => {
-                        el.classList.remove('ring-4', 'ring-red-500/50');
+                        el.classList.remove('ring-4', 'ring-red-500/70', 'shadow-2xl');
                     }, 2500);
-                    return;
+                    return true;
                 }
             }
-            if (prevScrollY > 0) {
-                window.scrollTo({ top: prevScrollY, behavior: 'smooth' });
+            if (targetScrollY > 0) {
+                window.scrollTo({ top: targetScrollY, behavior: 'smooth' });
+                return true;
             }
-        }, 100);
+            return false;
+        };
+
+        // Multiple staggered attempts to handle DOM re-mounting and image/layout reflows
+        setTimeout(restoreScroll, 50);
+        setTimeout(restoreScroll, 150);
+        setTimeout(restoreScroll, 350);
     };
 
     // Filters State
@@ -832,8 +854,19 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     });
 
     const handleCreateSLAFromCM = (cm: CorrectiveReport) => {
-        savedScrollYRef.current = window.scrollY;
         lastInteractedReportIdRef.current = cm.id || null;
+        if (cm.id) {
+            const el = document.getElementById(`cm-report-card-${cm.id}`);
+            if (el) {
+                const rect = el.getBoundingClientRect();
+                savedScrollYRef.current = Math.max(0, rect.top + window.scrollY - 80);
+            } else {
+                savedScrollYRef.current = window.scrollY;
+            }
+        } else {
+            savedScrollYRef.current = window.scrollY;
+        }
+
         setEditingReportId(null);
         setPrefillSlaData({
             ticketName: cm.incidentName || cm.equipmentName || cm.issue || 'Corrective Maintenance',
@@ -1379,7 +1412,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                     id={`cm-report-card-${report.id}`}
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className={`bg-white/90 backdrop-blur-sm rounded-2xl border overflow-hidden hover:border-blue-300 transition shadow-lg relative ${report.deleteRequested
+                                    className={`scroll-mt-24 bg-white/90 backdrop-blur-sm rounded-2xl border overflow-hidden hover:border-blue-300 transition shadow-lg relative ${report.deleteRequested
                                         ? 'border-amber-400 ring-2 ring-amber-400/20'
                                         : report.reportType === 'PIR'
                                             ? 'border-red-400'
