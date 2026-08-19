@@ -1243,7 +1243,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                         <div className="flex items-center justify-between gap-2 mb-2">
                                                             <div className="flex items-center gap-1.5">
                                                                 <span className="px-2 py-0.5 bg-slate-900 text-white rounded-md text-[10px] font-black shadow-2xs">
-                                                                    #{idx + 1}
+                                                                    #{(periodFilteredUnlinkedCMReports.length > 0 ? periodFilteredUnlinkedCMReports : unlinkedCMReports).length - idx}
                                                                 </span>
                                                                 <span className="text-[10px] font-extrabold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 uppercase tracking-wider">
                                                                     Belum Ada SLA
@@ -1463,7 +1463,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 pb-4 mb-4">
                                                 <div className="flex flex-wrap items-center gap-3">
                                                     <span className="px-2.5 py-1 bg-slate-900 text-white rounded-lg text-xs font-black shadow-xs">
-                                                        #{index + 1}
+                                                        #{filteredReports.length - index}
                                                     </span>
                                                     <div className="px-3 py-1 bg-red-100 border border-red-300 rounded-lg text-xs font-bold text-red-700 uppercase tracking-wider flex items-center gap-1.5">
                                                         <AlertTriangle className="w-3.5 h-3.5 text-red-600" />
@@ -1546,7 +1546,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-700/50 pb-4 mb-4">
                                                 <div className="flex flex-wrap items-center gap-3">
                                                     <span className="px-2.5 py-1 bg-slate-900 text-white rounded-lg text-xs font-black shadow-xs">
-                                                        #{index + 1}
+                                                        #{filteredReports.length - index}
                                                     </span>
                                                     <div className="px-2.5 py-1 bg-red-500/10 border border-red-500/30 rounded-lg text-xs font-bold text-red-600 uppercase tracking-wider">
                                                         SLA / SLG
@@ -1787,7 +1787,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                     <div>
                                                         <div className="flex items-center gap-2 mb-2 flex-wrap">
                                                             <span className="px-2.5 py-1 bg-slate-900 text-white rounded-lg text-xs font-black shadow-xs">
-                                                                #{index + 1}
+                                                                #{filteredReports.length - index}
                                                             </span>
                                                             <div className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(report.status)}`}>
                                                                 {report.status}
