@@ -225,14 +225,17 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
             const rSign = parsed.formData.reviewedBySign || (rName.toLowerCase().includes('arif') || rName.toLowerCase().includes('budiman') ? ARIF_BUDIMAN_SIGNATURE_BASE64 : '');
             const pSign = cleanSignature(parsed.formData.preparedBySign) || cleanSignature((PREPARED_BY_SIGNATURES as Record<string, string>)[pName]) || '';
 
+            const isExplicit = parsed.formData.isTroubleshootSelected === true;
+            const tType = isExplicit ? parsed.formData.troubleshootType : undefined;
+
             setFormData({
               ...parsed.formData,
               preparedByName: pName,
               preparedBySign: pSign,
               reviewedByName: rName,
               reviewedBySign: rSign,
-              troubleshootType: parsed.formData.troubleshootType || undefined,
-              isSparepartReplacement: parsed.formData.troubleshootType === 'sparepart_replacement' || parsed.formData.isSparepartReplacement === true,
+              troubleshootType: tType,
+              isSparepartReplacement: tType === 'sparepart_replacement',
             });
           }
           if (parsed.currentStep) {
@@ -244,6 +247,50 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
       }
     }
   }, [editId]);
+
+  const handleResetForm = () => {
+    localStorage.removeItem('cm_report_draft');
+    setFormData({
+      reportType: 'CM_PDF',
+      troubleshootType: undefined,
+      isSparepartReplacement: undefined,
+      incidentName: '',
+      location: '',
+      incidentDate: '',
+      incidentId: '',
+      equipmentName: '',
+      brand: '',
+      serialNumber: '',
+      installationDate: '',
+      correctiveAction: '',
+      repairTimeStart: '',
+      repairTimeEnd: '',
+      result: '',
+      visualInspectionChecking: '',
+      cleaningPreventiveMethod: '',
+      summaryProblemAnalysis: '',
+      spareparts: [
+        { name: '-', brand: '-', qty: '-' },
+        { name: '-', brand: '-', qty: '-' }
+      ],
+      photos: [],
+      authorName: 'Rizki Novri Yanda – Data Center Operation',
+      preparedByName: 'Muhammad Salman Abdurohman',
+      preparedByTitle: '(Electrical Engineer)',
+      preparedBySign: cleanSignature(PREPARED_BY_SIGNATURES['Muhammad Salman Abdurohman']),
+      reviewedByName: 'Arif Budiman',
+      reviewedByTitle: '(Technical Manager)',
+      reviewedBySign: ARIF_BUDIMAN_SIGNATURE_BASE64,
+      acknowledgedBy1Name: 'Andrean Bima Pratama',
+      acknowledgedBy1Title: '(Chief Engineer)',
+      acknowledgedBy2Name: 'Supriyatno',
+      acknowledgedBy2Title: '(Facility manager)',
+      approvedByName: 'Budi Susanto',
+      approvedByTitle: '(Assistant manager HDC Facility Management)'
+    });
+    setCurrentStep(1);
+    toast.success('Form laporan dan cache draft telah dikosongkan.');
+  };
 
   // Auto-save draft to localStorage whenever form changes (only when not editing)
   useEffect(() => {
@@ -605,14 +652,27 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onCancel}
-          className="p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 rounded-xl text-white transition cursor-pointer shrink-0"
-          title="Tutup Form"
-        >
-          <X className="w-4 h-4 sm:w-5 sm:h-5" />
-        </button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {!editId && (
+            <button
+              type="button"
+              onClick={handleResetForm}
+              className="px-2.5 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-white transition cursor-pointer text-xs font-semibold flex items-center gap-1"
+              title="Kosongkan Form / Reset Draft"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Reset Draft</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onCancel}
+            className="p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 rounded-xl text-white transition cursor-pointer shrink-0"
+            title="Tutup Form"
+          >
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Stepper Navigation */}
@@ -690,7 +750,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* Opsi 1: Bukan Pergantian Sparepart */}
                   <div
-                    onClick={() => setFormData({ ...formData, troubleshootType: 'non_sparepart', isSparepartReplacement: false })}
+                    onClick={() => setFormData({ ...formData, troubleshootType: 'non_sparepart', isSparepartReplacement: false, isTroubleshootSelected: true })}
                     className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-3.5 relative overflow-hidden ${
                       formData.troubleshootType === 'non_sparepart'
                         ? 'bg-gradient-to-br from-red-50/70 to-white border-red-500 shadow-sm ring-2 ring-red-500/10'
@@ -707,9 +767,18 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1 mb-1">
                         <span className="text-xs sm:text-sm font-bold text-slate-900">Bukan Pergantian Sparepart</span>
-                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase shrink-0">
-                          Wajib SLA
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase shrink-0">
+                            Wajib SLA
+                          </span>
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                            formData.troubleshootType === 'non_sparepart'
+                              ? 'border-red-600 bg-red-600 text-white'
+                              : 'border-slate-300 bg-white'
+                          }`}>
+                            {formData.troubleshootType === 'non_sparepart' && <CheckCircle2 className="w-3.5 h-3.5 fill-current" />}
+                          </div>
+                        </div>
                       </div>
                       <p className="text-xs text-slate-600 leading-relaxed">
                         Troubleshoot gangguan, perbaikan setting, reset alarm, atau recovery darurat.
@@ -719,7 +788,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
 
                   {/* Opsi 2: Pergantian Sparepart */}
                   <div
-                    onClick={() => setFormData({ ...formData, troubleshootType: 'sparepart_replacement', isSparepartReplacement: true })}
+                    onClick={() => setFormData({ ...formData, troubleshootType: 'sparepart_replacement', isSparepartReplacement: true, isTroubleshootSelected: true })}
                     className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-3.5 relative overflow-hidden ${
                       formData.troubleshootType === 'sparepart_replacement'
                         ? 'bg-gradient-to-br from-blue-50/70 to-white border-blue-500 shadow-sm ring-2 ring-blue-500/10'
@@ -736,9 +805,18 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1 mb-1">
                         <span className="text-xs sm:text-sm font-bold text-slate-900">Pergantian Sparepart</span>
-                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 border border-blue-300 uppercase shrink-0">
-                          Tanpa SLA
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-blue-100 text-blue-800 border border-blue-300 uppercase shrink-0">
+                            Tanpa SLA
+                          </span>
+                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                            formData.troubleshootType === 'sparepart_replacement'
+                              ? 'border-blue-600 bg-blue-600 text-white'
+                              : 'border-slate-300 bg-white'
+                          }`}>
+                            {formData.troubleshootType === 'sparepart_replacement' && <CheckCircle2 className="w-3.5 h-3.5 fill-current" />}
+                          </div>
+                        </div>
                       </div>
                       <p className="text-xs text-slate-600 leading-relaxed">
                         Penggantian komponen / modul / material (tidak dibuatkan form SLA/SLG).
