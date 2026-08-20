@@ -162,6 +162,7 @@ export function AbsenTBM() {
   const [personnelList, setPersonnelList] = useState<Personnel[]>([]);
   const [personnelLoading, setPersonnelLoading] = useState(true);
   const [isPersonnelPanelOpen, setIsPersonnelPanelOpen] = useState(false);
+  const [personnelSearchTerm, setPersonnelSearchTerm] = useState('');
   const [newPersonName, setNewPersonName] = useState('');
   const [newPersonJabatan, setNewPersonJabatan] = useState('');
   const [newPersonCategory, setNewPersonCategory] = useState<'UTT Daily' | 'UTT Mobile' | 'DME'>('UTT Daily');
@@ -169,6 +170,16 @@ export function AbsenTBM() {
   const [editPersonName, setEditPersonName] = useState('');
   const [editPersonJabatan, setEditPersonJabatan] = useState('');
   const [editPersonCategory, setEditPersonCategory] = useState<'UTT Daily' | 'UTT Mobile' | 'DME'>('UTT Daily');
+
+  const filteredPersonnelList = useMemo(() => {
+    if (!personnelSearchTerm.trim()) return personnelList;
+    const term = personnelSearchTerm.toLowerCase();
+    return personnelList.filter(p => 
+      p.nama.toLowerCase().includes(term) || 
+      p.jabatan.toLowerCase().includes(term) || 
+      p.category.toLowerCase().includes(term)
+    );
+  }, [personnelList, personnelSearchTerm]);
 
   const [formDate, setFormDate] = useState(() => {
     const d = new Date();
@@ -917,15 +928,32 @@ export function AbsenTBM() {
     }
   };
 
-  // Delete personnel handler
-  const handleDeletePersonnel = async (id: string) => {
-    if (!window.confirm("Apakah Anda yakin ingin menghapus personil ini?")) return;
+  // Delete personnel handler (Resign)
+  const handleDeletePersonnel = async (idOrName: string) => {
+    const person = personnelList.find(p => p.id === idOrName || p.nama.toLowerCase().trim() === idOrName.toLowerCase().trim());
+    const personName = person ? person.nama : idOrName;
+
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus "${personName}" (Resign) dari daftar personil TBM?`)) return;
+    
+    const toastId = toast.loading(`Menghapus ${personName}...`);
     try {
-      await deleteDoc(doc(db, 'absen_tbm', id));
-      toast.success("Personil berhasil dihapus");
+      if (person) {
+        await deleteDoc(doc(db, 'absen_tbm', person.id));
+      } else {
+        const qSnap = await getDocs(query(collection(db, 'absen_tbm'), where('isPersonnel', '==', true), where('nama', '==', idOrName.trim())));
+        const batch = writeBatch(db);
+        qSnap.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+
+      // Also remove immediately from local checklist state
+      setChecklist(prev => prev.filter(item => item.nama.toLowerCase().trim() !== personName.toLowerCase().trim()));
+      toast.success(`Personil "${personName}" berhasil dihapus dari sistem TBM (Resign)`);
     } catch (err: any) {
       console.error("Error deleting personnel:", err);
       toast.error("Gagal menghapus personil: " + err.message);
+    } finally {
+      toast.dismiss(toastId);
     }
   };
 
@@ -2869,29 +2897,44 @@ export function AbsenTBM() {
 
               {/* Right List */}
               <div className="lg:col-span-2 space-y-3">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <span className="w-2 h-2 bg-violet-500 rounded-full" />
-                  Daftar Personil Terdaftar ({personnelList.length})
-                </h3>
-                <div className="max-h-[250px] overflow-y-auto border border-slate-200 rounded-xl bg-white font-sans shadow-sm">
-                  {personnelList.length === 0 ? (
-                    <div className="text-center py-8 text-xs text-slate-400">Belum ada data personil.</div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <span className="w-2 h-2 bg-pink-500 rounded-full" />
+                    Daftar Personil Terdaftar ({filteredPersonnelList.length}{personnelSearchTerm ? ` dari ${personnelList.length}` : ''})
+                  </h3>
+                  <div className="relative w-full sm:w-60">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={personnelSearchTerm}
+                      onChange={e => setPersonnelSearchTerm(e.target.value)}
+                      placeholder="Cari nama personil..."
+                      className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/20"
+                    />
+                  </div>
+                </div>
+
+                <div className="max-h-[280px] overflow-y-auto border border-slate-200 rounded-xl bg-white font-sans shadow-sm">
+                  {filteredPersonnelList.length === 0 ? (
+                    <div className="text-center py-8 text-xs text-slate-400">
+                      {personnelSearchTerm ? 'Tidak ada personil yang sesuai dengan pencarian.' : 'Belum ada data personil.'}
+                    </div>
                   ) : (
                     <table className="w-full text-xs text-left">
                       <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider">
+                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider sticky top-0 z-10">
                           <th className="px-3 py-2.5 w-12">No</th>
                           <th className="px-3 py-2.5">Nama</th>
                           <th className="px-3 py-2.5">Jabatan</th>
                           <th className="px-3 py-2.5">Kategori</th>
-                          <th className="px-3 py-2.5 text-center w-16">Aksi</th>
+                          <th className="px-3 py-2.5 text-center w-24">Aksi</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {personnelList.map((p, idx) => {
+                        {filteredPersonnelList.map((p, idx) => {
                           const isEditing = editingPersonnelId === p.id;
                           return (
-                            <tr key={p.id} className="hover:bg-blue-50/50 text-slate-700">
+                            <tr key={p.id} className="hover:bg-pink-50/40 text-slate-700 transition-colors">
                               <td className="px-3 py-2.5 font-mono text-slate-500">{idx + 1}.</td>
                               {isEditing ? (
                                 <>
@@ -2900,7 +2943,7 @@ export function AbsenTBM() {
                                       type="text"
                                       value={editPersonName}
                                       onChange={e => setEditPersonName(e.target.value)}
-                                      className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-violet-500 w-full"
+                                      className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/20 w-full"
                                       placeholder="Nama"
                                     />
                                   </td>
@@ -2909,7 +2952,7 @@ export function AbsenTBM() {
                                       type="text"
                                       value={editPersonJabatan}
                                       onChange={e => setEditPersonJabatan(e.target.value)}
-                                      className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-violet-500 w-full"
+                                      className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/20 w-full"
                                       placeholder="Jabatan"
                                     />
                                   </td>
@@ -2918,7 +2961,7 @@ export function AbsenTBM() {
                                       value={editPersonCategory}
                                       onChange={e => setEditPersonCategory(e.target.value as any)}
                                       title="Edit Kategori"
-                                      className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-violet-500 w-full"
+                                      className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/20 w-full"
                                     >
                                       <option value="UTT Daily">UTT Daily</option>
                                       <option value="UTT Mobile">UTT Mobile</option>
@@ -2929,28 +2972,32 @@ export function AbsenTBM() {
                                     <button
                                       type="button"
                                       onClick={() => handleUpdatePersonnel(p.id)}
-                                      className="p-1 hover:bg-emerald-500/10 text-emerald-500 hover:text-emerald-400 rounded transition active:scale-90 animate-none"
+                                      className="p-1 hover:bg-emerald-50 text-emerald-600 rounded-lg transition active:scale-90 cursor-pointer"
                                       title="Simpan Perubahan"
                                     >
-                                      <Save className="w-3.5 h-3.5" />
+                                      <Save className="w-4 h-4" />
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => setEditingPersonnelId(null)}
-                                      className="p-1 hover:bg-slate-800 text-slate-400 hover:text-white rounded transition active:scale-90 animate-none"
+                                      className="p-1 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-lg transition active:scale-90 cursor-pointer"
                                       title="Batal"
                                     >
-                                      <X className="w-3.5 h-3.5" />
+                                      <X className="w-4 h-4" />
                                     </button>
                                   </td>
                                 </>
                               ) : (
                                 <>
-                                  <td className="px-3 py-2.5 font-bold text-white">{p.nama}</td>
-                                  <td className="px-3 py-2.5">{p.jabatan}</td>
-                                  <td className="px-3 py-2.5 text-slate-400">{p.category}</td>
+                                  <td className="px-3 py-2.5 font-bold text-slate-900">{p.nama}</td>
+                                  <td className="px-3 py-2.5 font-medium text-slate-600">{p.jabatan}</td>
+                                  <td className="px-3 py-2.5">
+                                    <span className="px-2 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 rounded-md font-semibold text-[10px]">
+                                      {p.category}
+                                    </span>
+                                  </td>
                                   <td className="px-3 py-2.5 text-center">
-                                    <div className="flex items-center justify-center gap-1.5">
+                                    <div className="flex items-center justify-center gap-1">
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -2959,7 +3006,7 @@ export function AbsenTBM() {
                                           setEditPersonJabatan(p.jabatan);
                                           setEditPersonCategory(p.category as any);
                                         }}
-                                        className="p-1 hover:bg-violet-500/10 text-slate-500 hover:text-violet-400 rounded transition active:scale-90 animate-none"
+                                        className="p-1.5 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-lg transition active:scale-90 cursor-pointer"
                                         title="Edit Personil"
                                       >
                                         <Pencil className="w-3.5 h-3.5" />
@@ -2967,8 +3014,8 @@ export function AbsenTBM() {
                                       <button
                                         type="button"
                                         onClick={() => handleDeletePersonnel(p.id)}
-                                        className="p-1 hover:bg-rose-500/10 text-slate-500 hover:text-rose-400 rounded transition active:scale-90 animate-none"
-                                        title="Hapus Personil"
+                                        className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition active:scale-90 cursor-pointer"
+                                        title="Hapus Personil (Resign)"
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>
@@ -3249,7 +3296,7 @@ export function AbsenTBM() {
                   <th className="px-3 py-3 text-center w-60">Status Kehadiran</th>
                   <th className="px-3 py-3 text-left">Keterangan (Remark)</th>
                   <th className="px-3 py-3 text-center w-24">Jam Kerja</th>
-                  {formCategory === 'Manual' && <th className="px-3 py-3 text-center w-16">Aksi</th>}
+                  <th className="px-3 py-3 text-center w-16">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-850">
@@ -3377,18 +3424,27 @@ export function AbsenTBM() {
                               title="Masukkan angka desimal saja (contoh: 8, 8.5)"
                             />
                           </td>
-                          {formCategory === 'Manual' && (
-                            <td className="px-3 py-3.5 text-center">
+                          <td className="px-3 py-3.5 text-center">
+                            {formCategory === 'Manual' ? (
                               <button
                                 type="button"
                                 onClick={() => removeManualRow(index)}
-                                title="Hapus Baris"
-                                className="p-1.5 text-slate-500 hover:text-rose-400 transition"
+                                title="Hapus Baris Manual"
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
-                            </td>
-                          )}
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePersonnel(item.nama)}
+                                title={`Hapus / Resign: ${item.nama}`}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </td>
                         </tr>
                       </Fragment>
                     );

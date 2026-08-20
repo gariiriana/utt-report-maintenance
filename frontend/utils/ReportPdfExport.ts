@@ -74,18 +74,9 @@ export const safeHtml2Canvas = async (element: HTMLElement, options: any): Promi
       get(target, prop) {
         if (prop === 'getPropertyValue') {
           return function(propertyName: string) {
-            if (propertyName === 'font-family' || propertyName === 'fontFamily') {
-              return 'Arial';
-            }
-            if (propertyName === 'letter-spacing' || propertyName === 'letterSpacing') {
-              return '0px';
-            }
-            if (propertyName === 'word-spacing' || propertyName === 'wordSpacing') {
-              return 'normal';
-            }
             const val = target.getPropertyValue(propertyName);
-            if (typeof val === 'string' && val.includes('oklch')) {
-              return val.replace(/oklch\(([^)]+)\)/g, (_match, p1) => {
+            if (typeof val === 'string' && (val.includes('oklch') || val.includes('oklab'))) {
+              return val.replace(/okl(ch|ab)\(([^)]+)\)/g, (_match, _type, p1) => {
                 if (p1.includes('/')) {
                   const opacity = p1.split('/').pop().trim();
                   return `rgba(148, 163, 184, ${opacity})`;
@@ -96,18 +87,9 @@ export const safeHtml2Canvas = async (element: HTMLElement, options: any): Promi
             return val;
           };
         }
-        if (prop === 'fontFamily' || prop === 'font-family') {
-          return 'Arial';
-        }
-        if (prop === 'letterSpacing' || prop === 'letter-spacing') {
-          return '0px';
-        }
-        if (prop === 'wordSpacing' || prop === 'word-spacing') {
-          return 'normal';
-        }
         const val = target[prop as any];
-        if (typeof val === 'string' && val.includes('oklch')) {
-          return val.replace(/oklch\(([^)]+)\)/g, (_match, p1) => {
+        if (typeof val === 'string' && (val.includes('oklch') || val.includes('oklab'))) {
+          return val.replace(/okl(ch|ab)\(([^)]+)\)/g, (_match, _type, p1) => {
             if (p1.includes('/')) {
               const opacity = p1.split('/').pop().trim();
               return `rgba(148, 163, 184, ${opacity})`;
