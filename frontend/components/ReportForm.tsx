@@ -770,18 +770,45 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }
   };
 
-  const handleDownloadPhoto = (base64: string, description: string, index: number) => {
-    const link = document.createElement('a');
-    link.href = base64;
-    const ts = new Date().getTime();
-    const cleanMain = (maintenanceName || 'report').substring(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    const cleanUnit = (specificDetail || 'unit').substring(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    const cleanDesc = (description || `doc${index + 1}`).substring(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    link.download = `${cleanMain}_${cleanUnit}_${cleanDesc}_${ts}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Foto diunduh');
+  const handleDownloadPhoto = async (src: string, description?: string, index?: number) => {
+    try {
+      const ts = new Date().getTime();
+      const cleanMain = (maintenanceName || 'report').substring(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const cleanUnit = (specificDetail || 'unit').substring(0, 20).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const cleanDesc = (description || `doc${(index !== undefined ? index : 0) + 1}`).substring(0, 30).replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const filename = `${cleanMain}_${cleanUnit}_${cleanDesc}_${ts}.jpg`;
+
+      if (src.startsWith('data:') || src.startsWith('blob:')) {
+        const link = document.createElement('a');
+        link.href = src;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        const response = await fetch(src);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      }
+      toast.success('Foto berhasil diunduh');
+    } catch (err) {
+      console.error('Error downloading photo:', err);
+      const link = document.createElement('a');
+      link.href = src;
+      link.download = `${(description || 'foto').replace(/[^a-z0-9]/gi, '_')}.jpg`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('Foto diunduh');
+    }
   };
 
   const confirmAddCards = () => {
@@ -1475,6 +1502,20 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                           >
                             <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
                           </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const photoData = card.photoBase64 || (card.photo ? URL.createObjectURL(card.photo) : '');
+                              if (photoData) {
+                                handleDownloadPhoto(photoData, card.description, idx);
+                              }
+                            }}
+                            className="p-1 sm:p-2 bg-emerald-600/90 hover:bg-emerald-700 text-white rounded-lg transition shadow-xs cursor-pointer"
+                            title="Unduh Foto"
+                          >
+                            <Download className="w-3 h-3 sm:w-4 sm:h-4" />
+                          </button>
                           {!isDME && (
                             <>
                               <button
@@ -1487,17 +1528,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                                 title="Crop / Edit Foto"
                               >
                                 <Scissors className="w-3 h-3 sm:w-4 sm:h-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDownloadPhoto(card.photoBase64!, card.description, idx);
-                                }}
-                                className="p-1 sm:p-2 bg-emerald-600/90 hover:bg-emerald-700 text-white rounded-lg transition shadow-xs cursor-pointer"
-                                title="Unduh Foto"
-                              >
-                                <Download className="w-3 h-3 sm:w-4 sm:h-4" />
                               </button>
                               <button
                                 type="button"
@@ -1947,14 +1977,29 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
             onClick={() => setPreviewImage(null)}
             className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4 md:p-8 cursor-zoom-out"
           >
-            {/* Close Button */}
-            <button
-              onClick={() => setPreviewImage(null)}
-              className="absolute top-4 right-4 p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors z-50 cursor-pointer"
-              title="Tutup Preview"
+            {/* Top Toolbar */}
+            <div
+              className="absolute top-4 right-4 flex items-center gap-2.5 z-50"
+              onClick={(e) => e.stopPropagation()}
             >
-              <X className="w-6 h-6" />
-            </button>
+              <button
+                type="button"
+                onClick={() => handleDownloadPhoto(previewImage.src, previewImage.title, 0)}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg transition-all cursor-pointer"
+                title="Unduh / Download Foto"
+              >
+                <Download className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                <span>Unduh Foto</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewImage(null)}
+                className="p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors cursor-pointer"
+                title="Tutup Preview"
+              >
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
+              </button>
+            </div>
 
             {/* Image Wrapper */}
             <motion.div
@@ -1962,18 +2007,28 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative max-w-5xl max-h-[85vh] w-full flex flex-col items-center justify-center"
+              className="relative max-w-5xl max-h-[85vh] w-full flex flex-col items-center justify-center cursor-default"
             >
               <img
                 src={previewImage.src}
                 alt={previewImage.title}
-                className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-2xl border border-white/10"
+                className="max-w-full max-h-[72vh] object-contain rounded-xl shadow-2xl border border-white/10"
               />
-              {previewImage.title && (
-                <div className="mt-4 px-4 py-2 bg-slate-900/80 backdrop-blur-sm rounded-lg border border-slate-800 text-center max-w-md">
-                  <p className="text-white text-sm font-semibold">{previewImage.title}</p>
-                </div>
-              )}
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+                {previewImage.title && (
+                  <div className="px-4 py-2 bg-slate-900/80 backdrop-blur-sm rounded-lg border border-slate-800 text-center max-w-md">
+                    <p className="text-white text-xs sm:text-sm font-semibold">{previewImage.title}</p>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleDownloadPhoto(previewImage.src, previewImage.title, 0)}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs sm:text-sm rounded-lg shadow-md transition-all cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Download File Gambar</span>
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
