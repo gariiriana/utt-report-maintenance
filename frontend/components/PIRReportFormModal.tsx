@@ -24,7 +24,36 @@ import { PIRReportData, INITIAL_PIR_REPORT_DATA, PIRCorrectiveAction, PIRPhoto }
 import { generatePIRReportPDF } from '@/utils/PIRReportPdfExport';
 import { exportPIRReportToDocx } from '@/utils/docxReportExport';
 import { sendFileNotification } from '@/utils/notificationService';
+import { compressImage, compressBase64Image } from '@/utils/imageCompression';
 import { ImageEditor } from './ImageEditor';
+
+// Helper to recursively strip undefined and invalid fields for Firestore
+function cleanPayloadForFirestore<T extends Record<string, any>>(obj: T): Partial<T> {
+  const result: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === undefined) continue;
+    if (key === 'id') continue; // Never store document id inside document data
+    if (Array.isArray(value)) {
+      result[key] = value.map(item => {
+        if (typeof item === 'object' && item !== null) {
+          return cleanPayloadForFirestore(item);
+        }
+        return item ?? '';
+      });
+    } else if (
+      typeof value === 'object' &&
+      value !== null &&
+      !(value instanceof Date) &&
+      typeof (value as any).toMillis !== 'function' &&
+      !(value as any)._methodName
+    ) {
+      result[key] = cleanPayloadForFirestore(value);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
 
 interface PIRReportFormModalProps {
   onSuccess: () => void;
@@ -154,27 +183,36 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
     }));
   };
 
-  // Photo handlers
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Photo handlers with async compression
+  const [compressingPhotos, setCompressingPhotos] = useState(false);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          const newPhoto: PIRPhoto = {
-            photoBase64: reader.result,
-            caption: 'Foto Dokumentasi'
-          };
-          setFormData((prev) => ({
-            ...prev,
-            photos: [...prev.photos, newPhoto]
-          }));
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    setCompressingPhotos(true);
+    const toastId = toast.loading('Mengompres foto dokumentasi...');
+    try {
+      const newPhotos: PIRPhoto[] = [];
+      for (const file of Array.from(files)) {
+        const compressedBase64 = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.6 });
+        newPhotos.push({
+          photoBase64: compressedBase64,
+          caption: 'Foto Dokumentasi'
+        });
+      }
+      setFormData((prev) => ({
+        ...prev,
+        photos: [...prev.photos, ...newPhotos]
+      }));
+      toast.success(`${newPhotos.length} foto berhasil ditambahkan`, { id: toastId });
+    } catch (err) {
+      console.error('Error compressing photos:', err);
+      toast.error('Gagal mengompres foto', { id: toastId });
+    } finally {
+      setCompressingPhotos(false);
+      e.target.value = '';
+    }
   };
 
   const removePhoto = (index: number) => {
@@ -270,6 +308,68 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
     }
   };
 
+  // Helper to build a clean, valid Firestore payload
+  const prepareDocPayload = async () => {
+    const resolvedCompanyType = formData.companyType || (isK2User ? 'k2' : 'neutra');
+    const author = formData.reportAuthors?.trim() || formData.postmortemOwner?.trim() || user?.displayName || (isK2User ? 'Engineer K2' : 'Standby Engineer');
+    const email = user?.email || (isK2User ? 'engineer_k2@dwimitra.co.id' : 'standby@dwimitra.co.id');
+    const uid = user?.uid || (isK2User ? 'engineer_k2' : 'standby_engineer');
+
+    // Ensure all photos are compressed to avoid 1MB document size limit
+    const compressedPhotos: PIRPhoto[] = [];
+    for (const p of formData.photos || []) {
+      if (!p || !p.photoBase64) continue;
+      try {
+        let base64 = p.photoBase64;
+        if (base64.length > 250000) {
+          base64 = await compressBase64Image(base64, { maxWidth: 800, maxHeight: 800, quality: 0.5 });
+        }
+        compressedPhotos.push({
+          photoBase64: base64,
+          caption: p.caption || 'Foto Dokumentasi'
+        });
+      } catch {
+        compressedPhotos.push({
+          photoBase64: p.photoBase64,
+          caption: p.caption || 'Foto Dokumentasi'
+        });
+      }
+    }
+
+    const basePayload = {
+      ...formData,
+      reportType: 'PIR',
+      category: 'Report PIR',
+      issue: formData.incidentName || 'Postmortem Incident Report',
+      location: resolvedCompanyType === 'k2' ? 'K2 Data Centres' : 'Neutra DC Cikarang',
+      ticketName: formData.incidentName || 'Postmortem Incident Report',
+      actionTaken: formData.resolution || '-',
+      status: 'Resolved',
+      reportAuthors: author,
+      reportedBy: uid,
+      reportedByEmail: email,
+      createdBy: uid,
+      companyType: resolvedCompanyType,
+      photos: compressedPhotos,
+      attendeesTDE: formData.attendeesTDE || [],
+      attendeesDME: formData.attendeesDME || [],
+      correctiveActions: (formData.correctiveActions || []).map((ca, idx) => ({
+        actionItem: ca.actionItem || `${idx + 1}. `,
+        typeOfAction: ca.typeOfAction || 'TROUBLESHOOTING ACTION',
+        assignedTo: ca.assignedTo || 'Facility Maintenance Team',
+        bug: ca.bug || '-',
+        startDate: ca.startDate || '',
+        endDate: ca.endDate || ''
+      })),
+      ...(editId ? { updatedAt: serverTimestamp() } : { reportedAt: serverTimestamp() })
+    };
+
+    // Remove any undefined or invalid fields and strip id
+    const sanitized = cleanPayloadForFirestore(basePayload);
+    delete (sanitized as any).id;
+    return sanitized;
+  };
+
   // Save to database
   const handleSubmitReport = async () => {
     if (!validateStep(6)) return;
@@ -277,20 +377,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
     toast.loading('Menyimpan Laporan PIR...', { id: 'save-pir' });
 
     try {
-      const resolvedCompanyType = formData.companyType || (isK2User ? 'k2' : 'neutra');
-      const docPayload = {
-        reportType: 'PIR',
-        issue: formData.incidentName,
-        location: resolvedCompanyType === 'k2' ? 'K2 Data Centres' : 'Neutra DC Cikarang',
-        ticketName: formData.incidentName,
-        actionTaken: formData.resolution,
-        status: 'Resolved',
-        reportedBy: formData.reportAuthors,
-        reportedByEmail: user?.email || (isK2User ? 'engineer_k2@dwimitra.co.id' : 'standby@dwimitra.co.id'),
-        reportedAt: serverTimestamp(),
-        ...formData,
-        companyType: resolvedCompanyType
-      };
+      const docPayload = await prepareDocPayload();
 
       if (editId) {
         await updateDoc(doc(db, 'corrective_reports', editId), docPayload);
@@ -298,7 +385,9 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
       } else {
         await addDoc(collection(db, 'corrective_reports'), docPayload);
         toast.success('Laporan PIR berhasil disimpan!', { id: 'save-pir' });
-        localStorage.removeItem('pir_report_draft');
+        try {
+          localStorage.removeItem('pir_report_draft');
+        } catch { /* ignore */ }
 
         await sendFileNotification({
           title: `Report PIR Baru: ${formData.incidentName || 'Postmortem Incident Report'}`,
@@ -311,9 +400,16 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
       }
 
       onSuccess();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving PIR report:', err);
-      toast.error('Gagal menyimpan Laporan PIR', { id: 'save-pir' });
+      const errMsg = err?.message || err?.toString() || '';
+      if (errMsg.includes('exceeds maximum size') || errMsg.includes('too big') || errMsg.includes('1048576')) {
+        toast.error('Ukuran foto terlalu besar (melebihi batas 1MB database). Kurangi foto lalu coba lagi.', { id: 'save-pir' });
+      } else if (errMsg.includes('permission-denied') || errMsg.includes('PERMISSION_DENIED')) {
+        toast.error('Gagal menyimpan: Akses ditolak (Permission Denied).', { id: 'save-pir' });
+      } else {
+        toast.error(`Gagal menyimpan Laporan PIR: ${errMsg ? errMsg.slice(0, 80) : 'Kesalahan data'}`, { id: 'save-pir' });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -326,19 +422,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
     await generatePIRReportPDF(enrichedData);
     setSubmitting(true);
     try {
-      const docPayload = {
-        reportType: 'PIR',
-        issue: formData.incidentName,
-        location: resolvedCompanyType === 'k2' ? 'K2 Data Centres' : 'Neutra DC Cikarang',
-        ticketName: formData.incidentName,
-        actionTaken: formData.resolution,
-        status: 'Resolved',
-        reportedBy: formData.reportAuthors,
-        reportedByEmail: user?.email || (isK2User ? 'engineer_k2@dwimitra.co.id' : 'standby@dwimitra.co.id'),
-        reportedAt: serverTimestamp(),
-        ...formData,
-        companyType: resolvedCompanyType
-      };
+      const docPayload = await prepareDocPayload();
 
       if (editId) {
         await updateDoc(doc(db, 'corrective_reports', editId), docPayload);
@@ -346,7 +430,9 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
       } else {
         await addDoc(collection(db, 'corrective_reports'), docPayload);
         toast.success('Laporan PIR diekspor PDF & disimpan!');
-        localStorage.removeItem('pir_report_draft');
+        try {
+          localStorage.removeItem('pir_report_draft');
+        } catch { /* ignore */ }
       }
 
       onSuccess();
@@ -363,18 +449,7 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
       await exportPIRReportToDocx(formData);
 
       if (user) {
-        const docPayload = {
-          reportType: 'PIR',
-          issue: formData.incidentName || 'Laporan Insiden PIR',
-          location: 'Neutra DC Cikarang',
-          ticketName: formData.incidentName || 'Laporan PIR',
-          actionTaken: formData.resolution || '-',
-          status: 'Resolved',
-          reportedBy: formData.reportAuthors || user.displayName || 'Standby Engineer',
-          reportedByEmail: user?.email || 'standby@dwimitra.co.id',
-          reportedAt: serverTimestamp(),
-          ...formData
-        };
+        const docPayload = await prepareDocPayload();
 
         if (editId) {
           await updateDoc(doc(db, 'corrective_reports', editId), docPayload);
@@ -383,7 +458,9 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
         }
       }
 
-      localStorage.removeItem('pir_report_draft');
+      try {
+        localStorage.removeItem('pir_report_draft');
+      } catch { /* ignore */ }
       toast.success('Laporan PIR Word (DOCX) berhasil diekspor & disimpan ke Arsip Standby!');
     } catch (err: any) {
       console.error('Error exporting PIR DOCX:', err);
@@ -904,9 +981,10 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
               <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
                 <Camera className="w-4 h-4 text-red-600" /> SUPPORTING DOCUMENTATION (FOTO)
               </h3>
-              <label className="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 cursor-pointer flex items-center gap-1.5">
-                <Plus className="w-4 h-4" /> Upload Foto Insiden
-                <input type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" />
+              <label className={`px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 cursor-pointer flex items-center gap-1.5 ${compressingPhotos ? 'opacity-60 pointer-events-none' : ''}`}>
+                {compressingPhotos ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                <span>{compressingPhotos ? 'Mengompres...' : 'Upload Foto Insiden'}</span>
+                <input type="file" accept="image/*" multiple disabled={compressingPhotos} onChange={handlePhotoUpload} className="hidden" />
               </label>
             </div>
 
@@ -979,20 +1057,6 @@ export function PIRReportFormModal({ onSuccess, onCancel, editId }: PIRReportFor
               </div>
             )}
           </div>
-
-          {/* Image Editor Modal if cropping */}
-          {editingPhotoIndex !== null && (
-            <ImageEditor
-              image={formData.photos[editingPhotoIndex].photoBase64}
-              onSave={(cropped) => {
-                const updated = [...formData.photos];
-                updated[editingPhotoIndex].photoBase64 = cropped;
-                setFormData({ ...formData, photos: updated });
-                setEditingPhotoIndex(null);
-              }}
-              onCancel={() => setEditingPhotoIndex(null)}
-            />
-          )}
         </motion.div>
       )}
 
