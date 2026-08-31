@@ -209,7 +209,7 @@ function cleanBulletLines(content: string): string[] {
   });
 }
 
-function createBulletParagraphs(content: string, fontSize = 18, spacingAfter = 30): Paragraph[] {
+function createBulletParagraphs(content: string, fontSize = 20, spacingAfter = 30): Paragraph[] {
   const cleanItems = cleanBulletLines(content);
   return cleanItems.map(
     (text) =>
@@ -235,7 +235,7 @@ function createBulletParagraphs(content: string, fontSize = 18, spacingAfter = 3
   );
 }
 
-function createBoxSection(title: string, content: string, fontSize = 18): Table {
+function createBoxSection(title: string, content: string, fontSize = 20): Table {
   return new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: cellBorder,
@@ -320,7 +320,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: headText, bold: true, size: 18, color: '000000', font: 'Century Gothic' })],
+                  children: [new TextRun({ text: headText, bold: true, size: 20, color: '000000', font: 'Century Gothic' })],
                 }),
               ],
             })
@@ -339,7 +339,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: val, size: 18, color: '1E293B', font: 'Century Gothic' })],
+                  children: [new TextRun({ text: val, size: 20, color: '1E293B', font: 'Century Gothic' })],
                 }),
               ],
             })
@@ -363,7 +363,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: headText, bold: true, size: 18, color: '000000', font: 'Century Gothic' })],
+                  children: [new TextRun({ text: headText, bold: true, size: 20, color: '000000', font: 'Century Gothic' })],
                 }),
               ],
             })
@@ -383,7 +383,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: val, size: 18, color: '1E293B', font: 'Century Gothic' })],
+                  children: [new TextRun({ text: val, size: 20, color: '1E293B', font: 'Century Gothic' })],
                 }),
               ],
             })
@@ -407,7 +407,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               children: [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  children: [new TextRun({ text: headText, bold: true, size: 18, color: '000000', font: 'Century Gothic' })],
+                  children: [new TextRun({ text: headText, bold: true, size: 20, color: '000000', font: 'Century Gothic' })],
                 }),
               ],
             })
@@ -419,7 +419,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           new TableCell({
             width: { size: 50, type: WidthType.PERCENTAGE },
             margins: { top: 60, bottom: 60, left: 80, right: 80 },
-            children: createBulletParagraphs(resolvedAction, 18, 25),
+            children: createBulletParagraphs(resolvedAction, 20, 25),
           }),
           // Repair Time
           new TableCell({
@@ -429,18 +429,18 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               new Paragraph({
                 spacing: { after: 30 },
                 children: [
-                  new TextRun({ text: 'Start :', bold: true, size: 18, color: '000000', font: 'Century Gothic' }),
+                  new TextRun({ text: 'Start :', bold: true, size: 20, color: '000000', font: 'Century Gothic' }),
                   ...(data.repairTimeStart
-                    ? data.repairTimeStart.split(/\r?\n/).map((line) => new TextRun({ text: line.trim(), size: 18, color: '1E293B', font: 'Century Gothic', break: 1 }))
-                    : [new TextRun({ text: ' -', size: 18, color: '1E293B', font: 'Century Gothic' })]),
+                    ? data.repairTimeStart.split(/\r?\n/).map((line) => new TextRun({ text: line.trim(), size: 20, color: '1E293B', font: 'Century Gothic', break: 1 }))
+                    : [new TextRun({ text: ' -', size: 20, color: '1E293B', font: 'Century Gothic' })]),
                 ],
               }),
               new Paragraph({
                 children: [
-                  new TextRun({ text: 'End   :', bold: true, size: 18, color: '000000', font: 'Century Gothic' }),
+                  new TextRun({ text: 'End   :', bold: true, size: 20, color: '000000', font: 'Century Gothic' }),
                   ...(data.repairTimeEnd
-                    ? data.repairTimeEnd.split(/\r?\n/).map((line) => new TextRun({ text: line.trim(), size: 18, color: '1E293B', font: 'Century Gothic', break: 1 }))
-                    : [new TextRun({ text: ' -', size: 18, color: '1E293B', font: 'Century Gothic' })]),
+                    ? data.repairTimeEnd.split(/\r?\n/).map((line) => new TextRun({ text: line.trim(), size: 20, color: '1E293B', font: 'Century Gothic', break: 1 }))
+                    : [new TextRun({ text: ' -', size: 20, color: '1E293B', font: 'Century Gothic' })]),
                 ],
               }),
             ],
@@ -451,7 +451,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
             margins: { top: 60, bottom: 60, left: 80, right: 80 },
             children: [
               new Paragraph({
-                children: [new TextRun({ text: resolvedResult || '-', size: 18, color: '1E293B', font: 'Century Gothic' })],
+                children: [new TextRun({ text: resolvedResult || '-', size: 20, color: '1E293B', font: 'Century Gothic' })],
               }),
             ],
           }),
@@ -500,7 +500,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
                 children: [
                   new Paragraph({
                     alignment: cIdx === 1 ? AlignmentType.LEFT : AlignmentType.CENTER,
-                    children: [new TextRun({ text: cellVal, size: 18, color: '1E293B', font: 'Century Gothic' })],
+                    children: [new TextRun({ text: cellVal, size: 20, color: '1E293B', font: 'Century Gothic' })],
                   }),
                 ],
               })
@@ -522,7 +522,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
                 children: [
                   new Paragraph({
                     alignment: AlignmentType.CENTER,
-                    children: [new TextRun({ text: hText, bold: true, size: 18, color: '000000', font: 'Century Gothic' })],
+                    children: [new TextRun({ text: hText, bold: true, size: 20, color: '000000', font: 'Century Gothic' })],
                   }),
                 ],
               })
@@ -574,7 +574,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
             children: [
               new TextRun({
                 text: p1.description ? `Ket: ${p1.description}` : `Ket: Dokumentasi Foto #${i + 1}`,
-                size: 18,
+                size: 20,
                 color: '334155',
                 font: 'Century Gothic',
               }),
@@ -604,7 +604,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
             children: [
               new TextRun({
                 text: p2.description ? `Ket: ${p2.description}` : `Ket: Dokumentasi Foto #${i + 2}`,
-                size: 18,
+                size: 20,
                 color: '334155',
                 font: 'Century Gothic',
               }),
@@ -856,7 +856,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           }),
         },
         children: [
-          // Title (15pt = size 30)
+          // Title (18pt = size 36)
           new Paragraph({
             alignment: AlignmentType.CENTER,
             spacing: { before: 100, after: 120 },
@@ -864,7 +864,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               new TextRun({
                 text: 'REPORT CORRECTIVE MAINTENANCE',
                 bold: true,
-                size: 30, // 15pt in Word
+                size: 36, // 18pt in Word
                 color: '475569',
                 font: 'Century Gothic',
               }),
@@ -880,10 +880,10 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           actionTable,
           new Paragraph({ spacing: { after: 50 } }),
 
-          createBoxSection('VISUAL INSPECTION & CHECKING', resolvedVisualInsp, 18),
+          createBoxSection('VISUAL INSPECTION & CHECKING', resolvedVisualInsp, 20),
           new Paragraph({ spacing: { after: 50 } }),
 
-          createBoxSection('SUMMARY CORRECTIVE REPORT (PROBLEM ANALYSIS)', resolvedProblemAnalysis, 18),
+          createBoxSection('SUMMARY CORRECTIVE REPORT (PROBLEM ANALYSIS)', resolvedProblemAnalysis, 20),
 
           // LIST OF REPLACED SPAREPARTS (Halaman 1)
           ...(hasReplacedSpareparts

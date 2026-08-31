@@ -15,7 +15,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle, Database, Package, Award } from 'lucide-react';
+import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle, Database, Package, Award, FileSignature } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 import { ReportForm } from '@/components/ReportForm';
@@ -36,13 +36,14 @@ import { PMSchedule } from '@/components/PMSchedule';
 import { BOQMasterAsset } from '@/components/BOQMasterAsset';
 import { SparepartManagement } from '@/components/SparepartManagement';
 import { MonthlyReportGenerator } from '@/components/MonthlyReportGenerator';
+import { BeritaAcaraReport } from '@/components/BeritaAcaraReport';
 import { NotificationCenter, AppNotificationItem } from '@/components/NotificationCenter';
 import { StandbyKPIInput } from '@/components/StandbyKPIInput';
 import { NotificationPage } from '@/components/NotificationPage';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
 // Tipe Tab Navigasi yang Tersedia dalam Aplikasi
-type Tab = 'notifications' | 'report' | 'documents' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'spareparts' | 'monthly_report' | 'standby_kpi';
+type Tab = 'notifications' | 'report' | 'documents' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'spareparts' | 'monthly_report' | 'standby_kpi' | 'berita_acara';
 
 export function MainApp() {
   // State autentikasi & peranan user dari AuthContext
@@ -76,6 +77,7 @@ export function MainApp() {
     { id: 'pm_schedule', label: 'PM Schedule', icon: CalendarDays, color: 'from-blue-600 to-indigo-700', show: !isAdmin && userRole === 'DME' && !isK2Engineer },
     { id: 'monthly_report', label: 'Monthly Report (1-Klik)', icon: FileText, color: 'from-blue-600 to-indigo-700', show: !isAdmin && (userRole === 'DME' || userRole === 'site_manager_dme' || user?.email?.toLowerCase() === 'dwimitra@co.id') && !isStandby && !isK2Engineer },
     { id: 'boq', label: 'Master Asset & BOQ', icon: Database, color: 'from-cyan-600 to-blue-700', show: (userRole === 'DME' || userRole === 'site_manager_dme' || isAdmin || !!user?.email?.toLowerCase().includes('dwimitra') || !!user?.email?.toLowerCase().includes('dme')) && !isK2Engineer },
+    { id: 'berita_acara', label: 'BA Report', icon: FileSignature, color: 'from-violet-600 to-purple-700', show: user?.email?.toLowerCase() === 'dwimitra@co.id' },
   ] as const;
 
   // Menentukan tab awal default berdasarkan peranan user saat pertama kali dibuka
@@ -341,6 +343,8 @@ export function MainApp() {
               <StandbyKPIInput />
             ) : activeTab === 'pm_schedule' ? (
               <PMSchedule />
+            ) : activeTab === 'berita_acara' ? (
+              <BeritaAcaraReport />
             ) : (
               <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} />
             )}

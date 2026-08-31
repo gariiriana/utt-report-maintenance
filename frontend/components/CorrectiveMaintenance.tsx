@@ -610,8 +610,12 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
         return true;
     }).sort((a, b) => {
-        const timeB = getReportIncidentTime(b);
-        const timeA = getReportIncidentTime(a);
+        // Primary sort: Incident Date (tanggal insiden) descending — newest first
+        // Clamp future-year typos (e.g. 2028 entered instead of 2026) to avoid wrong ordering
+        const now = Date.now();
+        const clamp = (ts: number) => ts > 0 && ts > now + 365 * 24 * 3600 * 1000 ? 0 : ts;
+        const timeB = clamp(getReportIncidentTime(b));
+        const timeA = clamp(getReportIncidentTime(a));
         if (timeB !== timeA) {
             return timeB - timeA;
         }
