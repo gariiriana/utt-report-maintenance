@@ -7,12 +7,14 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LogOut, ShieldCheck, HardHat, FileText, Folder, Menu, X, ChevronRight, User } from 'lucide-react';
+import { LogOut, ShieldCheck, HardHat, FileText, Folder, Menu, X, ChevronRight, User, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/components/AuthContext';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import { Footer } from '@/components/Footer';
 import { HSEReportForm } from '@/components/HSEReportForm';
 import { DocumentList } from '@/components/DocumentList';
+import { HSEFindings } from '@/components/HSEFindings';
+import { HSEFindingsArchive } from '@/components/HSEFindingsArchive';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
 export function HSEApp() {
@@ -20,8 +22,8 @@ export function HSEApp() {
     const { user, logout } = useAuth();
     const [logoutModalOpen, setLogoutModalOpen] = useState(false);
     
-    // State tab aktif ('inspection' untuk buat laporan HSE, 'iso' untuk arsip dokumen)
-    const [activeTab, setActiveTab] = useState<'inspection' | 'iso'>('inspection');
+    // State tab aktif ('inspection' untuk buat laporan HSE, 'findings' untuk input temuan K3, 'findings_archive' arsip temuan, 'iso' untuk arsip dokumen)
+    const [activeTab, setActiveTab] = useState<'inspection' | 'findings' | 'findings_archive' | 'iso'>('inspection');
     const [editingData, setEditingData] = useState<any>(null); // Data laporan yang sedang di-edit
     const [sidebarOpen, setSidebarOpen] = useState(false);     // State drawer navigasi HP (Mobile)
 
@@ -40,14 +42,18 @@ export function HSEApp() {
     const getTabLabel = () => {
         switch (activeTab) {
             case 'inspection': return 'Laporan Inspeksi HSE';
+            case 'findings': return 'Input Temuan K3 / HSE';
+            case 'findings_archive': return 'Arsip Dokumen Temuan HSE';
             case 'iso': return 'Arsip Dokumen HSE';
             default: return 'HSE Portal';
         }
     };
 
-    // Daftar item navigasi utama HSE Portal
+    // Daftar item navigasi utama HSE Portal (Navbar Terpisah)
     const navigationItems = [
         { id: 'inspection', label: 'Buat Inspeksi', icon: FileText, color: 'bg-green-600', shadow: 'shadow-green-600/20' },
+        { id: 'findings', label: 'Input Temuan K3', icon: AlertTriangle, color: 'bg-amber-600', shadow: 'shadow-amber-600/20' },
+        { id: 'findings_archive', label: 'Arsip Temuan HSE', icon: Folder, color: 'bg-teal-600', shadow: 'shadow-teal-600/20' },
         { id: 'iso', label: 'Arsip Dokumen', icon: Folder, color: 'bg-emerald-600', shadow: 'shadow-emerald-600/20' },
     ];
 
@@ -74,9 +80,12 @@ export function HSEApp() {
                             className="fixed inset-y-0 right-0 w-80 bg-white border-l border-slate-200 z-[70] lg:hidden flex flex-col shadow-2xl text-slate-800"
                         >
                             <div className="p-6 border-b border-slate-200 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <img src={logoDwimitra} alt="Dwimitra" className="w-10 h-10 object-contain" />
-                                    <span className="font-black text-slate-900 text-sm uppercase tracking-wider">Sistem HSE</span>
+                                <div className="flex items-center gap-2.5">
+                                    <img src={logoDwimitra} alt="Dwimitra" className="w-10 h-10 object-contain flex-shrink-0" />
+                                    <div>
+                                        <p className="font-black text-slate-900 text-xs leading-tight">PT Dwimitra Ekatama Mandiri</p>
+                                        <span className="text-[10px] text-green-700 font-bold uppercase tracking-wider">Sistem HSE</span>
+                                    </div>
                                 </div>
                                 <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-900" title="Tutup Menu">
                                     <X className="w-6 h-6" />
@@ -139,20 +148,20 @@ export function HSEApp() {
             <div className="bg-white/80 backdrop-blur-xl border-b border-sky-100/80 sticky top-0 z-50 shadow-sm text-slate-800">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2.5 sm:gap-3">
                             <img
                                 src={logoDwimitra}
                                 alt="PT Dwimitra Ekatama Mandiri"
-                                className="w-10 h-10 sm:w-16 sm:h-16 flex-shrink-0 object-contain"
+                                className="w-10 h-10 sm:w-14 sm:h-14 flex-shrink-0 object-contain"
                             />
-                            <div className="hidden sm:block">
-                                <h1 className="text-sm sm:text-base font-black text-slate-900 leading-tight">
+                            <div>
+                                <h1 className="text-xs sm:text-base font-black text-slate-900 leading-tight">
                                     PT Dwimitra Ekatama Mandiri
                                 </h1>
                                 <div className="flex items-center gap-1.5 mt-0.5">
-                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-green-50 rounded-full border border-green-200">
-                                        <ShieldCheck className="w-3 h-3 text-green-600" />
-                                        <span className="text-[10px] sm:text-xs text-green-700 font-bold tracking-wide">
+                                    <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 bg-green-50 rounded-full border border-green-200">
+                                        <ShieldCheck className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-600" />
+                                        <span className="text-[9px] sm:text-xs text-green-700 font-bold tracking-wide">
                                             HSE OFFICER
                                         </span>
                                     </div>
@@ -226,16 +235,22 @@ export function HSEApp() {
                 </div>
             </div>
 
-            {/* Konten Utama HSE Portal: Form Inspeksi HSE atau Daftar Dokumen HSE */}
-            <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+            {/* Konten Utama HSE Portal: Form Inspeksi HSE, Input Temuan K3, Arsip Temuan, atau Daftar Dokumen HSE */}
+            <div className={`relative z-10 mx-auto px-4 sm:px-6 py-6 sm:py-8 transition-all ${
+                activeTab === 'findings' || activeTab === 'findings_archive' ? 'max-w-6xl' : 'max-w-5xl'
+            }`}>
                 {activeTab === 'iso' ? (
                     <DocumentList 
                         filterOverride="hse_utt" 
                         onEdit={handleEditReport} 
                     />
+                ) : activeTab === 'findings' ? (
+                    <HSEFindings onSuccess={() => setActiveTab('findings_archive')} />
+                ) : activeTab === 'findings_archive' ? (
+                    <HSEFindingsArchive />
                 ) : (
                     <HSEReportForm 
-                        mode={activeTab}
+                        mode="inspection"
                         editingData={editingData} 
                         onClearEdit={handleClearEdit} 
                     />

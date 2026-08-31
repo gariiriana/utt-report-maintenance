@@ -526,6 +526,39 @@ service cloud.firestore {
       allow create, update, delete: if request.auth != null && (isAdminSafe() || isStandbyEngineer() || isPrivilegedRole() || isEngineer() || isDME());
     }
 
+    // ============================================================================
+    // Koleksi: hse_findings — Data Temuan Keselamatan Kerja (HSE Findings)
+    // Akses: HSE Officer bisa CRUD. Admin & Privileged bisa CRUD. Auth users bisa read.
+    // ============================================================================
+    match /hse_findings/{findingId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null 
+                    && (isAdminSafe() || isHSE() || isPrivilegedRole())
+                    && request.resource.data.keys().hasAll([
+                      'title',
+                      'location', 
+                      'category',
+                      'severity',
+                      'status',
+                      'reportedBy',
+                      'findingDate',
+                      'beforePhoto',
+                      'createdAt'
+                    ])
+                    && hasAcceptableFieldCount(request.resource.data, 25)
+                    && isValidString(request.resource.data.title, 500)
+                    && isValidString(request.resource.data.location, 500)
+                    && request.resource.data.status in ['open', 'close'];
+      allow update: if request.auth != null 
+                    && (isAdminSafe() || isHSE() || isPrivilegedRole()
+                        || resource.data.reportedBy == getEmail())
+                    && hasAcceptableFieldCount(request.resource.data, 25)
+                    && request.resource.data.status in ['open', 'close'];
+      allow delete: if request.auth != null 
+                    && (isAdminSafe() || isHSE() || isPrivilegedRole()
+                        || resource.data.reportedBy == getEmail());
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
