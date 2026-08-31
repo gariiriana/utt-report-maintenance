@@ -77,7 +77,7 @@ function AppContent() {
   }
 
   return (
-    <div className="relative z-10 w-full flex-1 flex flex-col">
+    <div className="relative z-10 w-full min-w-0 flex-1 flex flex-col">
       <AnimatePresence mode="wait" initial={false}>
         {user ? (
           <motion.div
@@ -86,10 +86,10 @@ function AppContent() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="flex-1 flex flex-col w-full"
+            className="flex-1 flex flex-col w-full min-w-0"
           >
             {/* Routing Komponen Berdasarkan Role User */}
-            <div className="flex-1 flex flex-col w-full">
+            <div className="flex-1 flex flex-col w-full min-w-0">
               {(() => {
                 if (userRole === 'hse') return <HSEApp />;
                 const isoRoles = ['pmo', 'sales', 'presales', 'purchasing', 'dirut', 'direksiSDM', 'DireksiKeuangan'];

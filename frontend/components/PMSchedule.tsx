@@ -404,8 +404,20 @@ export function PMSchedule() {
   const totalDevices = SCHEDULE_DATA.length;
   const totalPlannedActivities = SCHEDULE_DATA.reduce((sum, item) => sum + item.months.filter(m => m !== null).length, 0);
 
+  const getCellBadgeStyle = (plan: string | null, remarks: string = ''): string => {
+    if (!plan) return '';
+    const r = remarks.toLowerCase();
+    if (r.includes('offline maintenance')) {
+      return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+    }
+    if (r.includes('consumable') || r.includes('special test')) {
+      return 'bg-amber-50 text-amber-800 border-amber-200';
+    }
+    return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  };
+
   return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
+    <div className="w-full min-w-0 max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
       {/* ── Top Header Bar ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
@@ -442,13 +454,13 @@ export function PMSchedule() {
 
       {/* ── Filters & Search Toolbar ── */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4">
-        {/* Left: Quarter Tabs */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+        {/* Left: Quarter Tabs (Compact Small Pills) */}
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200 overflow-x-auto no-scrollbar w-fit max-w-full shrink-0">
           {QUARTER_FILTERS.map((q) => (
             <button
               key={q.value}
               onClick={() => setQuarterFilter(q.value)}
-              className={`px-3 py-1 text-xs font-semibold rounded-md transition cursor-pointer ${
+              className={`px-3 py-1 text-xs font-semibold rounded-md transition cursor-pointer whitespace-nowrap shrink-0 ${
                 quarterFilter === q.value
                   ? 'bg-white text-slate-900 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -464,7 +476,7 @@ export function PMSchedule() {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 outline-none focus:border-slate-400"
+            className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 outline-none focus:border-slate-400 shrink-0"
           >
             {CATEGORY_FILTERS.map(c => (
               <option key={c.value} value={c.value}>{c.label}</option>
@@ -485,48 +497,51 @@ export function PMSchedule() {
       </div>
 
       {/* ── Legend Bar ── */}
-      <div className="flex items-center gap-6 mb-3 px-1 text-xs text-slate-600">
-        <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-6 mb-3 px-1 text-xs text-slate-600 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1.5 shrink-0">
           <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 inline-block" />
           <span>Offline PM</span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
           <span>Online PM</span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
           <span>Consumable / Special Test</span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <span className="w-2.5 h-2.5 rounded-full bg-sky-400 ring-2 ring-sky-300 ring-offset-1 inline-block" />
           <span className="font-semibold text-slate-900">Bulan ini ({MONTHS_SHORT[currentMonth]})</span>
         </div>
       </div>
 
       {/* ── Enterprise Clean Table ── */}
-      <div className="border border-slate-200 rounded-lg shadow-xs bg-white">
-        <div className="overflow-auto max-h-[calc(100vh-230px)]">
-          <table className="w-full min-w-[1100px] border-collapse text-left">
+      <div className="border border-slate-200 rounded-lg shadow-xs bg-white w-full min-w-0 max-w-full overflow-hidden">
+        <div
+          className="overflow-x-auto lg:overflow-y-auto lg:max-h-[calc(100vh-230px)] w-full min-w-0 max-w-full"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          <table className="border-collapse text-left" style={{ width: '1280px', minWidth: '1280px' }}>
             <thead>
               <tr className="bg-slate-900 text-slate-200 text-xs font-semibold">
-                <th className="sticky top-0 left-0 z-30 bg-slate-900 px-3.5 py-3 border-b border-slate-800 w-[200px] min-w-[200px]">
+                <th className="sticky top-0 left-0 z-30 bg-slate-900 px-3 py-3 border-b border-slate-800 w-[150px] sm:w-[200px] min-w-[150px] sm:min-w-[200px] shadow-sm">
                   Equipment
                 </th>
-                <th className="sticky top-0 z-20 bg-slate-900 px-3 py-3 border-b border-slate-800 w-[140px] min-w-[140px]">
+                <th className="lg:sticky lg:top-0 lg:z-20 bg-slate-900 px-3 py-3 border-b border-slate-800 w-[130px] min-w-[130px]">
                   Lokasi
                 </th>
                 {MONTHS_SHORT.map((month, idx) => (
                   <th
                     key={month}
-                    className={`sticky top-0 z-20 px-1 py-3 text-center border-b border-slate-800 w-[65px] min-w-[65px] ${
+                    className={`lg:sticky lg:top-0 lg:z-20 px-1 py-3 text-center border-b border-slate-800 w-[65px] min-w-[65px] ${
                       idx === currentMonth ? 'bg-sky-950 text-sky-300 font-bold' : ''
                     } ${!visibleMonths.includes(idx) ? 'opacity-40' : ''}`}
                   >
                     {month}
                   </th>
                 ))}
-                <th className="sticky top-0 z-20 bg-slate-900 px-3 py-3 border-b border-slate-800 w-[240px] min-w-[200px]">
+                <th className="lg:sticky lg:top-0 lg:z-20 bg-slate-900 px-3 py-3 border-b border-slate-800 w-[240px] min-w-[200px]">
                   Catatan / Remarks
                 </th>
               </tr>
@@ -540,17 +555,6 @@ export function PMSchedule() {
                 </tr>
               ) : (
                 filteredData.map((item, rowIdx) => {
-                  const getCellBadgeStyle = (plan: string | null): string => {
-                    if (!plan) return '';
-                    if (item.remarks.toLowerCase().includes('offline maintenance')) {
-                      return 'bg-indigo-50 text-indigo-700 border-indigo-200';
-                    }
-                    if (item.remarks.toLowerCase().includes('consumable') || item.remarks.toLowerCase().includes('special test')) {
-                      return 'bg-amber-50 text-amber-800 border-amber-200';
-                    }
-                    return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-                  };
-
                   return (
                     <tr
                       key={rowIdx}
@@ -558,8 +562,8 @@ export function PMSchedule() {
                         rowIdx % 2 === 1 ? 'bg-slate-50/40' : 'bg-white'
                       }`}
                     >
-                      {/* Device Name Column */}
-                      <td className={`sticky left-0 z-10 px-3.5 py-3 font-semibold text-slate-900 border-r border-slate-200/80 shadow-xs ${
+                      {/* Device Name Column (Sticky Freeze on Left) */}
+                      <td className={`sticky left-0 z-10 px-3 py-3 font-semibold text-slate-900 border-r border-slate-200/90 shadow-sm w-[150px] sm:w-[200px] min-w-[150px] sm:min-w-[200px] ${
                         rowIdx % 2 === 1 ? 'bg-slate-50' : 'bg-white'
                       }`}>
                         <div>
@@ -594,7 +598,7 @@ export function PMSchedule() {
                           >
                             {plan ? (
                               <span
-                                className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-semibold border ${getCellBadgeStyle(plan)} ${
+                                className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-semibold border ${getCellBadgeStyle(plan, item.remarks)} ${
                                   isCurrentMonth ? 'ring-1 ring-sky-400' : ''
                                 }`}
                                 title={`${item.device} — ${MONTHS_FULL[monthIdx]}: ${plan}`}

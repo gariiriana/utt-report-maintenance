@@ -302,7 +302,7 @@ export function MainApp() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="flex-1 flex flex-col w-full"
+            className="flex-1 flex flex-col w-full min-w-0 max-w-full"
           >
             {activeTab === 'notifications' ? (
               <NotificationPage onSelectNotification={handleSelectNotification} />
