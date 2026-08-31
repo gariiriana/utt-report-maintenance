@@ -10,7 +10,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { FileText, FileSpreadsheet, Download, Search, Filter, Calendar, User, Database, Activity, TrendingUp, Pencil, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { collection, getDocs, query, orderBy, Timestamp, getCountFromServer, limit } from 'firebase/firestore';
-import { ExcelDocument } from '@/components/DocumentList';
+import { ExcelDocument, getDocumentDate } from '@/components/DocumentList';
 import { db } from '@/api/firebase';
 import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
@@ -202,7 +202,9 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
       }) as DocumentData[];
 
       const allDocs = [...excelDocs, ...pdfDocs].sort((a, b) => {
-        return b.createdAt.toMillis() - a.createdAt.toMillis();
+        const timeA = getDocumentDate(a).getTime();
+        const timeB = getDocumentDate(b).getTime();
+        return timeB - timeA;
       });
 
       setDocuments(allDocs);
@@ -493,7 +495,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
 
     let matchesDate = true;
     if (dateFilter !== 'all') {
-      const docDate = doc.createdAt.toDate();
+      const docDate = getDocumentDate(doc);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -869,7 +871,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
                         </div>
                         <div>
                           <p className="text-slate-500 font-medium">Tanggal</p>
-                          <p className="text-slate-800 font-bold">{doc.createdAt.toDate().toLocaleDateString('id-ID')}</p>
+                          <p className="text-slate-800 font-bold">{getDocumentDate(doc).toLocaleDateString('id-ID')}</p>
                         </div>
                         <div>
                           <p className="text-slate-500 font-medium">Foto</p>
@@ -1011,7 +1013,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
                               <div className="flex items-center gap-2">
                                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
                                 <p className="text-sm text-slate-600 font-medium">
-                                  {doc.createdAt.toDate().toLocaleDateString('id-ID')}
+                                  {getDocumentDate(doc).toLocaleDateString('id-ID')}
                                 </p>
                               </div>
                             </td>

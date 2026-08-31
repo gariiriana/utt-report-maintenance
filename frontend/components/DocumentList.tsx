@@ -101,6 +101,67 @@ export interface ExcelDocument {
   deleteReason?: string;
 }
 
+export const getDocumentDate = (doc?: { maintenanceTime?: string; createdAt?: Date | any } | null): Date => {
+  if (!doc) return new Date();
+
+  if (doc.maintenanceTime && typeof doc.maintenanceTime === 'string') {
+    const raw = doc.maintenanceTime.trim();
+    if (raw) {
+      // Jika rentang tanggal (misal "2026-07-30 - 2026-07-31"), ambil tanggal pertama
+      const firstPart = raw.includes(' - ') ? raw.split(' - ')[0].trim() : raw;
+
+      // Cek format standar YYYY-MM-DD atau YYYY/MM/DD
+      const ymdMatch = firstPart.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+      if (ymdMatch) {
+        const year = parseInt(ymdMatch[1], 10);
+        const month = parseInt(ymdMatch[2], 10) - 1;
+        const day = parseInt(ymdMatch[3], 10);
+        const d = new Date(year, month, day);
+        if (!isNaN(d.getTime())) return d;
+      }
+
+      // Cek format DD/MM/YYYY atau DD-MM-YYYY
+      const dmyMatch = firstPart.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+      if (dmyMatch) {
+        const day = parseInt(dmyMatch[1], 10);
+        const month = parseInt(dmyMatch[2], 10) - 1;
+        const year = parseInt(dmyMatch[3], 10);
+        const d = new Date(year, month, day);
+        if (!isNaN(d.getTime())) return d;
+      }
+
+      // Fallback ke Date parser bawaan
+      const parsed = new Date(firstPart);
+      if (!isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+  }
+
+  if (doc.createdAt) {
+    if (doc.createdAt instanceof Date && !isNaN(doc.createdAt.getTime())) {
+      return doc.createdAt;
+    }
+    if (typeof (doc.createdAt as any).toDate === 'function') {
+      return (doc.createdAt as any).toDate();
+    }
+    const d = new Date(doc.createdAt);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  return new Date();
+};
+
+export const getMonthYearString = (date: Date) => {
+  return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+};
+
+export const getWeekOfMonth = (date: Date) => {
+  const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+  const dayOfMonth = date.getDate();
+  return Math.ceil((dayOfMonth + firstDayOfMonth.getDay()) / 7);
+};
+
 interface DocumentListProps {
   onEdit?: (doc: ExcelDocument) => void;
   filterOverride?: 'hse_utt';
@@ -214,16 +275,6 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     const isRoot = currentLevel === 'root' && !selectedCategory;
     scrollToContent(isRoot);
   }, [currentLevel, selectedCategory, selectedMonth, selectedWeek, selectedMaintenance]);
-
-  const getMonthYearString = (date: Date) => {
-    return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-  };
-
-  const getWeekOfMonth = (date: Date) => {
-    const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-    const dayOfMonth = date.getDate();
-    return Math.ceil((dayOfMonth + firstDayOfMonth.getDay()) / 7);
-  };
 
   const fetchDocuments = useCallback(async () => {
     if (!user) return;
@@ -371,8 +422,8 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           : [...excelDocs, ...pdfDocs, ...hseDocs];
 
         allDocs.sort((a, b) => {
-          const timeA = a.createdAt.getTime();
-          const timeB = b.createdAt.getTime();
+          const timeA = getDocumentDate(a).getTime();
+          const timeB = getDocumentDate(b).getTime();
           return sortBy === 'newest' ? timeB - timeA : timeA - timeB;
         });
 
@@ -1065,17 +1116,16 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     }
 
     if (startDate || endDate) {
-      const timeStr = doc.maintenanceTime || '';
-      const firstDateStr = timeStr.includes(' - ') ? timeStr.split(' - ')[0] : timeStr;
-      const d = new Date(firstDateStr);
-      const docDate = !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : '';
-      if (docDate) {
-        if (startDate && docDate < startDate) {
-          return false;
-        }
-        if (endDate && docDate > endDate) {
-          return false;
-        }
+      const d = getDocumentDate(doc);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const docDate = `${year}-${month}-${day}`;
+      if (startDate && docDate < startDate) {
+        return false;
+      }
+      if (endDate && docDate > endDate) {
+        return false;
       }
     }
 
@@ -1375,11 +1425,13 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
     if (dmeLevel === 'month') {
       const accountDocs = filteredDocuments.filter(d => d.createdBy === dmeSelectedAccount);
-      const uniqueMonths = Array.from(new Set(accountDocs.map(d => getMonthYearString(d.createdAt))));
+      const uniqueMonths = Array.from(new Set(accountDocs.map(d => getMonthYearString(getDocumentDate(d)))));
       const sortedMonths = uniqueMonths.sort((a, b) => {
-        const docA = accountDocs.find(d => getMonthYearString(d.createdAt) === a);
-        const docB = accountDocs.find(d => getMonthYearString(d.createdAt) === b);
-        return (docB?.createdAt.getTime() || 0) - (docA?.createdAt.getTime() || 0);
+        const docA = accountDocs.find(d => getMonthYearString(getDocumentDate(d)) === a);
+        const docB = accountDocs.find(d => getMonthYearString(getDocumentDate(d)) === b);
+        const timeA = docA ? getDocumentDate(docA).getTime() : 0;
+        const timeB = docB ? getDocumentDate(docB).getTime() : 0;
+        return timeB - timeA;
       });
 
       return (
@@ -1425,7 +1477,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {sortedMonths.map((month) => {
-                const monthItemDocs = accountDocs.filter(d => getMonthYearString(d.createdAt) === month);
+                const monthItemDocs = accountDocs.filter(d => getMonthYearString(getDocumentDate(d)) === month);
                 const count = monthItemDocs.length;
                 return (
                   <motion.div
@@ -1499,15 +1551,17 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
     if (dmeLevel === 'date') {
       const accountDocs = filteredDocuments.filter(d => d.createdBy === dmeSelectedAccount);
-      const monthDocs = accountDocs.filter(d => getMonthYearString(d.createdAt) === dmeSelectedMonth);
+      const monthDocs = accountDocs.filter(d => getMonthYearString(getDocumentDate(d)) === dmeSelectedMonth);
       const getFullDateString = (date: Date) => {
         return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
       };
-      const uniqueDates = Array.from(new Set(monthDocs.map(d => getFullDateString(d.createdAt))));
+      const uniqueDates = Array.from(new Set(monthDocs.map(d => getFullDateString(getDocumentDate(d)))));
       const sortedDates = uniqueDates.sort((a, b) => {
-        const docA = monthDocs.find(d => getFullDateString(d.createdAt) === a);
-        const docB = monthDocs.find(d => getFullDateString(d.createdAt) === b);
-        return (docB?.createdAt.getTime() || 0) - (docA?.createdAt.getTime() || 0);
+        const docA = monthDocs.find(d => getFullDateString(getDocumentDate(d)) === a);
+        const docB = monthDocs.find(d => getFullDateString(getDocumentDate(d)) === b);
+        const timeA = docA ? getDocumentDate(docA).getTime() : 0;
+        const timeB = docB ? getDocumentDate(docB).getTime() : 0;
+        return timeB - timeA;
       });
 
       return (
@@ -1555,7 +1609,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
               {sortedDates.map((dateStr) => {
-                const dateItemDocs = monthDocs.filter(d => getFullDateString(d.createdAt) === dateStr);
+                const dateItemDocs = monthDocs.filter(d => getFullDateString(getDocumentDate(d)) === dateStr);
                 const count = dateItemDocs.length;
                 return (
                   <motion.div
@@ -1629,11 +1683,11 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
     // dmeLevel === 'documents'
     const accountDocs = filteredDocuments.filter(d => d.createdBy === dmeSelectedAccount);
-    const monthDocs = accountDocs.filter(d => getMonthYearString(d.createdAt) === dmeSelectedMonth);
+    const monthDocs = accountDocs.filter(d => getMonthYearString(getDocumentDate(d)) === dmeSelectedMonth);
     const getFullDateString = (date: Date) => {
       return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
     };
-    const dateDocs = monthDocs.filter(d => getFullDateString(d.createdAt) === dmeSelectedDate);
+    const dateDocs = monthDocs.filter(d => getFullDateString(getDocumentDate(d)) === dmeSelectedDate);
 
     return (
       <div className="space-y-4 w-full max-w-6xl bg-white/90 backdrop-blur-xl p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-xl">
@@ -1737,13 +1791,14 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
         const monthGroups = new Set<string>();
         filteredDocuments
           .filter(d => d.hseType === 'inspection')
-          .forEach(doc => monthGroups.add(getMonthYearString(doc.createdAt)));
+          .forEach(doc => monthGroups.add(getMonthYearString(getDocumentDate(doc))));
 
         const sortedMonths = Array.from(monthGroups).sort((a, b) => {
-          const [, yearA] = a.split(' ');
-          const [, yearB] = b.split(' ');
-          if (yearA !== yearB) return parseInt(yearB) - parseInt(yearA);
-          return 0;
+          const docA = filteredDocuments.find(d => d.hseType === 'inspection' && getMonthYearString(getDocumentDate(d)) === a);
+          const docB = filteredDocuments.find(d => d.hseType === 'inspection' && getMonthYearString(getDocumentDate(d)) === b);
+          const timeA = docA ? getDocumentDate(docA).getTime() : 0;
+          const timeB = docB ? getDocumentDate(docB).getTime() : 0;
+          return timeB - timeA;
         });
 
         return (
@@ -1767,7 +1822,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                   <div>
                     <h3 className="text-lg font-bold text-slate-900">{month}</h3>
                     <p className="text-sm font-medium text-slate-500">
-                      {filteredDocuments.filter(d => d.hseType === 'inspection' && getMonthYearString(d.createdAt) === month).length} Laporan
+                      {filteredDocuments.filter(d => d.hseType === 'inspection' && getMonthYearString(getDocumentDate(d)) === month).length} Laporan
                     </p>
                   </div>
                 </motion.button>
@@ -1814,9 +1869,9 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     }
 
     if (currentLevel === 'month') {
-      const monthDocs = filteredDocuments.filter(d => d.hseType === 'inspection' && getMonthYearString(d.createdAt) === selectedMonth);
+      const monthDocs = filteredDocuments.filter(d => d.hseType === 'inspection' && getMonthYearString(getDocumentDate(d)) === selectedMonth);
       const weeks = new Set<number>();
-      monthDocs.forEach(doc => weeks.add(getWeekOfMonth(doc.createdAt)));
+      monthDocs.forEach(doc => weeks.add(getWeekOfMonth(getDocumentDate(doc))));
 
       return (
         <div className="space-y-4">
@@ -1844,7 +1899,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                 <div>
                   <h3 className="text-lg font-bold text-slate-900">Minggu ke-{week}</h3>
                   <p className="text-sm font-medium text-slate-500">
-                    {monthDocs.filter(d => getWeekOfMonth(d.createdAt) === week).length} Laporan
+                    {monthDocs.filter(d => getWeekOfMonth(getDocumentDate(d)) === week).length} Laporan
                   </p>
                 </div>
               </motion.button>
@@ -1855,7 +1910,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     }
 
     const displayDocs = currentLevel === 'week'
-      ? filteredDocuments.filter(d => d.hseType === 'inspection' && getMonthYearString(d.createdAt) === selectedMonth && getWeekOfMonth(d.createdAt) === selectedWeek)
+      ? filteredDocuments.filter(d => d.hseType === 'inspection' && getMonthYearString(getDocumentDate(d)) === selectedMonth && getWeekOfMonth(getDocumentDate(d)) === selectedWeek)
       : filteredDocuments.filter(d => d.hseType === selectedCategory && d.maintenanceType === selectedMaintenance);
 
     return (
@@ -1932,7 +1987,13 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               <Clock className="w-3.5 h-3.5 text-slate-400" />
               <span>
                 {(() => {
-                  const d = new Date(document.maintenanceTime);
+                  if (document.maintenanceTime?.includes(' - ')) {
+                    return document.maintenanceTime.split(' - ').map(part => {
+                      const d = getDocumentDate({ maintenanceTime: part.trim() });
+                      return isNaN(d.getTime()) ? part : d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                    }).join(' - ');
+                  }
+                  const d = getDocumentDate(document);
                   return isNaN(d.getTime())
                     ? document.maintenanceTime
                     : d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
