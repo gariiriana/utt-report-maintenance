@@ -431,44 +431,77 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         }
     };
 
+    const INDO_MONTHS_MAP: Record<string, number> = {
+        'januari': 0, 'jan': 0, 'january': 0,
+        'februari': 1, 'feb': 1, 'february': 1,
+        'maret': 2, 'mar': 2, 'march': 2,
+        'april': 3, 'apr': 3,
+        'mei': 4, 'may': 4,
+        'juni': 5, 'jun': 5, 'june': 5,
+        'juli': 6, 'jul': 6, 'july': 6,
+        'agustus': 7, 'agu': 7, 'ags': 7, 'aug': 7, 'august': 7,
+        'september': 8, 'sep': 8,
+        'oktober': 9, 'okt': 9, 'oct': 9, 'october': 9,
+        'november': 10, 'nov': 10,
+        'desember': 11, 'des': 11, 'dec': 11, 'december': 11
+    };
+
     const parseDateToTimestamp = (dateVal: any): number => {
         if (!dateVal) return 0;
         if (typeof dateVal === 'number') return dateVal;
         if (typeof dateVal.toDate === 'function') return dateVal.toDate().getTime();
-        if (dateVal instanceof Date) return dateVal.getTime();
+        if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? 0 : dateVal.getTime();
         if (typeof dateVal === 'string') {
             const trimmed = dateVal.trim();
             if (!trimmed) return 0;
 
-            // Standard ISO format (YYYY-MM-DD...)
-            if (/^\d{4}-\d{1,2}-\d{1,2}/.test(trimmed)) {
-                const parsed = new Date(trimmed);
-                if (!isNaN(parsed.getTime())) return parsed.getTime();
+            // 1. Format ISO standar YYYY-MM-DD / YYYY/MM/DD
+            const isoMatch = trimmed.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+            if (isoMatch) {
+                const year = parseInt(isoMatch[1], 10);
+                const month = parseInt(isoMatch[2], 10) - 1;
+                const day = parseInt(isoMatch[3], 10);
+                const d = new Date(year, month, day);
+                if (!isNaN(d.getTime())) return d.getTime();
             }
 
-            // Split date part
-            const clean = trimmed.split(/[,T\s]+/)[0];
-            const parts = clean.split(/[-/]/);
-            if (parts.length === 3) {
-                let day = parseInt(parts[0], 10);
-                let month = parseInt(parts[1], 10) - 1;
-                let year = parseInt(parts[2], 10);
+            // 2. Format numerik DD-MM-YYYY / DD/MM/YYYY
+            const dmyNumMatch = trimmed.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+            if (dmyNumMatch) {
+                const day = parseInt(dmyNumMatch[1], 10);
+                const month = parseInt(dmyNumMatch[2], 10) - 1;
+                const year = parseInt(dmyNumMatch[3], 10);
+                const d = new Date(year, month, day);
+                if (!isNaN(d.getTime())) return d.getTime();
+            }
 
-                if (parts[0].length === 4) {
-                    year = parseInt(parts[0], 10);
-                    month = parseInt(parts[1], 10) - 1;
-                    day = parseInt(parts[2], 10);
-                } else if (isNaN(month)) {
-                    const mIndex = INDO_MONTHS.findIndex(m => m.label.toLowerCase() === parts[1].toLowerCase());
-                    if (mIndex !== -1) month = mIndex;
-                }
-
-                if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
-                    const parsed = new Date(year, month, day);
-                    if (!isNaN(parsed.getTime())) return parsed.getTime();
+            // 3. Format teks bahasa Indonesia: "04 Agustus 2026", "4-Agustus-2026", "5 Agustus 2026", "23-Agt-2026"
+            const indoMatch = trimmed.match(/^(\d{1,2})[\s\-_/]+([a-zA-Z]+)[\s\-_/]+(\d{4})/);
+            if (indoMatch) {
+                const day = parseInt(indoMatch[1], 10);
+                const monthKey = indoMatch[2].toLowerCase();
+                const year = parseInt(indoMatch[3], 10);
+                if (monthKey in INDO_MONTHS_MAP) {
+                    const month = INDO_MONTHS_MAP[monthKey];
+                    const d = new Date(year, month, day);
+                    if (!isNaN(d.getTime())) return d.getTime();
                 }
             }
 
+            // 4. Format teks terbalik: "Agustus 04, 2026"
+            const revIndoMatch = trimmed.match(/^([a-zA-Z]+)[\s\-_/]+(\d{1,2}),?[\s\-_/]+(\d{4})/);
+            if (revIndoMatch) {
+                const monthKey = revIndoMatch[1].toLowerCase();
+                const day = parseInt(revIndoMatch[2], 10);
+                const year = parseInt(revIndoMatch[3], 10);
+                if (monthKey in INDO_MONTHS_MAP) {
+                    const month = INDO_MONTHS_MAP[monthKey];
+                    const d = new Date(year, month, day);
+                    if (!isNaN(d.getTime())) return d.getTime();
+                }
+            }
+
+            // 5. Fallback Date parser bawaan JavaScript
             const fallback = new Date(trimmed);
             if (!isNaN(fallback.getTime())) return fallback.getTime();
         }
@@ -577,7 +610,15 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
         return true;
     }).sort((a, b) => {
-        return getReportIncidentTime(b) - getReportIncidentTime(a);
+        const timeB = getReportIncidentTime(b);
+        const timeA = getReportIncidentTime(a);
+        if (timeB !== timeA) {
+            return timeB - timeA;
+        }
+        // Secondary sort fallback: reportedAt / createdAt
+        const createdB = parseDateToTimestamp((b as any).createdAt || b.reportedAt);
+        const createdA = parseDateToTimestamp((a as any).createdAt || a.reportedAt);
+        return createdB - createdA;
     });
 
     // Helper: Algoritma Matching CM vs SLA (4-Layer: Direct ID -> Incident ID -> Incident Date -> Title Match)
@@ -766,19 +807,9 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
     // Hanya CM yang WAJIB SLA (bukan pergantian sparepart) dan belum punya SLA yang masuk antrean
     const cmRequiringSLAReports = allCMReports.filter(cm => !cm.deleteRequested && isCMRequiringSLA(cm));
-    const unlinkedCMReports = cmRequiringSLAReports.filter(cm => cm.id && !matchedCMIds.has(cm.id));
-
-    // ===== DEBUG: Temporary logging =====
-    if (allCMReports.length > 0 && allSLAReports.length > 0) {
-        console.group('🔍 DEBUG: CM vs SLA Matching (1-to-1)');
-        console.log(`Total CM: ${allCMReports.filter(c => !c.deleteRequested).length}, Total SLA: ${allSLAReports.length}, Matched: ${matchedCMIds.size}, Wajib SLA: ${cmRequiringSLAReports.length}, Unlinked (Belum Ada SLA): ${unlinkedCMReports.length}`);
-        console.log('--- UNLINKED CMs (Belum Ada SLA) ---');
-        unlinkedCMReports.forEach(cm => {
-            console.log(`CM [${cm.id?.slice(0, 8)}]: date=${getDateKey(cm)} | "${cm.incidentName || cm.equipmentName || ''}"`);
-        });
-        console.groupEnd();
-    }
-    // ===== END DEBUG =====
+    const unlinkedCMReports = cmRequiringSLAReports
+        .filter(cm => cm.id && !matchedCMIds.has(cm.id))
+        .sort((a, b) => getReportIncidentTime(b) - getReportIncidentTime(a));
 
     // Period-filtered pending CMs (based on active Month & Year filter)
     const periodFilteredUnlinkedCMReports = unlinkedCMReports.filter((cm) => {
@@ -794,7 +825,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             }
         }
         return true;
-    });
+    }).sort((a, b) => getReportIncidentTime(b) - getReportIncidentTime(a));
 
     const handleCreateSLAFromCM = (cm: CorrectiveReport) => {
         lastInteractedReportIdRef.current = cm.id || null;
