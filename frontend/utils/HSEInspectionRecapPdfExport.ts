@@ -415,18 +415,20 @@ export async function exportHSEInspectionRecapPDF(
         6: { cellWidth: 30, halign: 'center' },
       },
       didParseCell: (data: any) => {
-        // Dynamically adjust row height based on photo count and checklist items
+        // Dynamically adjust row height based on ALL photo count and checklist items
         if (data.section === 'body') {
           const item = loadedItems[data.row.index];
           const photoCount = item?.photos?.length || 0;
           const checkCount = item?.checklistItems?.length || 0;
           const checkRows = Math.ceil(checkCount / 2);
-          const checkMinH = checkRows * 4.6 + 4; // Ensure plenty of vertical room for checklist
+          const checkMinH = checkRows * 4.6 + 4;
 
-          let neededH = Math.max(26, checkMinH);
-          if (photoCount >= 4) {
-            neededH = Math.max(neededH, 42); // 2 rows of large photos
-          }
+          // Each photo row in 3-col grid needs ~18mm height
+          const PHOTO_ROW_H = 18;
+          const photoGridRows = Math.ceil(photoCount / 3);
+          const photoMinH = photoGridRows * PHOTO_ROW_H + 4;
+
+          const neededH = Math.max(26, checkMinH, photoMinH);
           data.row.height = Math.max(data.row.height || 0, neededH);
         }
       },
@@ -479,52 +481,36 @@ export async function exportHSEInspectionRecapPDF(
           });
         }
 
-        // Draw Column 5: Foto Dokumentasi Visual Inspection (Large, Sharp & Clean)
+        // Draw Column 5: ALL Foto Dokumentasi Visual — Large 3-Column Grid
         if (data.section === 'body' && data.column.index === 5) {
           const item = loadedItems[data.row.index];
           if (!item || item.photos.length === 0) return;
 
           const cell = data.cell;
-          const totalPhotosCount = item.photos.length;
-          // Display up to 6 prominent, large photos (1x1, 2x1, 3x1, 2x2, or 3x2)
-          const displayPhotos = item.photos.slice(0, 6);
-          const numDisplay = displayPhotos.length;
-
+          const photos = item.photos; // ALL photos, no slicing!
           const cellPad = 1.2;
           const availW = cell.width - cellPad * 2;
           const availH = cell.height - cellPad * 2;
 
-          let cols = 1;
-          let rows = 1;
-
-          if (numDisplay === 1) {
-            cols = 1;
-            rows = 1;
-          } else if (numDisplay === 2) {
-            cols = 2;
-            rows = 1;
-          } else if (numDisplay === 3) {
-            cols = 3;
-            rows = 1;
-          } else if (numDisplay === 4) {
-            cols = 2;
-            rows = 2;
-          } else {
-            cols = 3;
-            rows = 2;
-          }
+          // Always use 3-column grid (or fewer if < 3 photos)
+          const cols = Math.min(photos.length, 3);
+          const gridRows = Math.ceil(photos.length / cols);
 
           const gapX = 1.5;
           const gapY = 1.5;
           const cardW = (availW - (cols - 1) * gapX) / cols;
-          const cardH = (availH - (rows - 1) * gapY) / rows;
+          const cardH = Math.min((availH - (gridRows - 1) * gapY) / gridRows, 16.5);
 
-          displayPhotos.forEach((photo, pIdx) => {
+          // Center the grid vertically in the cell
+          const totalGridH = gridRows * cardH + (gridRows - 1) * gapY;
+          const offsetY = Math.max(0, (availH - totalGridH) / 2);
+
+          photos.forEach((photo, pIdx) => {
             const col = pIdx % cols;
             const row = Math.floor(pIdx / cols);
 
             const cardX = cell.x + cellPad + col * (cardW + gapX);
-            const cardY = cell.y + cellPad + row * (cardH + gapY);
+            const cardY = cell.y + cellPad + offsetY + row * (cardH + gapY);
 
             // Background card
             doc.setFillColor(241, 245, 249);
@@ -561,17 +547,6 @@ export async function exportHSEInspectionRecapPDF(
                   `hse_insp_${item.id}_${pIdx}`,
                   'FAST'
                 );
-
-                // If there are more than 6 photos, draw "+X Foto" badge over the 6th photo
-                if (totalPhotosCount > 6 && pIdx === 5) {
-                  const extraCount = totalPhotosCount - 5;
-                  doc.setFillColor(15, 23, 42); // slate-900 with strong contrast
-                  doc.rect(cardX, cardY + cardH - 5.5, cardW, 5.5, 'F');
-                  doc.setFontSize(6.5).setFont('helvetica', 'bold').setTextColor(255, 255, 255);
-                  doc.text(`+${extraCount} Foto Lainnya`, cardX + cardW / 2, cardY + cardH - 1.8, {
-                    align: 'center',
-                  });
-                }
               } catch (e) {
                 console.error('Error embedding inspection photo:', e);
               }
