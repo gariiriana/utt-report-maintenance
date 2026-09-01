@@ -517,28 +517,25 @@ export async function exportHSEInspectionRecapPDF(
         continue;
       }
 
-      // Available vertical space for photos on Page 1
-      const availHPage1 = (pageHeight - bottomMargin) - photosStartY; // ~130mm
-
-      // Smart Grid Decision for Page 1:
-      // - <= 2 photos: 2 cols x 1 row (Large height: ~115mm)
-      // - 3-4 photos: 2 cols x 2 rows (Large height: ~60mm)
-      // - 5-6 photos: 3 cols x 2 rows (Height: ~60mm)
-      // - > 6 photos: 6 photos on Page 1 (3 cols x 2 rows), remaining on continuation pages!
-      const maxPhotosPage1 = totalPhotos <= 4 ? totalPhotos : 6;
-      const colsPage1 = totalPhotos <= 4 ? 2 : 3;
-      const gapX = 3.5;
+      // 4 Photos per Page Layout (2 Columns x 2 Rows)
+      const PHOTOS_PER_PAGE = 4;
+      const COLS = 2;
+      const gapX = 4;
       const gapY = 3.5;
+      const cardW = (contentW - gapX) / COLS; // 136.5 mm
 
-      const cardWPage1 = (contentW - (colsPage1 - 1) * gapX) / colsPage1;
-      const rowsPage1 = Math.ceil(Math.min(totalPhotos, maxPhotosPage1) / colsPage1);
-      const cardHPage1 = rowsPage1 === 1 ? Math.min(availHPage1 - 4, 115) : (availHPage1 - (rowsPage1 - 1) * gapY) / rowsPage1;
+      // Available vertical space for photos on Page 1
+      const availHPage1 = (pageHeight - bottomMargin) - photosStartY;
+      const rowsPage1 = Math.ceil(Math.min(totalPhotos, PHOTOS_PER_PAGE) / COLS);
+      const cardHPage1 = (availHPage1 - (rowsPage1 - 1) * gapY) / (rowsPage1 === 1 ? 1.4 : 2);
 
-      // Render Page 1 Photos
-      for (let pIdx = 0; pIdx < Math.min(totalPhotos, maxPhotosPage1); pIdx++) {
-        const col = pIdx % colsPage1;
-        const row = Math.floor(pIdx / colsPage1);
-        const px = margin + col * (cardWPage1 + gapX);
+      const photosOnPage1 = Math.min(totalPhotos, PHOTOS_PER_PAGE);
+
+      // Render Page 1 Photos (Up to 4 photos in 2x2 grid)
+      for (let pIdx = 0; pIdx < photosOnPage1; pIdx++) {
+        const col = pIdx % COLS;
+        const row = Math.floor(pIdx / COLS);
+        const px = margin + col * (cardW + gapX);
         const py = photosStartY + row * (cardHPage1 + gapY);
 
         drawPhotoCard(
@@ -546,7 +543,7 @@ export async function exportHSEInspectionRecapPDF(
           item.photos[pIdx],
           px,
           py,
-          cardWPage1,
+          cardW,
           cardHPage1,
           pIdx,
           totalPhotos,
@@ -554,9 +551,9 @@ export async function exportHSEInspectionRecapPDF(
         );
       }
 
-      // Handle Continuation Pages if > 6 photos
-      let remainingPhotos = totalPhotos - maxPhotosPage1;
-      let photoOffset = maxPhotosPage1;
+      // Handle Continuation Pages (4 photos per page in 2x2 grid)
+      let remainingPhotos = totalPhotos - photosOnPage1;
+      let photoOffset = photosOnPage1;
 
       while (remainingPhotos > 0) {
         pdfDoc.addPage();
@@ -578,19 +575,17 @@ export async function exportHSEInspectionRecapPDF(
         );
 
         const contPhotosStartY = contHeaderY + 8.5;
-        const availHCont = (pageHeight - bottomMargin) - contPhotosStartY; // ~155mm
+        const availHCont = (pageHeight - bottomMargin) - contPhotosStartY;
 
-        const photosOnThisPage = Math.min(remainingPhotos, 6);
-        const colsCont = photosOnThisPage <= 4 ? 2 : 3;
-        const cardWCont = (contentW - (colsCont - 1) * gapX) / colsCont;
-        const rowsCont = Math.ceil(photosOnThisPage / colsCont);
-        const cardHCont = rowsCont === 1 ? Math.min(availHCont - 4, 120) : (availHCont - (rowsCont - 1) * gapY) / rowsCont;
+        const photosOnThisPage = Math.min(remainingPhotos, PHOTOS_PER_PAGE);
+        const rowsCont = Math.ceil(photosOnThisPage / COLS);
+        const cardHCont = (availHCont - (rowsCont - 1) * gapY) / (rowsCont === 1 ? 1.4 : 2);
 
         for (let cpIdx = 0; cpIdx < photosOnThisPage; cpIdx++) {
           const globalPIdx = photoOffset + cpIdx;
-          const col = cpIdx % colsCont;
-          const row = Math.floor(cpIdx / colsCont);
-          const px = margin + col * (cardWCont + gapX);
+          const col = cpIdx % COLS;
+          const row = Math.floor(cpIdx / COLS);
+          const px = margin + col * (cardW + gapX);
           const py = contPhotosStartY + row * (cardHCont + gapY);
 
           drawPhotoCard(
@@ -598,7 +593,7 @@ export async function exportHSEInspectionRecapPDF(
             item.photos[globalPIdx],
             px,
             py,
-            cardWCont,
+            cardW,
             cardHCont,
             globalPIdx,
             totalPhotos,
