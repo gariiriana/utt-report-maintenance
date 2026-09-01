@@ -134,6 +134,7 @@ interface CorrectiveReport {
     visualInspectionChecking?: string;
     correctiveAction?: string;
     cleaningPreventiveMethod?: string;
+    recommendation?: string;
     spareparts?: any[];
     photos?: any[];
     authorName?: string;
@@ -931,6 +932,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             visualInspectionChecking: visInsp,
             cleaningPreventiveMethod: report.cleaningPreventiveMethod || 'Pembersihan area kerja dan komponen pendukung.',
             summaryProblemAnalysis: probAnal,
+            recommendation: report.recommendation || '',
 
             spareparts: spareList,
             requestSpareparts: requestSpareList,

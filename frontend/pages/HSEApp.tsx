@@ -1,13 +1,25 @@
 // ============================================================================
 // FILE: HSEApp.tsx
 // Deskripsi: Aplikasi Dasbor Khusus Petugas HSE (Health, Safety, and Environment).
-//            Digunakan oleh HSE Officer untuk membuat laporan inspeksi K33/HSE,
+//            Digunakan oleh HSE Officer untuk membuat laporan inspeksi K3/HSE,
 //            mengelola foto inspeksi keselamatan kerja, dan mengakses arsip dokumen HSE.
 // ============================================================================
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { LogOut, ShieldCheck, HardHat, FileText, Folder, Menu, X, ChevronRight, User, AlertTriangle } from 'lucide-react';
+import { 
+    LogOut, 
+    ShieldCheck, 
+    HardHat, 
+    FileText, 
+    Menu, 
+    X, 
+    ChevronRight, 
+    User, 
+    AlertTriangle,
+    ShieldAlert,
+    FolderArchive
+} from 'lucide-react';
 import { useAuth } from '@/components/AuthContext';
 import { LogoutConfirmModal } from '@/components/LogoutConfirmModal';
 import { Footer } from '@/components/Footer';
@@ -38,24 +50,99 @@ export function HSEApp() {
         setEditingData(null);
     };
 
-    // Helper judul label tab aktif
-    const getTabLabel = () => {
+    // Metadata untuk masing-masing tab aktif (Judul, Subtitle, Ikon, Warna Badge)
+    const getTabMeta = () => {
         switch (activeTab) {
-            case 'inspection': return 'Laporan Inspeksi HSE';
-            case 'findings': return 'Input Temuan K3 / HSE';
-            case 'findings_archive': return 'Arsip Dokumen Temuan HSE';
-            case 'iso': return 'Arsip Dokumen HSE';
-            default: return 'HSE Portal';
+            case 'inspection':
+                return {
+                    title: 'Laporan Inspeksi HSE',
+                    subtitle: 'Pembuatan Formulir Inspeksi Keselamatan, Kesehatan Kerja & Lingkungan (K3)',
+                    icon: HardHat,
+                    badge: 'Inspeksi Rutin',
+                    color: 'text-emerald-600',
+                    bg: 'bg-emerald-50',
+                    border: 'border-emerald-200'
+                };
+            case 'findings':
+                return {
+                    title: 'Input Temuan K3 / HSE',
+                    subtitle: 'Pencatatan & Pelaporan Temuan Unsafe Action & Unsafe Condition di Lapangan',
+                    icon: AlertTriangle,
+                    badge: 'Temuan K3',
+                    color: 'text-rose-600',
+                    bg: 'bg-rose-50',
+                    border: 'border-rose-200'
+                };
+            case 'findings_archive':
+                return {
+                    title: 'Arsip Temuan HSE',
+                    subtitle: 'Database & Rekapitulasi Riwayat Dokumen Temuan K3 / Safety Action Tracking',
+                    icon: ShieldAlert,
+                    badge: 'Arsip Temuan',
+                    color: 'text-teal-600',
+                    bg: 'bg-teal-50',
+                    border: 'border-teal-200'
+                };
+            case 'iso':
+                return {
+                    title: 'Arsip Dokumen HSE',
+                    subtitle: 'Penyimpanan & Manajemen Berkas Laporan Inspeksi HSE UTT Maintenance',
+                    icon: FolderArchive,
+                    badge: 'Arsip Dokumen',
+                    color: 'text-blue-600',
+                    bg: 'bg-blue-50',
+                    border: 'border-blue-200'
+                };
+            default:
+                return {
+                    title: 'HSE Portal',
+                    subtitle: 'Kesehatan, Keselamatan & Lingkungan — UTT Maintenance',
+                    icon: HardHat,
+                    badge: 'Portal HSE',
+                    color: 'text-emerald-600',
+                    bg: 'bg-emerald-50',
+                    border: 'border-emerald-200'
+                };
         }
     };
 
-    // Daftar item navigasi utama HSE Portal (Navbar Terpisah)
+    // Daftar item navigasi utama HSE Portal
     const navigationItems = [
-        { id: 'inspection', label: 'Buat Inspeksi', icon: FileText, color: 'bg-green-600', shadow: 'shadow-green-600/20' },
-        { id: 'findings', label: 'Input Temuan K3', icon: AlertTriangle, color: 'bg-amber-600', shadow: 'shadow-amber-600/20' },
-        { id: 'findings_archive', label: 'Arsip Temuan HSE', icon: Folder, color: 'bg-teal-600', shadow: 'shadow-teal-600/20' },
-        { id: 'iso', label: 'Arsip Dokumen', icon: Folder, color: 'bg-emerald-600', shadow: 'shadow-emerald-600/20' },
+        { 
+            id: 'inspection', 
+            label: 'Buat Inspeksi', 
+            icon: FileText, 
+            activeClass: 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/20 border-transparent',
+            mobileColor: 'bg-emerald-600',
+            mobileShadow: 'shadow-emerald-600/20'
+        },
+        { 
+            id: 'findings', 
+            label: 'Input Temuan K3', 
+            icon: AlertTriangle, 
+            activeClass: 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md shadow-red-600/20 border-transparent',
+            mobileColor: 'bg-red-600',
+            mobileShadow: 'shadow-red-600/20'
+        },
+        { 
+            id: 'findings_archive', 
+            label: 'Arsip Temuan HSE', 
+            icon: ShieldAlert, 
+            activeClass: 'bg-gradient-to-r from-teal-600 to-cyan-700 text-white shadow-md shadow-teal-600/20 border-transparent',
+            mobileColor: 'bg-teal-600',
+            mobileShadow: 'shadow-teal-600/20'
+        },
+        { 
+            id: 'iso', 
+            label: 'Arsip Dokumen', 
+            icon: FolderArchive, 
+            activeClass: 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/20 border-transparent',
+            mobileColor: 'bg-blue-600',
+            mobileShadow: 'shadow-blue-600/20'
+        },
     ];
+
+    const tabMeta = getTabMeta();
 
     return (
         <div className="flex-1 flex flex-col w-full font-geist text-slate-800">
@@ -69,7 +156,7 @@ export function HSEApp() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => setSidebarOpen(false)}
-                            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] lg:hidden"
+                            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] md:hidden"
                         />
                         {/* Panel Menu Samping Kanan HP */}
                         <motion.div
@@ -77,14 +164,14 @@ export function HSEApp() {
                             animate={{ x: 0 }}
                             exit={{ x: '100%' }}
                             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                            className="fixed inset-y-0 right-0 w-80 bg-white border-l border-slate-200 z-[70] lg:hidden flex flex-col shadow-2xl text-slate-800"
+                            className="fixed inset-y-0 right-0 w-80 bg-white border-l border-slate-200 z-[70] md:hidden flex flex-col shadow-2xl text-slate-800"
                         >
                             <div className="p-6 border-b border-slate-200 flex items-center justify-between">
                                 <div className="flex items-center gap-2.5">
                                     <img src={logoDwimitra} alt="Dwimitra" className="w-10 h-10 object-contain flex-shrink-0" />
                                     <div>
                                         <p className="font-black text-slate-900 text-xs leading-tight">PT Dwimitra Ekatama Mandiri</p>
-                                        <span className="text-[10px] text-green-700 font-bold uppercase tracking-wider">Sistem HSE</span>
+                                        <span className="text-[10px] text-emerald-700 font-bold uppercase tracking-wider">Sistem HSE</span>
                                     </div>
                                 </div>
                                 <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-900" title="Tutup Menu">
@@ -104,7 +191,7 @@ export function HSEApp() {
                                         }}
                                         className={`w-full flex items-center justify-between p-4 rounded-2xl transition-all duration-300 cursor-pointer ${
                                             activeTab === item.id 
-                                            ? `${item.color} text-white shadow-lg ${item.shadow}` 
+                                            ? `${item.mobileColor} text-white shadow-lg ${item.mobileShadow}` 
                                             : 'bg-slate-50 text-slate-700 hover:bg-slate-100 font-bold'
                                         }`}
                                     >
@@ -120,8 +207,8 @@ export function HSEApp() {
                             {/* Info Akun HSE Officer & Tombol Log Out di Mobile */}
                             <div className="p-4 border-t border-slate-200 space-y-4 bg-slate-50/50">
                                 <div className="flex items-center gap-3 px-4 py-2">
-                                    <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center">
-                                        <User className="w-5 h-5 text-blue-600" />
+                                    <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                                        <User className="w-5 h-5 text-emerald-600" />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-xs text-slate-500 truncate font-medium">HSE Officer</p>
@@ -144,24 +231,25 @@ export function HSEApp() {
                 )}
             </AnimatePresence>
 
-            {/* Navbar Atas Desktop / Tablet */}
-            <div className="bg-white/80 backdrop-blur-xl border-b border-sky-100/80 sticky top-0 z-50 shadow-sm text-slate-800">
-                <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+            {/* Navbar Atas Desktop & Mobile (Sticky Header) */}
+            <div className="bg-white/85 backdrop-blur-xl border-b border-slate-200/80 sticky top-0 z-50 shadow-xs text-slate-800">
+                {/* Baris 1: Logo, Nama Perusahaan & Akun Sesi */}
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5 sm:gap-3">
+                        <div className="flex items-center gap-2.5 sm:gap-3.5">
                             <img
                                 src={logoDwimitra}
                                 alt="PT Dwimitra Ekatama Mandiri"
-                                className="w-10 h-10 sm:w-14 sm:h-14 flex-shrink-0 object-contain"
+                                className="w-11 h-11 sm:w-14 sm:h-14 flex-shrink-0 object-contain"
                             />
                             <div>
                                 <h1 className="text-xs sm:text-base font-black text-slate-900 leading-tight">
                                     PT Dwimitra Ekatama Mandiri
                                 </h1>
                                 <div className="flex items-center gap-1.5 mt-0.5">
-                                    <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 bg-green-50 rounded-full border border-green-200">
-                                        <ShieldCheck className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-600" />
-                                        <span className="text-[9px] sm:text-xs text-green-700 font-bold tracking-wide">
+                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 rounded-full border border-emerald-200">
+                                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                                        <span className="text-[10px] sm:text-xs text-emerald-700 font-bold tracking-wide">
                                             HSE OFFICER
                                         </span>
                                     </div>
@@ -169,16 +257,10 @@ export function HSEApp() {
                             </div>
                         </div>
 
+                        {/* Info Akun & Tombol Aksi Desktop */}
                         <div className="flex items-center gap-3">
-                            <button 
-                                onClick={() => setSidebarOpen(true)}
-                                className="lg:hidden p-2 bg-slate-100 rounded-lg border border-slate-200 text-slate-700"
-                                title="Buka Menu"
-                            >
-                                <Menu className="w-6 h-6" />
-                            </button>
-                            <div className="hidden lg:block text-right">
-                                <p className="text-xs text-slate-500 font-medium">Masuk sebagai</p>
+                            <div className="hidden md:block text-right">
+                                <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Masuk sebagai</p>
                                 <p className="text-sm font-bold text-slate-800 truncate max-w-[260px]">
                                     {user?.email}
                                 </p>
@@ -187,58 +269,82 @@ export function HSEApp() {
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => setLogoutModalOpen(true)}
-                                className="hidden lg:flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl border border-slate-200 transition text-sm font-bold shadow-sm cursor-pointer"
+                                className="hidden md:flex items-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-slate-700 rounded-xl border border-slate-200 transition text-xs font-bold shadow-xs cursor-pointer"
                             >
                                 <LogOut className="w-4 h-4" />
                                 <span>Keluar</span>
                             </motion.button>
+                            {/* Tombol Menu Mobile */}
+                            <button 
+                                onClick={() => setSidebarOpen(true)}
+                                className="md:hidden p-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl border border-slate-200 text-slate-700 shadow-xs cursor-pointer"
+                                title="Buka Menu Navigasi"
+                            >
+                                <Menu className="w-5 h-5" />
+                            </button>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Subheader Judul Tab Navigasi Aktif */}
-            <div className="bg-white/90 backdrop-blur-md border-b border-sky-100/80 shadow-sm text-slate-800">
-                <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-5">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2.5 bg-green-50 rounded-xl border border-green-100">
-                                <HardHat className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
-                            </div>
-                            <div>
-                                <h2 className="text-base sm:text-xl font-black text-slate-900">
-                                    {getTabLabel()}
-                                </h2>
-                                <p className="text-xs sm:text-sm font-medium text-slate-600">
-                                    Kesehatan, Keselamatan & Lingkungan — UTT Maintenance
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Pilihan Tab di Tampilan Desktop */}
-                        <div className="hidden lg:flex flex-wrap gap-2 bg-slate-50 p-1.5 rounded-2xl border border-slate-200 shadow-sm">
+                {/* Baris 2: Tab Navigasi Sekunder Tampilan Desktop & Tablet */}
+                <div className="hidden md:block bg-gradient-to-r from-emerald-50/50 via-slate-50/80 to-teal-50/50 border-t border-slate-200/70">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+                        <div className="flex items-center justify-center gap-1.5 lg:gap-2">
                             {navigationItems.map((item) => (
-                                <button
+                                <motion.button
                                     key={item.id}
+                                    whileHover={{ y: -1, scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
                                     onClick={() => setActiveTab(item.id as any)}
-                                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${activeTab === item.id
-                                        ? `${item.color} text-white shadow-md ${item.shadow}`
-                                        : 'text-slate-600 hover:text-slate-900'
-                                        }`}
+                                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap border cursor-pointer ${
+                                        activeTab === item.id
+                                            ? item.activeClass
+                                            : 'bg-white/90 text-slate-600 border-slate-200/90 hover:bg-white hover:text-slate-900 hover:border-slate-300 shadow-2xs'
+                                    }`}
                                 >
-                                    <item.icon className="w-3.5 h-3.5" />
-                                    {item.label}
-                                </button>
+                                    <item.icon className="w-3.5 h-3.5 flex-shrink-0" />
+                                    <span>{item.label}</span>
+                                </motion.button>
                             ))}
                         </div>
                     </div>
                 </div>
             </div>
 
+            {/* Subheader Judul Halaman Aktif (Banner Rapi & Bersih) */}
+            <div className="bg-white/80 backdrop-blur-md border-b border-slate-200/60 shadow-2xs text-slate-800">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3.5">
+                            <div className={`p-2.5 sm:p-3 rounded-2xl border shadow-2xs ${tabMeta.bg} ${tabMeta.border}`}>
+                                <tabMeta.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${tabMeta.color}`} />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-base sm:text-lg font-black text-slate-900">
+                                        {tabMeta.title}
+                                    </h2>
+                                    <span className={`hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold border ${tabMeta.bg} ${tabMeta.color} ${tabMeta.border}`}>
+                                        {tabMeta.badge}
+                                    </span>
+                                </div>
+                                <p className="text-xs sm:text-sm font-medium text-slate-500 mt-0.5">
+                                    {tabMeta.subtitle}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="hidden lg:flex items-center gap-2 text-xs font-semibold text-slate-400">
+                            <span>Sistem Manajemen K3</span>
+                            <span>•</span>
+                            <span className="text-slate-600 font-bold">UTT Maintenance</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Konten Utama HSE Portal: Form Inspeksi HSE, Input Temuan K3, Arsip Temuan, atau Daftar Dokumen HSE */}
-            <div className={`relative z-10 mx-auto px-4 sm:px-6 py-6 sm:py-8 transition-all ${
-                activeTab === 'findings' || activeTab === 'findings_archive' ? 'max-w-6xl' : 'max-w-5xl'
-            }`}>
+            <div className="relative z-10 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 transition-all">
                 {activeTab === 'iso' ? (
                     <DocumentList 
                         filterOverride="hse_utt" 

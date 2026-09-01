@@ -304,6 +304,8 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
   const resolvedResult = data.result || (data as any).remark || 'Status perbaikan telah selesai dilaksanakan dengan baik.';
   const resolvedVisualInsp = data.visualInspectionChecking || (data as any).issue || 'Pengecekan kondisi fisik dan fungsi operasional peralatan.';
   const resolvedProblemAnalysis = data.summaryProblemAnalysis || (data as any).issue || (data as any).summary || (data as any).actionTaken || 'Analisis masalah dan perbaikan unit.';
+  const resolvedRecommendation = data.recommendation || (data as any).recommendations || (data as any).recommend || '';
+  const hasRecommendation = Boolean(resolvedRecommendation && resolvedRecommendation.trim() && resolvedRecommendation.trim() !== '-');
 
   // Table 1: Incident Info
   const incidentTable = new Table({
@@ -884,6 +886,14 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           new Paragraph({ spacing: { after: 50 } }),
 
           createBoxSection('SUMMARY CORRECTIVE REPORT (PROBLEM ANALYSIS)', resolvedProblemAnalysis, 20),
+
+          // RECOMMENDATION (Halaman 1) - Ditampilkan jika diisi
+          ...(hasRecommendation
+            ? [
+                new Paragraph({ spacing: { after: 50 } }),
+                createBoxSection('RECOMMENDATION', resolvedRecommendation, 20),
+              ]
+            : []),
 
           // LIST OF REPLACED SPAREPARTS (Halaman 1)
           ...(hasReplacedSpareparts

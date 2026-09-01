@@ -29,7 +29,8 @@ import {
   Clock,
   AlertCircle,
   Zap,
-  ClipboardList
+  ClipboardList,
+  Lightbulb
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -148,6 +149,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     visualInspectionChecking: '',
     cleaningPreventiveMethod: '',
     summaryProblemAnalysis: '',
+    recommendation: '',
 
     spareparts: [],
     requestSpareparts: [],
@@ -282,6 +284,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
       visualInspectionChecking: '',
       cleaningPreventiveMethod: '',
       summaryProblemAnalysis: '',
+      recommendation: '',
       spareparts: [],
       requestSpareparts: [],
       photos: [],
@@ -1150,24 +1153,24 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               className="space-y-6"
             >
               {/* 1. LIST OF REPLACED SPAREPART (Halaman 2) - OPSIONAL */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                      <Wrench className="w-4 h-4 text-blue-600" />
-                      LIST OF REPLACED SPAREPART (Halaman 2)
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-4">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5 leading-snug">
+                      <Wrench className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 shrink-0" />
+                      <span>LIST OF REPLACED SPAREPART (Halaman 2)</span>
                     </h3>
-                    <span className="text-[10px] font-semibold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-full">
+                    <span className="text-[9px] sm:text-[10px] font-semibold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-full shrink-0">
                       Opsional
                     </span>
                   </div>
                   <button
                     type="button"
                     onClick={addSparepart}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                    className="px-2.5 sm:px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 sm:gap-1.5 transition cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    Tambah Baris
+                    <span>Tambah Baris</span>
                   </button>
                 </div>
 
@@ -1230,24 +1233,24 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               </div>
 
               {/* 2. LIST OF REQUEST SPAREPART (Halaman 2) - OPSIONAL */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                      <ClipboardList className="w-4 h-4 text-amber-600" />
-                      LIST OF REQUEST SPAREPART (Halaman 2)
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-4">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5 leading-snug">
+                      <ClipboardList className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 shrink-0" />
+                      <span>LIST OF REQUEST SPAREPART (Halaman 2)</span>
                     </h3>
-                    <span className="text-[10px] font-semibold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-full">
+                    <span className="text-[9px] sm:text-[10px] font-semibold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-full shrink-0">
                       Opsional
                     </span>
                   </div>
                   <button
                     type="button"
                     onClick={addRequestSparepart}
-                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                    className="px-2.5 sm:px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 sm:gap-1.5 transition cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    Tambah Baris
+                    <span>Tambah Baris</span>
                   </button>
                 </div>
 
@@ -1309,9 +1312,47 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                 )}
               </div>
 
+              {/* 3. REKOMENDASI (RECOMMENDATION) - OPSIONAL (Page 1 DOCX & PDF) */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-4 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap min-w-0">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-800 flex items-center gap-1.5 leading-snug">
+                      <Lightbulb className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 shrink-0" />
+                      <span>REKOMENDASI / RECOMMENDATION (Tabel Halaman 1)</span>
+                    </h3>
+                    <span className="text-[9px] sm:text-[10px] font-semibold text-slate-500 bg-slate-200/70 px-2 py-0.5 rounded-full shrink-0">
+                      Opsional
+                    </span>
+                  </div>
+                  {formData.recommendation && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, recommendation: '' })}
+                      className="text-xs text-red-500 hover:text-red-700 font-bold flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap"
+                      title="Kosongkan Rekomendasi"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Kosongkan</span>
+                    </button>
+                  )}
+                </div>
+
+                <p className="text-xs text-slate-500">
+                  Masukkan saran tindakan korektif lanjutan atau langkah preventif (Gunakan format baris baru atau poin bullet). Jika diisi, tabel <strong>RECOMMENDATION</strong> akan otomatis dicetak di Halaman 1 file DOCX & PDF. Jika dikosongkan, tabel rekomendasi tidak akan dimunculkan.
+                </p>
+
+                <textarea
+                  rows={3}
+                  value={formData.recommendation || ''}
+                  onChange={e => setFormData({ ...formData, recommendation: e.target.value })}
+                  placeholder="Contoh:&#10;• Melakukan monitoring suhu dan arus operasional unit secara berkala&#10;• Penggantian kontaktor unit jika terdapat bunyi getaran abnormal"
+                  className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm focus:ring-2 focus:ring-amber-500 outline-none resize-y"
+                />
+              </div>
+
               {/* PHOTOS DOKUMENTASI (Max 10, layout grid di PDF) */}
               <div>
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
                   <label className="block text-xs font-bold text-slate-700">FOTO DOKUMENTASI VISUAL INSPECTION (Maks 10 Foto)</label>
                   <span className="text-xs text-slate-500">{formData.photos.length} / 10 Foto Uploaded</span>
                 </div>

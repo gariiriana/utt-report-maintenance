@@ -154,6 +154,8 @@ export async function generateCMReportPDF(data: CMReportData) {
     const resolvedVisualInsp = data.visualInspectionChecking || (data as any).issue || 'Pengecekan kondisi fisik dan fungsi operasional peralatan.';
     const resolvedCleaningMethod = data.cleaningPreventiveMethod || 'Pembersihan area kerja dan komponen pendukung.';
     const resolvedProblemAnalysis = data.summaryProblemAnalysis || (data as any).issue || (data as any).summary || (data as any).actionTaken || 'Analisis masalah dan perbaikan unit.';
+    const resolvedRecommendation = data.recommendation || (data as any).recommendations || (data as any).recommend || '';
+    const hasRecommendation = Boolean(resolvedRecommendation && resolvedRecommendation.trim() && resolvedRecommendation.trim() !== '-');
 
     // ==========================================
     // PAGE 1: INCIDENT, EQUIPMENT & ANALYSIS
@@ -349,6 +351,15 @@ export async function generateCMReportPDF(data: CMReportData) {
       formatAsBulletList(resolvedProblemAnalysis),
       35
     );
+
+    // SECTION: RECOMMENDATION (Page 1) - Hanya jika diisi
+    if (hasRecommendation) {
+      drawSectionBox(
+        'RECOMMENDATION',
+        formatAsBulletList(resolvedRecommendation),
+        18
+      );
+    }
 
 
     // ==========================================

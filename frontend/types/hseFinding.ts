@@ -16,14 +16,15 @@ export type HSEFindingCategory =
   | 'tools_equipment'
   | 'electrical_safety'
   | 'environmental'
-  | 'other';
+  | 'other'
+  | (string & {});
 
 export interface HSEFindingItem {
   id?: string;
   title: string;                         // Judul Temuan (e.g. "Engineer tidak memakai helm safety")
   description: string;                   // Deskripsi / Kronologi detail temuan
   location: string;                      // Lokasi temuan (e.g. "Genset Room Lantai 1", "Chiller Area")
-  category: HSEFindingCategory;           // Kategori K3
+  category: string;                      // Kategori K3 (Manual text input / kategori kustom)
   severity: HSEFindingSeverity;           // Tingkat Risiko (Low, Medium, High, Critical)
   status: HSEFindingStatus;               // 'open' (Temuan Masih Terbuka), 'close' (Temuan Sudah Ditutup)
   

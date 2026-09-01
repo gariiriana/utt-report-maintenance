@@ -49,6 +49,7 @@ export interface CMReportData {
   visualInspectionChecking: string;         // Catatan Hasil Pemeriksaan Fisik & Visual
   cleaningPreventiveMethod: string;         // Tindakan Pembersihan & Pemeliharaan Pencegahan
   summaryProblemAnalysis: string;           // Rincian Analisis Akar Masalah (Root Cause Analysis)
+  recommendation?: string;                  // Rekomendasi / Saran Teknis Lanjutan (Opsional, Tabel Page 1)
   
   // Halaman 2: Pengadaan Suku Cadang & Foto Dokumentasi
   spareparts?: CMSparepartItem[];           // Array rincian suku cadang diganti (LIST OF REPLACED SPAREPART)

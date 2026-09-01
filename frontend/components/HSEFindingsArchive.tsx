@@ -17,8 +17,7 @@ import {
   RefreshCw,
   MapPin,
   Calendar,
-  User,
-  ShieldAlert,
+  UserCheck,
   Maximize2,
   X,
   Layers,
@@ -31,7 +30,8 @@ import {
   Camera,
   Upload,
   Trash2,
-  Check
+  Check,
+  Pencil
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -125,6 +125,44 @@ export function HSEFindingsArchive() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const afterFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Edit Modal State (Full Edit: Status Open/Close, Data, Foto Before & Foto After)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editFormData, setEditFormData] = useState<{
+    title: string;
+    description: string;
+    location: string;
+    inspectorName: string;
+    category: string;
+    severity: HSEFindingSeverity;
+    status: HSEFindingStatus;
+    targetPerson: string;
+    findingDate: string;
+    findingTime: string;
+    beforePhoto: string;
+    beforeNotes: string;
+    afterPhoto: string;
+    afterNotes: string;
+    resolvedAt: string;
+  }>({
+    title: '',
+    description: '',
+    location: '',
+    inspectorName: '',
+    category: '',
+    severity: 'medium',
+    status: 'open',
+    targetPerson: '',
+    findingDate: '',
+    findingTime: '',
+    beforePhoto: '',
+    beforeNotes: '',
+    afterPhoto: '',
+    afterNotes: '',
+    resolvedAt: ''
+  });
+  const editBeforeFileInputRef = useRef<HTMLInputElement>(null);
+  const editAfterFileInputRef = useRef<HTMLInputElement>(null);
+
   // Delete Modal
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [findingToDelete, setFindingToDelete] = useState<HSEFindingItem | null>(null);
@@ -204,8 +242,7 @@ export function HSEFindingsArchive() {
     const total = findings.length;
     const open = findings.filter(f => f.status === 'open').length;
     const close = findings.filter(f => f.status === 'close').length;
-    const critical = findings.filter(f => f.severity === 'critical' && f.status === 'open').length;
-    return { total, open, close, critical };
+    return { total, open, close };
   }, [findings]);
 
   // --------------------------------------------------------------------------
@@ -242,6 +279,8 @@ export function HSEFindingsArchive() {
         f.title?.toLowerCase().includes(q) ||
         f.description?.toLowerCase().includes(q) ||
         f.location?.toLowerCase().includes(q) ||
+        f.category?.toLowerCase().includes(q) ||
+        f.inspectorName?.toLowerCase().includes(q) ||
         f.reportedBy?.toLowerCase().includes(q) ||
         f.targetPerson?.toLowerCase().includes(q)
       );
@@ -334,6 +373,129 @@ export function HSEFindingsArchive() {
     } catch (error) {
       console.error('Error closing finding:', error);
       toast.error('Gagal memperbarui status temuan', { id: toastId });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // --------------------------------------------------------------------------
+  // Handlers: Full Edit Temuan (Status Open/Close, Data, Foto Before & After)
+  // --------------------------------------------------------------------------
+  const handleOpenEditModal = (finding: HSEFindingItem) => {
+    setSelectedFinding(finding);
+    setEditFormData({
+      title: finding.title || '',
+      description: finding.description || '',
+      location: finding.location || '',
+      inspectorName: finding.inspectorName || finding.reportedBy || '',
+      category: finding.category || '',
+      severity: finding.severity || 'medium',
+      status: finding.status || 'open',
+      targetPerson: finding.targetPerson || '',
+      findingDate: finding.findingDate || new Date().toISOString().split('T')[0],
+      findingTime: finding.findingTime || '09:00',
+      beforePhoto: finding.beforePhoto || '',
+      beforeNotes: finding.beforeNotes || '',
+      afterPhoto: finding.afterPhoto || '',
+      afterNotes: finding.afterNotes || finding.closingNotes || '',
+      resolvedAt: finding.resolvedAt ? (typeof finding.resolvedAt === 'string' ? finding.resolvedAt : new Date(finding.resolvedAt).toISOString().split('T')[0]) : new Date().toISOString().split('T')[0]
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditBeforePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      toast.loading('Mengompres foto temuan...', { id: 'compress-edit-before' });
+      const base64 = await compressImage(file, { maxWidth: 1000, maxHeight: 1000, quality: 0.65 });
+      setEditFormData(prev => ({ ...prev, beforePhoto: base64 }));
+      toast.success('Foto temuan berhasil diunggah', { id: 'compress-edit-before' });
+    } catch (error) {
+      console.error('Error compressing image:', error);
+      toast.error('Gagal mengompres gambar', { id: 'compress-edit-before' });
+    } finally {
+      if (editBeforeFileInputRef.current) editBeforeFileInputRef.current.value = '';
+    }
+  };
+
+  const handleEditAfterPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      toast.loading('Mengompres foto bukti perbaikan...', { id: 'compress-edit-after' });
+      const base64 = await compressImage(file, { maxWidth: 1000, maxHeight: 1000, quality: 0.65 });
+      setEditFormData(prev => ({ ...prev, afterPhoto: base64 }));
+      toast.success('Foto perbaikan berhasil diunggah', { id: 'compress-edit-after' });
+    } catch (error) {
+      console.error('Error compressing image:', error);
+      toast.error('Gagal mengompres gambar', { id: 'compress-edit-after' });
+    } finally {
+      if (editAfterFileInputRef.current) editAfterFileInputRef.current.value = '';
+    }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedFinding?.id) return;
+
+    if (!editFormData.title.trim()) {
+      toast.error('Judul temuan wajib diisi');
+      return;
+    }
+    if (!editFormData.location.trim()) {
+      toast.error('Lokasi temuan wajib diisi');
+      return;
+    }
+    if (!editFormData.inspectorName.trim()) {
+      toast.error('Nama petugas inspeksi wajib diisi');
+      return;
+    }
+    if (editFormData.status === 'close' && !editFormData.afterPhoto) {
+      toast.error('Foto bukti perbaikan (After) wajib dilampirkan jika status CLOSE');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const toastId = toast.loading('Menyimpan perubahan data temuan...');
+
+    try {
+      const updatePayload: any = {
+        title: editFormData.title.trim(),
+        description: editFormData.description.trim(),
+        location: editFormData.location.trim(),
+        inspectorName: editFormData.inspectorName.trim(),
+        category: editFormData.category.trim(),
+        severity: editFormData.severity,
+        status: editFormData.status,
+        targetPerson: editFormData.targetPerson.trim() || '-',
+        findingDate: editFormData.findingDate,
+        findingTime: editFormData.findingTime,
+        beforePhoto: editFormData.beforePhoto,
+        beforeNotes: editFormData.beforeNotes.trim(),
+        afterPhoto: editFormData.afterPhoto,
+        afterNotes: editFormData.afterNotes.trim(),
+        updatedAt: serverTimestamp(),
+      };
+
+      if (editFormData.status === 'close') {
+        updatePayload.resolvedBy = user?.email || 'HSE Officer';
+        updatePayload.resolvedAt = editFormData.resolvedAt || new Date().toISOString().split('T')[0];
+      } else {
+        updatePayload.resolvedAt = null;
+        updatePayload.resolvedBy = null;
+      }
+
+      await updateDoc(doc(db, 'hse_findings', selectedFinding.id), updatePayload);
+
+      toast.success('Data temuan K3 berhasil diperbarui!', { id: toastId });
+      setIsEditModalOpen(false);
+      if (isDetailOpen) {
+        setSelectedFinding(prev => prev ? { ...prev, ...updatePayload } : null);
+      }
+    } catch (error) {
+      console.error('Error updating finding:', error);
+      toast.error('Gagal memperbarui data temuan', { id: toastId });
     } finally {
       setIsSubmitting(false);
     }
@@ -434,22 +596,18 @@ export function HSEFindingsArchive() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-5">
           {[
             { label: 'Total Temuan', value: stats.total, icon: Layers, color: 'text-slate-700', bg: 'bg-slate-50 border-slate-200', filter: 'all' as const },
             { label: 'Open (Terbuka)', value: stats.open, icon: Clock, color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200', filter: 'open' as const },
             { label: 'Close (Ditutup)', value: stats.close, icon: CheckCircle2, color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-200', filter: 'close' as const },
-            { label: 'Critical Aktif', value: stats.critical, icon: ShieldAlert, color: 'text-red-700', bg: 'bg-red-50 border-red-200', filter: 'all' as const },
           ].map((s, i) => (
             <motion.button
               key={i}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => {
-                if (s.label === 'Critical Aktif') {
-                  setSeverityFilter('critical');
-                  setStatusFilter('open');
-                } else if (s.filter === 'all') {
+                if (s.filter === 'all') {
                   setStatusFilter('all');
                   setSeverityFilter('all');
                 } else {
@@ -458,7 +616,7 @@ export function HSEFindingsArchive() {
                 }
               }}
               className={`text-left p-3.5 rounded-2xl border ${s.bg} transition-all cursor-pointer ${
-                (s.label !== 'Critical Aktif' && statusFilter === s.filter && severityFilter === 'all') ? 'ring-2 ring-offset-1 ring-teal-400' : ''
+                statusFilter === s.filter && severityFilter === 'all' ? 'ring-2 ring-offset-1 ring-teal-400' : ''
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
@@ -682,7 +840,8 @@ export function HSEFindingsArchive() {
           {filteredFindings.map((finding, index) => {
             const statusCfg = HSE_STATUS_CONFIG[finding.status] || HSE_STATUS_CONFIG.open;
             const severityCfg = HSE_SEVERITY_CONFIG[finding.severity] || HSE_SEVERITY_CONFIG.medium;
-            const categoryCfg = HSE_CATEGORY_LABELS[finding.category] || HSE_CATEGORY_LABELS.other;
+            const categoryLabel = HSE_CATEGORY_LABELS[finding.category as keyof typeof HSE_CATEGORY_LABELS]?.label || finding.category || 'Umum';
+            const categoryBadgeColor = HSE_CATEGORY_LABELS[finding.category as keyof typeof HSE_CATEGORY_LABELS]?.badgeColor || 'bg-slate-50 text-slate-700 border-slate-200';
 
             return (
               <motion.div
@@ -699,7 +858,7 @@ export function HSEFindingsArchive() {
                       <div className="flex items-center gap-2 flex-wrap mb-1.5">
                         <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${severityCfg.dot}`} />
                         <h3 className="text-base font-bold text-slate-900 truncate">
-                          {finding.title}
+                           {finding.title}
                         </h3>
                       </div>
 
@@ -712,14 +871,26 @@ export function HSEFindingsArchive() {
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${severityCfg.badge}`}>
                           {severityCfg.label}
                         </span>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${categoryCfg.badgeColor}`}>
-                          {categoryCfg.label.split(' (')[0]}
-                        </span>
+                        {finding.category && (
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${categoryBadgeColor}`}>
+                            {categoryLabel.split(' (')[0]}
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     {/* Quick Actions */}
                     <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {/* Tombol Edit Data Temuan */}
+                      <button
+                        onClick={() => handleOpenEditModal(finding)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+                        title="Edit Data Temuan & Status (Open / Close)"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Edit</span>
+                      </button>
+
                       {/* Tombol Tindak Lanjut jika status masih OPEN */}
                       {finding.status === 'open' && (
                         <button
@@ -728,7 +899,7 @@ export function HSEFindingsArchive() {
                           title="Tutup & Selesaikan Temuan"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Tutup Temuan</span>
+                          <span className="hidden sm:inline">Tutup</span>
                         </button>
                       )}
 
@@ -757,7 +928,7 @@ export function HSEFindingsArchive() {
                   </div>
 
                   {/* Row 2: Meta Info */}
-                  <div className="flex items-center gap-4 flex-wrap text-xs text-slate-500 my-2">
+                  <div className="flex items-center gap-3 sm:gap-4 flex-wrap text-xs text-slate-500 my-2">
                     <span className="inline-flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5 text-slate-400" />
                       {formatDate(finding.findingDate)}
@@ -766,13 +937,13 @@ export function HSEFindingsArchive() {
                       <MapPin className="w-3.5 h-3.5 text-slate-400" />
                       {finding.location || '-'}
                     </span>
-                    <span className="inline-flex items-center gap-1">
-                      <User className="w-3.5 h-3.5 text-slate-400" />
-                      {finding.reportedBy || '-'}
+                    <span className="inline-flex items-center gap-1 font-semibold text-slate-700 bg-teal-50/80 border border-teal-200/60 px-2 py-0.5 rounded-lg">
+                      <UserCheck className="w-3.5 h-3.5 text-teal-600" />
+                      Inspector: <strong className="text-teal-900">{finding.inspectorName || finding.reportedBy || '-'}</strong>
                     </span>
                     {finding.targetPerson && (
                       <span className="inline-flex items-center gap-1">
-                        <AlertTriangle className="w-3.5 h-3.5 text-slate-400" />
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                         Pihak Terkait: <strong>{finding.targetPerson}</strong>
                       </span>
                     )}
@@ -854,6 +1025,18 @@ export function HSEFindingsArchive() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => {
+                        setIsDetailOpen(false);
+                        handleOpenEditModal(selectedFinding);
+                      }}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                      title="Edit Data Temuan"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </button>
+
                     {selectedFinding.status === 'open' && (
                       <button
                         onClick={() => handleOpenResolveModal(selectedFinding)}
@@ -885,10 +1068,6 @@ export function HSEFindingsArchive() {
                 {/* Info Grid */}
                 <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kategori</label>
-                    <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">{HSE_CATEGORY_LABELS[selectedFinding.category].label}</p>
-                  </div>
-                  <div>
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tanggal Temuan</label>
                     <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">{formatDate(selectedFinding.findingDate)}</p>
                   </div>
@@ -897,19 +1076,28 @@ export function HSEFindingsArchive() {
                     <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">{selectedFinding.location || '-'}</p>
                   </div>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pelapor</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Petugas Inspeksi (Inspector)</label>
+                    <p className="text-xs sm:text-sm font-bold text-teal-800 mt-0.5 flex items-center gap-1">
+                      <UserCheck className="w-3.5 h-3.5 text-teal-600" />
+                      {selectedFinding.inspectorName || selectedFinding.reportedBy || '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pelapor Akun</label>
                     <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">{selectedFinding.reportedBy || '-'}</p>
                   </div>
-                  {selectedFinding.targetPerson && (
+                  {selectedFinding.category && (
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pihak Terkait</label>
-                      <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">{selectedFinding.targetPerson}</p>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kategori</label>
+                      <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">
+                        {HSE_CATEGORY_LABELS[selectedFinding.category as keyof typeof HSE_CATEGORY_LABELS]?.label || selectedFinding.category}
+                      </p>
                     </div>
                   )}
-                  {selectedFinding.targetDate && (
+                  {selectedFinding.targetPerson && (
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Target Penyelesaian</label>
-                      <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">{formatDate(selectedFinding.targetDate)}</p>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pihak Terkait / Subkon</label>
+                      <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">{selectedFinding.targetPerson}</p>
                     </div>
                   )}
                 </div>
@@ -999,6 +1187,392 @@ export function HSEFindingsArchive() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ===== Edit Finding Modal (Full Edit: Status, Data, Before & After) ===== */}
+      <AnimatePresence>
+        {isEditModalOpen && selectedFinding && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-8"
+            >
+              {/* Modal Header */}
+              <div className="px-6 py-4 bg-gradient-to-r from-amber-500 to-orange-600 text-white flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/10 rounded-xl backdrop-blur-md">
+                    <Pencil className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-base sm:text-lg font-bold">Edit & Update Temuan K3</h2>
+                    <p className="text-xs text-amber-100">Perbarui status temuan, rincian data, atau unggah bukti penutupan (After)</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsEditModalOpen(false)}
+                  disabled={isSubmitting}
+                  className="p-1.5 bg-white/10 hover:bg-white/20 rounded-xl transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleEditSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+                {/* 1. Status Temuan Toggle */}
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    Status Temuan Saat Ini <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setEditFormData({ ...editFormData, status: 'open' })}
+                      className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm border transition-all cursor-pointer ${
+                        editFormData.status === 'open'
+                          ? 'bg-amber-500 text-white border-amber-600 shadow-md shadow-amber-500/20'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <Clock className="w-4 h-4" />
+                      <span>OPEN (Temuan Terbuka)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setEditFormData({ ...editFormData, status: 'close' })}
+                      className={`flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm border transition-all cursor-pointer ${
+                        editFormData.status === 'close'
+                          ? 'bg-emerald-600 text-white border-emerald-700 shadow-md shadow-emerald-600/20'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>CLOSE (Selesai / Ditutup)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Informasi Utama Temuan */}
+                <div className="space-y-4">
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    Informasi & Lokasi Temuan
+                  </h4>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Judul Temuan <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editFormData.title}
+                      onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                        Lokasi Temuan <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editFormData.location}
+                        onChange={(e) => setEditFormData({ ...editFormData, location: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <UserCheck className="w-3.5 h-3.5 text-slate-400" />
+                        Petugas Inspeksi <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={editFormData.inspectorName}
+                        onChange={(e) => setEditFormData({ ...editFormData, inspectorName: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Pihak Terkait / Subkon
+                      </label>
+                      <input
+                        type="text"
+                        value={editFormData.targetPerson}
+                        onChange={(e) => setEditFormData({ ...editFormData, targetPerson: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                        Tingkat Bahaya / Risiko
+                      </label>
+                      <select
+                        value={editFormData.severity}
+                        onChange={(e) => setEditFormData({ ...editFormData, severity: e.target.value as any })}
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                      >
+                        {Object.entries(HSE_SEVERITY_CONFIG).map(([key, val]) => (
+                          <option key={key} value={key}>{val.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1 cursor-pointer">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                        Tanggal Temuan
+                      </label>
+                      <input
+                        type="date"
+                        value={editFormData.findingDate}
+                        onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch (err) {} }}
+                        onChange={(e) => setEditFormData({ ...editFormData, findingDate: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 cursor-pointer"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1 cursor-pointer">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        Jam Temuan
+                      </label>
+                      <input
+                        type="time"
+                        value={editFormData.findingTime}
+                        onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch (err) {} }}
+                        onChange={(e) => setEditFormData({ ...editFormData, findingTime: e.target.value })}
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Uraian & Kronologi Temuan
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={editFormData.description}
+                      onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                      placeholder="Jelaskan kondisi temuan secara rinci..."
+                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                {/* 3. Foto Bukti Temuan (Before) */}
+                <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-amber-900 uppercase tracking-wider">
+                      Foto Bukti Temuan (BEFORE)
+                    </label>
+                    {editFormData.beforePhoto && (
+                      <button
+                        type="button"
+                        onClick={() => setEditFormData({ ...editFormData, beforePhoto: '' })}
+                        className="text-xs text-red-600 hover:text-red-800 font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Hapus Foto</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {editFormData.beforePhoto ? (
+                    <div className="relative aspect-video max-h-48 bg-slate-900 rounded-xl overflow-hidden border border-amber-300">
+                      <img
+                        src={editFormData.beforePhoto}
+                        alt="Preview Foto Before"
+                        className="w-full h-full object-contain"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => editBeforeFileInputRef.current?.click()}
+                        className="absolute bottom-2 right-2 flex items-center gap-1 px-3 py-1.5 bg-black/70 hover:bg-black/90 text-white rounded-lg text-xs font-bold backdrop-blur-sm cursor-pointer"
+                      >
+                        <Upload className="w-3 h-3" />
+                        <span>Ganti Foto</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-amber-300 rounded-xl bg-white/80 text-center">
+                      <Camera className="w-7 h-7 text-amber-600 mb-1" />
+                      <button
+                        type="button"
+                        onClick={() => editBeforeFileInputRef.current?.click()}
+                        className="mt-1 flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold cursor-pointer"
+                      >
+                        <Upload className="w-3 h-3" />
+                        <span>Unggah Foto Before</span>
+                      </button>
+                    </div>
+                  )}
+
+                  <input
+                    ref={editBeforeFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleEditBeforePhotoChange}
+                    className="hidden"
+                  />
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                      Catatan Foto Before
+                    </label>
+                    <input
+                      type="text"
+                      value={editFormData.beforeNotes}
+                      onChange={(e) => setEditFormData({ ...editFormData, beforeNotes: e.target.value })}
+                      placeholder="Catatan kondisi foto temuan..."
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                    />
+                  </div>
+                </div>
+
+                {/* 4. Bukti Perbaikan & Penutupan (After) */}
+                <div className={`p-4 rounded-2xl border transition-colors space-y-3 ${
+                  editFormData.status === 'close'
+                    ? 'bg-emerald-50/70 border-emerald-300'
+                    : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      Bukti Tindak Lanjut / Perbaikan (AFTER) {editFormData.status === 'close' && <span className="text-red-500">*</span>}
+                    </label>
+                    {editFormData.afterPhoto && (
+                      <button
+                        type="button"
+                        onClick={() => setEditFormData({ ...editFormData, afterPhoto: '' })}
+                        className="text-xs text-red-600 hover:text-red-800 font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Hapus Foto After</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {editFormData.afterPhoto ? (
+                    <div className="relative aspect-video max-h-48 bg-slate-900 rounded-xl overflow-hidden border border-emerald-300">
+                      <img
+                        src={editFormData.afterPhoto}
+                        alt="Preview Foto After"
+                        className="w-full h-full object-contain"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => editAfterFileInputRef.current?.click()}
+                        className="absolute bottom-2 right-2 flex items-center gap-1 px-3 py-1.5 bg-black/70 hover:bg-black/90 text-white rounded-lg text-xs font-bold backdrop-blur-sm cursor-pointer"
+                      >
+                        <Upload className="w-3 h-3" />
+                        <span>Ganti Foto</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-emerald-300 rounded-xl bg-white text-center">
+                      <Camera className="w-7 h-7 text-emerald-600 mb-1" />
+                      <p className="text-xs text-slate-600 mb-2">Unggah bukti foto bahwa perbaikan K3 telah dilakukan</p>
+                      <button
+                        type="button"
+                        onClick={() => editAfterFileInputRef.current?.click()}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer"
+                      >
+                        <Upload className="w-3 h-3" />
+                        <span>Unggah Foto Bukti After</span>
+                      </button>
+                    </div>
+                  )}
+
+                  <input
+                    ref={editAfterFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleEditAfterPhotoChange}
+                    className="hidden"
+                  />
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                      Catatan Tindakan Perbaikan / Closing Notes {editFormData.status === 'close' && <span className="text-red-500">*</span>}
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={editFormData.afterNotes}
+                      onChange={(e) => setEditFormData({ ...editFormData, afterNotes: e.target.value })}
+                      placeholder="Jelaskan tindakan korektif yang telah diselesaikan..."
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                  </div>
+
+                  {editFormData.status === 'close' && (
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1 cursor-pointer">
+                        <Calendar className="w-3 h-3 text-slate-400" />
+                        Tanggal Selesai (Closing Date)
+                      </label>
+                      <input
+                        type="date"
+                        value={editFormData.resolvedAt}
+                        onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch (err) {} }}
+                        onChange={(e) => setEditFormData({ ...editFormData, resolvedAt: e.target.value })}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 cursor-pointer"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Modal Footer Actions */}
+                <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditModalOpen(false)}
+                    disabled={isSubmitting}
+                    className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex items-center gap-2 px-7 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-orange-600/20 transition disabled:opacity-50 cursor-pointer"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Menyimpan Perubahan...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4" />
+                        <span>Simpan Perubahan Data</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
