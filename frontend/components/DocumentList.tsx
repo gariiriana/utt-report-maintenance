@@ -27,6 +27,7 @@ import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { FileManagement } from './FileManagement';
 import { FindingArchive } from './FindingArchive';
 import { generateHSEPdf, generateHSEPdfBlob } from '@/utils/HSEPdfExport';
+import { exportHSEInspectionRecapPDF } from '@/utils/HSEInspectionRecapPdfExport';
 import {
   generateATSServiceReportPDF,
   generateFCUServiceReportPDF,
@@ -1875,12 +1876,37 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
       return (
         <div className="space-y-4">
-          <button
-            onClick={() => setCurrentLevel('category')}
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors text-sm font-semibold mb-2 cursor-pointer"
-          >
-            <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Bulan
-          </button>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <button
+              onClick={() => setCurrentLevel('category')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg transition-colors text-xs font-bold cursor-pointer border border-slate-200 w-fit"
+            >
+              <ChevronLeft className="w-4 h-4" /> Kembali ke Daftar Bulan
+            </button>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold text-slate-500 mr-1">Bulan {selectedMonth}:</span>
+              <button
+                type="button"
+                onClick={() => exportHSEInspectionRecapPDF(monthDocs, { companyVariant: 'neutradc', periodLabel: `Bulan ${selectedMonth}` })}
+                className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                title={`Export PDF Rekapitulasi Bulan ${selectedMonth} (Logo Dwimitra & NeutraDC)`}
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>PDF NeutraDC ({monthDocs.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => exportHSEInspectionRecapPDF(monthDocs, { companyVariant: 'utt', periodLabel: `Bulan ${selectedMonth}` })}
+                className="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                title={`Export PDF Rekapitulasi Bulan ${selectedMonth} (Logo UTT & NeutraDC)`}
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>PDF UTT ({monthDocs.length})</span>
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from(weeks).sort((a, b) => b - a).map((week) => (
               <motion.button
@@ -1915,12 +1941,44 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
     return (
       <div className="space-y-4">
-        <button
-          onClick={() => setCurrentLevel(selectedCategory === 'inspection' ? 'month' : 'category')}
-          className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors text-sm font-semibold mb-2 cursor-pointer"
-        >
-          <ChevronLeft className="w-4 h-4" /> Kembali
-        </button>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <button
+            onClick={() => setCurrentLevel(selectedCategory === 'inspection' ? 'month' : 'category')}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg transition-colors text-xs font-bold cursor-pointer border border-slate-200 w-fit"
+          >
+            <ChevronLeft className="w-4 h-4" /> Kembali
+          </button>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold text-slate-500 mr-1">
+              {currentLevel === 'week' ? `Minggu ke-${selectedWeek}:` : 'Dokumen Terpilih:'}
+            </span>
+            <button
+              type="button"
+              onClick={() => exportHSEInspectionRecapPDF(displayDocs, {
+                companyVariant: 'neutradc',
+                periodLabel: currentLevel === 'week' ? `Minggu ke-${selectedWeek} ${selectedMonth}` : undefined
+              })}
+              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+              title="Export PDF Rekapitulasi (Logo Dwimitra & NeutraDC)"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>PDF NeutraDC ({displayDocs.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => exportHSEInspectionRecapPDF(displayDocs, {
+                companyVariant: 'utt',
+                periodLabel: currentLevel === 'week' ? `Minggu ke-${selectedWeek} ${selectedMonth}` : undefined
+              })}
+              className="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+              title="Export PDF Rekapitulasi (Logo UTT & NeutraDC)"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>PDF UTT ({displayDocs.length})</span>
+            </button>
+          </div>
+        </div>
         <div className="grid grid-cols-1 gap-4">
           {displayDocs.map((document, index) => renderDocumentCard(document, index))}
         </div>
@@ -2306,7 +2364,46 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           </div>
         </div>
 
+        {/* Tombol Export Rekap PDF HSE (NeutraDC & UTT) - Khusus Role HSE / filterOverride 'hse_utt' */}
+        {filterOverride === 'hse_utt' && (
+          <div className="mt-4 pt-4 border-t border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-slate-50 p-3 sm:p-4 rounded-2xl border border-blue-100 shadow-2xs">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-2 bg-blue-600 text-white rounded-xl shadow-xs shrink-0">
+                <ClipboardList className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 leading-tight truncate">
+                  Export Rekapitulasi Laporan Inspeksi (PDF)
+                </h4>
+                <p className="text-[11px] text-slate-500 font-medium mt-0.5 truncate">
+                  Rekap seluruh data & foto inspeksi terpilih ke dokumen PDF resmi bergrid biru
+                </p>
+              </div>
+            </div>
 
+            <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap shrink-0">
+              <button
+                type="button"
+                onClick={() => exportHSEInspectionRecapPDF(filteredDocuments, { companyVariant: 'neutradc' })}
+                className="flex-1 sm:flex-none px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-blue-500/20 transition cursor-pointer shrink-0 whitespace-nowrap"
+                title="Export PDF Rekapitulasi Inspeksi HSE (Header Logo Dwimitra & NeutraDC)"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export PDF NeutraDC</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => exportHSEInspectionRecapPDF(filteredDocuments, { companyVariant: 'utt' })}
+                className="flex-1 sm:flex-none px-3.5 py-2 bg-gradient-to-r from-teal-600 to-cyan-700 hover:from-teal-700 hover:to-cyan-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm shadow-teal-500/20 transition cursor-pointer shrink-0 whitespace-nowrap"
+                title="Export PDF Rekapitulasi Inspeksi HSE (Header Logo UTT & NeutraDC)"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export PDF UTT</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {loading ? (
