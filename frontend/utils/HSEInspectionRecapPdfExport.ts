@@ -10,7 +10,6 @@
 // ============================================================================
 
 import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { ExcelDocument, getDocumentDate } from '@/components/DocumentList';
@@ -185,6 +184,9 @@ async function fetchFullHSEInspectionData(docItem: ExcelDocument): Promise<Loade
 
 /**
  * Export Rekapitulasi Laporan Inspeksi HSE ke Format PDF Resmi
+ * Layout: 1 halaman per 1 tanggal inspeksi.
+ * Info inspeksi di bagian atas, foto-foto besar grid 2 kolom di bawahnya.
+ * Jika foto overflow, lanjut ke halaman baru (masih bagian inspeksi yang sama).
  */
 export async function exportHSEInspectionRecapPDF(
   documents: ExcelDocument[],
@@ -222,15 +224,15 @@ export async function exportHSEInspectionRecapPDF(
     toast.loading('Menyusun lembar Rekapitulasi PDF...', { id: toastId });
 
     // 2. Initialize Landscape A4 jsPDF
-    const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4', compress: true });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
+    const pdfDoc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4', compress: true });
+    const pageWidth = pdfDoc.internal.pageSize.getWidth();
+    const pageHeight = pdfDoc.internal.pageSize.getHeight();
     const margin = 10;
     const contentW = pageWidth - 2 * margin;
 
-    const BLUE_RGB: [number, number, number] = [0, 89, 156]; // #00599c (Dwimitra Corporate Blue)
+    const BLUE_RGB: [number, number, number] = [0, 89, 156]; // #00599c
     const EMERALD_RGB: [number, number, number] = [16, 185, 129]; // #10b981
-    const DARK = '#1e293b';
+    const DARK_RGB: [number, number, number] = [30, 41, 59];
     const GRAY = '#64748b';
     const SLATE_200 = '#e2e8f0';
 
@@ -251,323 +253,306 @@ export async function exportHSEInspectionRecapPDF(
       }
     }
 
-    // Header dimensions (Spacious & Clean)
+    // Header dimensions
     const headerTopY = 4.5;
-    const headerH = 22; // 22 mm height
-    const tableStartY = headerTopY + headerH + 3.5; // Table starts at 30mm
+    const headerH = 22;
 
-    const drawHeader = (currentDoc: jsPDF) => {
-      // Top accent strip
-      currentDoc.setFillColor(...BLUE_RGB);
-      currentDoc.rect(0, 0, pageWidth, 2.5, 'F');
+    // ======================== Helper: Draw Header ========================
+    const drawHeader = (d: jsPDF) => {
+      d.setFillColor(...BLUE_RGB);
+      d.rect(0, 0, pageWidth, 2.5, 'F');
 
-      // Header box background & border
-      currentDoc.setFillColor(255, 255, 255);
-      currentDoc.setDrawColor(SLATE_200);
-      currentDoc.setLineWidth(0.2);
-      currentDoc.roundedRect(margin, headerTopY, contentW, headerH, 1.5, 1.5, 'FD');
+      d.setFillColor(255, 255, 255);
+      d.setDrawColor(SLATE_200);
+      d.setLineWidth(0.2);
+      d.roundedRect(margin, headerTopY, contentW, headerH, 1.5, 1.5, 'FD');
 
       const col1W = 34;
       const col3W = 34;
+      d.setDrawColor(SLATE_200);
+      d.setLineWidth(0.2);
+      d.line(margin + col1W, headerTopY, margin + col1W, headerTopY + headerH);
+      d.line(pageWidth - margin - col3W, headerTopY, pageWidth - margin - col3W, headerTopY + headerH);
 
-      // Vertical dividers inside header box
-      currentDoc.setDrawColor(SLATE_200);
-      currentDoc.setLineWidth(0.2);
-      currentDoc.line(margin + col1W, headerTopY, margin + col1W, headerTopY + headerH);
-      currentDoc.line(pageWidth - margin - col3W, headerTopY, pageWidth - margin - col3W, headerTopY + headerH);
-
-      // Render Left Logo (DME or UTT)
       if (leftLogo) {
-        currentDoc.addImage(
-          leftLogo,
-          'PNG',
-          margin + 2.5,
-          headerTopY + 3.5,
-          col1W - 5,
-          15,
-          isNeutra ? 'logo_dme' : 'logo_utt',
-          'FAST'
-        );
+        d.addImage(leftLogo, 'PNG', margin + 2.5, headerTopY + 3.5, col1W - 5, 15, isNeutra ? 'logo_dme' : 'logo_utt', 'FAST');
       }
-
-      // Render Right Logo (NeutraDC)
       if (rightLogo) {
-        currentDoc.addImage(
-          rightLogo,
-          'PNG',
-          pageWidth - margin - col3W + 2.5,
-          headerTopY + 4,
-          col3W - 5,
-          14,
-          'logo_neutra',
-          'FAST'
-        );
+        d.addImage(rightLogo, 'PNG', pageWidth - margin - col3W + 2.5, headerTopY + 4, col3W - 5, 14, 'logo_neutra', 'FAST');
       }
 
-      // Center Titles
       const centerX = margin + col1W + (contentW - col1W - col3W) / 2;
-
-      currentDoc.setFontSize(10.5).setFont('helvetica', 'bold').setTextColor(...BLUE_RGB);
-      currentDoc.text(options.titleOverride || headerReportTitle, centerX, headerTopY + 6.5, { align: 'center' });
-
-      currentDoc.setFontSize(8).setFont('helvetica', 'normal').setTextColor(DARK);
-      currentDoc.text(companyTitle, centerX, headerTopY + 11.5, { align: 'center' });
-
-      const printDateStr = new Date().toLocaleDateString('id-ID', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      });
-
-      currentDoc.setFontSize(7).setFont('helvetica', 'bold').setTextColor(GRAY);
-      currentDoc.text(
-        `Total Laporan: ${loadedItems.length} Dokumen  |  Tanggal Cetak: ${printDateStr} ${
-          options.periodLabel ? ` |  Periode: ${options.periodLabel}` : ''
-        }`,
+      d.setFontSize(10.5).setFont('helvetica', 'bold').setTextColor(...BLUE_RGB);
+      d.text(options.titleOverride || headerReportTitle, centerX, headerTopY + 6.5, { align: 'center' });
+      d.setFontSize(8).setFont('helvetica', 'normal').setTextColor(...DARK_RGB);
+      d.text(companyTitle, centerX, headerTopY + 11.5, { align: 'center' });
+      const printDateStr = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+      d.setFontSize(7).setFont('helvetica', 'bold').setTextColor(GRAY);
+      d.text(
+        `Total Laporan: ${loadedItems.length} Dokumen  |  Tanggal Cetak: ${printDateStr}${options.periodLabel ? `  |  Periode: ${options.periodLabel}` : ''}`,
         centerX,
         headerTopY + 16.8,
         { align: 'center' }
       );
     };
 
-    const drawFooter = (currentDoc: jsPDF, pg: number, totalPages: number) => {
-      currentDoc.setFillColor(...BLUE_RGB);
-      currentDoc.rect(0, pageHeight - 2.5, pageWidth, 2.5, 'F');
-      currentDoc.setFontSize(6.5).setTextColor(GRAY);
-      currentDoc.text(`${companyTitle} — HSE Inspection Recap Report`, margin, pageHeight - 4.5);
-      currentDoc.text(`Halaman ${pg} dari ${totalPages}`, pageWidth - margin, pageHeight - 4.5, { align: 'right' });
+    // ======================== Helper: Draw Footer ========================
+    const drawFooter = (d: jsPDF, pg: number, total: number) => {
+      d.setFillColor(...BLUE_RGB);
+      d.rect(0, pageHeight - 2.5, pageWidth, 2.5, 'F');
+      d.setFontSize(6.5).setTextColor(GRAY);
+      d.text(`${companyTitle} — HSE Inspection Recap Report`, margin, pageHeight - 4.5);
+      d.text(`Halaman ${pg} dari ${total}`, pageWidth - margin, pageHeight - 4.5, { align: 'right' });
     };
 
-    // Draw header on the first page
-    drawHeader(doc);
+    // ======================== Helper: Draw Info Card ========================
+    // Draws the inspection details card at the top of each inspection's first page.
+    // Returns the Y position after the card.
+    const drawInfoCard = (d: jsPDF, item: LoadedHSEInspectionItem, itemIndex: number, startY: number): number => {
+      const cardY = startY;
+      const cardX = margin;
+      const cardW = contentW;
 
-    // Build Table Rows
-    const tableRows = loadedItems.map((item, idx) => {
-      const colNo = String(idx + 1);
-      const colAktivitas = `${item.dateStr}\n\n${item.aktivitas}${
-        item.maintenanceType && item.maintenanceType !== 'OTHER' ? `\n[${item.maintenanceType}]` : ''
-      }`;
-      const colLokasi = `Lokasi: ${item.lokasi}\nPIC: ${item.pic}\nPersonil: ${item.personil}${
-        item.anggota ? `\nAnggota: ${item.anggota}` : ''
-      }`;
-      const colInspector = `${item.inspectorK3}\n(HSE Officer)`;
+      // Calculate card height based on checklist rows
+      const checkCount = item.checklistItems.length;
+      const checkRows = Math.ceil(checkCount / 5);
+      const cardH = Math.max(36, 20 + checkRows * 5.5);
 
-      // Checklist text is custom drawn with emerald green checkmark badges in `didDrawCell`
-      const colChecklist = '';
+      // Card background
+      d.setFillColor(248, 250, 252);
+      d.setDrawColor(203, 213, 225);
+      d.setLineWidth(0.2);
+      d.roundedRect(cardX, cardY, cardW, cardH, 1.5, 1.5, 'FD');
 
-      const photoPlaceholder = item.photos.length > 0 ? '' : '(Tidak Ada Foto)';
-      const colStatus = 'SESUAI K3\n(COMPLIANT)\n\nKondisi Kerja Aman';
+      // Blue left accent bar
+      d.setFillColor(...BLUE_RGB);
+      d.roundedRect(cardX, cardY, 3, cardH, 1.5, 0, 'F');
+      d.rect(cardX + 1.5, cardY, 1.5, cardH, 'F');
 
-      return [
-        colNo,
-        colAktivitas,
-        colLokasi,
-        colInspector,
-        colChecklist,
-        photoPlaceholder,
-        colStatus,
-      ];
-    });
+      // === LEFT SECTION: Info text ===
+      const infoX = cardX + 7;
+      let infoY = cardY + 5.5;
 
-    autoTable(doc, {
-      startY: tableStartY,
-      head: [[
-        'No',
-        'Tanggal & Aktivitas Pekerjaan',
-        'Lokasi & Tim Pelaksana',
-        'Petugas Inspeksi',
-        'Kepatuhan Checklist K3',
-        'Foto Dokumentasi Inspeksi Visual',
-        'Status K3',
-      ]],
-      body: tableRows,
-      margin: { top: tableStartY, left: margin, right: margin, bottom: 10 },
-      styles: {
-        fontSize: 6.8,
-        cellPadding: 1.8,
-        lineColor: [203, 213, 225],
-        lineWidth: 0.15,
-        textColor: [30, 41, 59],
-        font: 'helvetica',
-        valign: 'middle',
-        minCellHeight: 26,
-      },
-      headStyles: {
-        fillColor: BLUE_RGB,
-        textColor: [255, 255, 255],
-        fontStyle: 'bold',
-        fontSize: 7.2,
-        halign: 'center',
-        valign: 'middle',
-        lineWidth: 0.2,
-        lineColor: BLUE_RGB,
-      },
-      alternateRowStyles: {
-        fillColor: [248, 250, 252],
-      },
-      columnStyles: {
-        0: { cellWidth: 9, halign: 'center' },
-        1: { cellWidth: 46 },
-        2: { cellWidth: 44 },
-        3: { cellWidth: 32 },
-        4: { cellWidth: 48 },
-        5: { cellWidth: 68, halign: 'center' },
-        6: { cellWidth: 30, halign: 'center' },
-      },
-      didParseCell: (data: any) => {
-        // Dynamically adjust row height based on ALL photo count and checklist items
-        if (data.section === 'body') {
-          const item = loadedItems[data.row.index];
-          const photoCount = item?.photos?.length || 0;
-          const checkCount = item?.checklistItems?.length || 0;
-          const checkRows = Math.ceil(checkCount / 2);
-          const checkMinH = checkRows * 4.6 + 4;
+      // Number badge
+      d.setFillColor(...BLUE_RGB);
+      d.circle(infoX - 1.5, infoY - 0.5, 3.5, 'F');
+      d.setFontSize(8).setFont('helvetica', 'bold').setTextColor(255, 255, 255);
+      d.text(String(itemIndex + 1), infoX - 1.5, infoY + 0.8, { align: 'center' });
 
-          // Each photo row in 3-col grid needs ~18mm height
-          const PHOTO_ROW_H = 18;
-          const photoGridRows = Math.ceil(photoCount / 3);
-          const photoMinH = photoGridRows * PHOTO_ROW_H + 4;
+      // Date & Aktivitas
+      d.setFontSize(9).setFont('helvetica', 'bold').setTextColor(...BLUE_RGB);
+      d.text(`${item.dateStr}  —  ${item.aktivitas}`, infoX + 5, infoY + 0.5);
+      infoY += 6;
 
-          const neededH = Math.max(26, checkMinH, photoMinH);
-          data.row.height = Math.max(data.row.height || 0, neededH);
+      // Info details in 3 columns
+      const detailFontSize = 7;
+      d.setFontSize(detailFontSize).setFont('helvetica', 'normal').setTextColor(...DARK_RGB);
+
+      const col1X = infoX + 1;
+      const col2X = infoX + 75;
+      const col3X = infoX + 150;
+
+      // Column 1: Lokasi, PIC
+      d.setFont('helvetica', 'bold');
+      d.text('Lokasi:', col1X, infoY);
+      d.setFont('helvetica', 'normal');
+      d.text(item.lokasi, col1X + 17, infoY);
+
+      d.setFont('helvetica', 'bold');
+      d.text('PIC:', col1X, infoY + 4.5);
+      d.setFont('helvetica', 'normal');
+      d.text(item.pic, col1X + 17, infoY + 4.5);
+
+      // Column 2: Personil, Anggota
+      d.setFont('helvetica', 'bold');
+      d.text('Personil:', col2X, infoY);
+      d.setFont('helvetica', 'normal');
+      const personilLines = d.splitTextToSize(item.personil, 60);
+      d.text(personilLines, col2X + 17, infoY);
+
+      if (item.anggota) {
+        d.setFont('helvetica', 'bold');
+        d.text('Anggota:', col2X, infoY + 4.5);
+        d.setFont('helvetica', 'normal');
+        const anggotaLines = d.splitTextToSize(item.anggota, 60);
+        d.text(anggotaLines, col2X + 17, infoY + 4.5);
+      }
+
+      // Column 3: Inspector, Status
+      d.setFont('helvetica', 'bold');
+      d.text('Inspektur K3:', col3X, infoY);
+      d.setFont('helvetica', 'normal');
+      d.text(item.inspectorK3, col3X + 25, infoY);
+
+      // Status badge
+      d.setFillColor(220, 252, 231); // green-100
+      d.setDrawColor(34, 197, 94);
+      d.setLineWidth(0.15);
+      d.roundedRect(col3X, infoY + 3, 35, 6, 1, 1, 'FD');
+      d.setFontSize(6.5).setFont('helvetica', 'bold').setTextColor(22, 163, 74);
+      d.text('✓ SESUAI K3 (COMPLIANT)', col3X + 17.5, infoY + 7, { align: 'center' });
+
+      // === Checklist Section (bottom of card) ===
+      const checklistY = infoY + 13;
+      d.setFontSize(7).setFont('helvetica', 'bold').setTextColor(...BLUE_RGB);
+      d.text('Kepatuhan Checklist K3:', col1X, checklistY);
+
+      const checkStartX = col1X;
+      const checkStartY = checklistY + 4;
+      const checkColW = 46;
+      const checkCols = 5;
+      const checkRowH = 5;
+
+      item.checklistItems.forEach((chkName, cIdx) => {
+        const colIdx = cIdx % checkCols;
+        const rowIdx = Math.floor(cIdx / checkCols);
+        const cx = checkStartX + colIdx * checkColW;
+        const cy = checkStartY + rowIdx * checkRowH;
+
+        // Emerald Green Circle Badge
+        d.setFillColor(...EMERALD_RGB);
+        d.circle(cx + 1.2, cy, 1.2, 'F');
+
+        // White Checkmark Tick
+        d.setDrawColor(255, 255, 255);
+        d.setLineWidth(0.35);
+        d.line(cx + 0.6, cy, cx + 1.0, cy + 0.4);
+        d.line(cx + 1.0, cy + 0.4, cx + 1.85, cy - 0.5);
+
+        // Label
+        d.setFontSize(6.8).setFont('helvetica', 'bold').setTextColor(...DARK_RGB);
+        d.text(chkName, cx + 3.5, cy + 0.8);
+      });
+
+      return cardY + cardH + 3;
+    };
+
+    // ======================== Helper: Draw Photo on Page ========================
+    const drawPhoto = (d: jsPDF, photo: { base64: string; description: string; label: string }, x: number, y: number, w: number, h: number, alias: string) => {
+      // Card background
+      d.setFillColor(241, 245, 249);
+      d.setDrawColor(203, 213, 225);
+      d.setLineWidth(0.2);
+      d.roundedRect(x, y, w, h, 1.2, 1.2, 'FD');
+
+      if (photo.base64) {
+        try {
+          const imgDim = imageInfoCache[photo.base64] || { width: 4, height: 3 };
+          const imgAspect = imgDim.width > 0 && imgDim.height > 0 ? imgDim.width / imgDim.height : 4 / 3;
+          const pad = 1.5;
+          const boxW = w - pad * 2;
+          const boxH = h - pad * 2;
+          const boxAspect = boxW / boxH;
+
+          let drawW = boxW;
+          let drawH = boxH;
+
+          if (imgAspect > boxAspect) {
+            drawH = drawW / imgAspect;
+          } else {
+            drawW = drawH * imgAspect;
+          }
+
+          const imgX = x + (w - drawW) / 2;
+          const imgY = y + (h - drawH) / 2;
+
+          d.addImage(photo.base64, 'JPEG', imgX, imgY, drawW, drawH, alias, 'FAST');
+        } catch (e) {
+          console.error('Error embedding photo:', e);
         }
-      },
-      didDrawPage: (data: any) => {
-        if (data.pageNumber > 1) {
-          drawHeader(doc);
+      }
+    };
+
+    // ======================== MAIN RENDER LOOP ========================
+    // Each item gets its own page(s). First page: header + info card + photos.
+    // If photos overflow, add new page with header + continuation photos.
+
+    const PHOTO_COLS = 2;
+    const photoGapX = 4;
+    const photoGapY = 4;
+    const photoAreaX = margin;
+    const photoAreaW = contentW;
+    const photoCardW = (photoAreaW - (PHOTO_COLS - 1) * photoGapX) / PHOTO_COLS;
+    const photoCardH = 65; // Large photo cards (~65mm tall)
+    const bottomMargin = 10;
+
+    for (let itemIdx = 0; itemIdx < loadedItems.length; itemIdx++) {
+      const item = loadedItems[itemIdx];
+
+      // Add new page for each item (except the first item uses page 1)
+      if (itemIdx > 0) {
+        pdfDoc.addPage();
+      }
+
+      // Draw header
+      drawHeader(pdfDoc);
+
+      // Draw info card
+      const contentStartY = headerTopY + headerH + 3;
+      let cursorY = drawInfoCard(pdfDoc, item, itemIdx, contentStartY);
+
+      // Photo section title
+      pdfDoc.setFontSize(8).setFont('helvetica', 'bold').setTextColor(...BLUE_RGB);
+      pdfDoc.text(`Foto Dokumentasi Inspeksi Visual (${item.photos.length} Foto)`, margin + 1, cursorY + 1.5);
+      cursorY += 5;
+
+      if (item.photos.length === 0) {
+        pdfDoc.setFontSize(7.5).setFont('helvetica', 'italic').setTextColor(GRAY);
+        pdfDoc.text('(Tidak ada foto dokumentasi)', margin + 5, cursorY + 4);
+      } else {
+        // Render photos in 2-column grid, page-breaking as needed
+        for (let pIdx = 0; pIdx < item.photos.length; pIdx++) {
+          const col = pIdx % PHOTO_COLS;
+
+          // Check if we need a new page for this photo row
+          if (col === 0 && cursorY + photoCardH > pageHeight - bottomMargin) {
+            pdfDoc.addPage();
+            drawHeader(pdfDoc);
+            cursorY = headerTopY + headerH + 4;
+
+            // Continuation label
+            pdfDoc.setFontSize(7.5).setFont('helvetica', 'bold').setTextColor(...BLUE_RGB);
+            pdfDoc.text(
+              `${item.dateStr} — ${item.aktivitas} (Foto Lanjutan)`,
+              margin + 1,
+              cursorY + 1
+            );
+            cursorY += 5;
+          }
+
+          const photoX = photoAreaX + col * (photoCardW + photoGapX);
+          const photoY = cursorY;
+
+          drawPhoto(
+            pdfDoc,
+            item.photos[pIdx],
+            photoX,
+            photoY,
+            photoCardW,
+            photoCardH,
+            `hse_insp_${item.id}_${pIdx}`
+          );
+
+          // Move cursor down after completing a row
+          if (col === PHOTO_COLS - 1 || pIdx === item.photos.length - 1) {
+            cursorY += photoCardH + photoGapY;
+          }
         }
-      },
-      didDrawCell: (data: any) => {
-        // Draw Column 4: Kepatuhan Checklist K3 with Emerald Green Checkmark Badges
-        if (data.section === 'body' && data.column.index === 4) {
-          const item = loadedItems[data.row.index];
-          if (!item) return;
-
-          const cell = data.cell;
-          const items = item.checklistItems;
-          if (!items || items.length === 0) return;
-
-          const startX = cell.x + 2;
-          const cellH = cell.height;
-
-          // Render checklist in 2 compact columns with generous 4.5mm line height
-          const col1W = 23;
-          const maxRowsPerCol = Math.ceil(items.length / 2);
-          const rowSpacing = 4.5;
-          const totalContentH = maxRowsPerCol * rowSpacing;
-          const startY = cell.y + Math.max(2, (cellH - totalContentH) / 2) + 2.2;
-
-          items.forEach((chkName, cIdx) => {
-            const isCol2 = cIdx >= maxRowsPerCol;
-            const rowInCol = isCol2 ? cIdx - maxRowsPerCol : cIdx;
-
-            const iconX = isCol2 ? startX + col1W : startX;
-            const centerY = startY + rowInCol * rowSpacing;
-
-            // Draw Emerald Green Circle Badge
-            doc.setFillColor(...EMERALD_RGB);
-            doc.circle(iconX + 1.2, centerY, 1.0, 'F');
-
-            // Draw White Checkmark Tick inside Circle
-            doc.setDrawColor(255, 255, 255);
-            doc.setLineWidth(0.3);
-            doc.line(iconX + 0.7, centerY, iconX + 1.05, centerY + 0.35);
-            doc.line(iconX + 1.05, centerY + 0.35, iconX + 1.75, centerY - 0.4);
-
-            // Draw Checklist Item Label
-            doc.setFontSize(6.2).setFont('helvetica', 'bold').setTextColor(30, 41, 59);
-            const labelText = doc.splitTextToSize(chkName, 19)[0] || chkName;
-            doc.text(labelText, iconX + 3.0, centerY + 0.7);
-          });
-        }
-
-        // Draw Column 5: ALL Foto Dokumentasi Visual — Large 3-Column Grid
-        if (data.section === 'body' && data.column.index === 5) {
-          const item = loadedItems[data.row.index];
-          if (!item || item.photos.length === 0) return;
-
-          const cell = data.cell;
-          const photos = item.photos; // ALL photos, no slicing!
-          const cellPad = 1.2;
-          const availW = cell.width - cellPad * 2;
-          const availH = cell.height - cellPad * 2;
-
-          // Always use 3-column grid (or fewer if < 3 photos)
-          const cols = Math.min(photos.length, 3);
-          const gridRows = Math.ceil(photos.length / cols);
-
-          const gapX = 1.5;
-          const gapY = 1.5;
-          const cardW = (availW - (cols - 1) * gapX) / cols;
-          const cardH = Math.min((availH - (gridRows - 1) * gapY) / gridRows, 16.5);
-
-          // Center the grid vertically in the cell
-          const totalGridH = gridRows * cardH + (gridRows - 1) * gapY;
-          const offsetY = Math.max(0, (availH - totalGridH) / 2);
-
-          photos.forEach((photo, pIdx) => {
-            const col = pIdx % cols;
-            const row = Math.floor(pIdx / cols);
-
-            const cardX = cell.x + cellPad + col * (cardW + gapX);
-            const cardY = cell.y + cellPad + offsetY + row * (cardH + gapY);
-
-            // Background card
-            doc.setFillColor(241, 245, 249);
-            doc.setDrawColor(203, 213, 225);
-            doc.setLineWidth(0.15);
-            doc.roundedRect(cardX, cardY, cardW, cardH, 0.8, 0.8, 'FD');
-
-            if (photo.base64) {
-              try {
-                const imgDim = imageInfoCache[photo.base64] || { width: 4, height: 3 };
-                const imgAspect =
-                  imgDim.width > 0 && imgDim.height > 0 ? imgDim.width / imgDim.height : 4 / 3;
-                const boxAspect = cardW / cardH;
-
-                let drawW = cardW - 0.8;
-                let drawH = cardH - 0.8;
-
-                if (imgAspect > boxAspect) {
-                  drawH = drawW / imgAspect;
-                } else {
-                  drawW = drawH * imgAspect;
-                }
-
-                const imgX = cardX + (cardW - drawW) / 2;
-                const imgY = cardY + (cardH - drawH) / 2;
-
-                doc.addImage(
-                  photo.base64,
-                  'JPEG',
-                  imgX,
-                  imgY,
-                  drawW,
-                  drawH,
-                  `hse_insp_${item.id}_${pIdx}`,
-                  'FAST'
-                );
-              } catch (e) {
-                console.error('Error embedding inspection photo:', e);
-              }
-            }
-          });
-        }
-      },
-    });
+      }
+    }
 
     // Add page numbers & footers to all pages
-    const totalPages = doc.getNumberOfPages();
+    const totalPages = pdfDoc.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      drawFooter(doc, i, totalPages);
+      pdfDoc.setPage(i);
+      drawFooter(pdfDoc, i, totalPages);
     }
 
     const safeVariant = isNeutra ? 'NeutraDC' : 'UTT';
     const dateStamp = new Date().toISOString().split('T')[0];
     const fileName = `Rekap_Inspeksi_HSE_${safeVariant}_${dateStamp}.pdf`;
 
-    doc.save(fileName);
+    pdfDoc.save(fileName);
     toast.success(`Rekapitulasi PDF HSE (${safeVariant}) berhasil diekspor!`, { id: toastId });
   } catch (err: any) {
     console.error('Failed to export HSE inspection recap PDF:', err);
