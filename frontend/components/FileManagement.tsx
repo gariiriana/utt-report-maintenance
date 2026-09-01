@@ -68,6 +68,7 @@ const FILE_CATEGORIES = [
     'Report PIR',
     'SLA/SLG',
     'SLD',
+    'Layout',
     'Service Report',
     'Service Report Approved',
     'Predictive Report',
@@ -167,7 +168,9 @@ export function parseFilenameMetadata(filename: string): ParsedFileMetadata {
     }
 
     // 3. Deteksi Kategori Dokumen
-    if (/\b(?:PREDICTIVE[\s_-]*REPORT|PREDICTIVE)\b/i.test(cleanName)) {
+    if (/\b(?:LAYOUT|DENAH)\b/i.test(cleanName)) {
+        result.category = 'Layout';
+    } else if (/\b(?:PREDICTIVE[\s_-]*REPORT|PREDICTIVE)\b/i.test(cleanName)) {
         result.category = 'Predictive Report';
     } else if (/\b(?:JSEA|JSA)\b/i.test(cleanName)) {
         result.category = 'JSEA';

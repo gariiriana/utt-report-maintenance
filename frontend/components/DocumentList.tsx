@@ -1237,6 +1237,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     const managementFolders = [
       { name: 'D-DAY', desc: 'Dokumen D-DAY & Prosedur Operational' },
       { name: 'Laporan Harian', desc: 'Laporan Harian Maintenance Data Center' },
+      { name: 'Layout', desc: 'Layout & Denah Fasilitas Data Center' },
       { name: 'MOP', desc: 'Method of Procedure (MOP) Standar' },
       { name: 'Monthly', desc: 'Laporan Rekap Bulanan Project' },
       { name: 'Predictive Report', desc: 'Laporan Predictive Maintenance Data Center' },
