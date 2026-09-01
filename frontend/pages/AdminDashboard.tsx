@@ -165,6 +165,15 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         getDocs(pdfQuery)
       ]);
 
+      const normalizeCreatedBy = (email?: string | null): string => {
+        if (!email) return 'Unknown';
+        const clean = email.trim().toLowerCase();
+        if (clean === 'ahhu@utt.com' || clean === 'ahhu@gmail.com' || clean === 'ahu@utt.com' || clean === 'ahu@gmail.com') {
+          return 'ahu@gmail.com';
+        }
+        return clean;
+      };
+
       const excelDocs = excelSnapshot.docs.map(doc => {
         const data = doc.data();
         return {
@@ -174,7 +183,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
           maintenanceTime: data.maintenanceTime,
           specificDetail: data.specificDetail,
           createdAt: data.createdAt,
-          createdBy: data.createdBy,
+          createdBy: normalizeCreatedBy(data.createdBy),
           fileSize: data.fileSize || 0,
           totalPhotos: data.totalPhotos || 0,
           photosWithImage: data.photosWithImage || 0,
@@ -192,7 +201,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
           maintenanceTime: data.maintenanceTime,
           specificDetail: data.specificDetail,
           createdAt: data.createdAt,
-          createdBy: data.createdBy,
+          createdBy: normalizeCreatedBy(data.createdBy),
           fileSize: data.fileSize || 0,
           totalPhotos: data.totalPhotos || 0,
           photosWithImage: data.photosWithImage || 0,

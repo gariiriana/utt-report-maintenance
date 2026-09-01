@@ -291,6 +291,17 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       const fetchAll = async () => {
         const fetchPromises: Promise<any>[] = [];
         const userEmailClean = (user?.email || '').toLowerCase().trim();
+        const isAHUUser = userEmailClean === 'ahu@gmail.com' || userEmailClean === 'ahhu@utt.com' || userEmailClean === 'ahu@utt.com' || userEmailClean === 'ahhu@gmail.com';
+        const queryEmails = isAHUUser ? ['ahu@gmail.com', 'ahhu@utt.com', 'ahu@utt.com', 'ahhu@gmail.com'] : [userEmailClean];
+
+        const normalizeCreatedBy = (email?: string | null): string => {
+          if (!email) return 'Unknown';
+          const clean = email.trim().toLowerCase();
+          if (clean === 'ahhu@utt.com' || clean === 'ahhu@gmail.com' || clean === 'ahu@utt.com' || clean === 'ahu@gmail.com') {
+            return 'ahu@gmail.com';
+          }
+          return clean;
+        };
 
         if (filterOverride !== 'hse_utt') {
           const isPrivilegedOrDME = isPrivileged || isDME;
@@ -298,7 +309,9 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           if (!isDME) {
             const excelQuery = isPrivilegedOrDME
               ? query(collection(db, 'excel_documents'))
-              : query(collection(db, 'excel_documents'), where('createdBy', '==', userEmailClean));
+              : (isAHUUser
+                ? query(collection(db, 'excel_documents'), where('createdBy', 'in', queryEmails))
+                : query(collection(db, 'excel_documents'), where('createdBy', '==', userEmailClean)));
             fetchPromises.push(getDocs(excelQuery));
           } else {
             fetchPromises.push(Promise.resolve(null));
@@ -306,7 +319,9 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
           const pdfQuery = isPrivilegedOrDME
             ? query(collection(db, 'pdf_documents'))
-            : query(collection(db, 'pdf_documents'), where('createdBy', '==', userEmailClean));
+            : (isAHUUser
+              ? query(collection(db, 'pdf_documents'), where('createdBy', 'in', queryEmails))
+              : query(collection(db, 'pdf_documents'), where('createdBy', '==', userEmailClean)));
           fetchPromises.push(getDocs(pdfQuery));
         } else {
           fetchPromises.push(Promise.resolve(null));
@@ -321,7 +336,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           } else if (isAdmin) {
             hseQuery = query(collection(db, 'hse'));
           } else {
-            hseQuery = query(collection(db, 'hse'), where('authorEmail', '==', (user.email || '').toLowerCase()));
+            hseQuery = query(collection(db, 'hse'), where('authorEmail', 'in', isAHUUser ? queryEmails : [(user.email || '').toLowerCase()]));
           }
           fetchPromises.push(getDocs(hseQuery));
         } else {
@@ -344,7 +359,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               maintenanceTime: data.maintenanceTime,
               specificDetail: data.specificDetail,
               createdAt: data.createdAt.toDate(),
-              createdBy: data.createdBy,
+              createdBy: normalizeCreatedBy(data.createdBy),
               fileSize: data.fileSize || 0,
               totalPhotos: data.totalPhotos || 0,
               photosWithImage: data.photosWithImage || 0,
@@ -373,7 +388,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               maintenanceTime: data.maintenanceTime,
               specificDetail: data.specificDetail,
               createdAt: data.createdAt.toDate(),
-              createdBy: data.createdBy,
+              createdBy: normalizeCreatedBy(data.createdBy),
               fileSize: data.fileSize || 0,
               totalPhotos: data.totalPhotos || 0,
               photosWithImage: data.photosWithImage || 0,
@@ -403,7 +418,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               maintenanceTime: data.date,
               specificDetail: data.lokasi,
               createdAt: data.createdAt?.toDate() || new Date(),
-              createdBy: data.authorEmail,
+              createdBy: normalizeCreatedBy(data.authorEmail),
               fileSize: 0,
               totalPhotos: data.photos?.length || 0,
               photosWithImage: data.photos?.length || 0,
@@ -1064,7 +1079,10 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     const isPrivilegedOrDME = isPrivileged || isDME;
     if (!isPrivilegedOrDME) {
       const userEmailClean = (user?.email || '').toLowerCase().trim();
-      if ((doc.createdBy || '').toLowerCase().trim() !== userEmailClean) {
+      const isAHUUser = userEmailClean === 'ahu@gmail.com' || userEmailClean === 'ahhu@utt.com' || userEmailClean === 'ahu@utt.com' || userEmailClean === 'ahhu@gmail.com';
+      const docCreator = (doc.createdBy || '').toLowerCase().trim();
+      const isMatch = isAHUUser ? (docCreator === 'ahu@gmail.com') : (docCreator === userEmailClean);
+      if (!isMatch) {
         return false;
       }
     }
@@ -1221,6 +1239,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       { name: 'Laporan Harian', desc: 'Laporan Harian Maintenance Data Center' },
       { name: 'MOP', desc: 'Method of Procedure (MOP) Standar' },
       { name: 'Monthly', desc: 'Laporan Rekap Bulanan Project' },
+      { name: 'Predictive Report', desc: 'Laporan Predictive Maintenance Data Center' },
       { name: 'Risk Register', desc: 'Matriks & Analisa Risiko Operasional' },
       { name: 'JSEA', desc: 'Job Safety Environment Analysis' },
       { name: 'Report CM', desc: 'Laporan Corrective Maintenance (CM)' },

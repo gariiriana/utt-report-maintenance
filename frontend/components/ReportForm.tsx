@@ -937,7 +937,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       };
 
       if (!editingData) {
-        reportData.createdBy = user?.email?.toLowerCase();
+        const rawUserEmail = (user?.email || '').toLowerCase().trim();
+        const isAHU = rawUserEmail === 'ahhu@utt.com' || rawUserEmail === 'ahhu@gmail.com' || rawUserEmail === 'ahu@utt.com' || rawUserEmail === 'ahu@gmail.com';
+        reportData.createdBy = isAHU ? 'ahu@gmail.com' : rawUserEmail;
         reportData.createdAt = serverTimestamp();
       }
 

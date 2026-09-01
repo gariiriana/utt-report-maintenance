@@ -70,6 +70,7 @@ const FILE_CATEGORIES = [
     'SLD',
     'Service Report',
     'Service Report Approved',
+    'Predictive Report',
     'Custom',
     'Monthly'
 ];
@@ -166,7 +167,9 @@ export function parseFilenameMetadata(filename: string): ParsedFileMetadata {
     }
 
     // 3. Deteksi Kategori Dokumen
-    if (/\b(?:JSEA|JSA)\b/i.test(cleanName)) {
+    if (/\b(?:PREDICTIVE[\s_-]*REPORT|PREDICTIVE)\b/i.test(cleanName)) {
+        result.category = 'Predictive Report';
+    } else if (/\b(?:JSEA|JSA)\b/i.test(cleanName)) {
         result.category = 'JSEA';
     } else if (/\b(?:MOP|SOP)\b/i.test(cleanName)) {
         result.category = 'MOP';
