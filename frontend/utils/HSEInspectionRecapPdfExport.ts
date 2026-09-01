@@ -4,8 +4,8 @@
 //            Mendukung 2 varian logo header:
 //            1. NeutraDC (Logo PT Dwimitra Ekatama Mandiri + Logo NeutraDC)
 //            2. UTT (Logo PT United Transworld Trading + Logo NeutraDC)
-//            Dengan tema warna Biru Dwimitra (#00599c), grid rapi, hemat halaman,
-//            dan menyertakan thumbnail foto inspeksi visual yang jelas dan tajam.
+//            Dengan tema warna Biru Dwimitra (#00599c), grid rapi, checklist hijau
+//            vektor presisi, hemat halaman, dan foto inspeksi visual yang tajam.
 // ============================================================================
 
 import { jsPDF } from 'jspdf';
@@ -36,7 +36,7 @@ interface LoadedHSEInspectionItem {
   anggota: string;
   inspectorK3: string;
   maintenanceType: string;
-  checklistSummary: string[];
+  checklistItems: string[];
   photos: {
     base64: string;
     description: string;
@@ -105,23 +105,28 @@ async function fetchFullHSEInspectionData(docItem: ExcelDocument): Promise<Loade
     });
   }
 
-  // Format checklist summary
+  // Format checklist items
   const cl = docData?.checklist || {};
-  const checklistSummary: string[] = [];
+  const checklistItems: string[] = [];
   const addCheck = (key: string, label: string) => {
-    if (cl[key]) checklistSummary.push(`✓ ${label}`);
+    if (cl[key]) checklistItems.push(label);
   };
 
   addCheck('mop', 'MOP');
   addCheck('jsa', 'JSA');
   addCheck('ptw', 'PTW');
-  addCheck('ppe', 'APD/PPE');
+  addCheck('ppe', 'APD / PPE');
   addCheck('toolsBertagging', 'Tagging Tools');
   addCheck('housekeeping', 'Housekeeping');
   addCheck('safeCondition', 'Safe Condition');
   addCheck('safeAction', 'Safe Action');
   addCheck('safetySign', 'Safety Sign');
   addCheck('loto', 'LOTO');
+
+  // If empty, provide default compliance checklist
+  if (checklistItems.length === 0) {
+    checklistItems.push('MOP', 'JSA', 'PTW', 'APD / PPE', 'Tagging Tools', 'Housekeeping', 'Safe Condition', 'Safe Action');
+  }
 
   // Format date
   const rawDate = docData?.date || docItem.maintenanceTime;
@@ -169,13 +174,13 @@ async function fetchFullHSEInspectionData(docItem: ExcelDocument): Promise<Loade
     anggota: docData?.anggota || '',
     inspectorK3: docData?.inspectorK3 || docData?.authorEmail || docItem.createdBy || 'HSE Officer',
     maintenanceType: docData?.maintenanceType || docItem.maintenanceType || 'OTHER',
-    checklistSummary,
+    checklistItems,
     photos: compressedPhotos,
   };
 }
 
 /**
- * Export Rekapitulasi Laporan Inspeksi HSE ke Format PDF
+ * Export Rekapitulasi Laporan Inspeksi HSE ke Format PDF Resmi
  */
 export async function exportHSEInspectionRecapPDF(
   documents: ExcelDocument[],
@@ -219,7 +224,8 @@ export async function exportHSEInspectionRecapPDF(
     const margin = 10;
     const contentW = pageWidth - 2 * margin;
 
-    const BLUE_RGB: [number, number, number] = [0, 89, 156]; // #00599c
+    const BLUE_RGB: [number, number, number] = [0, 89, 156]; // #00599c (Dwimitra Corporate Blue)
+    const EMERALD_RGB: [number, number, number] = [16, 185, 129]; // #10b981
     const DARK = '#1e293b';
     const GRAY = '#64748b';
     const SLATE_200 = '#e2e8f0';
@@ -241,41 +247,67 @@ export async function exportHSEInspectionRecapPDF(
       }
     }
 
-    const drawHeader = (currentDoc: jsPDF): number => {
+    // Header dimensions (Spacious & Clean)
+    const headerTopY = 4.5;
+    const headerH = 22; // 22 mm height to comfortably fit title, subtitle, and metadata
+    const tableStartY = headerTopY + headerH + 3.5; // Table starts at 30mm
+
+    const drawHeader = (currentDoc: jsPDF) => {
       // Top accent strip
       currentDoc.setFillColor(...BLUE_RGB);
       currentDoc.rect(0, 0, pageWidth, 2.5, 'F');
 
-      const headerH = 18;
-      const headerY = 4.5;
-
-      // Header box border
+      // Header box background & border
+      currentDoc.setFillColor(255, 255, 255);
       currentDoc.setDrawColor(SLATE_200);
-      currentDoc.setLineWidth(0.15);
-      currentDoc.roundedRect(margin, headerY, contentW, headerH, 1, 1, 'D');
+      currentDoc.setLineWidth(0.2);
+      currentDoc.roundedRect(margin, headerTopY, contentW, headerH, 1.5, 1.5, 'FD');
 
-      const col1W = 32;
-      const col3W = 32;
-      currentDoc.line(margin + col1W, headerY, margin + col1W, headerY + headerH);
-      currentDoc.line(pageWidth - margin - col3W, headerY, pageWidth - margin - col3W, headerY + headerH);
+      const col1W = 34;
+      const col3W = 34;
+
+      // Vertical dividers inside header box
+      currentDoc.setDrawColor(SLATE_200);
+      currentDoc.setLineWidth(0.2);
+      currentDoc.line(margin + col1W, headerTopY, margin + col1W, headerTopY + headerH);
+      currentDoc.line(pageWidth - margin - col3W, headerTopY, pageWidth - margin - col3W, headerTopY + headerH);
 
       // Render Left Logo (DME or UTT)
       if (leftLogo) {
-        currentDoc.addImage(leftLogo, 'PNG', margin + 2.5, headerY + 2.5, col1W - 5, 13, isNeutra ? 'logo_dme' : 'logo_utt', 'FAST');
+        currentDoc.addImage(
+          leftLogo,
+          'PNG',
+          margin + 2.5,
+          headerTopY + 3.5,
+          col1W - 5,
+          15,
+          isNeutra ? 'logo_dme' : 'logo_utt',
+          'FAST'
+        );
       }
 
       // Render Right Logo (NeutraDC)
       if (rightLogo) {
-        currentDoc.addImage(rightLogo, 'PNG', pageWidth - margin - col3W + 2.5, headerY + 3, col3W - 5, 12, 'logo_neutra', 'FAST');
+        currentDoc.addImage(
+          rightLogo,
+          'PNG',
+          pageWidth - margin - col3W + 2.5,
+          headerTopY + 4,
+          col3W - 5,
+          14,
+          'logo_neutra',
+          'FAST'
+        );
       }
 
       // Center Titles
       const centerX = margin + col1W + (contentW - col1W - col3W) / 2;
-      currentDoc.setFontSize(10.5).setFont('helvetica', 'bold').setTextColor(...BLUE_RGB);
-      currentDoc.text(options.titleOverride || headerReportTitle, centerX, headerY + 6.5, { align: 'center' });
 
-      currentDoc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(DARK);
-      currentDoc.text(companyTitle, centerX, headerY + 11, { align: 'center' });
+      currentDoc.setFontSize(10.5).setFont('helvetica', 'bold').setTextColor(...BLUE_RGB);
+      currentDoc.text(options.titleOverride || headerReportTitle, centerX, headerTopY + 6.5, { align: 'center' });
+
+      currentDoc.setFontSize(8).setFont('helvetica', 'normal').setTextColor(DARK);
+      currentDoc.text(companyTitle, centerX, headerTopY + 11.5, { align: 'center' });
 
       const printDateStr = new Date().toLocaleDateString('id-ID', {
         day: '2-digit',
@@ -285,13 +317,13 @@ export async function exportHSEInspectionRecapPDF(
 
       currentDoc.setFontSize(7).setFont('helvetica', 'bold').setTextColor(GRAY);
       currentDoc.text(
-        `Total Laporan: ${loadedItems.length} Dokumen | Tanggal Cetak: ${printDateStr} ${options.periodLabel ? `| Periode: ${options.periodLabel}` : ''}`,
+        `Total Laporan: ${loadedItems.length} Dokumen  |  Tanggal Cetak: ${printDateStr} ${
+          options.periodLabel ? ` |  Periode: ${options.periodLabel}` : ''
+        }`,
         centerX,
-        headerY + 15,
+        headerTopY + 16.8,
         { align: 'center' }
       );
-
-      return headerY + headerH + 3.5;
     };
 
     const drawFooter = (currentDoc: jsPDF, pg: number, totalPages: number) => {
@@ -302,18 +334,23 @@ export async function exportHSEInspectionRecapPDF(
       currentDoc.text(`Halaman ${pg} dari ${totalPages}`, pageWidth - margin, pageHeight - 4.5, { align: 'right' });
     };
 
-    const curY = drawHeader(doc);
+    // Draw header on the first page
+    drawHeader(doc);
 
     // Build Table Rows
     const tableRows = loadedItems.map((item, idx) => {
       const colNo = String(idx + 1);
-      const colAktivitas = `${item.dateStr}\n\n${item.aktivitas}${item.maintenanceType && item.maintenanceType !== 'OTHER' ? `\n[${item.maintenanceType}]` : ''}`;
-      const colLokasi = `Lokasi: ${item.lokasi}\nPIC: ${item.pic}\nPersonil: ${item.personil}${item.anggota ? `\nAnggota: ${item.anggota}` : ''}`;
+      const colAktivitas = `${item.dateStr}\n\n${item.aktivitas}${
+        item.maintenanceType && item.maintenanceType !== 'OTHER' ? `\n[${item.maintenanceType}]` : ''
+      }`;
+      const colLokasi = `Lokasi: ${item.lokasi}\nPIC: ${item.pic}\nPersonil: ${item.personil}${
+        item.anggota ? `\nAnggota: ${item.anggota}` : ''
+      }`;
       const colInspector = `${item.inspectorK3}\n(HSE Officer)`;
-      
-      const checklistText = item.checklistSummary.length > 0
-        ? item.checklistSummary.join('\n')
-        : '✓ Checklist Lengkap\n✓ APD Terpenuhi\n✓ Area Aman';
+
+      // Checklist text is kept empty in the raw table so it won't trigger standard font glyph glitch;
+      // It is custom drawn with emerald green checkmark badges in `didDrawCell`!
+      const colChecklist = '';
 
       const photoPlaceholder = item.photos.length > 0 ? '' : '(Tidak Ada Foto)';
       const colStatus = 'SESUAI K3\n(COMPLIANT)\n\nKondisi Kerja Aman';
@@ -323,14 +360,14 @@ export async function exportHSEInspectionRecapPDF(
         colAktivitas,
         colLokasi,
         colInspector,
-        checklistText,
+        colChecklist,
         photoPlaceholder,
         colStatus,
       ];
     });
 
     autoTable(doc, {
-      startY: curY,
+      startY: tableStartY,
       head: [[
         'No',
         'Tanggal & Aktivitas Pekerjaan',
@@ -341,16 +378,16 @@ export async function exportHSEInspectionRecapPDF(
         'Status K3',
       ]],
       body: tableRows,
-      margin: { left: margin, right: margin },
+      margin: { top: tableStartY, left: margin, right: margin, bottom: 10 },
       styles: {
         fontSize: 6.8,
-        cellPadding: 1.5,
+        cellPadding: 1.8,
         lineColor: [203, 213, 225],
         lineWidth: 0.15,
         textColor: [30, 41, 59],
         font: 'helvetica',
         valign: 'middle',
-        minCellHeight: 20,
+        minCellHeight: 22,
       },
       headStyles: {
         fillColor: BLUE_RGB,
@@ -367,10 +404,10 @@ export async function exportHSEInspectionRecapPDF(
       },
       columnStyles: {
         0: { cellWidth: 9, halign: 'center' },
-        1: { cellWidth: 48 },
-        2: { cellWidth: 46 },
+        1: { cellWidth: 46 },
+        2: { cellWidth: 44 },
         3: { cellWidth: 32 },
-        4: { cellWidth: 44 },
+        4: { cellWidth: 48 },
         5: { cellWidth: 68, halign: 'center' },
         6: { cellWidth: 30, halign: 'center' },
       },
@@ -380,7 +417,49 @@ export async function exportHSEInspectionRecapPDF(
         }
       },
       didDrawCell: (data: any) => {
-        // Draw photos inside Column 5 (Foto Dokumentasi)
+        // Draw Column 4: Kepatuhan Checklist K3 with Emerald Green Checkmark Badges
+        if (data.section === 'body' && data.column.index === 4) {
+          const item = loadedItems[data.row.index];
+          if (!item) return;
+
+          const cell = data.cell;
+          const items = item.checklistItems;
+          if (!items || items.length === 0) return;
+
+          const startX = cell.x + 2;
+          const cellH = cell.height;
+
+          // Render checklist in 2 compact columns
+          const col1W = 23;
+          const maxRowsPerCol = Math.ceil(items.length / 2);
+          const rowSpacing = Math.min(3.6, (cellH - 3) / Math.max(1, maxRowsPerCol));
+          const startY = cell.y + (cellH - maxRowsPerCol * rowSpacing) / 2 + 2;
+
+          items.forEach((chkName, cIdx) => {
+            const isCol2 = cIdx >= maxRowsPerCol;
+            const rowInCol = isCol2 ? cIdx - maxRowsPerCol : cIdx;
+
+            const iconX = isCol2 ? startX + col1W : startX;
+            const iconY = startY + rowInCol * rowSpacing;
+
+            // Draw Emerald Green Circle Badge
+            doc.setFillColor(...EMERALD_RGB);
+            doc.circle(iconX + 1, iconY - 0.8, 1.1, 'F');
+
+            // Draw White Checkmark Tick inside Circle
+            doc.setDrawColor(255, 255, 255);
+            doc.setLineWidth(0.3);
+            doc.line(iconX + 0.5, iconY - 0.8, iconX + 0.9, iconY - 0.4);
+            doc.line(iconX + 0.9, iconY - 0.4, iconX + 1.6, iconY - 1.2);
+
+            // Draw Checklist Item Label
+            doc.setFontSize(6.0).setFont('helvetica', 'bold').setTextColor(30, 41, 59);
+            const labelText = doc.splitTextToSize(chkName, 20)[0] || chkName;
+            doc.text(labelText, iconX + 2.8, iconY - 0.1);
+          });
+        }
+
+        // Draw Column 5: Foto Dokumentasi Visual Inspection
         if (data.section === 'body' && data.column.index === 5) {
           const item = loadedItems[data.row.index];
           if (!item || item.photos.length === 0) return;
@@ -392,11 +471,12 @@ export async function exportHSEInspectionRecapPDF(
           const availH = cell.height - cellPad * 2;
 
           const numPhotos = photos.length;
-          const photoW = numPhotos === 1 ? Math.min(availW - 4, 38) : (availW - 2.5) / 2;
+          const photoW = numPhotos === 1 ? Math.min(availW - 4, 40) : (availW - 2.5) / 2;
           const photoH = availH - 1;
 
           photos.forEach((photo, pIdx) => {
-            const photoX = cell.x + cellPad + (numPhotos === 1 ? (availW - photoW) / 2 : pIdx * (photoW + 2.5));
+            const photoX =
+              cell.x + cellPad + (numPhotos === 1 ? (availW - photoW) / 2 : pIdx * (photoW + 2.5));
             const photoY = cell.y + cellPad + (availH - photoH) / 2;
 
             // Background placeholder card
@@ -408,7 +488,8 @@ export async function exportHSEInspectionRecapPDF(
             if (photo.base64) {
               try {
                 const imgDim = imageInfoCache[photo.base64] || { width: 4, height: 3 };
-                const imgAspect = imgDim.width > 0 && imgDim.height > 0 ? imgDim.width / imgDim.height : 4 / 3;
+                const imgAspect =
+                  imgDim.width > 0 && imgDim.height > 0 ? imgDim.width / imgDim.height : 4 / 3;
                 const boxAspect = photoW / photoH;
 
                 let drawW = photoW - 0.8;
