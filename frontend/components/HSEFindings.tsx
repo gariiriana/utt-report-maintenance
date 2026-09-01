@@ -33,8 +33,7 @@ import { compressImage } from '@/utils/imageCompression';
 import { safeStorage } from '@/utils/safeStorage';
 import {
   HSEFindingItem,
-  HSEFindingSeverity,
-  HSE_SEVERITY_CONFIG
+  HSEFindingSeverity
 } from '@/types/hseFinding';
 import { exportSingleHSEFindingPDF } from '@/utils/HSEFindingPdfExport';
 
@@ -86,7 +85,7 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
       location: '',
       inspectorName: 'Gari Iriana',
       category: '',
-      severity: 'medium',
+      severity: 'unsafe_condition',
       targetPerson: '',
       findingDate: new Date().toISOString().split('T')[0],
       findingTime: new Date().toTimeString().split(' ')[0].substring(0, 5),
@@ -107,7 +106,7 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [exportingVariant, setExportingVariant] = useState<'neutradc' | 'utt' | null>(null);
   const beforeFileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-set nama default jika belum diisi user
@@ -157,46 +156,51 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
       return null;
     }
     if (!formData.beforePhoto) {
-      toast.error('Foto kondisi temuan (Before) wajib dilampirkan');
+      toast.error('Foto bukti temuan (Before) wajib diunggah');
       return null;
     }
 
-    const payload: any = {
-      title: formData.title.trim(),
-      description: formData.description.trim(),
-      location: formData.location.trim(),
-      inspectorName: formData.inspectorName.trim() || getDefaultInspectorName(),
-      category: formData.category?.trim() || '',
-      severity: formData.severity,
-      status: 'open',
-      reportedBy: user?.email || 'hse@dwimitra.com',
-      targetPerson: formData.targetPerson.trim() || '-',
-      findingDate: formData.findingDate,
-      findingTime: formData.findingTime,
-      beforePhoto: formData.beforePhoto,
-      beforeNotes: formData.beforeNotes.trim(),
-      updatedAt: serverTimestamp()
-    };
+    try {
+      const payload: any = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        location: formData.location.trim(),
+        inspectorName: formData.inspectorName.trim() || getDefaultInspectorName(),
+        category: formData.category?.trim() || '',
+        severity: formData.severity,
+        status: 'open',
+        reportedBy: user?.email || 'hse@dwimitra.com',
+        targetPerson: formData.targetPerson.trim() || '-',
+        findingDate: formData.findingDate,
+        findingTime: formData.findingTime,
+        beforePhoto: formData.beforePhoto,
+        beforeNotes: formData.beforeNotes.trim(),
+        updatedAt: serverTimestamp(),
+      };
 
-    if (savedDocId) {
-      // Data sudah tersimpan sebelumnya di sesi formulir ini: Update dokumen (anti duplikat)
-      await setDoc(doc(db, 'hse_findings', savedDocId), payload, { merge: true });
-      return savedDocId;
-    } else {
-      // Data pertama kali disimpan: Tambahkan dokumen baru ke koleksi hse_findings
-      payload.createdAt = serverTimestamp();
-      const docRef = await addDoc(collection(db, 'hse_findings'), payload);
-      setSavedDocId(docRef.id);
-      return docRef.id;
+      if (savedDocId) {
+        await setDoc(doc(db, 'hse_findings', savedDocId), payload, { merge: true });
+        return savedDocId;
+      } else {
+        payload.createdAt = serverTimestamp();
+        const docRef = await addDoc(collection(db, 'hse_findings'), payload);
+        setSavedDocId(docRef.id);
+        return docRef.id;
+      }
+    } catch (error) {
+      console.error('Error saving finding:', error);
+      toast.error('Gagal menyimpan data temuan ke Firestore');
+      return null;
     }
   };
 
   // --------------------------------------------------------------------------
-  // Export Single PDF Handler (1 Lembar & Auto Simpan ke Arsip)
+  // Export Single PDF Handler (NeutraDC / UTT)
   // --------------------------------------------------------------------------
-  const handleExportPDF = async () => {
-    setIsExportingPdf(true);
-    const toastId = toast.loading('Menyimpan ke arsip & menyiapkan PDF...');
+  const handleExportPDF = async (companyVariant: 'neutradc' | 'utt') => {
+    setExportingVariant(companyVariant);
+    const variantLabel = companyVariant === 'neutradc' ? 'NeutraDC' : 'UTT';
+    const toastId = toast.loading(`Menyimpan ke arsip & menyiapkan PDF (${variantLabel})...`);
 
     try {
       const docId = await saveFindingToFirestore();
@@ -222,18 +226,18 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
         beforeNotes: formData.beforeNotes.trim(),
       };
 
-      await exportSingleHSEFindingPDF(findingItem);
+      await exportSingleHSEFindingPDF(findingItem, { companyVariant });
       toast.success(
         savedDocId
-          ? 'Data di arsip diperbarui & PDF berhasil diunduh!'
-          : 'Data masuk ke arsip & PDF berhasil diunduh!',
+          ? `Data di arsip diperbarui & PDF (${variantLabel}) berhasil diunduh!`
+          : `Data masuk ke arsip & PDF (${variantLabel}) berhasil diunduh!`,
         { id: toastId }
       );
     } catch (err) {
       console.error('Export PDF error:', err);
       toast.error('Gagal membuat PDF temuan', { id: toastId });
     } finally {
-      setIsExportingPdf(false);
+      setExportingVariant(null);
     }
   };
 
@@ -268,7 +272,7 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
       location: '',
       inspectorName: getDefaultInspectorName(),
       category: '',
-      severity: 'medium',
+      severity: 'unsafe_condition',
       targetPerson: '',
       findingDate: new Date().toISOString().split('T')[0],
       findingTime: new Date().toTimeString().split(' ')[0].substring(0, 5),
@@ -411,7 +415,7 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
             </div>
           </div>
 
-          {/* Pihak Terkait & Tingkat Risiko */}
+          {/* Pihak Terkait & Tingkat Bahaya / Risiko */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
@@ -434,13 +438,10 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
               <select
                 value={formData.severity}
                 onChange={(e) => setFormData({ ...formData, severity: e.target.value as any })}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition cursor-pointer"
               >
-                {Object.entries(HSE_SEVERITY_CONFIG).map(([key, value]) => (
-                  <option key={key} value={key}>
-                    {value.label}
-                  </option>
-                ))}
+                <option value="unsafe_condition">Unsafe Condition</option>
+                <option value="unsafe_action">Unsafe Action</option>
               </select>
             </div>
           </div>
@@ -593,15 +594,17 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
         </div>
 
         {/* Section 4: Action Buttons */}
-        <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="pt-6 border-t border-slate-100 flex flex-col lg:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto">
+            {/* Export PDF NeutraDC */}
             <button
               type="button"
-              onClick={handleExportPDF}
-              disabled={isExportingPdf || isSubmitting}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-white hover:bg-slate-50 text-slate-700 hover:text-red-700 rounded-2xl text-sm font-bold border border-slate-200 hover:border-red-300 shadow-xs transition disabled:opacity-50 cursor-pointer"
+              onClick={() => handleExportPDF('neutradc')}
+              disabled={exportingVariant !== null || isSubmitting}
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-3 bg-white hover:bg-red-50 text-slate-700 hover:text-red-700 rounded-2xl text-xs sm:text-sm font-bold border border-slate-200 hover:border-red-300 shadow-xs transition disabled:opacity-50 cursor-pointer"
+              title="Export PDF Laporan Temuan K3 (Logo Dwimitra & NeutraDC)"
             >
-              {isExportingPdf ? (
+              {exportingVariant === 'neutradc' ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin text-red-600" />
                   <span>Membuat PDF...</span>
@@ -609,7 +612,28 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
               ) : (
                 <>
                   <FileDown className="w-4 h-4 text-red-600" />
-                  <span>Export PDF (1 Lembar)</span>
+                  <span>Export PDF NeutraDC</span>
+                </>
+              )}
+            </button>
+
+            {/* Export PDF UTT */}
+            <button
+              type="button"
+              onClick={() => handleExportPDF('utt')}
+              disabled={exportingVariant !== null || isSubmitting}
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-3 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-2xl text-xs sm:text-sm font-bold border border-slate-200 hover:border-blue-300 shadow-xs transition disabled:opacity-50 cursor-pointer"
+              title="Export PDF Laporan Temuan K3 (Logo UTT & NeutraDC)"
+            >
+              {exportingVariant === 'utt' ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
+                  <span>Membuat PDF...</span>
+                </>
+              ) : (
+                <>
+                  <FileDown className="w-4 h-4 text-blue-600" />
+                  <span>Export PDF UTT</span>
                 </>
               )}
             </button>

@@ -248,7 +248,14 @@ export function HSEFindingsArchive() {
   // --------------------------------------------------------------------------
   // Computed: Filtered & Sorted Data
   // --------------------------------------------------------------------------
-  const severityOrder: Record<HSEFindingSeverity, number> = { critical: 4, high: 3, medium: 2, low: 1 };
+  const severityOrder: Record<string, number> = {
+    unsafe_action: 5,
+    unsafe_condition: 4,
+    critical: 4,
+    high: 3,
+    medium: 2,
+    low: 1
+  };
 
   const filteredFindings = useMemo(() => {
     let result = [...findings];
@@ -527,24 +534,27 @@ export function HSEFindingsArchive() {
   };
 
   // --------------------------------------------------------------------------
-  // Handlers: Export PDF
   // --------------------------------------------------------------------------
-  const handleExportSingle = async (finding: HSEFindingItem) => {
+  // Handlers: Export PDF (NeutraDC & UTT)
+  // --------------------------------------------------------------------------
+  const handleExportSingle = async (finding: HSEFindingItem, companyVariant: 'neutradc' | 'utt' = 'neutradc') => {
+    const variantLabel = companyVariant === 'neutradc' ? 'NeutraDC' : 'UTT';
     try {
-      toast.loading('Menyiapkan PDF temuan...', { id: 'export-single' });
-      await exportSingleHSEFindingPDF(finding);
-      toast.success('PDF berhasil diunduh!', { id: 'export-single' });
+      toast.loading(`Menyiapkan PDF temuan (${variantLabel})...`, { id: 'export-single' });
+      await exportSingleHSEFindingPDF(finding, { companyVariant });
+      toast.success(`PDF (${variantLabel}) berhasil diunduh!`, { id: 'export-single' });
     } catch (err) {
       console.error('Export single PDF error:', err);
       toast.error('Gagal mengunduh PDF temuan.', { id: 'export-single' });
     }
   };
 
-  const handleExportRecap = async () => {
+  const handleExportRecap = async (companyVariant: 'neutradc' | 'utt' = 'neutradc') => {
+    const variantLabel = companyVariant === 'neutradc' ? 'NeutraDC' : 'UTT';
     try {
-      toast.loading('Menyiapkan PDF Rekap...', { id: 'export-recap' });
-      await exportHSEFindingsRecapPDF(filteredFindings);
-      toast.success('PDF Rekap berhasil diunduh!', { id: 'export-recap' });
+      toast.loading(`Menyiapkan PDF Rekap (${variantLabel})...`, { id: 'export-recap' });
+      await exportHSEFindingsRecapPDF(filteredFindings, { companyVariant });
+      toast.success(`PDF Rekap (${variantLabel}) berhasil diunduh!`, { id: 'export-recap' });
     } catch (err) {
       console.error('Export recap PDF error:', err);
       toast.error('Gagal mengunduh PDF Rekap.', { id: 'export-recap' });
@@ -580,18 +590,31 @@ export function HSEFindingsArchive() {
             </div>
           </div>
 
-          {/* Export Recap Button */}
+          {/* Export Recap Buttons (NeutraDC & UTT) */}
           {filteredFindings.length > 0 && (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleExportRecap}
-              className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-2xl shadow-sm transition-colors cursor-pointer"
-            >
-              <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Export Rekap PDF</span>
-              <span className="sm:hidden">Export</span>
-            </motion.button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handleExportRecap('neutradc')}
+                className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs sm:text-sm font-bold rounded-2xl shadow-xs transition-colors cursor-pointer"
+                title="Export Rekap PDF (Logo Dwimitra & NeutraDC)"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export PDF NeutraDC</span>
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handleExportRecap('utt')}
+                className="flex items-center gap-2 px-4 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs sm:text-sm font-bold rounded-2xl shadow-xs transition-colors cursor-pointer"
+                title="Export Rekap PDF (Logo UTT & NeutraDC)"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export PDF UTT</span>
+              </motion.button>
+            </div>
           )}
         </div>
 
@@ -716,16 +739,15 @@ export function HSEFindingsArchive() {
 
                 {/* Severity Filter */}
                 <div>
-                  <label className="text-xs font-medium text-slate-500 mb-1.5 block">Tingkat Risiko</label>
+                  <label className="text-xs font-medium text-slate-500 mb-1.5 block">Tingkat Bahaya</label>
                   <select
                     value={severityFilter}
                     onChange={(e) => setSeverityFilter(e.target.value as any)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400"
                   >
-                    <option value="all">Semua Risiko</option>
-                    {Object.entries(HSE_SEVERITY_CONFIG).map(([key, val]) => (
-                      <option key={key} value={key}>{val.label}</option>
-                    ))}
+                    <option value="all">Semua Tingkat Bahaya</option>
+                    <option value="unsafe_condition">Unsafe Condition</option>
+                    <option value="unsafe_action">Unsafe Action</option>
                   </select>
                 </div>
 
@@ -911,9 +933,16 @@ export function HSEFindingsArchive() {
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleExportSingle(finding)}
-                        className="p-2 rounded-xl bg-slate-50 hover:bg-teal-50 text-slate-500 hover:text-teal-700 transition-colors cursor-pointer"
-                        title="Download PDF"
+                        onClick={() => handleExportSingle(finding, 'neutradc')}
+                        className="p-2 rounded-xl bg-red-50/60 hover:bg-red-100 text-red-600 hover:text-red-700 transition-colors cursor-pointer"
+                        title="Download PDF NeutraDC (Logo Dwimitra & NeutraDC)"
+                      >
+                        <FileDown className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleExportSingle(finding, 'utt')}
+                        className="p-2 rounded-xl bg-teal-50/60 hover:bg-teal-100 text-teal-700 hover:text-teal-800 transition-colors cursor-pointer"
+                        title="Download PDF UTT (Logo UTT & NeutraDC)"
                       >
                         <FileDown className="w-4 h-4" />
                       </button>
@@ -1047,11 +1076,20 @@ export function HSEFindingsArchive() {
                       </button>
                     )}
                     <button
-                      onClick={() => handleExportSingle(selectedFinding)}
-                      className="p-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 transition-colors cursor-pointer"
-                      title="Download PDF"
+                      onClick={() => handleExportSingle(selectedFinding, 'neutradc')}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs transition-colors cursor-pointer border border-red-200"
+                      title="Download PDF (Logo Dwimitra & NeutraDC)"
                     >
                       <FileDown className="w-4 h-4" />
+                      <span className="hidden sm:inline">PDF NeutraDC</span>
+                    </button>
+                    <button
+                      onClick={() => handleExportSingle(selectedFinding, 'utt')}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-xs transition-colors cursor-pointer border border-teal-200"
+                      title="Download PDF (Logo UTT & NeutraDC)"
+                    >
+                      <FileDown className="w-4 h-4" />
+                      <span className="hidden sm:inline">PDF UTT</span>
                     </button>
                     <button
                       onClick={() => setIsDetailOpen(false)}
@@ -1325,11 +1363,10 @@ export function HSEFindingsArchive() {
                       <select
                         value={editFormData.severity}
                         onChange={(e) => setEditFormData({ ...editFormData, severity: e.target.value as any })}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 cursor-pointer"
                       >
-                        {Object.entries(HSE_SEVERITY_CONFIG).map(([key, val]) => (
-                          <option key={key} value={key}>{val.label}</option>
-                        ))}
+                        <option value="unsafe_condition">Unsafe Condition</option>
+                        <option value="unsafe_action">Unsafe Action</option>
                       </select>
                     </div>
                   </div>

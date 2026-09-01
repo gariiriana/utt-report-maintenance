@@ -1,8 +1,11 @@
 // ============================================================================
 // FILE: HSEFindingPdfExport.ts
 // Deskripsi: Export PDF Laporan Temuan K3 / HSE (HSE Finding Report & Recap).
+//            Mendukung 2 varian logo & kop perusahaan:
+//            1. NeutraDC (Logo PT Dwimitra Ekatama Mandiri + Logo NeutraDC)
+//            2. UTT (Logo PT United Transworld Trading + Logo NeutraDC)
 //            Mendukung export lembar temuan individu (Before vs After side-by-side)
-//            dan laporan rekapitulasi temuan HSE resmi PT Dwimitra / NeutraDC.
+//            dan laporan rekapitulasi temuan HSE resmi Landscape A4.
 // ============================================================================
 
 import { jsPDF } from 'jspdf';
@@ -11,8 +14,13 @@ import { HSEFindingItem, HSE_CATEGORY_LABELS, HSE_SEVERITY_CONFIG, HSE_STATUS_CO
 import { loadLogoBase64 } from './ReportPdfExport';
 import logoNeutra from '@/assets/logo_neutradc.png';
 import logoDME from '@/assets/logo_dwimitra_v2.png';
+import logoUTT from '@/assets/logo_utt.png';
 import { compressBase64Image } from './imageCompression';
 import { toast } from 'sonner';
+
+export interface HSEFindingExportOptions {
+  companyVariant?: 'neutradc' | 'utt';
+}
 
 /**
  * Helper async untuk mengambil dimensi gambar base64
@@ -29,8 +37,20 @@ function getImageDimensions(base64: string): Promise<{ width: number; height: nu
 /**
  * Export Lembar Temuan K3 Tunggal (Individual Finding Sheet) dengan Before & After Foto Side-by-Side
  */
-export async function exportSingleHSEFindingPDF(finding: HSEFindingItem): Promise<void> {
-  const toastId = toast.loading('Membuat PDF Lembar Temuan K3...');
+export async function exportSingleHSEFindingPDF(
+  finding: HSEFindingItem,
+  options?: HSEFindingExportOptions
+): Promise<void> {
+  const isNeutra = options?.companyVariant !== 'utt';
+  const variantLabel = isNeutra ? 'NeutraDC' : 'UTT';
+  const companyTitle = isNeutra
+    ? 'PT DWIMITRA EKATAMA MANDIRI — NEUTRA DC CIKARANG'
+    : 'PT UNITED TRANSWORLD TRADING — NEUTRA DC CIKARANG';
+  const footerCompany = isNeutra
+    ? 'PT DWIMITRA EKATAMA MANDIRI — HSE Finding System'
+    : 'PT UNITED TRANSWORLD TRADING — HSE Finding System';
+
+  const toastId = toast.loading(`Membuat PDF Temuan K3 (${variantLabel})...`);
 
   try {
     const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4', compress: true });
@@ -45,9 +65,10 @@ export async function exportSingleHSEFindingPDF(finding: HSEFindingItem): Promis
     const GRAY = '#64748b';
     const SLATE_200 = '#e2e8f0';
 
+    const leftLogoSource = isNeutra ? logoDME : logoUTT;
     const [leftLogo, rightLogo] = await Promise.all([
+      loadLogoBase64(leftLogoSource),
       loadLogoBase64(logoNeutra),
-      loadLogoBase64(logoDME),
     ]);
 
     // Compress images for PDF
@@ -73,7 +94,7 @@ export async function exportSingleHSEFindingPDF(finding: HSEFindingItem): Promis
     doc.setFillColor(THEME_BLUE);
     doc.rect(0, 0, pageWidth, 3, 'F');
 
-    // Header Box (Logo Kiri NeutraDC & Logo Kanan Dwimitra)
+    // Header Box (Logo Kiri DME/UTT & Logo Kanan NeutraDC)
     const headerH = 22;
     const headerY = 6;
     doc.setDrawColor(SLATE_200);
@@ -86,21 +107,21 @@ export async function exportSingleHSEFindingPDF(finding: HSEFindingItem): Promis
     doc.line(pageWidth - margin - col3W, headerY, pageWidth - margin - col3W, headerY + headerH);
 
     if (leftLogo) {
-      doc.addImage(leftLogo, 'PNG', margin + 2.5, headerY + 3.5, col1W - 5, 15, 'logo_neutra', 'FAST');
+      doc.addImage(leftLogo, 'PNG', margin + 2.5, headerY + 3.5, col1W - 5, 15, isNeutra ? 'logo_dme' : 'logo_utt', 'FAST');
     }
     if (rightLogo) {
-      doc.addImage(rightLogo, 'PNG', pageWidth - margin - col3W + 4, headerY + 4, col3W - 8, 14, 'logo_dme', 'FAST');
+      doc.addImage(rightLogo, 'PNG', pageWidth - margin - col3W + 2.5, headerY + 4, col3W - 5, 14, 'logo_neutra', 'FAST');
     }
 
     const centerX = margin + col1W + (contentW - col1W - col3W) / 2;
-    doc.setFontSize(11).setFont('helvetica', 'bold').setTextColor(THEME_BLUE);
-    doc.text('LEMBAR LAPORAN TEMUAN K3 / HSE', centerX, headerY + 7.5, { align: 'center' });
+    doc.setFontSize(10.5).setFont('helvetica', 'bold').setTextColor(THEME_BLUE);
+    doc.text(`LEMBAR LAPORAN TEMUAN K3 / HSE (${variantLabel})`, centerX, headerY + 7.5, { align: 'center' });
 
     doc.setFontSize(8).setFont('helvetica', 'bold').setTextColor(DARK);
     doc.text('HEALTH, SAFETY & ENVIRONMENT FINDING REPORT', centerX, headerY + 12.5, { align: 'center' });
 
     doc.setFontSize(7).setFont('helvetica', 'normal').setTextColor(GRAY);
-    doc.text('PT DWIMITRA EKATAMA MANDIRI — NEUTRA DC CIKARANG', centerX, headerY + 17, { align: 'center' });
+    doc.text(companyTitle, centerX, headerY + 17, { align: 'center' });
 
     let curY = headerY + headerH + 5;
 
@@ -120,12 +141,12 @@ export async function exportSingleHSEFindingPDF(finding: HSEFindingItem): Promis
 
     const dateStr = finding.findingDate || new Date().toISOString().split('T')[0];
     doc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(DARK);
-    doc.text(`Tgl Lapor: ${dateStr}`, pageWidth - margin - 4, curY + 5.5, { align: 'right' });
+    doc.text(`Tgl Lapor: ${dateStr} ${finding.findingTime ? `| ${finding.findingTime} WIB` : ''}`, pageWidth - margin - 4, curY + 5.5, { align: 'right' });
 
     curY += 12;
 
     // Info Table (2 Columns Grid)
-    const severityInfo = HSE_SEVERITY_CONFIG[finding.severity]?.label || 'Medium';
+    const severityInfo = HSE_SEVERITY_CONFIG[finding.severity]?.label || finding.severity || 'Unsafe Condition';
 
     const infoBody: (string[])[] = [
       ['Judul Temuan', finding.title || '-'],
@@ -144,7 +165,7 @@ export async function exportSingleHSEFindingPDF(finding: HSEFindingItem): Promis
       : 'Belum Selesai (Status: OPEN — Menunggu Tindak Lanjut)';
 
     infoBody.push(
-      ['Tingkat Risiko', severityInfo],
+      ['Tingkat Bahaya / Risiko', severityInfo],
       ['Pihak Terkait / Subkon', finding.targetPerson || '-'],
       ['Petugas Inspeksi', finding.inspectorName || finding.reportedBy || '-'],
       ['Tgl Diselesaikan', resolvedDateText]
@@ -322,15 +343,15 @@ export async function exportSingleHSEFindingPDF(finding: HSEFindingItem): Promis
     doc.setFillColor(THEME_BLUE);
     doc.rect(0, pageHeight - 3, pageWidth, 3, 'F');
     doc.setFontSize(7).setTextColor(GRAY);
-    doc.text('PT DWIMITRA EKATAMA MANDIRI — HSE Finding System', margin, pageHeight - 6);
+    doc.text(footerCompany, margin, pageHeight - 6);
     doc.text('Halaman 1 dari 1', pageWidth - margin, pageHeight - 6, { align: 'right' });
 
     // Save File
     const safeTitle = (finding.title || 'Temuan_HSE').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 30);
-    const fileName = `HSE_Temuan_${dateStr}_${safeTitle}.pdf`;
+    const fileName = `HSE_Temuan_${variantLabel}_${dateStr}_${safeTitle}.pdf`;
     doc.save(fileName);
 
-    toast.success('Laporan Temuan K3 berhasil diunduh!', { id: toastId });
+    toast.success(`Laporan Temuan K3 (${variantLabel}) berhasil diunduh!`, { id: toastId });
   } catch (error) {
     console.error('Error generating Single HSE Finding PDF:', error);
     toast.error('Gagal membuat PDF temuan', { id: toastId });
@@ -339,12 +360,28 @@ export async function exportSingleHSEFindingPDF(finding: HSEFindingItem): Promis
 
 /**
  * Export Rekapitulasi Daftar Temuan K3 ke Dokumen PDF Resmi
+ * - Mendukung Varian NeutraDC (Dwimitra + NeutraDC) & UTT (UTT + NeutraDC)
  * - Menggunakan Tema Warna Biru Dwimitra (#00599c)
  * - Menyertakan Foto Temuan (Before) & Foto Bukti Penyelesaian (After) secara efisien & ringkas
  * - Layout compact Landscape A4 sehingga hemat halaman namun tetap jelas dan tajam
  */
-export async function exportHSEFindingsRecapPDF(findings: HSEFindingItem[]): Promise<void> {
-  const toastId = toast.loading('Membuat Rekapitulasi Temuan K3 (PDF)...');
+export async function exportHSEFindingsRecapPDF(
+  findings: HSEFindingItem[],
+  options?: HSEFindingExportOptions
+): Promise<void> {
+  const isNeutra = options?.companyVariant !== 'utt';
+  const variantLabel = isNeutra ? 'NeutraDC' : 'UTT';
+  const companyTitle = isNeutra
+    ? 'PT DWIMITRA EKATAMA MANDIRI — NEUTRA DC CIKARANG'
+    : 'PT UNITED TRANSWORLD TRADING — NEUTRA DC CIKARANG';
+  const reportHeaderTitle = isNeutra
+    ? 'REKAPITULASI TEMUAN K3 / HSE (NEUTRA DC)'
+    : 'REKAPITULASI TEMUAN K3 / HSE (UTT MAINTENANCE)';
+  const footerTitle = isNeutra
+    ? 'PT DWIMITRA EKATAMA MANDIRI — HSE Finding Recap Report'
+    : 'PT UNITED TRANSWORLD TRADING — HSE Finding Recap Report';
+
+  const toastId = toast.loading(`Membuat Rekapitulasi Temuan K3 (${variantLabel})...`);
 
   try {
     const doc = new jsPDF({ orientation: 'l', unit: 'mm', format: 'a4', compress: true });
@@ -358,68 +395,81 @@ export async function exportHSEFindingsRecapPDF(findings: HSEFindingItem[]): Pro
     const GRAY = '#64748b';
     const SLATE_200 = '#e2e8f0';
 
+    const leftLogoSource = isNeutra ? logoDME : logoUTT;
     const [leftLogo, rightLogo] = await Promise.all([
+      loadLogoBase64(leftLogoSource),
       loadLogoBase64(logoNeutra),
-      loadLogoBase64(logoDME),
     ]);
 
-    const drawHeader = (currentDoc: jsPDF): number => {
+    const headerTopY = 4.5;
+    const headerH = 22;
+    const tableStartY = headerTopY + headerH + 3.5;
+
+    const drawHeader = (currentDoc: jsPDF) => {
+      // Top accent strip
       currentDoc.setFillColor(...BLUE_RGB);
       currentDoc.rect(0, 0, pageWidth, 2.5, 'F');
 
-      const headerH = 18;
-      const headerY = 4.5;
+      // Header box
+      currentDoc.setFillColor(255, 255, 255);
+      currentDoc.setDrawColor(SLATE_200);
+      currentDoc.setLineWidth(0.2);
+      currentDoc.roundedRect(margin, headerTopY, contentW, headerH, 1.5, 1.5, 'FD');
+
+      const col1W = 34;
+      const col3W = 34;
 
       currentDoc.setDrawColor(SLATE_200);
-      currentDoc.setLineWidth(0.15);
-      currentDoc.roundedRect(margin, headerY, contentW, headerH, 1, 1, 'D');
-
-      const col1W = 32;
-      const col3W = 32;
-      currentDoc.line(margin + col1W, headerY, margin + col1W, headerY + headerH);
-      currentDoc.line(pageWidth - margin - col3W, headerY, pageWidth - margin - col3W, headerY + headerH);
+      currentDoc.setLineWidth(0.2);
+      currentDoc.line(margin + col1W, headerTopY, margin + col1W, headerTopY + headerH);
+      currentDoc.line(pageWidth - margin - col3W, headerTopY, pageWidth - margin - col3W, headerTopY + headerH);
 
       if (leftLogo) {
-        currentDoc.addImage(leftLogo, 'PNG', margin + 2, headerY + 2.5, col1W - 4, 13, 'logo_neutra', 'FAST');
+        currentDoc.addImage(leftLogo, 'PNG', margin + 2.5, headerTopY + 3.5, col1W - 5, 15, isNeutra ? 'logo_dme' : 'logo_utt', 'FAST');
       }
       if (rightLogo) {
-        currentDoc.addImage(rightLogo, 'PNG', pageWidth - margin - col3W + 3, headerY + 2.5, col3W - 6, 12.5, 'logo_dme', 'FAST');
+        currentDoc.addImage(rightLogo, 'PNG', pageWidth - margin - col3W + 2.5, headerTopY + 4, col3W - 5, 14, 'logo_neutra', 'FAST');
       }
 
       const centerX = margin + col1W + (contentW - col1W - col3W) / 2;
       currentDoc.setFontSize(10.5).setFont('helvetica', 'bold').setTextColor(...BLUE_RGB);
-      currentDoc.text('REKAPITULASI TEMUAN K3 / HSE (HEALTH & SAFETY FINDING LIST)', centerX, headerY + 6.5, { align: 'center' });
+      currentDoc.text(reportHeaderTitle, centerX, headerTopY + 6.5, { align: 'center' });
 
-      currentDoc.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(DARK);
-      currentDoc.text('PT DWIMITRA EKATAMA MANDIRI — NEUTRA DC CIKARANG', centerX, headerY + 11, { align: 'center' });
+      currentDoc.setFontSize(8).setFont('helvetica', 'normal').setTextColor(DARK);
+      currentDoc.text(companyTitle, centerX, headerTopY + 11.5, { align: 'center' });
 
       const openCount = findings.filter(f => f.status === 'open').length;
       const closeCount = findings.filter(f => f.status === 'close').length;
+      const todayPrint = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
 
       currentDoc.setFontSize(7).setFont('helvetica', 'bold').setTextColor(GRAY);
-      currentDoc.text(`Total Temuan: ${findings.length} | Status OPEN: ${openCount} | Status CLOSE: ${closeCount}`, centerX, headerY + 15, { align: 'center' });
-
-      return headerY + headerH + 3.5;
+      currentDoc.text(
+        `Total Temuan: ${findings.length} Dokumen  |  OPEN: ${openCount}  |  CLOSE: ${closeCount}  |  Tanggal Cetak: ${todayPrint}`,
+        centerX,
+        headerTopY + 16.8,
+        { align: 'center' }
+      );
     };
 
     const drawFooter = (currentDoc: jsPDF, pg: number, totalPages: number) => {
       currentDoc.setFillColor(...BLUE_RGB);
       currentDoc.rect(0, pageHeight - 2.5, pageWidth, 2.5, 'F');
       currentDoc.setFontSize(6.5).setTextColor(GRAY);
-      currentDoc.text('PT DWIMITRA EKATAMA MANDIRI — HSE Finding Recap Report', margin, pageHeight - 4.5);
+      currentDoc.text(footerTitle, margin, pageHeight - 4.5);
       currentDoc.text(`Halaman ${pg} dari ${totalPages}`, pageWidth - margin, pageHeight - 4.5, { align: 'right' });
     };
 
-    const curY = drawHeader(doc);
+    // Draw header on the first page
+    drawHeader(doc);
 
     // Build Table Rows
     const tableRows = findings.map((f, idx) => {
-      const sevCfg = HSE_SEVERITY_CONFIG[f.severity] || HSE_SEVERITY_CONFIG.medium;
+      const sevCfg = HSE_SEVERITY_CONFIG[f.severity] || { label: f.severity || 'Unsafe Condition' };
       const statCfg = HSE_STATUS_CONFIG[f.status] || HSE_STATUS_CONFIG.open;
       const dateText = f.findingDate || '-';
       const timeText = f.findingTime ? `${f.findingTime} WIB` : '';
       const inspectorText = f.inspectorName || f.reportedBy || 'HSE Officer';
-      const titleLocationText = `${f.title || '-'}\nLokasi: ${f.location || '-'}\nPihak Terkait: ${f.targetPerson || '-'}`;
+      const titleLocationText = `${f.title || '-'}\nLokasi: ${f.location || '-'}\nPihak: ${f.targetPerson || '-'}`;
       const statusText = `${statCfg.label.split(' (')[0]}\n(${sevCfg.label.split(' (')[0]})`;
 
       const notesText = f.status === 'close'
@@ -444,7 +494,7 @@ export async function exportHSEFindingsRecapPDF(findings: HSEFindingItem[]): Pro
     });
 
     autoTable(doc, {
-      startY: curY,
+      startY: tableStartY,
       head: [[
         'No',
         'Tanggal & Jam',
@@ -452,11 +502,11 @@ export async function exportHSEFindingsRecapPDF(findings: HSEFindingItem[]): Pro
         'Judul & Lokasi Temuan',
         'Foto Temuan (Before)',
         'Foto Bukti (After)',
-        'Status & Risiko',
+        'Status & Bahaya',
         'Uraian / Tindak Lanjut Perbaikan'
       ]],
       body: tableRows,
-      margin: { left: margin, right: margin },
+      margin: { top: tableStartY, left: margin, right: margin, bottom: 10 },
       styles: {
         fontSize: 6.8,
         cellPadding: 1.5,
@@ -465,7 +515,7 @@ export async function exportHSEFindingsRecapPDF(findings: HSEFindingItem[]): Pro
         textColor: [30, 41, 59],
         font: 'helvetica',
         valign: 'middle',
-        minCellHeight: 18.5,
+        minCellHeight: 22,
       },
       headStyles: {
         fillColor: BLUE_RGB,
@@ -481,14 +531,19 @@ export async function exportHSEFindingsRecapPDF(findings: HSEFindingItem[]): Pro
         fillColor: [248, 250, 252],
       },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 7 },
-        1: { halign: 'center', cellWidth: 20 },
-        2: { cellWidth: 22 },
+        0: { halign: 'center', cellWidth: 8 },
+        1: { halign: 'center', cellWidth: 22 },
+        2: { cellWidth: 24 },
         3: { cellWidth: 46 },
-        4: { halign: 'center', cellWidth: 32, minCellHeight: 18.5 },
-        5: { halign: 'center', cellWidth: 32, minCellHeight: 18.5 },
-        6: { halign: 'center', cellWidth: 22 },
+        4: { halign: 'center', cellWidth: 34 },
+        5: { halign: 'center', cellWidth: 34 },
+        6: { halign: 'center', cellWidth: 24 },
         7: { cellWidth: 'auto' },
+      },
+      didDrawPage: (data: any) => {
+        if (data.pageNumber > 1) {
+          drawHeader(doc);
+        }
       },
       didDrawCell: (data) => {
         if (data.section === 'body') {
@@ -496,22 +551,28 @@ export async function exportHSEFindingsRecapPDF(findings: HSEFindingItem[]): Pro
           if (!finding) return;
 
           const pad = 1.2;
-          const cellX = data.cell.x + pad;
-          const cellY = data.cell.y + pad;
-          const maxImgW = data.cell.width - pad * 2;
-          const maxImgH = data.cell.height - pad * 2;
+          const cell = data.cell;
+          const cardW = cell.width - pad * 2;
+          const cardH = cell.height - pad * 2;
+          const cardX = cell.x + pad;
+          const cardY = cell.y + pad;
 
           // Col 4: Foto Before
           if (data.column.index === 4 && finding.beforePhoto) {
             try {
+              doc.setFillColor(241, 245, 249);
+              doc.setDrawColor(203, 213, 225);
+              doc.setLineWidth(0.1);
+              doc.roundedRect(cardX, cardY, cardW, cardH, 0.6, 0.6, 'FD');
+
               doc.addImage(
                 finding.beforePhoto,
                 'JPEG',
-                cellX,
-                cellY,
-                maxImgW,
-                maxImgH,
-                undefined,
+                cardX + 0.4,
+                cardY + 0.4,
+                cardW - 0.8,
+                cardH - 0.8,
+                `hse_find_bf_${finding.id || data.row.index}`,
                 'FAST'
               );
             } catch (err) {
@@ -522,14 +583,19 @@ export async function exportHSEFindingsRecapPDF(findings: HSEFindingItem[]): Pro
           // Col 5: Foto After
           if (data.column.index === 5 && finding.status === 'close' && finding.afterPhoto) {
             try {
+              doc.setFillColor(241, 245, 249);
+              doc.setDrawColor(203, 213, 225);
+              doc.setLineWidth(0.1);
+              doc.roundedRect(cardX, cardY, cardW, cardH, 0.6, 0.6, 'FD');
+
               doc.addImage(
                 finding.afterPhoto,
                 'JPEG',
-                cellX,
-                cellY,
-                maxImgW,
-                maxImgH,
-                undefined,
+                cardX + 0.4,
+                cardY + 0.4,
+                cardW - 0.8,
+                cardH - 0.8,
+                `hse_find_af_${finding.id || data.row.index}`,
                 'FAST'
               );
             } catch (err) {
@@ -547,8 +613,8 @@ export async function exportHSEFindingsRecapPDF(findings: HSEFindingItem[]): Pro
     }
 
     const todayStr = new Date().toISOString().split('T')[0];
-    doc.save(`Rekap_Temuan_HSE_${todayStr}.pdf`);
-    toast.success('Rekapitulasi Temuan K3 berhasil diunduh!', { id: toastId });
+    doc.save(`Rekap_Temuan_HSE_${variantLabel}_${todayStr}.pdf`);
+    toast.success(`Rekapitulasi Temuan K3 (${variantLabel}) berhasil diunduh!`, { id: toastId });
   } catch (error) {
     console.error('Error generating HSE Findings Recap PDF:', error);
     toast.error('Gagal membuat Rekap PDF', { id: toastId });

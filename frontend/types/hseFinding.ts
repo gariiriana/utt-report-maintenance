@@ -7,7 +7,15 @@
 // ============================================================================
 
 export type HSEFindingStatus = 'open' | 'close';
-export type HSEFindingSeverity = 'low' | 'medium' | 'high' | 'critical';
+export type HSEFindingSeverity =
+  | 'unsafe_condition'
+  | 'unsafe_action'
+  | 'low'
+  | 'medium'
+  | 'high'
+  | 'critical'
+  | (string & {});
+
 export type HSEFindingCategory =
   | 'unsafe_act'
   | 'unsafe_condition'
@@ -25,7 +33,7 @@ export interface HSEFindingItem {
   description: string;                   // Deskripsi / Kronologi detail temuan
   location: string;                      // Lokasi temuan (e.g. "Genset Room Lantai 1", "Chiller Area")
   category: string;                      // Kategori K3 (Manual text input / kategori kustom)
-  severity: HSEFindingSeverity;           // Tingkat Risiko (Low, Medium, High, Critical)
+  severity: HSEFindingSeverity;           // Tingkat Bahaya / Risiko (Unsafe Condition, Unsafe Action, dll)
   status: HSEFindingStatus;               // 'open' (Temuan Masih Terbuka), 'close' (Temuan Sudah Ditutup)
   
   // Pelapor & Pihak Terkait
@@ -89,30 +97,43 @@ export const HSE_CATEGORY_LABELS: Record<HSEFindingCategory, { label: string; ba
   }
 };
 
-export const HSE_SEVERITY_CONFIG: Record<HSEFindingSeverity, { label: string; color: string; badge: string; dot: string }> = {
+export const HSE_SEVERITY_CONFIG: Record<string, { label: string; color: string; badge: string; dot: string }> = {
+  unsafe_condition: {
+    label: 'Unsafe Condition',
+    color: 'text-amber-700',
+    badge: 'bg-amber-50 text-amber-700 border-amber-200',
+    dot: 'bg-amber-500'
+  },
+  unsafe_action: {
+    label: 'Unsafe Action',
+    color: 'text-rose-700',
+    badge: 'bg-rose-50 text-rose-700 border-rose-200',
+    dot: 'bg-rose-500'
+  },
+  // Backward compatibility:
+  high: {
+    label: 'Tinggi (High)',
+    color: 'text-rose-600',
+    badge: 'bg-rose-50 text-rose-700 border-rose-200',
+    dot: 'bg-rose-500'
+  },
+  medium: {
+    label: 'Sedang (Medium)',
+    color: 'text-amber-600',
+    badge: 'bg-amber-50 text-amber-700 border-amber-200',
+    dot: 'bg-amber-500'
+  },
   low: {
     label: 'Rendah (Low)',
     color: 'text-slate-600',
     badge: 'bg-slate-100 text-slate-700 border-slate-200',
     dot: 'bg-slate-400'
   },
-  medium: {
-    label: 'Sedang (Medium)',
-    color: 'text-amber-600',
-    badge: 'bg-amber-100 text-amber-800 border-amber-300',
-    dot: 'bg-amber-500'
-  },
-  high: {
-    label: 'Tinggi (High)',
-    color: 'text-orange-600',
-    badge: 'bg-orange-100 text-orange-800 border-orange-300',
-    dot: 'bg-orange-500'
-  },
   critical: {
     label: 'Kritis (Critical)',
-    color: 'text-rose-600',
-    badge: 'bg-rose-100 text-rose-800 border-rose-300',
-    dot: 'bg-rose-600 animate-pulse'
+    color: 'text-red-700',
+    badge: 'bg-red-100 text-red-800 border-red-300',
+    dot: 'bg-red-600'
   }
 };
 
