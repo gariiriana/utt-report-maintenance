@@ -390,7 +390,7 @@ export async function exportHSEInspectionRecapPDF(
         textColor: [30, 41, 59],
         font: 'helvetica',
         valign: 'middle',
-        minCellHeight: 22,
+        minCellHeight: 26,
       },
       headStyles: {
         fillColor: BLUE_RGB,
@@ -415,22 +415,22 @@ export async function exportHSEInspectionRecapPDF(
         6: { cellWidth: 30, halign: 'center' },
       },
       didParseCell: (data: any) => {
-        // Dynamically adjust row height based on photo count so all photos fit comfortably!
+        // Dynamically adjust row height based on photo count and checklist items
         if (data.section === 'body') {
           const item = loadedItems[data.row.index];
-          const count = item?.photos?.length || 0;
-          if (count > 6) {
-            const rows = Math.ceil(count / 3);
-            data.row.height = Math.max(data.row.height || 0, rows * 18 + 4);
-          } else if (count >= 4) {
-            data.row.height = Math.max(data.row.height || 0, 38);
-          } else if (count === 3) {
-            data.row.height = Math.max(data.row.height || 0, 23);
-          } else if (count === 0) {
-            data.row.height = Math.max(data.row.height || 0, 19);
-          } else {
-            data.row.height = Math.max(data.row.height || 0, 23);
+          const photoCount = item?.photos?.length || 0;
+          const checkCount = item?.checklistItems?.length || 0;
+          const checkRows = Math.ceil(checkCount / 2);
+          const checkMinH = checkRows * 4.6 + 4; // Ensure plenty of vertical room for checklist
+
+          let neededH = Math.max(26, checkMinH);
+          if (photoCount > 6) {
+            const photoRows = Math.ceil(photoCount / 3);
+            neededH = Math.max(neededH, photoRows * 18 + 4);
+          } else if (photoCount >= 4) {
+            neededH = Math.max(neededH, 38);
           }
+          data.row.height = Math.max(data.row.height || 0, neededH);
         }
       },
       didDrawPage: (data: any) => {
@@ -451,33 +451,34 @@ export async function exportHSEInspectionRecapPDF(
           const startX = cell.x + 2;
           const cellH = cell.height;
 
-          // Render checklist in 2 compact columns
+          // Render checklist in 2 compact columns with generous 4.5mm line height
           const col1W = 23;
           const maxRowsPerCol = Math.ceil(items.length / 2);
-          const rowSpacing = Math.min(3.6, (cellH - 3) / Math.max(1, maxRowsPerCol));
-          const startY = cell.y + (cellH - maxRowsPerCol * rowSpacing) / 2 + 2;
+          const rowSpacing = 4.5;
+          const totalContentH = maxRowsPerCol * rowSpacing;
+          const startY = cell.y + Math.max(2, (cellH - totalContentH) / 2) + 2.2;
 
           items.forEach((chkName, cIdx) => {
             const isCol2 = cIdx >= maxRowsPerCol;
             const rowInCol = isCol2 ? cIdx - maxRowsPerCol : cIdx;
 
             const iconX = isCol2 ? startX + col1W : startX;
-            const iconY = startY + rowInCol * rowSpacing;
+            const centerY = startY + rowInCol * rowSpacing;
 
             // Draw Emerald Green Circle Badge
             doc.setFillColor(...EMERALD_RGB);
-            doc.circle(iconX + 1, iconY - 0.8, 1.1, 'F');
+            doc.circle(iconX + 1.2, centerY, 1.0, 'F');
 
             // Draw White Checkmark Tick inside Circle
             doc.setDrawColor(255, 255, 255);
             doc.setLineWidth(0.3);
-            doc.line(iconX + 0.5, iconY - 0.8, iconX + 0.9, iconY - 0.4);
-            doc.line(iconX + 0.9, iconY - 0.4, iconX + 1.6, iconY - 1.2);
+            doc.line(iconX + 0.7, centerY, iconX + 1.05, centerY + 0.35);
+            doc.line(iconX + 1.05, centerY + 0.35, iconX + 1.75, centerY - 0.4);
 
             // Draw Checklist Item Label
-            doc.setFontSize(6.0).setFont('helvetica', 'bold').setTextColor(30, 41, 59);
-            const labelText = doc.splitTextToSize(chkName, 20)[0] || chkName;
-            doc.text(labelText, iconX + 2.8, iconY - 0.1);
+            doc.setFontSize(6.2).setFont('helvetica', 'bold').setTextColor(30, 41, 59);
+            const labelText = doc.splitTextToSize(chkName, 19)[0] || chkName;
+            doc.text(labelText, iconX + 3.0, centerY + 0.7);
           });
         }
 
