@@ -586,7 +586,7 @@ export function FileManagement({
                 const fileMaintenance = (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'].includes(fileCategory))
                     ? (parsed.maintenanceType || selectedMaintenance)
                     : null;
-                const fileQuarter = fileCategory === 'SLD' ? 'N/A' : (parsed.quarter || selectedUploadQuarter);
+                const fileQuarter = (fileCategory === 'SLD' || fileCategory === 'Layout') ? 'N/A' : (parsed.quarter || selectedUploadQuarter);
                 const fileYear = parsed.year || selectedUploadYear;
 
                 const fileDocRef = await addDoc(collection(db, collectionName), {
@@ -978,7 +978,7 @@ export function FileManagement({
         if (selectedFolder && !matchCategory(file.category, selectedFolder)) {
             return false;
         }
-        if (selectedQuarter && selectedFolder !== 'SLD') {
+        if (selectedQuarter && selectedFolder !== 'SLD' && selectedFolder !== 'Layout') {
             if (selectedQuarter === 'Tanpa Quarter') {
                 if (file.quarter && QUARTERS.includes(file.quarter)) return false;
             } else if (file.quarter !== selectedQuarter) {
@@ -1133,7 +1133,7 @@ export function FileManagement({
                                     </select>
                                 </div>
 
-                                {selectedCategory !== 'SLD' && (
+                                {selectedCategory !== 'SLD' && selectedCategory !== 'Layout' && (
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-2">
                                             Quarter
@@ -1491,7 +1491,7 @@ export function FileManagement({
                             </div>
                         )}
                     </div>
-                ) : selectedFolder && !selectedQuarter && selectedFolder !== 'SLD' ? (
+                ) : selectedFolder && !selectedQuarter && selectedFolder !== 'SLD' && selectedFolder !== 'Layout' ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                         {QUARTERS
                             .filter(quarter => {
