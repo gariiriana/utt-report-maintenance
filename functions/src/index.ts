@@ -381,3 +381,12 @@ RULES:
     throw new HttpsError("internal", `Consolidation parsing failed: ${error.message}`);
   }
 });
+
+// ─── WhatsApp Cloud Gateway & H-60 Scheduled / Callable Functions ────────────
+export { scheduledWAReminderH60 } from './scheduled-wa-reminder';
+export {
+  sendTestWhatsAppCloud,
+  triggerWAReminderH60Cloud,
+  updateWAReminderConfigCloud
+} from './manual-wa-send';
+

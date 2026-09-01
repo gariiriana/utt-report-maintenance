@@ -13,6 +13,7 @@ import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager
 import { getStorage } from "firebase/storage";             // Penyimpanan file (foto, dokumen)
 import { getDatabase } from "firebase/database";           // Realtime Database (untuk data live/realtime)
 import { getAnalytics, isSupported } from "firebase/analytics"; // Analytics (tracking penggunaan app)
+import { getFunctions } from "firebase/functions";         // Cloud Functions (HTTPS Callable & Cloud Tasks)
 
 // Konfigurasi Firebase — semua value diambil dari file .env (environment variables)
 // PENTING: Jangan pernah hardcode API key di sini, selalu pakai import.meta.env
@@ -107,3 +108,7 @@ export const storage = getStorage(app);
 // Realtime Database — untuk fitur yang butuh data live/realtime
 // (contoh: status online user, notifikasi instant)
 export const rtdb = getDatabase(app);
+
+// Cloud Functions — untuk memanggil callable functions (AI, WhatsApp Cloud Reminder, dll)
+export const functions = getFunctions(app, "asia-southeast1");
+
