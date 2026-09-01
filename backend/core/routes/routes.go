@@ -24,6 +24,7 @@ type AppDeps struct {
 	FindingCtrl             *controllers.FindingController
 	AICtrl                  *controllers.AIController
 	VoiceCtrl               *controllers.VoiceController
+	WACtrl                  *controllers.WAController
 	RateLimiter             *middlewares.RateLimiter // global catch-all
 	ThrottleHeavy           *middlewares.RateLimiter // POST/DELETE — 5 rps, burst 10
 	ThrottleStandard        *middlewares.RateLimiter // GET lists   — 20 rps, burst 40
@@ -67,6 +68,7 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 	aiCtrl := controllers.NewAIController(aiSvc)
 	voiceSvc := services.NewVoiceService(firestoreClient)
 	voiceCtrl := controllers.NewVoiceController(voiceSvc)
+	waCtrl := controllers.NewWAController()
 
 	rateLimiter := middlewares.NewRateLimiter(20, 40)
 	throttleHeavy := middlewares.NewThrottle(5, 10)   // expensive write/delete ops
@@ -83,6 +85,7 @@ func NewAppDeps(ctx context.Context) (*AppDeps, error) {
 		FindingCtrl:             findingCtrl,
 		AICtrl:                  aiCtrl,
 		VoiceCtrl:               voiceCtrl,
+		WACtrl:                  waCtrl,
 		RateLimiter:             rateLimiter,
 		ThrottleHeavy:           throttleHeavy,
 		ThrottleStandard:        throttleStandard,

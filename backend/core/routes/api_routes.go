@@ -175,6 +175,10 @@ func RouteRequest(w http.ResponseWriter, r *http.Request, deps *AppDeps) {
 	case path == "/api/voice/ws" && r.Method == http.MethodGet:
 		deps.VoiceCtrl.HandleVoiceSession(w, r)
 
+	// --- WhatsApp Cloud Send ---
+	case path == "/api/wa/send" && r.Method == http.MethodPost:
+		heavy(deps.WACtrl.SendMessage)(w, r)
+
 	default:
 		helpers.SendError(w, "route not found", http.StatusNotFound)
 	}

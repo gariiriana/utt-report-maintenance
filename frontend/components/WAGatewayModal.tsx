@@ -182,7 +182,58 @@ export const WAGatewayModal: React.FC<WAGatewayModalProps> = ({
     }
   };
 
-  // 4. Eksekusi Kirim Test WA via Cloud (Direct Fonnte API & Callable)
+  // Helper untuk mengirim pesan via Cloud (Backend API Proxy / Direct Fonnte)
+  const sendViaCloudGateway = async (target: string, msg: string, group?: string) => {
+    // 1. Coba lewat backend serverless / Go backend proxy (/api/wa/send)
+    try {
+      const apiRes = await fetch('/api/wa/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: fonnteToken.trim(),
+          targetPhone: target.trim(),
+          targetGroup: group?.trim() || '',
+          message: msg
+        })
+      });
+
+      if (apiRes.ok) {
+        const json = await apiRes.json();
+        if (json.status === 'success') {
+          return { success: true, data: json };
+        }
+      }
+    } catch {
+      // Backend proxy fallback ke direct call
+    }
+
+    // 2. Direct Fonnte API call
+    let finalTarget = target.trim();
+    if (group && group.trim()) {
+      finalTarget = `${finalTarget},${group.trim()}`;
+    }
+
+    const response = await fetch('https://api.fonnte.com/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': fonnteToken.trim(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        target: finalTarget,
+        message: msg,
+        countryCode: '62'
+      })
+    });
+
+    const resJson = await response.json();
+    if (resJson.status === true) {
+      return { success: true, data: resJson };
+    }
+    throw new Error(resJson.reason || resJson.message || 'Gagal mengirim pesan WhatsApp via Fonnte.');
+  };
+
+  // 4. Eksekusi Kirim Test WA via Cloud
   const handleSendCloudTest = async () => {
     if (!targetPhone.trim()) {
       toast.error('Masukkan nomor WhatsApp tujuan terlebih dahulu.');
@@ -199,31 +250,13 @@ export const WAGatewayModal: React.FC<WAGatewayModalProps> = ({
       const msg = testMessage.trim() ||
         `🔔 *[TEST CLOUD WA GATEWAY]*\n\nIntegrasi WhatsApp Cloud DwimitraSystem (Fonnte API) berhasil terhubung dan siap digunakan!\n\n_Waktu: ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })} WIB_`;
 
-      const response = await fetch('https://api.fonnte.com/send', {
-        method: 'POST',
-        headers: {
-          'Authorization': fonnteToken.trim(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          target: targetPhone.trim(),
-          message: msg,
-          countryCode: '62'
-        })
-      });
-
-      const resJson = await response.json();
+      await sendViaCloudGateway(targetPhone, msg);
       toast.dismiss(toastId);
-
-      if (resJson.status === true) {
-        toast.success(`Pesan test WhatsApp Cloud berhasil dikirim ke ${targetPhone}!`);
-        setTestMessage('');
-      } else {
-        toast.error(resJson.reason || resJson.message || 'Gagal mengirim pesan test WhatsApp.');
-      }
+      toast.success(`Pesan test WhatsApp Cloud berhasil dikirim ke ${targetPhone}!`);
+      setTestMessage('');
     } catch (err: any) {
       toast.dismiss(toastId);
-      toast.error(err.message || 'Gagal terhubung ke server Fonnte API.');
+      toast.error(err.message || 'Gagal mengirim pesan test WhatsApp.');
     } finally {
       setIsSendingCloudTest(false);
     }
@@ -278,39 +311,17 @@ export const WAGatewayModal: React.FC<WAGatewayModalProps> = ({
       alertMessage += `🌐 https://dwimitrasystem.com/\n\n`;
       alertMessage += `_Notifikasi otomatis dijadwalkan via DwimitraSystem Cloud Gateway_`;
 
-      let finalTarget = targetPhone.trim();
-      if (targetGroup && targetGroup.trim()) {
-        finalTarget = `${finalTarget},${targetGroup.trim()}`;
-      }
+      await sendViaCloudGateway(targetPhone, alertMessage, targetGroup);
 
-      const response = await fetch('https://api.fonnte.com/send', {
-        method: 'POST',
-        headers: {
-          'Authorization': fonnteToken.trim(),
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          target: finalTarget,
-          message: alertMessage,
-          countryCode: '62'
-        })
-      });
+      const sentIso = new Date().toISOString();
+      setLastSentDate(sentIso);
 
-      const resJson = await response.json();
+      // Update lastSentDate di Firestore
+      const docRef = doc(db, 'system_status', 'wa_reminder_config');
+      setDoc(docRef, { lastSentDate: sentIso }, { merge: true }).catch(() => {});
+
       toast.dismiss(toastId);
-
-      if (resJson.status === true) {
-        const sentIso = new Date().toISOString();
-        setLastSentDate(sentIso);
-
-        // Update lastSentDate di Firestore
-        const docRef = doc(db, 'system_status', 'wa_reminder_config');
-        setDoc(docRef, { lastSentDate: sentIso }, { merge: true }).catch(() => {});
-
-        toast.success(`🔥 Reminder H-60 (${upcomingPMs.length} agenda PM di ${targetMonthName}) berhasil dikirim ke ${finalTarget}!`);
-      } else {
-        toast.error(resJson.reason || resJson.message || 'Gagal mengirim pesan reminder H-60.');
-      }
+      toast.success(`🔥 Reminder H-60 (${upcomingPMs.length} agenda PM di ${targetMonthName}) berhasil dikirim!`);
     } catch (err: any) {
       toast.dismiss(toastId);
       toast.error(err.message || 'Gagal mengeksekusi reminder H-60 via Cloud.');
