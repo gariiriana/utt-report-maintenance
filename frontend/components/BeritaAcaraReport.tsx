@@ -49,7 +49,8 @@ const MAINTENANCE_CATEGORIES = BOQ_CATEGORIES_DATA.filter(cat => !cat.isSparepar
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function BeritaAcaraReport() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
+  const isAdmin = userRole === 'admin';
 
   // ─── Form State ──────────────────────────────────────────────────
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
@@ -92,18 +93,20 @@ export function BeritaAcaraReport() {
   // ─── Load Archives from Firestore ────────────────────────────────
   useEffect(() => {
     if (!user?.email) return;
-    const q = query(
-      collection(db, 'berita_acara'),
-      where('createdBy', '==', user.email),
-      orderBy('createdAt', 'desc')
-    );
+    const q = isAdmin
+      ? query(collection(db, 'berita_acara'), orderBy('createdAt', 'desc'))
+      : query(
+          collection(db, 'berita_acara'),
+          where('createdBy', '==', user.email),
+          orderBy('createdAt', 'desc')
+        );
     const unsub = onSnapshot(q, (snap) => {
       setArchives(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     }, (err) => {
       console.error('Error loading berita_acara archives:', err);
     });
     return () => unsub();
-  }, [user?.email]);
+  }, [user?.email, isAdmin]);
 
   // ─── Filtered Categories (search) ───────────────────────────────
   const filteredCategories = useMemo(() => {

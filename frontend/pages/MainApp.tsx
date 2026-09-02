@@ -77,7 +77,7 @@ export function MainApp() {
     { id: 'pm_schedule', label: 'PM Schedule', icon: CalendarDays, color: 'from-blue-600 to-indigo-700', show: !isAdmin && userRole === 'DME' && !isK2Engineer },
     { id: 'monthly_report', label: 'Monthly Report (1-Klik)', icon: FileText, color: 'from-blue-600 to-indigo-700', show: !isAdmin && (userRole === 'DME' || userRole === 'site_manager_dme' || user?.email?.toLowerCase() === 'dwimitra@co.id') && !isStandby && !isK2Engineer },
     { id: 'boq', label: 'Master Asset & BOQ', icon: Database, color: 'from-cyan-600 to-blue-700', show: (userRole === 'DME' || userRole === 'site_manager_dme' || isAdmin || !!user?.email?.toLowerCase().includes('dwimitra') || !!user?.email?.toLowerCase().includes('dme')) && !isK2Engineer },
-    { id: 'berita_acara', label: 'BA Report', icon: FileSignature, color: 'from-violet-600 to-purple-700', show: user?.email?.toLowerCase() === 'dwimitra@co.id' },
+    { id: 'berita_acara', label: 'BA Report', icon: FileSignature, color: 'from-violet-600 to-purple-700', show: isAdmin || userRole === 'DME' || userRole === 'site_manager_dme' || user?.email?.toLowerCase() === 'dwimitra@co.id' },
   ] as const;
 
   // Menentukan tab awal default berdasarkan peranan user saat pertama kali dibuka

@@ -2,8 +2,14 @@
 // FILE: generateBeritaAcaraDOCX.ts
 // Deskripsi: Generator DOCX Berita Acara Maintenance untuk NeutraDC Cikarang.
 //            Menghasilkan dokumen Word resmi dengan layout persis seperti
-//            template Berita Acara Maintenance asli: Header logo, info table,
-//            body text, per-equipment data tables, closing, dan signature block.
+//            template Berita Acara Maintenance asli:
+//            - Margin kiri lebar (space kliping/jilid) & seluruh konten proporsional
+//            - Header logo ganda rapi (Dwimitra kiri natural, NeutraDC kanan)
+//            - Judul 1 baris bergaris bawah di tengah
+//            - Info table mepet kanan dengan garis pemisah tunggal di Pelaksana
+//            - Body text bernomor rapi
+//            - Tabel equipment ber-header hijau full width
+//            - Closing dan signature block
 // ============================================================================
 
 import {
@@ -18,9 +24,8 @@ import {
   AlignmentType,
   BorderStyle,
   ImageRun,
-  Header,
   VerticalAlign,
-  NumberFormat,
+  ShadingType,
 } from 'docx';
 import { saveAs } from 'file-saver';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
@@ -32,7 +37,7 @@ import { BOQItem } from '@/data/boqAssetData';
 
 export interface BeritaAcaraEquipmentData {
   categoryName: string;
-  executionDate: string;      // e.g. "02 - 06 Mar" or "26 - 31 Mar 2026"
+  executionDate: string;      // e.g. "02 - 06 Mar" or "16 - 27 Maret"
   items: BOQItem[];           // Selected CI items from BOQ
 }
 
@@ -81,27 +86,64 @@ const BA_HEADER_LABELS = [
   'Serial Number',
   'Asset Tagging',
   'Production Year',
-  'Model / Version',
+  'Model/\nVersion',
   'Manufacturer\n/ Principle',
   'Room',
 ];
 
-/** Column widths in percentage (total = 100) */
-const COL_WIDTHS_PCT = [5, 8, 16, 9, 10, 9, 9, 11, 13, 10];
+/** Total printable page width = 9040 DXA (Letter width 12240 - left margin 2000 - right margin 1200) */
+const TOTAL_CONTENT_WIDTH_DXA = 9040;
 
-const BORDER_COLOR = '000000';
+/** Column widths in DXA for Equipment Table (sum = 9040 DXA) */
+const BA_COL_WIDTHS_DXA = [
+  400,   // No
+  800,   // Class Id
+  1540,  // CI Name*
+  750,   // Capacity
+  1000,  // Serial Number
+  880,   // Asset Tagging
+  820,   // Production Year
+  1000,  // Model/Version
+  1100,  // Manufacturer / Principle
+  750,   // Room
+];
+
+/** Table Header Green Color (#1E6B37 - matches the official report template) */
+const COLOR_TABLE_HEADER_GREEN = '1E6B37';
+const COLOR_BORDER = '000000';
+
+/** Thin black borders for data table */
 const thinBorder = {
-  top: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
-  bottom: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
-  left: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
-  right: { style: BorderStyle.SINGLE, size: 1, color: BORDER_COLOR },
+  top: { style: BorderStyle.SINGLE, size: 4, color: COLOR_BORDER },
+  bottom: { style: BorderStyle.SINGLE, size: 4, color: COLOR_BORDER },
+  left: { style: BorderStyle.SINGLE, size: 4, color: COLOR_BORDER },
+  right: { style: BorderStyle.SINGLE, size: 4, color: COLOR_BORDER },
 };
 
-const noBorder = {
-  top: { style: BorderStyle.NONE, size: 0 },
-  bottom: { style: BorderStyle.NONE, size: 0 },
-  left: { style: BorderStyle.NONE, size: 0 },
-  right: { style: BorderStyle.NONE, size: 0 },
+/** Completely remove borders on tables (including inner gridlines) */
+const noTableBorders = {
+  top: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+  bottom: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+  left: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+  right: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+  insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+  insideVertical: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+};
+
+/** Completely remove borders on cells */
+const noCellBorders = {
+  top: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+  bottom: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+  left: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+  right: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+};
+
+/** Single bottom border only for the Pelaksana line */
+const bottomOnlyCellBorders = {
+  top: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+  bottom: { style: BorderStyle.SINGLE, size: 8, color: COLOR_BORDER },
+  left: { style: BorderStyle.NONE, size: 0, color: 'auto' },
+  right: { style: BorderStyle.NONE, size: 0, color: 'auto' },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -149,22 +191,31 @@ function getQuarter(month: number): string {
   return 'Q4';
 }
 
-
-/** Create a cell for the info table (no borders, key-value) */
-function infoCell(text: string, opts?: { bold?: boolean; width?: number }): TableCell {
+/** Create a spacer cell for empty left space */
+function spacerCell(widthDxa: number): TableCell {
   return new TableCell({
-    width: opts?.width ? { size: opts.width, type: WidthType.DXA } : undefined,
-    borders: noBorder,
+    width: { size: widthDxa, type: WidthType.DXA },
+    borders: noCellBorders,
+    children: [new Paragraph({ children: [] })],
+  });
+}
+
+/** Create a cell for the info table (key-value metadata, pushed to right for clipping) */
+function infoCell(text: string, opts: { bold?: boolean; widthDxa: number; hasBottomBorder?: boolean }): TableCell {
+  return new TableCell({
+    width: { size: opts.widthDxa, type: WidthType.DXA },
+    borders: opts.hasBottomBorder ? bottomOnlyCellBorders : noCellBorders,
     verticalAlign: VerticalAlign.CENTER,
     children: [
       new Paragraph({
-        spacing: { before: 40, after: 40 },
+        spacing: { before: 20, after: 20 },
         children: [
           new TextRun({
             text,
-            bold: opts?.bold ?? false,
-            size: 22,
+            bold: opts.bold ?? false,
+            size: 21,
             font: 'Times New Roman',
+            color: '000000',
           }),
         ],
       }),
@@ -172,11 +223,15 @@ function infoCell(text: string, opts?: { bold?: boolean; width?: number }): Tabl
   });
 }
 
-/** Create header row cell for the equipment data table */
-function headerCell(text: string, widthPct: number): TableCell {
+/** Create header row cell for the equipment data table (Green background, white italic bold text) */
+function headerCell(text: string, widthDxa: number): TableCell {
   return new TableCell({
-    width: { size: widthPct, type: WidthType.PERCENTAGE },
+    width: { size: widthDxa, type: WidthType.DXA },
     borders: thinBorder,
+    shading: {
+      fill: COLOR_TABLE_HEADER_GREEN,
+      type: ShadingType.CLEAR,
+    },
     verticalAlign: VerticalAlign.CENTER,
     children: [
       new Paragraph({
@@ -187,12 +242,14 @@ function headerCell(text: string, widthPct: number): TableCell {
             new TextRun({
               text: line,
               bold: true,
-              size: 18,
+              italics: true,
+              color: 'FFFFFF',
+              size: 17,
               font: 'Times New Roman',
             }),
           ];
           if (i < arr.length - 1) {
-            runs.push(new TextRun({ break: 1, size: 18, font: 'Times New Roman' }));
+            runs.push(new TextRun({ break: 1, size: 17, font: 'Times New Roman' }));
           }
           return runs;
         }),
@@ -202,9 +259,9 @@ function headerCell(text: string, widthPct: number): TableCell {
 }
 
 /** Create data row cell for the equipment data table */
-function dataCell(text: string, widthPct: number): TableCell {
+function dataCell(text: string, widthDxa: number): TableCell {
   return new TableCell({
-    width: { size: widthPct, type: WidthType.PERCENTAGE },
+    width: { size: widthDxa, type: WidthType.DXA },
     borders: thinBorder,
     verticalAlign: VerticalAlign.CENTER,
     children: [
@@ -216,6 +273,7 @@ function dataCell(text: string, widthPct: number): TableCell {
             text: text || 'N/A',
             size: 18,
             font: 'Times New Roman',
+            color: '000000',
           }),
         ],
       }),
@@ -229,7 +287,7 @@ function buildEquipmentTable(items: BOQItem[]): Table {
   // Header row
   const headerRow = new TableRow({
     tableHeader: true,
-    children: BA_HEADER_LABELS.map((label, i) => headerCell(label, COL_WIDTHS_PCT[i])),
+    children: BA_HEADER_LABELS.map((label, i) => headerCell(label, BA_COL_WIDTHS_DXA[i])),
   });
 
   // Data rows
@@ -240,18 +298,17 @@ function buildEquipmentTable(items: BOQItem[]): Table {
         if (col === 'No') {
           value = String(idx + 1);
         } else if (col === 'Asset Tagging') {
-          // Try common key variations
-          value = item['Asset Tagging'] || item['TAG'] || item['Asset ID'] || '';
+          value = item['Asset Tagging'] || item['TAG'] || item['Asset ID'] || 'N/A';
         } else {
-          value = item[col] || '';
+          value = item[col] || 'N/A';
         }
-        return dataCell(value, COL_WIDTHS_PCT[i]);
+        return dataCell(value, BA_COL_WIDTHS_DXA[i]);
       }),
     });
   });
 
   return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
+    width: { size: TOTAL_CONTENT_WIDTH_DXA, type: WidthType.DXA },
     rows: [headerRow, ...dataRows],
   });
 }
@@ -262,91 +319,78 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
   const toastId = toast.loading('Membuat Berita Acara Maintenance (DOCX)...');
 
   try {
-    // Load logos
-    let logoLeftBytes: Uint8Array = new Uint8Array();
-    let logoRightBytes: Uint8Array = new Uint8Array();
-    try { logoLeftBytes = await loadImageAsUint8Array(logoNeutraDC); } catch { /* ignore */ }
-    try { logoRightBytes = await loadImageAsUint8Array(logoDwimitra); } catch { /* ignore */ }
+    // Load logos: Left is Dwimitra, Right is NeutraDC
+    let logoDwimitraBytes: Uint8Array = new Uint8Array();
+    let logoNeutraDCBytes: Uint8Array = new Uint8Array();
+    try { logoDwimitraBytes = await loadImageAsUint8Array(logoDwimitra); } catch { /* ignore */ }
+    try { logoNeutraDCBytes = await loadImageAsUint8Array(logoNeutraDC); } catch { /* ignore */ }
 
     const monthName = INDO_MONTHS[config.month];
     const quarter = getQuarter(config.month);
 
-    // ─── PAGE HEADER (Logo + Title) ────────────────────────────────
-    const pageHeader = new Header({
-      children: [
-        new Table({
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          borders: noBorder,
-          rows: [
-            new TableRow({
+    // ─── DOCUMENT HEADER TABLE (Logo Dwimitra kiri, Judul tengah, Logo NeutraDC kanan) ───
+    // Total width = 9040 DXA (100% printable width)
+    const headerTable = new Table({
+      width: { size: TOTAL_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      borders: noTableBorders,
+      rows: [
+        new TableRow({
+          children: [
+            // Left: Logo Dwimitra (1300 DXA) - Natural aspect ratio diamond
+            new TableCell({
+              width: { size: 1300, type: WidthType.DXA },
+              borders: noCellBorders,
+              verticalAlign: VerticalAlign.CENTER,
               children: [
-                // Left logo (NeutraDC)
-                new TableCell({
-                  width: { size: 20, type: WidthType.PERCENTAGE },
-                  borders: noBorder,
-                  verticalAlign: VerticalAlign.CENTER,
+                new Paragraph({
+                  alignment: AlignmentType.LEFT,
+                  children: logoDwimitraBytes.length > 0 ? [
+                    new ImageRun({
+                      data: logoDwimitraBytes,
+                      transformation: { width: 78, height: 42 },
+                      type: 'png',
+                    }),
+                  ] : [],
+                }),
+              ],
+            }),
+            // Center: Title 1 baris bergaris bawah (6440 DXA)
+            new TableCell({
+              width: { size: 6440, type: WidthType.DXA },
+              borders: noCellBorders,
+              verticalAlign: VerticalAlign.CENTER,
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  spacing: { before: 0, after: 0 },
                   children: [
-                    new Paragraph({
-                      alignment: AlignmentType.LEFT,
-                      children: logoLeftBytes.length > 0 ? [
-                        new ImageRun({
-                          data: logoLeftBytes,
-                          transformation: { width: 80, height: 80 },
-                          type: 'png',
-                        }),
-                      ] : [],
+                    new TextRun({
+                      text: 'BERITA ACARA MAINTENANCE PERANGKAT HDC CIKARANG',
+                      bold: true,
+                      underline: {},
+                      size: 20,
+                      font: 'Times New Roman',
+                      color: '000000',
                     }),
                   ],
                 }),
-                // Center title
-                new TableCell({
-                  width: { size: 60, type: WidthType.PERCENTAGE },
-                  borders: noBorder,
-                  verticalAlign: VerticalAlign.CENTER,
-                  children: [
-                    new Paragraph({
-                      alignment: AlignmentType.CENTER,
-                      spacing: { before: 0, after: 0 },
-                      children: [
-                        new TextRun({
-                          text: 'BERITA ACARA MAINTENANCE',
-                          bold: true,
-                          size: 24,
-                          font: 'Times New Roman',
-                        }),
-                      ],
+              ],
+            }),
+            // Right: Logo NeutraDC (1300 DXA) - Natural aspect ratio
+            new TableCell({
+              width: { size: 1300, type: WidthType.DXA },
+              borders: noCellBorders,
+              verticalAlign: VerticalAlign.CENTER,
+              children: [
+                new Paragraph({
+                  alignment: AlignmentType.RIGHT,
+                  children: logoNeutraDCBytes.length > 0 ? [
+                    new ImageRun({
+                      data: logoNeutraDCBytes,
+                      transformation: { width: 90, height: 32 },
+                      type: 'png',
                     }),
-                    new Paragraph({
-                      alignment: AlignmentType.CENTER,
-                      spacing: { before: 0, after: 0 },
-                      children: [
-                        new TextRun({
-                          text: 'PERANGKAT HDC CIKARANG',
-                          bold: true,
-                          size: 24,
-                          font: 'Times New Roman',
-                        }),
-                      ],
-                    }),
-                  ],
-                }),
-                // Right logo (DME)
-                new TableCell({
-                  width: { size: 20, type: WidthType.PERCENTAGE },
-                  borders: noBorder,
-                  verticalAlign: VerticalAlign.CENTER,
-                  children: [
-                    new Paragraph({
-                      alignment: AlignmentType.RIGHT,
-                      children: logoRightBytes.length > 0 ? [
-                        new ImageRun({
-                          data: logoRightBytes,
-                          transformation: { width: 80, height: 40 },
-                          type: 'png',
-                        }),
-                      ] : [],
-                    }),
-                  ],
+                  ] : [],
                 }),
               ],
             }),
@@ -355,37 +399,42 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
       ],
     });
 
-    // ─── INFO TABLE (Pekerjaan, Kontrak, Lokasi, Pelaksana) ────────
+    // ─── INFO TABLE (Mepet ke kanan dengan space kliping di kiri + Garis Bawah di Pelaksana) ────
+    // Total width = 9040 DXA: Spacer (1200) + Label (1400) + Colon (200) + Value (6240)
     const infoTable = new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      borders: noBorder,
+      width: { size: TOTAL_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+      borders: noTableBorders,
       rows: [
         new TableRow({
           children: [
-            infoCell('Pekerjaan', { bold: false, width: 1800 }),
-            infoCell(':', { width: 300 }),
-            infoCell('PREFENTIVE MAINTENANCE PERANGKAT HDC CIKARANG', { bold: false }),
+            spacerCell(1200),
+            infoCell('Pekerjaan', { widthDxa: 1400 }),
+            infoCell(':', { widthDxa: 200 }),
+            infoCell('PREFENTIVE MAINTENANCE PERANGKAT HDC CIKARANG', { widthDxa: 6240 }),
           ],
         }),
         new TableRow({
           children: [
-            infoCell('Nomor Kontrak', { bold: false, width: 1800 }),
-            infoCell(':', { width: 300 }),
-            infoCell(config.nomorKontrak, { bold: false }),
+            spacerCell(1200),
+            infoCell('Nomor Kontrak', { widthDxa: 1400 }),
+            infoCell(':', { widthDxa: 200 }),
+            infoCell(config.nomorKontrak, { widthDxa: 6240 }),
           ],
         }),
         new TableRow({
           children: [
-            infoCell('Lokasi', { bold: false, width: 1800 }),
-            infoCell(':', { width: 300 }),
-            infoCell('HDC CIKARANG', { bold: false }),
+            spacerCell(1200),
+            infoCell('Lokasi', { widthDxa: 1400 }),
+            infoCell(':', { widthDxa: 200 }),
+            infoCell('HDC CIKARANG', { widthDxa: 6240 }),
           ],
         }),
         new TableRow({
           children: [
-            infoCell('Pelaksana', { bold: false, width: 1800 }),
-            infoCell(':', { width: 300 }),
-            infoCell('PT. DWIMITRA EKATAMA MANDIRI', { bold: false }),
+            spacerCell(1200),
+            infoCell('Pelaksana', { widthDxa: 1400, hasBottomBorder: true }),
+            infoCell(':', { widthDxa: 200, hasBottomBorder: true }),
+            infoCell('PT. DWIMITRA EKATAMA MANDIRI', { widthDxa: 6240, hasBottomBorder: true }),
           ],
         }),
       ],
@@ -393,16 +442,15 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
 
     // ─── BODY PARAGRAPHS ───────────────────────────────────────────
     const bodyParagraphs: Paragraph[] = [
-      new Paragraph({ spacing: { before: 200, after: 0 }, children: [] }),
+      new Paragraph({ spacing: { before: 180, after: 0 }, children: [] }),
 
       // Point 1
       new Paragraph({
-        numbering: { reference: 'ba-numbering', level: 0 },
-        spacing: { before: 40, after: 100 },
-        indent: { left: 600, right: 400 },
+        spacing: { before: 40, after: 80 },
+        indent: { left: 360, hanging: 360 },
         children: [
           new TextRun({
-            text: `Berdasarkan hasil pelaksanaan maintenance dan pengecekan yang dilaksanakan pada tanggal ${config.periodeStart} sampai dengan ${config.periodeEnd} di HDC CIKARANG oleh PT. Dwimitra Ekatama Mandiri.`,
+            text: `1.  Berdasarkan hasil pelaksanaan maintenance dan pengecekan yang dilaksanakan pada tanggal ${config.periodeStart.replace(/-/g, '\u2011')} sampai dengan ${config.periodeEnd.replace(/-/g, '\u2011')} di HDC CIKARANG oleh PT. Dwimitra Ekatama Mandiri.`,
             size: 22,
             font: 'Times New Roman',
           }),
@@ -411,12 +459,11 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
 
       // Point 2
       new Paragraph({
-        numbering: { reference: 'ba-numbering', level: 0 },
-        spacing: { before: 80, after: 200 },
-        indent: { left: 600, right: 400 },
+        spacing: { before: 80, after: 120 },
+        indent: { left: 360, hanging: 360 },
         children: [
           new TextRun({
-            text: 'Adapun sub pekerjaan yang dilakukan maintenance telah dilakukan adalah sebagai berikut :',
+            text: '2.  Adapun sub pekerjaan yang dilakukan maintenance telah dilakukan adalah sebagai berikut :',
             size: 22,
             font: 'Times New Roman',
           }),
@@ -433,12 +480,11 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
       // Table title
       equipmentSections.push(
         new Paragraph({
-          spacing: { before: 200, after: 0 },
+          spacing: { before: 180, after: 30 },
           alignment: AlignmentType.CENTER,
           children: [
             new TextRun({
               text: `Table ${tableNumber}. Maintenance ${eq.categoryName} – ${quarter} ${config.year}`,
-              bold: true,
               size: 22,
               font: 'Times New Roman',
             }),
@@ -454,7 +500,6 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
           children: [
             new TextRun({
               text: `(Execution date ${eq.executionDate})`,
-              italics: true,
               size: 20,
               font: 'Times New Roman',
             }),
@@ -470,13 +515,12 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
           children: [],
         })
       );
-      // We push the table as a separate element via children in section
       equipmentSections.push(table as unknown as Paragraph);
 
       // Spacer after table
       equipmentSections.push(
         new Paragraph({
-          spacing: { before: 100, after: 100 },
+          spacing: { before: 80, after: 80 },
           children: [],
         })
       );
@@ -484,16 +528,15 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
 
     // ─── CLOSING SECTION ───────────────────────────────────────────
     const closingParagraphs: (Paragraph | Table)[] = [
-      // Page break before closing if needed
-      new Paragraph({ spacing: { before: 200, after: 0 }, children: [] }),
+      new Paragraph({ spacing: { before: 160, after: 0 }, children: [] }),
 
-      // Closing text (numbered continuation from point 2)
+      // Closing text
       new Paragraph({
-        spacing: { before: 100, after: 80 },
-        indent: { left: 600, right: 400 },
+        spacing: { before: 80, after: 80 },
+        indent: { left: 360, right: 200 },
         children: [
           new TextRun({
-            text: `Pelaksanaan maintenance yang berlokasi di HDC Cikarang tersebut secara teknis, dinyatakan.`,
+            text: 'Pelaksanaan maintenance yang berlokasi di HDC Cikarang tersebut secara teknis, dinyatakan.',
             size: 22,
             font: 'Times New Roman',
           }),
@@ -502,13 +545,13 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
 
       // DITERIMA / DITOLAK
       new Paragraph({
-        spacing: { before: 100, after: 100 },
+        spacing: { before: 80, after: 120 },
         alignment: AlignmentType.CENTER,
         children: [
           new TextRun({
             text: 'DITERIMA / DITOLAK.',
             bold: true,
-            size: 24,
+            size: 22,
             font: 'Times New Roman',
           }),
         ],
@@ -516,8 +559,8 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
 
       // Demikian...
       new Paragraph({
-        spacing: { before: 100, after: 80 },
-        indent: { left: 600 },
+        spacing: { before: 80, after: 80 },
+        indent: { left: 360 },
         children: [
           new TextRun({
             text: `Demikian Berita Acara Maintenance ${monthName} ${config.year} dibuat dan ditandatangani oleh kedua belah pihak.`,
@@ -529,9 +572,9 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
 
       // Tempat, tanggal
       new Paragraph({
-        spacing: { before: 100, after: 200 },
+        spacing: { before: 80, after: 180 },
         alignment: AlignmentType.LEFT,
-        indent: { left: 600 },
+        indent: { left: 360 },
         children: [
           new TextRun({
             text: `${config.tempat}, ${config.tanggalBA}`,
@@ -543,19 +586,19 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
 
       // ─── SIGNATURE TABLE ──────────────────────────────────────────
       new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        borders: noBorder,
+        width: { size: TOTAL_CONTENT_WIDTH_DXA, type: WidthType.DXA },
+        borders: noTableBorders,
         rows: [
           // Company names row
           new TableRow({
             children: [
               new TableCell({
-                width: { size: 50, type: WidthType.PERCENTAGE },
-                borders: noBorder,
+                width: { size: 4520, type: WidthType.DXA },
+                borders: noCellBorders,
                 children: [
                   new Paragraph({
                     spacing: { before: 40, after: 0 },
-                    indent: { left: 200 },
+                    indent: { left: 360 },
                     children: [
                       new TextRun({
                         text: 'PT. TELKOM DATA EKOSISTEM',
@@ -568,8 +611,8 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
                 ],
               }),
               new TableCell({
-                width: { size: 50, type: WidthType.PERCENTAGE },
-                borders: noBorder,
+                width: { size: 4520, type: WidthType.DXA },
+                borders: noCellBorders,
                 children: [
                   new Paragraph({
                     spacing: { before: 40, after: 0 },
@@ -591,13 +634,13 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
             height: { value: 1200, rule: 'atLeast' as any },
             children: [
               new TableCell({
-                width: { size: 50, type: WidthType.PERCENTAGE },
-                borders: noBorder,
+                width: { size: 4520, type: WidthType.DXA },
+                borders: noCellBorders,
                 children: [new Paragraph({ children: [] })],
               }),
               new TableCell({
-                width: { size: 50, type: WidthType.PERCENTAGE },
-                borders: noBorder,
+                width: { size: 4520, type: WidthType.DXA },
+                borders: noCellBorders,
                 children: [new Paragraph({ children: [] })],
               }),
             ],
@@ -606,12 +649,13 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
           new TableRow({
             children: [
               new TableCell({
-                width: { size: 50, type: WidthType.PERCENTAGE },
-                borders: noBorder,
+                width: { size: 4520, type: WidthType.DXA },
+                borders: noCellBorders,
                 verticalAlign: VerticalAlign.CENTER,
                 children: [
                   new Paragraph({
-                    alignment: AlignmentType.CENTER,
+                    alignment: AlignmentType.LEFT,
+                    indent: { left: 360 },
                     spacing: { before: 0, after: 0 },
                     children: [
                       new TextRun({
@@ -623,7 +667,8 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
                     ],
                   }),
                   new Paragraph({
-                    alignment: AlignmentType.CENTER,
+                    alignment: AlignmentType.LEFT,
+                    indent: { left: 360 },
                     spacing: { before: 20, after: 0 },
                     children: [
                       new TextRun({
@@ -636,12 +681,12 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
                 ],
               }),
               new TableCell({
-                width: { size: 50, type: WidthType.PERCENTAGE },
-                borders: noBorder,
+                width: { size: 4520, type: WidthType.DXA },
+                borders: noCellBorders,
                 verticalAlign: VerticalAlign.CENTER,
                 children: [
                   new Paragraph({
-                    alignment: AlignmentType.CENTER,
+                    alignment: AlignmentType.LEFT,
                     spacing: { before: 0, after: 0 },
                     children: [
                       new TextRun({
@@ -653,7 +698,7 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
                     ],
                   }),
                   new Paragraph({
-                    alignment: AlignmentType.CENTER,
+                    alignment: AlignmentType.LEFT,
                     spacing: { before: 20, after: 0 },
                     children: [
                       new TextRun({
@@ -673,25 +718,6 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
 
     // ─── ASSEMBLE DOCUMENT ──────────────────────────────────────────
     const doc = new Document({
-      numbering: {
-        config: [
-          {
-            reference: 'ba-numbering',
-            levels: [
-              {
-                level: 0,
-                format: NumberFormat.DECIMAL,
-                text: '%1.',
-                alignment: AlignmentType.LEFT,
-                style: {
-                  run: { size: 22, font: 'Times New Roman' },
-                  paragraph: { indent: { left: 600, hanging: 360 } },
-                },
-              },
-            ],
-          },
-        ],
-      },
       sections: [
         {
           properties: {
@@ -701,22 +727,20 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
                 height: 15840, // Letter height (11")
               },
               margin: {
-                top: 1701,
-                right: 1440,
-                bottom: 1530,
-                left: 1440,
-                header: 720,
-                footer: 720,
+                top: 1440,     // 1 inch
+                right: 1200,   // ~0.83 inch
+                bottom: 1440,  // 1 inch
+                left: 2000,    // ~1.39 inch (Gutter / space for clipping & binding)
               },
             },
           },
-          headers: {
-            default: pageHeader,
-          },
           children: [
-            // Info table
+            // Header table (Dwimitra Logo - Underlined Title - NeutraDC Logo)
+            headerTable,
+            new Paragraph({ spacing: { before: 80, after: 80 }, children: [] }),
+            // Info table with bottom separator line
             infoTable,
-            // Body paragraphs
+            // Body paragraphs (Point 1 & 2)
             ...bodyParagraphs,
             // Equipment tables
             ...equipmentSections,
