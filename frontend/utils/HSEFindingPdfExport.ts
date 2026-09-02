@@ -71,8 +71,15 @@ export async function exportSingleHSEFindingPDF(
       loadLogoBase64(logoNeutra),
     ]);
 
-    // Compress images for PDF
-    let beforeBase64 = finding.beforePhoto;
+    const allBeforePhotos = Array.isArray(finding.beforePhotos) && finding.beforePhotos.length > 0
+      ? finding.beforePhotos
+      : (finding.beforePhoto ? [finding.beforePhoto] : []);
+    const allAfterPhotos = Array.isArray(finding.afterPhotos) && finding.afterPhotos.length > 0
+      ? finding.afterPhotos
+      : (finding.afterPhoto ? [finding.afterPhoto] : []);
+
+    // Compress primary images for PDF Page 1
+    let beforeBase64 = allBeforePhotos[0] || finding.beforePhoto;
     if (beforeBase64) {
       try {
         beforeBase64 = await compressBase64Image(beforeBase64, { maxWidth: 800, maxHeight: 800, quality: 0.65 });
@@ -81,7 +88,7 @@ export async function exportSingleHSEFindingPDF(
       }
     }
 
-    let afterBase64 = finding.afterPhoto;
+    let afterBase64 = allAfterPhotos[0] || finding.afterPhoto;
     if (afterBase64) {
       try {
         afterBase64 = await compressBase64Image(afterBase64, { maxWidth: 800, maxHeight: 800, quality: 0.65 });
@@ -223,7 +230,9 @@ export async function exportSingleHSEFindingPDF(
 
     // Photo Box Section: Side by Side BEFORE vs AFTER
     doc.setFontSize(8.5).setFont('helvetica', 'bold').setTextColor(DARK);
-    doc.text('II. Dokumentasi Foto (Before & After):', margin, curY);
+    const beforePhotoCountLabel = allBeforePhotos.length > 1 ? ` (${allBeforePhotos.length} foto)` : '';
+    const afterPhotoCountLabel = allAfterPhotos.length > 1 ? ` (${allAfterPhotos.length} foto)` : '';
+    doc.text(`II. Dokumentasi Foto Utama (Before vs After):`, margin, curY);
     curY += 3;
 
     const photoBoxW = (contentW - 6) / 2;
@@ -237,7 +246,7 @@ export async function exportSingleHSEFindingPDF(
     doc.setFillColor(254, 243, 199);
     doc.rect(margin, curY, photoBoxW, 6, 'F');
     doc.setFontSize(7.5).setFont('helvetica', 'bold').setTextColor(180, 83, 9);
-    doc.text('KONDISI TEMUAN (BEFORE)', margin + 3, curY + 4.2);
+    doc.text(`KONDISI TEMUAN (BEFORE)${beforePhotoCountLabel}`, margin + 3, curY + 4.2);
 
     if (beforeBase64) {
       try {
@@ -279,7 +288,7 @@ export async function exportSingleHSEFindingPDF(
     doc.setFillColor(finding.status === 'close' ? 209 : 241, finding.status === 'close' ? 250 : 245, finding.status === 'close' ? 229 : 249);
     doc.rect(afterBoxX, curY, photoBoxW, 6, 'F');
     doc.setFontSize(7.5).setFont('helvetica', 'bold').setTextColor(finding.status === 'close' ? 4 : 100, finding.status === 'close' ? 120 : 116, finding.status === 'close' ? 87 : 139);
-    doc.text(finding.status === 'close' ? 'BUKTI PENYELESAIAN (AFTER)' : 'TINDAK LANJUT / AFTER', afterBoxX + 3, curY + 4.2);
+    doc.text(finding.status === 'close' ? `BUKTI PENYELESAIAN (AFTER)${afterPhotoCountLabel}` : 'TINDAK LANJUT / AFTER', afterBoxX + 3, curY + 4.2);
 
     if (afterBase64 && finding.status === 'close') {
       try {
@@ -339,12 +348,114 @@ export async function exportSingleHSEFindingPDF(
       }
     });
 
-    // Footer
-    doc.setFillColor(THEME_BLUE);
-    doc.rect(0, pageHeight - 3, pageWidth, 3, 'F');
-    doc.setFontSize(7).setTextColor(GRAY);
-    doc.text(footerCompany, margin, pageHeight - 6);
-    doc.text('Halaman 1 dari 1', pageWidth - margin, pageHeight - 6, { align: 'right' });
+    // --- APPENDIX PAGE FOR EXTRA PHOTOS (If any) ---
+    const extraBeforePhotos = allBeforePhotos.slice(1);
+    const extraAfterPhotos = allAfterPhotos.slice(1);
+    const extraPhotos: { type: 'before' | 'after'; index: number; url: string }[] = [];
+
+    extraBeforePhotos.forEach((url, i) => {
+      extraPhotos.push({ type: 'before', index: i + 2, url });
+    });
+    extraAfterPhotos.forEach((url, i) => {
+      extraPhotos.push({ type: 'after', index: i + 2, url });
+    });
+
+    if (extraPhotos.length > 0) {
+      // Create appendix pages
+      const photosPerPage = 4;
+      for (let pIdx = 0; pIdx < extraPhotos.length; pIdx += photosPerPage) {
+        doc.addPage();
+
+        // Top accent
+        doc.setFillColor(THEME_BLUE);
+        doc.rect(0, 0, pageWidth, 3, 'F');
+
+        // Header
+        const appHeaderY = 6;
+        doc.setDrawColor(SLATE_200);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(margin, appHeaderY, contentW, 16, 1, 1, 'D');
+
+        if (leftLogo) {
+          doc.addImage(leftLogo, 'PNG', margin + 2.5, appHeaderY + 2, 26, 12, isNeutra ? 'logo_dme' : 'logo_utt', 'FAST');
+        }
+        if (rightLogo) {
+          doc.addImage(rightLogo, 'PNG', pageWidth - margin - 26 - 2.5, appHeaderY + 2.5, 26, 11, 'logo_neutra', 'FAST');
+        }
+
+        doc.setFontSize(9.5).setFont('helvetica', 'bold').setTextColor(THEME_BLUE);
+        doc.text('LAMPIRAN DOKUMENTASI FOTO TAMBAHAN TEMUAN K3', pageWidth / 2, appHeaderY + 6.5, { align: 'center' });
+
+        doc.setFontSize(7).setFont('helvetica', 'normal').setTextColor(GRAY);
+        doc.text(`Temuan: ${finding.title || '-'} | Lokasi: ${finding.location || '-'}`, pageWidth / 2, appHeaderY + 11.5, { align: 'center' });
+
+        const currentBatch = extraPhotos.slice(pIdx, pIdx + photosPerPage);
+        const cardW = (contentW - 6) / 2;
+        const cardH = 95;
+        const startCardY = appHeaderY + 21;
+
+        for (let bIdx = 0; bIdx < currentBatch.length; bIdx++) {
+          const item = currentBatch[bIdx];
+          const col = bIdx % 2;
+          const row = Math.floor(bIdx / 2);
+          const cardX = margin + col * (cardW + 6);
+          const cardY = startCardY + row * (cardH + 6);
+
+          const isBefore = item.type === 'before';
+          const borderColor = isBefore ? [245, 158, 11] : [16, 185, 129];
+          const headerBg = isBefore ? [254, 243, 199] : [209, 250, 229];
+          const headerTextColor = isBefore ? [180, 83, 9] : [4, 120, 87];
+          const label = isBefore
+            ? `FOTO TEMUAN (BEFORE) #${item.index}`
+            : `FOTO BUKTI PERBAIKAN (AFTER) #${item.index}`;
+
+          doc.setDrawColor(borderColor[0], borderColor[1], borderColor[2]);
+          doc.setLineWidth(0.25);
+          doc.roundedRect(cardX, cardY, cardW, cardH, 1, 1, 'D');
+
+          doc.setFillColor(headerBg[0], headerBg[1], headerBg[2]);
+          doc.rect(cardX, cardY, cardW, 6, 'F');
+
+          doc.setFontSize(7).setFont('helvetica', 'bold').setTextColor(headerTextColor[0], headerTextColor[1], headerTextColor[2]);
+          doc.text(label, cardX + 3, cardY + 4.2);
+
+          try {
+            const compressed = await compressBase64Image(item.url, { maxWidth: 800, maxHeight: 800, quality: 0.65 });
+            const dims = await getImageDimensions(compressed);
+            const maxImgW = cardW - 4;
+            const maxImgH = cardH - 10;
+            let imgW = maxImgW;
+            let imgH = maxImgH;
+            if (dims.width > 0 && dims.height > 0) {
+              const ratio = dims.width / dims.height;
+              if (ratio > maxImgW / maxImgH) {
+                imgW = maxImgW;
+                imgH = imgW / ratio;
+              } else {
+                imgH = maxImgH;
+                imgW = imgH * ratio;
+              }
+            }
+            const imgX = cardX + (cardW - imgW) / 2;
+            const imgY = cardY + 7 + (maxImgH - imgH) / 2;
+            doc.addImage(compressed, 'JPEG', imgX, imgY, imgW, imgH, undefined, 'FAST');
+          } catch (e) {
+            console.error('Error drawing extra photo:', e);
+          }
+        }
+      }
+    }
+
+    // Footers for all pages
+    const totalPages = (doc as any).internal.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+      doc.setPage(p);
+      doc.setFillColor(THEME_BLUE);
+      doc.rect(0, pageHeight - 3, pageWidth, 3, 'F');
+      doc.setFontSize(7).setTextColor(GRAY);
+      doc.text(footerCompany, margin, pageHeight - 6);
+      doc.text(`Halaman ${p} dari ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
+    }
 
     // Save File
     const safeTitle = (finding.title || 'Temuan_HSE').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 30);

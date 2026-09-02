@@ -45,11 +45,13 @@ export interface HSEFindingItem {
   targetDate?: string;                   // Target tanggal penyelesaian
   
   // Foto & Bukti Temuan (Before)
-  beforePhoto: string;                   // Base64 compressed image temuan awal
+  beforePhoto: string;                   // Base64 compressed image temuan awal (utama / foto pertama)
+  beforePhotos?: string[];               // Daftar base64 multi-foto temuan awal
   beforeNotes?: string;                  // Catatan tambahan kondisi awal
   
   // Bukti Penyelesaian / Tindak Lanjut (After)
-  afterPhoto?: string;                   // Base64 compressed image bukti perbaikan
+  afterPhoto?: string;                   // Base64 compressed image bukti perbaikan (utama / foto pertama)
+  afterPhotos?: string[];                // Daftar base64 multi-foto bukti perbaikan
   afterNotes?: string;                   // Catatan tindakan perbaikan (Corrective Action Taken)
   resolvedAt?: any;                      // Timestamp / Date string selesai
   resolvedBy?: string;                   // Nama / Email yang menyelesaikan / verifikasi

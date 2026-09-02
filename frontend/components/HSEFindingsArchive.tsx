@@ -47,9 +47,9 @@ import {
 } from 'firebase/firestore';
 import { useAuth } from '@/components/AuthContext';
 import { compressImage } from '@/utils/imageCompression';
+import { CameraModal } from '@/components/CameraModal';
 import {
   HSEFindingItem,
-  HSEFindingCategory,
   HSEFindingSeverity,
   HSEFindingStatus,
   HSE_CATEGORY_LABELS,
@@ -104,7 +104,7 @@ export function HSEFindingsArchive() {
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | HSEFindingStatus>('all');
-  const [categoryFilter, setCategoryFilter] = useState<'all' | HSEFindingCategory>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [severityFilter, setSeverityFilter] = useState<'all' | HSEFindingSeverity>('all');
   const [monthFilter, setMonthFilter] = useState<string>('all'); // Format: YYYY-MM or 'all'
   const [showFilters, setShowFilters] = useState(false);
@@ -115,11 +115,14 @@ export function HSEFindingsArchive() {
   
   // Resolve Modal (Tutup Temuan)
   const [isResolveModalOpen, setIsResolveModalOpen] = useState(false);
+  const [isResolveCameraOpen, setIsResolveCameraOpen] = useState(false);
   const [resolveData, setResolveData] = useState<{
     afterPhoto: string;
+    afterPhotos: string[];
     afterNotes: string;
   }>({
     afterPhoto: '',
+    afterPhotos: [],
     afterNotes: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -127,6 +130,8 @@ export function HSEFindingsArchive() {
 
   // Edit Modal State (Full Edit: Status Open/Close, Data, Foto Before & Foto After)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isEditBeforeCameraOpen, setIsEditBeforeCameraOpen] = useState(false);
+  const [isEditAfterCameraOpen, setIsEditAfterCameraOpen] = useState(false);
   const [editFormData, setEditFormData] = useState<{
     title: string;
     description: string;
@@ -139,8 +144,10 @@ export function HSEFindingsArchive() {
     findingDate: string;
     findingTime: string;
     beforePhoto: string;
+    beforePhotos: string[];
     beforeNotes: string;
     afterPhoto: string;
+    afterPhotos: string[];
     afterNotes: string;
     resolvedAt: string;
   }>({
@@ -155,8 +162,10 @@ export function HSEFindingsArchive() {
     findingDate: '',
     findingTime: '',
     beforePhoto: '',
+    beforePhotos: [],
     beforeNotes: '',
     afterPhoto: '',
+    afterPhotos: [],
     afterNotes: '',
     resolvedAt: ''
   });
@@ -317,16 +326,40 @@ export function HSEFindingsArchive() {
   }, [findings, statusFilter, categoryFilter, severityFilter, monthFilter, searchQuery, sortBy]);
 
   // --------------------------------------------------------------------------
-  // Handlers: After Photo Upload & Resolve Finding
+  // Handlers: After Photo Upload & Resolve Finding (Live Camera + Gallery Multi)
   // --------------------------------------------------------------------------
+  const handleResolveCameraCapture = (base64: string) => {
+    setResolveData((prev) => {
+      const updated = [...(prev.afterPhotos || []), base64];
+      return {
+        ...prev,
+        afterPhotos: updated,
+        afterPhoto: updated[0] || base64
+      };
+    });
+    setIsResolveCameraOpen(false);
+    toast.success('Foto bukti perbaikan berhasil diambil dengan watermark GPS & Waktu!');
+  };
+
   const handleAfterPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
     try {
-      toast.loading('Mengompres foto bukti perbaikan...', { id: 'compress-after' });
-      const base64 = await compressImage(file, { maxWidth: 1000, maxHeight: 1000, quality: 0.65 });
-      setResolveData((prev) => ({ ...prev, afterPhoto: base64 }));
-      toast.success('Foto perbaikan berhasil diunggah', { id: 'compress-after' });
+      toast.loading(`Mengompres ${files.length} foto bukti perbaikan...`, { id: 'compress-after' });
+      const compressedList: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const base64 = await compressImage(files[i], { maxWidth: 1200, maxHeight: 1200, quality: 0.7 });
+        compressedList.push(base64);
+      }
+      setResolveData((prev) => {
+        const updated = [...(prev.afterPhotos || []), ...compressedList];
+        return {
+          ...prev,
+          afterPhotos: updated,
+          afterPhoto: updated[0] || ''
+        };
+      });
+      toast.success(`${compressedList.length} foto bukti perbaikan berhasil diunggah`, { id: 'compress-after' });
     } catch (error) {
       console.error('Error compressing image:', error);
       toast.error('Gagal mengompres gambar', { id: 'compress-after' });
@@ -335,10 +368,27 @@ export function HSEFindingsArchive() {
     }
   };
 
+  const handleRemoveResolvePhoto = (index: number) => {
+    setResolveData((prev) => {
+      const updated = (prev.afterPhotos || []).filter((_, idx) => idx !== index);
+      return {
+        ...prev,
+        afterPhotos: updated,
+        afterPhoto: updated[0] || ''
+      };
+    });
+    toast.info('Foto perbaikan dihapus');
+  };
+
   const handleOpenResolveModal = (finding: HSEFindingItem) => {
     setSelectedFinding(finding);
+    const photos: string[] = Array.isArray(finding.afterPhotos) && finding.afterPhotos.length > 0
+      ? finding.afterPhotos
+      : (finding.afterPhoto ? [finding.afterPhoto] : []);
+
     setResolveData({
-      afterPhoto: finding.afterPhoto || '',
+      afterPhoto: photos[0] || finding.afterPhoto || '',
+      afterPhotos: photos,
       afterNotes: finding.afterNotes || ''
     });
     setIsResolveModalOpen(true);
@@ -348,8 +398,12 @@ export function HSEFindingsArchive() {
     e.preventDefault();
     if (!selectedFinding?.id) return;
 
-    if (!resolveData.afterPhoto) {
-      toast.error('Foto bukti perbaikan (After) wajib diunggah untuk menutup temuan');
+    const photos: string[] = resolveData.afterPhotos && resolveData.afterPhotos.length > 0
+      ? resolveData.afterPhotos
+      : (resolveData.afterPhoto ? [resolveData.afterPhoto] : []);
+
+    if (photos.length === 0) {
+      toast.error('Foto bukti perbaikan (After) wajib diunggah (minimal 1 foto) untuk menutup temuan');
       return;
     }
     if (!resolveData.afterNotes.trim()) {
@@ -363,7 +417,8 @@ export function HSEFindingsArchive() {
     try {
       const updatePayload: any = {
         status: 'close',
-        afterPhoto: resolveData.afterPhoto,
+        afterPhoto: photos[0] || '',
+        afterPhotos: photos,
         afterNotes: resolveData.afterNotes.trim(),
         updatedAt: serverTimestamp(),
         resolvedBy: user?.email || 'HSE Officer',
@@ -390,34 +445,68 @@ export function HSEFindingsArchive() {
   // --------------------------------------------------------------------------
   const handleOpenEditModal = (finding: HSEFindingItem) => {
     setSelectedFinding(finding);
+    const beforePhotos: string[] = Array.isArray(finding.beforePhotos) && finding.beforePhotos.length > 0
+      ? finding.beforePhotos
+      : (finding.beforePhoto ? [finding.beforePhoto] : []);
+    const afterPhotos: string[] = Array.isArray(finding.afterPhotos) && finding.afterPhotos.length > 0
+      ? finding.afterPhotos
+      : (finding.afterPhoto ? [finding.afterPhoto] : []);
+
     setEditFormData({
       title: finding.title || '',
       description: finding.description || '',
       location: finding.location || '',
       inspectorName: finding.inspectorName || finding.reportedBy || '',
       category: finding.category || '',
-      severity: finding.severity || 'medium',
+      severity: finding.severity || 'unsafe_condition',
       status: finding.status || 'open',
       targetPerson: finding.targetPerson || '',
       findingDate: finding.findingDate || new Date().toISOString().split('T')[0],
       findingTime: finding.findingTime || '09:00',
-      beforePhoto: finding.beforePhoto || '',
+      beforePhoto: beforePhotos[0] || finding.beforePhoto || '',
+      beforePhotos: beforePhotos,
       beforeNotes: finding.beforeNotes || '',
-      afterPhoto: finding.afterPhoto || '',
+      afterPhoto: afterPhotos[0] || finding.afterPhoto || '',
+      afterPhotos: afterPhotos,
       afterNotes: finding.afterNotes || finding.closingNotes || '',
       resolvedAt: finding.resolvedAt ? (typeof finding.resolvedAt === 'string' ? finding.resolvedAt : new Date(finding.resolvedAt).toISOString().split('T')[0]) : new Date().toISOString().split('T')[0]
     });
     setIsEditModalOpen(true);
   };
 
+  // Edit Before Camera & Gallery Handlers
+  const handleEditBeforeCameraCapture = (base64: string) => {
+    setEditFormData((prev) => {
+      const updated = [...(prev.beforePhotos || []), base64];
+      return {
+        ...prev,
+        beforePhotos: updated,
+        beforePhoto: updated[0] || base64
+      };
+    });
+    setIsEditBeforeCameraOpen(false);
+    toast.success('Foto temuan berhasil diambil dengan watermark!');
+  };
+
   const handleEditBeforePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
     try {
-      toast.loading('Mengompres foto temuan...', { id: 'compress-edit-before' });
-      const base64 = await compressImage(file, { maxWidth: 1000, maxHeight: 1000, quality: 0.65 });
-      setEditFormData(prev => ({ ...prev, beforePhoto: base64 }));
-      toast.success('Foto temuan berhasil diunggah', { id: 'compress-edit-before' });
+      toast.loading(`Mengompres ${files.length} foto temuan...`, { id: 'compress-edit-before' });
+      const list: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const base64 = await compressImage(files[i], { maxWidth: 1200, maxHeight: 1200, quality: 0.7 });
+        list.push(base64);
+      }
+      setEditFormData((prev) => {
+        const updated = [...(prev.beforePhotos || []), ...list];
+        return {
+          ...prev,
+          beforePhotos: updated,
+          beforePhoto: updated[0] || ''
+        };
+      });
+      toast.success(`${list.length} foto temuan berhasil diunggah`, { id: 'compress-edit-before' });
     } catch (error) {
       console.error('Error compressing image:', error);
       toast.error('Gagal mengompres gambar', { id: 'compress-edit-before' });
@@ -426,20 +515,67 @@ export function HSEFindingsArchive() {
     }
   };
 
+  const handleRemoveEditBeforePhoto = (index: number) => {
+    setEditFormData((prev) => {
+      const updated = (prev.beforePhotos || []).filter((_, idx) => idx !== index);
+      return {
+        ...prev,
+        beforePhotos: updated,
+        beforePhoto: updated[0] || ''
+      };
+    });
+  };
+
+  // Edit After Camera & Gallery Handlers
+  const handleEditAfterCameraCapture = (base64: string) => {
+    setEditFormData((prev) => {
+      const updated = [...(prev.afterPhotos || []), base64];
+      return {
+        ...prev,
+        afterPhotos: updated,
+        afterPhoto: updated[0] || base64
+      };
+    });
+    setIsEditAfterCameraOpen(false);
+    toast.success('Foto bukti perbaikan berhasil diambil dengan watermark!');
+  };
+
   const handleEditAfterPhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
     try {
-      toast.loading('Mengompres foto bukti perbaikan...', { id: 'compress-edit-after' });
-      const base64 = await compressImage(file, { maxWidth: 1000, maxHeight: 1000, quality: 0.65 });
-      setEditFormData(prev => ({ ...prev, afterPhoto: base64 }));
-      toast.success('Foto perbaikan berhasil diunggah', { id: 'compress-edit-after' });
+      toast.loading(`Mengompres ${files.length} foto bukti perbaikan...`, { id: 'compress-edit-after' });
+      const list: string[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const base64 = await compressImage(files[i], { maxWidth: 1200, maxHeight: 1200, quality: 0.7 });
+        list.push(base64);
+      }
+      setEditFormData((prev) => {
+        const updated = [...(prev.afterPhotos || []), ...list];
+        return {
+          ...prev,
+          afterPhotos: updated,
+          afterPhoto: updated[0] || ''
+        };
+      });
+      toast.success(`${list.length} foto bukti perbaikan berhasil diunggah`, { id: 'compress-edit-after' });
     } catch (error) {
       console.error('Error compressing image:', error);
       toast.error('Gagal mengompres gambar', { id: 'compress-edit-after' });
     } finally {
       if (editAfterFileInputRef.current) editAfterFileInputRef.current.value = '';
     }
+  };
+
+  const handleRemoveEditAfterPhoto = (index: number) => {
+    setEditFormData((prev) => {
+      const updated = (prev.afterPhotos || []).filter((_, idx) => idx !== index);
+      return {
+        ...prev,
+        afterPhotos: updated,
+        afterPhoto: updated[0] || ''
+      };
+    });
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
@@ -458,7 +594,16 @@ export function HSEFindingsArchive() {
       toast.error('Nama petugas inspeksi wajib diisi');
       return;
     }
-    if (editFormData.status === 'close' && !editFormData.afterPhoto) {
+
+    const beforeList = editFormData.beforePhotos && editFormData.beforePhotos.length > 0
+      ? editFormData.beforePhotos
+      : (editFormData.beforePhoto ? [editFormData.beforePhoto] : []);
+
+    const afterList = editFormData.afterPhotos && editFormData.afterPhotos.length > 0
+      ? editFormData.afterPhotos
+      : (editFormData.afterPhoto ? [editFormData.afterPhoto] : []);
+
+    if (editFormData.status === 'close' && afterList.length === 0) {
       toast.error('Foto bukti perbaikan (After) wajib dilampirkan jika status CLOSE');
       return;
     }
@@ -478,9 +623,11 @@ export function HSEFindingsArchive() {
         targetPerson: editFormData.targetPerson.trim() || '-',
         findingDate: editFormData.findingDate,
         findingTime: editFormData.findingTime,
-        beforePhoto: editFormData.beforePhoto,
+        beforePhoto: beforeList[0] || '',
+        beforePhotos: beforeList,
         beforeNotes: editFormData.beforeNotes.trim(),
-        afterPhoto: editFormData.afterPhoto,
+        afterPhoto: afterList[0] || '',
+        afterPhotos: afterList,
         afterNotes: editFormData.afterNotes.trim(),
         updatedAt: serverTimestamp(),
       };
@@ -986,34 +1133,55 @@ export function HSEFindingsArchive() {
                   )}
 
                   {/* Row 4: Photo Thumbnails */}
-                  {(finding.beforePhoto || finding.afterPhoto) && (
-                    <div className="flex items-center gap-3 mt-3.5">
-                      {finding.beforePhoto && (
-                        <button
-                          onClick={() => setLightboxImage({ url: finding.beforePhoto, title: 'Foto Kondisi Awal (Before)' })}
-                          className="relative w-20 h-20 rounded-xl overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors group/thumb cursor-pointer"
-                        >
-                          <img src={finding.beforePhoto} alt="Before" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-colors flex items-center justify-center">
-                            <Maximize2 className="w-3.5 h-3.5 text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity" />
-                          </div>
-                          <span className="absolute bottom-0 left-0 right-0 bg-amber-600/90 text-white text-[8px] text-center py-0.5 font-bold">BEFORE</span>
-                        </button>
-                      )}
-                      {finding.afterPhoto && (
-                        <button
-                          onClick={() => setLightboxImage({ url: finding.afterPhoto!, title: 'Foto Bukti Perbaikan (After)' })}
-                          className="relative w-20 h-20 rounded-xl overflow-hidden border border-emerald-300 hover:border-emerald-500 transition-colors group/thumb cursor-pointer"
-                        >
-                          <img src={finding.afterPhoto} alt="After" className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-colors flex items-center justify-center">
-                            <Maximize2 className="w-3.5 h-3.5 text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity" />
-                          </div>
-                          <span className="absolute bottom-0 left-0 right-0 bg-emerald-600/90 text-white text-[8px] text-center py-0.5 font-bold">AFTER</span>
-                        </button>
-                      )}
-                    </div>
-                  )}
+                  {(() => {
+                    const cardBeforePhotos = Array.isArray(finding.beforePhotos) && finding.beforePhotos.length > 0
+                      ? finding.beforePhotos
+                      : (finding.beforePhoto ? [finding.beforePhoto] : []);
+                    const cardAfterPhotos = Array.isArray(finding.afterPhotos) && finding.afterPhotos.length > 0
+                      ? finding.afterPhotos
+                      : (finding.afterPhoto ? [finding.afterPhoto] : []);
+
+                    if (cardBeforePhotos.length === 0 && cardAfterPhotos.length === 0) return null;
+
+                    return (
+                      <div className="flex items-center gap-3 mt-3.5 flex-wrap">
+                        {cardBeforePhotos.length > 0 && (
+                          <button
+                            onClick={() => setLightboxImage({ url: cardBeforePhotos[0], title: `Foto Temuan (Before) ${cardBeforePhotos.length > 1 ? `(1 dari ${cardBeforePhotos.length})` : ''}` })}
+                            className="relative w-20 h-20 rounded-xl overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors group/thumb cursor-pointer"
+                          >
+                            <img src={cardBeforePhotos[0]} alt="Before" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-colors flex items-center justify-center">
+                              <Maximize2 className="w-3.5 h-3.5 text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity" />
+                            </div>
+                            {cardBeforePhotos.length > 1 && (
+                              <span className="absolute top-1 right-1 px-1.5 py-0.5 bg-black/75 backdrop-blur-xs text-white text-[9px] font-extrabold rounded-md shadow-xs">
+                                {cardBeforePhotos.length} Foto
+                              </span>
+                            )}
+                            <span className="absolute bottom-0 left-0 right-0 bg-amber-600/90 text-white text-[8px] text-center py-0.5 font-bold">BEFORE</span>
+                          </button>
+                        )}
+                        {cardAfterPhotos.length > 0 && (
+                          <button
+                            onClick={() => setLightboxImage({ url: cardAfterPhotos[0], title: `Foto Bukti Perbaikan (After) ${cardAfterPhotos.length > 1 ? `(1 dari ${cardAfterPhotos.length})` : ''}` })}
+                            className="relative w-20 h-20 rounded-xl overflow-hidden border border-emerald-300 hover:border-emerald-500 transition-colors group/thumb cursor-pointer"
+                          >
+                            <img src={cardAfterPhotos[0]} alt="After" className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/20 transition-colors flex items-center justify-center">
+                              <Maximize2 className="w-3.5 h-3.5 text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity" />
+                            </div>
+                            {cardAfterPhotos.length > 1 && (
+                              <span className="absolute top-1 right-1 px-1.5 py-0.5 bg-black/75 backdrop-blur-xs text-white text-[9px] font-extrabold rounded-md shadow-xs">
+                                {cardAfterPhotos.length} Foto
+                              </span>
+                            )}
+                            <span className="absolute bottom-0 left-0 right-0 bg-emerald-600/90 text-white text-[8px] text-center py-0.5 font-bold">AFTER</span>
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </motion.div>
             );
@@ -1023,172 +1191,210 @@ export function HSEFindingsArchive() {
 
       {/* ===== Detail Modal ===== */}
       <AnimatePresence>
-        {isDetailOpen && selectedFinding && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setIsDetailOpen(false)}
-          >
+        {isDetailOpen && selectedFinding && (() => {
+          const detailBeforePhotos = Array.isArray(selectedFinding.beforePhotos) && selectedFinding.beforePhotos.length > 0
+            ? selectedFinding.beforePhotos
+            : (selectedFinding.beforePhoto ? [selectedFinding.beforePhoto] : []);
+          const detailAfterPhotos = Array.isArray(selectedFinding.afterPhotos) && selectedFinding.afterPhotos.length > 0
+            ? selectedFinding.afterPhotos
+            : (selectedFinding.afterPhoto ? [selectedFinding.afterPhoto] : []);
+
+          return (
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsDetailOpen(false)}
             >
-              {/* Detail Header */}
-              <div className="sticky top-0 bg-white border-b border-slate-100 p-5 rounded-t-3xl z-10">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0 pr-4">
-                    <h3 className="text-lg font-bold text-slate-900 mb-1">{selectedFinding.title}</h3>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${HSE_STATUS_CONFIG[selectedFinding.status].badge}`}>
-                        <StatusIcon status={selectedFinding.status} />
-                        {HSE_STATUS_CONFIG[selectedFinding.status].label}
-                      </span>
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${HSE_SEVERITY_CONFIG[selectedFinding.severity].badge}`}>
-                        {HSE_SEVERITY_CONFIG[selectedFinding.severity].label}
-                      </span>
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              >
+                {/* Detail Header */}
+                <div className="sticky top-0 bg-white border-b border-slate-100 p-5 rounded-t-3xl z-10">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0 pr-4">
+                      <h3 className="text-lg font-bold text-slate-900 mb-1">{selectedFinding.title}</h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${HSE_STATUS_CONFIG[selectedFinding.status].badge}`}>
+                          <StatusIcon status={selectedFinding.status} />
+                          {HSE_STATUS_CONFIG[selectedFinding.status].label}
+                        </span>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${HSE_SEVERITY_CONFIG[selectedFinding.severity].badge}`}>
+                          {HSE_SEVERITY_CONFIG[selectedFinding.severity].label}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <button
-                      onClick={() => {
-                        setIsDetailOpen(false);
-                        handleOpenEditModal(selectedFinding);
-                      }}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                      title="Edit Data Temuan"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                      <span>Edit</span>
-                    </button>
-
-                    {selectedFinding.status === 'open' && (
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <button
-                        onClick={() => handleOpenResolveModal(selectedFinding)}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors cursor-pointer"
+                        onClick={() => {
+                          setIsDetailOpen(false);
+                          handleOpenEditModal(selectedFinding);
+                        }}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                        title="Edit Data Temuan"
                       >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Tutup Temuan</span>
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span>Edit</span>
                       </button>
-                    )}
-                    <button
-                      onClick={() => handleExportSingle(selectedFinding, 'neutradc')}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs transition-colors cursor-pointer border border-red-200"
-                      title="Download PDF (Logo Dwimitra & NeutraDC)"
-                    >
-                      <FileDown className="w-4 h-4" />
-                      <span className="hidden sm:inline">PDF NeutraDC</span>
-                    </button>
-                    <button
-                      onClick={() => handleExportSingle(selectedFinding, 'utt')}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-xs transition-colors cursor-pointer border border-teal-200"
-                      title="Download PDF (Logo UTT & NeutraDC)"
-                    >
-                      <FileDown className="w-4 h-4" />
-                      <span className="hidden sm:inline">PDF UTT</span>
-                    </button>
-                    <button
-                      onClick={() => setIsDetailOpen(false)}
-                      className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+
+                      {selectedFinding.status === 'open' && (
+                        <button
+                          onClick={() => handleOpenResolveModal(selectedFinding)}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition-colors cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Tutup Temuan</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleExportSingle(selectedFinding, 'neutradc')}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs transition-colors cursor-pointer border border-red-200"
+                        title="Download PDF (Logo Dwimitra & NeutraDC)"
+                      >
+                        <FileDown className="w-4 h-4" />
+                        <span className="hidden sm:inline">PDF NeutraDC</span>
+                      </button>
+                      <button
+                        onClick={() => handleExportSingle(selectedFinding, 'utt')}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold text-xs transition-colors cursor-pointer border border-teal-200"
+                        title="Download PDF (Logo UTT & NeutraDC)"
+                      >
+                        <FileDown className="w-4 h-4" />
+                        <span className="hidden sm:inline">PDF UTT</span>
+                      </button>
+                      <button
+                        onClick={() => setIsDetailOpen(false)}
+                        className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition-colors cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Detail Body */}
-              <div className="p-6 space-y-5">
-                {/* Info Grid */}
-                <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tanggal Temuan</label>
-                    <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">{formatDate(selectedFinding.findingDate)}</p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lokasi</label>
-                    <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">{selectedFinding.location || '-'}</p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Petugas Inspeksi (Inspector)</label>
-                    <p className="text-xs sm:text-sm font-bold text-teal-800 mt-0.5 flex items-center gap-1">
-                      <UserCheck className="w-3.5 h-3.5 text-teal-600" />
-                      {selectedFinding.inspectorName || selectedFinding.reportedBy || '-'}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pelapor Akun</label>
-                    <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">{selectedFinding.reportedBy || '-'}</p>
-                  </div>
-                  {selectedFinding.category && (
+                {/* Detail Body */}
+                <div className="p-6 space-y-5">
+                  {/* Info Grid */}
+                  <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kategori</label>
-                      <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">
-                        {HSE_CATEGORY_LABELS[selectedFinding.category as keyof typeof HSE_CATEGORY_LABELS]?.label || selectedFinding.category}
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Tanggal Temuan</label>
+                      <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">{formatDate(selectedFinding.findingDate)}</p>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lokasi</label>
+                      <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">{selectedFinding.location || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Petugas Inspeksi (Inspector)</label>
+                      <p className="text-xs sm:text-sm font-bold text-teal-800 mt-0.5 flex items-center gap-1">
+                        <UserCheck className="w-3.5 h-3.5 text-teal-600" />
+                        {selectedFinding.inspectorName || selectedFinding.reportedBy || '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pelapor Akun</label>
+                      <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">{selectedFinding.reportedBy || '-'}</p>
+                    </div>
+                    {selectedFinding.category && (
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kategori</label>
+                        <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">
+                          {HSE_CATEGORY_LABELS[selectedFinding.category as keyof typeof HSE_CATEGORY_LABELS]?.label || selectedFinding.category}
+                        </p>
+                      </div>
+                    )}
+                    {selectedFinding.targetPerson && (
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pihak Terkait / Subkon</label>
+                        <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">{selectedFinding.targetPerson}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  {selectedFinding.description && (
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Deskripsi / Kronologi</label>
+                      <p className="text-xs sm:text-sm text-slate-700 mt-1 whitespace-pre-wrap leading-relaxed bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                        {selectedFinding.description}
                       </p>
                     </div>
                   )}
-                  {selectedFinding.targetPerson && (
+
+                  {/* Before Photos */}
+                  {detailBeforePhotos.length > 0 && (
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pihak Terkait / Subkon</label>
-                      <p className="text-xs sm:text-sm font-semibold text-slate-800 mt-0.5">{selectedFinding.targetPerson}</p>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-bold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                          <span>Foto Kondisi Awal (Before)</span>
+                          <span className="text-[11px] font-bold px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full normal-case">
+                            {detailBeforePhotos.length} Foto
+                          </span>
+                        </label>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {detailBeforePhotos.map((photo, pIdx) => (
+                          <button
+                            key={pIdx}
+                            onClick={() => setLightboxImage({ url: photo, title: `Foto Kondisi Awal (Before) #${pIdx + 1}` })}
+                            className="group/photo relative aspect-square rounded-2xl overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors block cursor-pointer bg-slate-900"
+                          >
+                            <img src={photo} alt={`Before ${pIdx + 1}`} className="w-full h-full object-cover group-hover/photo:scale-105 transition-transform" />
+                            <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-black/60 text-white text-[9px] font-bold rounded">
+                              #{pIdx + 1}
+                            </div>
+                            <div className="absolute bottom-1.5 right-1.5 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded flex items-center gap-1">
+                              <Maximize2 className="w-2.5 h-2.5" /> Perbesar
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                      {selectedFinding.beforeNotes && (
+                        <p className="text-xs text-slate-500 mt-2 italic">{selectedFinding.beforeNotes}</p>
+                      )}
                     </div>
                   )}
-                </div>
 
-                {/* Description */}
-                {selectedFinding.description && (
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Deskripsi / Kronologi</label>
-                    <p className="text-xs sm:text-sm text-slate-700 mt-1 whitespace-pre-wrap leading-relaxed bg-slate-50 rounded-2xl p-4 border border-slate-100">
-                      {selectedFinding.description}
-                    </p>
-                  </div>
-                )}
-
-                {/* Before Photo */}
-                {selectedFinding.beforePhoto && (
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Foto Kondisi Awal (Before)</label>
-                    <button
-                      onClick={() => setLightboxImage({ url: selectedFinding.beforePhoto, title: 'Foto Kondisi Awal (Before)' })}
-                      className="mt-2 relative rounded-2xl overflow-hidden border border-amber-300 hover:border-amber-500 transition-colors max-w-sm block cursor-pointer"
-                    >
-                      <img src={selectedFinding.beforePhoto} alt="Before" className="w-full max-h-64 object-cover" />
-                      <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2.5 py-1 rounded-lg flex items-center gap-1">
-                        <Maximize2 className="w-3 h-3" /> Perbesar
+                  {/* After Photos (if closed) */}
+                  {detailAfterPhotos.length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+                          <span>Foto Bukti Perbaikan (After)</span>
+                          <span className="text-[11px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full normal-case">
+                            {detailAfterPhotos.length} Foto
+                          </span>
+                        </label>
                       </div>
-                    </button>
-                    {selectedFinding.beforeNotes && (
-                      <p className="text-xs text-slate-500 mt-2 italic">{selectedFinding.beforeNotes}</p>
-                    )}
-                  </div>
-                )}
-
-                {/* After Photo (if closed) */}
-                {selectedFinding.afterPhoto && (
-                  <div>
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Foto Bukti Perbaikan (After)</label>
-                    <button
-                      onClick={() => setLightboxImage({ url: selectedFinding.afterPhoto!, title: 'Foto Bukti Perbaikan (After)' })}
-                      className="mt-2 relative rounded-2xl overflow-hidden border border-emerald-300 hover:border-emerald-500 transition-colors max-w-sm block cursor-pointer"
-                    >
-                      <img src={selectedFinding.afterPhoto} alt="After" className="w-full max-h-64 object-cover" />
-                      <div className="absolute bottom-2 right-2 bg-emerald-600/90 text-white text-xs px-2.5 py-1 rounded-lg flex items-center gap-1">
-                        <Maximize2 className="w-3 h-3" /> Perbesar
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {detailAfterPhotos.map((photo, pIdx) => (
+                          <button
+                            key={pIdx}
+                            onClick={() => setLightboxImage({ url: photo, title: `Foto Bukti Perbaikan (After) #${pIdx + 1}` })}
+                            className="group/photo relative aspect-square rounded-2xl overflow-hidden border border-emerald-300 hover:border-emerald-500 transition-colors block cursor-pointer bg-slate-900"
+                          >
+                            <img src={photo} alt={`After ${pIdx + 1}`} className="w-full h-full object-cover group-hover/photo:scale-105 transition-transform" />
+                            <div className="absolute top-1.5 left-1.5 px-1.5 py-0.5 bg-black/60 text-white text-[9px] font-bold rounded">
+                              #{pIdx + 1}
+                            </div>
+                            <div className="absolute bottom-1.5 right-1.5 bg-emerald-600/90 text-white text-[10px] px-2 py-0.5 rounded flex items-center gap-1">
+                              <Maximize2 className="w-2.5 h-2.5" /> Perbesar
+                            </div>
+                          </button>
+                        ))}
                       </div>
-                    </button>
-                    {selectedFinding.afterNotes && (
-                      <p className="text-xs text-slate-700 mt-2 bg-emerald-50 p-3 rounded-xl border border-emerald-100">
-                        <strong>Tindakan Perbaikan:</strong> {selectedFinding.afterNotes}
-                      </p>
-                    )}
-                  </div>
-                )}
+                      {selectedFinding.afterNotes && (
+                        <p className="text-xs text-slate-700 mt-2 bg-emerald-50 p-3 rounded-xl border border-emerald-100">
+                          <strong>Tindakan Perbaikan:</strong> {selectedFinding.afterNotes}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                 {/* Resolution Info */}
                 {selectedFinding.status === 'close' && (
@@ -1225,7 +1431,8 @@ export function HSEFindingsArchive() {
               </div>
             </motion.div>
           </motion.div>
-        )}
+        );
+      })()}
       </AnimatePresence>
 
       {/* ===== Edit Finding Modal (Full Edit: Status, Data, Before & After) ===== */}
@@ -1417,49 +1624,100 @@ export function HSEFindingsArchive() {
 
                 {/* 3. Foto Bukti Temuan (Before) */}
                 <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-200/80 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-amber-900 uppercase tracking-wider">
-                      Foto Bukti Temuan (BEFORE)
-                    </label>
-                    {editFormData.beforePhoto && (
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <label className="block text-xs font-bold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>Foto Bukti Temuan (BEFORE)</span>
+                        {editFormData.beforePhotos.length > 0 && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-200/80 text-amber-900 rounded-full normal-case">
+                            {editFormData.beforePhotos.length} Foto
+                          </span>
+                        )}
+                      </label>
+                      <p className="text-[11px] text-amber-700/80 mt-0.5">Ambil live camera watermark atau upload galeri</p>
+                    </div>
+                    {editFormData.beforePhotos.length > 0 && (
                       <button
                         type="button"
-                        onClick={() => setEditFormData({ ...editFormData, beforePhoto: '' })}
+                        onClick={() => setEditFormData({ ...editFormData, beforePhoto: '', beforePhotos: [] })}
                         className="text-xs text-red-600 hover:text-red-800 font-bold flex items-center gap-1 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        <span>Hapus Foto</span>
+                        <span>Hapus Semua</span>
                       </button>
                     )}
                   </div>
 
-                  {editFormData.beforePhoto ? (
-                    <div className="relative aspect-video max-h-48 bg-slate-900 rounded-xl overflow-hidden border border-amber-300">
-                      <img
-                        src={editFormData.beforePhoto}
-                        alt="Preview Foto Before"
-                        className="w-full h-full object-contain"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => editBeforeFileInputRef.current?.click()}
-                        className="absolute bottom-2 right-2 flex items-center gap-1 px-3 py-1.5 bg-black/70 hover:bg-black/90 text-white rounded-lg text-xs font-bold backdrop-blur-sm cursor-pointer"
-                      >
-                        <Upload className="w-3 h-3" />
-                        <span>Ganti Foto</span>
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-amber-300 rounded-xl bg-white/80 text-center">
-                      <Camera className="w-7 h-7 text-amber-600 mb-1" />
-                      <button
-                        type="button"
-                        onClick={() => editBeforeFileInputRef.current?.click()}
-                        className="mt-1 flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold cursor-pointer"
-                      >
-                        <Upload className="w-3 h-3" />
-                        <span>Unggah Foto Before</span>
-                      </button>
+                  {/* 2 Kotak Pilihan Kiri/Kanan: Live Camera (Watermark) & Upload Galeri */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Kotak Kiri: Kamera Live */}
+                    <button
+                      type="button"
+                      onClick={() => setIsEditBeforeCameraOpen(true)}
+                      className="group flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-dashed border-amber-300 hover:border-amber-500 bg-amber-100/40 hover:bg-amber-100/70 transition-all cursor-pointer text-center"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform mb-1.5">
+                        <Camera className="w-5 h-5" />
+                      </div>
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-amber-900">
+                        Live Camera (Watermark)
+                      </span>
+                      <span className="text-[10px] text-amber-700 font-medium mt-0.5">
+                        Watermark GPS & Waktu
+                      </span>
+                    </button>
+
+                    {/* Kotak Kanan: Upload Galeri */}
+                    <button
+                      type="button"
+                      onClick={() => editBeforeFileInputRef.current?.click()}
+                      className="group flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-dashed border-slate-300 hover:border-amber-400 bg-white hover:bg-slate-50 transition-all cursor-pointer text-center"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-amber-50 text-slate-700 group-hover:text-amber-700 flex items-center justify-center border border-slate-200 group-hover:scale-105 transition-transform mb-1.5">
+                        <Upload className="w-5 h-5" />
+                      </div>
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-amber-900">
+                        Upload dari Galeri
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-medium mt-0.5">
+                        Pilih file (Bisa banyak)
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Photo Grid Preview */}
+                  {editFormData.beforePhotos.length > 0 && (
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-[11px] font-bold text-amber-900">Daftar Foto Before ({editFormData.beforePhotos.length}):</span>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                        {editFormData.beforePhotos.map((photo, idx) => (
+                          <div
+                            key={idx}
+                            className="group relative aspect-square rounded-xl overflow-hidden bg-slate-900 border border-amber-300"
+                          >
+                            <img
+                              src={photo}
+                              alt={`Before ${idx + 1}`}
+                              className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                              onClick={() => setLightboxImage({ url: photo, title: `Foto Before #${idx + 1}` })}
+                            />
+                            <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-black/70 text-white text-[9px] font-bold rounded pointer-events-none">
+                              {idx === 0 ? 'Utama' : `#${idx + 1}`}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveEditBeforePhoto(idx);
+                              }}
+                              className="absolute top-1 right-1 p-1 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-sm transition-colors cursor-pointer"
+                              title="Hapus foto ini"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -1467,7 +1725,7 @@ export function HSEFindingsArchive() {
                     ref={editBeforeFileInputRef}
                     type="file"
                     accept="image/*"
-                    capture="environment"
+                    multiple
                     onChange={handleEditBeforePhotoChange}
                     className="hidden"
                   />
@@ -1492,51 +1750,102 @@ export function HSEFindingsArchive() {
                     ? 'bg-emerald-50/70 border-emerald-300'
                     : 'bg-slate-50 border-slate-200'
                 }`}>
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      Bukti Tindak Lanjut / Perbaikan (AFTER) {editFormData.status === 'close' && <span className="text-red-500">*</span>}
-                    </label>
-                    {editFormData.afterPhoto && (
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <label className="block text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                        <span>Bukti Tindak Lanjut / Perbaikan (AFTER)</span>
+                        {editFormData.status === 'close' && <span className="text-red-500">*</span>}
+                        {editFormData.afterPhotos.length > 0 && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-200/80 text-emerald-900 rounded-full normal-case">
+                            {editFormData.afterPhotos.length} Foto
+                          </span>
+                        )}
+                      </label>
+                      <p className="text-[11px] text-emerald-750/80 mt-0.5">Ambil live camera watermark atau upload galeri</p>
+                    </div>
+                    {editFormData.afterPhotos.length > 0 && (
                       <button
                         type="button"
-                        onClick={() => setEditFormData({ ...editFormData, afterPhoto: '' })}
+                        onClick={() => setEditFormData({ ...editFormData, afterPhoto: '', afterPhotos: [] })}
                         className="text-xs text-red-600 hover:text-red-800 font-bold flex items-center gap-1 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        <span>Hapus Foto After</span>
+                        <span>Hapus Semua</span>
                       </button>
                     )}
                   </div>
 
-                  {editFormData.afterPhoto ? (
-                    <div className="relative aspect-video max-h-48 bg-slate-900 rounded-xl overflow-hidden border border-emerald-300">
-                      <img
-                        src={editFormData.afterPhoto}
-                        alt="Preview Foto After"
-                        className="w-full h-full object-contain"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => editAfterFileInputRef.current?.click()}
-                        className="absolute bottom-2 right-2 flex items-center gap-1 px-3 py-1.5 bg-black/70 hover:bg-black/90 text-white rounded-lg text-xs font-bold backdrop-blur-sm cursor-pointer"
-                      >
-                        <Upload className="w-3 h-3" />
-                        <span>Ganti Foto</span>
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-emerald-300 rounded-xl bg-white text-center">
-                      <Camera className="w-7 h-7 text-emerald-600 mb-1" />
-                      <p className="text-xs text-slate-600 mb-2">Unggah bukti foto bahwa perbaikan K3 telah dilakukan</p>
-                      <button
-                        type="button"
-                        onClick={() => editAfterFileInputRef.current?.click()}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold cursor-pointer"
-                      >
-                        <Upload className="w-3 h-3" />
-                        <span>Unggah Foto Bukti After</span>
-                      </button>
+                  {/* 2 Kotak Pilihan Kiri/Kanan: Live Camera (Watermark) & Upload Galeri */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Kotak Kiri: Kamera Live */}
+                    <button
+                      type="button"
+                      onClick={() => setIsEditAfterCameraOpen(true)}
+                      className="group flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-100/40 hover:bg-emerald-100/70 transition-all cursor-pointer text-center"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform mb-1.5">
+                        <Camera className="w-5 h-5" />
+                      </div>
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-emerald-900">
+                        Live Camera (Watermark)
+                      </span>
+                      <span className="text-[10px] text-emerald-700 font-medium mt-0.5">
+                        Watermark GPS & Waktu
+                      </span>
+                    </button>
+
+                    {/* Kotak Kanan: Upload Galeri */}
+                    <button
+                      type="button"
+                      onClick={() => editAfterFileInputRef.current?.click()}
+                      className="group flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-dashed border-slate-300 hover:border-emerald-400 bg-white hover:bg-slate-50 transition-all cursor-pointer text-center"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-emerald-50 text-slate-700 group-hover:text-emerald-700 flex items-center justify-center border border-slate-200 group-hover:scale-105 transition-transform mb-1.5">
+                        <Upload className="w-5 h-5" />
+                      </div>
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-emerald-900">
+                        Upload dari Galeri
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-medium mt-0.5">
+                        Pilih file (Bisa banyak)
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Photo Grid Preview */}
+                  {editFormData.afterPhotos.length > 0 && (
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-[11px] font-bold text-emerald-900">Daftar Foto After ({editFormData.afterPhotos.length}):</span>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                        {editFormData.afterPhotos.map((photo, idx) => (
+                          <div
+                            key={idx}
+                            className="group relative aspect-square rounded-xl overflow-hidden bg-slate-900 border border-emerald-300"
+                          >
+                            <img
+                              src={photo}
+                              alt={`After ${idx + 1}`}
+                              className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                              onClick={() => setLightboxImage({ url: photo, title: `Foto After #${idx + 1}` })}
+                            />
+                            <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-black/70 text-white text-[9px] font-bold rounded pointer-events-none">
+                              {idx === 0 ? 'Utama' : `#${idx + 1}`}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveEditAfterPhoto(idx);
+                              }}
+                              className="absolute top-1 right-1 p-1 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-sm transition-colors cursor-pointer"
+                              title="Hapus foto ini"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -1544,7 +1853,7 @@ export function HSEFindingsArchive() {
                     ref={editAfterFileInputRef}
                     type="file"
                     accept="image/*"
-                    capture="environment"
+                    multiple
                     onChange={handleEditAfterPhotoChange}
                     className="hidden"
                   />
@@ -1648,44 +1957,103 @@ export function HSEFindingsArchive() {
                   <p className="text-xs sm:text-sm font-bold text-slate-800 mt-0.5">{selectedFinding.title}</p>
                 </div>
 
-                {/* Upload Foto After */}
-                <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="block text-xs font-bold text-emerald-900 uppercase tracking-wider">
-                      Foto Bukti Perbaikan (AFTER) <span className="text-red-500">*</span>
-                    </label>
-                    {resolveData.afterPhoto && (
+                {/* Upload Foto After (Live Camera Watermark + Gallery Multi) */}
+                <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200 space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <label className="block text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>Foto Bukti Perbaikan (AFTER)</span>
+                        <span className="text-red-500">*</span>
+                        {resolveData.afterPhotos.length > 0 && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-200/80 text-emerald-900 rounded-full normal-case">
+                            {resolveData.afterPhotos.length} Foto
+                          </span>
+                        )}
+                      </label>
+                      <p className="text-[11px] text-emerald-700/80 mt-0.5">Ambil live camera watermark atau unggah dari galeri (bisa banyak foto)</p>
+                    </div>
+                    {resolveData.afterPhotos.length > 0 && (
                       <button
                         type="button"
-                        onClick={() => setResolveData({ ...resolveData, afterPhoto: '' })}
+                        onClick={() => setResolveData({ ...resolveData, afterPhoto: '', afterPhotos: [] })}
                         className="text-xs text-red-600 hover:text-red-800 font-bold flex items-center gap-1 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        <span>Hapus Foto</span>
+                        <span>Hapus Semua</span>
                       </button>
                     )}
                   </div>
 
-                  {resolveData.afterPhoto ? (
-                    <div className="relative aspect-video max-h-56 bg-slate-900 rounded-2xl overflow-hidden border border-emerald-300">
-                      <img
-                        src={resolveData.afterPhoto}
-                        alt="Preview Foto After"
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-emerald-300 rounded-2xl bg-white/80 text-center">
-                      <Camera className="w-8 h-8 text-emerald-600 mb-2" />
-                      <p className="text-xs font-bold text-slate-800 mb-1">Ambil Foto atau Unggah Bukti After</p>
-                      <button
-                        type="button"
-                        onClick={() => afterFileInputRef.current?.click()}
-                        className="mt-2 flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm transition cursor-pointer"
-                      >
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>Pilih Foto</span>
-                      </button>
+                  {/* 2 Kotak Pilihan Kiri/Kanan: Live Camera (Watermark) & Upload Galeri */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Kotak Kiri: Kamera Live */}
+                    <button
+                      type="button"
+                      onClick={() => setIsResolveCameraOpen(true)}
+                      className="group flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-100/40 hover:bg-emerald-100/70 transition-all cursor-pointer text-center"
+                    >
+                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform mb-2">
+                        <Camera className="w-5 h-5" />
+                      </div>
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-emerald-900">
+                        Live Camera (Watermark)
+                      </span>
+                      <span className="text-[10px] text-emerald-700 font-medium mt-0.5">
+                        Watermark GPS & Waktu
+                      </span>
+                    </button>
+
+                    {/* Kotak Kanan: Upload Galeri */}
+                    <button
+                      type="button"
+                      onClick={() => afterFileInputRef.current?.click()}
+                      className="group flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl border-2 border-dashed border-slate-300 hover:border-emerald-400 bg-white hover:bg-slate-50 transition-all cursor-pointer text-center"
+                    >
+                      <div className="w-11 h-11 rounded-2xl bg-slate-100 group-hover:bg-emerald-50 text-slate-700 group-hover:text-emerald-700 flex items-center justify-center border border-slate-200 group-hover:scale-105 transition-transform mb-2">
+                        <Upload className="w-5 h-5" />
+                      </div>
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-emerald-900">
+                        Upload dari Galeri
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-medium mt-0.5">
+                        Pilih file (Bisa banyak)
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Photo Grid Preview */}
+                  {resolveData.afterPhotos.length > 0 && (
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-[11px] font-bold text-emerald-900">Daftar Foto Bukti ({resolveData.afterPhotos.length}):</span>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                        {resolveData.afterPhotos.map((photo, idx) => (
+                          <div
+                            key={idx}
+                            className="group relative aspect-square rounded-xl overflow-hidden bg-slate-900 border border-emerald-300"
+                          >
+                            <img
+                              src={photo}
+                              alt={`After ${idx + 1}`}
+                              className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                              onClick={() => setLightboxImage({ url: photo, title: `Foto Bukti Perbaikan (After) #${idx + 1}` })}
+                            />
+                            <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-black/70 text-white text-[9px] font-bold rounded pointer-events-none">
+                              {idx === 0 ? 'Utama' : `#${idx + 1}`}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveResolvePhoto(idx);
+                              }}
+                              className="absolute top-1 right-1 p-1 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-sm transition-colors cursor-pointer"
+                              title="Hapus foto ini"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -1693,7 +2061,7 @@ export function HSEFindingsArchive() {
                     ref={afterFileInputRef}
                     type="file"
                     accept="image/*"
-                    capture="environment"
+                    multiple
                     onChange={handleAfterPhotoChange}
                     className="hidden"
                   />
@@ -1829,6 +2197,40 @@ export function HSEFindingsArchive() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ===== Camera Modals with Watermark ===== */}
+      {isResolveCameraOpen && (
+        <CameraModal
+          onCapture={handleResolveCameraCapture}
+          onClose={() => setIsResolveCameraOpen(false)}
+          title="Foto Bukti Perbaikan (After)"
+          description="Dokumentasi penyelesaian / penutupan temuan HSE"
+          maintenanceName="HSE TEMUAN (AFTER)"
+          specificDetail={selectedFinding?.title || 'Closing Bukti Temuan K3'}
+        />
+      )}
+
+      {isEditBeforeCameraOpen && (
+        <CameraModal
+          onCapture={handleEditBeforeCameraCapture}
+          onClose={() => setIsEditBeforeCameraOpen(false)}
+          title="Foto Temuan K3 (Before)"
+          description="Dokumentasi kondisi awal temuan HSE"
+          maintenanceName="HSE TEMUAN (BEFORE)"
+          specificDetail={editFormData.title || 'Kondisi Awal Temuan K3'}
+        />
+      )}
+
+      {isEditAfterCameraOpen && (
+        <CameraModal
+          onCapture={handleEditAfterCameraCapture}
+          onClose={() => setIsEditAfterCameraOpen(false)}
+          title="Foto Bukti Perbaikan (After)"
+          description="Dokumentasi penyelesaian / penutupan temuan HSE"
+          maintenanceName="HSE TEMUAN (AFTER)"
+          specificDetail={editFormData.title || 'Closing Bukti Temuan K3'}
+        />
+      )}
     </div>
   );
 }
