@@ -52,8 +52,9 @@ import { PIRReportFormModal } from './PIRReportFormModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { sendFileNotification } from '@/utils/notificationService';
 import { exportSLAReportToExcel } from '../utils/excelExport';
-import { exportCMReportToDocx, exportSLAReportToDocx, exportSLAMonthlyRecapToDocx } from '@/utils/docxReportExport';
+import { exportCMReportToDocx, exportSLAReportToDocx } from '@/utils/docxReportExport';
 import { normalizeEngineerName } from '@/utils/engineerSignatures';
+import { SLAMonthlyRecapModal } from './SLAMonthlyRecapModal';
 
 interface CorrectiveReport {
     id: string;
@@ -189,6 +190,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     const [editingReportId, setEditingReportId] = useState<string | null>(null);
     const [prefillSlaData, setPrefillSlaData] = useState<SLAPrefillData | null>(null);
     const [isPendingSlaExpanded, setIsPendingSlaExpanded] = useState<boolean>(true);
+    const [isRecapModalOpen, setIsRecapModalOpen] = useState<boolean>(false);
 
     // Scroll & Card Position Memory Refs
     const lastInteractedReportIdRef = useRef<string | null>(null);
@@ -970,43 +972,56 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                     </div>
 
                     {/* 3 Navbar Tabs for Standby Engineer */}
-                    <div className="grid grid-cols-3 sm:flex bg-slate-100 p-1 rounded-xl border border-slate-200 w-full sm:w-auto gap-1">
-                        <button
-                            type="button"
-                            onClick={() => setActiveFormTab('cm_pdf')}
-                            className={`min-w-0 px-2 sm:px-4 py-2 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 sm:gap-2 ${activeFormTab === 'cm_pdf'
-                                ? 'bg-red-600 text-white shadow-md'
-                                : 'text-slate-600 hover:text-slate-900'
-                                }`}
-                        >
-                            <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                            <span className="truncate hidden sm:inline">Report CM (3-Hal)</span>
-                            <span className="truncate inline sm:hidden">Report CM</span>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveFormTab('sla')}
-                            className={`min-w-0 px-2 sm:px-4 py-2 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 sm:gap-2 ${activeFormTab === 'sla'
-                                ? 'bg-red-600 text-white shadow-md'
-                                : 'text-slate-600 hover:text-slate-900'
-                                }`}
-                        >
-                            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                            <span className="truncate hidden sm:inline">Form SLA / SLG (4-Step)</span>
-                            <span className="truncate inline sm:hidden">Form SLA</span>
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveFormTab('pir')}
-                            className={`min-w-0 px-2 sm:px-4 py-2 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 sm:gap-2 ${activeFormTab === 'pir'
-                                ? 'bg-red-600 text-white shadow-md'
-                                : 'text-slate-600 hover:text-slate-900'
-                                }`}
-                        >
-                            <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                            <span className="truncate hidden sm:inline">Report PIR (Postmortem)</span>
-                            <span className="truncate inline sm:hidden">Report PIR</span>
-                        </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="grid grid-cols-3 sm:flex bg-slate-100 p-1 rounded-xl border border-slate-200 w-full sm:w-auto gap-1">
+                            <button
+                                type="button"
+                                onClick={() => setActiveFormTab('cm_pdf')}
+                                className={`min-w-0 px-2 sm:px-4 py-2 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 sm:gap-2 ${activeFormTab === 'cm_pdf'
+                                    ? 'bg-red-600 text-white shadow-md'
+                                    : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                            >
+                                <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                                <span className="truncate hidden sm:inline">Report CM (3-Hal)</span>
+                                <span className="truncate inline sm:hidden">Report CM</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveFormTab('sla')}
+                                className={`min-w-0 px-2 sm:px-4 py-2 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 sm:gap-2 ${activeFormTab === 'sla'
+                                    ? 'bg-red-600 text-white shadow-md'
+                                    : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                            >
+                                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                                <span className="truncate hidden sm:inline">Form SLA / SLG (4-Step)</span>
+                                <span className="truncate inline sm:hidden">Form SLA</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setActiveFormTab('pir')}
+                                className={`min-w-0 px-2 sm:px-4 py-2 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 sm:gap-2 ${activeFormTab === 'pir'
+                                    ? 'bg-red-600 text-white shadow-md'
+                                    : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                            >
+                                <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                                <span className="truncate hidden sm:inline">Report PIR (Postmortem)</span>
+                                <span className="truncate inline sm:hidden">Report PIR</span>
+                            </button>
+                        </div>
+
+                        {activeFormTab === 'sla' && (
+                            <button
+                                type="button"
+                                onClick={() => setIsRecapModalOpen(true)}
+                                className="w-full sm:w-auto px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm shadow-blue-500/20 cursor-pointer shrink-0"
+                            >
+                                <FileText className="w-4 h-4" />
+                                <span>Rekap SLA Bulanan</span>
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -1045,6 +1060,15 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                         />
                     )
                 }
+
+                {/* Modal Rekap SLA Bulanan */}
+                <SLAMonthlyRecapModal
+                    isOpen={isRecapModalOpen}
+                    onClose={() => setIsRecapModalOpen(false)}
+                    reports={allSLAReports}
+                    initialMonth={selectedMonth}
+                    initialYear={selectedYear}
+                />
             </div >
         );
     }
@@ -1354,28 +1378,11 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                 {archiveFolder === 'sla' && (
                                     <button
                                         type="button"
-                                        onClick={async () => {
-                                            const slaReports = filteredReports.filter(r => r.reportType === 'SLA' && !r.deleteRequested);
-                                            if (slaReports.length === 0) {
-                                                toast.error('Tidak ada laporan SLA valid (non-pengajuan hapus) yang sesuai filter untuk direkap.');
-                                                return;
-                                            }
-                                            const toastId = toast.loading('Memproses Rekap SLA (DOCX)...');
-                                            try {
-                                                const monthName = selectedMonth !== 'all' ? (INDO_MONTHS.find(m => m.value === selectedMonth)?.label || selectedMonth) : 'Semua Bulan';
-                                                const yearName = selectedYear !== 'all' ? selectedYear : new Date().getFullYear().toString();
-                                                const periodTitle = `${monthName} ${yearName}`;
-                                                await exportSLAMonthlyRecapToDocx(slaReports, periodTitle);
-                                                toast.success('Berhasil mengekspor Rekap SLA Word (DOCX)!', { id: toastId });
-                                            } catch (err: any) {
-                                                console.error('Failed to export SLA monthly recap:', err);
-                                                toast.error('Gagal mengekspor Rekap SLA Word', { id: toastId });
-                                            }
-                                        }}
+                                        onClick={() => setIsRecapModalOpen(true)}
                                         className="w-full md:w-auto px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-md shadow-blue-500/10 cursor-pointer text-xs shrink-0"
                                     >
                                         <FileText className="w-4 h-4" />
-                                        Export Rekap SLA (DOCX)
+                                        Rekap SLA Bulanan (.docx / .xlsx)
                                     </button>
                                 )}
                             </div>
@@ -1943,6 +1950,15 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 deleteReason={selectedReportForDelete?.deleteReason || ''}
                 isAdmin={isAdmin}
                 requireReason={!isAdmin}
+            />
+
+            {/* Modal Rekap SLA Bulanan */}
+            <SLAMonthlyRecapModal
+                isOpen={isRecapModalOpen}
+                onClose={() => setIsRecapModalOpen(false)}
+                reports={allSLAReports}
+                initialMonth={selectedMonth}
+                initialYear={selectedYear}
             />
         </div>
     );

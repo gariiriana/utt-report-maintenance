@@ -45,6 +45,7 @@ import { exportSLAReportToDocx } from '@/utils/docxReportExport';
 import { sendFileNotification } from '@/utils/notificationService';
 import { ImageEditor } from './ImageEditor';
 import { compressImage, compressBase64Image } from '@/utils/imageCompression';
+import { SLAMonthlyRecapModal } from './SLAMonthlyRecapModal';
 
 export interface EquipmentSLAItem {
   id: string;
@@ -141,6 +142,7 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData }: SLAFormPro
 
   // Maximum photos allowed per step
   const MAX_PHOTOS_PER_STEP = 10;
+  const [isRecapModalOpen, setIsRecapModalOpen] = useState(false);
 
   // Equipment Search & SLA Prioritization States
   const [equipmentSearch, setEquipmentSearch] = useState('');
@@ -813,16 +815,29 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData }: SLAFormPro
           </p>
         </div>
 
-        {onCancel && (
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={onCancel}
-            className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition cursor-pointer"
-            title="Tutup Form"
+            onClick={() => setIsRecapModalOpen(true)}
+            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+            title="Rekapitulasi SLA Bulanan"
           >
-            <X className="w-5 h-5" />
+            <FileText className="w-3.5 h-3.5 text-blue-600" />
+            <span className="hidden sm:inline">Rekap SLA Bulanan</span>
+            <span className="inline sm:hidden">Rekap SLA</span>
           </button>
-        )}
+
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition cursor-pointer"
+              title="Tutup Form"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Step Indicators */}
@@ -2100,6 +2115,11 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData }: SLAFormPro
           </div>
         </div>
       )}
+      {/* Modal Rekap SLA Bulanan */}
+      <SLAMonthlyRecapModal
+        isOpen={isRecapModalOpen}
+        onClose={() => setIsRecapModalOpen(false)}
+      />
     </div>
   );
 }

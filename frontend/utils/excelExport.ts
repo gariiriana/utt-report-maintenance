@@ -631,3 +631,541 @@ export async function exportSLAReportToExcel(report: any) {
   const fileBlob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   saveAs(fileBlob, `SLA_Report_${report.ticketName.replace(/\s+/g, '_')}_2026.xlsx`);
 }
+
+/**
+ * Ekspor Rekapitulasi Multi-Laporan SLA/SLG Bulanan ke Format Excel Resmi (.xlsx)
+ */
+export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitle: string = 'Bulanan'): Promise<void> {
+  const reports = (rawReports || []).filter(r => !r.deleteRequested && !(r.originalReport && r.originalReport.deleteRequested));
+  if (reports.length === 0) {
+    throw new Error('Tidak ada data laporan SLA yang valid untuk diekspor ke Excel.');
+  }
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'PT Dwimitra Ekatama Mandiri';
+  workbook.lastModifiedBy = 'Data Center Maintenance System - DC Cikarang';
+  workbook.created = new Date();
+  workbook.modified = new Date();
+
+  // Color Palette & Fonts
+  const headerNavy = '002060';
+  const textDark = '0F172A';
+  const borderGray = 'CBD5E1';
+
+  const thinBorder = {
+    top: { style: 'thin' as const, color: { argb: borderGray } },
+    left: { style: 'thin' as const, color: { argb: borderGray } },
+    bottom: { style: 'thin' as const, color: { argb: borderGray } },
+    right: { style: 'thin' as const, color: { argb: borderGray } },
+  };
+
+  const headerFontWhite = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFF' } };
+  const headerFontDark = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+  const dataFont = { name: 'Calibri', size: 10, color: { argb: textDark } };
+  const titleFontLarge = { name: 'Calibri', size: 14, bold: true, color: { argb: textDark } };
+  const titleFontSub = { name: 'Calibri', size: 11, bold: true, color: { argb: '475569' } };
+
+  const getTargetByPriority = (prio?: string) => {
+    if (prio === 'Critical') return 120;
+    if (prio === 'High') return 240;
+    if (prio === 'Low') return 2880;
+    return 360;
+  };
+
+  // Helper to extract photos
+  const getPhotos = (report: any, arrayKey: string, legacyKey: string): string[] => {
+    if (Array.isArray(report[arrayKey]) && report[arrayKey].length > 0) {
+      return report[arrayKey].map((p: any) => typeof p === 'string' ? p : p.photo).filter(Boolean);
+    }
+    if (report[legacyKey]) return [report[legacyKey]];
+    return [];
+  };
+
+  // Embed image helper for multi-row
+  const addExcelImageSafe = (base64Data: string, cellRange: string, sheet: ExcelJS.Worksheet) => {
+    if (!base64Data || base64Data.startsWith('http://') || base64Data.startsWith('https://')) return;
+    try {
+      const cleanBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
+      const imgId = workbook.addImage({
+        base64: cleanBase64,
+        extension: 'jpeg',
+      });
+      sheet.addImage(imgId, cellRange);
+    } catch (err) {
+      console.warn(`Failed to embed image for range ${cellRange}:`, err);
+    }
+  };
+
+  // Pre-calculate compliance numbers
+  const totalCount = reports.length;
+  const respMCount = reports.filter(r => r.responseComply !== false && (r.actualResponseTimeMin !== undefined ? r.actualResponseTimeMin <= (r.targetResponseMin || 5) : true)).length;
+  const onsiteMCount = reports.filter(r => r.onsiteComply !== false && (r.actualOnsiteTimeMin !== undefined ? r.actualOnsiteTimeMin <= (r.targetOnsiteMin || 120) : true)).length;
+  const restoreMCount = reports.filter(r => {
+    const t = r.targetRestoreMin || getTargetByPriority(r.priority);
+    return r.restoreComply !== false && (r.actualRestoreTimeMin !== undefined ? r.actualRestoreTimeMin <= t : true);
+  }).length;
+  const resolutionMCount = reports.filter(r => {
+    const t = r.targetResolutionMin || getTargetByPriority(r.priority);
+    return r.resolutionComply !== false && (r.actualResolutionTimeMin !== undefined ? r.actualResolutionTimeMin <= t : true);
+  }).length;
+
+  const respPct = totalCount > 0 ? (respMCount / totalCount) * 100 : 100;
+  const onsitePct = totalCount > 0 ? (onsiteMCount / totalCount) * 100 : 100;
+  const restorePct = totalCount > 0 ? (restoreMCount / totalCount) * 100 : 100;
+  const resolutionPct = totalCount > 0 ? (resolutionMCount / totalCount) * 100 : 100;
+
+  const respScore = (respPct / 100) * 5;
+  const onsiteScore = (onsitePct / 100) * 5;
+  const restoreScore = (restorePct / 100) * 15;
+  const resolutionScore = (resolutionPct / 100) * 15;
+  const totalSlgScore = respScore + onsiteScore + restoreScore + resolutionScore;
+
+  // =========================================================================
+  // SHEET 1: REKAPITULASI PENCAPAIAN KINERJA SLA & SLG
+  // =========================================================================
+  const wsSummary = workbook.addWorksheet('Rekap Kinerja SLG');
+  wsSummary.views = [{ showGridLines: true }];
+
+  wsSummary.getCell('A2').value = 'REKAPITULASI PENCAPAIAN KINERJA SLA & SLG';
+  wsSummary.getCell('A2').font = titleFontLarge;
+  wsSummary.getCell('A3').value = 'MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG';
+  wsSummary.getCell('A3').font = titleFontSub;
+  wsSummary.getCell('A4').value = `Periode: ${periodTitle}`;
+  wsSummary.getCell('A4').font = titleFontSub;
+
+  const sumHeaders = ['NO', 'INDIKATOR KINERJA SLA / SLG', 'SATUAN', 'JUMLAH ORDER', 'PENCAPAIAN (M)', '% COMPLY', 'BOBOT', 'HASIL AKHIR SLG'];
+  const sumCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+
+  const r6Sum = wsSummary.getRow(6);
+  r6Sum.height = 24;
+  sumHeaders.forEach((h, i) => {
+    const cell = wsSummary.getCell(`${sumCols[i]}6`);
+    cell.value = h;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerNavy } };
+    cell.font = headerFontWhite;
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = thinBorder;
+  });
+
+  const summaryRowsData = [
+    { no: 1, title: 'Response Time', unit: 'Order', count: totalCount, comply: respMCount, pct: `${respPct.toFixed(0)}%`, bobot: '5%', score: `${respScore.toFixed(2)}%` },
+    { no: 2, title: 'Onsite Time (Principle Onsite)', unit: 'Order', count: totalCount, comply: onsiteMCount, pct: `${onsitePct.toFixed(0)}%`, bobot: '5%', score: `${onsiteScore.toFixed(2)}%` },
+    { no: 3, title: 'Restore Time (Service Restore)', unit: 'Order', count: totalCount, comply: restoreMCount, pct: `${restorePct.toFixed(0)}%`, bobot: '15%', score: `${restoreScore.toFixed(2)}%` },
+    { no: 4, title: 'Resolution Time (Problem Resolution)', unit: 'Order', count: totalCount, comply: resolutionMCount, pct: `${resolutionPct.toFixed(0)}%`, bobot: '15%', score: `${resolutionScore.toFixed(2)}%` },
+  ];
+
+  summaryRowsData.forEach((row, idx) => {
+    const rowNum = 7 + idx;
+    const r = wsSummary.getRow(rowNum);
+    r.height = 20;
+
+    wsSummary.getCell(`A${rowNum}`).value = row.no;
+    wsSummary.getCell(`B${rowNum}`).value = row.title;
+    wsSummary.getCell(`C${rowNum}`).value = row.unit;
+    wsSummary.getCell(`D${rowNum}`).value = row.count;
+    wsSummary.getCell(`E${rowNum}`).value = row.comply;
+    wsSummary.getCell(`F${rowNum}`).value = row.pct;
+    wsSummary.getCell(`G${rowNum}`).value = row.bobot;
+    wsSummary.getCell(`H${rowNum}`).value = row.score;
+
+    sumCols.forEach(col => {
+      const cell = wsSummary.getCell(`${col}${rowNum}`);
+      cell.font = dataFont;
+      cell.border = thinBorder;
+      cell.alignment = col === 'B' ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+      if (col === 'H') {
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: '166534' } };
+      }
+    });
+  });
+
+  // Total SLG Row
+  const totalRowNum = 11;
+  const rTotal = wsSummary.getRow(totalRowNum);
+  rTotal.height = 24;
+  wsSummary.mergeCells(`A${totalRowNum}:F${totalRowNum}`);
+  const totalLabel = wsSummary.getCell(`A${totalRowNum}`);
+  totalLabel.value = 'TOTAL HASIL AKHIR PENCAPAIAN SLG (MAX 40%):';
+  totalLabel.font = { name: 'Calibri', size: 11, bold: true, color: { argb: textDark } };
+  totalLabel.alignment = { horizontal: 'right', vertical: 'middle' };
+  totalLabel.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+  totalLabel.border = thinBorder;
+
+  wsSummary.mergeCells(`G${totalRowNum}:H${totalRowNum}`);
+  const totalVal = wsSummary.getCell(`G${totalRowNum}`);
+  totalVal.value = `${totalSlgScore.toFixed(2)}% / 40.00%`;
+  totalVal.font = { name: 'Calibri', size: 12, bold: true, color: { argb: '854D0E' } };
+  totalVal.alignment = { horizontal: 'center', vertical: 'middle' };
+  totalVal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FEF08A' } };
+  totalVal.border = thinBorder;
+
+  wsSummary.getColumn('A').width = 6;
+  wsSummary.getColumn('B').width = 36;
+  wsSummary.getColumn('C').width = 12;
+  wsSummary.getColumn('D').width = 14;
+  wsSummary.getColumn('E').width = 16;
+  wsSummary.getColumn('F').width = 12;
+  wsSummary.getColumn('G').width = 10;
+  wsSummary.getColumn('H').width = 18;
+
+  // =========================================================================
+  // SHEET 2: 1. RESPONSE TIME
+  // =========================================================================
+  const wsResp = workbook.addWorksheet('1. Response Time');
+  wsResp.views = [{ showGridLines: true }];
+
+  wsResp.getCell('A2').value = '1. PENCAPAIAN RESPONSE TIME';
+  wsResp.getCell('A2').font = titleFontLarge;
+  wsResp.getCell('A3').value = 'MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG';
+  wsResp.getCell('A3').font = titleFontSub;
+  wsResp.getCell('A4').value = `Periode: ${periodTitle}`;
+  wsResp.getCell('A4').font = titleFontSub;
+
+  const respHeaders = ['NO', 'ORDER/TIKET', 'LOKASI', 'PIC DME', 'PIC TDE', 'WAKTU ORDER', 'WAKTU RESPON AKTUAL', 'AKTUAL (MNT)', 'TARGET (MNT)', 'COMPLY', 'KETERANGAN'];
+  const respCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
+
+  const r6Resp = wsResp.getRow(6);
+  r6Resp.height = 22;
+  respHeaders.forEach((h, i) => {
+    const cell = wsResp.getCell(`${respCols[i]}6`);
+    cell.value = h;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerNavy } };
+    cell.font = headerFontWhite;
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = thinBorder;
+  });
+
+  reports.forEach((r, idx) => {
+    const rowNum = 7 + idx;
+    const row = wsResp.getRow(rowNum);
+    row.height = 20;
+
+    const comply = r.responseComply !== undefined ? r.responseComply : (r.actualResponseTimeMin ? r.actualResponseTimeMin <= (r.targetResponseMin || 5) : true);
+
+    wsResp.getCell(`A${rowNum}`).value = idx + 1;
+    wsResp.getCell(`B${rowNum}`).value = r.ticketName || r.issue || 'WO';
+    wsResp.getCell(`C${rowNum}`).value = r.location || '-';
+    wsResp.getCell(`D${rowNum}`).value = r.picDME || 'On Duty DME';
+    wsResp.getCell(`E${rowNum}`).value = (!r.picTDE || r.picTDE === 'FMA - CBRE' || r.picTDE === '-') ? 'FMA - OCS' : r.picTDE;
+    wsResp.getCell(`F${rowNum}`).value = formatExcelDate(r.timeOrder);
+    wsResp.getCell(`G${rowNum}`).value = formatExcelDate(r.actualTimeResponse);
+    wsResp.getCell(`H${rowNum}`).value = r.actualResponseTimeMin ?? 0;
+    wsResp.getCell(`I${rowNum}`).value = r.targetResponseMin || 5;
+    wsResp.getCell(`J${rowNum}`).value = comply ? 'M' : 'TM';
+    wsResp.getCell(`K${rowNum}`).value = r.remark || 'Via WhatsApp';
+
+    respCols.forEach(col => {
+      const cell = wsResp.getCell(`${col}${rowNum}`);
+      cell.font = dataFont;
+      cell.border = thinBorder;
+      cell.alignment = ['B', 'C', 'K'].includes(col) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+      if (col === 'J') {
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: comply ? '166534' : '991B1B' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: comply ? 'DCFCE7' : 'FEE2E2' } };
+      }
+    });
+  });
+
+  wsResp.getColumn('A').width = 6;
+  wsResp.getColumn('B').width = 24;
+  wsResp.getColumn('C').width = 16;
+  wsResp.getColumn('D').width = 14;
+  wsResp.getColumn('E').width = 14;
+  wsResp.getColumn('F').width = 20;
+  wsResp.getColumn('G').width = 20;
+  wsResp.getColumn('H').width = 14;
+  wsResp.getColumn('I').width = 14;
+  wsResp.getColumn('J').width = 10;
+  wsResp.getColumn('K').width = 20;
+
+  // =========================================================================
+  // SHEET 3: 2. ONSITE SUPPORT
+  // =========================================================================
+  const wsOnsite = workbook.addWorksheet('2. Onsite Support');
+  wsOnsite.views = [{ showGridLines: true }];
+
+  wsOnsite.getCell('A2').value = '2. PENCAPAIAN ONSITE PRINCIPLE ENGINEER (OPE)';
+  wsOnsite.getCell('A2').font = titleFontLarge;
+  wsOnsite.getCell('A3').value = 'MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG';
+  wsOnsite.getCell('A3').font = titleFontSub;
+  wsOnsite.getCell('A4').value = `Periode: ${periodTitle}`;
+  wsOnsite.getCell('A4').font = titleFontSub;
+
+  const onsiteHeaders = ['NO', 'ORDER/TIKET', 'LOKASI', 'PIC DME', 'PIC TDE', 'WAKTU ORDER', 'WAKTU ONSITE AKTUAL', 'AKTUAL (MNT)', 'TARGET (MNT)', 'COMPLY', 'KETERANGAN'];
+  const onsiteCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
+
+  const r6On = wsOnsite.getRow(6);
+  r6On.height = 22;
+  onsiteHeaders.forEach((h, i) => {
+    const cell = wsOnsite.getCell(`${onsiteCols[i]}6`);
+    cell.value = h;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerNavy } };
+    cell.font = headerFontWhite;
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = thinBorder;
+  });
+
+  reports.forEach((r, idx) => {
+    const rowNum = 7 + idx;
+    const row = wsOnsite.getRow(rowNum);
+    row.height = 20;
+
+    const comply = r.onsiteComply !== undefined ? r.onsiteComply : (r.actualOnsiteTimeMin ? r.actualOnsiteTimeMin <= (r.targetOnsiteMin || 120) : true);
+
+    wsOnsite.getCell(`A${rowNum}`).value = idx + 1;
+    wsOnsite.getCell(`B${rowNum}`).value = r.ticketName || r.issue || 'WO';
+    wsOnsite.getCell(`C${rowNum}`).value = r.location || '-';
+    wsOnsite.getCell(`D${rowNum}`).value = r.picDME || 'On Duty DME';
+    wsOnsite.getCell(`E${rowNum}`).value = (!r.picTDE || r.picTDE === 'FMA - CBRE' || r.picTDE === '-') ? 'FMA - OCS' : r.picTDE;
+    wsOnsite.getCell(`F${rowNum}`).value = formatExcelDate(r.timeOrder);
+    wsOnsite.getCell(`G${rowNum}`).value = formatExcelDate(r.actualTimeOnsite);
+    wsOnsite.getCell(`H${rowNum}`).value = r.actualOnsiteTimeMin ?? 0;
+    wsOnsite.getCell(`I${rowNum}`).value = r.targetOnsiteMin || 120;
+    wsOnsite.getCell(`J${rowNum}`).value = comply ? 'M' : 'TM';
+    wsOnsite.getCell(`K${rowNum}`).value = r.remark || 'Via WhatsApp / Tiket';
+
+    onsiteCols.forEach(col => {
+      const cell = wsOnsite.getCell(`${col}${rowNum}`);
+      cell.font = dataFont;
+      cell.border = thinBorder;
+      cell.alignment = ['B', 'C', 'K'].includes(col) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+      if (col === 'J') {
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: comply ? '166534' : '991B1B' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: comply ? 'DCFCE7' : 'FEE2E2' } };
+      }
+    });
+  });
+
+  wsOnsite.getColumn('A').width = 6;
+  wsOnsite.getColumn('B').width = 24;
+  wsOnsite.getColumn('C').width = 16;
+  wsOnsite.getColumn('D').width = 14;
+  wsOnsite.getColumn('E').width = 14;
+  wsOnsite.getColumn('F').width = 20;
+  wsOnsite.getColumn('G').width = 20;
+  wsOnsite.getColumn('H').width = 14;
+  wsOnsite.getColumn('I').width = 14;
+  wsOnsite.getColumn('J').width = 10;
+  wsOnsite.getColumn('K').width = 20;
+
+  // =========================================================================
+  // SHEET 4: 3. RESTORE TIME
+  // =========================================================================
+  const wsRestore = workbook.addWorksheet('3. Restore Time');
+  wsRestore.views = [{ showGridLines: true }];
+
+  wsRestore.getCell('A2').value = '3. PENCAPAIAN RESTORE SERVICE TIME (RST)';
+  wsRestore.getCell('A2').font = titleFontLarge;
+  wsRestore.getCell('A3').value = 'MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG';
+  wsRestore.getCell('A3').font = titleFontSub;
+  wsRestore.getCell('A4').value = `Periode: ${periodTitle}`;
+  wsRestore.getCell('A4').font = titleFontSub;
+
+  const restHeaders = ['NO', 'ORDER/TIKET', 'LOKASI', 'MULAI ORDER', 'SELESAI ORDER', 'WAKTU PEMULIHAN AKTUAL (MNT)', 'TARGET (MNT)', 'COMPLY', 'KETERANGAN'];
+  const restCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
+
+  const r6Rest = wsRestore.getRow(6);
+  r6Rest.height = 22;
+  restHeaders.forEach((h, i) => {
+    const cell = wsRestore.getCell(`${restCols[i]}6`);
+    cell.value = h;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerNavy } };
+    cell.font = headerFontWhite;
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = thinBorder;
+  });
+
+  reports.forEach((r, idx) => {
+    const rowNum = 7 + idx;
+    const row = wsRestore.getRow(rowNum);
+    row.height = 20;
+
+    const targetRST = r.targetRestoreMin || getTargetByPriority(r.priority);
+    const comply = r.restoreComply !== undefined ? r.restoreComply : (r.actualRestoreTimeMin ? r.actualRestoreTimeMin <= targetRST : true);
+
+    wsRestore.getCell(`A${rowNum}`).value = idx + 1;
+    wsRestore.getCell(`B${rowNum}`).value = r.ticketName || r.issue || 'WO';
+    wsRestore.getCell(`C${rowNum}`).value = r.location || '-';
+    wsRestore.getCell(`D${rowNum}`).value = formatExcelDate(r.startOrder || r.timeOrder);
+    wsRestore.getCell(`E${rowNum}`).value = formatExcelDate(r.finishOrder);
+    wsRestore.getCell(`F${rowNum}`).value = r.actualRestoreTimeMin ?? 0;
+    wsRestore.getCell(`G${rowNum}`).value = targetRST;
+    wsRestore.getCell(`H${rowNum}`).value = comply ? 'M' : 'TM';
+    wsRestore.getCell(`I${rowNum}`).value = r.remark || 'Perbaikan corrective restore service';
+
+    restCols.forEach(col => {
+      const cell = wsRestore.getCell(`${col}${rowNum}`);
+      cell.font = dataFont;
+      cell.border = thinBorder;
+      cell.alignment = ['B', 'C', 'I'].includes(col) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+      if (col === 'H') {
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: comply ? '166534' : '991B1B' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: comply ? 'DCFCE7' : 'FEE2E2' } };
+      }
+    });
+  });
+
+  wsRestore.getColumn('A').width = 6;
+  wsRestore.getColumn('B').width = 24;
+  wsRestore.getColumn('C').width = 16;
+  wsRestore.getColumn('D').width = 20;
+  wsRestore.getColumn('E').width = 20;
+  wsRestore.getColumn('F').width = 26;
+  wsRestore.getColumn('G').width = 14;
+  wsRestore.getColumn('H').width = 10;
+  wsRestore.getColumn('I').width = 28;
+
+  // =========================================================================
+  // SHEET 5: 4. RESOLUTION TIME
+  // =========================================================================
+  const wsReso = workbook.addWorksheet('4. Resolution Time');
+  wsReso.views = [{ showGridLines: true }];
+
+  wsReso.getCell('A2').value = '4. PENCAPAIAN RESOLUTION TIME (RT)';
+  wsReso.getCell('A2').font = titleFontLarge;
+  wsReso.getCell('A3').value = 'MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG';
+  wsReso.getCell('A3').font = titleFontSub;
+  wsReso.getCell('A4').value = `Periode: ${periodTitle}`;
+  wsReso.getCell('A4').font = titleFontSub;
+
+  const resoHeaders = ['NO', 'NO ORDER/TIKET', 'PRIORITAS', 'LOKASI', 'MULAI ORDER', 'SELESAI ORDER', 'WAKTU RESOLUSI AKTUAL (MNT)', 'TARGET (MNT)', 'COMPLY', 'KETERANGAN'];
+  const resoCols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+
+  const r6Reso = wsReso.getRow(6);
+  r6Reso.height = 22;
+  resoHeaders.forEach((h, i) => {
+    const cell = wsReso.getCell(`${resoCols[i]}6`);
+    cell.value = h;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerNavy } };
+    cell.font = headerFontWhite;
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = thinBorder;
+  });
+
+  reports.forEach((r, idx) => {
+    const rowNum = 7 + idx;
+    const row = wsReso.getRow(rowNum);
+    row.height = 20;
+
+    const targetRSP = r.targetResolutionMin || getTargetByPriority(r.priority);
+    const comply = r.resolutionComply !== undefined ? r.resolutionComply : (r.actualResolutionTimeMin ? r.actualResolutionTimeMin <= targetRSP : true);
+
+    wsReso.getCell(`A${rowNum}`).value = idx + 1;
+    wsReso.getCell(`B${rowNum}`).value = r.ticketName || r.issue || 'WO';
+    wsReso.getCell(`C${rowNum}`).value = r.priority || 'Medium';
+    wsReso.getCell(`D${rowNum}`).value = r.location || '-';
+    wsReso.getCell(`E${rowNum}`).value = formatExcelDate(r.startOrder || r.timeOrder);
+    wsReso.getCell(`F${rowNum}`).value = formatExcelDate(r.finishOrder);
+    wsReso.getCell(`G${rowNum}`).value = r.actualResolutionTimeMin ?? 0;
+    wsReso.getCell(`H${rowNum}`).value = targetRSP;
+    wsReso.getCell(`I${rowNum}`).value = comply ? 'M' : 'TM';
+    wsReso.getCell(`J${rowNum}`).value = r.resolutionRemark || r.remark || 'Troubleshooting terselesaikan penuh';
+
+    resoCols.forEach(col => {
+      const cell = wsReso.getCell(`${col}${rowNum}`);
+      cell.font = dataFont;
+      cell.border = thinBorder;
+      cell.alignment = ['B', 'D', 'J'].includes(col) ? { horizontal: 'left', vertical: 'middle' } : { horizontal: 'center', vertical: 'middle' };
+      if (col === 'I') {
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: comply ? '166534' : '991B1B' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: comply ? 'DCFCE7' : 'FEE2E2' } };
+      }
+    });
+  });
+
+  wsReso.getColumn('A').width = 6;
+  wsReso.getColumn('B').width = 24;
+  wsReso.getColumn('C').width = 12;
+  wsReso.getColumn('D').width = 16;
+  wsReso.getColumn('E').width = 20;
+  wsReso.getColumn('F').width = 20;
+  wsReso.getColumn('G').width = 26;
+  wsReso.getColumn('H').width = 14;
+  wsReso.getColumn('I').width = 10;
+  wsReso.getColumn('J').width = 28;
+
+  // =========================================================================
+  // SHEET 6: 5. EVIDENCE BUKTI FOTO
+  // =========================================================================
+  const wsEvidence = workbook.addWorksheet('5. Evidence Foto');
+  wsEvidence.views = [{ showGridLines: true }];
+
+  wsEvidence.getCell('A2').value = '5. EVIDENCE FOTO DOKUMENTASI (4-STEP SLA / SLG)';
+  wsEvidence.getCell('A2').font = titleFontLarge;
+  wsEvidence.getCell('A3').value = 'MAINTENANCE FACILITY INFRASTRUCTURE DC CIKARANG';
+  wsEvidence.getCell('A3').font = titleFontSub;
+  wsEvidence.getCell('A4').value = `Periode: ${periodTitle}`;
+  wsEvidence.getCell('A4').font = titleFontSub;
+
+  const evHeaders = ['NO', 'ORDER / TIKET', 'BUKTI RESPONSE TIME', 'BUKTI ONSITE SUPPORT', 'BUKTI RESTORE TIME', 'BUKTI RESOLUTION TIME'];
+  const evCols = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+  const r6Ev = wsEvidence.getRow(6);
+  r6Ev.height = 24;
+  evHeaders.forEach((h, i) => {
+    const cell = wsEvidence.getCell(`${evCols[i]}6`);
+    cell.value = h;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerNavy } };
+    cell.font = headerFontWhite;
+    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.border = thinBorder;
+  });
+
+  let currentEvRow = 7;
+  reports.forEach((r, idx) => {
+    const startRow = currentEvRow;
+    const endRow = currentEvRow + 4; // 5 Excel rows per ticket for image height
+
+    // Set row heights
+    for (let rIdx = startRow; rIdx <= endRow; rIdx++) {
+      wsEvidence.getRow(rIdx).height = 28;
+    }
+
+    // Merge NO and Ticket Name
+    wsEvidence.mergeCells(`A${startRow}:A${endRow}`);
+    const cellNo = wsEvidence.getCell(`A${startRow}`);
+    cellNo.value = idx + 1;
+    cellNo.font = headerFontDark;
+    cellNo.alignment = { horizontal: 'center', vertical: 'middle' };
+    cellNo.border = thinBorder;
+
+    wsEvidence.mergeCells(`B${startRow}:B${endRow}`);
+    const cellTicket = wsEvidence.getCell(`B${startRow}`);
+    cellTicket.value = `${r.ticketName || r.issue || 'WO'}\n(${r.priority || 'Medium'})\n${r.location || '-'}`;
+    cellTicket.font = headerFontDark;
+    cellTicket.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    cellTicket.border = thinBorder;
+
+    // Photos
+    const respPhotos = getPhotos(r, 'photosResponse', 'photoResponse');
+    const onsitePhotos = getPhotos(r, 'photosOnsite', 'photoOnsite');
+    const restPhotos = getPhotos(r, 'photosRestore', 'photoRestore');
+    const resoPhotos = getPhotos(r, 'photosResolution', 'photoResolution');
+
+    if (respPhotos[0]) addExcelImageSafe(respPhotos[0], `C${startRow}:C${endRow}`, wsEvidence);
+    if (onsitePhotos[0]) addExcelImageSafe(onsitePhotos[0], `D${startRow}:D${endRow}`, wsEvidence);
+    if (restPhotos[0]) addExcelImageSafe(restPhotos[0], `E${startRow}:E${endRow}`, wsEvidence);
+    if (resoPhotos[0]) addExcelImageSafe(resoPhotos[0], `F${startRow}:F${endRow}`, wsEvidence);
+
+    for (let rIdx = startRow; rIdx <= endRow; rIdx++) {
+      evCols.forEach(col => {
+        wsEvidence.getCell(`${col}${rIdx}`).border = thinBorder;
+      });
+    }
+
+    currentEvRow = endRow + 1;
+  });
+
+  wsEvidence.getColumn('A').width = 6;
+  wsEvidence.getColumn('B').width = 24;
+  wsEvidence.getColumn('C').width = 26;
+  wsEvidence.getColumn('D').width = 26;
+  wsEvidence.getColumn('E').width = 26;
+  wsEvidence.getColumn('F').width = 26;
+
+  // Save workbook
+  const buffer = await workbook.xlsx.writeBuffer();
+  const fileBlob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const cleanPeriod = periodTitle.replace(/[^a-zA-Z0-9_\-]/g, '_');
+  saveAs(fileBlob, `Rekap_SLA_SLG_DC_Cikarang_${cleanPeriod}.xlsx`);
+}
