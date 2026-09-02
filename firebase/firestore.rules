@@ -563,6 +563,20 @@ service cloud.firestore {
                         || resource.data.reportedBy == getEmail());
     }
 
+    // ============================================================================
+    // Koleksi: berita_acara — Arsip Dokumen Berita Acara Maintenance DOCX
+    // Akses: Admin, DME, Engineer, Standby & Privileged can CRUD. Auth users can read.
+    // ============================================================================
+    match /berita_acara/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null 
+                    && (isAdminSafe() || isDME() || isSiteManagerDME() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || request.auth.uid != null);
+      allow update: if request.auth != null 
+                    && (isAdminSafe() || isDME() || isSiteManagerDME() || isEngineer() || isPrivilegedRole() || resource.data.createdBy == getEmail());
+      allow delete: if request.auth != null 
+                    && (isAdminSafe() || isDME() || isSiteManagerDME() || isPrivilegedRole() || resource.data.createdBy == getEmail());
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

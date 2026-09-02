@@ -102,20 +102,14 @@ export function BeritaAcaraReport() {
   // ─── Load Archives from Firestore ────────────────────────────────
   useEffect(() => {
     if (!user?.email) return;
-    const q = isAdmin
-      ? query(collection(db, 'berita_acara'), orderBy('createdAt', 'desc'))
-      : query(
-          collection(db, 'berita_acara'),
-          where('createdBy', '==', user.email),
-          orderBy('createdAt', 'desc')
-        );
+    const q = query(collection(db, 'berita_acara'), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, (snap) => {
       setArchives(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     }, (err) => {
       console.error('Error loading berita_acara archives:', err);
     });
     return () => unsub();
-  }, [user?.email, isAdmin]);
+  }, [user?.email]);
 
   // ─── Filtered Categories (search) ───────────────────────────────
   const filteredCategories = useMemo(() => {
@@ -287,26 +281,58 @@ export function BeritaAcaraReport() {
       const monthName = INDO_MONTHS[selectedMonth];
       const title = `BERITA ACARA MAINTENANCE ${monthName.toUpperCase()} ${selectedYear}`;
 
-      await addDoc(collection(db, 'berita_acara'), {
-        title,
-        month: selectedMonth,
-        year: selectedYear,
-        quarter: getDefaultQuarter(selectedMonth),
-        nomorKontrak,
-        selectedEquipments: equipments.map(e => `${e.categoryName} (${e.quarter || getDefaultQuarter(selectedMonth)})`),
-        totalCINames: totalCI,
-        createdAt: Timestamp.now(),
-        createdBy: user?.email || '',
-        fileName: `BERITA ACARA MAINTENANCE ${monthName.toUpperCase()} ${selectedYear}.docx`,
-      });
+      try {
+        await addDoc(collection(db, 'berita_acara'), {
+          title,
+          month: selectedMonth,
+          year: selectedYear,
+          quarter: getDefaultQuarter(selectedMonth),
+          nomorKontrak,
+          periodeStart,
+          periodeEnd,
+          tempat,
+          tanggalBA,
+          signerLeftName,
+          signerLeftTitle,
+          signerRightName,
+          signerRightTitle,
+          selectedEquipments: equipments.map(e => `${e.categoryName} (${e.quarter || getDefaultQuarter(selectedMonth)})`),
+          totalCINames: totalCI,
+          createdAt: Timestamp.now(),
+          createdBy: user?.email || '',
+          createdByName: user?.displayName || user?.email?.split('@')[0] || 'User',
+          fileName: `BERITA ACARA MAINTENANCE ${monthName.toUpperCase()} ${selectedYear}.docx`,
+          config,
+        });
 
-      toast.success('Berita Acara tersimpan di arsip.');
+        toast.success('Berita Acara berhasil diexport dan tersimpan di arsip dokumen.');
+      } catch (saveErr: any) {
+        console.error('Error saving to berita_acara archive:', saveErr);
+        toast.warning('File DOCX terdownload, tetapi gagal menyimpan ke arsip cloud: ' + (saveErr?.message || 'Permission denied'));
+      }
     } catch (error) {
       console.error('Export error:', error);
+      toast.error('Gagal membuat dokumen Berita Acara.');
     } finally {
       setIsExporting(false);
     }
-  }, [selectedCategoryIds, selectedCINames, executionDates, equipmentQuarters, getDefaultQuarter, selectedMonth, selectedYear, nomorKontrak, periodeStart, periodeEnd, tempat, tanggalBA, signerLeftName, signerLeftTitle, signerRightName, signerRightTitle, user?.email]);
+  }, [selectedCategoryIds, selectedCINames, executionDates, equipmentQuarters, getDefaultQuarter, selectedMonth, selectedYear, nomorKontrak, periodeStart, periodeEnd, tempat, tanggalBA, signerLeftName, signerLeftTitle, signerRightName, signerRightTitle, user?.email, user?.displayName]);
+
+  // ─── Download Archive Handler ────────────────────────────────────
+  const handleDownloadFromArchive = useCallback(async (archive: any) => {
+    if (!archive.config) {
+      toast.info('Konfigurasi dokumen tidak tersedia untuk re-export langsung.');
+      return;
+    }
+    try {
+      toast.info(`Mengunduh ${archive.fileName || 'Berita Acara'}...`);
+      await generateBeritaAcaraDOCX(archive.config);
+      toast.success('File berhasil diunduh.');
+    } catch (err) {
+      console.error('Download error:', err);
+      toast.error('Gagal mengunduh file Berita Acara.');
+    }
+  }, []);
 
   // ─── Delete Archive Handler ──────────────────────────────────────
   const handleDeleteArchive = useCallback(async (archiveId: string) => {
@@ -782,30 +808,48 @@ export function BeritaAcaraReport() {
               {archives.map(archive => (
                 <div
                   key={archive.id}
-                  className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200/80 transition-colors"
+                  className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50 hover:bg-slate-100/90 rounded-xl border border-slate-200/80 transition-all shadow-xs"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-slate-800 truncate">{archive.title}</p>
                     <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-500 font-medium flex-wrap">
-                      <span className="bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">{archive.quarter}</span>
-                      <span>{archive.selectedEquipments?.join(', ')}</span>
+                      <span className="bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full font-bold">{archive.quarter}</span>
+                      <span className="text-slate-700">{archive.selectedEquipments?.join(', ')}</span>
                       <span>·</span>
-                      <span>{archive.totalCINames} CI</span>
+                      <span className="font-semibold text-slate-700">{archive.totalCINames} CI</span>
                       <span>·</span>
                       <span>
                         {archive.createdAt?.toDate
                           ? archive.createdAt.toDate().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
                           : ''}
                       </span>
+                      {archive.createdByName && (
+                        <>
+                          <span>·</span>
+                          <span className="text-slate-400">oleh {archive.createdByName}</span>
+                        </>
+                      )}
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleDeleteArchive(archive.id)}
-                    className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0 cursor-pointer"
-                    title="Hapus arsip"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {archive.config && (
+                      <button
+                        onClick={() => handleDownloadFromArchive(archive)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-violet-700 bg-violet-100/80 hover:bg-violet-200/80 rounded-lg transition-colors cursor-pointer"
+                        title="Download DOCX ulang"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Download</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleDeleteArchive(archive.id)}
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                      title="Hapus arsip"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
