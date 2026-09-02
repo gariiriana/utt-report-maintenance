@@ -1085,12 +1085,15 @@ VISION CAPABILITY (SUPER-GENIUS):
 - Read meter displays, screen alarm messages, fault indicators, and status indicators.
 - Directly cross-reference findings with M/E safety standards (e.g., standard grounding values < 1 Ohm, normal UPS parameters) and immediately state whether it is NORMAL or abnormal, then give direct action steps.`
 
-	// Scan messages to determine if any contain images
+	// Scan messages to determine if any contain images or custom system prompt
 	useVisionModel := false
+	hasCustomSystem := false
 	for _, msg := range messages {
 		if msg.ImageBase64 != "" {
 			useVisionModel = true
-			break
+		}
+		if msg.Role == "system" {
+			hasCustomSystem = true
 		}
 	}
 
@@ -1102,14 +1105,17 @@ VISION CAPABILITY (SUPER-GENIUS):
 	slog.Info("Chat request",
 		slog.Int("message_count", len(messages)),
 		slog.Bool("has_images", useVisionModel),
+		slog.Bool("has_custom_system", hasCustomSystem),
 	)
 
-	// Reformat messages to meet NVIDIA API request requirements.
+	// Reformat messages to meet API request requirements.
 	formattedMessages := make([]map[string]interface{}, 0, len(messages)+1)
-	formattedMessages = append(formattedMessages, map[string]interface{}{
-		"role":    "system",
-		"content": systemInstruction,
-	})
+	if !hasCustomSystem {
+		formattedMessages = append(formattedMessages, map[string]interface{}{
+			"role":    "system",
+			"content": systemInstruction,
+		})
+	}
 
 	for _, msg := range messages {
 		if msg.ImageBase64 != "" {
@@ -1119,14 +1125,6 @@ VISION CAPABILITY (SUPER-GENIUS):
 			}
 			imageURL := fmt.Sprintf("data:%s;base64,%s", mimeType, msg.ImageBase64)
 
-			slog.Info("Chat multimodal message",
-				slog.String("role", msg.Role),
-				slog.Int("image_base64_len", len(msg.ImageBase64)),
-				slog.String("mime_type", mimeType),
-				slog.String("text_content", msg.Content),
-			)
-
-			// Multimodal payload format
 			contentArray := []map[string]interface{}{
 				{
 					"type": "text",
@@ -1157,13 +1155,19 @@ VISION CAPABILITY (SUPER-GENIUS):
 		targetModel = s.visionModel
 	}
 
-	slog.Info("Chat calling NVIDIA",
+	temperature := 0.7
+	if hasCustomSystem {
+		temperature = 0.55 // Natural conversational generation for custom prompts / voice agent
+	}
+
+	slog.Info("Chat calling AI provider",
 		slog.String("target_model", targetModel),
 		slog.Int("formatted_messages", len(formattedMessages)),
+		slog.Float64("temperature", temperature),
 	)
 
 	apiKey := s.getNextAPIKey()
-	reply, err := s.callNVIDIA(ctx, apiKey, targetModel, formattedMessages, 0.7, 1024, 60*time.Second, nil)
+	reply, err := s.callNVIDIA(ctx, apiKey, targetModel, formattedMessages, temperature, 1024, 60*time.Second, nil)
 	if err != nil {
 		return "", err
 	}

@@ -38,6 +38,7 @@ import { BOQItem } from '@/data/boqAssetData';
 export interface BeritaAcaraEquipmentData {
   categoryName: string;
   executionDate: string;      // e.g. "02 - 06 Mar" or "16 - 27 Maret"
+  quarter?: string;           // e.g. "Q1", "Q2", "Q3", "Q4"
   items: BOQItem[];           // Selected CI items from BOQ
 }
 
@@ -478,13 +479,14 @@ export async function generateBeritaAcaraDOCX(config: BeritaAcaraConfig): Promis
       const tableNumber = eqIdx + 1;
 
       // Table title
+      const eqQuarter = eq.quarter || quarter;
       equipmentSections.push(
         new Paragraph({
           spacing: { before: 180, after: 30 },
           alignment: AlignmentType.CENTER,
           children: [
             new TextRun({
-              text: `Table ${tableNumber}. Maintenance ${eq.categoryName} – ${quarter} ${config.year}`,
+              text: `Table ${tableNumber}. Maintenance ${eq.categoryName} – ${eqQuarter} ${config.year}`,
               size: 22,
               font: 'Times New Roman',
             }),

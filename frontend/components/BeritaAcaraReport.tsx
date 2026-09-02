@@ -69,8 +69,17 @@ export function BeritaAcaraReport() {
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<Set<string>>(new Set());
   const [selectedCINames, setSelectedCINames] = useState<Map<string, Set<string>>>(new Map());
   const [executionDates, setExecutionDates] = useState<Map<string, string>>(new Map());
+  const [equipmentQuarters, setEquipmentQuarters] = useState<Map<string, string>>(new Map());
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
+
+  // ─── Helper for default quarter based on month ───────────────────
+  const getDefaultQuarter = useCallback((month: number): string => {
+    if (month <= 2) return 'Q1';
+    if (month <= 5) return 'Q2';
+    if (month <= 8) return 'Q3';
+    return 'Q4';
+  }, []);
 
   // ─── Archive State ───────────────────────────────────────────────
   const [archives, setArchives] = useState<any[]>([]);
@@ -124,13 +133,18 @@ export function BeritaAcaraReport() {
       const next = new Set(prev);
       if (next.has(catId)) {
         next.delete(catId);
-        // Also remove CI Names and execution dates for this category
+        // Also remove CI Names, execution dates, and quarters for this category
         setSelectedCINames(old => {
           const m = new Map(old);
           m.delete(catId);
           return m;
         });
         setExecutionDates(old => {
+          const m = new Map(old);
+          m.delete(catId);
+          return m;
+        });
+        setEquipmentQuarters(old => {
           const m = new Map(old);
           m.delete(catId);
           return m;
@@ -196,6 +210,14 @@ export function BeritaAcaraReport() {
     });
   }, []);
 
+  const setEquipmentQuarter = useCallback((catId: string, quarter: string) => {
+    setEquipmentQuarters(prev => {
+      const m = new Map(prev);
+      m.set(catId, quarter);
+      return m;
+    });
+  }, []);
+
   // ─── Export Handler ──────────────────────────────────────────────
 
   const handleExport = useCallback(async () => {
@@ -225,6 +247,7 @@ export function BeritaAcaraReport() {
       equipments.push({
         categoryName: cat.name,
         executionDate: executionDates.get(catId) || `01 - ${new Date(selectedYear, selectedMonth + 1, 0).getDate()} ${INDO_MONTHS[selectedMonth]}`,
+        quarter: equipmentQuarters.get(cat.id) || getDefaultQuarter(selectedMonth),
         items,
       });
     }
@@ -268,9 +291,9 @@ export function BeritaAcaraReport() {
         title,
         month: selectedMonth,
         year: selectedYear,
-        quarter: selectedMonth <= 2 ? 'Q1' : selectedMonth <= 5 ? 'Q2' : selectedMonth <= 8 ? 'Q3' : 'Q4',
+        quarter: getDefaultQuarter(selectedMonth),
         nomorKontrak,
-        selectedEquipments: equipments.map(e => e.categoryName),
+        selectedEquipments: equipments.map(e => `${e.categoryName} (${e.quarter || getDefaultQuarter(selectedMonth)})`),
         totalCINames: totalCI,
         createdAt: Timestamp.now(),
         createdBy: user?.email || '',
@@ -283,7 +306,7 @@ export function BeritaAcaraReport() {
     } finally {
       setIsExporting(false);
     }
-  }, [selectedCategoryIds, selectedCINames, executionDates, selectedMonth, selectedYear, nomorKontrak, periodeStart, periodeEnd, tempat, tanggalBA, signerLeftName, signerLeftTitle, signerRightName, signerRightTitle, user?.email]);
+  }, [selectedCategoryIds, selectedCINames, executionDates, equipmentQuarters, getDefaultQuarter, selectedMonth, selectedYear, nomorKontrak, periodeStart, periodeEnd, tempat, tanggalBA, signerLeftName, signerLeftTitle, signerRightName, signerRightTitle, user?.email]);
 
   // ─── Delete Archive Handler ──────────────────────────────────────
   const handleDeleteArchive = useCallback(async (archiveId: string) => {
@@ -608,29 +631,58 @@ export function BeritaAcaraReport() {
                         className="overflow-hidden"
                       >
                         <div className="px-3 pb-3 pt-1 border-t border-slate-200/80">
-                          {/* Execution Date + Select All / Deselect All */}
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 mb-2">
-                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                          {/* Execution Date + Quarter Selector + Select All / Deselect All */}
+                          <div className="flex flex-wrap items-center gap-2 mb-2.5 p-2 bg-slate-50/90 rounded-xl border border-slate-200">
+                            {/* Execution Date Input */}
+                            <div className="flex items-center gap-1.5 flex-1 min-w-[200px]">
                               <Clock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                              <span className="text-[11px] font-semibold text-slate-600 whitespace-nowrap">Execution Date:</span>
                               <input
                                 type="text"
                                 value={executionDates.get(cat.id) || ''}
                                 onChange={e => setExecutionDate(cat.id, e.target.value)}
                                 placeholder={`cth: 02 - 06 ${INDO_MONTHS[selectedMonth].substring(0, 3)}`}
-                                className="flex-1 px-2 py-1 text-xs border border-slate-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 min-w-0"
+                                className="flex-1 px-2.5 py-1 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 bg-white"
                               />
                             </div>
+
+                            {/* Quarter Selector */}
+                            <div className="flex items-center gap-1 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-xs flex-shrink-0">
+                              <span className="text-[11px] font-bold text-slate-600 mr-0.5">Quarter:</span>
+                              {(['Q1', 'Q2', 'Q3', 'Q4'] as const).map(q => {
+                                const activeQ = equipmentQuarters.get(cat.id) || getDefaultQuarter(selectedMonth);
+                                const isSelectedQ = activeQ === q;
+                                return (
+                                  <button
+                                    key={q}
+                                    type="button"
+                                    onClick={() => setEquipmentQuarter(cat.id, q)}
+                                    className={`px-2 py-0.5 text-xs font-bold rounded transition-all cursor-pointer ${
+                                      isSelectedQ
+                                        ? 'bg-cyan-600 text-white shadow-xs'
+                                        : 'text-slate-600 hover:bg-slate-100'
+                                    }`}
+                                  >
+                                    {q}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* Select All / Deselect All */}
                             <div className="flex items-center gap-1 flex-shrink-0">
                               <button
+                                type="button"
                                 onClick={() => selectAllCINames(cat.id)}
-                                className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-cyan-700 bg-cyan-100 hover:bg-cyan-200 rounded-lg transition-colors cursor-pointer"
+                                className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-cyan-700 bg-cyan-100 hover:bg-cyan-200 rounded-lg transition-colors cursor-pointer"
                               >
                                 <CheckCheck className="w-3 h-3" />
                                 Pilih Semua
                               </button>
                               <button
+                                type="button"
                                 onClick={() => deselectAllCINames(cat.id)}
-                                className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
+                                className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors cursor-pointer"
                               >
                                 <XCircle className="w-3 h-3" />
                                 Batal Semua
