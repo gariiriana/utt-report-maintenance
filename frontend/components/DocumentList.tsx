@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2 } from 'lucide-react';
 import { collection, query, getDocs, deleteDoc, doc, where, updateDoc, deleteField } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
@@ -43,6 +43,7 @@ import {
   generateDoorReportPDF,
   generateLdbrdbReportPDF,
 } from '@/service_reports';
+import { generateUniversalServiceReportPDF } from '@/service_reports/universalServiceReportPDF';
 import { getDoc } from 'firebase/firestore';
 import { safeStorage } from '@/utils/safeStorage';
 
@@ -97,9 +98,16 @@ export interface ExcelDocument {
   capacitorbankCustomerInfo?: any;
   capacitorbankReportData?: any;
   capacitorbankTimeSpent?: any;
+  busductCustomerInfo?: any;
+  docklevelerCustomerInfo?: any;
+  doorCustomerInfo?: any;
+  ldbrdbCustomerInfo?: any;
+  serviceReportPayload?: any;
+  hasServiceReport?: boolean;
   deleteRequested?: boolean;
   deleteRequestedBy?: string;
   deleteReason?: string;
+  [key: string]: any;
 }
 
 export const getDocumentDate = (doc?: { maintenanceTime?: string; createdAt?: Date | any } | null): Date => {
@@ -401,6 +409,8 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               fcuCustomerInfo: data.fcuCustomerInfo,
               fcuReportData: data.fcuReportData,
               fcuTimeSpent: data.fcuTimeSpent,
+              serviceReportPayload: data.serviceReportPayload || null,
+              hasServiceReport: !!(data.serviceReportPayload && Object.keys(data.serviceReportPayload).length > 0),
               deleteRequested: data.deleteRequested || false,
               deleteRequestedBy: data.deleteRequestedBy || '',
               deleteReason: data.deleteReason || '',
@@ -751,6 +761,17 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       photoBase64: p.photoBase64 || '',
       description: p.description || '',
     }));
+
+    if (docData.serviceReportPayload) {
+      const res = await generateUniversalServiceReportPDF(
+        docData.serviceReportPayload,
+        cards,
+        saveToFile
+      );
+      const blob = res.output('blob');
+      const fileName = docData.fileName || `Service_Report_${(docData.serviceReportPayload.equipmentName || 'Report').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      return [{ fileName, blob }];
+    }
 
     if (docData.createdBy === 'ats@gmail.com' && docData.atsCustomerInfo && docData.atsReportData && docData.atsTimeSpent) {
       const res = await generateATSServiceReportPDF(
@@ -1152,7 +1173,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       return false;
     }
 
-    const hasSR = Boolean(doc.atsCustomerInfo || doc.fcuCustomerInfo);
+    const hasSR = Boolean(doc.serviceReportPayload && Object.keys(doc.serviceReportPayload).length > 0);
     if (srStatusFilter === 'photos_only' && hasSR) {
       return false;
     }
@@ -2041,14 +2062,15 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                 <AlertTriangle className="w-3 h-3 shrink-0" /> Abnormal
               </span>
             )}
-            {(document.createdBy === 'ats@gmail.com' || document.createdBy === 'fcu@gmail.com' || document.atsCustomerInfo || document.fcuCustomerInfo) && (
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${(document.atsCustomerInfo || document.fcuCustomerInfo)
-                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                  : 'bg-amber-50 text-amber-700 border-amber-200'
-                }`}>
-                {(document.atsCustomerInfo || document.fcuCustomerInfo) ? 'FOTO + SR' : 'FOTO SAJA'}
+            {document.serviceReportPayload && Object.keys(document.serviceReportPayload).length > 0 ? (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 shadow-2xs">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" /> FOTO + SERVICE REPORT
               </span>
-            )}
+            ) : document.documentType === 'pdf' ? (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                DOKUMENTASI FOTO
+              </span>
+            ) : null}
             {document.hseType && (
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase">
                 {document.hseType}
@@ -2333,7 +2355,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                 <span>Foto Saja</span>
                 <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${srStatusFilter === 'photos_only' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
                   }`}>
-                  {documents.filter(d => !(d.atsCustomerInfo || d.fcuCustomerInfo || d.pjuCustomerInfo || d.pduCustomerInfo)).length}
+                  {documents.filter(d => !(d.serviceReportPayload && Object.keys(d.serviceReportPayload).length > 0)).length}
                 </span>
               </button>
 
@@ -2348,7 +2370,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                 <span>Foto + SR Lengkap</span>
                 <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${srStatusFilter === 'with_sr' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
                   }`}>
-                  {documents.filter(d => Boolean(d.atsCustomerInfo || d.fcuCustomerInfo || d.pjuCustomerInfo || d.pduCustomerInfo)).length}
+                  {documents.filter(d => Boolean(d.serviceReportPayload && Object.keys(d.serviceReportPayload).length > 0)).length}
                 </span>
               </button>
             </div>

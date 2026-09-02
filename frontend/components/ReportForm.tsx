@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, ChevronLeft, X, Eye, Download, Loader2, Languages, AlertTriangle, ChevronDown, Package, Sparkles, Save, FileEdit } from 'lucide-react';
+import { Plus, Trash2, Upload, Camera, FileType, Scissors, RefreshCw, ChevronLeft, X, Eye, Download, Loader2, Languages, AlertTriangle, ChevronDown, Package, Save, FileEdit } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { ExcelDocument } from '@/components/DocumentList';
 import { ImageEditor } from '@/components/ImageEditor';
@@ -33,9 +33,11 @@ import { generateReportPDF, loadLogoBase64 } from '@/utils/ReportPdfExport';
 import { compressImage, compressBase64Image } from '@/utils/imageCompression';
 import { PreviewReport } from '@/components/PreviewReport';
 import { CameraModal } from '@/components/CameraModal';
-import { PaperReportDigitizerModal } from '@/components/PaperReportDigitizerModal';
 import { draftStorage } from '@/utils/draftStorage';
 import { sendFileNotification } from '@/utils/notificationService';
+import { ServiceReportContainer } from '@/components/ServiceReportContainer';
+import { ServiceReportPayload } from '@/types/serviceReportTypes';
+import { generateUniversalServiceReportPDF } from '@/service_reports/universalServiceReportPDF';
 
 
 import imgStatusWld from '@/assets/Wld/status.jpeg';
@@ -71,6 +73,7 @@ export interface ReportUnit {
   archiveType?: 'pdf' | 'excel' | 'hse';
   cards: PhotoCard[];
   isExported?: boolean;
+  serviceReportData?: ServiceReportPayload | null;
 }
 
 interface ReportFormProps {
@@ -84,7 +87,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [companyType, setCompanyType] = useState<'neutra' | 'bri' | 'k2'>(authCompanyType || (userRole === 'Engineer_K2' || userRole === 'engineer_k2' ? 'k2' : 'neutra'));
   const [maintenanceName, setMaintenanceName] = useState('');
   const [maintenanceTime, setMaintenanceTime] = useState('');
-  const [paperDigitizerOpen, setPaperDigitizerOpen] = useState(false);
+  const [serviceReportData, setServiceReportData] = useState<ServiceReportPayload | null>(null);
 
   const isFssAccount = user?.email?.toLowerCase() === 'fss@gmail.com';
 
@@ -547,6 +550,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         }))
         : createDefaultCards(11);
 
+      const editSR = editingData.serviceReportPayload || null;
+      setServiceReportData(editSR);
+
       const editUnit: ReportUnit = {
         id: `edit-${Date.now()}`,
         tabName: (finalSpec || 'Edit').toUpperCase(),
@@ -554,7 +560,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         vrvUnitDetail: finalVrv,
         archiveId: editingData.id,
         archiveType: editingData.documentType,
-        cards: photos
+        cards: photos,
+        serviceReportData: editSR
       };
 
       setUnits([editUnit]);
@@ -826,6 +833,17 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   };
 
   const generatePDFDocument = async (unit: ReportUnit) => {
+    const activeSR = unit.serviceReportData || serviceReportData;
+    if (activeSR) {
+      const srDoc = await generateUniversalServiceReportPDF(
+        activeSR,
+        unit.cards.map(c => ({ photoBase64: c.photoBase64, description: c.description || '' })),
+        false
+      );
+      const srFileName = `Service_Report_${(activeSR.equipmentName || maintenanceName).replace(/[^a-zA-Z0-9]/g, '_')}_${activeSR.customerInfo?.quarter || 'Q3'}.pdf`;
+      return { doc: srDoc, fileName: srFileName, filled: unit.cards.filter(c => c.photoBase64 || c.description) };
+    }
+
     const logoLeftB64 = await loadLogoBase64(companyType === 'bri' ? logoBRILeft : logoDwimitra);
     const logoRightB64 = await loadLogoBase64(companyType === 'bri' ? logoBRI : companyType === 'k2' ? logoK2 : logoNeutraDC);
 
@@ -923,6 +941,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     try {
       const photosWithImage = cardsToSave.filter(c => c.photoBase64).length;
       const fileName = pdfData?.fileName || editingData?.fileName || `${maintenanceName}${finalSpecificDetail ? ` (${finalSpecificDetail})` : ''}`.trim().replace(/\s+/g, ' ') + '.pdf';
+      const activeSR = unit.serviceReportData || serviceReportData;
 
       const reportData: any = {
         fileName,
@@ -934,6 +953,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         totalPhotos: cardsToSave.length,
         photosWithImage,
         hasAbnormal: abnormalStatus === 'abnormal',
+        serviceReportPayload: activeSR || null,
+        hasServiceReport: !!activeSR
       };
 
       if (!editingData) {
@@ -1233,6 +1254,114 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     } catch (err) {
       console.error("Export error:", err);
       toast.error("Terjadi kesalahan saat export PDF", { id: toastId });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleExportServiceReportPDF = async (srPayload?: ServiceReportPayload): Promise<void> => {
+    const targetUnit = activeUnit;
+    if (!targetUnit) {
+      toast.error('Unit tidak terpilih');
+      return;
+    }
+
+    const effectiveSRPayload = srPayload || targetUnit.serviceReportData || serviceReportData;
+    if (!effectiveSRPayload) {
+      await handleExportPDF(targetUnit);
+      return;
+    }
+
+    setServiceReportData(effectiveSRPayload);
+    if (activeUnitId) {
+      setUnits(prev => prev.map(u => u.id === activeUnitId ? { ...u, serviceReportData: effectiveSRPayload } : u));
+    }
+
+    setIsExporting(true);
+    const toastId = toast.loading(isDME ? 'Memproses export Service Report PDF...' : 'Memproses export Service Report PDF & Menyimpan data...');
+    try {
+      // Save finding to Firestore collection 'findings' if abnormal
+      if (abnormalStatus === 'abnormal' && user) {
+        try {
+          await addDoc(collection(db, 'findings'), {
+            partName: findingData.partName,
+            partNumber: findingData.partNumber,
+            brandName: findingData.brandName,
+            quantity: findingData.quantity,
+            findingDate: findingData.findingDate,
+            photos: findingPhotos,
+            remark: findingData.remark,
+            maintenanceName: maintenanceName,
+            specificDetail: targetUnit.specificDetail,
+            createdBy: user.uid,
+            createdByEmail: (user.email || '').toLowerCase(),
+            createdAt: serverTimestamp(),
+          });
+        } catch (fErr) {
+          console.error('Error saving finding:', fErr);
+        }
+      }
+
+      const filledCards = targetUnit.cards.filter(c => c.photoBase64 || c.description);
+      const srDoc = await generateUniversalServiceReportPDF(
+        effectiveSRPayload,
+        targetUnit.cards.map(c => ({ photoBase64: c.photoBase64, description: c.description || '' })),
+        false
+      );
+      const srFileName = `Service_Report_${(effectiveSRPayload.equipmentName || maintenanceName).replace(/[^a-zA-Z0-9]/g, '_')}_${effectiveSRPayload.customerInfo?.quarter || 'Q3'}.pdf`;
+
+      const pdfResult = {
+        doc: srDoc,
+        fileName: srFileName,
+        filled: filledCards
+      };
+
+      if (isDME) {
+        srDoc.save(srFileName);
+        toast.success("Service Report berhasil diekspor!", { id: toastId });
+      } else {
+        const updatedUnit = { ...targetUnit, serviceReportData: effectiveSRPayload };
+        const saveResult = await saveReportToFirestore(updatedUnit, pdfResult);
+        if (saveResult) {
+          srDoc.save(srFileName);
+          if (onClearEdit) {
+            onClearEdit();
+          }
+
+          setUnits(prev => {
+            const newUnits = prev.map(u => u.id === targetUnit.id ? { ...u, isExported: true } : u);
+
+            const draft = {
+              userEmail: user?.email,
+              maintenanceName,
+              maintenanceTime,
+              companyType,
+              units: newUnits
+                .filter(u => !u.isExported)
+                .map(u => ({
+                  ...u,
+                  cards: u.cards.map(c => ({
+                    id: c.id,
+                    description: c.description,
+                    photoBase64: c.photoBase64,
+                    parameter: c.parameter || ''
+                  }))
+                })),
+              timestamp: new Date().getTime()
+            };
+            draftStorage.set('report_form_draft_v2', draft).catch(console.error);
+
+            return newUnits;
+          });
+
+          toast.success("Service Report & Dokumentasi berhasil diekspor dan disimpan ke Arsip!", { id: toastId });
+        } else {
+          toast.error("Gagal menyimpan data Service Report ke database. PDF tidak diunduh.", { id: toastId });
+        }
+      }
+    } catch (err) {
+      console.error("Export Service Report error:", err);
+      toast.error("Terjadi kesalahan saat export Service Report PDF", { id: toastId });
     } finally {
       setIsExporting(false);
     }
@@ -1829,6 +1958,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               </AnimatePresence>
             </div>
 
+            {/* ─── ACTION BAR DOKUMENTASI FOTO PEKERJAAN ─── */}
             <div className="flex flex-col sm:flex-row items-stretch justify-center gap-2 sm:gap-3 mt-4 bg-white/90 backdrop-blur-xl p-3 sm:p-5 rounded-2xl sm:rounded-[2rem] border border-sky-100/90 shadow-xl sm:shadow-2xl shadow-sky-900/10 w-full min-w-0 overflow-hidden">
               {(isDME || editingData) && onClearEdit && (
                 <button
@@ -1861,6 +1991,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               )}
 
               <button
+                type="button"
                 onClick={() => setShowPreview(true)}
                 disabled={isSaving || isExporting}
                 className={`w-full sm:flex-1 sm:min-w-[140px] py-2.5 sm:py-3.5 px-3 bg-emerald-50 border border-emerald-200 text-emerald-900 hover:bg-emerald-100 rounded-xl sm:rounded-2xl font-bold flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-xs sm:shadow-sm transition active:scale-95 text-xs sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -1871,15 +2002,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
               <button
                 type="button"
-                onClick={() => setPaperDigitizerOpen(true)}
-                disabled={isSaving || isExporting}
-                className={`w-full sm:flex-1 sm:min-w-[140px] py-2.5 sm:py-3.5 px-3 bg-gradient-to-r from-sky-900 via-blue-800 to-indigo-950 text-white hover:from-sky-950 hover:to-indigo-900 border border-sky-400/30 rounded-xl sm:rounded-2xl font-bold flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-md shadow-sky-900/20 transition active:scale-95 text-xs sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-sky-300 group-active:scale-90 transition-transform animate-pulse shrink-0" />
-                <span className="text-center leading-tight uppercase font-extrabold">UPLOAD & SCAN PAPER REPORT</span>
-              </button>
-
-              <button
                 onClick={() => handleExportPDF()}
                 disabled={isSaving || isExporting}
                 className={`w-full sm:flex-1 sm:min-w-[140px] py-2.5 sm:py-3.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl sm:rounded-2xl font-bold flex flex-row sm:flex-col items-center justify-center gap-2 sm:gap-1.5 shadow-md shadow-blue-600/20 transition active:scale-95 text-xs sm:text-xs group cursor-pointer ${(isSaving || isExporting) ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -1894,6 +2016,22 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                 </span>
               </button>
             </div>
+
+            {/* Service Report Form (Opsional - Berdasarkan Akun Engineer) */}
+            <ServiceReportContainer
+              key={activeUnitId || 'single-unit'}
+              userEmail={user?.email}
+              companyType={companyType}
+              initialData={activeUnit?.serviceReportData || serviceReportData}
+              photoCards={cards.map(c => ({ photoBase64: c.photoBase64, description: c.description || '' }))}
+              onChange={(payload) => {
+                setServiceReportData(payload);
+                if (activeUnitId) {
+                  setUnits(prev => prev.map(u => u.id === activeUnitId ? { ...u, serviceReportData: payload } : u));
+                }
+              }}
+              onExport={handleExportServiceReportPDF}
+            />
           </motion.div>
         ) : (
           <PreviewReport
@@ -2037,11 +2175,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       </AnimatePresence>
 
 
-      <PaperReportDigitizerModal
-        isOpen={paperDigitizerOpen}
-        onClose={() => setPaperDigitizerOpen(false)}
-        accountEmail={user?.email || undefined}
-      />
+
     </div>
   );
 }

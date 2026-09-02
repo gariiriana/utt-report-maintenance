@@ -74,7 +74,35 @@ service cloud.firestore {
                ||
                (
                  request.auth.token != null
-                 && (getEmail().matches('.*standby.*') || getEmail().matches('.*engineer.*') || getEmail().matches('.*dwimitra.*') || getEmail().matches('.*fss.*') || getEmail().matches('.*utt.*') || getEmail().matches('.*ats.*') || getEmail().matches('.*pju.*') || getEmail().matches('.*fcu.*') || getEmail().matches('.*pdu.*') || getEmail().matches('.*vrv.*') || getEmail().matches('.*ac.*') || getEmail().matches('.*generator.*') || getEmail().matches('.*trafo.*') || getEmail().matches('.*gari.*') || getEmail().matches('.*agil.*'))
+                 && (
+                   getEmail().matches('.*standby.*') || 
+                   getEmail().matches('.*engineer.*') || 
+                   getEmail().matches('.*dwimitra.*') || 
+                   getEmail().matches('.*fss.*') || 
+                   getEmail().matches('.*utt.*') || 
+                   getEmail().matches('.*ats.*') || 
+                   getEmail().matches('.*pju.*') || 
+                   getEmail().matches('.*fcu.*') || 
+                   getEmail().matches('.*pdu.*') || 
+                   getEmail().matches('.*vrv.*') || 
+                   getEmail().matches('.*ac.*') || 
+                   getEmail().matches('.*generator.*') || 
+                   getEmail().matches('.*trafo.*') || 
+                   getEmail().matches('.*ahu.*') ||
+                   getEmail().matches('.*ahhu.*') ||
+                   getEmail().matches('.*dock.*') ||
+                   getEmail().matches('.*door.*') ||
+                   getEmail().matches('.*ldb.*') ||
+                   getEmail().matches('.*rdb.*') ||
+                   getEmail().matches('.*busduct.*') ||
+                   getEmail().matches('.*ct.*') ||
+                   getEmail().matches('.*capacitor.*') ||
+                   getEmail().matches('.*wld.*') ||
+                   getEmail().matches('.*fld.*') ||
+                   getEmail().matches('.*lv.*') ||
+                   getEmail().matches('.*gari.*') || 
+                   getEmail().matches('.*agil.*')
+                 )
                )
              );
     }
@@ -185,7 +213,7 @@ service cloud.firestore {
                       'totalPhotos',
                       'photosWithImage'
                     ])
-                    && hasAcceptableFieldCount(request.resource.data, 25)
+                    && hasAcceptableFieldCount(request.resource.data, 40)
                     && isValidString(request.resource.data.fileName, 500)
                     && isValidString(request.resource.data.maintenanceName, 500)
                     && isValidString(request.resource.data.createdBy, 200);
@@ -197,7 +225,7 @@ service cloud.firestore {
       
       allow update: if request.auth != null 
                     && (resource.data.createdBy == getEmail() || isPrivilegedRole() || isEngineer())
-                    && hasAcceptableFieldCount(request.resource.data, 25);
+                    && hasAcceptableFieldCount(request.resource.data, 40);
 
       match /photos/{photoId} {
         allow read: if request.auth != null;
@@ -219,7 +247,7 @@ service cloud.firestore {
                       'totalPhotos',
                       'photosWithImage'
                     ])
-                    && hasAcceptableFieldCount(request.resource.data, 25)
+                    && hasAcceptableFieldCount(request.resource.data, 40)
                     && isValidString(request.resource.data.fileName, 500)
                     && isValidString(request.resource.data.maintenanceName, 500)
                     && isValidString(request.resource.data.createdBy, 200);
@@ -231,7 +259,7 @@ service cloud.firestore {
       
       allow update: if request.auth != null 
                     && (resource.data.createdBy == getEmail() || isPrivilegedRole() || isEngineer())
-                    && hasAcceptableFieldCount(request.resource.data, 25);
+                    && hasAcceptableFieldCount(request.resource.data, 40);
 
       match /photos/{photoId} {
         allow read: if request.auth != null;

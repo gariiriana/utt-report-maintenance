@@ -12,7 +12,7 @@
     "backend": "cd backend && .\\server.exe",
     "backend:build": "cd backend && go build -o server.exe ./cmd/api",
     "wagateway": "node backend/wagateway.js",
-    "dev": "concurrently --kill-others --names \"FRONTEND,BACKEND,WAGATEWAY\" --prefix-colors \"cyan,green,yellow\" \"vite\" \"npm run backend\" \"npm run wagateway\""
+    "dev": "concurrently --kill-others --names \"FRONTEND,BACKEND\" --prefix-colors \"cyan,green\" \"vite\" \"npm run backend\""
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

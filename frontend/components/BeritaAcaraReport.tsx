@@ -33,7 +33,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 import { BOQ_CATEGORIES_DATA } from '@/data/boqAssetData';
 import { generateBeritaAcaraDOCX, BeritaAcaraConfig, BeritaAcaraEquipmentData } from '@/utils/generateBeritaAcaraDOCX';
-import { collection, addDoc, query, where, orderBy, onSnapshot, deleteDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -49,8 +49,7 @@ const MAINTENANCE_CATEGORIES = BOQ_CATEGORIES_DATA.filter(cat => !cat.isSparepar
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function BeritaAcaraReport() {
-  const { user, userRole } = useAuth();
-  const isAdmin = userRole === 'admin';
+  const { user } = useAuth();
 
   // ─── Form State ──────────────────────────────────────────────────
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());

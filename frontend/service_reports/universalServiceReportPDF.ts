@@ -1,14 +1,13 @@
 // ============================================================================
-// FILE: frontend/service_reports/ats/generateATSReportPDF.ts
-// Deskripsi: Generator Cetak Dokumen PDF Resmi Laporan Service Pemeliharaan ATS
-//            (Automatic Transfer Switch) 1:1 Presisi Format Spreadsheet.
-//            - Page 1: Full Sheet Resmi ATS Presisi 1:1 Spreadsheet
-//            - Page 2+: Lampiran Multi-Page Dokumentasi Foto Ber-Header Formal
+// FILE: frontend/service_reports/universalServiceReportPDF.ts
+// Deskripsi: Master Generator Cetak PDF 1:1 Presisi Spreadsheet Service Report
+//            (Halaman 1: Full Sheet Resmi ATS / Equipment Presisi 1:1 Spreadsheet)
+//            + Halaman 2+: Lampiran Multi-Page Dokumentasi Foto Ber-Header Formal
 // ============================================================================
 
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { ATSCustomerInfo, ATSReportData, ATSTimeSpent } from '@/types/atsReportTypes';
+import { ServiceReportPayload } from '@/types/serviceReportTypes';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import { compressBase64Image } from '@/utils/imageCompression';
@@ -43,43 +42,25 @@ async function loadImageBase64(src: string): Promise<string> {
   });
 }
 
-/**
- * Generate a professional ATS Service Report PDF matching the exact 1:1 spreadsheet layout.
- */
-export async function generateATSServiceReportPDF(
-  customerInfo: ATSCustomerInfo,
-  reportData: ATSReportData,
-  timeSpent: ATSTimeSpent,
-  originalReportCards?: Array<{ photoBase64?: string; description: string }>,
+export async function generateUniversalServiceReportPDF(
+  payload: ServiceReportPayload,
+  photoCards: Array<{ photoBase64?: string; description: string }> = [],
   saveToFile: boolean = true
-) {
-  let optimizedCards = originalReportCards || [];
-  if (originalReportCards && originalReportCards.length > 0) {
-    toast.loading('Mengompres foto dokumentasi...', { id: 'pdf-ats-compress' });
-    optimizedCards = await Promise.all(
-      originalReportCards.map(async (c) => {
-        if (!c.photoBase64) return c;
-        try {
-          const compressed = await compressBase64Image(c.photoBase64, { maxWidth: 800, quality: 0.5 });
-          return { ...c, photoBase64: compressed };
-        } catch (err) {
-          console.error('Failed to compress ATS documentation image for PDF', err);
-          return c;
-        }
-      })
-    );
-    toast.dismiss('pdf-ats-compress');
-  }
+): Promise<jsPDF> {
+  const toastId = 'gen-sr-pdf';
+  toast.loading('Membuat Dokumen Service Report PDF...', { id: toastId });
 
+  // 1. Inisialisasi dokumen jsPDF (Format A4 Portrait)
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const margin = 7;
   const contentW = pageW - 2 * margin;
-  let y = margin - 1;
 
-  doc.setFillColor(...BLUE_ACCENT);
-  doc.rect(0, 0, pageW, 2.0, 'F');
+  let logoLeft: string | null = null;
+  let logoRight: string | null = null;
+  try { logoLeft = await loadImageBase64(logoDwimitra); } catch { /* ignore */ }
+  try { logoRight = await loadImageBase64(logoNeutraDC); } catch { /* ignore */ }
 
   const addTopBlueAccent = () => {
     doc.setFillColor(...BLUE_ACCENT);
@@ -131,10 +112,8 @@ export async function generateATSServiceReportPDF(
     doc.text(part3, curX, textY);
   };
 
-  let logoLeft: string | null = null;
-  let logoRight: string | null = null;
-  try { logoLeft = await loadImageBase64(logoDwimitra); } catch { /* fallback */ }
-  try { logoRight = await loadImageBase64(logoNeutraDC); } catch { /* fallback */ }
+  addTopBlueAccent();
+  let y = margin - 1;
 
   // ─── 1. KOP SURAT / HEADER ────────────────────────────────────────────────
   const headerH = 13;
@@ -146,7 +125,10 @@ export async function generateATSServiceReportPDF(
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10.5);
   doc.setTextColor(...DARK_TEXT);
-  doc.text('SERVICE REPORT AUTOMATIC TRANSFER SWITCH', centerX, y + 5.5, { align: 'center' });
+  const titleText = payload.equipmentKey === 'ats' || payload.equipmentName.toLowerCase().includes('ats')
+    ? 'SERVICE REPORT AUTOMATIC TRANSFER SWITCH'
+    : `SERVICE REPORT ${payload.equipmentName.toUpperCase()}`;
+  doc.text(titleText, centerX, y + 5.5, { align: 'center' });
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
@@ -158,6 +140,12 @@ export async function generateATSServiceReportPDF(
 
   y += headerH + 1.5;
 
+  const c: any = payload.customerInfo || {};
+  const t = payload.timeSpent || ({} as any);
+  const op = payload.operationStatus || ({} as any);
+  const checklist = payload.visualChecklist || [];
+  const m = payload.measurements || ({} as any);
+
   // ─── 2. TABEL CUSTOMER INFORMATION (4 Baris x 8 Kolom 1:1 Spreadsheet) ───
   autoTable(doc, {
     startY: y,
@@ -167,42 +155,42 @@ export async function generateATSServiceReportPDF(
     body: [
       [
         { content: 'Company name', styles: { fontStyle: 'bold', cellWidth: 23 } },
-        { content: customerInfo.companyName || 'Neutra DC Cikarang', styles: { cellWidth: 35 } },
+        { content: c.companyName || 'Neutra DC Cikarang', styles: { cellWidth: 35 } },
         { content: 'Type', styles: { fontStyle: 'bold', cellWidth: 17 } },
-        { content: customerInfo.type || customerInfo.specification || '-', styles: { cellWidth: 26 } },
+        { content: c.type || c.specification || '-', styles: { cellWidth: 26 } },
         { content: 'Spesification', styles: { fontStyle: 'bold', cellWidth: 23 } },
-        { content: customerInfo.specification || '-', styles: { cellWidth: 32 } },
+        { content: c.specification || c.model || '-', styles: { cellWidth: 32 } },
         { content: 'Mop No:', styles: { fontStyle: 'bold', cellWidth: 17 } },
-        { content: customerInfo.mapNo || '-', styles: { cellWidth: 'auto' } }
+        { content: c.mopNo || c.mapNo || '-', styles: { cellWidth: 'auto' } }
       ],
       [
         { content: 'Equpment name', styles: { fontStyle: 'bold' } },
-        { content: customerInfo.equipmentName || 'ATS', styles: {} },
+        { content: c.equipmentName || payload.equipmentName, styles: {} },
         { content: 'Serial No:', styles: { fontStyle: 'bold' } },
-        { content: customerInfo.serialNo || '-', styles: {} },
+        { content: c.serialNo || '-', styles: {} },
         { content: '', colSpan: 2, styles: { fillColor: [255, 255, 255] } },
         { content: 'Quarter', styles: { fontStyle: 'bold' } },
-        { content: customerInfo.quarter || 'Q3', styles: {} }
+        { content: c.quarter || 'Q3', styles: {} }
       ],
       [
         { content: 'CI Description', styles: { fontStyle: 'bold' } },
-        { content: customerInfo.ciDescription || '-', styles: {} },
+        { content: c.ciDescription || '-', styles: {} },
         { content: 'Product Name', styles: { fontStyle: 'bold' } },
-        { content: customerInfo.productName || '-', styles: {} },
+        { content: c.productName || '-', styles: {} },
         { content: 'Location', styles: { fontStyle: 'bold' } },
-        { content: customerInfo.location || '-', styles: {} },
+        { content: c.location || '-', styles: {} },
         { content: 'Date', styles: { fontStyle: 'bold' } },
-        { content: customerInfo.date || new Date().toISOString().split('T')[0], styles: {} }
+        { content: c.date || new Date().toISOString().split('T')[0], styles: {} }
       ],
       [
         { content: 'CI Name', styles: { fontStyle: 'bold' } },
-        { content: customerInfo.ciName || '-', styles: {} },
+        { content: c.ciName || '-', styles: {} },
         { content: 'Product Years', styles: { fontStyle: 'bold' } },
-        { content: customerInfo.productYears || '-', styles: {} },
+        { content: c.prodYear || c.productYears || '-', styles: {} },
         { content: 'Area', styles: { fontStyle: 'bold' } },
-        { content: customerInfo.area || '-', styles: {} },
+        { content: c.area || '-', styles: {} },
         { content: 'Engginer', styles: { fontStyle: 'bold' } },
-        { content: customerInfo.engineer || '-', styles: {} }
+        { content: c.engineer || payload.accountEmail || '-', styles: {} }
       ]
     ],
     styles: { fontSize: 5.2, cellPadding: 0.5, textColor: DARK_TEXT, lineColor: BORDER_COLOR, lineWidth: 0.18 }
@@ -211,7 +199,7 @@ export async function generateATSServiceReportPDF(
   y = (doc as any).lastAutoTable.finalY + 0.5;
 
   // ─── 3. TABEL VISUAL INSPECTION & CHECK (16 Poin a - p) ───────────────────
-  const viRows = reportData.visual_inspection.map((item, idx) => {
+  const viRows = checklist.map((item, idx) => {
     const noLabel = item.no ? (item.no.endsWith('.') ? item.no : `${item.no}.`) : `${String.fromCharCode(97 + idx)}.`;
 
     return [
@@ -255,7 +243,7 @@ export async function generateATSServiceReportPDF(
     },
     didParseCell(data) {
       if (data.section === 'body') {
-        const item = reportData.visual_inspection[data.row.index];
+        const item = checklist[data.row.index];
         if (!item) return;
 
         if (data.column.index === 3 || data.column.index === 4) {
@@ -273,7 +261,7 @@ export async function generateATSServiceReportPDF(
     },
     didDrawCell(data) {
       if (data.section === 'body') {
-        const item = reportData.visual_inspection[data.row.index];
+        const item = checklist[data.row.index];
         if (!item) return;
 
         // Jika kondisinya 'Not Good' -> coret tepat di tengah huruf kata 'Good' di kolom 3
@@ -310,7 +298,6 @@ export async function generateATSServiceReportPDF(
   y = (doc as any).lastAutoTable.finalY + 0.5;
 
   // ─── 4. DIGITAL POWER METER RECORDING ────────────────────────────────────
-  const pm = reportData.power_meter_recording;
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
@@ -331,10 +318,10 @@ export async function generateATSServiceReportPDF(
     ],
     headStyles: { fillColor: SUB_HEADER_BG, textColor: DARK_TEXT, fontStyle: 'bold', fontSize: 5.0, cellPadding: 0.35 },
     body: [
-      ['R-S', pm.rs?.voltage || '-', 'R-N', pm.rn?.voltage || '-', 'KW', pm.kw || '-', 'R', pm.r_ampere || '-', { content: pm.rs?.remarks || '', rowSpan: 4, styles: { valign: 'middle', halign: 'center' } as any }],
-      ['S-T', pm.st?.voltage || '-', 'S-N', pm.sn?.voltage || '-', 'KVA', pm.kva || '-', 'S', pm.s_ampere || '-'],
-      ['T-R', pm.tr?.voltage || '-', 'T-N', pm.tn?.voltage || '-', 'KVAR', pm.kvar || '-', 'T', pm.t_ampere || '-'],
-      ['', '', 'N', pm.n?.voltage || '-', 'Cos p', pm.cos_p || '-', 'N', pm.n_ampere || '-']
+      ['R-S', m.dpm_voltage_rs || '-', 'R-N', m.dpm_voltage_rn || '-', 'KW', m.dpm_kw || '-', 'R', m.dpm_ampere_r || '-', { content: m.dpm_remarks || '', rowSpan: 4, styles: { valign: 'middle', halign: 'center' } as any }],
+      ['S-T', m.dpm_voltage_st || '-', 'S-N', m.dpm_voltage_sn || '-', 'KVA', m.dpm_kva || '-', 'S', m.dpm_ampere_s || '-'],
+      ['T-R', m.dpm_voltage_tr || '-', 'T-N', m.dpm_voltage_tn || '-', 'KVAR', m.dpm_kvar || '-', 'T', m.dpm_ampere_t || '-'],
+      ['', '', 'N', m.dpm_voltage_n || '-', 'Cos p', m.dpm_cos_p || '-', 'N', m.dpm_ampere_n || '-']
     ],
     styles: { fontSize: 4.8, cellPadding: 0.35, textColor: DARK_TEXT, lineColor: BORDER_COLOR, lineWidth: 0.18, halign: 'center', valign: 'middle' },
     columnStyles: {
@@ -358,7 +345,6 @@ export async function generateATSServiceReportPDF(
   y = (doc as any).lastAutoTable.finalY + 0.5;
 
   // ─── 5. VOLTAGE & CURRENT MEASUREMENT ───────────────────────────────────
-  const vc = reportData.voltage_current;
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
@@ -379,15 +365,15 @@ export async function generateATSServiceReportPDF(
     headStyles: { fillColor: SUB_HEADER_BG, textColor: DARK_TEXT, fontStyle: 'bold', fontSize: 5.0, cellPadding: 0.35 },
     body: [
       [
-        'R-S', vc.voltage_rs || '-',
-        'R-N', vc.voltage_rn || '-',
-        'R', vc.ampere_r || '-',
+        'R-S', m.vc_voltage_rs || '-',
+        'R-N', m.vc_voltage_rn || '-',
+        'R', m.vc_ampere_r || '-',
         { content: '+5% - 10% from 380V &\n220V load deviation 10%', rowSpan: 4, styles: { fillColor: YELLOW_STANDARD_BG, textColor: [180, 0, 0], valign: 'middle', halign: 'center', fontSize: 4.6 } as any },
-        { content: vc.remarks || '', rowSpan: 4, styles: { valign: 'middle', halign: 'center' } as any }
+        { content: m.vc_remarks || '', rowSpan: 4, styles: { valign: 'middle', halign: 'center' } as any }
       ],
-      ['S-T', vc.voltage_st || '-', 'S-N', vc.voltage_sn || '-', 'S', vc.ampere_s || '-'],
-      ['T-R', vc.voltage_tr || '-', 'T-N', vc.voltage_tn || '-', 'T', vc.ampere_t || '-'],
-      ['', '', 'N-G', vc.voltage_ng || '-', 'N', '']
+      ['S-T', m.vc_voltage_st || '-', 'S-N', m.vc_voltage_sn || '-', 'S', m.vc_ampere_s || '-'],
+      ['T-R', m.vc_voltage_tr || '-', 'T-N', m.vc_voltage_tn || '-', 'T', m.vc_ampere_t || '-'],
+      ['', '', 'N-G', m.vc_voltage_ng || '-', 'N', '']
     ],
     styles: { fontSize: 4.8, cellPadding: 0.35, textColor: DARK_TEXT, lineColor: BORDER_COLOR, lineWidth: 0.18, halign: 'center', valign: 'middle' },
     columnStyles: {
@@ -405,7 +391,6 @@ export async function generateATSServiceReportPDF(
   y = (doc as any).lastAutoTable.finalY + 0.5;
 
   // ─── 6. THERMAL MEASUREMENT ──────────────────────────────────────────────
-  const therm = reportData.thermal_measurement;
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
@@ -421,7 +406,7 @@ export async function generateATSServiceReportPDF(
     ],
     headStyles: { fillColor: SUB_HEADER_BG, textColor: DARK_TEXT, fontStyle: 'bold', fontSize: 5.0, cellPadding: 0.35 },
     body: [
-      ['Breaker', therm.result_temperature ? `${therm.result_temperature}°C` : '-', { content: '40°C', styles: { fillColor: YELLOW_STANDARD_BG, halign: 'center' } }, therm.remarks || '']
+      ['Breaker', m.thermal_breaker_temp ? `${m.thermal_breaker_temp}°C` : '-', { content: '40°C', styles: { fillColor: YELLOW_STANDARD_BG, halign: 'center' } }, m.thermal_remarks || '']
     ],
     styles: { fontSize: 4.8, cellPadding: 0.35, textColor: DARK_TEXT, lineColor: BORDER_COLOR, lineWidth: 0.18, halign: 'center', valign: 'middle' },
     columnStyles: {
@@ -440,7 +425,6 @@ export async function generateATSServiceReportPDF(
   y = (doc as any).lastAutoTable.finalY + 0.5;
 
   // ─── 7. GROUNDING RESISTANCE MEASUREMENT ──────────────────────────────────
-  const gnd = reportData.grounding_resistance;
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
@@ -456,7 +440,7 @@ export async function generateATSServiceReportPDF(
     ],
     headStyles: { fillColor: SUB_HEADER_BG, textColor: DARK_TEXT, fontStyle: 'bold', fontSize: 5.0, cellPadding: 0.35 },
     body: [
-      ['Grounding', gnd.result_ohm ? `${gnd.result_ohm} Ohm` : '-', { content: '<5 Ohm', styles: { fillColor: YELLOW_STANDARD_BG, halign: 'center' } }, gnd.remarks || '']
+      ['Grounding', m.grounding_ohm ? `${m.grounding_ohm} Ohm` : '-', { content: '<5 Ohm', styles: { fillColor: YELLOW_STANDARD_BG, halign: 'center' } }, m.grounding_remarks || '']
     ],
     styles: { fontSize: 4.8, cellPadding: 0.35, textColor: DARK_TEXT, lineColor: BORDER_COLOR, lineWidth: 0.18, halign: 'center', valign: 'middle' },
     columnStyles: {
@@ -475,8 +459,7 @@ export async function generateATSServiceReportPDF(
   y = (doc as any).lastAutoTable.finalY + 0.5;
 
   // ─── 8. OPERATION STATUS (NORMAL / ABNORMAL) ─────────────────────────────
-  const ops = reportData.operation_status;
-  const isNorm = ops.is_normal === true || ops.is_normal === ('true' as any) || (ops as any).isNormal === true;
+  const isNorm = op.isNormal === true || op.isNormal === ('true' as any) || (op as any).is_normal === true;
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
@@ -485,28 +468,28 @@ export async function generateATSServiceReportPDF(
       [
         { content: `[     ]  Normal operation`, styles: { fontStyle: 'bold', cellWidth: 70 } },
         { content: 'Remark:', styles: { fontStyle: 'bold', cellWidth: 20 } },
-        { content: ops.remark || 'Unit beroperasi normal.', colSpan: 2, styles: { cellWidth: 'auto' } }
+        { content: op.remark || 'Unit beroperasi normal.', colSpan: 2, styles: { cellWidth: 'auto' } }
       ],
       [
         { content: `[     ]  Abnormal operation`, styles: { fontStyle: 'bold' } },
         { content: 'Fault symptom', styles: { fontStyle: 'bold' } },
-        { content: ops.fault_symptom || '', colSpan: 2, styles: {} }
+        { content: op.faultSymptom || '', colSpan: 2, styles: {} }
       ],
       [
         { content: '(Please fill the items if the service is repair)', styles: { fontStyle: 'italic', fontSize: 4.2, textColor: [100, 100, 100] } },
         { content: 'Fault analysis', styles: { fontStyle: 'bold' } },
-        { content: ops.fault_analysis || '', colSpan: 2, styles: {} }
+        { content: op.faultAnalysis || '', colSpan: 2, styles: {} }
       ],
       [
         { content: '', styles: {} },
         { content: 'Work done/\naction taken', styles: { fontStyle: 'bold' } },
-        { content: ops.work_done || '', colSpan: 2, styles: {} }
+        { content: op.workDone || '', colSpan: 2, styles: {} }
       ],
       [
         { content: '', styles: {} },
         { content: 'Faul Part SN', styles: { fontStyle: 'bold', cellWidth: 24 } },
-        { content: ops.fault_part_sn || '', styles: { cellWidth: 40 } },
-        { content: 'Fault part Name: ' + (ops.fault_part_name || ''), styles: { fontStyle: 'bold', cellWidth: 'auto' } }
+        { content: op.faultPartSN || '', styles: { cellWidth: 40 } },
+        { content: 'Fault part Name: ' + (op.faultPartName || ''), styles: { fontStyle: 'bold', cellWidth: 'auto' } }
       ]
     ],
     styles: { fontSize: 4.8, cellPadding: 0.35, textColor: DARK_TEXT, lineColor: BORDER_COLOR, lineWidth: 0.18 },
@@ -544,7 +527,7 @@ export async function generateATSServiceReportPDF(
     ],
     headStyles: { fillColor: SUB_HEADER_BG, textColor: DARK_TEXT, fontStyle: 'bold', fontSize: 5.0, cellPadding: 0.35 },
     body: [
-      [timeSpent.date || customerInfo.date || new Date().toISOString().split('T')[0], timeSpent.departure || '08:00', timeSpent.start || '09:00', timeSpent.finish || '17:00']
+      [t.date || c.date || new Date().toISOString().split('T')[0], t.departure || '08:00', t.start || '09:00', t.finish || '17:00']
     ],
     styles: { fontSize: 4.8, cellPadding: 0.35, textColor: DARK_TEXT, lineColor: BORDER_COLOR, lineWidth: 0.18, halign: 'center' }
   });
@@ -574,7 +557,7 @@ export async function generateATSServiceReportPDF(
         { content: '\n\n', styles: { halign: 'center' } }
       ],
       [
-        { content: `Engineer\n(${customerInfo.engineer || 'Engineer'})`, styles: { fontStyle: 'bold', halign: 'center', fontSize: 5.2 } },
+        { content: `Engineer\n(${c.engineer || payload.accountEmail || 'Engineer'})`, styles: { fontStyle: 'bold', halign: 'center', fontSize: 5.2 } },
         { content: 'SM/PM\n(Site Manager)', styles: { fontStyle: 'bold', halign: 'center', fontSize: 5.2 } },
         { content: 'Client / Owner\n(NeutraDC)', styles: { fontStyle: 'bold', halign: 'center', fontSize: 5.2 } }
       ]
@@ -585,7 +568,7 @@ export async function generateATSServiceReportPDF(
   // ═══════════════════════════════════════════════════════════════════════════
   // HALAMAN 2+: LAMPIRAN FOTO DOKUMENTASI (LAYOUT STANDAR BER-HEADER FORMAL)
   // ═══════════════════════════════════════════════════════════════════════════
-  const filledPhotos = optimizedCards.filter(p => p.photoBase64 || p.description);
+  const filledPhotos = photoCards.filter(p => p.photoBase64 || p.description);
 
   if (filledPhotos.length > 0) {
     const cols = 3;
@@ -596,6 +579,7 @@ export async function generateATSServiceReportPDF(
     const capH = 12;
     const cardH = photoH + capH;
 
+    // Helper untuk Kop Header Formal Laporan Dokumentasi di Setiap Halaman Foto
     const drawDocumentationHeader = () => {
       doc.addPage();
       addTopBlueAccent();
@@ -603,7 +587,8 @@ export async function generateATSServiceReportPDF(
       const headerY = 6;
       const headerBoxH = 21;
 
-      doc.setDrawColor(203, 213, 225);
+      // Rounded Box Kop Surat Formal 3-Kolom
+      doc.setDrawColor(203, 213, 225); // slate-300
       doc.setLineWidth(0.2);
       doc.setFillColor(255, 255, 255);
       doc.roundedRect(margin, headerY, contentW, headerBoxH, 1.2, 1.2, 'FD');
@@ -613,33 +598,36 @@ export async function generateATSServiceReportPDF(
       doc.line(margin + col1W, headerY, margin + col1W, headerY + headerBoxH);
       doc.line(pageW - margin - col3W, headerY, pageW - margin - col3W, headerY + headerBoxH);
 
+      // Logo Kiri
       if (logoLeft) {
         doc.addImage(logoLeft, 'PNG', margin + 3, headerY + 3.5, col1W - 6, 14);
       }
 
+      // Logo Kanan
       if (logoRight) {
         doc.addImage(logoRight, 'PNG', pageW - margin - col3W + 4, headerY + 4.5, col3W - 8, 12);
       }
 
+      // Teks Tengah Kop
       const centerHdrX = margin + col1W + (contentW - col1W - col3W) / 2;
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10.5);
       doc.setTextColor(...BLUE_ACCENT);
-      doc.text('MAINTENANCE REPORT', centerHdrX, headerY + 5.5, { align: 'center' });
+      doc.text('LAPORAN MAINTENANCE', centerHdrX, headerY + 5.5, { align: 'center' });
 
       doc.setFontSize(8.5);
-      doc.setTextColor(30, 41, 59);
-      doc.text('DOKUMENTASI PM: AUTOMATIC TRANSFER SWITCH', centerHdrX, headerY + 10.2, { align: 'center' });
+      doc.setTextColor(30, 41, 59); // slate-800
+      doc.text(`DOKUMENTASI PM: ${payload.equipmentName.toUpperCase()}`, centerHdrX, headerY + 10.2, { align: 'center' });
 
       doc.setFontSize(7.5);
       doc.setTextColor(...BLUE_ACCENT);
-      const unitLabel = customerInfo.ciName ? `${customerInfo.ciName}${customerInfo.specification ? ` - ${customerInfo.specification}` : ''}` : customerInfo.specification || 'ATS UNIT';
+      const unitLabel = c.ciName ? `${c.ciName}${c.specification ? ` - ${c.specification}` : ''}` : c.specification || payload.equipmentName;
       doc.text(unitLabel.toUpperCase(), centerHdrX, headerY + 14.5, { align: 'center' });
 
-      const dateStr = customerInfo.date || new Date().toISOString().split('T')[0];
+      const dateStr = c.date || new Date().toISOString().split('T')[0];
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6.8);
-      doc.setTextColor(100, 116, 139);
+      doc.setTextColor(100, 116, 139); // slate-500
       doc.text(`Tanggal Maintenance: ${dateStr}`, centerHdrX, headerY + 18.5, { align: 'center' });
 
       return headerY + headerBoxH + 4;
@@ -658,11 +646,13 @@ export async function generateATSServiceReportPDF(
           const cardX = margin + j * (cardW + cardGap);
           const cardY = curPhotoY;
 
+          // Bingkai Kartu Foto
           doc.setFillColor(255, 255, 255);
-          doc.setDrawColor(226, 232, 240);
+          doc.setDrawColor(226, 232, 240); // slate-200
           doc.setLineWidth(0.2);
           doc.roundedRect(cardX, cardY, cardW, cardH, 1, 1, 'FD');
 
+          // Gambar Foto
           if (item.photoBase64) {
             try {
               const compressed = await compressBase64Image(item.photoBase64, { maxWidth: 600, quality: 0.6 });
@@ -682,10 +672,12 @@ export async function generateATSServiceReportPDF(
             doc.text('[Tidak Ada Foto]', cardX + cardW / 2, cardY + photoH / 2, { align: 'center' });
           }
 
+          // Garis Pembatas Foto & Caption
           doc.setDrawColor(226, 232, 240);
           doc.setLineWidth(0.2);
           doc.line(cardX, cardY + photoH, cardX + cardW, cardY + photoH);
 
+          // Kotak Keterangan / Deskripsi Foto dengan Aksen Garis Biru di Kiri
           const captionY = cardY + photoH;
           const captionText = item.description || 'Pemeriksaan kondisi fisik perangkat.';
           const fontSize = 6.2;
@@ -696,12 +688,14 @@ export async function generateATSServiceReportPDF(
           const leftPad = 2.4;
           const maxTextW = cardW - (leftPad + 3);
           const splitLines = doc.splitTextToSize(captionText, maxTextW);
-          const displayLines = splitLines.slice(0, 3);
+          const displayLines = splitLines.slice(0, 3); // Maksimal 3 baris
           const textH = displayLines.length * 2.6;
 
+          // Garis aksen biru di sebelah kiri teks
           doc.setFillColor(...BLUE_ACCENT);
           doc.rect(cardX + 1.2, captionY + (capH - Math.max(textH, 3)) / 2, 0.45, Math.max(textH, 3), 'F');
 
+          // Render teks deskripsi
           doc.text(displayLines, cardX + leftPad + 1.2, captionY + (capH - textH) / 2 + 2.2);
         }
 
@@ -727,10 +721,14 @@ export async function generateATSServiceReportPDF(
     );
   }
 
-  const filename = `Service_Report_ATS_${customerInfo.mapNo || 'Report'}_${customerInfo.date || 'undated'}.pdf`;
+  toast.dismiss(toastId);
+
   if (saveToFile) {
-    doc.save(filename);
-    toast.success(`PDF ${filename} berhasil diunduh!`);
+    const safeTitle = (c.ciName || payload.equipmentName).replace(/[^a-zA-Z0-9]/g, '_');
+    const fileName = `Service_Report_${safeTitle}_${c.quarter || 'Q3'}.pdf`;
+    doc.save(fileName);
+    toast.success(`PDF ${fileName} berhasil diunduh!`);
   }
-  return { doc, filename, blob: doc.output('blob') };
+
+  return doc;
 }
