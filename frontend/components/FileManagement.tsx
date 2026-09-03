@@ -129,16 +129,67 @@ const MAINTENANCE_TYPES = [
 
 const QUARTERS = ['Q1', 'Q2', 'Q3', 'Q4'];
 const YEARS = ['2025', '2026', '2027', '2028', '2029', '2030'];
+const ALLOWED_EXTENSIONS = [
+    '.pdf',
+    '.xlsx',
+    '.xls',
+    '.docx',
+    '.doc',
+    '.csv',
+    '.zip',
+    '.rar',
+    '.7z',
+    '.txt',
+    '.png',
+    '.jpg',
+    '.jpeg',
+];
+
 const ALLOWED_FILE_TYPES = [
     'application/pdf',
     'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/csv',
+    'application/zip',
+    'application/x-zip-compressed',
+    'application/x-rar-compressed',
+    'application/x-7z-compressed',
+    'text/plain',
+    'image/png',
+    'image/jpeg',
 ];
 
+export const isAllowedFile = (file: File): boolean => {
+    const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
+    if (ALLOWED_EXTENSIONS.includes(ext)) return true;
+    if (file.type && ALLOWED_FILE_TYPES.includes(file.type)) return true;
+    if (file.type && (file.type.startsWith('image/') || file.type.startsWith('text/'))) return true;
+    return false;
+};
+
+export const getFileMime = (file: File): string => {
+    if (file.type && file.type !== 'application/octet-stream') return file.type;
+    const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
+    switch (ext) {
+        case '.pdf': return 'application/pdf';
+        case '.xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        case '.xls': return 'application/vnd.ms-excel';
+        case '.docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        case '.doc': return 'application/msword';
+        case '.csv': return 'text/csv';
+        case '.txt': return 'text/plain';
+        case '.zip': return 'application/zip';
+        case '.png': return 'image/png';
+        case '.jpg':
+        case '.jpeg': return 'image/jpeg';
+        default: return file.type || 'application/pdf';
+    }
+};
+
 const MAX_FILE_SIZE = 60 * 1024 * 1024;
-const CHUNK_SIZE = 750 * 1024;
+const CHUNK_SIZE = 450 * 1024; // 450KB binary (~600KB base64), strictly within Firestore 1MB document limit
 
 export interface ParsedFileMetadata {
     category?: string;
@@ -515,7 +566,7 @@ export function FileManagement({
                     toast.error(`File "${file.name}" terlalu besar (Maks 60MB)`);
                     return;
                 }
-                if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+                if (!isAllowedFile(file)) {
                     toast.error(`Tipe file "${file.name}" tidak didukung`);
                     return;
                 }
@@ -575,81 +626,92 @@ export function FileManagement({
         try {
             const totalOverallBytes = selectedFiles.reduce((acc, f) => acc + f.size, 0);
             let uploadedOverallBytes = 0;
+            let successCount = 0;
+            const failedFiles: string[] = [];
 
             for (let f = 0; f < selectedFiles.length; f++) {
                 const file = selectedFiles[f];
                 const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
-                // Ekstraksi metadata pintar per-berkas (misal: "JSEA - PM - AHU - Q3 - 2026.pdf")
-                const parsed = parseFilenameMetadata(file.name);
-                const fileCategory = parsed.category || finalCategory;
-                const fileMaintenance = (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'].includes(fileCategory))
-                    ? (parsed.maintenanceType || selectedMaintenance)
-                    : null;
-                const fileQuarter = (fileCategory === 'SLD' || fileCategory === 'Layout') ? 'N/A' : (parsed.quarter || selectedUploadQuarter);
-                const fileYear = parsed.year || selectedUploadYear;
+                try {
+                    // Ekstraksi metadata pintar per-berkas (misal: "JSEA - PM - AHU - Q3 - 2026.pdf")
+                    const parsed = parseFilenameMetadata(file.name);
+                    const fileCategory = parsed.category || finalCategory;
+                    const fileMaintenance = (['MOP', 'JSEA', 'PTW', 'Risk Register', 'D-DAY', 'Service Report', 'Service Report Approved'].includes(fileCategory))
+                        ? (parsed.maintenanceType || selectedMaintenance)
+                        : null;
+                    const fileQuarter = (fileCategory === 'SLD' || fileCategory === 'Layout') ? 'N/A' : (parsed.quarter || selectedUploadQuarter);
+                    const fileYear = parsed.year || selectedUploadYear;
+                    const resolvedMime = getFileMime(file);
 
-                const fileDocRef = await addDoc(collection(db, collectionName), {
-                    fileName: file.name,
-                    fileSize: file.size,
-                    fileType: file.type || 'application/pdf',
-                    category: fileCategory,
-                    maintenanceType: fileMaintenance,
-                    quarter: fileQuarter,
-                    year: fileYear,
-                    customCategory: (selectedCategory === 'Custom' && !parsed.category) ? customCategory : null,
-                    uploadedBy: user.uid,
-                    uploadedByEmail: (user.email || '').toLowerCase(),
-                    uploadedAt: serverTimestamp(),
-                    description: description || null,
-                    totalChunks: totalChunks,
-                    status: 'uploading'
-                });
+                    const fileDocRef = await addDoc(collection(db, collectionName), {
+                        fileName: file.name,
+                        fileSize: file.size,
+                        fileType: resolvedMime,
+                        category: fileCategory,
+                        maintenanceType: fileMaintenance,
+                        quarter: fileQuarter,
+                        year: fileYear,
+                        customCategory: (selectedCategory === 'Custom' && !parsed.category) ? customCategory : null,
+                        uploadedBy: user.uid,
+                        uploadedByEmail: (user.email || '').toLowerCase(),
+                        uploadedAt: serverTimestamp(),
+                        description: description || null,
+                        totalChunks: totalChunks,
+                        status: 'uploading'
+                    });
 
-                // Controlled parallel batch chunk upload (5 concurrent writes) for ultra-fast storage
-                const CONCURRENCY = 5;
-                for (let i = 0; i < totalChunks; i += CONCURRENCY) {
-                    const batchPromises = [];
-                    for (let c = i; c < Math.min(i + CONCURRENCY, totalChunks); c++) {
-                        const start = c * CHUNK_SIZE;
-                        const end = Math.min(start + CHUNK_SIZE, file.size);
-                        const chunkBlob = file.slice(start, end);
+                    // Controlled parallel batch chunk upload (3 concurrent writes) for ultra-fast and reliable storage
+                    const CONCURRENCY = 3;
+                    for (let i = 0; i < totalChunks; i += CONCURRENCY) {
+                        const batchPromises = [];
+                        for (let c = i; c < Math.min(i + CONCURRENCY, totalChunks); c++) {
+                            const start = c * CHUNK_SIZE;
+                            const end = Math.min(start + CHUNK_SIZE, file.size);
+                            const chunkBlob = file.slice(start, end);
 
-                        batchPromises.push((async () => {
-                            let chunkBase64 = await chunkToBase64(chunkBlob);
-                            if (c === 0) {
-                                chunkBase64 = `data:${file.type};base64,${chunkBase64}`;
-                            }
+                            batchPromises.push((async () => {
+                                let chunkBase64 = await chunkToBase64(chunkBlob);
+                                if (c === 0) {
+                                    chunkBase64 = `data:${resolvedMime};base64,${chunkBase64}`;
+                                }
 
-                            const chunkRef = doc(db, collectionName, fileDocRef.id, 'chunks', `chunk_${String(c).padStart(4, '0')}`);
-                            await setDoc(chunkRef, {
-                                index: c,
-                                data: chunkBase64
-                            });
+                                const chunkRef = doc(db, collectionName, fileDocRef.id, 'chunks', `chunk_${String(c).padStart(4, '0')}`);
+                                await setDoc(chunkRef, {
+                                    index: c,
+                                    data: chunkBase64
+                                });
 
-                            uploadedOverallBytes += (end - start);
-                            setUploadProgress(Math.min(99, Math.round((uploadedOverallBytes / totalOverallBytes) * 100)));
-                        })());
+                                uploadedOverallBytes += (end - start);
+                                setUploadProgress(Math.min(99, Math.round((uploadedOverallBytes / totalOverallBytes) * 100)));
+                            })());
+                        }
+                        await Promise.all(batchPromises);
                     }
-                    await Promise.all(batchPromises);
+
+                    await updateDoc(doc(db, collectionName, fileDocRef.id), { status: 'completed' });
+
+                    await sendFileNotification({
+                        title: `File Baru: ${file.name}`,
+                        fileName: file.name,
+                        category: fileCategory,
+                        uploadedBy: user?.email || 'User DME',
+                        targetTab: 'files',
+                        searchQuery: file.name
+                    });
+
+                    successCount++;
+                } catch (fileErr) {
+                    console.error(`Gagal upload file "${file.name}":`, fileErr);
+                    failedFiles.push(file.name);
                 }
-
-                await updateDoc(doc(db, collectionName, fileDocRef.id), { status: 'completed' });
-
-                await sendFileNotification({
-                    title: `File Baru: ${file.name}`,
-                    fileName: file.name,
-                    category: fileCategory,
-                    uploadedBy: user?.email || 'User DME',
-                    targetTab: 'files',
-                    searchQuery: file.name
-                });
             }
 
             setUploadProgress(100);
-
-            setUploadedFilesCount(selectedFiles.length);
-            setShowSuccessModal(true);
+            setUploadedFilesCount(successCount);
+            if (successCount > 0) {
+                setShowSuccessModal(true);
+            }
 
             setSelectedFiles([]);
             setSelectedCategory(simpleMode ? 'Dokumen' : 'Laporan Harian');
@@ -657,10 +719,14 @@ export function FileManagement({
             setDescription('');
             setUploading(false);
 
-            toast.success(`${selectedFiles.length} file berhasil diunggah!`);
+            if (failedFiles.length === 0) {
+                toast.success(`${successCount} file berhasil diunggah!`);
+            } else {
+                toast.warning(`${successCount} file berhasil, ${failedFiles.length} file gagal diunggah.`);
+            }
         } catch (error) {
-            console.error('Error uploading file:', error);
-            toast.error('Gagal mengunggah beberapa file');
+            console.error('Error uploading files batch:', error);
+            toast.error('Gagal mengunggah berkas');
             setUploading(false);
         }
     };
