@@ -468,8 +468,9 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
     if (typeof sp === 'string') return { name: sp.trim(), brand: '-', qty: '1 Pcs' };
     const name = (sp.name || sp.nama || sp.sparepart || sp.sparePart || sp.partName || sp.item || sp.component || '').toString().trim();
     const brand = (sp.brand || sp.merk || sp.manufaktur || sp.maker || '-').toString().trim() || '-';
+    const specification = (sp.specification || sp.spec || sp.spesifikasi || '').toString().trim();
     const qty = (sp.qty || sp.jumlah || sp.quantity || sp.kuantitas || sp.count || '-').toString().trim() || '-';
-    return { name, brand, qty };
+    return { name, brand, specification, qty };
   };
 
   const normalizeSparepartList = (raw: any): CMSparepartItem[] => {
@@ -490,24 +491,37 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
     const validItems = items.map(normalizeSparepartItem).filter(
       (sp) => sp && (sp.name || sp.brand || sp.qty)
     );
+    const hasSpec = validItems.some(sp => sp.specification && sp.specification.trim() !== '' && sp.specification.trim() !== '-');
+
+    const headers = hasSpec
+      ? ['No', headerTitle, 'BRAND', 'SPECIFICATION', 'QTY']
+      : ['No', headerTitle, 'BRAND', 'QTY'];
+    const widths = hasSpec
+      ? [8, 35, 22, 23, 12]
+      : [10, 50, 25, 15];
 
     const rows = validItems.map(
-      (sp, idx) =>
-        new TableRow({
-          children: [(idx + 1).toString(), sp.name || '-', sp.brand || '-', sp.qty || '-'].map(
+      (sp, idx) => {
+        const cellValues = hasSpec
+          ? [(idx + 1).toString(), sp.name || '-', sp.brand || '-', sp.specification || '-', sp.qty || '-']
+          : [(idx + 1).toString(), sp.name || '-', sp.brand || '-', sp.qty || '-'];
+
+        return new TableRow({
+          children: cellValues.map(
             (cellVal, cIdx) =>
               new TableCell({
-                width: { size: [10, 50, 25, 15][cIdx], type: WidthType.PERCENTAGE },
+                width: { size: widths[cIdx], type: WidthType.PERCENTAGE },
                 margins: { top: 50, bottom: 50, left: 80, right: 80 },
                 children: [
                   new Paragraph({
-                    alignment: cIdx === 1 ? AlignmentType.LEFT : AlignmentType.CENTER,
+                    alignment: (cIdx === 1 || (hasSpec && cIdx === 3)) ? AlignmentType.LEFT : AlignmentType.CENTER,
                     children: [new TextRun({ text: cellVal, size: 20, color: '1E293B', font: 'Century Gothic' })],
                   }),
                 ],
               })
           ),
-        })
+        });
+      }
     );
 
     return new Table({
@@ -515,10 +529,10 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
       borders: cellBorder,
       rows: [
         new TableRow({
-          children: ['No', headerTitle, 'BRAND', 'QTY'].map(
+          children: headers.map(
             (hText, idx) =>
               new TableCell({
-                width: { size: [10, 50, 25, 15][idx], type: WidthType.PERCENTAGE },
+                width: { size: widths[idx], type: WidthType.PERCENTAGE },
                 shading: { fill: HEADER_FILL, type: ShadingType.CLEAR },
                 margins: { top: 60, bottom: 60, left: 80, right: 80 },
                 children: [

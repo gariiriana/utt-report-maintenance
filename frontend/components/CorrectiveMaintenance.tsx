@@ -895,7 +895,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         const requestSpareList = Array.isArray(rawRequestSpareparts)
             ? rawRequestSpareparts
             : (typeof rawRequestSpareparts === 'string' && rawRequestSpareparts.trim() !== '' && rawRequestSpareparts.trim() !== '-'
-                ? [{ name: rawRequestSpareparts.trim(), brand: '-', qty: '1 Pcs' }]
+                ? [{ name: rawRequestSpareparts.trim(), brand: '-', specification: '-', qty: '1 Pcs' }]
                 : []);
 
         let photoList: any[] = [];

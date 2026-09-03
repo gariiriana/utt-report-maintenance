@@ -10,6 +10,7 @@ export interface CMSparepartItem {
   no?: number;                              // Nomor urut item
   name: string;                             // Nama komponen/sparepart (misal "Relay 24VDC")
   brand: string;                            // Merk/Manufaktur (misal "Omron")
+  specification?: string;                   // Spesifikasi komponen (misal "24VDC / 10A")
   qty: string;                              // Kuantitas terpakai (misal "2 Pcs")
 }
 

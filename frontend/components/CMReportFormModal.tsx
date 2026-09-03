@@ -196,9 +196,14 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
 
             const rawRequestSpareparts = data.requestSpareparts || data.request_spareparts || data.requestedSpareparts || data.sparepartsRequest || data.sparepartRequest;
             const initialRequestSpareparts = Array.isArray(rawRequestSpareparts)
-              ? rawRequestSpareparts
+              ? rawRequestSpareparts.map((item: any) => ({
+                  name: item?.name || '',
+                  brand: item?.brand || '',
+                  specification: item?.specification || item?.spec || item?.spesifikasi || '',
+                  qty: item?.qty || ''
+                }))
               : (typeof rawRequestSpareparts === 'string' && rawRequestSpareparts.trim() !== '' && rawRequestSpareparts.trim() !== '-'
-                ? [{ name: rawRequestSpareparts.trim(), brand: '-', qty: '1 Pcs' }]
+                ? [{ name: rawRequestSpareparts.trim(), brand: '-', specification: '-', qty: '1 Pcs' }]
                 : []);
 
             setFormData({
@@ -442,7 +447,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
   const addRequestSparepart = () => {
     setFormData(prev => ({
       ...prev,
-      requestSpareparts: [...(prev.requestSpareparts || []), { name: '', brand: '', qty: '' }]
+      requestSpareparts: [...(prev.requestSpareparts || []), { name: '', brand: '', specification: '', qty: '' }]
     }));
   };
 
@@ -1264,7 +1269,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                   <div className="space-y-2">
                     {formData.requestSpareparts.map((item, idx) => (
                       <div key={idx} className="bg-white p-2.5 sm:p-2 border border-slate-200 rounded-xl space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
                           <span className="text-xs font-bold text-slate-400 w-5 sm:w-6 text-center shrink-0">{idx + 1}</span>
                           <input
                             type="text"
@@ -1282,12 +1287,19 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
-                        <div className="flex items-center gap-2 pl-7 sm:pl-0">
+                        <div className="flex items-center gap-2 pl-7 sm:pl-0 flex-1 min-w-0">
                           <input
                             type="text"
                             value={item.brand}
                             onChange={e => updateRequestSparepart(idx, 'brand', e.target.value)}
                             placeholder="Brand (e.g. Schneider / ABB)"
+                            className="w-28 sm:w-32 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-amber-500 outline-none shrink-0"
+                          />
+                          <input
+                            type="text"
+                            value={item.specification || ''}
+                            onChange={e => updateRequestSparepart(idx, 'specification', e.target.value)}
+                            placeholder="Specification (e.g. 24VDC / 10A)"
                             className="flex-1 sm:w-36 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-amber-500 outline-none min-w-0"
                           />
                           <input

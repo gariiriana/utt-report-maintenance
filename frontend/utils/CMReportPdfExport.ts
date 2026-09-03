@@ -379,9 +379,10 @@ export async function generateCMReportPDF(data: CMReportData) {
           if (typeof sp === 'string') return { name: sp.trim(), brand: '-', qty: '1 Pcs' };
           const name = (sp.name || sp.nama || sp.sparepart || sp.sparePart || sp.partName || sp.item || sp.component || '').toString().trim();
           const brand = (sp.brand || sp.merk || sp.manufaktur || sp.maker || '-').toString().trim() || '-';
+          const specification = (sp.specification || sp.spec || sp.spesifikasi || '').toString().trim();
           const qty = (sp.qty || sp.jumlah || sp.quantity || sp.kuantitas || sp.count || '-').toString().trim() || '-';
-          return { name, brand, qty };
-        }).filter(sp => (sp.name && sp.name !== '-') || (sp.brand && sp.brand !== '-') || (sp.qty && sp.qty !== '-'));
+          return { name, brand, specification, qty };
+        }).filter(sp => (sp.name && sp.name !== '-') || (sp.brand && sp.brand !== '-') || (sp.specification && sp.specification !== '-') || (sp.qty && sp.qty !== '-'));
       }
       if (typeof raw === 'string' && raw.trim() && raw.trim() !== '-') {
         return [{ name: raw.trim(), brand: '-', qty: '1 Pcs' }];
@@ -444,17 +445,49 @@ export async function generateCMReportPDF(data: CMReportData) {
     const resolvedRequestSpareparts = normalizePdfSpareparts(rawRequestSpareparts);
 
     if (resolvedRequestSpareparts.length > 0) {
-      const reqRows = resolvedRequestSpareparts.map((sp, idx) => [
-        (idx + 1).toString(),
-        sanitizePdfText(sp.name) || '-',
-        sanitizePdfText(sp.brand) || '-',
-        sanitizePdfText(sp.qty) || '-'
-      ]);
+      const hasSpec = resolvedRequestSpareparts.some(sp => sp.specification && sp.specification.trim() !== '' && sp.specification.trim() !== '-');
+
+      const reqHeaders = hasSpec
+        ? [['No', 'LIST OF REQUEST SPAREPART', 'BRAND', 'SPECIFICATION', 'QTY']]
+        : [['No', 'LIST OF REQUEST SPAREPART', 'BRAND', 'QTY']];
+
+      const reqRows = resolvedRequestSpareparts.map((sp, idx) => {
+        if (hasSpec) {
+          return [
+            (idx + 1).toString(),
+            sanitizePdfText(sp.name) || '-',
+            sanitizePdfText(sp.brand) || '-',
+            sanitizePdfText(sp.specification) || '-',
+            sanitizePdfText(sp.qty) || '-'
+          ];
+        }
+        return [
+          (idx + 1).toString(),
+          sanitizePdfText(sp.name) || '-',
+          sanitizePdfText(sp.brand) || '-',
+          sanitizePdfText(sp.qty) || '-'
+        ];
+      });
+
+      const reqColumnStyles: { [key: string]: any } = hasSpec
+        ? {
+            0: { cellWidth: contentW * 0.08 },
+            1: { cellWidth: contentW * 0.35, halign: 'left' },
+            2: { cellWidth: contentW * 0.22 },
+            3: { cellWidth: contentW * 0.23, halign: 'left' },
+            4: { cellWidth: contentW * 0.12 },
+          }
+        : {
+            0: { cellWidth: contentW * 0.10 },
+            1: { cellWidth: contentW * 0.50, halign: 'left' },
+            2: { cellWidth: contentW * 0.25 },
+            3: { cellWidth: contentW * 0.15 },
+          };
 
       autoTable(doc, {
         startY: y,
         margin: { left: margin, right: margin },
-        head: [['No', 'LIST OF REQUEST SPAREPART', 'BRAND', 'QTY']],
+        head: reqHeaders,
         body: reqRows,
         theme: 'grid',
         styles: { font: fontName },
@@ -478,12 +511,7 @@ export async function generateCMReportPDF(data: CMReportData) {
           lineWidth: 0.2,
           lineColor: BORDER_COLOR,
         },
-        columnStyles: {
-          0: { cellWidth: contentW * 0.10 },
-          1: { cellWidth: contentW * 0.50, halign: 'left' },
-          2: { cellWidth: contentW * 0.25 },
-          3: { cellWidth: contentW * 0.15 },
-        }
+        columnStyles: reqColumnStyles,
       });
 
       y = (doc as any).lastAutoTable.finalY + 6;
