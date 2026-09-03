@@ -3391,9 +3391,17 @@ export const SERVICE_REPORT_MASTER_REGISTRY: Record<string, ServiceReportConfigI
 export function getServiceReportConfigByEmail(email?: string | null): ServiceReportConfigItem | null {
   if (!email) return null;
   const normalized = email.toLowerCase().trim();
+  if (!isServiceReportSupported(normalized)) return null;
   return SERVICE_REPORT_MASTER_REGISTRY[normalized] || null;
 }
 
+/**
+ * Memeriksa apakah suatu akun diizinkan menggunakan fitur Service Report.
+ * Sesuai arahan: HANYA akun ats@gmail.com yang diaktifkan untuk Service Report di production/deploy.
+ */
 export function isServiceReportSupported(email?: string | null): boolean {
-  return !!getServiceReportConfigByEmail(email);
+  if (!email) return false;
+  const normalized = email.toLowerCase().trim();
+  return normalized === 'ats@gmail.com';
 }
+

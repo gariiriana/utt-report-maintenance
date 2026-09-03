@@ -38,6 +38,7 @@ import { sendFileNotification } from '@/utils/notificationService';
 import { ServiceReportContainer } from '@/components/ServiceReportContainer';
 import { ServiceReportPayload } from '@/types/serviceReportTypes';
 import { generateUniversalServiceReportPDF } from '@/service_reports/universalServiceReportPDF';
+import { isServiceReportSupported } from '@/config/serviceReportRegistry';
 
 
 import imgStatusWld from '@/assets/Wld/status.jpeg';
@@ -833,7 +834,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   };
 
   const generatePDFDocument = async (unit: ReportUnit) => {
-    const activeSR = unit.serviceReportData || serviceReportData;
+    const isSRSupported = isServiceReportSupported(user?.email);
+    const activeSR = isSRSupported ? (unit.serviceReportData || serviceReportData) : null;
     if (activeSR) {
       const srDoc = await generateUniversalServiceReportPDF(
         activeSR,
@@ -941,7 +943,8 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     try {
       const photosWithImage = cardsToSave.filter(c => c.photoBase64).length;
       const fileName = pdfData?.fileName || editingData?.fileName || `${maintenanceName}${finalSpecificDetail ? ` (${finalSpecificDetail})` : ''}`.trim().replace(/\s+/g, ' ') + '.pdf';
-      const activeSR = unit.serviceReportData || serviceReportData;
+      const isSRSupported = isServiceReportSupported(user?.email);
+      const activeSR = isSRSupported ? (unit.serviceReportData || serviceReportData) : null;
 
       const reportData: any = {
         fileName,
@@ -2017,21 +2020,23 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               </button>
             </div>
 
-            {/* Service Report Form (Opsional - Berdasarkan Akun Engineer) */}
-            <ServiceReportContainer
-              key={activeUnitId || 'single-unit'}
-              userEmail={user?.email}
-              companyType={companyType}
-              initialData={activeUnit?.serviceReportData || serviceReportData}
-              photoCards={cards.map(c => ({ photoBase64: c.photoBase64, description: c.description || '' }))}
-              onChange={(payload) => {
-                setServiceReportData(payload);
-                if (activeUnitId) {
-                  setUnits(prev => prev.map(u => u.id === activeUnitId ? { ...u, serviceReportData: payload } : u));
-                }
-              }}
-              onExport={handleExportServiceReportPDF}
-            />
+            {/* Service Report Form (Hanya untuk Akun yang Diaktifkan: ats@gmail.com) */}
+            {isServiceReportSupported(user?.email) && (
+              <ServiceReportContainer
+                key={activeUnitId || 'single-unit'}
+                userEmail={user?.email}
+                companyType={companyType}
+                initialData={activeUnit?.serviceReportData || serviceReportData}
+                photoCards={cards.map(c => ({ photoBase64: c.photoBase64, description: c.description || '' }))}
+                onChange={(payload) => {
+                  setServiceReportData(payload);
+                  if (activeUnitId) {
+                    setUnits(prev => prev.map(u => u.id === activeUnitId ? { ...u, serviceReportData: payload } : u));
+                  }
+                }}
+                onExport={handleExportServiceReportPDF}
+              />
+            )}
           </motion.div>
         ) : (
           <PreviewReport
