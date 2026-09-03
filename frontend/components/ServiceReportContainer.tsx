@@ -158,7 +158,7 @@ function extractFieldsFromVoiceText(text: string) {
   let setAllVisualCondition: 'Good' | 'Not Good' | undefined = undefined;
 
   // ─── 0. CLEAR / DELETE / RESET DETECTION ───
-  const isDeleteIntent = /\b(?:hapus|kosongkan|delete|reset|bersihkan|buang|hilangkan)\b/i.test(normText);
+  const isDeleteIntent = /\b(?:hapus|kosongkan|delete|dilit|delet|dilet|delit|clear|remove|reset|bersihkan|bersih|buang|hilangkan|hilang)\b/i.test(normText);
 
   if (isDeleteIntent) {
     // a. Clear all form
@@ -167,17 +167,17 @@ function extractFieldsFromVoiceText(text: string) {
       logs.push('🗑️ Reset / Kosongkan Semua Form Service Report');
     }
     // b. Clear all measurements
-    else if (/\b(?:semua pengukuran|tabel pengukuran|semua measurement|seluruh measurement|nilai pengukuran)\b/i.test(normText)) {
+    else if (/\b(?:semua pengukuran|tabel pengukuran|semua measurement|seluruh measurement|nilai pengukuran|data pengukuran)\b/i.test(normText)) {
       clearActions.clearAllMeasurements = true;
       logs.push('🗑️ Kosongkan Seluruh Tabel Pengukuran (Measurements)');
     }
     // c. Clear DPM only
-    else if (/\b(?:dpm|digital power meter|power meter|meteran panel)\b/i.test(normText)) {
+    else if (/\b(?:dpm|digital\s*power\s*meter|power\s*meter|meteran\s*panel)(?:\s*recording)?\b/i.test(normText)) {
       clearActions.clearDPM = true;
       logs.push('🗑️ Kosongkan Tabel Digital Power Meter (DPM)');
     }
     // d. Clear VC only
-    else if (/\b(?:vc|voltage and current|voltage & current|tegangan arus|pengukuran manual|tester)\b/i.test(normText)) {
+    else if (/\b(?:vc|voltage\s*(?:and|&)\s*current|tegangan\s*(?:dan|&)\s*arus|pengukuran\s*manual|tester)(?:\s*measurement)?\b/i.test(normText)) {
       clearActions.clearVC = true;
       logs.push('🗑️ Kosongkan Tabel Voltage & Current (VC)');
     }
@@ -907,7 +907,16 @@ export function ServiceReportContainer({
     }
 
     if (Object.keys(fastExtracted.measurements).length > 0) {
-      setMeasurements(prev => ({ ...prev, ...fastExtracted.measurements }));
+      const filteredMeasurements = { ...fastExtracted.measurements };
+      if (fastExtracted.clearActions?.clearDPM) {
+        Object.keys(filteredMeasurements).forEach(k => { if (k.startsWith('dpm_')) delete filteredMeasurements[k]; });
+      }
+      if (fastExtracted.clearActions?.clearVC) {
+        Object.keys(filteredMeasurements).forEach(k => { if (k.startsWith('vc_')) delete filteredMeasurements[k]; });
+      }
+      if (Object.keys(filteredMeasurements).length > 0) {
+        setMeasurements(prev => ({ ...prev, ...filteredMeasurements }));
+      }
     }
     if (Object.keys(fastExtracted.customerInfo).length > 0) {
       setCustomerInfo(prev => ({ ...prev, ...fastExtracted.customerInfo }));
@@ -1116,7 +1125,10 @@ PENTING:
           clearAllMeasurements: replyExtracted.clearActions?.clearAllMeasurements || fastExtracted.clearActions?.clearAllMeasurements,
           clearDPM: replyExtracted.clearActions?.clearDPM || fastExtracted.clearActions?.clearDPM,
           clearVC: replyExtracted.clearActions?.clearVC || fastExtracted.clearActions?.clearVC,
+          clearThermal: replyExtracted.clearActions?.clearThermal || fastExtracted.clearActions?.clearThermal,
+          clearGrounding: replyExtracted.clearActions?.clearGrounding || fastExtracted.clearActions?.clearGrounding,
           clearAllRemarks: replyExtracted.clearActions?.clearAllRemarks || fastExtracted.clearActions?.clearAllRemarks,
+          clearCustomerInfo: replyExtracted.clearActions?.clearCustomerInfo || fastExtracted.clearActions?.clearCustomerInfo,
           summary: data.reply
         };
       }
@@ -1136,6 +1148,71 @@ PENTING:
           setTimeSpent(config.defaultTimeSpent || {});
           setOperationStatus(config.defaultOperationStatus || { isNormal: true });
           logs.push('🗑️ Semua data form di-reset/dikosongkan.');
+        } else {
+          // Clear all measurements if requested
+          if (parsed.clearAllMeasurements) {
+            setMeasurements({
+              dpm_voltage_rs: '', dpm_voltage_st: '', dpm_voltage_tr: '', dpm_voltage_rn: '', dpm_voltage_sn: '', dpm_voltage_tn: '', dpm_voltage_n: '', dpm_kw: '', dpm_kva: '', dpm_kvar: '', dpm_cos_p: '', dpm_ampere_r: '', dpm_ampere_s: '', dpm_ampere_t: '', dpm_ampere_n: '', dpm_remarks: '',
+              vc_voltage_rs: '', vc_voltage_st: '', vc_voltage_tr: '', vc_voltage_rn: '', vc_voltage_sn: '', vc_voltage_tn: '', vc_voltage_ng: '', vc_ampere_r: '', vc_ampere_s: '', vc_ampere_t: '', vc_ampere_n: '', vc_remarks: '',
+              thermal_breaker_temp: '', thermal_remarks: '',
+              grounding_ohm: '', grounding_remarks: ''
+            });
+            logs.push('🗑️ Seluruh data pengukuran (measurements) dikosongkan.');
+          }
+
+          // Clear DPM only if requested
+          if (parsed.clearDPM) {
+            setMeasurements(prev => ({
+              ...prev,
+              dpm_voltage_rs: '', dpm_voltage_st: '', dpm_voltage_tr: '', dpm_voltage_rn: '', dpm_voltage_sn: '', dpm_voltage_tn: '', dpm_voltage_n: '', dpm_kw: '', dpm_kva: '', dpm_kvar: '', dpm_cos_p: '', dpm_ampere_r: '', dpm_ampere_s: '', dpm_ampere_t: '', dpm_ampere_n: '', dpm_remarks: ''
+            }));
+            logs.push('🗑️ Data Digital Power Meter (DPM) berhasil dikosongkan.');
+            if (parsed.measurements) {
+              Object.keys(parsed.measurements).forEach(k => { if (k.startsWith('dpm_')) delete parsed.measurements[k]; });
+            }
+          }
+
+          // Clear VC only if requested
+          if (parsed.clearVC) {
+            setMeasurements(prev => ({
+              ...prev,
+              vc_voltage_rs: '', vc_voltage_st: '', vc_voltage_tr: '', vc_voltage_rn: '', vc_voltage_sn: '', vc_voltage_tn: '', vc_voltage_ng: '', vc_ampere_r: '', vc_ampere_s: '', vc_ampere_t: '', vc_ampere_n: '', vc_remarks: ''
+            }));
+            logs.push('🗑️ Data Voltage & Current (VC) berhasil dikosongkan.');
+            if (parsed.measurements) {
+              Object.keys(parsed.measurements).forEach(k => { if (k.startsWith('vc_')) delete parsed.measurements[k]; });
+            }
+          }
+
+          // Clear Thermal if requested
+          if (parsed.clearThermal) {
+            setMeasurements(prev => ({ ...prev, thermal_breaker_temp: '', thermal_remarks: '' }));
+            logs.push('🗑️ Data Thermal Breaker dikosongkan.');
+            if (parsed.measurements) {
+              delete parsed.measurements.thermal_breaker_temp;
+              delete parsed.measurements.thermal_remarks;
+            }
+          }
+
+          // Clear Grounding if requested
+          if (parsed.clearGrounding) {
+            setMeasurements(prev => ({ ...prev, grounding_ohm: '', grounding_remarks: '' }));
+            logs.push('🗑️ Data Grounding dikosongkan.');
+            if (parsed.measurements) {
+              delete parsed.measurements.grounding_ohm;
+              delete parsed.measurements.grounding_remarks;
+            }
+          }
+
+          // Clear Customer Info if requested
+          if (parsed.clearCustomerInfo) {
+            setCustomerInfo({
+              companyName: '', mopNo: '', equipmentName: '', serialNo: '', quarter: 'Q1',
+              ciDescription: '', productName: '', location: '', date: '', ciName: '',
+              prodYear: '', area: '', engineer: '', specification: '', model: ''
+            });
+            logs.push('🗑️ Data Pelanggan dikosongkan.');
+          }
         }
 
         // Clear all remarks if requested
@@ -1145,7 +1222,7 @@ PENTING:
         }
 
         // Update Customer Info
-        if (parsed.customerInfo && Object.keys(parsed.customerInfo).length > 0) {
+        if (parsed.customerInfo && Object.keys(parsed.customerInfo).length > 0 && !parsed.clearAllForm && !parsed.clearCustomerInfo) {
           setCustomerInfo(prev => {
             const next = { ...prev };
             Object.entries(parsed.customerInfo).forEach(([k, v]) => {
@@ -1192,7 +1269,7 @@ PENTING:
         }
 
         // Update Measurements
-        if (parsed.measurements && Object.keys(parsed.measurements).length > 0) {
+        if (parsed.measurements && Object.keys(parsed.measurements).length > 0 && !parsed.clearAllForm && !parsed.clearAllMeasurements) {
           setMeasurements(prev => {
             const next = { ...prev };
             Object.entries(parsed.measurements).forEach(([k, v]) => {
@@ -1206,7 +1283,7 @@ PENTING:
         }
 
         // Update Time Spent
-        if (parsed.timeSpent && Object.keys(parsed.timeSpent).length > 0) {
+        if (parsed.timeSpent && Object.keys(parsed.timeSpent).length > 0 && !parsed.clearAllForm) {
           setTimeSpent(prev => {
             const next = { ...prev };
             Object.entries(parsed.timeSpent).forEach(([k, v]) => {
@@ -1220,7 +1297,7 @@ PENTING:
         }
 
         // Update Operation Status
-        if (parsed.operationStatus && Object.keys(parsed.operationStatus).length > 0) {
+        if (parsed.operationStatus && Object.keys(parsed.operationStatus).length > 0 && !parsed.clearAllForm) {
           setOperationStatus(prev => {
             const next = { ...prev, ...parsed.operationStatus };
             logs.push(`Status Operasi: ${parsed.operationStatus.isNormal ? 'Normal' : 'Abnormal'}`);
@@ -1232,8 +1309,42 @@ PENTING:
       // Also parse raw text from AI reply if any extra numbers exist
       if (data.reply) {
         const replyExtra = extractFieldsFromVoiceText(data.reply);
-        if (Object.keys(replyExtra.measurements).length > 0) {
-          setMeasurements(prev => ({ ...prev, ...replyExtra.measurements }));
+        if (replyExtra.clearActions?.clearDPM && (!parsed || !parsed.clearDPM)) {
+          setMeasurements(prev => ({
+            ...prev,
+            dpm_voltage_rs: '', dpm_voltage_st: '', dpm_voltage_tr: '', dpm_voltage_rn: '', dpm_voltage_sn: '', dpm_voltage_tn: '', dpm_voltage_n: '', dpm_kw: '', dpm_kva: '', dpm_kvar: '', dpm_cos_p: '', dpm_ampere_r: '', dpm_ampere_s: '', dpm_ampere_t: '', dpm_ampere_n: '', dpm_remarks: ''
+          }));
+          logs.push('🗑️ Data Digital Power Meter (DPM) berhasil dikosongkan.');
+        }
+        if (replyExtra.clearActions?.clearVC && (!parsed || !parsed.clearVC)) {
+          setMeasurements(prev => ({
+            ...prev,
+            vc_voltage_rs: '', vc_voltage_st: '', vc_voltage_tr: '', vc_voltage_rn: '', vc_voltage_sn: '', vc_voltage_tn: '', vc_voltage_ng: '', vc_ampere_r: '', vc_ampere_s: '', vc_ampere_t: '', vc_ampere_n: '', vc_remarks: ''
+          }));
+          logs.push('🗑️ Data Voltage & Current (VC) berhasil dikosongkan.');
+        }
+        if (replyExtra.clearActions?.clearAllMeasurements && (!parsed || !parsed.clearAllMeasurements)) {
+          setMeasurements({
+            dpm_voltage_rs: '', dpm_voltage_st: '', dpm_voltage_tr: '', dpm_voltage_rn: '', dpm_voltage_sn: '', dpm_voltage_tn: '', dpm_voltage_n: '', dpm_kw: '', dpm_kva: '', dpm_kvar: '', dpm_cos_p: '', dpm_ampere_r: '', dpm_ampere_s: '', dpm_ampere_t: '', dpm_ampere_n: '', dpm_remarks: '',
+            vc_voltage_rs: '', vc_voltage_st: '', vc_voltage_tr: '', vc_voltage_rn: '', vc_voltage_sn: '', vc_voltage_tn: '', vc_voltage_ng: '', vc_ampere_r: '', vc_ampere_s: '', vc_ampere_t: '', vc_ampere_n: '', vc_remarks: '',
+            thermal_breaker_temp: '', thermal_remarks: '',
+            grounding_ohm: '', grounding_remarks: ''
+          });
+          logs.push('🗑️ Seluruh data pengukuran (measurements) dikosongkan.');
+        }
+
+        // Only merge measurements if not clearing all measurements
+        if (!parsed?.clearAllForm && !parsed?.clearAllMeasurements && !replyExtra.clearActions?.clearAllMeasurements) {
+          const extraM = { ...replyExtra.measurements };
+          if (parsed?.clearDPM || replyExtra.clearActions?.clearDPM) {
+            Object.keys(extraM).forEach(k => { if (k.startsWith('dpm_')) delete extraM[k]; });
+          }
+          if (parsed?.clearVC || replyExtra.clearActions?.clearVC) {
+            Object.keys(extraM).forEach(k => { if (k.startsWith('vc_')) delete extraM[k]; });
+          }
+          if (Object.keys(extraM).length > 0) {
+            setMeasurements(prev => ({ ...prev, ...extraM }));
+          }
         }
         if (replyExtra.setAllVisualCondition && (!parsed || !parsed.setAllVisualCondition)) {
           setVisualChecklist(prev => prev.map(item => ({ ...item, condition: replyExtra.setAllVisualCondition! })));
