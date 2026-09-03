@@ -349,13 +349,13 @@ export function FileManagement({
     initialSearchQuery = '',
 }: FileManagementProps = {}) {
     const { user, userRole } = useAuth();
-    const isAdmin = userRole === 'admin';
-    const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
-    const isHSE = userRole === 'hse';
+    const isQcDme = userRole === 'qc_dme';
+    const isAdmin = userRole === 'admin' || isQcDme;
     const canUpload = propAllowUpload !== undefined
         ? propAllowUpload
-        : (userRole === 'admin' || (collectionName !== 'files' && userRole === collectionName));
-    const canDelete = isAdmin || isTDEorCBRE || isHSE;
+        : (isAdmin || (collectionName !== 'files' && userRole === collectionName));
+    // Hanya role qc_dme yang berwenang menghapus data di Manajemen File
+    const canDelete = isQcDme;
     const isEngineer = userRole === 'engineer' || userRole === 'standby_engineer';
 
     useEffect(() => {

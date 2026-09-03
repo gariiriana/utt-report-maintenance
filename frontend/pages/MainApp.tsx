@@ -50,7 +50,8 @@ export function MainApp() {
   const { user, userRole, logout } = useAuth();
 
   // Flag evaluasi hak akses peranan user
-  const isAdmin = userRole === 'admin';
+  const isQcDme = userRole === 'qc_dme';
+  const isAdmin = userRole === 'admin' || isQcDme;
   const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
   const isStandby = userRole === 'standby_engineer';
   const isK2Engineer = userRole === 'Engineer_K2' || userRole === 'engineer_k2';

@@ -94,7 +94,7 @@ interface PTWManagementProps {
 
 export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
   const { user, userRole } = useAuth();
-  const isAdmin = userRole === 'admin';
+  const isAdmin = userRole === 'admin' || userRole === 'qc_dme';
   const [activeSubTab, setActiveSubTab] = useState<'list' | 'weekly'>('list');
   const [ptwTypeFilter, setPtwTypeFilter] = useState<'ALL' | 'PM' | 'CM'>('ALL');
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);

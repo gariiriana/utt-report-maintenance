@@ -63,14 +63,14 @@ export function DeleteConfirmModal({
     if (isRequesterReviewing) {
       return (
         <div className="space-y-1 mb-2">
-          <p className="text-slate-600 text-sm">Dokumen ini sedang menunggu persetujuan hapus oleh Admin.</p>
+          <p className="text-slate-600 text-sm">Dokumen ini sedang menunggu persetujuan hapus oleh QC DME.</p>
           <p className="text-amber-800 font-bold text-xs bg-amber-50 border border-amber-200 py-1 px-3 rounded-lg inline-block">Diajukan oleh: {requestedBy || 'Standby Engineer'}</p>
           <p className="text-slate-500 text-xs mt-1">Anda dapat membatalkan pengajuan hapus ini jika dokumen masih dibutuhkan.</p>
         </div>
       );
     }
     if (isAdmin) return 'Anda yakin ingin menghapus dokumen ini secara permanen?';
-    return 'Dokumen ini akan diajukan ke admin untuk proses penghapusan. Lanjutkan?';
+    return 'Dokumen ini akan diajukan ke QC DME untuk proses penghapusan. Lanjutkan?';
   };
 
   return (

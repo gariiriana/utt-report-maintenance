@@ -65,13 +65,13 @@ func (v *FirebaseTokenVerifier) Verify(ctx context.Context, idToken string) (*Fi
 	return claims, nil
 }
 func (c *FirebaseClaims) IsAdmin() bool {
-	return c.Role == "admin"
+	return c.Role == "admin" || c.Role == "qc_dme"
 }
 func (c *FirebaseClaims) IsHSE() bool {
-	return c.Role == "hse" || c.Role == "admin"
+	return c.Role == "hse" || c.Role == "admin" || c.Role == "qc_dme"
 }
 func (c *FirebaseClaims) HasRole(role string) bool {
-	return c.Role == role || c.Role == "admin"
+	return c.Role == role || c.Role == "admin" || c.Role == "qc_dme"
 }
 func ExtractBearerToken(authHeader string) (string, bool) {
 	const prefix = "Bearer "

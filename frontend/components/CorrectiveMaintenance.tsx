@@ -178,8 +178,9 @@ const INDO_MONTHS = [
 
 export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: CorrectiveMaintenanceProps) {
     const { user, userRole } = useAuth();
-    const isAdmin = userRole === 'admin';
-    const isAuthorizedRole = userRole === 'admin' || userRole === 'engineer' || userRole === 'standby_engineer';
+    const isQcDme = userRole === 'qc_dme';
+    const isAdmin = userRole === 'admin' || isQcDme;
+    const isAuthorizedRole = isAdmin || userRole === 'engineer' || userRole === 'standby_engineer';
 
     const [reports, setReports] = useState<CorrectiveReport[]>([]);
     const [loading, setLoading] = useState(true);
@@ -342,40 +343,40 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         if (!selectedReportForDelete) return;
         try {
             setDeleteLoading(true);
-            if (isAdmin) {
-                // Admins approve delete and delete the document permanently
+            if (isQcDme) {
+                // QC DME approves delete and deletes the document permanently
                 const toastId = toast.loading('Menghapus dokumen secara permanen...');
                 await deleteDoc(doc(db, 'corrective_reports', selectedReportForDelete.id));
                 toast.success('Laporan berhasil dihapus secara permanen', { id: toastId });
             } else {
-                // Non-admins (Standby Engineers) request deletion with mandatory remark
+                // Non-QC DME (including Admin & Standby Engineers) request deletion with mandatory remark
                 if (!reason || !reason.trim()) {
                     toast.error('Wajib menyertakan remark/alasan sebelum mengajukan hapus dokumen!');
                     setDeleteLoading(false);
                     return;
                 }
-                const toastId = toast.loading('Mengajukan permohonan hapus ke Admin...');
+                const toastId = toast.loading('Mengajukan permohonan hapus ke QC DME...');
                 const docRef = doc(db, 'corrective_reports', selectedReportForDelete.id);
                 await updateDoc(docRef, {
                     deleteRequested: true,
-                    deleteRequestedBy: user?.email || 'Standby Engineer',
+                    deleteRequestedBy: user?.email || (userRole === 'admin' ? 'Admin' : 'Standby Engineer'),
                     deleteReason: reason.trim(),
                     deleteRequestedAt: serverTimestamp()
                 });
 
-                // Send real-time notification to Admin
+                // Send real-time notification to QC DME
                 const docLabel = selectedReportForDelete.incidentName || selectedReportForDelete.ticketName || selectedReportForDelete.equipmentName || selectedReportForDelete.issue || 'Laporan Standby';
                 await sendFileNotification({
                     title: 'Pengajuan Hapus Dokumen Standby',
                     fileName: docLabel,
                     category: 'Arsip Standby',
                     fileId: selectedReportForDelete.id,
-                    uploadedBy: user?.email || 'Standby Engineer',
+                    uploadedBy: user?.email || (userRole === 'admin' ? 'Admin' : 'Standby Engineer'),
                     targetTab: 'corrective_archive',
                     searchQuery: docLabel
                 });
 
-                toast.success('Pengajuan hapus dokumen telah dikirim ke Admin. Menunggu persetujuan Admin.', { id: toastId });
+                toast.success('Pengajuan hapus dokumen telah dikirim ke QC DME. Menunggu persetujuan QC DME.', { id: toastId });
             }
             setDeleteModalOpen(false);
             setSelectedReportForDelete(null);
@@ -388,7 +389,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     };
 
     const rejectDeleteRequest = async () => {
-        if (!selectedReportForDelete) return;
+        if (!selectedReportForDelete || !isQcDme) return;
         try {
             setDeleteLoading(true);
             const toastId = toast.loading('Menolak pengajuan hapus...');
@@ -1491,25 +1492,25 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                         <button
                                                             onClick={() => handleDeleteClick(report)}
                                                             className={`p-2 rounded-xl transition cursor-pointer flex items-center gap-1.5 border text-xs font-semibold ${report.deleteRequested
-                                                                    ? isAdmin
+                                                                    ? isQcDme
                                                                         ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200 shadow-sm animate-pulse'
                                                                         : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
                                                                     : 'bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-200'
                                                                 }`}
                                                             title={
                                                                 report.deleteRequested
-                                                                    ? isAdmin
+                                                                    ? isQcDme
                                                                         ? 'Tinjau Pengajuan Hapus Dokumen'
-                                                                        : 'Menunggu Persetujuan Hapus Admin (Klik untuk batalkan pengajuan)'
-                                                                    : isAdmin
+                                                                        : 'Menunggu Persetujuan Hapus QC DME (Klik untuk batalkan pengajuan)'
+                                                                    : isQcDme
                                                                         ? 'Hapus Laporan Permanen'
-                                                                        : 'Ajukan Hapus Laporan ke Admin'
+                                                                        : 'Ajukan Hapus Laporan ke QC DME'
                                                             }
                                                         >
                                                             <Trash2 className="w-4 h-4" />
                                                             {report.deleteRequested && (
                                                                 <span className="text-[11px] font-bold">
-                                                                    {isAdmin ? 'Tinjau Hapus' : 'Menunggu Approval'}
+                                                                    {isQcDme ? 'Tinjau Hapus' : 'Menunggu Approval'}
                                                                 </span>
                                                             )}
                                                         </button>
@@ -1609,25 +1610,25 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                         <button
                                                             onClick={() => handleDeleteClick(report)}
                                                             className={`p-2 rounded-xl transition cursor-pointer flex items-center gap-1.5 border text-xs font-semibold ${report.deleteRequested
-                                                                    ? isAdmin
+                                                                    ? isQcDme
                                                                         ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200 shadow-sm animate-pulse'
                                                                         : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
                                                                     : 'bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-200'
                                                                 }`}
                                                             title={
                                                                 report.deleteRequested
-                                                                    ? isAdmin
+                                                                    ? isQcDme
                                                                         ? 'Tinjau Pengajuan Hapus Dokumen'
-                                                                        : 'Menunggu Persetujuan Hapus Admin (Klik untuk batalkan pengajuan)'
-                                                                    : isAdmin
+                                                                        : 'Menunggu Persetujuan Hapus QC DME (Klik untuk batalkan pengajuan)'
+                                                                    : isQcDme
                                                                         ? 'Hapus Laporan Permanen'
-                                                                        : 'Ajukan Hapus Laporan ke Admin'
+                                                                        : 'Ajukan Hapus Laporan ke QC DME'
                                                             }
                                                         >
                                                             <Trash2 className="w-4 h-4" />
                                                             {report.deleteRequested && (
                                                                 <span className="text-[11px] font-bold">
-                                                                    {isAdmin ? 'Tinjau Hapus' : 'Menunggu Approval'}
+                                                                    {isQcDme ? 'Tinjau Hapus' : 'Menunggu Approval'}
                                                                 </span>
                                                             )}
                                                         </button>
@@ -1869,25 +1870,25 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             <button
                                                                 onClick={() => handleDeleteClick(report)}
                                                                 className={`p-2 rounded-xl transition cursor-pointer flex items-center gap-1.5 border text-xs font-semibold ${report.deleteRequested
-                                                                        ? isAdmin
+                                                                        ? isQcDme
                                                                             ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200 shadow-sm animate-pulse'
                                                                             : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
                                                                         : 'bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-200'
                                                                     }`}
                                                                 title={
                                                                     report.deleteRequested
-                                                                        ? isAdmin
+                                                                        ? isQcDme
                                                                             ? 'Tinjau Pengajuan Hapus Dokumen'
-                                                                            : 'Menunggu Persetujuan Hapus Admin (Klik untuk batalkan pengajuan)'
-                                                                        : isAdmin
+                                                                            : 'Menunggu Persetujuan Hapus QC DME (Klik untuk batalkan pengajuan)'
+                                                                        : isQcDme
                                                                             ? 'Hapus Laporan Permanen'
-                                                                            : 'Ajukan Hapus Laporan ke Admin'
+                                                                            : 'Ajukan Hapus Laporan ke QC DME'
                                                                 }
                                                             >
                                                                 <Trash2 className="w-4 h-4" />
                                                                 {report.deleteRequested && (
                                                                     <span className="text-[11px] font-bold">
-                                                                        {isAdmin ? 'Tinjau Hapus' : 'Menunggu Approval'}
+                                                                        {isQcDme ? 'Tinjau Hapus' : 'Menunggu Approval'}
                                                                     </span>
                                                                 )}
                                                             </button>
@@ -1936,7 +1937,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                     setSelectedReportForDelete(null);
                 }}
                 onConfirm={confirmDelete}
-                onRejectRequest={isAdmin ? rejectDeleteRequest : () => cancelDeleteRequest()}
+                onRejectRequest={isQcDme ? rejectDeleteRequest : () => cancelDeleteRequest()}
                 documentName={
                     selectedReportForDelete?.incidentName ||
                     selectedReportForDelete?.ticketName ||
@@ -1948,8 +1949,8 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 isRequested={selectedReportForDelete?.deleteRequested || false}
                 requestedBy={selectedReportForDelete?.deleteRequestedBy || ''}
                 deleteReason={selectedReportForDelete?.deleteReason || ''}
-                isAdmin={isAdmin}
-                requireReason={!isAdmin}
+                isAdmin={isQcDme}
+                requireReason={!isQcDme}
             />
 
             {/* Modal Rekap SLA Bulanan */}

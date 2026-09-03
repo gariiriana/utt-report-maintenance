@@ -4,13 +4,14 @@ import "time"
 type UserRole string
 
 const (
-	RoleAdmin     UserRole = "admin"
-	RoleHSE       UserRole = "hse"
-	RoleDirector  UserRole = "director"
-	RoleEngineer  UserRole = "engineer"
+	RoleAdmin       UserRole = "admin"
+	RoleQCDME       UserRole = "qc_dme"
+	RoleHSE         UserRole = "hse"
+	RoleDirector    UserRole = "director"
+	RoleEngineer    UserRole = "engineer"
 	RoleSiteManager UserRole = "site_manager"
-	RoleManager   UserRole = "manager"
-	RoleGuest     UserRole = "guest"
+	RoleManager     UserRole = "manager"
+	RoleGuest       UserRole = "guest"
 )
 type User struct {
 	UID           string    `json:"uid" firestore:"uid"`
@@ -49,11 +50,12 @@ func (u *User) ToProfile() UserProfile {
 	}
 }
 func (u *User) IsAdmin() bool {
-	return u.Role == RoleAdmin
+	return u.Role == RoleAdmin || u.Role == RoleQCDME
 }
 func AllowedRoles() []string {
 	return []string{
 		string(RoleAdmin),
+		string(RoleQCDME),
 		string(RoleHSE),
 		string(RoleDirector),
 		string(RoleEngineer),

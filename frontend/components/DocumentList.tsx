@@ -10,7 +10,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2 } from 'lucide-react';
-import { collection, query, getDocs, deleteDoc, doc, where, updateDoc, deleteField } from 'firebase/firestore';
+import { collection, query, getDocs, deleteDoc, doc, where, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
@@ -180,7 +180,8 @@ interface DocumentListProps {
 export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: DocumentListProps) {
   const { user, userRole, companyType } = useAuth();
   const isDME = userRole === 'DME' || userRole === 'site_manager_dme' || Boolean(user?.email && (user.email.toLowerCase().includes('dwimitra') || user.email.toLowerCase().includes('dme')));
-  const isAdmin = userRole === 'admin';
+  const isQcDme = userRole === 'qc_dme';
+  const isAdmin = userRole === 'admin' || isQcDme;
   const isPrivileged = isAdmin || userRole === 'manager' || userRole === 'site_manager' || userRole === 'hse' ||
     userRole === 'dirut' || userRole === 'direksiSDM' || userRole === 'DireksiKeuangan';
   const isEngineer = userRole === 'engineer' || userRole === 'Engineer_K2' || userRole === 'engineer_k2' || userRole === 'standby_engineer' || userRole === 'tde' || userRole === 'cbre';
@@ -509,21 +510,22 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       setBulkDeleting(true);
       const collectionName = documentToDelete.documentType === 'hse' ? 'hse' : documentToDelete.documentType + '_documents';
 
-      if (isAdmin) {
-        // Admins approve delete and delete the document permanently
+      if (isQcDme) {
+        // QC DME approves delete and deletes the document permanently
         const toastId = toast.loading('Menghapus dokumen secara permanen...');
         await deleteDoc(doc(db, collectionName, documentToDelete.id));
         toast.success('Dokumen berhasil dihapus permanen', { id: toastId });
       } else {
-        // Non-admins request delete
-        const toastId = toast.loading('Mengajukan permohonan hapus...');
+        // Non-QC DME (including admin) requests delete
+        const toastId = toast.loading('Mengajukan permohonan hapus ke QC DME...');
         const docRef = doc(db, collectionName, documentToDelete.id);
         await updateDoc(docRef, {
           deleteRequested: true,
-          deleteRequestedBy: user?.email || '',
+          deleteRequestedBy: user?.email || (userRole === 'admin' ? 'Admin' : ''),
           deleteReason: reason || '',
+          deleteRequestedAt: serverTimestamp(),
         });
-        toast.success('Pengajuan hapus dikirim ke admin', { id: toastId });
+        toast.success('Pengajuan hapus dikirim ke QC DME', { id: toastId });
       }
 
       setDeleteModalOpen(false);
@@ -538,7 +540,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
   };
 
   const rejectDeleteRequest = async () => {
-    if (!documentToDelete) return;
+    if (!documentToDelete || !isQcDme) return;
 
     try {
       setBulkDeleting(true);
@@ -2159,23 +2161,23 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           </motion.button>
           {canDelete && (
             <motion.button
-              whileHover={{ scale: document.deleteRequested && !isAdmin ? 1 : 1.02 }}
-              whileTap={{ scale: document.deleteRequested && !isAdmin ? 1 : 0.98 }}
+              whileHover={{ scale: document.deleteRequested && !isQcDme ? 1 : 1.02 }}
+              whileTap={{ scale: document.deleteRequested && !isQcDme ? 1 : 0.98 }}
               onClick={() => {
-                if (document.deleteRequested && !isAdmin) return;
+                if (document.deleteRequested && !isQcDme) return;
                 openDeleteModal(document);
               }}
-              disabled={document.deleteRequested && !isAdmin}
+              disabled={document.deleteRequested && !isQcDme}
               className={`flex-1 sm:flex-initial py-2 sm:py-2.5 px-3 rounded-xl transition border font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${document.deleteRequested
-                  ? isAdmin
+                  ? isQcDme
                     ? 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-300'
                     : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50'
                   : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200'
                 }`}
-              title={document.deleteRequested ? isAdmin ? "Tinjau Pengajuan Hapus" : "Menunggu Persetujuan Hapus" : "Delete"}
+              title={document.deleteRequested ? isQcDme ? "Tinjau Pengajuan Hapus" : "Menunggu Persetujuan Hapus QC DME" : isQcDme ? "Hapus Permanen" : "Ajukan Hapus ke QC DME"}
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span className="sm:hidden font-bold">{document.deleteRequested ? 'Tinjau' : 'Hapus'}</span>
+              <span className="sm:hidden font-bold">{document.deleteRequested ? (isQcDme ? 'Tinjau' : 'Menunggu') : (isQcDme ? 'Hapus' : 'Ajukan Hapus')}</span>
             </motion.button>
           )}
         </div>
@@ -2493,13 +2495,14 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
         isOpen={deleteModalOpen}
         onClose={() => !bulkDeleting && setDeleteModalOpen(false)}
         onConfirm={confirmDelete}
-        onRejectRequest={rejectDeleteRequest}
+        onRejectRequest={isQcDme ? rejectDeleteRequest : undefined}
         documentName={documentToDelete?.fileName || ''}
         loading={bulkDeleting}
         isRequested={documentToDelete?.deleteRequested || false}
         requestedBy={documentToDelete?.deleteRequestedBy || ''}
-        isAdmin={isAdmin}
+        isAdmin={isQcDme}
         deleteReason={documentToDelete?.deleteReason || ''}
+        requireReason={!isQcDme}
       />
     </div>
   );

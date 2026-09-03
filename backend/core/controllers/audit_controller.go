@@ -17,8 +17,8 @@ func NewAuditController(auditSvc *services.AuditService) *AuditController {
 func (c *AuditController) GetAuditLogs(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	role := middlewares.RoleFromContext(ctx)
-	if role != "admin" {
-		helpers.SendAppError(w, apperrors.Forbidden("audit logs require admin role"))
+	if role != "admin" && role != "qc_dme" {
+		helpers.SendAppError(w, apperrors.Forbidden("audit logs require admin or qc_dme role"))
 		return
 	}
 

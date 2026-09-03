@@ -66,7 +66,7 @@ const QUARTER_INFO = [
 
 export function FindingArchive() {
   const { user, userRole } = useAuth();
-  const canDelete = userRole === 'admin' || userRole === 'engineer' || userRole === 'standby_engineer';
+  const canDelete = userRole === 'admin' || userRole === 'qc_dme' || userRole === 'engineer' || userRole === 'standby_engineer';
 
   const [findings, setFindings] = useState<FindingRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -597,7 +597,7 @@ export function FindingArchive() {
                                   <span>DOCX</span>
                                 </button>
 
-                                {canDelete && (finding.createdBy === user?.uid || userRole === 'admin') && (
+                                {canDelete && (finding.createdBy === user?.uid || userRole === 'admin' || userRole === 'qc_dme') && (
                                   <button
                                     type="button"
                                     onClick={() => setDeleteId(finding.id)}
