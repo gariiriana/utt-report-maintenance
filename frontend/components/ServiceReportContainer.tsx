@@ -52,13 +52,21 @@ function getMergedChecklist(
   // Jika savedList memiliki jumlah poin yang lebih sedikit dari template (misal sisa draft lama), gabungkan dengan template resmi
   const savedMap = new Map<string, VisualCheckItem>();
   savedList.forEach(item => {
-    if (item.no) savedMap.set(item.no.trim().toLowerCase(), item);
-    if (item.activity) savedMap.set(item.activity.trim().toLowerCase(), item);
+    if (item.no) {
+      savedMap.set(item.no.trim().toLowerCase(), item);
+      const cleanNo = item.no.replace(/[^a-z0-9]/gi, '').toLowerCase();
+      if (cleanNo) savedMap.set(cleanNo, item);
+    }
+    if (item.activity) {
+      savedMap.set(item.activity.trim().toLowerCase(), item);
+    }
   });
 
   return templateList.map(tpl => {
+    const tplNoClean = tpl.no ? tpl.no.replace(/[^a-z0-9]/gi, '').toLowerCase() : '';
     const match =
       (tpl.no ? savedMap.get(tpl.no.trim().toLowerCase()) : undefined) ||
+      (tplNoClean ? savedMap.get(tplNoClean) : undefined) ||
       (tpl.activity ? savedMap.get(tpl.activity.trim().toLowerCase()) : undefined);
     if (match) {
       return {
@@ -295,10 +303,15 @@ function extractFieldsFromVoiceText(text: string) {
     /(?:semua|seluruh)\s+(?:item|poin|point|visual|checklist|kondisi)/i.test(normText) ||
     /(?:poin|point)\s+a\s+(?:sampai|hingga|s\/d|-)\s+[a-p]/i.test(normText);
 
+  const isGeneralChecklistStatus =
+    hasWordSemua ||
+    /\b(?:status|statusnya|kondisi|kondisinya|checklist|inspeksi)\s+(?:menjadi|jadi|ke)\s+(?:not\s*good|good)/i.test(normText) ||
+    /\b(?:ubah|rubah|ganti|set|jadikan)\s+(?:semua\s+|seluruh\s+)?(?:status|statusnya|kondisi|kondisinya|checklist)?\s*(?:menjadi|jadi|ke)?\s*(?:not\s*good|tidak\s*bagus|rusak|abnormal|jelek|tidak\s*ok|ng|good|bagus|baik|normal)/i.test(normText);
+
   const isNotGoodPhrase = /\b(?:not\s*good|tidak\s*bagus|rusak|abnormal|jelek|tidak\s*ok|tidak\s*oke|ng|kurang\s*baik|bermasalah)\b/i.test(normText);
   const isGoodPhrase = /\b(?:good|bagus|baik|normal|sesuai|oke|ok|aman|mantap)\b/i.test(normText);
 
-  if (!isDeleteIntent && hasWordSemua) {
+  if (!isDeleteIntent && isGeneralChecklistStatus) {
     if (isNotGoodPhrase) {
       setAllVisualCondition = 'Not Good';
       logs.push('Semua Inspeksi Visual → [Not Good]');
@@ -718,45 +731,10 @@ export function ServiceReportContainer({
   const latestTranscriptRef = useRef<string>('');
   const lastSentPayloadRef = useRef<string>('');
 
-  // Sinkronisasi data awal jika initialData berubah dari parent (misal switch unit/edit mode)
+  const onChangeRef = useRef(onChange);
   useEffect(() => {
-    if (initialData) {
-      setIsEnabled(true);
-      setIsOpen(true);
-      if (initialData.customerInfo) setCustomerInfo(initialData.customerInfo);
-      if (initialData.timeSpent) setTimeSpent(initialData.timeSpent);
-      if (initialData.operationStatus) setOperationStatus(initialData.operationStatus);
-      if (initialData.visualChecklist) setVisualChecklist(getMergedChecklist(initialData.visualChecklist, config?.checklistTemplate));
-      if (initialData.measurements) setMeasurements(initialData.measurements);
-    }
-  }, [initialData, config?.checklistTemplate]);
-
-  // Siarkan perubahan data Service Report ke parent form
-  useEffect(() => {
-    if (!onChange || !config) return;
-    if (!isEnabled) {
-      if (lastSentPayloadRef.current !== 'null') {
-        lastSentPayloadRef.current = 'null';
-        onChange(null);
-      }
-      return;
-    }
-    const payload: ServiceReportPayload = {
-      equipmentKey: config.key,
-      equipmentName: config.name,
-      accountEmail: userEmail || config.email,
-      customerInfo,
-      timeSpent,
-      operationStatus,
-      visualChecklist,
-      measurements
-    };
-    const serialized = JSON.stringify(payload);
-    if (lastSentPayloadRef.current !== serialized) {
-      lastSentPayloadRef.current = serialized;
-      onChange(payload);
-    }
-  }, [isEnabled, customerInfo, timeSpent, operationStatus, visualChecklist, measurements, config, userEmail, onChange]);
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   const SpeechRecognitionAPI =
     typeof window !== 'undefined'
@@ -1282,17 +1260,33 @@ PENTING:
     }
   };
 
+  const serializeComparable = (data: {
+    equipmentKey?: string;
+    accountEmail?: string;
+    customerInfo?: any;
+    timeSpent?: any;
+    operationStatus?: any;
+    visualChecklist?: any;
+    measurements?: any;
+  }) => {
+    return JSON.stringify({
+      equipmentKey: data.equipmentKey || '',
+      accountEmail: data.accountEmail || '',
+      customerInfo: data.customerInfo || {},
+      timeSpent: data.timeSpent || {},
+      operationStatus: data.operationStatus || {},
+      visualChecklist: data.visualChecklist || [],
+      measurements: data.measurements || {}
+    });
+  };
+
   // Sync internal state when initialData changes from external source (breaks infinite re-render loop)
   useEffect(() => {
     if (!initialData) {
-      if (config?.checklistTemplate) {
-        setVisualChecklist(config.checklistTemplate);
-      }
       return;
     }
 
-    const incomingComparable = JSON.stringify({
-      isEnabled: true,
+    const incomingComparable = serializeComparable({
       equipmentKey: initialData.equipmentKey || config?.key,
       accountEmail: initialData.accountEmail || userEmail || config?.email,
       customerInfo: initialData.customerInfo,
@@ -1316,20 +1310,19 @@ PENTING:
       setVisualChecklist(getMergedChecklist(initialData.visualChecklist, config?.checklistTemplate));
     }
     if (initialData.measurements) setMeasurements(initialData.measurements);
-  }, [initialData, config]);
+  }, [initialData, config?.key, config?.checklistTemplate, userEmail]);
 
   // Sinkronisasi data ke parent saat ada perubahan internal (menggunakan debounced / loop prevention)
   useEffect(() => {
     if (!config || !isEnabled) {
       if (lastSentPayloadRef.current !== 'null') {
         lastSentPayloadRef.current = 'null';
-        if (onChange) onChange(null);
+        if (onChangeRef.current) onChangeRef.current(null);
       }
       return;
     }
 
-    const currentComparable = JSON.stringify({
-      isEnabled: true,
+    const currentComparable = serializeComparable({
       equipmentKey: config.key,
       accountEmail: userEmail || config.email,
       customerInfo,
@@ -1357,8 +1350,8 @@ PENTING:
       updatedAt: new Date().toISOString()
     };
 
-    if (onChange) onChange(payload);
-  }, [isEnabled, customerInfo, timeSpent, operationStatus, visualChecklist, measurements, config?.key, userEmail]);
+    if (onChangeRef.current) onChangeRef.current(payload);
+  }, [isEnabled, customerInfo, timeSpent, operationStatus, visualChecklist, measurements, config?.key, config?.name, config?.email, userEmail]);
 
   // Jika akun ini belum memiliki template yang dipetakan
   if (!isSupported || !config) {
