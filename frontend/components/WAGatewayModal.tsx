@@ -9,6 +9,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getApiEndpoint } from '@/utils/apiConfig';
 import {
   CheckCircle2,
   AlertCircle,
@@ -186,7 +187,7 @@ export const WAGatewayModal: React.FC<WAGatewayModalProps> = ({
   const sendViaCloudGateway = async (target: string, msg: string, group?: string) => {
     // 1. Coba lewat backend serverless / Go backend proxy (/api/wa/send)
     try {
-      const apiRes = await fetch('/api/wa/send', {
+      const apiRes = await fetch(getApiEndpoint('/api/wa/send'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

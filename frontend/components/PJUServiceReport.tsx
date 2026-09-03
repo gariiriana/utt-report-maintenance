@@ -3,6 +3,7 @@ import { Eye, FileType } from 'lucide-react';
 import { toast } from 'sonner';
 import { generatePJUServiceReportPDF } from '@/service_reports/pju/generatePJUReportPDF';
 import { generatePJUReportExcel } from '@/service_reports/pju/generatePJUReportExcel';
+import { getApiEndpoint } from '@/utils/apiConfig';
 
 import {
   PJUReportData, PJUCustomerInfo, PJUTimeSpent,
@@ -132,7 +133,7 @@ export function PJUServiceReport({ prefillData, onClearPrefill, onChange }: PJUS
         parameter: p.parameter || '',
       }));
 
-      const res = await fetch('/api/ai/pju-report', {
+      const res = await fetch(getApiEndpoint('/api/ai/pju-report'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

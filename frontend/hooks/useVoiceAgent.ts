@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
+import { getApiEndpoint } from '@/utils/apiConfig';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // useVoiceAgent — Ultra-Responsive Voice Agent (ChatGPT VoiceMode Style)
@@ -472,8 +473,8 @@ export function useVoiceAgent(
         token = undefined;
       }
 
-      // Always use Vite proxy path (/api/ai/chat) — works in dev and production
-      const chatUrl = '/api/ai/chat';
+      // Use dynamic API endpoint resolution — works in dev and production
+      const chatUrl = getApiEndpoint('/api/ai/chat');
 
       const chatGPTVoicePrompt = `Kamu adalah JARVIS, AI Voice Agent operator resmi untuk DwimitraSystem (PT Dwimitra Ekatama Mandiri / PT UTT) di Data Center NeutraDC Cikarang.
 Creator: Tuan Gari Iriana.
@@ -493,9 +494,10 @@ ATURAN UTAMA PERCAKAPAN SUARA (SANGAT KETAT):
    - Tutup modal/dialog: [ACTION: CLOSE_MODAL]
 6. Jika user hanya menyapa atau mengobrol santai, balas singkat, ramah, dan siap menerima instruksi.`;
 
+      const history = conversationHistoryRef.current || [];
       const messagesPayload = [
         { role: 'system', content: chatGPTVoicePrompt },
-        ...currentHist.slice(-6).map(msg => ({
+        ...history.slice(-6).map((msg: ConversationMessage) => ({
           role: msg.role === 'ai' ? 'assistant' : 'user',
           content: msg.content,
         })),

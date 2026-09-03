@@ -11,6 +11,7 @@ import { Eye, FileType } from 'lucide-react';
 import { toast } from 'sonner';
 import { generateGeneratorReportPDF } from '@/service_reports/generator/generateGeneratorReportPDF';
 import { generateGeneratorReportExcel } from '@/service_reports/generator/generateGeneratorReportExcel';
+import { getApiEndpoint } from '@/utils/apiConfig';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import {
@@ -109,7 +110,7 @@ export function GeneratorServiceReport({ prefillData, onClearPrefill, onChange }
     setIsGeneratingAI(true);
     const toastId = toast.loading('Menganalisis parameter foto Generator/Genset dengan AI Co-Pilot...');
     try {
-      const response = await fetch('/api/ai/generator-report', {
+      const response = await fetch(getApiEndpoint('/api/ai/generator-report'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

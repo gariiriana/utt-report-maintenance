@@ -6,6 +6,8 @@
 //            jika teks kustom tidak ada dalam kamus.
 // ============================================================================
 
+import { getApiEndpoint } from '@/utils/apiConfig';
+
 // Kamus Penerjemahan Statis (Inggris -> Indonesia)
 // Berisi standar kalimat pemeriksaan teknis data center M/E
 export const TRANSLATION_DICTIONARY: Record<string, string> = {
@@ -164,7 +166,7 @@ export async function translateText(text: string): Promise<string> {
 
   // 4. Fallback ke endpoint AI Gemini untuk teks bebas luar kamus
   try {
-    const res = await fetch('/api/ai/chat', {
+    const res = await fetch(getApiEndpoint('/api/ai/chat'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

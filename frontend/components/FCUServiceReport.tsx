@@ -3,6 +3,7 @@ import { Eye, FileType } from 'lucide-react';
 import { toast } from 'sonner';
 import { generateFCUServiceReportPDF } from '@/service_reports/fcu/generateFCUReportPDF';
 import { generateFCUReportExcel } from '@/service_reports/fcu/generateFCUReportExcel';
+import { getApiEndpoint } from '@/utils/apiConfig';
 
 import {
   FCUReportData, FCUCustomerInfo, FCUTimeSpent,
@@ -121,7 +122,7 @@ export function FCUServiceReport({ prefillData, onClearPrefill, onChange }: FCUS
       }));
 
       // Kirim HTTP POST request ke backend Go API
-      const res = await fetch('/api/ai/fcu-report', {
+      const res = await fetch(getApiEndpoint('/api/ai/fcu-report'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

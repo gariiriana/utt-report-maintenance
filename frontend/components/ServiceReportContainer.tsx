@@ -31,6 +31,7 @@ import {
 import { getServiceReportConfigByEmail, isServiceReportSupported } from '@/config/serviceReportRegistry';
 import { generateUniversalServiceReportPDF } from '@/service_reports/universalServiceReportPDF';
 import { ServiceReportFullPreviewModal } from '@/components/ServiceReportFullPreviewModal';
+import { getApiEndpoint } from '@/utils/apiConfig';
 
 interface ServiceReportContainerProps {
   userEmail?: string | null;
@@ -90,9 +91,57 @@ interface ClearActions {
   clearVisualPoints?: string[];
 }
 
+function convertIndonesianWordsToNumbers(text: string): string {
+  if (!text) return '';
+  let res = text;
+
+  const wordToDigit: Record<string, string> = {
+    nol: '0', kosong: '0', satu: '1', dua: '2', tiga: '3', empat: '4',
+    lima: '5', enam: '6', tujuh: '7', delapan: '8', sembilan: '9'
+  };
+
+  // Convert decimal representations: "nol koma delapan" -> "0.8", "38 koma 5" -> "38.5"
+  res = res.replace(/\b(?:nol|kosong)\s+koma\s+([a-z\d]+)\b/gi, (_, dec) => {
+    const d = wordToDigit[dec.toLowerCase()] || dec;
+    return `0.${d}`;
+  });
+
+  res = res.replace(/\b(\d+)\s+koma\s+([a-z\d]+)\b/gi, (_, intP, dec) => {
+    const d = wordToDigit[dec.toLowerCase()] || dec;
+    return `${intP}.${d}`;
+  });
+
+  // Standard electrical voltage numbers in words
+  res = res.replace(/\btiga\s*ratus\s*delapan\s*puluh(?:\s*volt)?\b/gi, '380');
+  res = res.replace(/\btiga\s*ratus\s*sembilan\s*puluh(?:\s*volt)?\b/gi, '390');
+  res = res.replace(/\btiga\s*ratus\s*tujuh\s*puluh(?:\s*volt)?\b/gi, '370');
+  res = res.replace(/\bdua\s*ratus\s*dua\s*puluh(?:\s*volt)?\b/gi, '220');
+  res = res.replace(/\bdua\s*ratus\s*tiga\s*puluh(?:\s*volt)?\b/gi, '230');
+  res = res.replace(/\btiga\s*ratus(?:\s*volt)?\b/gi, '300');
+  res = res.replace(/\bdua\s*ratus(?:\s*volt)?\b/gi, '200');
+
+  // Tens and units: "tiga puluh empat" -> "34", "tiga puluh lima" -> "35"
+  res = res.replace(/\btiga\s*puluh\s*(satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan)\b/gi, (_, u) => {
+    return String(30 + parseInt(wordToDigit[u.toLowerCase()] || '0', 10));
+  });
+  res = res.replace(/\bdua\s*puluh\s*(satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan)\b/gi, (_, u) => {
+    return String(20 + parseInt(wordToDigit[u.toLowerCase()] || '0', 10));
+  });
+  res = res.replace(/\bempat\s*puluh\s*(satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan)\b/gi, (_, u) => {
+    return String(40 + parseInt(wordToDigit[u.toLowerCase()] || '0', 10));
+  });
+  res = res.replace(/\btiga\s*puluh\b/gi, '30');
+  res = res.replace(/\bdua\s*puluh\b/gi, '20');
+  res = res.replace(/\bempat\s*puluh\b/gi, '40');
+  res = res.replace(/\blima\s*puluh\b/gi, '50');
+
+  return res;
+}
+
 function extractFieldsFromVoiceText(text: string) {
   const logs: string[] = [];
-  const textLower = text.toLowerCase();
+  const normText = convertIndonesianWordsToNumbers(text || '');
+  const textLower = normText.toLowerCase();
   const measurements: Record<string, string> = {};
   const customerInfo: Record<string, string> = {};
   const timeSpent: Record<string, string> = {};
@@ -101,116 +150,116 @@ function extractFieldsFromVoiceText(text: string) {
   let setAllVisualCondition: 'Good' | 'Not Good' | undefined = undefined;
 
   // ─── 0. CLEAR / DELETE / RESET DETECTION ───
-  const isDeleteIntent = /\b(?:hapus|kosongkan|delete|reset|bersihkan|buang|hilangkan)\b/i.test(text);
+  const isDeleteIntent = /\b(?:hapus|kosongkan|delete|reset|bersihkan|buang|hilangkan)\b/i.test(normText);
 
   if (isDeleteIntent) {
     // a. Clear all form
-    if (/\b(?:semua form|seluruh form|form service report|isi form|semua data)\b/i.test(text)) {
+    if (/\b(?:semua form|seluruh form|form service report|isi form|semua data)\b/i.test(normText)) {
       clearActions.clearAllForm = true;
       logs.push('🗑️ Reset / Kosongkan Semua Form Service Report');
     }
     // b. Clear all measurements
-    else if (/\b(?:semua pengukuran|tabel pengukuran|semua measurement|seluruh measurement|nilai pengukuran)\b/i.test(text)) {
+    else if (/\b(?:semua pengukuran|tabel pengukuran|semua measurement|seluruh measurement|nilai pengukuran)\b/i.test(normText)) {
       clearActions.clearAllMeasurements = true;
       logs.push('🗑️ Kosongkan Seluruh Tabel Pengukuran (Measurements)');
     }
     // c. Clear DPM only
-    else if (/\b(?:dpm|digital power meter|power meter|meteran panel)\b/i.test(text)) {
+    else if (/\b(?:dpm|digital power meter|power meter|meteran panel)\b/i.test(normText)) {
       clearActions.clearDPM = true;
       logs.push('🗑️ Kosongkan Tabel Digital Power Meter (DPM)');
     }
     // d. Clear VC only
-    else if (/\b(?:vc|voltage and current|voltage & current|tegangan arus|pengukuran manual|tester)\b/i.test(text)) {
+    else if (/\b(?:vc|voltage and current|voltage & current|tegangan arus|pengukuran manual|tester)\b/i.test(normText)) {
       clearActions.clearVC = true;
       logs.push('🗑️ Kosongkan Tabel Voltage & Current (VC)');
     }
 
     // e. Clear Thermal
-    if (/\b(?:suhu|thermal|breaker temp)\b/i.test(text) && !clearActions.clearAllMeasurements && !clearActions.clearAllForm) {
+    if (/\b(?:suhu|thermal|breaker temp)\b/i.test(normText) && !clearActions.clearAllMeasurements && !clearActions.clearAllForm) {
       clearActions.clearThermal = true;
       logs.push('🗑️ Hapus Pengukuran Suhu Breaker');
     }
 
     // f. Clear Grounding
-    if (/\b(?:grounding|tahanan tanah|ground)\b/i.test(text) && !clearActions.clearAllMeasurements && !clearActions.clearAllForm) {
+    if (/\b(?:grounding|tahanan tanah|ground)\b/i.test(normText) && !clearActions.clearAllMeasurements && !clearActions.clearAllForm) {
       clearActions.clearGrounding = true;
       logs.push('🗑️ Hapus Pengukuran Grounding');
     }
 
     // g. Clear Specific Measurement Key
-    if (/\b(?:tegangan|voltage)?\s*rs\b/i.test(text)) {
+    if (/\b(?:tegangan|voltage)?\s*rs\b/i.test(normText)) {
       measurements.dpm_voltage_rs = '';
       measurements.vc_voltage_rs = '';
       logs.push('🗑️ Hapus Tegangan RS');
     }
-    if (/\b(?:tegangan|voltage)?\s*st\b/i.test(text)) {
+    if (/\b(?:tegangan|voltage)?\s*st\b/i.test(normText)) {
       measurements.dpm_voltage_st = '';
       measurements.vc_voltage_st = '';
       logs.push('🗑️ Hapus Tegangan ST');
     }
-    if (/\b(?:tegangan|voltage)?\s*tr\b/i.test(text)) {
+    if (/\b(?:tegangan|voltage)?\s*tr\b/i.test(normText)) {
       measurements.dpm_voltage_tr = '';
       measurements.vc_voltage_tr = '';
       logs.push('🗑️ Hapus Tegangan TR');
     }
-    if (/\b(?:tegangan|voltage)?\s*rn\b/i.test(text)) {
+    if (/\b(?:tegangan|voltage)?\s*rn\b/i.test(normText)) {
       measurements.dpm_voltage_rn = '';
       measurements.vc_voltage_rn = '';
       logs.push('🗑️ Hapus Tegangan RN');
     }
-    if (/\b(?:tegangan|voltage)?\s*sn\b/i.test(text)) {
+    if (/\b(?:tegangan|voltage)?\s*sn\b/i.test(normText)) {
       measurements.dpm_voltage_sn = '';
       measurements.vc_voltage_sn = '';
       logs.push('🗑️ Hapus Tegangan SN');
     }
-    if (/\b(?:tegangan|voltage)?\s*tn\b/i.test(text)) {
+    if (/\b(?:tegangan|voltage)?\s*tn\b/i.test(normText)) {
       measurements.dpm_voltage_tn = '';
       measurements.vc_voltage_tn = '';
       logs.push('🗑️ Hapus Tegangan TN');
     }
-    if (/\b(?:kw|daya)\b/i.test(text) && !clearActions.clearDPM && !clearActions.clearAllMeasurements) {
+    if (/\b(?:kw|daya)\b/i.test(normText) && !clearActions.clearDPM && !clearActions.clearAllMeasurements) {
       measurements.dpm_kw = '';
       logs.push('🗑️ Hapus KW');
     }
-    if (/\bkva\b/i.test(text) && !clearActions.clearDPM && !clearActions.clearAllMeasurements) {
+    if (/\bkva\b/i.test(normText) && !clearActions.clearDPM && !clearActions.clearAllMeasurements) {
       measurements.dpm_kva = '';
       logs.push('🗑️ Hapus KVA');
     }
-    if (/\bkvar\b/i.test(text) && !clearActions.clearDPM && !clearActions.clearAllMeasurements) {
+    if (/\bkvar\b/i.test(normText) && !clearActions.clearDPM && !clearActions.clearAllMeasurements) {
       measurements.dpm_kvar = '';
       logs.push('🗑️ Hapus KVAR');
     }
-    if (/\b(?:cos\s*p|cos\s*phi|pf)\b/i.test(text) && !clearActions.clearDPM && !clearActions.clearAllMeasurements) {
+    if (/\b(?:cos\s*p|cos\s*phi|pf)\b/i.test(normText) && !clearActions.clearDPM && !clearActions.clearAllMeasurements) {
       measurements.dpm_cos_p = '';
       logs.push('🗑️ Hapus Cos Phi');
     }
-    if (/\b(?:arus|ampere)\s*r\b/i.test(text)) {
+    if (/\b(?:arus|ampere)\s*r\b/i.test(normText)) {
       measurements.dpm_ampere_r = '';
       measurements.vc_ampere_r = '';
       logs.push('🗑️ Hapus Arus R');
     }
-    if (/\b(?:arus|ampere)\s*s\b/i.test(text)) {
+    if (/\b(?:arus|ampere)\s*s\b/i.test(normText)) {
       measurements.dpm_ampere_s = '';
       measurements.vc_ampere_s = '';
       logs.push('🗑️ Hapus Arus S');
     }
-    if (/\b(?:arus|ampere)\s*t\b/i.test(text)) {
+    if (/\b(?:arus|ampere)\s*t\b/i.test(normText)) {
       measurements.dpm_ampere_t = '';
       measurements.vc_ampere_t = '';
       logs.push('🗑️ Hapus Arus T');
     }
-    if (/\b(?:arus|ampere)\s*n\b/i.test(text)) {
+    if (/\b(?:arus|ampere)\s*n\b/i.test(normText)) {
       measurements.dpm_ampere_n = '';
       measurements.vc_ampere_n = '';
       logs.push('🗑️ Hapus Arus N');
     }
 
     // h. Clear Remarks
-    if (/\b(?:semua remark|seluruh remark|semua catatan|semua keterangan)\b/i.test(text)) {
+    if (/\b(?:semua remark|seluruh remark|semua catatan|semua keterangan)\b/i.test(normText)) {
       clearActions.clearAllRemarks = true;
       logs.push('🗑️ Hapus Semua Remarks Inspeksi Visual');
     } else {
-      const clearPointMatch = text.match(/(?:hapus|kosongkan|delete|reset|bersihkan)\s*(?:remark|catatan|keterangan)?\s*(?:poin|point|item|no)?\s*([a-pA-P]|\b[1-9]\b|\b1[0-6]\b)/i);
+      const clearPointMatch = normText.match(/(?:hapus|kosongkan|delete|reset|bersihkan)\s*(?:remark|catatan|keterangan)?\s*(?:poin|point|item|no)?\s*([a-pA-P]|\b[1-9]\b|\b1[0-6]\b)/i);
       if (clearPointMatch) {
         let pt = clearPointMatch[1].toLowerCase();
         const num = parseInt(pt, 10);
@@ -221,48 +270,74 @@ function extractFieldsFromVoiceText(text: string) {
     }
 
     // i. Clear Customer Info
-    if (/\b(?:data pelanggan|customer info|informasi pelanggan)\b/i.test(text)) {
+    if (/\b(?:data pelanggan|customer info|informasi pelanggan)\b/i.test(normText)) {
       clearActions.clearCustomerInfo = true;
       logs.push('🗑️ Kosongkan Data Pelanggan');
     } else {
-      if (/\b(?:company name|nama perusahaan)\b/i.test(text)) {
+      if (/\b(?:company name|nama perusahaan)\b/i.test(normText)) {
         customerInfo.companyName = '';
         logs.push('🗑️ Hapus Company Name');
       }
-      if (/\b(?:mop no|mop)\b/i.test(text)) {
+      if (/\b(?:mop no|mop)\b/i.test(normText)) {
         customerInfo.mopNo = '';
         logs.push('🗑️ Hapus MOP No');
       }
-      if (/\b(?:lokasi|location)\b/i.test(text)) {
+      if (/\b(?:lokasi|location)\b/i.test(normText)) {
         customerInfo.location = '';
         logs.push('🗑️ Hapus Lokasi');
       }
     }
   }
 
-  // 1. Visual Checklist: Semua item (Hanya jika ada kata 'semua' / 'all' / 'seluruh' dan bukan intent delete)
-  const hasWordSemua = /\b(?:semua|all|seluruh|semuanya)\b/i.test(text);
-  if (!isDeleteIntent && hasWordSemua && (textLower.includes('good') || textLower.includes('bagus') || textLower.includes('baik') || textLower.includes('normal') || textLower.includes('sesuai') || textLower.includes('oke') || textLower.includes('ok'))) {
-    setAllVisualCondition = 'Good';
-    logs.push('Semua Inspeksi Visual → [Good]');
-  } else if (!isDeleteIntent && hasWordSemua && (textLower.includes('not good') || textLower.includes('tidak bagus') || textLower.includes('rusak') || textLower.includes('abnormal') || textLower.includes('jelek'))) {
-    setAllVisualCondition = 'Not Good';
-    logs.push('Semua Inspeksi Visual → [Not Good]');
+  // 1. Visual Checklist: Semua item / seluruh checklist (PRIORITASKAN 'NOT GOOD' TERLEBIH DAHULU!)
+  const hasWordSemua =
+    /\b(?:semua|all|seluruh|semuanya|seluruhnya|total|seisi)\b/i.test(normText) ||
+    /(?:semua|seluruh)\s+(?:item|poin|point|visual|checklist|kondisi)/i.test(normText) ||
+    /(?:poin|point)\s+a\s+(?:sampai|hingga|s\/d|-)\s+[a-p]/i.test(normText);
+
+  const isNotGoodPhrase = /\b(?:not\s*good|tidak\s*bagus|rusak|abnormal|jelek|tidak\s*ok|tidak\s*oke|ng|kurang\s*baik|bermasalah)\b/i.test(normText);
+  const isGoodPhrase = /\b(?:good|bagus|baik|normal|sesuai|oke|ok|aman|mantap)\b/i.test(normText);
+
+  if (!isDeleteIntent && hasWordSemua) {
+    if (isNotGoodPhrase) {
+      setAllVisualCondition = 'Not Good';
+      logs.push('Semua Inspeksi Visual → [Not Good]');
+    } else if (isGoodPhrase) {
+      setAllVisualCondition = 'Good';
+      logs.push('Semua Inspeksi Visual → [Good]');
+    }
   }
 
-  // 2. Visual Checklist: Poin individual (misal: "poin a good", "poin b not good remarknya kotor", "item c tidak bagus keterangan kabel lepas")
-  // MUST match explicit point prefix (poin/point/item/huruf/no/nomor) OR isolated word token \b[a-pA-P]\b
+  // 2. Visual Checklist: Poin Range (misal: "poin a sampai d good", "item b - e not good")
   if (!isDeleteIntent) {
-    const itemRegex = /(?:(?:poin|point|item|huruf|no|nomor)\s*([a-pA-P]|\b[1-9]\b|\b1[0-6]\b)|\b([a-pA-P])\b)\s*(?:adalah|diisi|kondisi|status|:|=|\s+)?\s*(good|not\s*good|tidak\s*bagus|bagus|rusak|oke|ok|jelek)(?:[,\s]*(?:remark|catatan|keterangan)\s*(?:adalah|:|=|\s+)?([^,.\n]+))?/gi;
+    const rangeRegex = /(?:(?:poin|point|item|huruf)\s*([a-pA-P])\s*(?:sampai|hingga|s\/d|-)\s*([a-pA-P]))\s*(?:adalah|diisi|kondisi|status|:|=|\s+)?\s*(not\s*good|tidak\s*bagus|rusak|jelek|tidak\s*ok|tidak\s*oke|ng|good|bagus|baik|normal|sesuai|oke|ok)/gi;
+    let matchRange;
+    while ((matchRange = rangeRegex.exec(normText)) !== null) {
+      const startChar = matchRange[1].toLowerCase().charCodeAt(0);
+      const endChar = matchRange[2].toLowerCase().charCodeAt(0);
+      const rawCond = matchRange[3].toLowerCase();
+      const condition: 'Good' | 'Not Good' = (rawCond.includes('not') || rawCond.includes('tidak') || rawCond.includes('rusak') || rawCond.includes('jelek') || rawCond === 'ng') ? 'Not Good' : 'Good';
+
+      const start = Math.min(startChar, endChar);
+      const end = Math.max(startChar, endChar);
+      for (let c = start; c <= end; c++) {
+        const letter = String.fromCharCode(c);
+        visualItems.push({ match: letter, condition });
+        logs.push(`Inspeksi Visual [${letter.toUpperCase()}]: [${condition}]`);
+      }
+    }
+
+    // 3. Visual Checklist: Poin individual (misal: "poin a good", "poin b not good remarknya kotor", "item c tidak bagus keterangan kabel lepas")
+    const itemRegex = /(?:(?:poin|point|item|huruf|no|nomor)\s*([a-pA-P]|\b[1-9]\b|\b1[0-6]\b)|\b([a-pA-P])\b)\s*(?:adalah|diisi|kondisi|status|:|=|\s+)?\s*(not\s*good|tidak\s*bagus|rusak|jelek|tidak\s*ok|tidak\s*oke|ng|good|bagus|baik|normal|sesuai|oke|ok)(?:[,\s]*(?:remark|catatan|keterangan)\s*(?:adalah|:|=|\s+)?([^,.\n]+))?/gi;
     let matchItem;
-    while ((matchItem = itemRegex.exec(text)) !== null) {
+    while ((matchItem = itemRegex.exec(normText)) !== null) {
       const rawNo = (matchItem[1] || matchItem[2] || '').toLowerCase();
       if (!rawNo) continue;
       const rawCond = matchItem[3].toLowerCase();
       const rawRemark = matchItem[4] ? matchItem[4].trim() : undefined;
 
-      const condition: 'Good' | 'Not Good' = (rawCond.includes('not') || rawCond.includes('tidak') || rawCond.includes('rusak') || rawCond.includes('jelek')) ? 'Not Good' : 'Good';
-      
+      const condition: 'Good' | 'Not Good' = (rawCond.includes('not') || rawCond.includes('tidak') || rawCond.includes('rusak') || rawCond.includes('jelek') || rawCond === 'ng') ? 'Not Good' : 'Good';
+
       let letter = rawNo;
       const num = parseInt(rawNo, 10);
       if (!isNaN(num) && num >= 1 && num <= 26) {
@@ -278,10 +353,10 @@ function extractFieldsFromVoiceText(text: string) {
       logs.push(`Inspeksi Visual [${letter.toUpperCase()}]: [${condition}]${rawRemark ? ` (Remark: "${rawRemark}")` : ''}`);
     }
 
-    // 3. Standalone Remarks per poin (misal: "remark poin b kotor", "keterangan poin c baut kendor")
+    // 4. Standalone Remarks per poin (misal: "remark poin b kotor", "keterangan poin c baut kendor")
     const remarkRegex = /(?:remark|catatan|keterangan)\s*(?:(?:poin|point|item|huruf|no|nomor)\s*([a-pA-P]|\b[1-9]\b|\b1[0-6]\b)|\b([a-pA-P])\b)\s*(?:adalah|:|=|\s+)?([^,.\n]+)/gi;
     let matchRemark;
-    while ((matchRemark = remarkRegex.exec(text)) !== null) {
+    while ((matchRemark = remarkRegex.exec(normText)) !== null) {
       const rawNo = (matchRemark[1] || matchRemark[2] || '').toLowerCase();
       if (!rawNo) continue;
       let letter = rawNo;
@@ -305,7 +380,7 @@ function extractFieldsFromVoiceText(text: string) {
   // Helper for regex matching single value
   const findVal = (patterns: RegExp[]): string | null => {
     for (const p of patterns) {
-      const m = text.match(p);
+      const m = normText.match(p);
       if (m && m[1]) return m[1].replace(',', '.').trim();
     }
     return null;
@@ -336,7 +411,7 @@ function extractFieldsFromVoiceText(text: string) {
       }
     };
 
-    // 4. Single Voltage Phase-to-Phase
+    // Single Voltage Phase-to-Phase
     const rsVal = findVal([
       /\b(?:r[- ]?s|rs)\b[^\d]*?(\d+(?:[.,]\d+)?)/i,
       /(?:tegangan|voltage)\s+rs\b[^\d]*?(\d+(?:[.,]\d+)?)/i
@@ -355,9 +430,9 @@ function extractFieldsFromVoiceText(text: string) {
     ]);
     if (trVal) setVoltage('tr', trVal);
 
-    // 5. Sequential 3 numbers for RS, ST, TR (e.g. "nilai 350, 250, dan 320" or "rs st tr 380 380 380")
+    // Sequential 3 numbers for RS, ST, TR (e.g. "nilai 350, 250, dan 320" or "rs st tr 380 380 380")
     if (!measurements.dpm_voltage_rs && !measurements.dpm_voltage_st && !measurements.dpm_voltage_tr && !measurements.vc_voltage_rs) {
-      const seqMatch = text.match(/(?:rs\s*,?\s*st\s*,?\s*tr|r-s\s*,?\s*s-t\s*,?\s*t-r|tegangan|nilai|mencatat)\s*(?:adalah|mencatat|bernilai|sebesar|:)?\s*(\d+(?:[.,]\d+)?)\s*(?:,|dan|\/|-|\s+)\s*(\d+(?:[.,]\d+)?)\s*(?:,|dan|\/|-|\s+)\s*(\d+(?:[.,]\d+)?)/i);
+      const seqMatch = normText.match(/(?:rs\s*,?\s*st\s*,?\s*tr|r-s\s*,?\s*s-t\s*,?\s*t-r|tegangan|nilai|mencatat)\s*(?:adalah|mencatat|bernilai|sebesar|:)?\s*(\d+(?:[.,]\d+)?)\s*(?:,|dan|\/|-|\s+)\s*(\d+(?:[.,]\d+)?)\s*(?:,|dan|\/|-|\s+)\s*(\d+(?:[.,]\d+)?)/i);
       if (seqMatch) {
         const v1 = seqMatch[1].replace(',', '.');
         const v2 = seqMatch[2].replace(',', '.');
@@ -368,7 +443,7 @@ function extractFieldsFromVoiceText(text: string) {
       }
     }
 
-    // 6. Voltages Phase-to-Neutral
+    // Voltages Phase-to-Neutral
     const rnVal = findVal([
       /\b(?:r[- ]?n|rn)\b[^\d]*?(\d+(?:[.,]\d+)?)/i,
       /(?:tegangan|voltage)\s+rn\b[^\d]*?(\d+(?:[.,]\d+)?)/i
@@ -387,9 +462,9 @@ function extractFieldsFromVoiceText(text: string) {
     ]);
     if (tnVal) setVoltage('tn', tnVal);
 
-    // 7. Sequential 3 numbers for RN, SN, TN
+    // Sequential 3 numbers for RN, SN, TN
     if (!measurements.dpm_voltage_rn && !measurements.dpm_voltage_sn && !measurements.dpm_voltage_tn && !measurements.vc_voltage_rn) {
-      const rnSnTnSeq = text.match(/(?:rn\s*,?\s*sn\s*,?\s*tn|r-n\s*,?\s*s-n\s*,?\s*t-n)\s*(?:adalah|mencatat|bernilai|sebesar|:)?\s*(\d+(?:[.,]\d+)?)\s*(?:,|dan|\/|-|\s+)\s*(\d+(?:[.,]\d+)?)\s*(?:,|dan|\/|-|\s+)\s*(\d+(?:[.,]\d+)?)/i);
+      const rnSnTnSeq = normText.match(/(?:rn\s*,?\s*sn\s*,?\s*tn|r-n\s*,?\s*s-n\s*,?\s*t-n)\s*(?:adalah|mencatat|bernilai|sebesar|:)?\s*(\d+(?:[.,]\d+)?)\s*(?:,|dan|\/|-|\s+)\s*(\d+(?:[.,]\d+)?)\s*(?:,|dan|\/|-|\s+)\s*(\d+(?:[.,]\d+)?)/i);
       if (rnSnTnSeq) {
         const v1 = rnSnTnSeq[1].replace(',', '.');
         const v2 = rnSnTnSeq[2].replace(',', '.');
@@ -400,7 +475,7 @@ function extractFieldsFromVoiceText(text: string) {
       }
     }
 
-    // 8. Voltage N-G (Hanya ada di Voltage & Current)
+    // Voltage N-G (Hanya ada di Voltage & Current)
     const ngVal = findVal([
       /\b(?:n[- ]?g|ng)\b[^\d]*?(\d+(?:[.,]\d+)?)/i,
       /(?:tegangan|voltage)\s+ng\b[^\d]*?(\d+(?:[.,]\d+)?)/i
@@ -410,7 +485,7 @@ function extractFieldsFromVoiceText(text: string) {
       logs.push(`Voltage & Current N-G → ${ngVal} V`);
     }
 
-    // 9. Power & Cos Phi (Hanya ada di Digital Power Meter)
+    // Power & Cos Phi (Hanya ada di Digital Power Meter)
     const kwVal = findVal([/\b(?:kw|daya)\b[^\d]*?(\d+(?:[.,]\d+)?)/i]);
     if (kwVal) {
       measurements.dpm_kw = kwVal;
@@ -435,7 +510,7 @@ function extractFieldsFromVoiceText(text: string) {
       logs.push(`DPM Cos Phi → ${cospVal}`);
     }
 
-    // 10. Currents
+    // Currents
     const ampR = findVal([
       /(?:arus|ampere|amp)\s+r\b[^\d]*?(\d+(?:[.,]\d+)?)/i,
       /\br\s+(?:arus|ampere|amp)\b[^\d]*?(\d+(?:[.,]\d+)?)/i
@@ -460,7 +535,7 @@ function extractFieldsFromVoiceText(text: string) {
     ]);
     if (ampN) setCurrent('n', ampN);
 
-    // 11. Thermal / Suhu
+    // Thermal / Suhu
     const tempVal = findVal([
       /(?:suhu|thermal|temperature|suhu breaker)\b[^\d]*?(\d+(?:[.,]\d+)?)/i,
       /\b(\d+(?:[.,]\d+)?)\s*(?:derajat|°c|celsius)\b/i
@@ -470,7 +545,7 @@ function extractFieldsFromVoiceText(text: string) {
       logs.push(`Suhu Breaker → ${tempVal} °C`);
     }
 
-    // 12. Grounding
+    // Grounding
     const gndVal = findVal([
       /(?:grounding|ground|tahanan tanah|pentanahan)\b[^\d]*?(\d+(?:[.,]\d+)?)/i,
       /\b(\d+(?:[.,]\d+)?)\s*(?:ohm|ꭥ|omega)\b/i
@@ -480,32 +555,32 @@ function extractFieldsFromVoiceText(text: string) {
       logs.push(`Grounding → ${gndVal} Ω`);
     }
 
-    // 13. Customer Info
+    // Customer Info
     if (textLower.includes('neutra')) {
       customerInfo.companyName = 'Neutra DC Cikarang';
       logs.push('Company Name → "Neutra DC Cikarang"');
     }
 
-    const mopMatch = text.match(/(?:mop(?:\s+no)?)\s*(?:adalah|diisi|:|=)?\s*([A-Za-z0-9\-_/]+)/i);
+    const mopMatch = normText.match(/(?:mop(?:\s+no)?)\s*(?:adalah|diisi|:|=)?\s*([A-Za-z0-9\-_/]+)/i);
     if (mopMatch) {
       customerInfo.mopNo = mopMatch[1];
       logs.push(`MOP No → ${mopMatch[1]}`);
     }
 
-    const locMatch = text.match(/(?:lokasi|location|ruang|lantai|lt)\s*(?:adalah|diisi|:|=)?\s*([^,.\n]+)/i);
+    const locMatch = normText.match(/(?:lokasi|location|ruang|lantai|lt)\s*(?:adalah|diisi|:|=)?\s*([^,.\n]+)/i);
     if (locMatch) {
       customerInfo.location = locMatch[1].trim();
       logs.push(`Lokasi → "${locMatch[1].trim()}"`);
     }
 
-    // 14. Times
-    const startMatch = text.match(/(?:mulai|start)\s*(?:jam|pukul)?\s*(\d{1,2}[:.]\d{2})/i);
+    // Times
+    const startMatch = normText.match(/(?:mulai|start)\s*(?:jam|pukul)?\s*(\d{1,2}[:.]\d{2})/i);
     if (startMatch) {
       timeSpent.start = startMatch[1].replace('.', ':');
       logs.push(`Waktu Mulai → ${timeSpent.start}`);
     }
 
-    const finishMatch = text.match(/(?:selesai|finish)\s*(?:jam|pukul)?\s*(\d{1,2}[:.]\d{2})/i);
+    const finishMatch = normText.match(/(?:selesai|finish)\s*(?:jam|pukul)?\s*(\d{1,2}[:.]\d{2})/i);
     if (finishMatch) {
       timeSpent.finish = finishMatch[1].replace('.', ':');
       logs.push(`Waktu Selesai → ${timeSpent.finish}`);
@@ -904,12 +979,7 @@ export function ServiceReportContainer({
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const apiBaseUrl = import.meta.env.VITE_API_URL || '';
-      const url = apiBaseUrl
-        ? apiBaseUrl.endsWith('/api')
-          ? `${apiBaseUrl}/ai/chat`
-          : `${apiBaseUrl}/api/ai/chat`
-        : '/api/ai/chat';
+      const url = getApiEndpoint('/api/ai/chat');
 
       const checklistItemsList = config.checklistTemplate
         .map(t => `- [${t.no}] ${t.activity}`)
@@ -924,40 +994,27 @@ ${checklistItemsList}
 
 ATURAN PEMETAAN KETAT (WAJIB DIIKUTI):
 1. Inspeksi Visual & Remarks:
-   - Ekstrak HANYA poin yang secara eksplisit disebutkan oleh pengguna (contoh jika pengguna menyebut "poin a diisi not good dengan remark rusak", masukkan HANYA poin "a". DILARANG KERAS menyertakan poin "i" atau poin lain yang tidak disebutkan).
-   - Kata-kata seperti "diisi", "di", "kondisi", "dengan", "adalah" adalah kata kerja/kata hubung, BUKAN nama poin!
-   - Jika pengguna menyebut "semua good" / "semua bagus", berikan "setAllVisualCondition": "Good".
-   - Format array per-poin yang diminta:
+   - Jika pengguna menyebut "semua good" / "semua bagus" / "semua normal", berikan "setAllVisualCondition": "Good".
+   - Jika pengguna menyebut "semua not good" / "semua tidak bagus" / "semua rusak" / "semua abnormal", berikan "setAllVisualCondition": "Not Good".
+   - Jika per-poin:
      [
        { "match": "a", "condition": "Good" },
        { "match": "b", "condition": "Not Good", "remarks": "Kotor" }
      ]
-   - Huruf/nomor poin harus dicocokkan ke daftar poin di atas (a sampai p).
 
 2. Pemisahan Digital Power Meter (DPM) vs Voltage & Current Measurement (VC):
    - JIKA pengguna menyebut "Digital Power Meter" / "DPM" / "meter":
      HANYA ISI kunci "dpm_voltage_rs", "dpm_voltage_st", "dpm_voltage_tr", "dpm_voltage_rn", "dpm_voltage_sn", "dpm_voltage_tn", "dpm_kw", "dpm_kva", "dpm_kvar", "dpm_cos_p", "dpm_ampere_r", dll.
-     DILARANG KERAS mengisi kunci "vc_*"!
    - JIKA pengguna menyebut "Voltage & Current" / "VC" / "tegangan arus" / "tester manual":
      HANYA ISI kunci "vc_voltage_rs", "vc_voltage_st", "vc_voltage_tr", "vc_voltage_rn", "vc_voltage_sn", "vc_voltage_tn", "vc_voltage_ng", "vc_ampere_r", dll.
-     DILARANG KERAS mengisi kunci "dpm_*"!
    - JIKA pengguna hanya menyebut "tegangan rs 380...", defaultkan ke "dpm_voltage_rs" kecuali ada instruksi Voltage & Current.
 
-3. Instruksi HAPUS / KOSONGKAN / DELETE / RESET (PENTING!):
-   - Jika pengguna meminta "hapus semua pengukuran" / "kosongkan tabel measurement" / "delete measurements":
-     Set semua nilai di objek measurements menjadi string kosong "".
-   - Jika pengguna meminta "kosongkan DPM" / "hapus tabel digital power meter":
-     Set semua kunci "dpm_*" menjadi string kosong "".
-   - Jika pengguna meminta "kosongkan Voltage and Current" / "hapus tabel VC":
-     Set semua kunci "vc_*" menjadi string kosong "".
-   - Jika pengguna meminta "hapus remark poin A" / "kosongkan catatan poin B":
-     Sertakan visualChecklist: [{ "match": "a", "remarks": "" }]
-   - Jika pengguna meminta "hapus semua remark":
-     Sertakan "clearAllRemarks": true
-   - Jika pengguna meminta "hapus/kosongkan data pelanggan":
-     Set nilai di objek customerInfo menjadi "".
-   - Jika pengguna meminta "reset semua form" / "kosongkan seluruh form":
-     Sertakan "clearAllForm": true
+3. Instruksi HAPUS / KOSONGKAN / DELETE / RESET:
+   - Jika "hapus semua pengukuran" -> "clearAllMeasurements": true
+   - Jika "kosongkan DPM" -> "clearDPM": true
+   - Jika "kosongkan VC" -> "clearVC": true
+   - Jika "hapus semua remark" -> "clearAllRemarks": true
+   - Jika "reset semua form" -> "clearAllForm": true
 
 FORMAT JSON OUTPUT YANG HARUS DIHASILKAN (HANYA sertakan field yang relevan):
 {
@@ -981,7 +1038,7 @@ FORMAT JSON OUTPUT YANG HARUS DIHASILKAN (HANYA sertakan field yang relevan):
   "setAllVisualCondition": "Good" | "Not Good",
   "visualChecklist": [
     {
-      "match": "a" atau "b" atau nomor poin (misal: "a", "b", "c"),
+      "match": "a",
       "condition": "Good" | "Not Good",
       "remarks": "string"
     }
@@ -1029,22 +1086,13 @@ FORMAT JSON OUTPUT YANG HARUS DIHASILKAN (HANYA sertakan field yang relevan):
   },
   "operationStatus": {
     "isNormal": boolean,
-    "remark": "string",
-    "faultSymptom": "string",
-    "faultAnalysis": "string",
-    "workDone": "string",
-    "faultPartSN": "string",
-    "faultPartName": "string"
+    "remark": "string"
   },
   "summary": "Deskripsi singkat dan ramah dalam Bahasa Indonesia (maksimal 2 kalimat) tentang apa saja field yang baru saja diisikan ke form."
 }
 
 PENTING:
-- Keluarkan HANYA JSON murni tanpa markdown pembuka/penutup dan tanpa teks lain di luar JSON.
-- Cerdas mengenali angka kata: misal "tiga ratus delapan puluh" -> "380", "nol koma delapan ohm" -> "0.8", "tiga puluh empat derajat" -> "34".
-
-Instruksi Suara Pengguna:
-"${textToProcess}"`;
+- Keluarkan HANYA JSON murni tanpa teks pengantar di luar JSON.`;
 
       const res = await fetch(url, {
         method: 'POST',
@@ -1078,16 +1126,21 @@ Instruksi Suara Pengguna:
           }
         }
       } catch {
-        // Fallback: If AI returned natural language text, extract fields directly from the AI reply!
+        // Fallback: If AI returned natural language text, extract fields directly from the AI reply and combine with fastExtracted!
         const replyExtracted = extractFieldsFromVoiceText(data.reply);
-        if (Object.keys(replyExtracted.measurements).length > 0 || replyExtracted.visualItems.length > 0) {
-          parsed = {
-            measurements: replyExtracted.measurements,
-            visualChecklist: replyExtracted.visualItems,
-            setAllVisualCondition: replyExtracted.setAllVisualCondition,
-            summary: data.reply
-          };
-        }
+        parsed = {
+          measurements: { ...fastExtracted.measurements, ...replyExtracted.measurements },
+          visualChecklist: replyExtracted.visualItems.length > 0 ? replyExtracted.visualItems : fastExtracted.visualItems,
+          setAllVisualCondition: replyExtracted.setAllVisualCondition || fastExtracted.setAllVisualCondition,
+          customerInfo: { ...fastExtracted.customerInfo, ...replyExtracted.customerInfo },
+          timeSpent: { ...fastExtracted.timeSpent, ...replyExtracted.timeSpent },
+          clearAllForm: replyExtracted.clearActions?.clearAllForm || fastExtracted.clearActions?.clearAllForm,
+          clearAllMeasurements: replyExtracted.clearActions?.clearAllMeasurements || fastExtracted.clearActions?.clearAllMeasurements,
+          clearDPM: replyExtracted.clearActions?.clearDPM || fastExtracted.clearActions?.clearDPM,
+          clearVC: replyExtracted.clearActions?.clearVC || fastExtracted.clearActions?.clearVC,
+          clearAllRemarks: replyExtracted.clearActions?.clearAllRemarks || fastExtracted.clearActions?.clearAllRemarks,
+          summary: data.reply
+        };
       }
 
       const logs: string[] = [...fastExtracted.logs];
@@ -1203,6 +1256,9 @@ Instruksi Suara Pengguna:
         const replyExtra = extractFieldsFromVoiceText(data.reply);
         if (Object.keys(replyExtra.measurements).length > 0) {
           setMeasurements(prev => ({ ...prev, ...replyExtra.measurements }));
+        }
+        if (replyExtra.setAllVisualCondition && (!parsed || !parsed.setAllVisualCondition)) {
+          setVisualChecklist(prev => prev.map(item => ({ ...item, condition: replyExtra.setAllVisualCondition! })));
         }
       }
 
