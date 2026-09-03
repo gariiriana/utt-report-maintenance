@@ -166,7 +166,7 @@ export function MainApp() {
 
             {/* Aksi Navbar Desktop (Pusat Notifikasi, Email User, Log Out) */}
             <div className="hidden md:flex items-center gap-4">
-              {userRole !== 'engineer' && !isStandby && (
+              {userRole !== 'engineer' && !isStandby && userRole !== 'admin' && (
                 <NotificationCenter
                   onSelectNotification={handleSelectNotification}
                   onOpenNotificationPage={() => setActiveTab('notifications')}
@@ -189,7 +189,7 @@ export function MainApp() {
 
             {/* Aksi Navbar Mobile (Tombol Hamburger Menu & Notifikasi) */}
             <div className="flex items-center gap-2 md:hidden">
-              {userRole !== 'engineer' && !isStandby && (
+              {userRole !== 'engineer' && !isStandby && userRole !== 'admin' && (
                 <NotificationCenter
                   onSelectNotification={handleSelectNotification}
                   onOpenNotificationPage={() => setActiveTab('notifications')}
@@ -307,7 +307,7 @@ export function MainApp() {
             transition={{ duration: 0.2 }}
             className="flex-1 flex flex-col w-full min-w-0 max-w-full"
           >
-            {activeTab === 'notifications' ? (
+            {activeTab === 'notifications' && userRole !== 'admin' ? (
               <NotificationPage onSelectNotification={handleSelectNotification} />
             ) : activeTab === 'admin' ? (
               <AdminDashboard onEdit={handleEditReport} />

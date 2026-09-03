@@ -12,6 +12,7 @@ import { db } from '@/api/firebase';
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { safeStorage } from '@/utils/safeStorage';
+import { useAuth } from './AuthContext';
 
 export interface AppNotificationItem {
     id: string;
@@ -182,6 +183,9 @@ export function useSharedNotifications() {
 }
 
 export function NotificationCenter({ onSelectNotification, onOpenNotificationPage }: NotificationCenterProps) {
+    const { userRole } = useAuth();
+    if (userRole === 'admin') return null;
+
     const notifications = useSharedNotifications();
     const [readIds, setReadIds] = useState<string[]>(() => {
         try {
