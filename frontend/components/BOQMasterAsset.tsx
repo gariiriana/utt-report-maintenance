@@ -48,6 +48,7 @@ const GROUP_ICONS: Record<string, React.ElementType> = {
   ShieldAlert,
   Wind,
   Flame,
+  Building2,
   Wrench,
 };
 
@@ -56,7 +57,6 @@ export function BOQMasterAsset() {
   const [selectedGroup, setSelectedGroup] = useState<string>('all');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(BOQ_CATEGORIES_DATA[0]?.id || 'cat_1');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'asset' | 'sparepart'>('all');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(25);
 
@@ -64,17 +64,12 @@ export function BOQMasterAsset() {
   const [selectedItem, setSelectedItem] = useState<{ category: BOQCategory; item: BOQItem } | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Filter Kategori berdasarkan Group & Type Filter
+  // Filter Kategori berdasarkan Group
   const filteredCategories = useMemo(() => {
     return BOQ_CATEGORIES_DATA.filter((cat) => {
-      const matchGroup = selectedGroup === 'all' || cat.group === selectedGroup;
-      const matchType =
-        typeFilter === 'all' ||
-        (typeFilter === 'asset' && !cat.isSparepart) ||
-        (typeFilter === 'sparepart' && cat.isSparepart);
-      return matchGroup && matchType;
+      return selectedGroup === 'all' || cat.group === selectedGroup;
     });
-  }, [selectedGroup, typeFilter]);
+  }, [selectedGroup]);
 
   // Pastikan kategori yang dipilih valid setelah filter berubah
   const activeCategory = useMemo(() => {
@@ -153,7 +148,7 @@ export function BOQMasterAsset() {
 
       const fileName = `Master_Asset_BOQ_NeutraDC_Cikarang_All_Sheets.xlsx`;
       XLSX.writeFile(wb, fileName);
-      toast.success(`Berhasil mengunduh Master Excel (55 Sheets)`, { icon: '📦' });
+      toast.success(`Berhasil mengunduh Master Excel (${BOQ_CATEGORIES_DATA.length} Kategori)`, { icon: '📦' });
     } catch (err) {
       console.error(err);
       toast.error('Gagal mengekspor file Excel lengkap');
@@ -162,11 +157,7 @@ export function BOQMasterAsset() {
 
   // Metrik Ringkas
   const totalAssetsCount = useMemo(
-    () => BOQ_CATEGORIES_DATA.filter((c) => !c.isSparepart).reduce((acc, c) => acc + c.itemCount, 0),
-    []
-  );
-  const totalSparepartsCount = useMemo(
-    () => BOQ_CATEGORIES_DATA.filter((c) => c.isSparepart).reduce((acc, c) => acc + c.itemCount, 0),
+    () => BOQ_CATEGORIES_DATA.reduce((acc, c) => acc + c.itemCount, 0),
     []
   );
 
@@ -185,7 +176,7 @@ export function BOQMasterAsset() {
                 Master Asset & BOQ Maintenance
               </h1>
               <p className="text-sm text-sky-200/90 mt-1 max-w-2xl leading-relaxed">
-                Database terpadu seluruh aset critical facility dan inventaris consumable/sparepart 
+                Database terpadu seluruh aset critical facility dan inventaris inspeksi 
                 PT Dwimitra Ekatama Mandiri di NeutraDC Cikarang.
               </p>
             </div>
@@ -208,30 +199,30 @@ export function BOQMasterAsset() {
                 whileTap={{ scale: 0.98 }}
                 onClick={handleExportAllSheets}
                 className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-lg shadow-emerald-900/30 transition cursor-pointer"
-                title="Ekspor seluruh 55 sheet ke dalam 1 file Excel"
+                title={`Ekspor seluruh ${BOQ_CATEGORIES_DATA.length} kategori ke dalam 1 file Excel`}
               >
                 <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
-                <span>Export Semua (55 Sheets)</span>
+                <span>Export Semua ({BOQ_CATEGORIES_DATA.length} Kategori)</span>
               </motion.button>
             </div>
           </div>
 
           {/* Quick Stats Metric Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6 pt-6 border-t border-sky-800/60">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-6 pt-6 border-t border-sky-800/60">
             <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-sm">
               <div className="flex items-center gap-2 text-sky-300 text-xs font-semibold mb-1">
                 <Boxes className="w-4 h-4" />
-                <span>Total Sub-Sistem</span>
+                <span>Total Kategori Fasilitas</span>
               </div>
               <p className="text-xl sm:text-2xl font-black text-white">
-                {BOQ_CATEGORIES_DATA.length} <span className="text-xs font-normal text-sky-200">Sheet Tabs</span>
+                {BOQ_CATEGORIES_DATA.length} <span className="text-xs font-normal text-sky-200">Kategori</span>
               </p>
             </div>
 
             <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-sm">
               <div className="flex items-center gap-2 text-emerald-300 text-xs font-semibold mb-1">
                 <Cpu className="w-4 h-4" />
-                <span>Aset Critical Facility</span>
+                <span>Total Aset Critical Facility</span>
               </div>
               <p className="text-xl sm:text-2xl font-black text-emerald-400">
                 {totalAssetsCount.toLocaleString('id-ID')}{' '}
@@ -240,24 +231,12 @@ export function BOQMasterAsset() {
             </div>
 
             <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-sm">
-              <div className="flex items-center gap-2 text-amber-300 text-xs font-semibold mb-1">
-                <Wrench className="w-4 h-4" />
-                <span>Spareparts & Consumables</span>
-              </div>
-              <p className="text-xl sm:text-2xl font-black text-amber-400">
-                {totalSparepartsCount.toLocaleString('id-ID')}{' '}
-                <span className="text-xs font-normal text-amber-200">item</span>
-              </p>
-            </div>
-
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 backdrop-blur-sm">
               <div className="flex items-center gap-2 text-cyan-300 text-xs font-semibold mb-1">
                 <Building2 className="w-4 h-4" />
-                <span>Grand Total Inventaris</span>
+                <span>Worksheet Checklist</span>
               </div>
               <p className="text-xl sm:text-2xl font-black text-cyan-300">
-                {(totalAssetsCount + totalSparepartsCount).toLocaleString('id-ID')}{' '}
-                <span className="text-xs font-normal text-cyan-200">baris</span>
+                38 <span className="text-xs font-normal text-cyan-200">Sheet Tabs Terverifikasi</span>
               </p>
             </div>
           </div>
@@ -305,42 +284,18 @@ export function BOQMasterAsset() {
           </div>
         </div>
 
-        {/* Baris Pemilihan Kategori / Sheet Tab & Filter Tipe */}
+        {/* Baris Pemilihan Kategori / Sheet Tab */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mb-6">
           {/* Sidebar / Grid Daftar Kategori Sheet */}
           <div className="lg:col-span-4 flex flex-col gap-3">
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex-1 flex flex-col">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Worksheet Tabs ({filteredCategories.length})
+                  Daftar Kategori ({filteredCategories.length})
                 </h2>
-                {/* Filter Tipe: Semua / Asset / Sparepart */}
-                <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200">
-                  <button
-                    onClick={() => setTypeFilter('all')}
-                    className={`px-2 py-1 text-[10px] font-bold rounded-md transition cursor-pointer ${
-                      typeFilter === 'all' ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600'
-                    }`}
-                  >
-                    Semua
-                  </button>
-                  <button
-                    onClick={() => setTypeFilter('asset')}
-                    className={`px-2 py-1 text-[10px] font-bold rounded-md transition cursor-pointer ${
-                      typeFilter === 'asset' ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600'
-                    }`}
-                  >
-                    Aset
-                  </button>
-                  <button
-                    onClick={() => setTypeFilter('sparepart')}
-                    className={`px-2 py-1 text-[10px] font-bold rounded-md transition cursor-pointer ${
-                      typeFilter === 'sparepart' ? 'bg-white text-blue-700 shadow-xs' : 'text-slate-600'
-                    }`}
-                  >
-                    Sparepart
-                  </button>
-                </div>
+                <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+                  Inspection Sheet
+                </span>
               </div>
 
               {/* List Scrollable Kategori Sheet Tabs */}
@@ -370,7 +325,7 @@ export function BOQMasterAsset() {
                         <div className="truncate">
                           <p className="text-xs truncate leading-snug">{cat.name}</p>
                           <p className="text-[10px] text-slate-400 truncate">
-                            {cat.isSparepart ? 'Sparepart & Consumable' : 'Critical Asset'}
+                            {cat.group}
                           </p>
                         </div>
                       </div>
@@ -379,8 +334,6 @@ export function BOQMasterAsset() {
                         className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold shrink-0 ml-2 ${
                           isActive
                             ? 'bg-blue-200 text-blue-900'
-                            : cat.isSparepart
-                            ? 'bg-amber-100 text-amber-800'
                             : 'bg-slate-100 text-slate-700'
                         }`}
                       >
