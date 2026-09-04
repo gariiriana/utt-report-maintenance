@@ -2,7 +2,8 @@
 // FILE: boqAssetData.ts
 // Deskripsi: Master Data BOQ & Asset Critical Facility NeutraDC Cikarang
 //            Dihasilkan dari analisis 41 kategori aset worksheet spreadsheet resmi
-//            (Murni 100% dari spreadsheet inspeksi terbaru).
+//            (Murni 100% dari spreadsheet inspeksi terbaru dengan pengayaan lokasi
+//            Floor & Room komprehensif dari Master BOQ NeutraDC).
 // ============================================================================
 
 export interface BOQItem {
@@ -83,7 +84,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor"
     ],
     "items": [
       {
@@ -115,7 +117,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Trafo Room 1"
       },
       {
         "1": "",
@@ -146,7 +150,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Trafo Room 3"
       },
       {
         "1": "",
@@ -177,7 +183,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Trafo Room 4"
       },
       {
         "1": "",
@@ -208,7 +216,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room A"
       },
       {
         "1": "",
@@ -239,7 +249,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "1": "",
@@ -270,7 +282,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Trafo Room 4"
       },
       {
         "1": "",
@@ -301,7 +315,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Elec room 1"
       },
       {
         "1": "",
@@ -332,7 +348,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Elec room 2"
       },
       {
         "1": "",
@@ -363,7 +381,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Elec room 3"
       },
       {
         "1": "",
@@ -394,7 +414,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Elec room 3"
       },
       {
         "1": "",
@@ -409,7 +431,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Production Year": "",
         "Product Name+": "",
         "Model/Version": "",
-        "Room": "",
+        "Room": "Trafo Room",
         "DC Hall Supplied": "",
         "PM DATE": "",
         "QTY": "",
@@ -425,7 +447,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "1F",
+        "Location": "1F, Trafo Room"
       }
     ],
     "itemCount": 11,
@@ -472,7 +496,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -502,7 +528,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Power Room A",
+        "Location": "1F, Power Room A"
       },
       {
         "No": "2",
@@ -531,7 +560,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Power Room B",
+        "Location": "1F, Power Room B"
       },
       {
         "No": "3",
@@ -560,7 +592,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Elec Room 2",
+        "Location": "1F, Elec Room 2"
       },
       {
         "No": "4",
@@ -589,7 +624,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Elec Room 1",
+        "Location": "1F, Elec Room 1"
       },
       {
         "No": "5",
@@ -618,7 +656,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Elec Room 1",
+        "Location": "1F, Elec Room 1"
       },
       {
         "No": "6",
@@ -647,7 +688,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Chiller room",
+        "Location": "1F, Chiller room"
       },
       {
         "No": "7",
@@ -676,7 +720,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Chiller room",
+        "Location": "1F, Chiller room"
       },
       {
         "No": "8",
@@ -705,7 +752,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Chiller room",
+        "Location": "1F, Chiller room"
       },
       {
         "No": "9",
@@ -734,7 +784,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Roof top",
+        "Room": "Chiller room",
+        "Location": "Roof top, Chiller room"
       },
       {
         "No": "10",
@@ -763,7 +816,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Roof top",
+        "Room": "Chiller room",
+        "Location": "Roof top, Chiller room"
       },
       {
         "No": "11",
@@ -792,7 +848,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "PH Office",
+        "Room": "LV Room Office",
+        "Location": "PH Office, LV Room Office"
       },
       {
         "No": "12",
@@ -821,7 +880,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "PH Office",
+        "Room": "LV Room Office",
+        "Location": "PH Office, LV Room Office"
       },
       {
         "No": "13",
@@ -850,7 +912,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "PH Office",
+        "Room": "LV Room Office",
+        "Location": "PH Office, LV Room Office"
       },
       {
         "No": "",
@@ -879,7 +944,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "1F",
+        "Room": "Power Room A",
+        "Location": "1F, Power Room A"
       }
     ],
     "itemCount": 14,
@@ -1769,8 +1837,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -1791,7 +1859,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_5": "0",
         "DATE_6": "",
-        "QTY_6": "0"
+        "QTY_6": "0",
+        "Location": "1F, NeutraDC Facility"
       },
       {
         "0": "",
@@ -1957,8 +2026,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -1979,7 +2048,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_5": "0",
         "DATE_6": "",
-        "QTY_6": "0"
+        "QTY_6": "0",
+        "Location": "1F, NeutraDC Facility"
       }
     ],
     "itemCount": 22,
@@ -3856,8 +3926,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "Power Room",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -3878,7 +3948,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_5": "0",
         "DATE_6": "",
-        "QTY_6": "0"
+        "QTY_6": "0",
+        "Location": "1F, Power Room"
       }
     ],
     "itemCount": 39,
@@ -5657,8 +5728,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -5682,7 +5753,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -5708,8 +5780,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -5733,7 +5805,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -7748,8 +7821,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -7773,7 +7846,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -7799,8 +7873,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -7824,7 +7898,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "1",
@@ -13103,8 +13178,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -13128,7 +13203,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -13154,8 +13230,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -13179,7 +13255,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -13205,8 +13282,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -13230,7 +13307,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -13256,8 +13334,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -13281,7 +13359,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -13307,8 +13386,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -13332,7 +13411,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -13358,8 +13438,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -13383,7 +13463,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -13409,8 +13490,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -13434,7 +13515,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -13460,8 +13542,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -13485,7 +13567,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -13511,8 +13594,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -13536,7 +13619,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -13562,8 +13646,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -13587,7 +13671,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -13613,8 +13698,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -13638,7 +13723,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -13664,8 +13750,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -13689,7 +13775,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -13715,8 +13802,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -13740,7 +13827,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -13766,8 +13854,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -13791,7 +13879,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -13817,8 +13906,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -13842,7 +13931,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -13868,8 +13958,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -13893,7 +13983,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -13919,8 +14010,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -13944,7 +14035,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -13970,8 +14062,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -13995,7 +14087,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -14021,8 +14114,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -14046,7 +14139,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -14072,8 +14166,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -14097,7 +14191,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -14123,8 +14218,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -14148,7 +14243,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -14174,8 +14270,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -14199,7 +14295,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -14225,8 +14322,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -14250,7 +14347,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -14276,8 +14374,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -14301,7 +14399,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "",
         "DATE_6": "",
-        "QTY_5": ""
+        "QTY_5": "",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       },
       {
         "0": "",
@@ -14327,8 +14426,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "DC Hall Supplied": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Ground",
+        "Room": "Earth Inspection Pits & MGB",
         "Lokasi Rack": "",
         "Owned By": "",
         "Supported by": "",
@@ -14352,7 +14451,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_4": "0",
         "DATE_6": "",
-        "QTY_5": "0"
+        "QTY_5": "0",
+        "Location": "Ground, Earth Inspection Pits & MGB"
       }
     ],
     "itemCount": 204,
@@ -14398,7 +14498,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor"
     ],
     "items": [
       {
@@ -14427,7 +14528,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, MMR 1A"
       },
       {
         "1": "Report on Process",
@@ -14455,7 +14558,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, MMR 2A"
       },
       {
         "1": "Report on Process",
@@ -14483,7 +14588,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "1": "Report on Process",
@@ -14511,7 +14618,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "1": "Report on Process",
@@ -14539,7 +14648,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "1": "Report on Process",
@@ -14567,7 +14678,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "1": "Report on Process",
@@ -14595,7 +14708,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "1": "Report on Process",
@@ -14623,7 +14738,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "1": "Report on Process",
@@ -14651,7 +14768,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "1": "Report on Process",
@@ -14679,7 +14798,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "1": "Report on Process",
@@ -14707,7 +14828,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "1": "Report on Process",
@@ -14735,7 +14858,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "1": "Report on Process",
@@ -14763,7 +14888,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "1": "Report on Process",
@@ -14791,7 +14918,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "1": "Report on Process",
@@ -14819,7 +14948,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "1": "Report on Process",
@@ -14847,7 +14978,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "1": "Report on Process",
@@ -14875,7 +15008,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "1": "Report on Process",
@@ -14903,7 +15038,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "1": "Report on Process",
@@ -14931,7 +15068,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "1": "Report on Process",
@@ -14959,7 +15098,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "1": "Report on Process",
@@ -14987,7 +15128,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "1": "Report on Process",
@@ -15015,7 +15158,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "1": "Report on Process",
@@ -15043,7 +15188,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "1": "Report on Process",
@@ -15071,7 +15218,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "1": "Report on Process",
@@ -15099,7 +15248,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "1": "Report on Process",
@@ -15127,7 +15278,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "1": "Report on Process",
@@ -15155,7 +15308,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "1": "Report on Process",
@@ -15183,7 +15338,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "1": "Report on Process",
@@ -15211,7 +15368,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "1": "Report on Process",
@@ -15239,7 +15398,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "1": "Report on Process",
@@ -15267,7 +15428,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, MMR Room"
       },
       {
         "1": "Report on Process",
@@ -15295,7 +15458,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, MMR Room"
       },
       {
         "1": "Report on Process",
@@ -15323,7 +15488,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 3"
       },
       {
         "1": "Report on Process",
@@ -15351,7 +15518,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 3"
       },
       {
         "1": "Report on Process",
@@ -15379,7 +15548,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 3"
       },
       {
         "1": "Report on Process",
@@ -15407,7 +15578,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 3"
       },
       {
         "1": "Report on Process",
@@ -15435,7 +15608,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 3"
       },
       {
         "1": "Report on Process",
@@ -15463,7 +15638,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 3"
       },
       {
         "1": "Report on Process",
@@ -15491,7 +15668,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 3"
       },
       {
         "1": "Report on Process",
@@ -15519,7 +15698,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 3"
       },
       {
         "1": "Report on Process",
@@ -15547,7 +15728,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 4"
       },
       {
         "1": "Report on Process",
@@ -15575,7 +15758,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 4"
       },
       {
         "1": "Report on Process",
@@ -15603,7 +15788,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 4"
       },
       {
         "1": "Report on Process",
@@ -15631,7 +15818,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 4"
       },
       {
         "1": "Report on Process",
@@ -15659,7 +15848,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 4"
       },
       {
         "1": "Report on Process",
@@ -15687,7 +15878,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 4"
       },
       {
         "1": "Report on Process",
@@ -15715,7 +15908,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 3"
       },
       {
         "1": "Report on Process",
@@ -15743,7 +15938,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 3"
       },
       {
         "1": "Report on Process",
@@ -15771,7 +15968,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 3"
       },
       {
         "1": "Report on Process",
@@ -15799,7 +15998,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 4"
       },
       {
         "1": "Report on Process",
@@ -15827,7 +16028,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 4"
       },
       {
         "1": "Report on Process",
@@ -15855,7 +16058,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 4"
       },
       {
         "1": "",
@@ -15867,7 +16072,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "",
         "Serial Number": "",
         "Production Year": "",
-        "Room": "",
+        "Room": "Data Hall / CRAC Room",
         "DC Hall Supplied": "",
         "PM DATE": "",
         "QTY": "",
@@ -15883,7 +16088,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "1F",
+        "Location": "1F, Data Hall / CRAC Room"
       }
     ],
     "itemCount": 53,
@@ -15928,7 +16135,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor"
     ],
     "items": [
       {
@@ -15956,7 +16164,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiler Room"
       },
       {
         "0": "",
@@ -15968,7 +16178,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "63",
         "Serial Number": "N/A",
         "Production Year": "N/A",
-        "Room": "",
+        "Room": "Roof top campus 1",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -15983,7 +16193,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Roof top",
+        "Location": "Roof top, Roof top campus 1"
       },
       {
         "0": "",
@@ -15995,7 +16207,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "63",
         "Serial Number": "N/A",
         "Production Year": "N/A",
-        "Room": "",
+        "Room": "Roof top campus 1",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -16010,7 +16222,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Roof top",
+        "Location": "Roof top, Roof top campus 1"
       },
       {
         "0": "",
@@ -16022,7 +16236,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "63",
         "Serial Number": "N/A",
         "Production Year": "N/A",
-        "Room": "",
+        "Room": "Roof top campus 1",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -16037,7 +16251,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Roof top",
+        "Location": "Roof top, Roof top campus 1"
       },
       {
         "0": "",
@@ -16049,7 +16265,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "63",
         "Serial Number": "N/A",
         "Production Year": "N/A",
-        "Room": "",
+        "Room": "Roof top campus 1",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -16064,7 +16280,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Roof top",
+        "Location": "Roof top, Roof top campus 1"
       },
       {
         "0": "",
@@ -16091,7 +16309,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, MV Room B"
       },
       {
         "0": "",
@@ -16103,7 +16323,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "32",
         "Serial Number": "N/A",
         "Production Year": "2022",
-        "Room": "",
+        "Room": "MWP Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -16118,7 +16338,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, MWP Room"
       },
       {
         "0": "",
@@ -16145,7 +16367,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room A"
       },
       {
         "0": "",
@@ -16172,7 +16396,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room B"
       },
       {
         "0": "",
@@ -16199,7 +16425,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "0": "",
@@ -16226,7 +16454,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "0": "",
@@ -16253,7 +16483,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room A"
       },
       {
         "0": "",
@@ -16280,7 +16512,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room B"
       },
       {
         "0": "",
@@ -16307,7 +16541,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room A"
       },
       {
         "0": "",
@@ -16334,7 +16570,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room C"
       },
       {
         "0": "",
@@ -16361,7 +16599,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus 1",
+        "Location": "Campus 1, Lift Room"
       },
       {
         "0": "",
@@ -16388,7 +16628,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus 1",
+        "Location": "Campus 1, Lift Room"
       },
       {
         "0": "",
@@ -16415,7 +16657,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus 1",
+        "Location": "Campus 1, LIft Room"
       },
       {
         "0": "",
@@ -16442,7 +16686,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus 1",
+        "Location": "Campus 1, Lift Room"
       },
       {
         "0": "",
@@ -16469,7 +16715,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room A"
       },
       {
         "0": "",
@@ -16496,7 +16744,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room C"
       },
       {
         "0": "",
@@ -16523,7 +16773,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, MV Room B"
       },
       {
         "0": "",
@@ -16550,7 +16802,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Elec Room 1"
       },
       {
         "0": "",
@@ -16577,7 +16831,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Elec Room 1"
       },
       {
         "0": "",
@@ -16604,7 +16860,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room C"
       },
       {
         "0": "",
@@ -16631,7 +16889,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room B"
       },
       {
         "0": "",
@@ -16658,7 +16918,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Electrical Room 2"
       },
       {
         "0": "",
@@ -16685,7 +16947,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Elec Room 2"
       },
       {
         "0": "",
@@ -16712,7 +16976,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -16739,7 +17005,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -16766,7 +17034,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, BMS Room"
       },
       {
         "0": "",
@@ -16793,7 +17063,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Elec Room 2"
       },
       {
         "0": "",
@@ -16820,7 +17092,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Trafo Room 1"
       },
       {
         "0": "",
@@ -16847,7 +17121,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -16874,7 +17150,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room B"
       },
       {
         "0": "",
@@ -16901,7 +17179,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Interconecting Room A"
       },
       {
         "0": "",
@@ -16928,7 +17208,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Interconecting Room A"
       },
       {
         "0": "",
@@ -16955,7 +17237,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Interconecting Room B"
       },
       {
         "0": "",
@@ -16982,7 +17266,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Interconecting Room B"
       },
       {
         "0": "",
@@ -17009,7 +17295,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Staging Room"
       },
       {
         "0": "",
@@ -17036,7 +17324,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Staging Room"
       },
       {
         "0": "",
@@ -17063,7 +17353,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -17090,7 +17382,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -17117,7 +17411,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Elec Room 1"
       },
       {
         "0": "",
@@ -17144,7 +17440,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Elec room 2"
       },
       {
         "0": "",
@@ -17156,7 +17454,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "40",
         "Serial Number": "21W00105",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -17171,7 +17469,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Under Ground",
+        "Location": "Under Ground, Electrical Room"
       },
       {
         "0": "",
@@ -17198,7 +17498,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Trafo Room 1"
       },
       {
         "0": "",
@@ -17225,7 +17527,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Under Ground",
+        "Location": "Under Ground, Trafo Room 5"
       },
       {
         "0": "",
@@ -17237,7 +17541,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "",
         "Serial Number": "",
         "Production Year": "",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -17252,7 +17556,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Electrical Room"
       },
       {
         "0": "",
@@ -17279,7 +17585,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, MV Room B"
       },
       {
         "0": "",
@@ -17306,7 +17614,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, MV Room B"
       },
       {
         "0": "",
@@ -17333,7 +17643,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Trafo Room 4"
       },
       {
         "0": "",
@@ -17360,7 +17672,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Koridor Timur"
       },
       {
         "0": "",
@@ -17387,7 +17701,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Koridor Timur"
       },
       {
         "0": "",
@@ -17399,7 +17715,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "40",
         "Serial Number": "21W00105",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -17414,7 +17730,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "4F",
+        "Location": "4F, Electrical Room"
       },
       {
         "0": "",
@@ -17441,7 +17759,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -17468,7 +17788,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Koridor Timur"
       },
       {
         "0": "",
@@ -17495,7 +17817,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room A"
       },
       {
         "0": "",
@@ -17522,7 +17846,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power House L1"
       },
       {
         "0": "",
@@ -17549,7 +17875,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiler Room"
       },
       {
         "0": "",
@@ -17576,7 +17904,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room A"
       },
       {
         "0": "",
@@ -17603,7 +17933,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room B"
       },
       {
         "0": "",
@@ -17630,7 +17962,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POwer Room A"
       },
       {
         "0": "",
@@ -17657,7 +17991,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Elec Room 1"
       },
       {
         "0": "",
@@ -17684,7 +18020,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -17711,7 +18049,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room C"
       },
       {
         "0": "",
@@ -17738,7 +18078,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Koridor Timur"
       },
       {
         "0": "",
@@ -17765,7 +18107,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Elec Room 1"
       },
       {
         "0": "",
@@ -17792,7 +18136,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Trafoo Room 1"
       },
       {
         "0": "",
@@ -17819,7 +18165,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Trafoo Room 1"
       },
       {
         "0": "",
@@ -17846,7 +18194,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Trafo Room 4"
       },
       {
         "0": "",
@@ -17873,7 +18223,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Trafo Room 4"
       },
       {
         "0": "",
@@ -17900,7 +18252,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room A"
       },
       {
         "0": "",
@@ -17927,7 +18281,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room A"
       },
       {
         "0": "",
@@ -17954,7 +18310,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, BMS Room"
       },
       {
         "0": "",
@@ -17981,7 +18339,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -18008,7 +18368,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -18035,7 +18397,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -18062,7 +18426,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -18089,7 +18455,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -18116,7 +18484,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -18143,7 +18513,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 3"
       },
       {
         "0": "",
@@ -18170,7 +18542,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 4"
       },
       {
         "0": "",
@@ -18182,7 +18556,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "N/A",
         "Serial Number": "N/A",
         "Production Year": "N/A",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18197,7 +18571,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "4F",
+        "Location": "4F, Electrical Room"
       },
       {
         "0": "",
@@ -18209,7 +18585,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "",
         "Serial Number": "",
         "Production Year": "",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18224,7 +18600,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Electrical Room"
       },
       {
         "0": "",
@@ -18236,7 +18614,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "",
         "Serial Number": "",
         "Production Year": "",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18251,7 +18629,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Electrical Room"
       },
       {
         "0": "",
@@ -18263,7 +18643,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "",
         "Serial Number": "",
         "Production Year": "",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18278,7 +18658,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Electrical Room"
       },
       {
         "0": "",
@@ -18290,7 +18672,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "N/A",
         "Serial Number": "N/A",
         "Production Year": "N/A",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18305,7 +18687,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "4F",
+        "Location": "4F, Electrical Room"
       },
       {
         "0": "",
@@ -18332,7 +18716,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Panel Room Office"
       },
       {
         "0": "",
@@ -18359,7 +18745,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Panel Room Office"
       },
       {
         "0": "",
@@ -18371,7 +18759,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "40 A",
         "Serial Number": "",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18386,7 +18774,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Electrical Room"
       },
       {
         "0": "",
@@ -18413,7 +18803,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Panel Room Office"
       },
       {
         "0": "",
@@ -18425,7 +18817,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "50 A",
         "Serial Number": "",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18440,7 +18832,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Location": "2F, Electrical Room"
       },
       {
         "0": "",
@@ -18452,7 +18846,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "63 A",
         "Serial Number": "",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18467,7 +18861,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Location": "2F, Electrical Room"
       },
       {
         "0": "",
@@ -18479,7 +18875,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "50 A",
         "Serial Number": "",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18494,7 +18890,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Location": "2F, Electrical Room"
       },
       {
         "0": "",
@@ -18521,7 +18919,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Organic Room"
       },
       {
         "0": "",
@@ -18548,7 +18948,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Command Center"
       },
       {
         "0": "",
@@ -18560,7 +18962,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "32 A",
         "Serial Number": "",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18575,7 +18977,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "3F",
+        "Location": "3F, Electrical Room"
       },
       {
         "0": "",
@@ -18587,7 +18991,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "32 A",
         "Serial Number": "",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18602,7 +19006,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "3F",
+        "Location": "3F, Electrical Room"
       },
       {
         "0": "",
@@ -18614,7 +19020,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "32 A",
         "Serial Number": "",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18629,7 +19035,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "3F",
+        "Location": "3F, Electrical Room"
       },
       {
         "0": "",
@@ -18641,7 +19049,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "32 A",
         "Serial Number": "",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18656,7 +19064,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "3F",
+        "Location": "3F, Electrical Room"
       },
       {
         "0": "",
@@ -18668,7 +19078,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "40 A",
         "Serial Number": "",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18683,7 +19093,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "3F",
+        "Location": "3F, Electrical Room"
       },
       {
         "0": "",
@@ -18695,7 +19107,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "32 A",
         "Serial Number": "",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18710,7 +19122,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "3F",
+        "Location": "3F, Electrical Room"
       },
       {
         "0": "",
@@ -18722,7 +19136,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "32 A",
         "Serial Number": "",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18737,7 +19151,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "3F",
+        "Location": "3F, Electrical Room"
       },
       {
         "0": "",
@@ -18749,7 +19165,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "32 A",
         "Serial Number": "",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18764,7 +19180,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "4F",
+        "Location": "4F, Electrical Room"
       },
       {
         "0": "",
@@ -18776,7 +19194,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "32 A",
         "Serial Number": "",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18791,7 +19209,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "4F",
+        "Location": "4F, Electrical Room"
       },
       {
         "0": "",
@@ -18803,7 +19223,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "32 A",
         "Serial Number": "",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18818,7 +19238,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "4F",
+        "Location": "4F, Electrical Room"
       },
       {
         "0": "",
@@ -18830,7 +19252,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "32 A",
         "Serial Number": "",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18845,7 +19267,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "4F",
+        "Location": "4F, Electrical Room"
       },
       {
         "0": "",
@@ -18857,7 +19281,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "40 A",
         "Serial Number": "",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18872,7 +19296,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "4F",
+        "Location": "4F, Electrical Room"
       },
       {
         "0": "",
@@ -18884,7 +19310,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "40 A",
         "Serial Number": "",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -18899,7 +19325,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "4F",
+        "Location": "4F, Electrical Room"
       },
       {
         "0": "",
@@ -18926,7 +19354,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Rooftop",
+        "Location": "Rooftop, Machine Room LP"
       },
       {
         "0": "",
@@ -18953,7 +19383,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Rooftop",
+        "Location": "Rooftop, Machine Room LP"
       },
       {
         "0": "",
@@ -18980,7 +19412,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Rooftop",
+        "Location": "Rooftop, Machine Room LP"
       },
       {
         "0": "",
@@ -19007,7 +19441,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Rooftop",
+        "Location": "Rooftop, Machine Room LP"
       },
       {
         "0": "",
@@ -19034,7 +19470,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Rooftop",
+        "Location": "Rooftop, Machine Room LP"
       },
       {
         "0": "",
@@ -19061,7 +19499,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Rooftop",
+        "Location": "Rooftop, Machine Room LP"
       },
       {
         "0": "",
@@ -19088,7 +19528,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Rooftop",
+        "Location": "Rooftop, Machine Room LP"
       },
       {
         "0": "",
@@ -19115,7 +19557,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Rooftop",
+        "Location": "Rooftop, Machine Room LP"
       },
       {
         "0": "",
@@ -19142,7 +19586,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Rooftop",
+        "Location": "Rooftop, Machine Room LP"
       },
       {
         "0": "",
@@ -19169,7 +19615,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Rooftop",
+        "Location": "Rooftop, Machine Room LP"
       },
       {
         "0": "",
@@ -19196,7 +19644,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19223,7 +19673,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19250,7 +19702,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19277,7 +19731,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19304,7 +19760,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19331,7 +19789,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19358,7 +19818,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19385,7 +19847,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19412,7 +19876,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19439,7 +19905,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19466,7 +19934,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19493,7 +19963,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19520,7 +19992,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19547,7 +20021,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19574,7 +20050,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19601,7 +20079,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19628,7 +20108,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19655,7 +20137,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19682,7 +20166,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19709,7 +20195,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19736,7 +20224,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -19763,7 +20253,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, MWP Room"
       },
       {
         "0": "Panel tidak ditemukan",
@@ -19790,7 +20282,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "Panel tidak ditemukan",
@@ -19817,7 +20311,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "Panel tidak ditemukan",
@@ -19844,7 +20340,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "Panel tidak ditemukan",
@@ -19871,7 +20369,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "Panel tidak ditemukan",
@@ -19898,7 +20398,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "Panel tidak ditemukan",
@@ -19925,7 +20427,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH 2 FLOOR"
       },
       {
         "0": "Panel tidak ditemukan",
@@ -19952,7 +20456,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Trafo Room 4"
       },
       {
         "0": "Panel tidak ditemukan",
@@ -19979,7 +20485,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, MV Room B"
       },
       {
         "0": "Panel tidak ditemukan",
@@ -20006,7 +20514,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 4"
       },
       {
         "0": "Panel tidak ditemukan",
@@ -20018,7 +20528,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "N/A",
         "Serial Number": "N/A",
         "Production Year": "N/A",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -20033,7 +20543,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Electrical Room"
       },
       {
         "0": "Panel tidak ditemukan",
@@ -20060,7 +20572,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, NOC Room"
       },
       {
         "0": "Panel tidak ditemukan",
@@ -20072,7 +20586,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "",
         "Serial Number": "",
         "Production Year": "2021",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "",
         "Col_13": "",
@@ -20087,7 +20601,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Location": "2F, Electrical Room"
       },
       {
         "0": "Panel tidak ditemukan",
@@ -20114,7 +20630,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Location": "2F, Command Center"
       },
       {
         "0": "Panel tidak ditemukan",
@@ -20141,7 +20659,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Location": "2F, Command Center"
       },
       {
         "0": "Masuk PM LV",
@@ -20168,7 +20688,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "Masuk PM LV",
@@ -20195,7 +20717,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH Office"
       },
       {
         "0": "",
@@ -20222,7 +20746,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PUMP ROOM OFFICE"
       },
       {
         "0": "",
@@ -20249,7 +20775,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, MV Room B"
       },
       {
         "0": "",
@@ -20276,7 +20804,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Elec Room 2"
       },
       {
         "0": "",
@@ -20303,7 +20833,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Elec Room 1"
       },
       {
         "0": "",
@@ -20315,7 +20847,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Capacity": "",
         "Serial Number": "",
         "Production Year": "",
-        "Room": "",
+        "Room": "Electrical Room",
         "PM Date": "",
         "QTY": "0",
         "Col_13": "",
@@ -20330,7 +20862,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Electrical Room"
       }
     ],
     "itemCount": 163,
@@ -20377,7 +20911,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor"
     ],
     "items": [
       {
@@ -20407,7 +20942,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -20436,7 +20973,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -20465,7 +21004,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -20494,7 +21035,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -20523,7 +21066,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "2",
@@ -20552,7 +21097,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -20581,7 +21128,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -20610,7 +21159,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -20639,7 +21190,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "3",
@@ -20668,7 +21221,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -20697,7 +21252,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -20726,7 +21283,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -20755,7 +21314,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -20784,7 +21345,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -20813,7 +21376,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -20842,7 +21407,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -20871,7 +21438,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "4",
@@ -20900,7 +21469,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -20929,7 +21500,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -20958,7 +21531,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -20987,7 +21562,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -21016,7 +21593,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "5",
@@ -21045,7 +21624,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -21074,7 +21655,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -21103,7 +21686,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -21132,7 +21717,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "",
@@ -21161,7 +21748,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "No": "6",
@@ -21190,7 +21779,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM C"
       },
       {
         "No": "",
@@ -21219,7 +21810,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM C"
       },
       {
         "No": "",
@@ -21248,7 +21841,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM C"
       },
       {
         "No": "",
@@ -21277,7 +21872,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM C"
       },
       {
         "No": "",
@@ -21306,7 +21903,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM C"
       },
       {
         "No": "7",
@@ -21335,7 +21934,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM C"
       },
       {
         "No": "",
@@ -21364,7 +21965,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM C"
       },
       {
         "No": "",
@@ -21393,7 +21996,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM C"
       },
       {
         "No": "",
@@ -21422,7 +22027,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM C"
       },
       {
         "No": "",
@@ -21451,7 +22058,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM C"
       },
       {
         "No": "8",
@@ -21480,7 +22089,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELEC ROOM 1"
       },
       {
         "No": "",
@@ -21509,7 +22120,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELEC ROOM 1"
       },
       {
         "No": "",
@@ -21538,7 +22151,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELEC ROOM 1"
       },
       {
         "No": "",
@@ -21567,7 +22182,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELEC ROOM 1"
       },
       {
         "No": "",
@@ -21596,7 +22213,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELEC ROOM 1"
       },
       {
         "No": "9",
@@ -21625,7 +22244,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "",
@@ -21654,7 +22275,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "",
@@ -21683,7 +22306,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "",
@@ -21712,7 +22337,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "10",
@@ -21741,7 +22368,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "",
@@ -21770,7 +22399,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "",
@@ -21799,7 +22430,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "",
@@ -21828,7 +22461,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "",
@@ -21857,7 +22492,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "",
@@ -21886,7 +22523,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "",
@@ -21915,7 +22554,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "",
@@ -21944,7 +22585,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "11",
@@ -21973,7 +22616,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "",
@@ -22002,7 +22647,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "",
@@ -22031,7 +22678,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "",
@@ -22060,7 +22709,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "",
@@ -22089,7 +22740,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "12",
@@ -22118,7 +22771,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "",
@@ -22147,7 +22802,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "",
@@ -22176,7 +22833,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "",
@@ -22205,7 +22864,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "",
@@ -22234,7 +22895,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "No": "13",
@@ -22263,7 +22926,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELECT 1"
       },
       {
         "No": "14",
@@ -22292,7 +22957,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELECT 2"
       },
       {
         "No": "15",
@@ -22321,7 +22988,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Location": "2F, OFFICE 2F"
       },
       {
         "No": "16",
@@ -22350,7 +23019,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Location": "2F, OFFICE 2F"
       },
       {
         "No": "17",
@@ -22379,7 +23050,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, UPS Room 1F"
       },
       {
         "No": "18",
@@ -22408,7 +23081,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, UPS Room 1F"
       },
       {
         "No": "19",
@@ -22437,7 +23112,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, SCC Room"
       },
       {
         "No": "",
@@ -22450,7 +23127,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Model/Version": "",
         "Manufacturer / Principle": "",
         "TAG": "",
-        "Room": "",
+        "Room": "Power Room / Elec Room",
         "PM DATE": "",
         "QTY": "",
         "0.7894736842": "",
@@ -22466,7 +23143,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "1F",
+        "Location": "1F, Power Room / Elec Room"
       }
     ],
     "itemCount": 72,
@@ -22507,7 +23186,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -22531,7 +23212,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 3",
@@ -22554,7 +23238,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 4",
@@ -22577,7 +23264,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 5",
@@ -22600,7 +23290,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 6",
@@ -22623,7 +23316,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 7",
@@ -22646,7 +23342,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 8",
@@ -22669,7 +23368,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 9",
@@ -22692,7 +23394,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 10",
@@ -22715,7 +23420,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 11",
@@ -22738,7 +23446,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 12",
@@ -22761,7 +23472,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 13",
@@ -22784,7 +23498,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 14",
@@ -22807,7 +23524,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 15",
@@ -22830,7 +23550,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 16",
@@ -22853,7 +23576,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 17",
@@ -22876,7 +23602,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 18",
@@ -22899,7 +23628,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 19",
@@ -22922,7 +23654,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Rooftop",
+        "Room": "Campus & Office Rooftop",
+        "Location": "Rooftop, Campus & Office Rooftop"
       },
       {
         "1": "Rooftop",
@@ -22945,7 +23680,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Rooftop",
+        "Room": "Campus & Office Rooftop",
+        "Location": "Rooftop, Campus & Office Rooftop"
       },
       {
         "1": "LPS 1",
@@ -22968,7 +23706,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 2",
@@ -22991,7 +23732,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 3",
@@ -23014,7 +23758,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 4",
@@ -23037,7 +23784,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 5",
@@ -23060,7 +23810,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 6",
@@ -23083,7 +23836,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 7",
@@ -23106,7 +23862,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 8",
@@ -23129,7 +23888,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 9",
@@ -23152,7 +23914,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 10",
@@ -23175,7 +23940,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 11",
@@ -23198,7 +23966,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 12",
@@ -23221,7 +23992,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 13",
@@ -23244,7 +24018,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 14",
@@ -23267,7 +24044,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 15",
@@ -23290,7 +24070,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 16",
@@ -23313,7 +24096,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 17",
@@ -23336,7 +24122,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 18",
@@ -23359,7 +24148,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 19",
@@ -23382,7 +24174,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 20",
@@ -23405,7 +24200,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 21",
@@ -23428,7 +24226,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 01 PH",
@@ -23451,7 +24252,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 02 PH",
@@ -23474,7 +24278,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 03 PH",
@@ -23497,7 +24304,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 04 PH",
@@ -23520,7 +24330,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -23543,7 +24356,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -23566,7 +24382,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -23589,7 +24408,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -23612,7 +24434,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -23635,7 +24460,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -23658,7 +24486,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -23681,7 +24512,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -23704,7 +24538,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -23727,7 +24564,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -23750,7 +24590,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -23773,7 +24616,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -23796,7 +24642,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -23819,7 +24668,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -23842,7 +24694,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -23865,7 +24720,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -23888,7 +24746,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -23911,7 +24772,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -23934,7 +24798,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -23957,7 +24824,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -23980,7 +24850,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24003,7 +24876,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24026,7 +24902,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24049,7 +24928,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24072,7 +24954,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24095,7 +24980,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24118,7 +25006,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24141,7 +25032,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24164,7 +25058,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24187,7 +25084,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24210,7 +25110,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24233,7 +25136,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24256,7 +25162,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24279,7 +25188,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24302,7 +25214,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24325,7 +25240,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24348,7 +25266,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24371,7 +25292,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24394,7 +25318,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24417,7 +25344,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24440,7 +25370,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24463,7 +25396,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24486,7 +25422,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24509,7 +25448,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -24532,7 +25474,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Rooftop",
+        "Room": "Campus & Office Rooftop",
+        "Location": "Rooftop, Campus & Office Rooftop"
       },
       {
         "1": "",
@@ -24555,7 +25500,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Rooftop",
+        "Room": "Campus & Office Rooftop",
+        "Location": "Rooftop, Campus & Office Rooftop"
       },
       {
         "1": "",
@@ -24578,7 +25526,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Rooftop",
+        "Room": "Campus & Office Rooftop",
+        "Location": "Rooftop, Campus & Office Rooftop"
       },
       {
         "1": "",
@@ -24601,7 +25552,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Rooftop",
+        "Room": "Campus & Office Rooftop",
+        "Location": "Rooftop, Campus & Office Rooftop"
       },
       {
         "1": "LPS 1",
@@ -24624,7 +25578,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 2",
@@ -24647,7 +25604,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 3",
@@ -24670,7 +25630,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 4",
@@ -24693,7 +25656,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 5",
@@ -24716,7 +25682,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 6",
@@ -24739,7 +25708,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 7",
@@ -24762,7 +25734,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 8",
@@ -24785,7 +25760,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 9",
@@ -24808,7 +25786,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 10",
@@ -24831,7 +25812,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 11",
@@ -24854,7 +25838,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 12",
@@ -24877,7 +25864,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 13",
@@ -24900,7 +25890,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 14",
@@ -24923,7 +25916,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 15",
@@ -24946,7 +25942,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 16",
@@ -24969,7 +25968,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 17",
@@ -24992,7 +25994,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 18",
@@ -25015,7 +26020,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 19",
@@ -25038,7 +26046,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 20",
@@ -25061,7 +26072,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 21",
@@ -25084,7 +26098,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 01 PH",
@@ -25107,7 +26124,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 02 PH",
@@ -25130,7 +26150,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 03 PH",
@@ -25153,7 +26176,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "LPS 04 PH",
@@ -25176,7 +26202,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -25199,7 +26228,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -25222,7 +26254,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -25245,7 +26280,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "Rooftop",
@@ -25268,7 +26306,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus Rooftop",
+        "Room": "-",
+        "Location": "Campus Rooftop, -"
       },
       {
         "1": "",
@@ -25291,7 +26332,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "Rooftop",
+        "Room": "Campus & Office Rooftop",
+        "Location": "Rooftop, Campus & Office Rooftop"
       }
     ],
     "itemCount": 121,
@@ -25339,7 +26383,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -25370,7 +26416,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "1": "Report on Process",
@@ -25400,7 +26449,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "1": "Report on Process",
@@ -25430,7 +26482,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "1": "Report on Process",
@@ -25460,7 +26515,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "1": "Report on Process",
@@ -25490,7 +26548,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "PH Office",
+        "Location": "1F, PH Office"
       },
       {
         "1": "Report on Process",
@@ -25520,7 +26581,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       }
     ],
     "itemCount": 6,
@@ -25552,7 +26616,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "Version Number",
       "Production Year",
       "Model/Version",
-      "Manufacturer / Principle"
+      "Manufacturer / Principle",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -25567,7 +26633,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "-",
         "Production Year": "2022",
         "Model/Version": "-",
-        "Manufacturer / Principle": "N/A"
+        "Manufacturer / Principle": "N/A",
+        "Floor": "N/A",
+        "Room": "N/A",
+        "Location": "N/A, N/A"
       },
       {
         "No": "8",
@@ -25581,7 +26650,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "N/A",
         "Production Year": "",
         "Model/Version": "",
-        "Manufacturer / Principle": ""
+        "Manufacturer / Principle": "",
+        "Floor": "Under Ground",
+        "Room": "Genset & Fuel Room",
+        "Location": "Under Ground, Genset & Fuel Room"
       },
       {
         "No": "9",
@@ -25595,7 +26667,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "N/A",
         "Production Year": "",
         "Model/Version": "",
-        "Manufacturer / Principle": ""
+        "Manufacturer / Principle": "",
+        "Floor": "Under Ground",
+        "Room": "Genset & Fuel Room",
+        "Location": "Under Ground, Genset & Fuel Room"
       },
       {
         "No": "10",
@@ -25609,7 +26684,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "2021",
         "Model/Version": "ML 100LA-4",
-        "Manufacturer / Principle": "MOTOLOGY"
+        "Manufacturer / Principle": "MOTOLOGY",
+        "Floor": "Under Ground",
+        "Room": "Genset & Fuel Room",
+        "Location": "Under Ground, Genset & Fuel Room"
       },
       {
         "No": "11",
@@ -25623,7 +26701,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "2021",
         "Model/Version": "ML 100LA-4",
-        "Manufacturer / Principle": "MOTOLOGY"
+        "Manufacturer / Principle": "MOTOLOGY",
+        "Floor": "Under Ground",
+        "Room": "Genset & Fuel Room",
+        "Location": "Under Ground, Genset & Fuel Room"
       },
       {
         "No": "12",
@@ -25637,7 +26718,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "2021",
         "Model/Version": "ML 90L-4",
-        "Manufacturer / Principle": "MOTOLOGY"
+        "Manufacturer / Principle": "MOTOLOGY",
+        "Floor": "Under Ground",
+        "Room": "Genset & Fuel Room",
+        "Location": "Under Ground, Genset & Fuel Room"
       },
       {
         "No": "13",
@@ -25651,7 +26735,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "2021",
         "Model/Version": "ML 90L-4",
-        "Manufacturer / Principle": "MOTOLOGY"
+        "Manufacturer / Principle": "MOTOLOGY",
+        "Floor": "Under Ground",
+        "Room": "Genset & Fuel Room",
+        "Location": "Under Ground, Genset & Fuel Room"
       },
       {
         "No": "14",
@@ -25665,7 +26752,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "2021",
         "Model/Version": "ML 90L-4",
-        "Manufacturer / Principle": "MOTOLOGY"
+        "Manufacturer / Principle": "MOTOLOGY",
+        "Floor": "Under Ground",
+        "Room": "Genset & Fuel Room",
+        "Location": "Under Ground, Genset & Fuel Room"
       },
       {
         "No": "15",
@@ -25679,7 +26769,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "2021",
         "Model/Version": "ML 90L-4",
-        "Manufacturer / Principle": "MOTOLOGY"
+        "Manufacturer / Principle": "MOTOLOGY",
+        "Floor": "Under Ground",
+        "Room": "Genset & Fuel Room",
+        "Location": "Under Ground, Genset & Fuel Room"
       },
       {
         "No": "16",
@@ -25693,7 +26786,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "2021",
         "Model/Version": "F00395050",
-        "Manufacturer / Principle": "PIUSI"
+        "Manufacturer / Principle": "PIUSI",
+        "Floor": "Under Ground",
+        "Room": "Genset & Fuel Room",
+        "Location": "Under Ground, Genset & Fuel Room"
       },
       {
         "No": "17",
@@ -25707,7 +26803,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "2021",
         "Model/Version": "F00395051",
-        "Manufacturer / Principle": "PIUSI"
+        "Manufacturer / Principle": "PIUSI",
+        "Floor": "Under Ground",
+        "Room": "Genset & Fuel Room",
+        "Location": "Under Ground, Genset & Fuel Room"
       },
       {
         "No": "18",
@@ -25721,7 +26820,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "2023",
         "Model/Version": "",
-        "Manufacturer / Principle": "Jerbindo"
+        "Manufacturer / Principle": "Jerbindo",
+        "Floor": "Under Ground",
+        "Room": "Genset & Fuel Room",
+        "Location": "Under Ground, Genset & Fuel Room"
       },
       {
         "No": "19",
@@ -25735,7 +26837,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "2023",
         "Model/Version": "",
-        "Manufacturer / Principle": "Jerbindo"
+        "Manufacturer / Principle": "Jerbindo",
+        "Floor": "Under Ground",
+        "Room": "Genset & Fuel Room",
+        "Location": "Under Ground, Genset & Fuel Room"
       },
       {
         "No": "20",
@@ -25749,7 +26854,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "",
         "Model/Version": "",
-        "Manufacturer / Principle": ""
+        "Manufacturer / Principle": "",
+        "Floor": "Under Ground",
+        "Room": "Genset & Fuel Room",
+        "Location": "Under Ground, Genset & Fuel Room"
       },
       {
         "No": "21",
@@ -25763,7 +26871,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "",
         "Model/Version": "",
-        "Manufacturer / Principle": ""
+        "Manufacturer / Principle": "",
+        "Floor": "Under Ground",
+        "Room": "Genset & Fuel Room",
+        "Location": "Under Ground, Genset & Fuel Room"
       },
       {
         "No": "22",
@@ -25777,7 +26888,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "",
         "Model/Version": "",
-        "Manufacturer / Principle": ""
+        "Manufacturer / Principle": "",
+        "Floor": "Under Ground",
+        "Room": "Genset & Fuel Room",
+        "Location": "Under Ground, Genset & Fuel Room"
       },
       {
         "No": "23",
@@ -25791,7 +26905,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "",
         "Model/Version": "",
-        "Manufacturer / Principle": ""
+        "Manufacturer / Principle": "",
+        "Floor": "Under Ground",
+        "Room": "Genset & Fuel Room",
+        "Location": "Under Ground, Genset & Fuel Room"
       },
       {
         "No": "24",
@@ -25805,7 +26922,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "",
         "Model/Version": "",
-        "Manufacturer / Principle": ""
+        "Manufacturer / Principle": "",
+        "Floor": "Rooftop PH",
+        "Room": "Genset & Fuel Room",
+        "Location": "Rooftop PH, Genset & Fuel Room"
       },
       {
         "No": "25",
@@ -25819,7 +26939,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "",
         "Model/Version": "",
-        "Manufacturer / Principle": ""
+        "Manufacturer / Principle": "",
+        "Floor": "Rooftop PH",
+        "Room": "Genset & Fuel Room",
+        "Location": "Rooftop PH, Genset & Fuel Room"
       },
       {
         "No": "26",
@@ -25833,7 +26956,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "",
         "Model/Version": "",
-        "Manufacturer / Principle": ""
+        "Manufacturer / Principle": "",
+        "Floor": "Rooftop PH",
+        "Room": "Genset & Fuel Room",
+        "Location": "Rooftop PH, Genset & Fuel Room"
       },
       {
         "No": "27",
@@ -25847,7 +26973,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "",
         "Model/Version": "",
-        "Manufacturer / Principle": ""
+        "Manufacturer / Principle": "",
+        "Floor": "Rooftop PH",
+        "Room": "Genset & Fuel Room",
+        "Location": "Rooftop PH, Genset & Fuel Room"
       },
       {
         "No": "28",
@@ -25861,7 +26990,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "",
         "Model/Version": "",
-        "Manufacturer / Principle": ""
+        "Manufacturer / Principle": "",
+        "Floor": "PH Lantai 2",
+        "Room": "Genset & Fuel Room",
+        "Location": "PH Lantai 2, Genset & Fuel Room"
       },
       {
         "No": "29",
@@ -25875,7 +27007,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "",
         "Model/Version": "",
-        "Manufacturer / Principle": ""
+        "Manufacturer / Principle": "",
+        "Floor": "PH Lantai 2",
+        "Room": "Genset & Fuel Room",
+        "Location": "PH Lantai 2, Genset & Fuel Room"
       },
       {
         "No": "30",
@@ -25889,7 +27024,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "",
         "Model/Version": "",
-        "Manufacturer / Principle": ""
+        "Manufacturer / Principle": "",
+        "Floor": "PH Lantai 2",
+        "Room": "Genset & Fuel Room",
+        "Location": "PH Lantai 2, Genset & Fuel Room"
       },
       {
         "No": "31",
@@ -25903,7 +27041,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "",
         "Model/Version": "",
-        "Manufacturer / Principle": ""
+        "Manufacturer / Principle": "",
+        "Floor": "PH Lantai 2",
+        "Room": "Genset & Fuel Room",
+        "Location": "PH Lantai 2, Genset & Fuel Room"
       },
       {
         "No": "32",
@@ -25917,7 +27058,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "",
         "Model/Version": "",
-        "Manufacturer / Principle": ""
+        "Manufacturer / Principle": "",
+        "Floor": "PH Lantai 2",
+        "Room": "Genset & Fuel Room",
+        "Location": "PH Lantai 2, Genset & Fuel Room"
       },
       {
         "No": "33",
@@ -25931,7 +27075,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "",
         "Model/Version": "",
-        "Manufacturer / Principle": ""
+        "Manufacturer / Principle": "",
+        "Floor": "PH Office",
+        "Room": "Genset & Fuel Room",
+        "Location": "PH Office, Genset & Fuel Room"
       }
     ],
     "itemCount": 27,
@@ -25978,7 +27125,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -26008,7 +27157,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "3F",
+        "Room": "N/A",
+        "Location": "3F, N/A"
       }
     ],
     "itemCount": 1,
@@ -26041,7 +27193,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "Manufacturer / Principle",
       "PM DATE",
       "QTY",
-      "1"
+      "1",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -26057,7 +27211,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Model/Version": "",
         "Manufacturer / Principle": "Lokal",
         "PM DATE": "46232",
-        "QTY": "1"
+        "QTY": "1",
+        "Floor": "1F",
+        "Room": "Elec Room 1",
+        "Location": "1F, Elec Room 1"
       },
       {
         "1": "",
@@ -26072,7 +27229,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Model/Version": "",
         "Manufacturer / Principle": "Lokal",
         "PM DATE": "46232",
-        "QTY": "1"
+        "QTY": "1",
+        "Floor": "1F",
+        "Room": "Elec Room 1",
+        "Location": "1F, Elec Room 1"
       },
       {
         "1": "",
@@ -26087,7 +27247,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Model/Version": "",
         "Manufacturer / Principle": "Lokal",
         "PM DATE": "46232",
-        "QTY": "1"
+        "QTY": "1",
+        "Floor": "1F",
+        "Room": "PH Office",
+        "Location": "1F, PH Office"
       }
     ],
     "itemCount": 3,
@@ -26134,7 +27297,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor"
     ],
     "items": [
       {
@@ -26164,7 +27328,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "N/A",
+        "Location": "N/A, N/A"
       },
       {
         "No": "2",
@@ -26193,7 +27359,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "N/A",
+        "Location": "N/A, MV ROOM A"
       },
       {
         "No": "3",
@@ -26222,7 +27390,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "N/A",
+        "Location": "N/A, N/A"
       },
       {
         "No": "4",
@@ -26251,7 +27421,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "N/A",
+        "Location": "N/A, N/A"
       },
       {
         "No": "5",
@@ -26280,7 +27452,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "N/A",
+        "Location": "N/A, N/A"
       },
       {
         "No": "6",
@@ -26309,7 +27483,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "N/A",
+        "Location": "N/A, N/A"
       },
       {
         "No": "7",
@@ -26338,7 +27514,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "N/A",
+        "Location": "N/A, N/A"
       },
       {
         "No": "8",
@@ -26367,7 +27545,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "N/A",
+        "Location": "N/A, N/A"
       },
       {
         "No": "9",
@@ -26396,7 +27576,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "N/A",
+        "Location": "N/A, PH OFFICE"
       },
       {
         "No": "10",
@@ -26425,7 +27607,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "N/A",
+        "Location": "N/A, N/A"
       },
       {
         "No": "11",
@@ -26454,7 +27638,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "N/A",
+        "Location": "N/A, PUMP ROOM"
       },
       {
         "No": "12",
@@ -26483,7 +27669,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "N/A",
+        "Location": "N/A, N/A"
       },
       {
         "No": "13",
@@ -26512,7 +27700,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "N/A",
+        "Location": "N/A, GENSET ROOM"
       },
       {
         "No": "14",
@@ -26541,7 +27731,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "N/A",
+        "Location": "N/A, N/A"
       },
       {
         "No": "",
@@ -26554,7 +27746,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Version Number": "",
         "Production Year": "",
         "Manufacturer / Principle": "",
-        "Room": "",
+        "Room": "Ventilation Shaft & Power House",
         "PM DATE": "",
         "QTY": "",
         "0.6666666667": "",
@@ -26570,7 +27762,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "All Area",
+        "Location": "All Area, Ventilation Shaft & Power House"
       }
     ],
     "itemCount": 15,
@@ -26615,7 +27809,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor"
     ],
     "items": [
       {
@@ -26643,7 +27838,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-DG-A"
       },
       {
         "0": "",
@@ -26670,7 +27867,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-DG-A"
       },
       {
         "0": "",
@@ -26697,7 +27896,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "0": "",
@@ -26724,7 +27925,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "0": "",
@@ -26751,7 +27954,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "0": "",
@@ -26778,7 +27983,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "0": "",
@@ -26805,7 +28012,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "0": "",
@@ -26832,7 +28041,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "0": "",
@@ -26859,7 +28070,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "0": "",
@@ -26886,7 +28099,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM A"
       },
       {
         "0": "",
@@ -26913,7 +28128,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-DG-B"
       },
       {
         "0": "",
@@ -26940,7 +28157,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-DG-B"
       },
       {
         "0": "",
@@ -26967,7 +28186,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "0": "",
@@ -26994,7 +28215,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "0": "",
@@ -27021,7 +28244,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "0": "",
@@ -27048,7 +28273,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "0": "",
@@ -27075,7 +28302,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "0": "",
@@ -27102,7 +28331,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "0": "",
@@ -27129,7 +28360,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "0": "",
@@ -27156,7 +28389,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM B"
       },
       {
         "0": "",
@@ -27183,7 +28418,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-DG-C"
       },
       {
         "0": "",
@@ -27210,7 +28447,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-DG-C"
       },
       {
         "0": "",
@@ -27237,7 +28476,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM C"
       },
       {
         "0": "",
@@ -27264,7 +28505,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM C"
       },
       {
         "0": "",
@@ -27291,7 +28534,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM C"
       },
       {
         "0": "",
@@ -27318,7 +28563,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM C"
       },
       {
         "0": "",
@@ -27345,7 +28592,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM C"
       },
       {
         "0": "",
@@ -27372,7 +28621,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM C"
       },
       {
         "0": "",
@@ -27399,7 +28650,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM C"
       },
       {
         "0": "",
@@ -27426,7 +28679,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, POWER ROOM C"
       },
       {
         "0": "",
@@ -27453,7 +28708,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1,3,4F CH-DG-A"
       },
       {
         "0": "",
@@ -27480,7 +28737,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1,3,4F CH-DG-A"
       },
       {
         "0": "",
@@ -27507,7 +28766,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELECROOM 2"
       },
       {
         "0": "",
@@ -27534,7 +28795,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELECROOM 2"
       },
       {
         "0": "",
@@ -27561,7 +28824,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELECROOM 2"
       },
       {
         "0": "",
@@ -27588,7 +28853,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1,3,4F CH-DG-A"
       },
       {
         "0": "",
@@ -27615,7 +28882,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1,3,4F CH-DG-A"
       },
       {
         "0": "",
@@ -27642,7 +28911,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELECROOM 1"
       },
       {
         "0": "",
@@ -27669,7 +28940,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELECROOM 1"
       },
       {
         "0": "",
@@ -27696,7 +28969,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELECROOM 1"
       },
       {
         "0": "",
@@ -27708,7 +28983,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Production Year": "",
         "Product Name+": "",
         "Model/Version": "",
-        "Room": "",
+        "Room": "Power Room & Riser",
         "PM DATE": "",
         "QTY": "",
         "Col_13": "",
@@ -27723,7 +28998,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "1F / 2F",
+        "Location": "1F / 2F, Power Room & Riser"
       }
     ],
     "itemCount": 41,
@@ -27771,7 +29048,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -27802,7 +29081,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "4F",
+        "Room": "Rooftop",
+        "Location": "4F, Rooftop"
       },
       {
         "1": "Report on Process",
@@ -27832,7 +29114,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "4F",
+        "Room": "Rooftop",
+        "Location": "4F, Rooftop"
       },
       {
         "1": "Report on Process",
@@ -27862,7 +29147,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "4F",
+        "Room": "Rooftop",
+        "Location": "4F, Rooftop"
       },
       {
         "1": "",
@@ -27892,7 +29180,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "4F",
+        "Room": "Rooftop Power House",
+        "Location": "4F, Rooftop Power House"
       }
     ],
     "itemCount": 4,
@@ -27941,7 +29232,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor"
     ],
     "items": [
       {
@@ -27973,7 +29265,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28004,7 +29298,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28035,7 +29331,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28066,7 +29364,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28097,7 +29397,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28128,7 +29430,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28159,7 +29463,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28190,7 +29496,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28221,7 +29529,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28252,7 +29562,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28283,7 +29595,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28314,7 +29628,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28345,7 +29661,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28376,7 +29694,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28407,7 +29727,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28438,7 +29760,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28469,7 +29793,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28500,7 +29826,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28531,7 +29859,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28562,7 +29892,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28593,7 +29925,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28624,7 +29958,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28655,7 +29991,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28686,7 +30024,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28717,7 +30057,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28748,7 +30090,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28779,7 +30123,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28810,7 +30156,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28841,7 +30189,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28872,7 +30222,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28903,7 +30255,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28934,7 +30288,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28965,7 +30321,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -28996,7 +30354,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29027,7 +30387,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29058,7 +30420,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29089,7 +30453,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29120,7 +30486,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29151,7 +30519,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29182,7 +30552,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29213,7 +30585,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29244,7 +30618,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29275,7 +30651,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29306,7 +30684,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29337,7 +30717,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29368,7 +30750,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29399,7 +30783,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29430,7 +30816,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29461,7 +30849,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29492,7 +30882,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29523,7 +30915,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29554,7 +30948,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29585,7 +30981,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29616,7 +31014,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29647,7 +31047,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29678,7 +31080,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29709,7 +31113,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29740,7 +31146,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29771,7 +31179,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29802,7 +31212,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29833,7 +31245,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29864,7 +31278,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29895,7 +31311,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29926,7 +31344,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29957,7 +31377,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -29988,7 +31410,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30019,7 +31443,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30050,7 +31476,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30081,7 +31509,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30112,7 +31542,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30143,7 +31575,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30174,7 +31608,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30205,7 +31641,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30236,7 +31674,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30267,7 +31707,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30298,7 +31740,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30329,7 +31773,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30360,7 +31806,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30391,7 +31839,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30422,7 +31872,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30453,7 +31905,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30484,7 +31938,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30515,7 +31971,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30546,7 +32004,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30577,7 +32037,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30608,7 +32070,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30639,7 +32103,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30670,7 +32136,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30701,7 +32169,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30732,7 +32202,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30763,7 +32235,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30794,7 +32268,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30825,7 +32301,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30856,7 +32334,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30887,7 +32367,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30918,7 +32400,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30949,7 +32433,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -30980,7 +32466,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31011,7 +32499,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31042,7 +32532,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31073,7 +32565,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31104,7 +32598,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31135,7 +32631,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31166,7 +32664,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31197,7 +32697,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31228,7 +32730,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31259,7 +32763,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31290,7 +32796,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31321,7 +32829,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31352,7 +32862,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31383,7 +32895,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31414,7 +32928,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31445,7 +32961,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31476,7 +32994,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31507,7 +33027,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31538,7 +33060,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31569,7 +33093,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31600,7 +33126,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31631,7 +33159,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31662,7 +33192,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31693,7 +33225,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31724,7 +33258,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31755,7 +33291,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31786,7 +33324,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31817,7 +33357,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31848,7 +33390,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31879,7 +33423,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31910,7 +33456,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31941,7 +33489,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -31972,7 +33522,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -32003,7 +33555,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, N/A"
       },
       {
         "0": "",
@@ -32019,7 +33573,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "",
         "Model/Version": "",
         "Manufacturer / Principle": "",
-        "Room": "",
+        "Room": "NeutraDC Facility",
         "PM DATE": "",
         "QTY": "",
         "Col_17": "",
@@ -32034,7 +33588,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "1F",
+        "Location": "1F, NeutraDC Facility"
       }
     ],
     "itemCount": 132,
@@ -32083,7 +33639,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor"
     ],
     "items": [
       {
@@ -32115,7 +33672,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH CHILLER"
       },
       {
         "0": "",
@@ -32146,7 +33705,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH CHILLER"
       },
       {
         "0": "",
@@ -32177,7 +33738,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH CHILLER"
       },
       {
         "0": "",
@@ -32208,7 +33771,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH CHILLER"
       },
       {
         "0": "",
@@ -32239,7 +33804,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH CHILLER"
       },
       {
         "0": "",
@@ -32270,7 +33837,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH CHILLER"
       },
       {
         "0": "",
@@ -32301,7 +33870,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PUMP WATER TANK"
       },
       {
         "0": "",
@@ -32332,7 +33903,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PUMP WATER TANK"
       },
       {
         "0": "",
@@ -32363,7 +33936,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH CHILLER"
       },
       {
         "0": "",
@@ -32394,7 +33969,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH CHILLER"
       },
       {
         "0": "",
@@ -32425,7 +34002,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH CHILLER"
       },
       {
         "0": "",
@@ -32456,7 +34035,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH CHILLER"
       },
       {
         "0": "",
@@ -32472,7 +34053,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Production Year": "",
         "Product Name+": "",
         "Model/Version": "",
-        "Room": "",
+        "Room": "PH CHILLER",
         "PM DATE": "",
         "QTY": "",
         "Col_17": "",
@@ -32487,7 +34068,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "1F",
+        "Location": "1F, PH CHILLER"
       }
     ],
     "itemCount": 13,
@@ -32535,7 +34118,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor"
     ],
     "items": [
       {
@@ -32566,7 +34150,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "0": "",
@@ -32596,7 +34182,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "0": "",
@@ -32626,7 +34214,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "0": "",
@@ -32656,7 +34246,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "0": "",
@@ -32686,7 +34278,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "0": "",
@@ -32716,7 +34310,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "0": "",
@@ -32746,7 +34342,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 1"
       },
       {
         "0": "",
@@ -32776,7 +34374,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "0": "",
@@ -32806,7 +34406,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "0": "",
@@ -32836,7 +34438,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "0": "",
@@ -32866,7 +34470,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "0": "",
@@ -32896,7 +34502,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "0": "",
@@ -32926,7 +34534,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "0": "",
@@ -32956,7 +34566,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 2"
       },
       {
         "0": "",
@@ -32986,7 +34598,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room B"
       },
       {
         "0": "",
@@ -33016,7 +34630,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room B"
       },
       {
         "0": "",
@@ -33046,7 +34662,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room B"
       },
       {
         "0": "",
@@ -33076,7 +34694,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room B"
       },
       {
         "0": "",
@@ -33106,7 +34726,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Meet Me Room 1A"
       },
       {
         "0": "",
@@ -33136,7 +34758,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Meet Me Room 1A"
       },
       {
         "0": "",
@@ -33166,7 +34790,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room C"
       },
       {
         "0": "",
@@ -33196,7 +34822,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Power Room C"
       },
       {
         "0": "",
@@ -33226,7 +34854,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Meet Me Room 2A"
       },
       {
         "0": "",
@@ -33256,7 +34886,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Meet Me Room 2A"
       },
       {
         "0": "",
@@ -33286,7 +34918,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Interconnecting Room B"
       },
       {
         "0": "",
@@ -33316,7 +34950,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Interconnecting Room B"
       },
       {
         "0": "",
@@ -33346,7 +34982,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Interconnecting Room A"
       },
       {
         "0": "",
@@ -33376,7 +35014,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Interconnecting Room A"
       },
       {
         "0": "",
@@ -33406,7 +35046,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 3"
       },
       {
         "0": "",
@@ -33436,7 +35078,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 3"
       },
       {
         "0": "",
@@ -33466,7 +35110,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 3"
       },
       {
         "0": "",
@@ -33496,7 +35142,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 3"
       },
       {
         "0": "",
@@ -33526,7 +35174,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 3"
       },
       {
         "0": "",
@@ -33556,7 +35206,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 3"
       },
       {
         "0": "",
@@ -33586,7 +35238,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 4"
       },
       {
         "0": "",
@@ -33616,7 +35270,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 4"
       },
       {
         "0": "",
@@ -33646,7 +35302,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 4"
       },
       {
         "0": "",
@@ -33676,7 +35334,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 4"
       },
       {
         "0": "",
@@ -33706,7 +35366,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 4"
       },
       {
         "0": "",
@@ -33736,7 +35398,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Crac Room 4"
       },
       {
         "0": "",
@@ -33751,7 +35415,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Production Year": "",
         "Model/Version": "",
         "Manufacturer / Principle": "",
-        "Room": "",
+        "Room": "CRAC Room 1 - 4",
         "PM DATE": "",
         "QTY": "",
         "Col_16": "",
@@ -33766,7 +35430,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "1F",
+        "Location": "1F, CRAC Room 1 - 4"
       }
     ],
     "itemCount": 41,
@@ -34650,7 +36316,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "No": "",
         "Class Id": "",
         "CI Description*": "",
-        "Location": "",
+        "Location": "Office, Office & Corridor",
         "Capacity": "",
         "Asset ID": "",
         "TAG": "",
@@ -34659,8 +36325,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Production Year": "",
         "Manufacturer / Principle": "",
         "Location_2": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "Office",
+        "Room": "Office & Corridor",
         "DC Hall Supplied": "",
         "PM DATE": "",
         "QTY": "",
@@ -34723,7 +36389,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -34753,7 +36421,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "PH Chiller",
+        "Location": "1F, PH Chiller"
       },
       {
         "1": "Report on Process",
@@ -34782,7 +36453,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "PH Chiller",
+        "Location": "1F, PH Chiller"
       },
       {
         "1": "Report on Process",
@@ -34811,7 +36485,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "PH Chiller",
+        "Location": "1F, PH Chiller"
       },
       {
         "1": "",
@@ -34840,7 +36517,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "1F",
+        "Room": "PH Chiller",
+        "Location": "1F, PH Chiller"
       }
     ],
     "itemCount": 4,
@@ -34886,7 +36566,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "Col_23",
       "APPROVE_2",
       "Col_25",
-      "REVISI_2"
+      "REVISI_2",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -34915,7 +36597,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "QTY",
         "APPROVE_2": "DATE",
         "Col_25": "QTY",
-        "REVISI_2": "DATE"
+        "REVISI_2": "DATE",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "2",
@@ -34943,7 +36628,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "3",
@@ -34971,7 +36659,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "4",
@@ -34999,7 +36690,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "5",
@@ -35027,7 +36721,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "6",
@@ -35055,7 +36752,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "7",
@@ -35083,7 +36783,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "8",
@@ -35111,7 +36814,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "9",
@@ -35139,7 +36845,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "10",
@@ -35167,7 +36876,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "11",
@@ -35195,7 +36907,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "12",
@@ -35223,7 +36938,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "13",
@@ -35251,7 +36969,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "14",
@@ -35279,7 +37000,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "15",
@@ -35307,7 +37031,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "16",
@@ -35335,7 +37062,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "17",
@@ -35363,7 +37093,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "18",
@@ -35391,7 +37124,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "19",
@@ -35419,7 +37155,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "20",
@@ -35447,7 +37186,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "21",
@@ -35475,7 +37217,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "22",
@@ -35503,7 +37248,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "23",
@@ -35531,7 +37279,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "24",
@@ -35559,7 +37310,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "25",
@@ -35587,7 +37341,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "26",
@@ -35615,7 +37372,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "27",
@@ -35643,7 +37403,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "28",
@@ -35671,7 +37434,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "29",
@@ -35699,7 +37465,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "30",
@@ -35727,7 +37496,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "31",
@@ -35755,7 +37527,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "32",
@@ -35783,7 +37558,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "1F",
+        "Room": "1F Office",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "33",
@@ -35811,7 +37589,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "34",
@@ -35839,7 +37620,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "35",
@@ -35867,7 +37651,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "36",
@@ -35895,7 +37682,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "37",
@@ -35923,7 +37713,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "38",
@@ -35951,7 +37744,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "39",
@@ -35979,7 +37775,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "40",
@@ -36007,7 +37806,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "41",
@@ -36035,7 +37837,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "42",
@@ -36063,7 +37868,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "43",
@@ -36091,7 +37899,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "44",
@@ -36119,7 +37930,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "45",
@@ -36147,7 +37961,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "46",
@@ -36175,7 +37992,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "47",
@@ -36203,7 +38023,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "48",
@@ -36231,7 +38054,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "49",
@@ -36259,7 +38085,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "50",
@@ -36287,7 +38116,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "51",
@@ -36315,7 +38147,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "52",
@@ -36343,7 +38178,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "53",
@@ -36371,7 +38209,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "54",
@@ -36399,7 +38240,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "55",
@@ -36427,7 +38271,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "56",
@@ -36455,7 +38302,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "57",
@@ -36483,7 +38333,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "58",
@@ -36511,7 +38364,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "59",
@@ -36539,7 +38395,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "2F",
+        "Room": "2F Office",
+        "Location": "2F, 2F Office"
       },
       {
         "No": "60",
@@ -36567,7 +38426,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "61",
@@ -36595,7 +38457,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "62",
@@ -36623,7 +38488,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "63",
@@ -36651,7 +38519,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "64",
@@ -36679,7 +38550,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "65",
@@ -36707,7 +38581,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "66",
@@ -36735,7 +38612,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "67",
@@ -36763,7 +38643,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "68",
@@ -36791,7 +38674,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "69",
@@ -36819,7 +38705,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "",
@@ -36847,7 +38736,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "70",
@@ -36875,7 +38767,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "71",
@@ -36903,7 +38798,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "72",
@@ -36931,7 +38829,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "73",
@@ -36959,7 +38860,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "74",
@@ -36987,7 +38891,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "75",
@@ -37015,7 +38922,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "76",
@@ -37043,7 +38953,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "77",
@@ -37071,7 +38984,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "78",
@@ -37099,7 +39015,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "79",
@@ -37127,7 +39046,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "80",
@@ -37155,7 +39077,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "81",
@@ -37183,7 +39108,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "82",
@@ -37211,7 +39139,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "2",
@@ -37239,7 +39170,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "84",
@@ -37267,7 +39201,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "3F",
+        "Room": "3F Office",
+        "Location": "3F, 3F Office"
       },
       {
         "No": "85",
@@ -37295,7 +39232,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "86",
@@ -37323,7 +39263,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "87",
@@ -37351,7 +39294,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "88",
@@ -37379,7 +39325,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "89",
@@ -37407,7 +39356,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "90",
@@ -37435,7 +39387,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "91",
@@ -37463,7 +39418,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "92",
@@ -37491,7 +39449,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "93",
@@ -37519,7 +39480,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "94",
@@ -37547,7 +39511,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "95",
@@ -37575,7 +39542,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "96",
@@ -37603,7 +39573,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "97",
@@ -37631,7 +39604,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "98",
@@ -37659,7 +39635,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "99",
@@ -37687,7 +39666,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "100",
@@ -37715,7 +39697,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "101",
@@ -37743,7 +39728,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "102",
@@ -37771,7 +39759,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "103",
@@ -37799,7 +39790,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "104",
@@ -37827,7 +39821,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "105",
@@ -37855,7 +39852,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "106",
@@ -37883,7 +39883,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "1",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "4F",
+        "Room": "4F Office",
+        "Location": "4F, 4F Office"
       },
       {
         "No": "",
@@ -37911,7 +39914,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "",
@@ -37939,7 +39945,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "107",
@@ -37967,7 +39976,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "108",
@@ -37995,7 +40007,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "109",
@@ -38023,7 +40038,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "110",
@@ -38051,7 +40069,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "111",
@@ -38079,7 +40100,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "112",
@@ -38107,7 +40131,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "113",
@@ -38135,7 +40162,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "114",
@@ -38163,7 +40193,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "115",
@@ -38191,7 +40224,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "116",
@@ -38219,7 +40255,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "117",
@@ -38247,7 +40286,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "118",
@@ -38275,7 +40317,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "119",
@@ -38303,7 +40348,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "120",
@@ -38331,7 +40379,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "121",
@@ -38359,7 +40410,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "122",
@@ -38387,7 +40441,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "123",
@@ -38415,7 +40472,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Roof top",
+        "Room": "Roof top Office",
+        "Location": "Roof top, Roof top Office"
       },
       {
         "No": "",
@@ -38443,7 +40503,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "32",
         "APPROVE_2": "",
         "Col_25": "0",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Office",
+        "Room": "Office Area 1F / 2F",
+        "Location": "Office, Office Area 1F / 2F"
       },
       {
         "No": "",
@@ -38471,7 +40534,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_23": "",
         "APPROVE_2": "",
         "Col_25": "",
-        "REVISI_2": ""
+        "REVISI_2": "",
+        "Floor": "Office",
+        "Room": "Office Area 1F / 2F",
+        "Location": "Office, Office Area 1F / 2F"
       }
     ],
     "itemCount": 128,
@@ -38517,7 +40583,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -38546,7 +40614,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Roof top",
+        "Room": "Roof top campus 1",
+        "Location": "Roof top, Roof top campus 1"
       },
       {
         "1": "",
@@ -38574,7 +40645,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Roof top",
+        "Room": "Roof top campus 1",
+        "Location": "Roof top, Roof top campus 1"
       },
       {
         "1": "",
@@ -38602,7 +40676,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Roof top",
+        "Room": "Roof top campus 1",
+        "Location": "Roof top, Roof top campus 1"
       },
       {
         "1": "",
@@ -38630,7 +40707,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Roof top",
+        "Room": "Roof top campus 1",
+        "Location": "Roof top, Roof top campus 1"
       },
       {
         "1": "",
@@ -38658,7 +40738,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Roof top",
+        "Room": "Roof top campus 1",
+        "Location": "Roof top, Roof top campus 1"
       },
       {
         "1": "",
@@ -38686,7 +40769,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Roof top",
+        "Room": "Roof top campus 1",
+        "Location": "Roof top, Roof top campus 1"
       },
       {
         "1": "",
@@ -38714,7 +40800,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Roof top",
+        "Room": "Roof top campus 1",
+        "Location": "Roof top, Roof top campus 1"
       },
       {
         "1": "",
@@ -38742,7 +40831,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Roof top",
+        "Room": "Roof top campus 1",
+        "Location": "Roof top, Roof top campus 1"
       },
       {
         "1": "",
@@ -38770,7 +40862,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Roof top",
+        "Room": "Roof top campus 1",
+        "Location": "Roof top, Roof top campus 1"
       },
       {
         "1": "",
@@ -38798,7 +40893,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Roof top",
+        "Room": "Roof top campus 1",
+        "Location": "Roof top, Roof top campus 1"
       },
       {
         "1": "",
@@ -38826,7 +40924,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Roof top",
+        "Room": "Roof top campus 1",
+        "Location": "Roof top, Roof top campus 1"
       },
       {
         "1": "",
@@ -38854,7 +40955,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Roof top",
+        "Room": "Roof top campus 1",
+        "Location": "Roof top, Roof top campus 1"
       },
       {
         "1": "",
@@ -38882,7 +40986,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "1F",
+        "Room": "PAHU Room",
+        "Location": "1F, PAHU Room"
       }
     ],
     "itemCount": 13,
@@ -38928,7 +41035,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor"
     ],
     "items": [
       {
@@ -38957,7 +41065,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -38985,7 +41095,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -39013,7 +41125,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -39041,7 +41155,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -39069,7 +41185,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -39097,7 +41215,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller Room"
       },
       {
         "0": "",
@@ -39110,7 +41230,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Serial Number": "",
         "Production Year": "",
         "Manufacturer / Principle": "",
-        "Room": "",
+        "Room": "NeutraDC Facility",
         "PM DATE": "",
         "QTY": "",
         "Col_14": "",
@@ -39125,7 +41245,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "1F",
+        "Location": "1F, NeutraDC Facility"
       }
     ],
     "itemCount": 7,
@@ -39178,7 +41300,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor"
     ],
     "items": [
       {
@@ -39214,7 +41337,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "4F",
+        "Location": "4F, 1F Office"
       },
       {
         "No": "2",
@@ -39249,7 +41374,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "4F",
+        "Location": "4F, 1F Office"
       },
       {
         "No": "3",
@@ -39284,7 +41411,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "4F",
+        "Location": "4F, 1F Office"
       },
       {
         "No": "4",
@@ -39319,7 +41448,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Loading"
       },
       {
         "No": "5",
@@ -39354,7 +41485,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Loading"
       },
       {
         "No": "6",
@@ -39389,7 +41522,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Outdoor"
       },
       {
         "No": "7",
@@ -39424,7 +41559,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "8",
@@ -39459,7 +41596,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "9",
@@ -39494,7 +41633,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "10",
@@ -39529,7 +41670,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "11",
@@ -39564,7 +41707,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F Office"
       },
       {
         "No": "",
@@ -39580,7 +41725,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "",
         "Model/Version": "",
         "Col_13": "",
-        "Room": "",
+        "Room": "Office & Security Post",
         "PM DATE": "",
         "QTY": "",
         "0.7272727273": "",
@@ -39599,7 +41744,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "Office",
+        "Location": "Office, Office & Security Post"
       }
     ],
     "itemCount": 12,
@@ -39648,7 +41795,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -39680,7 +41829,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Security Room",
+        "Location": "1F, Security Room"
       },
       {
         "No": "2",
@@ -39711,7 +41863,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Security Room",
+        "Location": "1F, Security Room"
       },
       {
         "No": "3",
@@ -39742,7 +41897,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Security Room",
+        "Location": "1F, Security Room"
       },
       {
         "No": "4",
@@ -39773,7 +41931,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Security Room",
+        "Location": "1F, Security Room"
       },
       {
         "No": "5",
@@ -39804,7 +41965,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "6",
@@ -39835,7 +41999,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Battery C",
+        "Location": "1F, Battery C"
       },
       {
         "No": "7",
@@ -39866,7 +42033,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Power C",
+        "Location": "1F, Power C"
       },
       {
         "No": "8",
@@ -39897,7 +42067,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Power C",
+        "Location": "1F, Power C"
       },
       {
         "No": "9",
@@ -39928,7 +42101,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Crac 3,1",
+        "Location": "1F, Crac 3,1"
       },
       {
         "No": "10",
@@ -39959,7 +42135,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Crac 3,2",
+        "Location": "1F, Crac 3,2"
       },
       {
         "No": "11",
@@ -39990,7 +42169,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Crac 4,1",
+        "Location": "1F, Crac 4,1"
       },
       {
         "No": "12",
@@ -40021,7 +42203,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Crac 4,2",
+        "Location": "1F, Crac 4,2"
       },
       {
         "No": "13",
@@ -40052,7 +42237,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "TRAFO 5",
+        "Location": "1F, TRAFO 5"
       },
       {
         "No": "14",
@@ -40083,7 +42271,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "POWER A",
+        "Location": "1F, POWER A"
       },
       {
         "No": "15",
@@ -40114,7 +42305,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "MMR 2A",
+        "Location": "1F, MMR 2A"
       },
       {
         "No": "16",
@@ -40145,7 +42339,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "ELEC ROOM 2",
+        "Location": "1F, ELEC ROOM 2"
       },
       {
         "No": "17",
@@ -40176,7 +42373,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "CRAC 2,1",
+        "Location": "1F, CRAC 2,1"
       },
       {
         "No": "18",
@@ -40207,7 +42407,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Power A",
+        "Location": "1F, Power A"
       },
       {
         "No": "19",
@@ -40238,7 +42441,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Power A",
+        "Location": "1F, Power A"
       },
       {
         "No": "20",
@@ -40269,7 +42475,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "MMR 2A",
+        "Location": "1F, MMR 2A"
       },
       {
         "No": "21",
@@ -40300,7 +42509,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "BMS",
+        "Location": "1F, BMS"
       },
       {
         "No": "22",
@@ -40331,7 +42543,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Interconnecting B",
+        "Location": "1F, Interconnecting B"
       },
       {
         "No": "23",
@@ -40362,7 +42577,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Stagging",
+        "Location": "1F, Stagging"
       },
       {
         "No": "24",
@@ -40393,7 +42611,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Trafo 6",
+        "Location": "1F, Trafo 6"
       },
       {
         "No": "25",
@@ -40424,7 +42645,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Trafo 5",
+        "Location": "1F, Trafo 5"
       },
       {
         "No": "26",
@@ -40455,7 +42679,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Trafo 4",
+        "Location": "1F, Trafo 4"
       },
       {
         "No": "27",
@@ -40486,7 +42713,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Trafo 3",
+        "Location": "1F, Trafo 3"
       },
       {
         "No": "28",
@@ -40517,7 +42747,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "CRAC 2,2",
+        "Location": "1F, CRAC 2,2"
       },
       {
         "No": "29",
@@ -40548,7 +42781,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Library Room",
+        "Location": "1F, Library Room"
       },
       {
         "No": "30",
@@ -40579,7 +42815,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Power B1",
+        "Location": "1F, Power B1"
       },
       {
         "No": "31",
@@ -40610,7 +42849,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Power B2",
+        "Location": "1F, Power B2"
       },
       {
         "No": "32",
@@ -40641,7 +42883,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Battery Room B",
+        "Location": "1F, Battery Room B"
       },
       {
         "No": "33",
@@ -40672,7 +42917,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Data Hall & Critical Rooms",
+        "Location": "1F, Data Hall & Critical Rooms"
       },
       {
         "No": "34",
@@ -40703,7 +42951,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Data Hall & Critical Rooms",
+        "Location": "1F, Data Hall & Critical Rooms"
       },
       {
         "No": "35",
@@ -40734,7 +42985,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Data Hall & Critical Rooms",
+        "Location": "1F, Data Hall & Critical Rooms"
       },
       {
         "No": "36",
@@ -40765,7 +43019,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Data Hall & Critical Rooms",
+        "Location": "1F, Data Hall & Critical Rooms"
       },
       {
         "No": "37",
@@ -40796,7 +43053,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Data Hall & Critical Rooms",
+        "Location": "1F, Data Hall & Critical Rooms"
       },
       {
         "No": "38",
@@ -40827,7 +43087,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Data Hall & Critical Rooms",
+        "Location": "1F, Data Hall & Critical Rooms"
       },
       {
         "No": "39",
@@ -40858,7 +43121,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Data Hall & Critical Rooms",
+        "Location": "1F, Data Hall & Critical Rooms"
       },
       {
         "No": "40",
@@ -40889,7 +43155,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Data Hall & Critical Rooms",
+        "Location": "1F, Data Hall & Critical Rooms"
       },
       {
         "No": "41",
@@ -40920,7 +43189,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Data Hall & Critical Rooms",
+        "Location": "1F, Data Hall & Critical Rooms"
       },
       {
         "No": "42",
@@ -40951,7 +43223,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "Data Hall & Critical Rooms",
+        "Location": "1F / 2F, Data Hall & Critical Rooms"
       },
       {
         "No": "43",
@@ -40982,7 +43257,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "44",
@@ -41013,7 +43291,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "45",
@@ -41044,7 +43325,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "46",
@@ -41075,7 +43359,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "47",
@@ -41106,7 +43393,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "48",
@@ -41137,7 +43427,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "49",
@@ -41168,7 +43461,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "50",
@@ -41199,7 +43495,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "51",
@@ -41230,7 +43529,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "52",
@@ -41261,7 +43563,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "53",
@@ -41292,7 +43597,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "54",
@@ -41323,7 +43631,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "55",
@@ -41354,7 +43665,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "56",
@@ -41385,7 +43699,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "57",
@@ -41416,7 +43733,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "58",
@@ -41447,7 +43767,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "59",
@@ -41478,7 +43801,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "60",
@@ -41509,7 +43835,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "61",
@@ -41540,7 +43869,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "62",
@@ -41571,7 +43903,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "63",
@@ -41602,7 +43937,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "64",
@@ -41633,7 +43971,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "65",
@@ -41664,7 +44005,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "66",
@@ -41695,7 +44039,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "67",
@@ -41726,7 +44073,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "68",
@@ -41757,7 +44107,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "69",
@@ -41788,7 +44141,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "70",
@@ -41819,7 +44175,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "71",
@@ -41850,7 +44209,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "72",
@@ -41881,7 +44243,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "73",
@@ -41912,7 +44277,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "74",
@@ -41943,7 +44311,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "75",
@@ -41974,7 +44345,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "76",
@@ -42005,7 +44379,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "77",
@@ -42036,7 +44413,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "78",
@@ -42067,7 +44447,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "79",
@@ -42098,7 +44481,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "80",
@@ -42129,7 +44515,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "81",
@@ -42160,7 +44549,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "82",
@@ -42191,7 +44583,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "83",
@@ -42222,7 +44617,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "2F",
+        "Room": "Genset Room",
+        "Location": "2F, Genset Room"
       },
       {
         "No": "84",
@@ -42253,7 +44651,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "Data Hall & Critical Rooms",
+        "Location": "1F / 2F, Data Hall & Critical Rooms"
       },
       {
         "No": "85",
@@ -42284,7 +44685,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "Data Hall & Critical Rooms",
+        "Location": "1F / 2F, Data Hall & Critical Rooms"
       },
       {
         "No": "86",
@@ -42315,7 +44719,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "Data Hall & Critical Rooms",
+        "Location": "1F / 2F, Data Hall & Critical Rooms"
       },
       {
         "No": "87",
@@ -42346,7 +44753,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "Data Hall & Critical Rooms",
+        "Location": "1F / 2F, Data Hall & Critical Rooms"
       },
       {
         "No": "88",
@@ -42377,7 +44787,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "Data Hall & Critical Rooms",
+        "Location": "1F / 2F, Data Hall & Critical Rooms"
       },
       {
         "No": "89",
@@ -42408,7 +44821,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "90",
@@ -42439,7 +44855,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "91",
@@ -42470,7 +44889,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "92",
@@ -42501,7 +44923,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "93",
@@ -42532,7 +44957,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "94",
@@ -42563,7 +44991,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "95",
@@ -42594,7 +45025,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "96",
@@ -42625,7 +45059,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "97",
@@ -42656,7 +45093,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "98",
@@ -42687,7 +45127,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "99",
@@ -42718,7 +45161,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "100",
@@ -42749,7 +45195,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "101",
@@ -42780,7 +45229,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "102",
@@ -42811,7 +45263,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "103",
@@ -42842,7 +45297,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "104",
@@ -42873,7 +45331,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "105",
@@ -42904,7 +45365,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "106",
@@ -42935,7 +45399,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "107",
@@ -42966,7 +45433,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "108",
@@ -42997,7 +45467,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "109",
@@ -43028,7 +45501,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "110",
@@ -43059,7 +45535,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "111",
@@ -43090,7 +45569,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "112",
@@ -43121,7 +45603,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "113",
@@ -43152,7 +45637,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "114",
@@ -43183,7 +45671,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "115",
@@ -43214,7 +45705,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "116",
@@ -43245,7 +45739,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "117",
@@ -43276,7 +45773,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "118",
@@ -43307,7 +45807,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "PH Lt 1",
+        "Location": "1F / 2F, PH Lt 1"
       },
       {
         "No": "119",
@@ -43338,7 +45841,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F / 2F",
+        "Room": "Data Hall & Critical Rooms",
+        "Location": "1F / 2F, Data Hall & Critical Rooms"
       },
       {
         "No": "120",
@@ -43369,7 +45875,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "121",
@@ -43400,7 +45909,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "122",
@@ -43431,7 +45943,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "123",
@@ -43462,7 +45977,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "124",
@@ -43493,7 +46011,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "125",
@@ -43524,7 +46045,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "126",
@@ -43555,7 +46079,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "127",
@@ -43586,7 +46113,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "128",
@@ -43617,7 +46147,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "129",
@@ -43648,7 +46181,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "130",
@@ -43679,7 +46215,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "131",
@@ -43710,7 +46249,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "132",
@@ -43741,7 +46283,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "133",
@@ -43772,7 +46317,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "134",
@@ -43803,7 +46351,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "135",
@@ -43834,7 +46385,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "136",
@@ -43865,7 +46419,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "137",
@@ -43896,7 +46453,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "138",
@@ -43927,7 +46487,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "139",
@@ -43958,7 +46521,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "140",
@@ -43989,7 +46555,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "141",
@@ -44020,7 +46589,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "142",
@@ -44051,7 +46623,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "143",
@@ -44082,7 +46657,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "144",
@@ -44113,7 +46691,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "145",
@@ -44144,7 +46725,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "146",
@@ -44175,7 +46759,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "147",
@@ -44206,7 +46793,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "148",
@@ -44237,7 +46827,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "149",
@@ -44268,7 +46861,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "150",
@@ -44299,7 +46895,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "151",
@@ -44330,7 +46929,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "152",
@@ -44361,7 +46963,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "153",
@@ -44392,7 +46997,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "154",
@@ -44423,7 +47031,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "155",
@@ -44454,7 +47065,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "156",
@@ -44485,7 +47099,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "157",
@@ -44516,7 +47133,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "158",
@@ -44547,7 +47167,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "159",
@@ -44578,7 +47201,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "160",
@@ -44609,7 +47235,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "161",
@@ -44640,7 +47269,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "162",
@@ -44671,7 +47303,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "163",
@@ -44702,7 +47337,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "164",
@@ -44733,7 +47371,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "165",
@@ -44764,7 +47405,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "166",
@@ -44795,7 +47439,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "167",
@@ -44826,7 +47473,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "168",
@@ -44857,7 +47507,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "169",
@@ -44888,7 +47541,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "170",
@@ -44919,7 +47575,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "171",
@@ -44950,7 +47609,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "172",
@@ -44981,7 +47643,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "173",
@@ -45012,7 +47677,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "174",
@@ -45043,7 +47711,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "175",
@@ -45074,7 +47745,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "176",
@@ -45105,7 +47779,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "177",
@@ -45136,7 +47813,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "178",
@@ -45167,7 +47847,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "179",
@@ -45198,7 +47881,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "180",
@@ -45229,7 +47915,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "181",
@@ -45260,7 +47949,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "182",
@@ -45291,7 +47983,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "183",
@@ -45322,7 +48017,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "184",
@@ -45353,7 +48051,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "185",
@@ -45384,7 +48085,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "186",
@@ -45415,7 +48119,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "187",
@@ -45446,7 +48153,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "188",
@@ -45477,7 +48187,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "189",
@@ -45508,7 +48221,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "190",
@@ -45539,7 +48255,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "191",
@@ -45570,7 +48289,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "192",
@@ -45601,7 +48323,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "193",
@@ -45632,7 +48357,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "194",
@@ -45663,7 +48391,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "195",
@@ -45694,7 +48425,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "196",
@@ -45725,7 +48459,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "197",
@@ -45756,7 +48493,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "198",
@@ -45787,7 +48527,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "199",
@@ -45818,7 +48561,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "200",
@@ -45849,7 +48595,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "201",
@@ -45880,7 +48629,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "202",
@@ -45911,7 +48663,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "203",
@@ -45942,7 +48697,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "204",
@@ -45973,7 +48731,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "205",
@@ -46004,7 +48765,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "206",
@@ -46035,7 +48799,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "207",
@@ -46066,7 +48833,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "208",
@@ -46097,7 +48867,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "209",
@@ -46128,7 +48901,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "210",
@@ -46159,7 +48935,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "211",
@@ -46190,7 +48969,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "212",
@@ -46221,7 +49003,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "213",
@@ -46252,7 +49037,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "214",
@@ -46283,7 +49071,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "215",
@@ -46314,7 +49105,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "216",
@@ -46345,7 +49139,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "217",
@@ -46376,7 +49173,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "218",
@@ -46407,7 +49207,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "219",
@@ -46438,7 +49241,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "220",
@@ -46469,7 +49275,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "221",
@@ -46500,7 +49309,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "222",
@@ -46531,7 +49343,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "223",
@@ -46562,7 +49377,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "224",
@@ -46593,7 +49411,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "225",
@@ -46624,7 +49445,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "226",
@@ -46655,7 +49479,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "227",
@@ -46686,7 +49513,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "228",
@@ -46717,7 +49547,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "229",
@@ -46748,7 +49581,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "230",
@@ -46779,7 +49615,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "231",
@@ -46810,7 +49649,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "232",
@@ -46841,7 +49683,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "233",
@@ -46872,7 +49717,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "234",
@@ -46903,7 +49751,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "235",
@@ -46934,7 +49785,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "236",
@@ -46965,7 +49819,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "237",
@@ -46996,7 +49853,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "238",
@@ -47027,7 +49887,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "239",
@@ -47058,7 +49921,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "240",
@@ -47089,7 +49955,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "241",
@@ -47120,7 +49989,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "242",
@@ -47151,7 +50023,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "243",
@@ -47182,7 +50057,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "244",
@@ -47213,7 +50091,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "245",
@@ -47244,7 +50125,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "246",
@@ -47275,7 +50159,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "247",
@@ -47306,7 +50193,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "248",
@@ -47337,7 +50227,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "249",
@@ -47368,7 +50261,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "250",
@@ -47399,7 +50295,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "251",
@@ -47430,7 +50329,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "252",
@@ -47461,7 +50363,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "253",
@@ -47492,7 +50397,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "254",
@@ -47523,7 +50431,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "255",
@@ -47554,7 +50465,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "256",
@@ -47585,7 +50499,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "257",
@@ -47616,7 +50533,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "258",
@@ -47647,7 +50567,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "259",
@@ -47678,7 +50601,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "260",
@@ -47709,7 +50635,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "261",
@@ -47740,7 +50669,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "262",
@@ -47771,7 +50703,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "263",
@@ -47802,7 +50737,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "264",
@@ -47833,7 +50771,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "265",
@@ -47864,7 +50805,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "266",
@@ -47895,7 +50839,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "267",
@@ -47926,7 +50873,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "268",
@@ -47957,7 +50907,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "269",
@@ -47988,7 +50941,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "270",
@@ -48019,7 +50975,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "271",
@@ -48050,7 +51009,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "272",
@@ -48081,7 +51043,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "273",
@@ -48112,7 +51077,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "274",
@@ -48143,7 +51111,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "275",
@@ -48174,7 +51145,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "276",
@@ -48205,7 +51179,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "277",
@@ -48236,7 +51213,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "278",
@@ -48267,7 +51247,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "279",
@@ -48298,7 +51281,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "280",
@@ -48329,7 +51315,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "281",
@@ -48360,7 +51349,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "282",
@@ -48391,7 +51383,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "283",
@@ -48422,7 +51417,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "284",
@@ -48453,7 +51451,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "285",
@@ -48484,7 +51485,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "286",
@@ -48515,7 +51519,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "287",
@@ -48546,7 +51553,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "288",
@@ -48577,7 +51587,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "289",
@@ -48608,7 +51621,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "290",
@@ -48639,7 +51655,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "291",
@@ -48670,7 +51689,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "292",
@@ -48701,7 +51723,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "293",
@@ -48732,7 +51757,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "294",
@@ -48763,7 +51791,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "295",
@@ -48794,7 +51825,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "296",
@@ -48825,7 +51859,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "297",
@@ -48856,7 +51893,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "298",
@@ -48887,7 +51927,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "299",
@@ -48918,7 +51961,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "300",
@@ -48949,7 +51995,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "301",
@@ -48980,7 +52029,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "302",
@@ -49011,7 +52063,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "303",
@@ -49042,7 +52097,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "304",
@@ -49073,7 +52131,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "305",
@@ -49104,7 +52165,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "306",
@@ -49135,7 +52199,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "307",
@@ -49166,7 +52233,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "308",
@@ -49197,7 +52267,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "309",
@@ -49228,7 +52301,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "310",
@@ -49259,7 +52335,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "311",
@@ -49290,7 +52369,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "312",
@@ -49321,7 +52403,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "313",
@@ -49352,7 +52437,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "314",
@@ -49383,7 +52471,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "315",
@@ -49414,7 +52505,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "316",
@@ -49445,7 +52539,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "317",
@@ -49476,7 +52573,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "318",
@@ -49507,7 +52607,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "319",
@@ -49538,7 +52641,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "320",
@@ -49569,7 +52675,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "321",
@@ -49600,7 +52709,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "322",
@@ -49631,7 +52743,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "323",
@@ -49662,7 +52777,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "324",
@@ -49693,7 +52811,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "325",
@@ -49724,7 +52845,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "326",
@@ -49755,7 +52879,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "327",
@@ -49786,7 +52913,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "328",
@@ -49817,7 +52947,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "329",
@@ -49848,7 +52981,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "330",
@@ -49879,7 +53015,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "331",
@@ -49910,7 +53049,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "332",
@@ -49941,7 +53083,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "333",
@@ -49972,7 +53117,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "334",
@@ -50003,7 +53151,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "335",
@@ -50034,7 +53185,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "336",
@@ -50065,7 +53219,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "337",
@@ -50096,7 +53253,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "338",
@@ -50127,7 +53287,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "339",
@@ -50158,7 +53321,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "340",
@@ -50189,7 +53355,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "341",
@@ -50220,7 +53389,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "342",
@@ -50251,7 +53423,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "343",
@@ -50282,7 +53457,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "344",
@@ -50313,7 +53491,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "345",
@@ -50344,7 +53525,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "346",
@@ -50375,7 +53559,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "347",
@@ -50406,7 +53593,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "348",
@@ -50437,7 +53627,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "349",
@@ -50468,7 +53661,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "350",
@@ -50499,7 +53695,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "351",
@@ -50530,7 +53729,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "352",
@@ -50561,7 +53763,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "353",
@@ -50592,7 +53797,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "354",
@@ -50623,7 +53831,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "355",
@@ -50654,7 +53865,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "356",
@@ -50685,7 +53899,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "357",
@@ -50716,7 +53933,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "358",
@@ -50747,7 +53967,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "359",
@@ -50778,7 +54001,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "360",
@@ -50809,7 +54035,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "361",
@@ -50840,7 +54069,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "362",
@@ -50871,7 +54103,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "363",
@@ -50902,7 +54137,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "364",
@@ -50933,7 +54171,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "365",
@@ -50964,7 +54205,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "366",
@@ -50995,7 +54239,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "367",
@@ -51026,7 +54273,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "368",
@@ -51057,7 +54307,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "369",
@@ -51088,7 +54341,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "370",
@@ -51119,7 +54375,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "371",
@@ -51150,7 +54409,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "372",
@@ -51181,7 +54443,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "373",
@@ -51212,7 +54477,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "374",
@@ -51243,7 +54511,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "375",
@@ -51274,7 +54545,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "376",
@@ -51305,7 +54579,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "377",
@@ -51336,7 +54613,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "378",
@@ -51367,7 +54647,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "379",
@@ -51398,7 +54681,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "380",
@@ -51429,7 +54715,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "381",
@@ -51460,7 +54749,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "382",
@@ -51491,7 +54783,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "383",
@@ -51522,7 +54817,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "384",
@@ -51553,7 +54851,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "385",
@@ -51584,7 +54885,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "386",
@@ -51615,7 +54919,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "387",
@@ -51646,7 +54953,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "388",
@@ -51677,7 +54987,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "389",
@@ -51708,7 +55021,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "390",
@@ -51739,7 +55055,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "391",
@@ -51770,7 +55089,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "392",
@@ -51801,7 +55123,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "393",
@@ -51832,7 +55157,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "394",
@@ -51863,7 +55191,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "395",
@@ -51894,7 +55225,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "396",
@@ -51925,7 +55259,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "397",
@@ -51956,7 +55293,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "398",
@@ -51987,7 +55327,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "399",
@@ -52018,7 +55361,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "400",
@@ -52049,7 +55395,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "401",
@@ -52080,7 +55429,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "402",
@@ -52111,7 +55463,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "403",
@@ -52142,7 +55497,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "404",
@@ -52173,7 +55531,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "405",
@@ -52204,7 +55565,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "406",
@@ -52235,7 +55599,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "407",
@@ -52266,7 +55633,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "408",
@@ -52297,7 +55667,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "409",
@@ -52328,7 +55701,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "410",
@@ -52359,7 +55735,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "411",
@@ -52390,7 +55769,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "412",
@@ -52421,7 +55803,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "413",
@@ -52452,7 +55837,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "414",
@@ -52483,7 +55871,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "415",
@@ -52514,7 +55905,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "416",
@@ -52545,7 +55939,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "417",
@@ -52576,7 +55973,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "418",
@@ -52607,7 +56007,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "419",
@@ -52638,7 +56041,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "420",
@@ -52669,7 +56075,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "421",
@@ -52700,7 +56109,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "422",
@@ -52731,7 +56143,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "423",
@@ -52762,7 +56177,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "424",
@@ -52793,7 +56211,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "425",
@@ -52824,7 +56245,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "426",
@@ -52855,7 +56279,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "427",
@@ -52886,7 +56313,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "428",
@@ -52917,7 +56347,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "429",
@@ -52948,7 +56381,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "430",
@@ -52979,7 +56415,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "431",
@@ -53010,7 +56449,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "432",
@@ -53041,7 +56483,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "433",
@@ -53072,7 +56517,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "434",
@@ -53103,7 +56551,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "435",
@@ -53134,7 +56585,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "436",
@@ -53165,7 +56619,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "437",
@@ -53196,7 +56653,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "438",
@@ -53227,7 +56687,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "439",
@@ -53258,7 +56721,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "440",
@@ -53289,7 +56755,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "441",
@@ -53320,7 +56789,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "442",
@@ -53351,7 +56823,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "443",
@@ -53382,7 +56857,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "444",
@@ -53413,7 +56891,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "445",
@@ -53444,7 +56925,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "446",
@@ -53475,7 +56959,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "447",
@@ -53506,7 +56993,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "448",
@@ -53537,7 +57027,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "449",
@@ -53568,7 +57061,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "450",
@@ -53599,7 +57095,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "451",
@@ -53630,7 +57129,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "452",
@@ -53661,7 +57163,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "453",
@@ -53692,7 +57197,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "454",
@@ -53723,7 +57231,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "455",
@@ -53754,7 +57265,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "456",
@@ -53785,7 +57299,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "457",
@@ -53816,7 +57333,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "458",
@@ -53847,7 +57367,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "459",
@@ -53878,7 +57401,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "460",
@@ -53909,7 +57435,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "461",
@@ -53940,7 +57469,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "462",
@@ -53971,7 +57503,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "463",
@@ -54002,7 +57537,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "464",
@@ -54033,7 +57571,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "465",
@@ -54064,7 +57605,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "466",
@@ -54095,7 +57639,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "467",
@@ -54126,7 +57673,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "468",
@@ -54157,7 +57707,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "469",
@@ -54188,7 +57741,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "470",
@@ -54219,7 +57775,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "471",
@@ -54250,7 +57809,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "472",
@@ -54281,7 +57843,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "473",
@@ -54312,7 +57877,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "474",
@@ -54343,7 +57911,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "475",
@@ -54374,7 +57945,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "476",
@@ -54405,7 +57979,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "477",
@@ -54436,7 +58013,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "478",
@@ -54467,7 +58047,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "479",
@@ -54498,7 +58081,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "480",
@@ -54529,7 +58115,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "481",
@@ -54560,7 +58149,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "482",
@@ -54591,7 +58183,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "483",
@@ -54622,7 +58217,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "484",
@@ -54653,7 +58251,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "485",
@@ -54684,7 +58285,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "486",
@@ -54715,7 +58319,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "487",
@@ -54746,7 +58353,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "488",
@@ -54777,7 +58387,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "489",
@@ -54808,7 +58421,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "490",
@@ -54839,7 +58455,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "491",
@@ -54870,7 +58489,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "492",
@@ -54901,7 +58523,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "493",
@@ -54932,7 +58557,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "494",
@@ -54963,7 +58591,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "495",
@@ -54994,7 +58625,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "496",
@@ -55025,7 +58659,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "497",
@@ -55056,7 +58693,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "498",
@@ -55087,7 +58727,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "499",
@@ -55118,7 +58761,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "500",
@@ -55149,7 +58795,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "501",
@@ -55180,7 +58829,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "502",
@@ -55211,7 +58863,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "503",
@@ -55242,7 +58897,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "504",
@@ -55273,7 +58931,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "505",
@@ -55304,7 +58965,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "506",
@@ -55335,7 +58999,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "507",
@@ -55366,7 +59033,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "508",
@@ -55397,7 +59067,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "509",
@@ -55428,7 +59101,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "510",
@@ -55459,7 +59135,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "511",
@@ -55490,7 +59169,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "512",
@@ -55521,7 +59203,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "513",
@@ -55552,7 +59237,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "514",
@@ -55583,7 +59271,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "515",
@@ -55614,7 +59305,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "516",
@@ -55645,7 +59339,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "517",
@@ -55676,7 +59373,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "518",
@@ -55707,7 +59407,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "519",
@@ -55738,7 +59441,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "520",
@@ -55769,7 +59475,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "521",
@@ -55800,7 +59509,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "522",
@@ -55831,7 +59543,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "523",
@@ -55862,7 +59577,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "524",
@@ -55893,7 +59611,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "525",
@@ -55924,7 +59645,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "526",
@@ -55955,7 +59679,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "527",
@@ -55986,7 +59713,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "528",
@@ -56017,7 +59747,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "529",
@@ -56048,7 +59781,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "530",
@@ -56079,7 +59815,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "531",
@@ -56110,7 +59849,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "532",
@@ -56141,7 +59883,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "533",
@@ -56172,7 +59917,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "534",
@@ -56203,7 +59951,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "535",
@@ -56234,7 +59985,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "536",
@@ -56265,7 +60019,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "537",
@@ -56296,7 +60053,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "538",
@@ -56327,7 +60087,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "539",
@@ -56358,7 +60121,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "540",
@@ -56389,7 +60155,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "541",
@@ -56420,7 +60189,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "542",
@@ -56451,7 +60223,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "543",
@@ -56482,7 +60257,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "544",
@@ -56513,7 +60291,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "545",
@@ -56544,7 +60325,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "546",
@@ -56575,7 +60359,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "547",
@@ -56606,7 +60393,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "548",
@@ -56637,7 +60427,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "549",
@@ -56668,7 +60461,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "550",
@@ -56699,7 +60495,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "551",
@@ -56730,7 +60529,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "552",
@@ -56761,7 +60563,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "553",
@@ -56792,7 +60597,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "554",
@@ -56823,7 +60631,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "555",
@@ -56854,7 +60665,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "556",
@@ -56885,7 +60699,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "557",
@@ -56916,7 +60733,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "558",
@@ -56947,7 +60767,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "559",
@@ -56978,7 +60801,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "560",
@@ -57009,7 +60835,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "561",
@@ -57040,7 +60869,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "562",
@@ -57071,7 +60903,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "563",
@@ -57102,7 +60937,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "564",
@@ -57133,7 +60971,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "565",
@@ -57164,7 +61005,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "566",
@@ -57195,7 +61039,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "567",
@@ -57226,7 +61073,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "568",
@@ -57257,7 +61107,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "569",
@@ -57288,7 +61141,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "570",
@@ -57319,7 +61175,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "571",
@@ -57350,7 +61209,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "572",
@@ -57381,7 +61243,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "573",
@@ -57412,7 +61277,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "574",
@@ -57443,7 +61311,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "575",
@@ -57474,7 +61345,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "576",
@@ -57505,7 +61379,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "577",
@@ -57536,7 +61413,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "578",
@@ -57567,7 +61447,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "579",
@@ -57598,7 +61481,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "580",
@@ -57629,7 +61515,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "581",
@@ -57660,7 +61549,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "582",
@@ -57691,7 +61583,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "583",
@@ -57722,7 +61617,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "584",
@@ -57753,7 +61651,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "585",
@@ -57784,7 +61685,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "586",
@@ -57815,7 +61719,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "587",
@@ -57846,7 +61753,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "588",
@@ -57877,7 +61787,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "589",
@@ -57908,7 +61821,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "590",
@@ -57939,7 +61855,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "591",
@@ -57970,7 +61889,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "592",
@@ -58001,7 +61923,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "593",
@@ -58032,7 +61957,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "594",
@@ -58063,7 +61991,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "595",
@@ -58094,7 +62025,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "596",
@@ -58125,7 +62059,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "597",
@@ -58156,7 +62093,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "598",
@@ -58187,7 +62127,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "599",
@@ -58218,7 +62161,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "600",
@@ -58249,7 +62195,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "601",
@@ -58280,7 +62229,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "602",
@@ -58311,7 +62263,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "603",
@@ -58342,7 +62297,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "604",
@@ -58373,7 +62331,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "605",
@@ -58404,7 +62365,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "606",
@@ -58435,7 +62399,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "607",
@@ -58466,7 +62433,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "608",
@@ -58497,7 +62467,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "609",
@@ -58528,7 +62501,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "610",
@@ -58559,7 +62535,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "611",
@@ -58590,7 +62569,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "612",
@@ -58621,7 +62603,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "613",
@@ -58652,7 +62637,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "614",
@@ -58683,7 +62671,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "615",
@@ -58714,7 +62705,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "616",
@@ -58745,7 +62739,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "617",
@@ -58776,7 +62773,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "618",
@@ -58807,7 +62807,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "619",
@@ -58838,7 +62841,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "620",
@@ -58869,7 +62875,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "621",
@@ -58900,7 +62909,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "622",
@@ -58931,7 +62943,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "623",
@@ -58962,7 +62977,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "624",
@@ -58993,7 +63011,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "625",
@@ -59024,7 +63045,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "626",
@@ -59055,7 +63079,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "627",
@@ -59086,7 +63113,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "628",
@@ -59117,7 +63147,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "629",
@@ -59148,7 +63181,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "630",
@@ -59179,7 +63215,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "631",
@@ -59210,7 +63249,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "632",
@@ -59241,7 +63283,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "633",
@@ -59272,7 +63317,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "634",
@@ -59303,7 +63351,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "635",
@@ -59334,7 +63385,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "636",
@@ -59365,7 +63419,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "637",
@@ -59396,7 +63453,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "638",
@@ -59427,7 +63487,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "639",
@@ -59458,7 +63521,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "640",
@@ -59489,7 +63555,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "641",
@@ -59520,7 +63589,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "642",
@@ -59551,7 +63623,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "643",
@@ -59582,7 +63657,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "644",
@@ -59613,7 +63691,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "645",
@@ -59644,7 +63725,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "646",
@@ -59675,7 +63759,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "647",
@@ -59706,7 +63793,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "648",
@@ -59737,7 +63827,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "649",
@@ -59768,7 +63861,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "650",
@@ -59799,7 +63895,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "651",
@@ -59830,7 +63929,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "652",
@@ -59861,7 +63963,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "653",
@@ -59892,7 +63997,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "654",
@@ -59923,7 +64031,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "655",
@@ -59954,7 +64065,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "656",
@@ -59985,7 +64099,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "657",
@@ -60016,7 +64133,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "658",
@@ -60047,7 +64167,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "659",
@@ -60078,7 +64201,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "660",
@@ -60109,7 +64235,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "661",
@@ -60140,7 +64269,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "662",
@@ -60171,7 +64303,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "663",
@@ -60202,7 +64337,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "664",
@@ -60233,7 +64371,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "665",
@@ -60264,7 +64405,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "666",
@@ -60295,7 +64439,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "667",
@@ -60326,7 +64473,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "668",
@@ -60357,7 +64507,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "669",
@@ -60388,7 +64541,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "670",
@@ -60419,7 +64575,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "671",
@@ -60450,7 +64609,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "672",
@@ -60481,7 +64643,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "673",
@@ -60512,7 +64677,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "674",
@@ -60543,7 +64711,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "675",
@@ -60574,7 +64745,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "676",
@@ -60605,7 +64779,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "677",
@@ -60636,7 +64813,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "678",
@@ -60667,7 +64847,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "679",
@@ -60698,7 +64881,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "680",
@@ -60729,7 +64915,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "681",
@@ -60760,7 +64949,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "682",
@@ -60791,7 +64983,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "683",
@@ -60822,7 +65017,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "684",
@@ -60853,7 +65051,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "685",
@@ -60884,7 +65085,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "686",
@@ -60915,7 +65119,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "687",
@@ -60946,7 +65153,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "688",
@@ -60977,7 +65187,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "689",
@@ -61008,7 +65221,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "690",
@@ -61039,7 +65255,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "691",
@@ -61070,7 +65289,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "692",
@@ -61101,7 +65323,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "693",
@@ -61132,7 +65357,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "694",
@@ -61163,7 +65391,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "695",
@@ -61194,7 +65425,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "696",
@@ -61225,7 +65459,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "697",
@@ -61256,7 +65493,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "698",
@@ -61287,7 +65527,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "699",
@@ -61318,7 +65561,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "700",
@@ -61349,7 +65595,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "701",
@@ -61380,7 +65629,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "702",
@@ -61411,7 +65663,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "703",
@@ -61442,7 +65697,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "704",
@@ -61473,7 +65731,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "705",
@@ -61504,7 +65765,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "706",
@@ -61535,7 +65799,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "707",
@@ -61566,7 +65833,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "708",
@@ -61597,7 +65867,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "709",
@@ -61628,7 +65901,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "710",
@@ -61659,7 +65935,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "711",
@@ -61690,7 +65969,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "712",
@@ -61721,7 +66003,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "713",
@@ -61752,7 +66037,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "714",
@@ -61783,7 +66071,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "715",
@@ -61814,7 +66105,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "716",
@@ -61845,7 +66139,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "717",
@@ -61876,7 +66173,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "718",
@@ -61907,7 +66207,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "719",
@@ -61938,7 +66241,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "720",
@@ -61969,7 +66275,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "721",
@@ -62000,7 +66309,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "722",
@@ -62031,7 +66343,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "723",
@@ -62062,7 +66377,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "724",
@@ -62093,7 +66411,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "725",
@@ -62124,7 +66445,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "726",
@@ -62155,7 +66479,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "727",
@@ -62186,7 +66513,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "728",
@@ -62217,7 +66547,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "729",
@@ -62248,7 +66581,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "730",
@@ -62279,7 +66615,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "731",
@@ -62310,7 +66649,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "732",
@@ -62341,7 +66683,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "733",
@@ -62372,7 +66717,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "734",
@@ -62403,7 +66751,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "735",
@@ -62434,7 +66785,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "736",
@@ -62465,7 +66819,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "737",
@@ -62496,7 +66853,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "738",
@@ -62527,7 +66887,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "739",
@@ -62558,7 +66921,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "740",
@@ -62589,7 +66955,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "741",
@@ -62620,7 +66989,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "742",
@@ -62651,7 +67023,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "743",
@@ -62682,7 +67057,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "744",
@@ -62713,7 +67091,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "745",
@@ -62744,7 +67125,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "746",
@@ -62775,7 +67159,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "747",
@@ -62806,7 +67193,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "748",
@@ -62837,7 +67227,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "749",
@@ -62868,7 +67261,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "750",
@@ -62899,7 +67295,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "751",
@@ -62930,7 +67329,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "752",
@@ -62961,7 +67363,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "753",
@@ -62992,7 +67397,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "754",
@@ -63023,7 +67431,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "755",
@@ -63054,7 +67465,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "756",
@@ -63085,7 +67499,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "757",
@@ -63116,7 +67533,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "758",
@@ -63147,7 +67567,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "759",
@@ -63178,7 +67601,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "760",
@@ -63209,7 +67635,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "761",
@@ -63240,7 +67669,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "762",
@@ -63271,7 +67703,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "763",
@@ -63302,7 +67737,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "764",
@@ -63333,7 +67771,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "765",
@@ -63364,7 +67805,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "766",
@@ -63395,7 +67839,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "767",
@@ -63426,7 +67873,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "768",
@@ -63457,7 +67907,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "769",
@@ -63488,7 +67941,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "770",
@@ -63519,7 +67975,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "771",
@@ -63550,7 +68009,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "772",
@@ -63581,7 +68043,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "773",
@@ -63612,7 +68077,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "774",
@@ -63643,7 +68111,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "775",
@@ -63674,7 +68145,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "776",
@@ -63705,7 +68179,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "777",
@@ -63736,7 +68213,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "778",
@@ -63767,7 +68247,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "779",
@@ -63798,7 +68281,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "780",
@@ -63829,7 +68315,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "781",
@@ -63860,7 +68349,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "782",
@@ -63891,7 +68383,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "783",
@@ -63922,7 +68417,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "784",
@@ -63953,7 +68451,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "785",
@@ -63984,7 +68485,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "786",
@@ -64015,7 +68519,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "787",
@@ -64046,7 +68553,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "788",
@@ -64077,7 +68587,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "789",
@@ -64108,7 +68621,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "790",
@@ -64139,7 +68655,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "791",
@@ -64170,7 +68689,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "792",
@@ -64201,7 +68723,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "793",
@@ -64232,7 +68757,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "794",
@@ -64263,7 +68791,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "795",
@@ -64294,7 +68825,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "796",
@@ -64325,7 +68859,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "797",
@@ -64356,7 +68893,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "798",
@@ -64387,7 +68927,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "799",
@@ -64418,7 +68961,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "800",
@@ -64449,7 +68995,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "801",
@@ -64480,7 +69029,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "802",
@@ -64511,7 +69063,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "803",
@@ -64542,7 +69097,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "804",
@@ -64573,7 +69131,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "805",
@@ -64604,7 +69165,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "806",
@@ -64635,7 +69199,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "807",
@@ -64666,7 +69233,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "808",
@@ -64697,7 +69267,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "809",
@@ -64728,7 +69301,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "810",
@@ -64759,7 +69335,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "811",
@@ -64790,7 +69369,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "812",
@@ -64821,7 +69403,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "813",
@@ -64852,7 +69437,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "814",
@@ -64883,7 +69471,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "815",
@@ -64914,7 +69505,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "816",
@@ -64945,7 +69539,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "817",
@@ -64976,7 +69573,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "818",
@@ -65007,7 +69607,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "819",
@@ -65038,7 +69641,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "820",
@@ -65069,7 +69675,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "821",
@@ -65100,7 +69709,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "822",
@@ -65131,7 +69743,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "823",
@@ -65162,7 +69777,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "824",
@@ -65193,7 +69811,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "825",
@@ -65224,7 +69845,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "826",
@@ -65255,7 +69879,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "827",
@@ -65286,7 +69913,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "828",
@@ -65317,7 +69947,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "829",
@@ -65348,7 +69981,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "830",
@@ -65379,7 +70015,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "831",
@@ -65410,7 +70049,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "832",
@@ -65441,7 +70083,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "833",
@@ -65472,7 +70117,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "834",
@@ -65503,7 +70151,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "835",
@@ -65534,7 +70185,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "836",
@@ -65565,7 +70219,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "837",
@@ -65596,7 +70253,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "838",
@@ -65627,7 +70287,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "839",
@@ -65658,7 +70321,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "840",
@@ -65689,7 +70355,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "841",
@@ -65720,7 +70389,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "842",
@@ -65751,7 +70423,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "843",
@@ -65782,7 +70457,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "844",
@@ -65813,7 +70491,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "845",
@@ -65844,7 +70525,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "846",
@@ -65875,7 +70559,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "847",
@@ -65906,7 +70593,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "848",
@@ -65937,7 +70627,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "849",
@@ -65968,7 +70661,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "850",
@@ -65999,7 +70695,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "851",
@@ -66030,7 +70729,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "852",
@@ -66061,7 +70763,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "853",
@@ -66092,7 +70797,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "854",
@@ -66123,7 +70831,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "855",
@@ -66154,7 +70865,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "856",
@@ -66185,7 +70899,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "857",
@@ -66216,7 +70933,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "858",
@@ -66247,7 +70967,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "859",
@@ -66278,7 +71001,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "860",
@@ -66309,7 +71035,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "861",
@@ -66340,7 +71069,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "862",
@@ -66371,7 +71103,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "863",
@@ -66402,7 +71137,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "864",
@@ -66433,7 +71171,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "865",
@@ -66464,7 +71205,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "866",
@@ -66495,7 +71239,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "867",
@@ -66526,7 +71273,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "868",
@@ -66557,7 +71307,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "869",
@@ -66588,7 +71341,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "870",
@@ -66619,7 +71375,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "871",
@@ -66650,7 +71409,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "872",
@@ -66681,7 +71443,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "873",
@@ -66712,7 +71477,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "874",
@@ -66743,7 +71511,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "875",
@@ -66774,7 +71545,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "876",
@@ -66805,7 +71579,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "877",
@@ -66836,7 +71613,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "878",
@@ -66867,7 +71647,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "879",
@@ -66898,7 +71681,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "880",
@@ -66929,7 +71715,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "881",
@@ -66960,7 +71749,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "882",
@@ -66991,7 +71783,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "883",
@@ -67022,7 +71817,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "FCC ROOM",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "",
@@ -67053,7 +71851,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "1F / 2F",
+        "Room": "Data Hall & Critical Rooms",
+        "Location": "1F / 2F, Data Hall & Critical Rooms"
       }
     ],
     "itemCount": 884,
@@ -67143,8 +71944,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "All Area Campus",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -67166,7 +71967,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, All Area Campus"
       },
       {
         "No": "1",
@@ -67472,8 +72274,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "All Area Campus",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -67495,7 +72297,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, All Area Campus"
       },
       {
         "No": "",
@@ -67519,8 +72322,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "All Area Campus",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -67542,7 +72345,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Location": "1F, All Area Campus"
       },
       {
         "No": "1",
@@ -67613,8 +72417,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "All Area Campus",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -67636,7 +72440,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, All Area Campus"
       },
       {
         "No": "3",
@@ -67707,8 +72512,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "All Area Campus",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -67730,7 +72535,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, All Area Campus"
       },
       {
         "No": "5",
@@ -67754,8 +72560,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "Pump Room",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -67777,7 +72583,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Pump Room"
       },
       {
         "No": "6",
@@ -67848,8 +72655,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "All Area Campus",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -67871,7 +72678,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, All Area Campus"
       },
       {
         "No": "8",
@@ -67942,8 +72750,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -67965,7 +72773,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "10",
@@ -67989,8 +72798,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68012,7 +72821,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "11",
@@ -68036,8 +72846,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68059,7 +72869,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "12",
@@ -68083,8 +72894,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68106,7 +72917,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "13",
@@ -68130,8 +72942,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68153,7 +72965,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "14",
@@ -68177,8 +72990,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68200,7 +73013,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "15",
@@ -68224,8 +73038,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68247,7 +73061,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "16",
@@ -68271,8 +73086,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68294,7 +73109,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "17",
@@ -68318,8 +73134,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68341,7 +73157,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "18",
@@ -68365,8 +73182,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68388,7 +73205,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "19",
@@ -68412,8 +73230,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68435,7 +73253,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "20",
@@ -68459,8 +73278,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68482,7 +73301,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "21",
@@ -68506,8 +73326,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68529,7 +73349,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "22",
@@ -68553,8 +73374,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68576,7 +73397,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "23",
@@ -68600,8 +73422,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68623,7 +73445,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "24",
@@ -68647,8 +73470,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68670,7 +73493,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "25",
@@ -68694,8 +73518,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68717,7 +73541,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "26",
@@ -68741,8 +73566,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68764,7 +73589,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "27",
@@ -68788,8 +73614,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68811,7 +73637,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "28",
@@ -68835,8 +73662,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68858,7 +73685,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "29",
@@ -68882,8 +73710,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "All Area Campus",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68905,7 +73733,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, All Area Campus"
       },
       {
         "No": "30",
@@ -68929,8 +73758,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "All Area Campus",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68952,7 +73781,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, All Area Campus"
       },
       {
         "No": "31",
@@ -68976,8 +73806,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "All Area Campus",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -68999,7 +73829,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, All Area Campus"
       },
       {
         "No": "32",
@@ -69023,8 +73854,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "All Area Campus",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -69046,7 +73877,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, All Area Campus"
       },
       {
         "No": "33",
@@ -69070,8 +73902,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -69093,7 +73925,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "34",
@@ -69117,8 +73950,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -69140,7 +73973,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "35",
@@ -69164,8 +73998,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -69187,7 +74021,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "36",
@@ -69211,8 +74046,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "PH Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -69234,7 +74069,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Office"
       },
       {
         "No": "1",
@@ -69258,8 +74094,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "1f elec room 2",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -69281,7 +74117,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f elec room 2"
       },
       {
         "No": "2",
@@ -69305,7 +74142,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "FCC ROOM",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -69328,7 +74165,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, FCC ROOM"
       },
       {
         "No": "3",
@@ -69352,7 +74190,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "MEP ROOM",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -69375,7 +74213,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, MEP ROOM"
       },
       {
         "No": "4",
@@ -69399,7 +74238,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Koridoor Selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -69422,7 +74261,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Koridoor Selatan"
       },
       {
         "No": "5",
@@ -69446,7 +74286,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Koridoor Utara",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -69469,7 +74309,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Koridoor Utara"
       },
       {
         "No": "6",
@@ -69493,7 +74334,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Koridoor War Room",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -69516,7 +74357,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Koridoor War Room"
       },
       {
         "No": "7",
@@ -69540,7 +74382,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "NOC ROOM",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -69563,7 +74405,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, NOC ROOM"
       },
       {
         "No": "8",
@@ -69587,7 +74430,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "TAPE ROOM",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -69610,7 +74453,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, TAPE ROOM"
       },
       {
         "No": "9",
@@ -69634,7 +74478,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "SCC ROOM",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -69657,7 +74501,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, SCC ROOM"
       },
       {
         "No": "10",
@@ -69681,7 +74526,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "BED ROOM",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -69704,7 +74549,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, BED ROOM"
       },
       {
         "No": "11",
@@ -69728,7 +74574,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "UPS ROOM",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -69751,7 +74597,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, UPS ROOM"
       },
       {
         "No": "12",
@@ -69775,8 +74622,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "1f elec room 2",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "TDE",
@@ -69798,7 +74645,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f elec room 2"
       },
       {
         "No": "13",
@@ -69822,7 +74670,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Koridoor Selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -69845,7 +74693,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Koridoor Selatan"
       },
       {
         "No": "14",
@@ -69869,7 +74718,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Koridoor Tengah",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -69892,7 +74741,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Koridoor Tengah"
       },
       {
         "No": "15",
@@ -69916,7 +74766,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Koridoor Utara",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -69939,7 +74789,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Koridoor Utara"
       },
       {
         "No": "16",
@@ -69963,7 +74814,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Command Center Room",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -69986,7 +74837,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Command Center Room"
       },
       {
         "No": "17",
@@ -70010,7 +74862,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "ORGANIC ROOM",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70033,7 +74885,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, ORGANIC ROOM"
       },
       {
         "No": "18",
@@ -70057,7 +74910,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "MCS ROOM",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70080,7 +74933,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, MCS ROOM"
       },
       {
         "No": "19",
@@ -70104,7 +74958,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "MEP ROOM",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70127,7 +74981,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, MEP ROOM"
       },
       {
         "No": "20",
@@ -70151,7 +75006,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Koridoor Selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70174,7 +75029,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Koridoor Selatan"
       },
       {
         "No": "21",
@@ -70198,7 +75054,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Koridoor Utara",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70221,7 +75077,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Koridoor Utara"
       },
       {
         "No": "22",
@@ -70245,7 +75102,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Koridoor Timur",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70268,7 +75125,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Koridoor Timur"
       },
       {
         "No": "23",
@@ -70292,7 +75150,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "MEP ROOM",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70315,7 +75173,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, MEP ROOM"
       },
       {
         "No": "24",
@@ -70339,7 +75198,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Koridoor Utara",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70362,7 +75221,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Koridoor Utara"
       },
       {
         "No": "25",
@@ -70386,7 +75246,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Koridoor Selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70409,7 +75269,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Koridoor Selatan"
       },
       {
         "No": "26",
@@ -70433,7 +75294,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Koridoor Timur",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70456,7 +75317,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Koridoor Timur"
       },
       {
         "No": "27",
@@ -70480,7 +75342,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Koridoor Timur",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70503,7 +75365,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Koridoor Timur"
       },
       {
         "No": "28",
@@ -70527,7 +75390,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Warroom 1",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70550,7 +75413,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Warroom 1"
       },
       {
         "No": "29",
@@ -70574,7 +75438,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Rumah Lift Passanger",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70597,7 +75461,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Rumah Lift Passanger"
       },
       {
         "No": "30",
@@ -70621,7 +75486,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Rumah Lift Service",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70644,7 +75509,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Rumah Lift Service"
       },
       {
         "No": "31",
@@ -70668,7 +75534,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "MEP ROOM",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70691,7 +75557,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, MEP ROOM"
       },
       {
         "No": "32",
@@ -70715,7 +75582,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Ruang Pompa",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70738,7 +75605,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Ruang Pompa"
       },
       {
         "No": "33",
@@ -70762,7 +75630,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Ruang Pompa",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70785,7 +75653,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Ruang Pompa"
       },
       {
         "No": "34",
@@ -70809,7 +75678,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Pos security",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70832,7 +75701,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Pos security"
       },
       {
         "No": "35",
@@ -70856,7 +75726,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Ruang Genset",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70879,7 +75749,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Ruang Genset"
       },
       {
         "No": "36",
@@ -70903,7 +75774,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Ruang LVMDP",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70926,7 +75797,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Ruang LVMDP"
       },
       {
         "No": "37",
@@ -70950,7 +75822,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Ruang LVMDP",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -70973,7 +75845,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Ruang LVMDP"
       },
       {
         "No": "38",
@@ -70997,7 +75870,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Transformer Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71020,7 +75893,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Transformer Office"
       },
       {
         "No": "39",
@@ -71044,7 +75918,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "MVMDP Office",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71067,7 +75941,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, MVMDP Office"
       },
       {
         "No": "40",
@@ -71091,7 +75966,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor Utara",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71114,7 +75989,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor Utara"
       },
       {
         "No": "41",
@@ -71138,7 +76014,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor Utara",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71161,7 +76037,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor Utara"
       },
       {
         "No": "42",
@@ -71185,7 +76062,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor Utara Lift",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71208,7 +76085,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor Utara Lift"
       },
       {
         "No": "43",
@@ -71232,7 +76110,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor Utara",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71255,7 +76133,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor Utara"
       },
       {
         "No": "44",
@@ -71279,7 +76158,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor Utara",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71302,7 +76181,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor Utara"
       },
       {
         "No": "45",
@@ -71326,7 +76206,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor Utara",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71349,7 +76229,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor Utara"
       },
       {
         "No": "46",
@@ -71373,7 +76254,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor Timur",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71396,7 +76277,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor Timur"
       },
       {
         "No": "47",
@@ -71420,7 +76302,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor Timur",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71443,7 +76325,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor Timur"
       },
       {
         "No": "48",
@@ -71467,7 +76350,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor Timur",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71490,7 +76373,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor Timur"
       },
       {
         "No": "49",
@@ -71514,7 +76398,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor Timur",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71537,7 +76421,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor Timur"
       },
       {
         "No": "50",
@@ -71561,7 +76446,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor Timur",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71584,7 +76469,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor Timur"
       },
       {
         "No": "51",
@@ -71608,7 +76494,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71631,7 +76517,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "52",
@@ -71655,7 +76542,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71678,7 +76565,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "53",
@@ -71702,7 +76590,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71725,7 +76613,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "54",
@@ -71749,7 +76638,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71772,7 +76661,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "55",
@@ -71796,7 +76686,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71819,7 +76709,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "56",
@@ -71843,7 +76734,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71866,7 +76757,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "57",
@@ -71890,7 +76782,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71913,7 +76805,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "58",
@@ -71937,7 +76830,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -71960,7 +76853,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "59",
@@ -71984,7 +76878,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72007,7 +76901,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "60",
@@ -72031,7 +76926,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72054,7 +76949,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "61",
@@ -72078,7 +76974,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72101,7 +76997,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "62",
@@ -72125,7 +77022,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72148,7 +77045,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "63",
@@ -72172,7 +77070,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72195,7 +77093,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "64",
@@ -72219,7 +77118,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72242,7 +77141,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "65",
@@ -72266,7 +77166,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor barat",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72289,7 +77189,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor barat"
       },
       {
         "No": "66",
@@ -72313,7 +77214,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor barat",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72336,7 +77237,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor barat"
       },
       {
         "No": "67",
@@ -72360,7 +77262,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor barat",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72383,7 +77285,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor barat"
       },
       {
         "No": "68",
@@ -72407,7 +77310,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor barat",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72430,7 +77333,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor barat"
       },
       {
         "No": "69",
@@ -72454,7 +77358,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor barat",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72477,7 +77381,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor barat"
       },
       {
         "No": "70",
@@ -72501,7 +77406,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor barat",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72524,7 +77429,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor barat"
       },
       {
         "No": "71",
@@ -72548,7 +77454,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor barat",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72571,7 +77477,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor barat"
       },
       {
         "No": "72",
@@ -72595,7 +77502,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor barat",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72618,7 +77525,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor barat"
       },
       {
         "No": "73",
@@ -72642,7 +77550,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor barat",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72665,7 +77573,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor barat"
       },
       {
         "No": "74",
@@ -72689,7 +77598,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan/exit utara",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72712,7 +77621,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan/exit utara"
       },
       {
         "No": "75",
@@ -72736,7 +77646,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72759,7 +77669,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "76",
@@ -72783,7 +77694,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72806,7 +77717,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "77",
@@ -72830,7 +77742,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72853,7 +77765,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "78",
@@ -72877,7 +77790,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72900,7 +77813,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "79",
@@ -72924,7 +77838,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor selatan",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72947,7 +77861,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor selatan"
       },
       {
         "No": "80",
@@ -72971,7 +77886,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus koridor tengah",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -72994,7 +77909,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus koridor tengah"
       },
       {
         "No": "81",
@@ -73018,7 +77934,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus koridor tengah",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73041,7 +77957,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus koridor tengah"
       },
       {
         "No": "82",
@@ -73065,7 +77982,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus koridor tengah",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73088,7 +78005,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus koridor tengah"
       },
       {
         "No": "83",
@@ -73112,7 +78030,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus koridor tengah",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73135,7 +78053,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus koridor tengah"
       },
       {
         "No": "84",
@@ -73159,7 +78078,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus koridor tengah",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73182,7 +78101,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus koridor tengah"
       },
       {
         "No": "85",
@@ -73206,7 +78126,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus koridor tengah",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73229,7 +78149,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus koridor tengah"
       },
       {
         "No": "86",
@@ -73253,7 +78174,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus koridor tengah",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73276,7 +78197,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus koridor tengah"
       },
       {
         "No": "87",
@@ -73300,7 +78222,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus koridor tengah",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73323,7 +78245,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus koridor tengah"
       },
       {
         "No": "88",
@@ -73347,7 +78270,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus koridor tengah",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73370,7 +78293,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus koridor tengah"
       },
       {
         "No": "89",
@@ -73394,7 +78318,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor barat Lift",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73417,7 +78341,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor barat Lift"
       },
       {
         "No": "90",
@@ -73441,7 +78366,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Koridoor barat Lift",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73464,7 +78389,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Koridoor barat Lift"
       },
       {
         "No": "91",
@@ -73488,7 +78414,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f elecroom -1",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73511,7 +78437,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f elecroom -1"
       },
       {
         "No": "92",
@@ -73535,7 +78462,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f power room 4",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73558,7 +78485,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f power room 4"
       },
       {
         "No": "93",
@@ -73582,7 +78510,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f crac room 3",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73605,7 +78533,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f crac room 3"
       },
       {
         "No": "94",
@@ -73629,7 +78558,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f crac room 1",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73652,7 +78581,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f crac room 1"
       },
       {
         "No": "95",
@@ -73676,7 +78606,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f data hall 1.1 ,",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73699,7 +78629,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f data hall 1.1 ,"
       },
       {
         "No": "96",
@@ -73723,7 +78654,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f data hall 1.1 ,",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73746,7 +78677,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f data hall 1.1 ,"
       },
       {
         "No": "97",
@@ -73770,7 +78702,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f data hall 1.1 ,",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73793,7 +78725,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f data hall 1.1 ,"
       },
       {
         "No": "98",
@@ -73817,7 +78750,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f data hall 1.1 ,",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73840,7 +78773,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f data hall 1.1 ,"
       },
       {
         "No": "99",
@@ -73864,7 +78798,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f data hall 1.1 ,",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73887,7 +78821,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f data hall 1.1 ,"
       },
       {
         "No": "100",
@@ -73911,7 +78846,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f data hall 1.1 ,",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73934,7 +78869,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f data hall 1.1 ,"
       },
       {
         "No": "101",
@@ -73958,7 +78894,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f data hall 1.1 ,",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -73981,7 +78917,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f data hall 1.1 ,"
       },
       {
         "No": "102",
@@ -74005,7 +78942,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f data hall 1.1 ,",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74028,7 +78965,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f data hall 1.1 ,"
       },
       {
         "No": "103",
@@ -74052,7 +78990,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Lobby Luar",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74075,7 +79013,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Lobby Luar"
       },
       {
         "No": "104",
@@ -74099,7 +79038,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Campus Lobby Dalam",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74122,7 +79061,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Campus Lobby Dalam"
       },
       {
         "No": "105",
@@ -74146,7 +79086,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f crac room 2",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74169,7 +79109,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f crac room 2"
       },
       {
         "No": "106",
@@ -74193,7 +79134,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f crac room 1",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74216,7 +79157,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f crac room 1"
       },
       {
         "No": "107",
@@ -74240,7 +79182,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f trafo room 6",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74263,7 +79205,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f trafo room 6"
       },
       {
         "No": "108",
@@ -74287,7 +79230,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f unfacking room 1",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74310,7 +79253,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f unfacking room 1"
       },
       {
         "No": "109",
@@ -74334,7 +79278,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f unfacking room 1",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74357,7 +79301,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f unfacking room 1"
       },
       {
         "No": "110",
@@ -74381,7 +79326,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "Lift DB 4",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74404,7 +79349,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, Lift DB 4"
       },
       {
         "No": "111",
@@ -74428,7 +79374,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f trafo room 5",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74451,7 +79397,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f trafo room 5"
       },
       {
         "No": "112",
@@ -74475,7 +79422,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f unpacking room 2",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74498,7 +79445,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f unpacking room 2"
       },
       {
         "No": "113",
@@ -74522,7 +79470,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f unpacking room 2",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74545,7 +79493,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f unpacking room 2"
       },
       {
         "No": "114",
@@ -74569,7 +79518,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f trafo room 4",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74592,7 +79541,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f trafo room 4"
       },
       {
         "No": "115",
@@ -74616,7 +79566,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "MV Panel Room B",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74639,7 +79589,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, MV Panel Room B"
       },
       {
         "No": "116",
@@ -74663,7 +79614,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "MV Panel Room B",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74686,7 +79637,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, MV Panel Room B"
       },
       {
         "No": "117",
@@ -74710,7 +79662,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f trafo room 1",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74733,7 +79685,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f trafo room 1"
       },
       {
         "No": "118",
@@ -74757,7 +79710,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f trafo room 1",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74780,7 +79733,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f trafo room 1"
       },
       {
         "No": "119",
@@ -74804,7 +79758,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f trafo room 2",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74827,7 +79781,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f trafo room 2"
       },
       {
         "No": "120",
@@ -74851,7 +79806,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "MV Panel Room 4",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74874,7 +79829,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, MV Panel Room 4"
       },
       {
         "No": "121",
@@ -74898,7 +79854,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f elec room 3",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74921,7 +79877,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f elec room 3"
       },
       {
         "No": "122",
@@ -74945,7 +79902,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f elec room 3",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -74968,7 +79925,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f elec room 3"
       },
       {
         "No": "123",
@@ -74992,7 +79950,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "1f elec room 2",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -75015,7 +79973,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, 1f elec room 2"
       },
       {
         "No": "124",
@@ -75039,7 +79998,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "groudtank",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -75062,7 +80021,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, groudtank"
       },
       {
         "No": "125",
@@ -75086,7 +80046,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "groudtank",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -75109,7 +80069,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, groudtank"
       },
       {
         "No": "126",
@@ -75133,7 +80094,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "PH lt 2",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -75156,7 +80117,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH lt 2"
       },
       {
         "No": "127",
@@ -75180,7 +80142,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "PH lt 2",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -75203,7 +80165,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH lt 2"
       },
       {
         "No": "128",
@@ -75227,7 +80190,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "PH lt 2",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -75250,7 +80213,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH lt 2"
       },
       {
         "No": "129",
@@ -75274,7 +80238,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "PH lt 2",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -75297,7 +80261,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH lt 2"
       },
       {
         "No": "130",
@@ -75321,7 +80286,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "PH lt 1",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -75344,7 +80309,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH lt 1"
       },
       {
         "No": "131",
@@ -75368,7 +80334,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "DC-Cikarang",
         "Site+": "HDC",
         "Col_21": "",
-        "Floor": "",
+        "Floor": "1F",
         "Room": "PH Lt 1",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
@@ -75391,7 +80357,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Location": "1F, PH Lt 1"
       },
       {
         "No": "",
@@ -75415,8 +80382,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_21": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "All Area Campus",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -75438,7 +80405,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Location": "1F, All Area Campus"
       }
     ],
     "itemCount": 177,
@@ -75487,7 +80455,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor"
     ],
     "items": [
       {
@@ -75519,7 +80488,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller room"
       },
       {
         "1": "",
@@ -75550,7 +80521,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Campus"
       },
       {
         "1": "",
@@ -75581,7 +80554,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Campus"
       },
       {
         "1": "",
@@ -75612,7 +80587,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Campus"
       },
       {
         "1": "",
@@ -75643,7 +80620,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Campus"
       },
       {
         "1": "",
@@ -75674,7 +80653,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Chiller room"
       },
       {
         "1": "tidak ada",
@@ -75690,7 +80671,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "",
         "Model/Version": "",
         "Manufacturer / Principle": "",
-        "Room": "",
+        "Room": "Data Hall & Power Room",
         "PM DATE": "",
         "QTY": "",
         "Col_17": "",
@@ -75705,7 +80686,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Data Hall & Power Room"
       }
     ],
     "itemCount": 7,
@@ -75751,7 +80734,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor"
     ],
     "items": [
       {
@@ -75780,7 +80764,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Pump Room"
       },
       {
         "1": "",
@@ -75808,7 +80794,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Pump Room"
       },
       {
         "1": "",
@@ -75836,7 +80824,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Pump Room"
       },
       {
         "1": "",
@@ -75864,7 +80854,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Pump Room"
       },
       {
         "1": "",
@@ -75892,7 +80884,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Pump Room"
       },
       {
         "1": "",
@@ -75920,7 +80914,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Pump Room"
       },
       {
         "1": "",
@@ -75948,7 +80944,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Parkiran Mobil"
       },
       {
         "1": "",
@@ -75976,7 +80974,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Parkiran Mobil"
       },
       {
         "1": "",
@@ -76004,7 +81004,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Pakiran Motor"
       },
       {
         "1": "",
@@ -76032,7 +81034,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Gedung Genset"
       },
       {
         "1": "",
@@ -76060,7 +81064,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Tanah Kosong"
       },
       {
         "1": "",
@@ -76088,7 +81094,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Taman sisi utara Campus"
       },
       {
         "1": "",
@@ -76116,7 +81124,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Taman sisi utara Campus"
       },
       {
         "1": "",
@@ -76144,7 +81154,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Tanah Kosong"
       },
       {
         "1": "",
@@ -76172,7 +81184,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Ground Tank"
       },
       {
         "1": "",
@@ -76200,7 +81214,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Pos Brafo"
       },
       {
         "1": "",
@@ -76228,7 +81244,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Road Blocker"
       },
       {
         "1": "",
@@ -76256,7 +81274,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Area Power House"
       },
       {
         "1": "",
@@ -76284,7 +81304,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Sisi Selatan Campus"
       },
       {
         "1": "",
@@ -76312,7 +81334,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Sisi Selatan Campus"
       },
       {
         "1": "",
@@ -76340,7 +81364,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Lantai 1 Office"
       },
       {
         "1": "",
@@ -76368,7 +81394,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Lantai 1 Office"
       },
       {
         "1": "",
@@ -76396,7 +81424,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Lantai 2 Office"
       },
       {
         "1": "",
@@ -76424,7 +81454,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Lantai 2 Office"
       },
       {
         "1": "",
@@ -76452,7 +81484,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Lantai 3 Office"
       },
       {
         "1": "",
@@ -76480,7 +81514,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Lantai 3 Office"
       },
       {
         "1": "",
@@ -76508,7 +81544,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Lantai 4 Office"
       },
       {
         "1": "",
@@ -76536,7 +81574,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Lantai 4 Office"
       },
       {
         "1": "",
@@ -76564,7 +81604,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Roof Top Office"
       },
       {
         "1": "",
@@ -76592,7 +81634,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Roof Top Office"
       },
       {
         "1": "",
@@ -76620,7 +81664,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Koridoor utara"
       },
       {
         "1": "",
@@ -76648,7 +81694,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Koridoor barat"
       },
       {
         "1": "",
@@ -76676,7 +81724,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Koridoor Selatan"
       },
       {
         "1": "",
@@ -76704,7 +81754,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Koridoor Timur"
       },
       {
         "1": "",
@@ -76732,7 +81784,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Ruang Chiller 1"
       },
       {
         "1": "",
@@ -76760,7 +81814,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Ruang Chiller 2"
       },
       {
         "1": "",
@@ -76788,7 +81844,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Ruang Genset"
       },
       {
         "1": "",
@@ -76816,7 +81874,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Pintu masuk Campus"
       },
       {
         "1": "",
@@ -76844,7 +81904,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan MMR 1A"
       },
       {
         "1": "",
@@ -76872,7 +81934,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Tape Library Room"
       },
       {
         "1": "",
@@ -76900,7 +81964,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Battery Room B"
       },
       {
         "1": "",
@@ -76928,7 +81994,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Power Room B"
       },
       {
         "1": "",
@@ -76956,7 +82024,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Power Room B"
       },
       {
         "1": "",
@@ -76984,7 +82054,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Power Room B"
       },
       {
         "1": "",
@@ -77012,7 +82084,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan EXIT Door Sisi Utara"
       },
       {
         "1": "",
@@ -77040,7 +82114,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Crac Room 2"
       },
       {
         "1": "",
@@ -77068,7 +82144,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan DH 1.1"
       },
       {
         "1": "",
@@ -77096,7 +82174,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan DH 1.1"
       },
       {
         "1": "",
@@ -77124,7 +82204,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Crac Room 1"
       },
       {
         "1": "",
@@ -77152,7 +82234,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan MV Room A"
       },
       {
         "1": "",
@@ -77180,7 +82264,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Elec Room 3"
       },
       {
         "1": "",
@@ -77208,7 +82294,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Lift"
       },
       {
         "1": "",
@@ -77236,7 +82324,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Ruang FSS"
       },
       {
         "1": "",
@@ -77264,7 +82354,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan EXIT Door Sisi Selatan"
       },
       {
         "1": "",
@@ -77292,7 +82384,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Trafo Room 3"
       },
       {
         "1": "",
@@ -77320,7 +82414,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan RMU A"
       },
       {
         "1": "",
@@ -77348,7 +82444,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan RMU B"
       },
       {
         "1": "",
@@ -77376,7 +82474,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan RMU C"
       },
       {
         "1": "",
@@ -77404,7 +82504,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Trafo Room 4"
       },
       {
         "1": "",
@@ -77432,7 +82534,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Trafo Room 5"
       },
       {
         "1": "",
@@ -77460,7 +82564,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Trafo Room 5"
       },
       {
         "1": "",
@@ -77488,7 +82594,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Shredded Room"
       },
       {
         "1": "",
@@ -77516,7 +82624,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Trafo Room 6"
       },
       {
         "1": "",
@@ -77544,7 +82654,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan BMS Room"
       },
       {
         "1": "",
@@ -77572,7 +82684,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Stagging Room"
       },
       {
         "1": "",
@@ -77600,7 +82714,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan MMR 2A"
       },
       {
         "1": "",
@@ -77628,7 +82744,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Interconnec Room B"
       },
       {
         "1": "",
@@ -77656,7 +82774,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Battery Room A"
       },
       {
         "1": "",
@@ -77684,7 +82804,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Crac Room 3"
       },
       {
         "1": "",
@@ -77712,7 +82834,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan DH 1.2 C1"
       },
       {
         "1": "",
@@ -77740,7 +82864,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan DH 1.2 C1"
       },
       {
         "1": "",
@@ -77768,7 +82894,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Crac Room Crac Room 4"
       },
       {
         "1": "",
@@ -77796,7 +82924,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Battery Room C"
       },
       {
         "1": "",
@@ -77824,7 +82954,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Power Room C"
       },
       {
         "1": "",
@@ -77852,7 +82984,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Power Room C"
       },
       {
         "1": "",
@@ -77880,7 +83014,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Lift"
       },
       {
         "1": "",
@@ -77908,7 +83044,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Crac Room 4"
       },
       {
         "1": "",
@@ -77936,7 +83074,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Crac Room 2"
       },
       {
         "1": "",
@@ -77964,7 +83104,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan JKT 31"
       },
       {
         "1": "",
@@ -77992,7 +83134,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan DH 1.1"
       },
       {
         "1": "",
@@ -78020,7 +83164,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan DH 1.1"
       },
       {
         "1": "",
@@ -78048,7 +83194,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Crac Room 1"
       },
       {
         "1": "",
@@ -78076,7 +83224,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Crac Room 3"
       },
       {
         "1": "",
@@ -78104,7 +83254,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Elec Room 1"
       },
       {
         "1": "",
@@ -78132,7 +83284,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan Power Room A"
       },
       {
         "1": "",
@@ -78160,7 +83314,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Loby Lift"
       },
       {
         "1": "",
@@ -78188,7 +83344,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Loby Lift"
       },
       {
         "1": "",
@@ -78216,7 +83374,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Loby Lift"
       },
       {
         "1": "",
@@ -78244,7 +83404,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, MV Room A"
       },
       {
         "1": "",
@@ -78272,7 +83434,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, MV Room B"
       },
       {
         "1": "",
@@ -78300,7 +83464,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, MV Room B"
       },
       {
         "1": "",
@@ -78328,7 +83494,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Trafo Room 2"
       },
       {
         "1": "",
@@ -78356,7 +83524,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Trafo Room 1"
       },
       {
         "1": "",
@@ -78384,7 +83554,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Trafo Room 4"
       },
       {
         "1": "",
@@ -78412,7 +83584,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Trafo Room 5"
       },
       {
         "1": "",
@@ -78440,7 +83614,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Tengah Crac Room 2"
       },
       {
         "1": "",
@@ -78468,7 +83644,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Tengah Crac Room 4"
       },
       {
         "1": "",
@@ -78496,7 +83674,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Elec Room 1"
       },
       {
         "1": "",
@@ -78524,7 +83704,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Tiang Pertama Power Room A"
       },
       {
         "1": "",
@@ -78552,7 +83734,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Tengah Crac Room 1"
       },
       {
         "1": "",
@@ -78580,7 +83764,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Tengah Crac Room 3"
       },
       {
         "1": "",
@@ -78608,7 +83794,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Tiang Pertama Elec Room 3"
       },
       {
         "1": "",
@@ -78636,7 +83824,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Tiang Pertama Elec Room 2"
       },
       {
         "1": "",
@@ -78649,7 +83839,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "N/A",
         "Model/Version": "Claen Agent",
         "Manufacturer / Principle": "SRI",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "46223",
         "QTY": "1",
         "Col_14": "",
@@ -78664,7 +83854,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       },
       {
         "1": "",
@@ -78677,7 +83869,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "N/A",
         "Model/Version": "Claen Agent",
         "Manufacturer / Principle": "SRI",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "46223",
         "QTY": "1",
         "Col_14": "",
@@ -78692,7 +83884,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       },
       {
         "1": "",
@@ -78720,7 +83914,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Sisi Kanan Pintu masuk"
       },
       {
         "1": "",
@@ -78748,7 +83944,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Samping meja Security"
       },
       {
         "1": "",
@@ -78776,7 +83974,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Tiang Pertama Ruang OJK"
       },
       {
         "1": "",
@@ -78804,7 +84004,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Tiang Pertama Ruang OJK"
       },
       {
         "1": "",
@@ -78832,7 +84034,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Tiang Kedua Ruang OJK"
       },
       {
         "1": "",
@@ -78860,7 +84064,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Tiang Kedua Ruang OJK"
       },
       {
         "1": "",
@@ -78888,7 +84094,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Tiang Ketiga DH 1.1"
       },
       {
         "1": "",
@@ -78916,7 +84124,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Tiang Ketiga DH 1.1"
       },
       {
         "1": "",
@@ -78944,7 +84154,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Tiang Keempat DH 1.1"
       },
       {
         "1": "",
@@ -78972,7 +84184,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Tiang Keempat DH 1.1"
       },
       {
         "1": "",
@@ -78985,7 +84199,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "N/A",
         "Model/Version": "Claen Agent",
         "Manufacturer / Principle": "SRI",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "46227",
         "QTY": "1",
         "Col_14": "",
@@ -79000,7 +84214,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       },
       {
         "1": "",
@@ -79013,7 +84229,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "N/A",
         "Model/Version": "Claen Agent",
         "Manufacturer / Principle": "NH Fire",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "46227",
         "QTY": "1",
         "Col_14": "",
@@ -79028,7 +84244,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       },
       {
         "1": "",
@@ -79041,7 +84259,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "N/A",
         "Model/Version": "Claen Agent",
         "Manufacturer / Principle": "SRI",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "46227",
         "QTY": "1",
         "Col_14": "",
@@ -79056,7 +84274,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       },
       {
         "1": "",
@@ -79069,7 +84289,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "N/A",
         "Model/Version": "Claen Agent",
         "Manufacturer / Principle": "Pronaar",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "46227",
         "QTY": "1",
         "Col_14": "",
@@ -79084,7 +84304,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       },
       {
         "1": "",
@@ -79097,7 +84319,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "N/A",
         "Model/Version": "Claen Agent",
         "Manufacturer / Principle": "SRI",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "46220",
         "QTY": "1",
         "Col_14": "",
@@ -79112,7 +84334,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       },
       {
         "1": "",
@@ -79125,7 +84349,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "N/A",
         "Model/Version": "Claen Agent",
         "Manufacturer / Principle": "SRI",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "46220",
         "QTY": "1",
         "Col_14": "",
@@ -79140,7 +84364,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       },
       {
         "1": "",
@@ -79168,7 +84394,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH LT 1"
       },
       {
         "1": "",
@@ -79196,7 +84424,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH LT 1"
       },
       {
         "1": "",
@@ -79224,7 +84454,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH LT 2"
       },
       {
         "1": "",
@@ -79252,7 +84484,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH LT 2"
       },
       {
         "1": "",
@@ -79280,7 +84514,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH LT 2"
       },
       {
         "1": "",
@@ -79308,7 +84544,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH LT 2"
       },
       {
         "1": "Apar tidak ada",
@@ -79336,7 +84574,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH LT 2"
       },
       {
         "1": "Apar tidak ada",
@@ -79364,7 +84604,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH LT 2"
       },
       {
         "1": "Apar tidak ada",
@@ -79392,7 +84634,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, PH LT 2"
       },
       {
         "1": "",
@@ -79405,7 +84649,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "N/A",
         "Model/Version": "CO2",
         "Manufacturer / Principle": "PHYTON",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "46224",
         "QTY": "1",
         "Col_14": "",
@@ -79420,7 +84664,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       },
       {
         "1": "",
@@ -79433,7 +84679,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "N/A",
         "Model/Version": "CO2",
         "Manufacturer / Principle": "PHYTON",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "46224",
         "QTY": "1",
         "Col_14": "",
@@ -79448,7 +84694,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       },
       {
         "1": "",
@@ -79461,7 +84709,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "N/A",
         "Model/Version": "CO2",
         "Manufacturer / Principle": "SRI",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "46225",
         "QTY": "1",
         "Col_14": "",
@@ -79476,7 +84724,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       },
       {
         "1": "",
@@ -79489,7 +84739,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "N/A",
         "Model/Version": "CO2",
         "Manufacturer / Principle": "PHYTON",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "46225",
         "QTY": "1",
         "Col_14": "",
@@ -79504,7 +84754,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       },
       {
         "1": "",
@@ -79532,7 +84784,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan  Mushola"
       },
       {
         "1": "",
@@ -79560,7 +84814,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan  Ruang  FCC"
       },
       {
         "1": "",
@@ -79573,7 +84829,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "N/A",
         "Model/Version": "Powder",
         "Manufacturer / Principle": "SRI",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "46225",
         "QTY": "1",
         "Col_14": "",
@@ -79588,7 +84844,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       },
       {
         "1": "",
@@ -79601,7 +84859,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "N/A",
         "Model/Version": "Powder",
         "Manufacturer / Principle": "SRI",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "46225",
         "QTY": "1",
         "Col_14": "",
@@ -79616,7 +84874,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       },
       {
         "1": "",
@@ -79644,7 +84904,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Lt 2 Dalam  Ruang  Microsoft"
       },
       {
         "1": "",
@@ -79672,7 +84934,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Lt 2 Samping  Pintu  masuk  Dalam  Ruangan"
       },
       {
         "1": "",
@@ -79685,7 +84949,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "N/A",
         "Model/Version": "Powder",
         "Manufacturer / Principle": "SRI",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "46225",
         "QTY": "1",
         "Col_14": "",
@@ -79700,7 +84964,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       },
       {
         "1": "",
@@ -79728,7 +84994,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Lt 2 Depan  Jalur  EXIT"
       },
       {
         "1": "",
@@ -79741,7 +85009,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "N/A",
         "Model/Version": "Powder",
         "Manufacturer / Principle": "SRI",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "46225",
         "QTY": "1",
         "Col_14": "",
@@ -79756,7 +85024,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       },
       {
         "1": "",
@@ -79769,7 +85039,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "N/A",
         "Model/Version": "Powder",
         "Manufacturer / Principle": "SRI",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "46225",
         "QTY": "1",
         "Col_14": "",
@@ -79784,7 +85054,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       },
       {
         "1": "",
@@ -79797,7 +85069,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "N/A",
         "Model/Version": "Powder",
         "Manufacturer / Principle": "SRI",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "46225",
         "QTY": "1",
         "Col_14": "",
@@ -79812,7 +85084,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       },
       {
         "1": "",
@@ -79840,7 +85114,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Samping  Pintu  masuk  Dalam  Ruangan"
       },
       {
         "1": "",
@@ -79868,7 +85144,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan  Jalur  EXIT"
       },
       {
         "1": "",
@@ -79896,7 +85174,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan  Tenant  3"
       },
       {
         "1": "",
@@ -79924,7 +85204,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan  Jalur  EXIT"
       },
       {
         "1": "",
@@ -79952,7 +85234,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan  Tenant  6"
       },
       {
         "1": "",
@@ -79980,7 +85264,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Samping  Pintu  masuk  Dalam  Ruangan"
       },
       {
         "1": "",
@@ -80008,7 +85294,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan  Jalur  EXIT"
       },
       {
         "1": "",
@@ -80036,7 +85324,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan  Tenant  3"
       },
       {
         "1": "",
@@ -80064,7 +85354,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan  Jalur  EXIT"
       },
       {
         "1": "",
@@ -80092,7 +85384,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan  Tenant  6"
       },
       {
         "1": "",
@@ -80120,7 +85414,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Samping  Pintu  masuk  Dalam  Ruangan"
       },
       {
         "1": "",
@@ -80148,7 +85444,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Samping  Pintu  masuk  Dalam  Ruangan"
       },
       {
         "1": "",
@@ -80176,7 +85474,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Samping  Pintu  masuk  Dalam  Ruangan"
       },
       {
         "1": "",
@@ -80204,7 +85504,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Samping  Pintu  Trafo  Room"
       },
       {
         "1": "",
@@ -80232,7 +85534,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Depan  Ruangan  MVMDP"
       },
       {
         "1": "",
@@ -80260,7 +85564,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Dinding  Sisi Kiri Ruangan"
       },
       {
         "1": "",
@@ -80288,7 +85594,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Samping  Pintu  masuk  Dalam  Ruangan"
       },
       {
         "1": "",
@@ -80316,7 +85624,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Pos Sisi Barat"
       },
       {
         "1": "",
@@ -80344,7 +85654,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Pos sisi Timur"
       },
       {
         "1": "",
@@ -80372,7 +85684,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Pos Induk  Brafo"
       },
       {
         "1": "",
@@ -80385,7 +85699,7 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Product Name+": "",
         "Model/Version": "",
         "Manufacturer / Principle": "",
-        "Room": "",
+        "Room": "All Area Campus",
         "PM DATE": "",
         "QTY": "",
         "Col_14": "",
@@ -80400,7 +85714,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "1F",
+        "Location": "1F, All Area Campus"
       }
     ],
     "itemCount": 166,
@@ -80445,7 +85761,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -80473,7 +85791,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus 1",
+        "Room": "Unpacking 1",
+        "Location": "Campus 1, Unpacking 1"
       },
       {
         "No": "2",
@@ -80500,7 +85821,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus 1",
+        "Room": "Unpacking 1",
+        "Location": "Campus 1, Unpacking 1"
       },
       {
         "No": "3",
@@ -80527,7 +85851,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus 1",
+        "Room": "Unpacking 1",
+        "Location": "Campus 1, Unpacking 1"
       },
       {
         "No": "4",
@@ -80554,7 +85881,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus 1",
+        "Room": "Unpacking 1",
+        "Location": "Campus 1, Unpacking 1"
       },
       {
         "No": "5",
@@ -80581,7 +85911,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus 1",
+        "Room": "Unpacking 1",
+        "Location": "Campus 1, Unpacking 1"
       },
       {
         "No": "6",
@@ -80608,7 +85941,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus 1",
+        "Room": "Unpacking 1",
+        "Location": "Campus 1, Unpacking 1"
       },
       {
         "No": "7",
@@ -80635,7 +85971,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Campus 1",
+        "Room": "Unpacking 1",
+        "Location": "Campus 1, Unpacking 1"
       }
     ],
     "itemCount": 7,
@@ -80683,7 +86022,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "Col_25",
       "TOTAL",
       "STATUS",
-      "REMARK"
+      "REMARK",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -80714,7 +86055,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_25": "",
         "TOTAL": "",
         "STATUS": "",
-        "REMARK": ""
+        "REMARK": "",
+        "Floor": "Campus 1",
+        "Room": "Loading Bay Pit",
+        "Location": "Campus 1, Loading Bay Pit"
       },
       {
         "No": "2",
@@ -80744,7 +86088,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_25": "",
         "TOTAL": "",
         "STATUS": "",
-        "REMARK": ""
+        "REMARK": "",
+        "Floor": "Campus 1",
+        "Room": "Loading Bay Pit",
+        "Location": "Campus 1, Loading Bay Pit"
       },
       {
         "No": "3",
@@ -80774,7 +86121,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_25": "",
         "TOTAL": "",
         "STATUS": "",
-        "REMARK": ""
+        "REMARK": "",
+        "Floor": "Campus 1",
+        "Room": "Loading Bay Pit",
+        "Location": "Campus 1, Loading Bay Pit"
       }
     ],
     "itemCount": 3,
@@ -80814,7 +86164,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor"
     ],
     "items": [
       {
@@ -80837,7 +86188,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELEC ROOM 1"
       },
       {
         "1": "",
@@ -80859,7 +86212,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELEC ROOM 1"
       },
       {
         "1": "",
@@ -80881,14 +86236,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 1"
       },
       {
         "1": "",
         "No": "4",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_02",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 1",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -80903,14 +86260,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 1"
       },
       {
         "1": "",
         "No": "5",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_03",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 1",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -80925,14 +86284,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 1"
       },
       {
         "1": "",
         "No": "6",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_04",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 1",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -80947,14 +86308,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 1"
       },
       {
         "1": "",
         "No": "7",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_05",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 1",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -80969,14 +86332,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 1"
       },
       {
         "1": "",
         "No": "8",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_06",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 1",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -80991,7 +86356,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 1"
       },
       {
         "1": "",
@@ -81013,14 +86380,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 2"
       },
       {
         "1": "",
         "No": "10",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_08",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 2",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -81035,14 +86404,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 2"
       },
       {
         "1": "",
         "No": "11",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_09",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 2",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -81057,14 +86428,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 2"
       },
       {
         "1": "",
         "No": "12",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_10",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 2",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -81079,14 +86452,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 2"
       },
       {
         "1": "",
         "No": "13",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_11",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 2",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -81101,14 +86476,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 2"
       },
       {
         "1": "",
         "No": "14",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_12",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 2",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -81123,7 +86500,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 2"
       },
       {
         "1": "",
@@ -81145,14 +86524,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-POWER ROOM-B"
       },
       {
         "1": "",
         "No": "16",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_14",
-        "Room": "",
+        "Room": "1F-POWER ROOM-B",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -81167,14 +86548,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-POWER ROOM-B"
       },
       {
         "1": "",
         "No": "17",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_15",
-        "Room": "",
+        "Room": "1F-POWER ROOM-B",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -81189,14 +86572,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-POWER ROOM-B"
       },
       {
         "1": "",
         "No": "18",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_16",
-        "Room": "",
+        "Room": "1F-POWER ROOM-B",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -81211,7 +86596,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-POWER ROOM-B"
       },
       {
         "1": "",
@@ -81233,14 +86620,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-MMR-1A"
       },
       {
         "1": "",
         "No": "20",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_18",
-        "Room": "",
+        "Room": "1F-MMR-1A",
         "PM DATE": "46211",
         "QTY": "1",
         "Col_8": "",
@@ -81255,7 +86644,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-MMR-1A"
       },
       {
         "1": "",
@@ -81277,7 +86668,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-FCU-BR-B2"
       },
       {
         "1": "",
@@ -81299,7 +86692,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-FCU-BR-B1"
       },
       {
         "1": "",
@@ -81321,7 +86716,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-FCU-CR-3"
       },
       {
         "1": "",
@@ -81343,14 +86740,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, TRAFO-RM1-AC2"
       },
       {
         "1": "",
         "No": "25",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_23",
-        "Room": "",
+        "Room": "TRAFO-RM1-AC2",
         "PM DATE": "46211",
         "QTY": "1",
         "Col_8": "",
@@ -81365,7 +86764,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, TRAFO-RM1-AC2"
       },
       {
         "1": "",
@@ -81387,7 +86788,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, TRAFO-RM1-AC1"
       },
       {
         "1": "",
@@ -81409,14 +86812,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 3"
       },
       {
         "1": "",
         "No": "28",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_26",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 3",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -81431,14 +86836,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 3"
       },
       {
         "1": "",
         "No": "29",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_27",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 3",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -81453,14 +86860,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 3"
       },
       {
         "1": "",
         "No": "30",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_28",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 3",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -81475,14 +86884,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 3"
       },
       {
         "1": "",
         "No": "31",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_29",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 3",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -81497,14 +86908,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 3"
       },
       {
         "1": "",
         "No": "32",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_30",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 3",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -81519,7 +86932,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 3"
       },
       {
         "1": "",
@@ -81541,14 +86956,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 4"
       },
       {
         "1": "",
         "No": "34",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_32",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 4",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -81563,14 +86980,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 4"
       },
       {
         "1": "",
         "No": "35",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_33",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 4",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -81585,14 +87004,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 4"
       },
       {
         "1": "",
         "No": "36",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_34",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 4",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -81607,14 +87028,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 4"
       },
       {
         "1": "",
         "No": "37",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_35",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 4",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -81629,14 +87052,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 4"
       },
       {
         "1": "",
         "No": "38",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_1_36",
-        "Room": "",
+        "Room": "1F-CRAC ROOM 4",
         "PM DATE": "46210",
         "QTY": "1",
         "Col_8": "",
@@ -81651,7 +87076,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-CRAC ROOM 4"
       },
       {
         "1": "",
@@ -81673,14 +87100,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-POWER ROOM-A"
       },
       {
         "1": "",
         "No": "40",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_2_02",
-        "Room": "",
+        "Room": "1F-POWER ROOM-A",
         "PM DATE": "46211",
         "QTY": "1",
         "Col_8": "",
@@ -81695,14 +87124,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-POWER ROOM-A"
       },
       {
         "1": "",
         "No": "41",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_2_03",
-        "Room": "",
+        "Room": "1F-POWER ROOM-A",
         "PM DATE": "46211",
         "QTY": "1",
         "Col_8": "",
@@ -81717,14 +87148,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-POWER ROOM-A"
       },
       {
         "1": "",
         "No": "42",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_2_04",
-        "Room": "",
+        "Room": "1F-POWER ROOM-A",
         "PM DATE": "46211",
         "QTY": "1",
         "Col_8": "",
@@ -81739,7 +87172,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-POWER ROOM-A"
       },
       {
         "1": "",
@@ -81761,14 +87196,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-MMR-2A"
       },
       {
         "1": "",
         "No": "44",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_2_06",
-        "Room": "",
+        "Room": "1F-MMR-2A",
         "PM DATE": "46211",
         "QTY": "1",
         "Col_8": "",
@@ -81783,7 +87220,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-MMR-2A"
       },
       {
         "1": "",
@@ -81805,7 +87244,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-FCU-OR-1&2"
       },
       {
         "1": "",
@@ -81827,7 +87268,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-STG-AC-1"
       },
       {
         "1": "",
@@ -81849,7 +87292,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-STG-AC-2"
       },
       {
         "1": "",
@@ -81871,14 +87316,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-INTERCONNECTING\nROOM-B"
       },
       {
         "1": "",
         "No": "49",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_2_11",
-        "Room": "",
+        "Room": "1F-INTERCONNECTING\nROOM-B",
         "PM DATE": "46211",
         "QTY": "1",
         "Col_8": "",
@@ -81893,7 +87340,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-INTERCONNECTING\nROOM-B"
       },
       {
         "1": "",
@@ -81915,7 +87364,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-FCU-CR-2"
       },
       {
         "1": "",
@@ -81937,7 +87388,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-FCU-BR-A-1"
       },
       {
         "1": "",
@@ -81959,7 +87412,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-FCU-BR-A-2"
       },
       {
         "1": "",
@@ -81981,7 +87436,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-FCU-CR-4"
       },
       {
         "1": "",
@@ -82003,7 +87460,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-FCU-BR-C-2"
       },
       {
         "1": "",
@@ -82025,7 +87484,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-FCU-BR-C-1"
       },
       {
         "1": "",
@@ -82047,14 +87508,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-POWER ROOM-C"
       },
       {
         "1": "",
         "No": "57",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_2_19",
-        "Room": "",
+        "Room": "1F-POWER ROOM-C",
         "PM DATE": "46211",
         "QTY": "1",
         "Col_8": "",
@@ -82069,14 +87532,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-POWER ROOM-C"
       },
       {
         "1": "",
         "No": "58",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_2_20",
-        "Room": "",
+        "Room": "1F-POWER ROOM-C",
         "PM DATE": "46211",
         "QTY": "1",
         "Col_8": "",
@@ -82091,7 +87556,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-POWER ROOM-C"
       },
       {
         "1": "",
@@ -82113,7 +87580,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELEC RM1-AC1"
       },
       {
         "1": "",
@@ -82135,7 +87604,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELEC RM1-AC2"
       },
       {
         "1": "",
@@ -82157,7 +87628,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELEC RM2-AC2"
       },
       {
         "1": "",
@@ -82179,7 +87652,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, ELEC RM2-AC1"
       },
       {
         "1": "",
@@ -82201,7 +87676,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-FCU-CR-1"
       },
       {
         "1": "",
@@ -82223,14 +87700,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-INTERCONNECTING\nROOM-A"
       },
       {
         "1": "",
         "No": "65",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_2_27",
-        "Room": "",
+        "Room": "1F-INTERCONNECTING\nROOM-A",
         "PM DATE": "46211",
         "QTY": "1",
         "Col_8": "",
@@ -82245,7 +87724,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-INTERCONNECTING\nROOM-A"
       },
       {
         "1": "",
@@ -82267,14 +87748,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, TRAFO RM2-AC2"
       },
       {
         "1": "",
         "No": "67",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_2_29",
-        "Room": "",
+        "Room": "TRAFO RM2-AC2",
         "PM DATE": "46211",
         "QTY": "1",
         "Col_8": "",
@@ -82289,7 +87772,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, TRAFO RM2-AC2"
       },
       {
         "1": "",
@@ -82311,7 +87796,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, TRAFO RM2-AC1"
       },
       {
         "1": "",
@@ -82333,7 +87820,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, TRAFO RM3-AC1"
       },
       {
         "1": "",
@@ -82355,7 +87844,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, TRAFO RM3-AC3"
       },
       {
         "1": "",
@@ -82377,7 +87868,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, TRAFO RM3-AC2"
       },
       {
         "1": "",
@@ -82399,14 +87892,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, BMS RACK ROOM"
       },
       {
         "1": "",
         "No": "73",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_2_35",
-        "Room": "",
+        "Room": "BMS RACK ROOM",
         "PM DATE": "46211",
         "QTY": "1",
         "Col_8": "",
@@ -82421,7 +87916,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, BMS RACK ROOM"
       },
       {
         "1": "",
@@ -82443,14 +87940,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-STAGING ROOM"
       },
       {
         "1": "",
         "No": "75",
         "Class Id": "WLD CABEL",
         "CI Name*": "BB01_2_37",
-        "Room": "",
+        "Room": "1F-STAGING ROOM",
         "PM DATE": "46211",
         "QTY": "1",
         "Col_8": "",
@@ -82465,14 +87964,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, 1F-STAGING ROOM"
       },
       {
         "1": "1",
         "No": "",
         "Class Id": "Fuel Leak",
         "CI Name*": "",
-        "Room": "",
+        "Room": "Data Hall & Elec Room",
         "PM DATE": "PM DATE",
         "QTY": "QTY",
         "Col_8": "",
@@ -82487,14 +87988,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "75",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "1F",
+        "Location": "1F, Data Hall & Elec Room"
       },
       {
         "1": "",
         "No": "1",
         "Class Id": "FLD PANEL",
         "CI Name*": "FG-BBOX LL",
-        "Room": "",
+        "Room": "Data Hall & Elec Room",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82509,7 +88012,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Data Hall & Elec Room"
       },
       {
         "1": "",
@@ -82531,14 +88036,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Fuel Tank Room (Basement)"
       },
       {
         "1": "",
         "No": "3",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_1_02",
-        "Room": "",
+        "Room": "Fuel Tank Room (Basement)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82553,14 +88060,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Fuel Tank Room (Basement)"
       },
       {
         "1": "",
         "No": "4",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_1_03",
-        "Room": "",
+        "Room": "Fuel Tank Room (Basement)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82575,14 +88084,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Fuel Tank Room (Basement)"
       },
       {
         "1": "",
         "No": "5",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_1_04",
-        "Room": "",
+        "Room": "Fuel Tank Room (Basement)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82597,14 +88108,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Fuel Tank Room (Basement)"
       },
       {
         "1": "",
         "No": "6",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_1_05",
-        "Room": "",
+        "Room": "Fuel Tank Room (Basement)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82619,14 +88132,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Fuel Tank Room (Basement)"
       },
       {
         "1": "",
         "No": "7",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_1_06",
-        "Room": "",
+        "Room": "Fuel Tank Room (Basement)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82641,14 +88156,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Fuel Tank Room (Basement)"
       },
       {
         "1": "",
         "No": "8",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_1_07",
-        "Room": "",
+        "Room": "Fuel Tank Room (Basement)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82663,14 +88180,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Fuel Tank Room (Basement)"
       },
       {
         "1": "",
         "No": "9",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_1_08",
-        "Room": "",
+        "Room": "Fuel Tank Room (Basement)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82685,14 +88204,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Fuel Tank Room (Basement)"
       },
       {
         "1": "",
         "No": "10",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_1_09",
-        "Room": "",
+        "Room": "Fuel Tank Room (Basement)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82707,14 +88228,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Fuel Tank Room (Basement)"
       },
       {
         "1": "",
         "No": "11",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_1_10",
-        "Room": "",
+        "Room": "Fuel Tank Room (Basement)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82729,14 +88252,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Fuel Tank Room (Basement)"
       },
       {
         "1": "",
         "No": "12",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_1_11",
-        "Room": "",
+        "Room": "Fuel Tank Room (Basement)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82751,14 +88276,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Fuel Tank Room (Basement)"
       },
       {
         "1": "",
         "No": "13",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_1_12",
-        "Room": "",
+        "Room": "Fuel Tank Room (Basement)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82773,14 +88300,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Fuel Tank Room (Basement)"
       },
       {
         "1": "",
         "No": "14",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_1_13",
-        "Room": "",
+        "Room": "Fuel Tank Room (Basement)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82795,14 +88324,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Fuel Tank Room (Basement)"
       },
       {
         "1": "",
         "No": "15",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_1_14",
-        "Room": "",
+        "Room": "Fuel Tank Room (Basement)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82817,14 +88348,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Fuel Tank Room (Basement)"
       },
       {
         "1": "",
         "No": "16",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_1_15",
-        "Room": "",
+        "Room": "Fuel Tank Room (Basement)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82839,14 +88372,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Fuel Tank Room (Basement)"
       },
       {
         "1": "",
         "No": "17",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_1_16",
-        "Room": "",
+        "Room": "Fuel Tank Room (Basement)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82861,7 +88396,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Fuel Tank Room (Basement)"
       },
       {
         "1": "",
@@ -82883,14 +88420,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Genset Room (2nd Floor PH)"
       },
       {
         "1": "",
         "No": "19",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_02",
-        "Room": "",
+        "Room": "Genset Room (2nd Floor PH)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82905,14 +88444,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Genset Room (2nd Floor PH)"
       },
       {
         "1": "",
         "No": "20",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_03",
-        "Room": "",
+        "Room": "Genset Room (2nd Floor PH)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82927,14 +88468,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Genset Room (2nd Floor PH)"
       },
       {
         "1": "",
         "No": "21",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_04",
-        "Room": "",
+        "Room": "Genset Room (2nd Floor PH)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82949,14 +88492,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Genset Room (2nd Floor PH)"
       },
       {
         "1": "",
         "No": "22",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_05",
-        "Room": "",
+        "Room": "Genset Room (2nd Floor PH)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82971,14 +88516,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Genset Room (2nd Floor PH)"
       },
       {
         "1": "",
         "No": "23",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_06",
-        "Room": "",
+        "Room": "Genset Room (2nd Floor PH)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -82993,14 +88540,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Genset Room (2nd Floor PH)"
       },
       {
         "1": "",
         "No": "24",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_07",
-        "Room": "",
+        "Room": "Genset Room (2nd Floor PH)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -83015,14 +88564,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Genset Room (2nd Floor PH)"
       },
       {
         "1": "",
         "No": "25",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_08",
-        "Room": "",
+        "Room": "Genset Room (2nd Floor PH)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -83037,14 +88588,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Genset Room (2nd Floor PH)"
       },
       {
         "1": "",
         "No": "26",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_09",
-        "Room": "",
+        "Room": "Genset Room (2nd Floor PH)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -83059,14 +88612,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Genset Room (2nd Floor PH)"
       },
       {
         "1": "",
         "No": "27",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_10",
-        "Room": "",
+        "Room": "Genset Room (2nd Floor PH)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -83081,14 +88636,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Genset Room (2nd Floor PH)"
       },
       {
         "1": "",
         "No": "28",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_11",
-        "Room": "",
+        "Room": "Genset Room (2nd Floor PH)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -83103,14 +88660,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Genset Room (2nd Floor PH)"
       },
       {
         "1": "",
         "No": "29",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_12",
-        "Room": "",
+        "Room": "Genset Room (2nd Floor PH)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -83125,14 +88684,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Genset Room (2nd Floor PH)"
       },
       {
         "1": "",
         "No": "30",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_13",
-        "Room": "",
+        "Room": "Genset Room (2nd Floor PH)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -83147,14 +88708,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Genset Room (2nd Floor PH)"
       },
       {
         "1": "",
         "No": "31",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_14",
-        "Room": "",
+        "Room": "Genset Room (2nd Floor PH)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -83169,14 +88732,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Genset Room (2nd Floor PH)"
       },
       {
         "1": "",
         "No": "32",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_15",
-        "Room": "",
+        "Room": "Genset Room (2nd Floor PH)",
         "PM DATE": "46216",
         "QTY": "1",
         "Col_8": "",
@@ -83191,7 +88756,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Genset Room (2nd Floor PH)"
       },
       {
         "1": "",
@@ -83213,14 +88780,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Roof Floor PH"
       },
       {
         "1": "",
         "No": "34",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_17",
-        "Room": "",
+        "Room": "Roof Floor PH",
         "PM DATE": "46217",
         "QTY": "1",
         "Col_8": "",
@@ -83235,14 +88804,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Roof Floor PH"
       },
       {
         "1": "",
         "No": "35",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_18",
-        "Room": "",
+        "Room": "Roof Floor PH",
         "PM DATE": "46217",
         "QTY": "1",
         "Col_8": "",
@@ -83257,14 +88828,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Roof Floor PH"
       },
       {
         "1": "",
         "No": "36",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_19",
-        "Room": "",
+        "Room": "Roof Floor PH",
         "PM DATE": "46217",
         "QTY": "1",
         "Col_8": "",
@@ -83279,14 +88852,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Roof Floor PH"
       },
       {
         "1": "",
         "No": "37",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_20",
-        "Room": "",
+        "Room": "Roof Floor PH",
         "PM DATE": "46217",
         "QTY": "1",
         "Col_8": "",
@@ -83301,14 +88876,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Roof Floor PH"
       },
       {
         "1": "",
         "No": "38",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_21",
-        "Room": "",
+        "Room": "Roof Floor PH",
         "PM DATE": "46217",
         "QTY": "1",
         "Col_8": "",
@@ -83323,14 +88900,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Roof Floor PH"
       },
       {
         "1": "",
         "No": "39",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_22",
-        "Room": "",
+        "Room": "Roof Floor PH",
         "PM DATE": "46217",
         "QTY": "1",
         "Col_8": "",
@@ -83345,14 +88924,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Roof Floor PH"
       },
       {
         "1": "",
         "No": "40",
         "Class Id": "FLD CABEL",
         "CI Name*": "BB02_2_23",
-        "Room": "",
+        "Room": "Roof Floor PH",
         "PM DATE": "46217",
         "QTY": "1",
         "Col_8": "",
@@ -83367,14 +88948,16 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "46261",
         "QTY_6": "1",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Location": "1F, Roof Floor PH"
       },
       {
         "1": "",
         "No": "",
         "Class Id": "",
         "CI Name*": "",
-        "Room": "",
+        "Room": "Data Hall & Elec Room",
         "PM DATE": "",
         "QTY": "",
         "Col_8": "",
@@ -83389,7 +88972,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "40",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "1F",
+        "Location": "1F, Data Hall & Elec Room"
       }
     ],
     "itemCount": 117,
@@ -83433,7 +89018,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -83460,7 +89047,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Water Softener Room",
+        "Location": "1F, Water Softener Room"
       },
       {
         "1": "Report on Process",
@@ -83486,7 +89076,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Water Softener Room",
+        "Location": "1F, Water Softener Room"
       },
       {
         "1": "Report on Process",
@@ -83512,7 +89105,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Water Softener Room",
+        "Location": "1F, Water Softener Room"
       },
       {
         "1": "Report on Process",
@@ -83538,7 +89134,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Water Softener Room",
+        "Location": "1F, Water Softener Room"
       },
       {
         "1": "",
@@ -83564,7 +89163,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "1F",
+        "Room": "Water Softener Room",
+        "Location": "1F, Water Softener Room"
       }
     ],
     "itemCount": 5,
@@ -83606,7 +89208,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_5",
       "DATE_6",
-      "QTY_6"
+      "QTY_6",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -83631,7 +89235,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_5": "",
         "DATE_6": "",
-        "QTY_6": ""
+        "QTY_6": "",
+        "Floor": "4F",
+        "Room": "Rooftop Power House",
+        "Location": "4F, Rooftop Power House"
       },
       {
         "No": "",
@@ -83655,7 +89262,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_5": "0",
         "DATE_6": "",
-        "QTY_6": "0"
+        "QTY_6": "0",
+        "Floor": "4F",
+        "Room": "Rooftop Power House",
+        "Location": "4F, Rooftop Power House"
       },
       {
         "No": "",
@@ -83679,7 +89289,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_5": "",
         "DATE_6": "",
-        "QTY_6": ""
+        "QTY_6": "",
+        "Floor": "4F",
+        "Room": "Rooftop Power House",
+        "Location": "4F, Rooftop Power House"
       },
       {
         "No": "2",
@@ -83703,7 +89316,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_5": "0",
         "DATE_6": "",
-        "QTY_6": "0"
+        "QTY_6": "0",
+        "Floor": "4F",
+        "Room": "Rooftop Power House",
+        "Location": "4F, Rooftop Power House"
       },
       {
         "No": "",
@@ -83727,7 +89343,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_5": "",
         "DATE_6": "",
-        "QTY_6": ""
+        "QTY_6": "",
+        "Floor": "4F",
+        "Room": "Rooftop Power House",
+        "Location": "4F, Rooftop Power House"
       },
       {
         "No": "",
@@ -83751,7 +89370,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_5": "",
         "DATE_6": "",
-        "QTY_6": ""
+        "QTY_6": "",
+        "Floor": "4F",
+        "Room": "Rooftop Power House",
+        "Location": "4F, Rooftop Power House"
       },
       {
         "No": "",
@@ -83775,7 +89397,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_5": "",
         "DATE_6": "",
-        "QTY_6": ""
+        "QTY_6": "",
+        "Floor": "4F",
+        "Room": "Rooftop Power House",
+        "Location": "4F, Rooftop Power House"
       },
       {
         "No": "",
@@ -83799,7 +89424,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_5": "",
         "DATE_6": "",
-        "QTY_6": ""
+        "QTY_6": "",
+        "Floor": "4F",
+        "Room": "Rooftop Power House",
+        "Location": "4F, Rooftop Power House"
       },
       {
         "No": "",
@@ -83823,7 +89451,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_5": "",
         "DATE_6": "",
-        "QTY_6": ""
+        "QTY_6": "",
+        "Floor": "4F",
+        "Room": "Rooftop Power House",
+        "Location": "4F, Rooftop Power House"
       },
       {
         "No": "",
@@ -83847,7 +89478,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_5": "",
         "DATE_6": "",
-        "QTY_6": ""
+        "QTY_6": "",
+        "Floor": "4F",
+        "Room": "Rooftop Power House",
+        "Location": "4F, Rooftop Power House"
       }
     ],
     "itemCount": 10,
@@ -83894,7 +89528,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -83924,7 +89560,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Water Softener",
+        "Location": "1F, Water Softener"
       },
       {
         "No": "2",
@@ -83953,7 +89592,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Water Softener",
+        "Location": "1F, Water Softener"
       },
       {
         "No": "3",
@@ -83982,7 +89624,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Water Softener",
+        "Location": "1F, Water Softener"
       },
       {
         "No": "4",
@@ -84011,7 +89656,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "Water Softener",
+        "Location": "1F, Water Softener"
       },
       {
         "No": "5",
@@ -84040,7 +89688,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "PH Office",
+        "Location": "1F, PH Office"
       },
       {
         "No": "6",
@@ -84069,7 +89720,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "PH Office",
+        "Location": "1F, PH Office"
       },
       {
         "No": "7",
@@ -84098,7 +89752,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "PH Office",
+        "Location": "1F, PH Office"
       },
       {
         "No": "8",
@@ -84127,7 +89784,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "PH Office",
+        "Location": "1F, PH Office"
       },
       {
         "No": "9",
@@ -84156,7 +89816,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "PH Office",
+        "Location": "1F, PH Office"
       },
       {
         "No": "10",
@@ -84185,7 +89848,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "PH Office",
+        "Location": "1F, PH Office"
       },
       {
         "No": "11",
@@ -84214,7 +89880,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "PH Office",
+        "Location": "1F, PH Office"
       },
       {
         "No": "12",
@@ -84243,7 +89912,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "PH Office",
+        "Location": "1F, PH Office"
       },
       {
         "No": "13",
@@ -84272,7 +89944,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "PH Office",
+        "Location": "1F, PH Office"
       },
       {
         "No": "14",
@@ -84301,7 +89976,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "PH Office",
+        "Location": "1F, PH Office"
       },
       {
         "No": "15",
@@ -84330,7 +90008,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "PH Office",
+        "Location": "1F, PH Office"
       },
       {
         "No": "16",
@@ -84359,7 +90040,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "PH Office",
+        "Location": "1F, PH Office"
       },
       {
         "No": "17",
@@ -84388,7 +90072,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
+        "Location": "1F, NeutraDC Facility"
       },
       {
         "No": "18",
@@ -84417,7 +90104,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
+        "Location": "1F, NeutraDC Facility"
       },
       {
         "No": "19",
@@ -84446,7 +90136,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
+        "Location": "1F, NeutraDC Facility"
       },
       {
         "No": "20",
@@ -84475,7 +90168,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
+        "Location": "1F, NeutraDC Facility"
       },
       {
         "No": "21",
@@ -84504,7 +90200,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
+        "Location": "1F, NeutraDC Facility"
       },
       {
         "No": "22",
@@ -84533,7 +90232,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
+        "Location": "1F, NeutraDC Facility"
       },
       {
         "No": "23",
@@ -84562,7 +90264,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
+        "Location": "1F, NeutraDC Facility"
       },
       {
         "No": "24",
@@ -84591,7 +90296,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
+        "Location": "1F, NeutraDC Facility"
       },
       {
         "No": "25",
@@ -84620,7 +90328,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
+        "Location": "1F, NeutraDC Facility"
       },
       {
         "No": "26",
@@ -84649,7 +90360,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
+        "Location": "1F, NeutraDC Facility"
       },
       {
         "No": "27",
@@ -84678,7 +90392,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
+        "Location": "1F, NeutraDC Facility"
       },
       {
         "No": "28",
@@ -84707,7 +90424,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
+        "Location": "1F, NeutraDC Facility"
       },
       {
         "No": "29",
@@ -84736,7 +90456,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
+        "Location": "1F, NeutraDC Facility"
       },
       {
         "No": "30",
@@ -84765,7 +90488,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
+        "Location": "1F, NeutraDC Facility"
       },
       {
         "No": "31",
@@ -84794,7 +90520,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
+        "Location": "1F, NeutraDC Facility"
       },
       {
         "No": "32",
@@ -84823,7 +90552,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
+        "Location": "1F, NeutraDC Facility"
       },
       {
         "No": "",
@@ -84852,7 +90584,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "1F",
+        "Room": "NeutraDC Facility",
+        "Location": "1F, NeutraDC Facility"
       }
     ],
     "itemCount": 33,
@@ -84897,7 +90632,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -84925,7 +90662,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Outdoor",
+        "Room": "Main Entrance Gate",
+        "Location": "Outdoor, Main Entrance Gate"
       },
       {
         "1": "",
@@ -84952,7 +90692,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Outdoor",
+        "Room": "Main Entrance Gate",
+        "Location": "Outdoor, Main Entrance Gate"
       },
       {
         "1": "",
@@ -84979,7 +90722,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Outdoor",
+        "Room": "Main Entrance Gate",
+        "Location": "Outdoor, Main Entrance Gate"
       },
       {
         "1": "",
@@ -85006,7 +90752,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Outdoor",
+        "Room": "Main Entrance Gate",
+        "Location": "Outdoor, Main Entrance Gate"
       },
       {
         "1": "",
@@ -85033,7 +90782,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Outdoor",
+        "Room": "Main Entrance Gate",
+        "Location": "Outdoor, Main Entrance Gate"
       },
       {
         "1": "",
@@ -85060,7 +90812,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Outdoor",
+        "Room": "Main Entrance Gate",
+        "Location": "Outdoor, Main Entrance Gate"
       },
       {
         "1": "",
@@ -85087,7 +90842,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Outdoor",
+        "Room": "Main Entrance Gate",
+        "Location": "Outdoor, Main Entrance Gate"
       },
       {
         "1": "",
@@ -85114,7 +90872,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Outdoor",
+        "Room": "Main Entrance Gate",
+        "Location": "Outdoor, Main Entrance Gate"
       },
       {
         "1": "",
@@ -85141,7 +90902,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Outdoor",
+        "Room": "Main Entrance Gate",
+        "Location": "Outdoor, Main Entrance Gate"
       },
       {
         "1": "",
@@ -85168,7 +90932,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Outdoor",
+        "Room": "Main Entrance Gate",
+        "Location": "Outdoor, Main Entrance Gate"
       },
       {
         "1": "",
@@ -85195,7 +90962,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Outdoor",
+        "Room": "Main Entrance Gate",
+        "Location": "Outdoor, Main Entrance Gate"
       },
       {
         "1": "",
@@ -85222,7 +90992,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Outdoor",
+        "Room": "Main Entrance Gate",
+        "Location": "Outdoor, Main Entrance Gate"
       },
       {
         "1": "",
@@ -85249,7 +91022,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Outdoor",
+        "Room": "Main Entrance Gate",
+        "Location": "Outdoor, Main Entrance Gate"
       },
       {
         "1": "",
@@ -85276,7 +91052,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Outdoor",
+        "Room": "Main Entrance Gate",
+        "Location": "Outdoor, Main Entrance Gate"
       },
       {
         "1": "",
@@ -85303,7 +91082,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Outdoor",
+        "Room": "Main Entrance Gate",
+        "Location": "Outdoor, Main Entrance Gate"
       },
       {
         "1": "",
@@ -85330,7 +91112,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Outdoor",
+        "Room": "Main Entrance Gate",
+        "Location": "Outdoor, Main Entrance Gate"
       },
       {
         "1": "",
@@ -85357,7 +91142,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "Outdoor",
+        "Room": "Main Entrance Gate",
+        "Location": "Outdoor, Main Entrance Gate"
       }
     ],
     "itemCount": 17,
@@ -85400,7 +91188,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -85426,7 +91216,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Ground",
+        "Room": "STP & Pump Room",
+        "Location": "Ground, STP & Pump Room"
       },
       {
         "1": "",
@@ -85451,7 +91244,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Ground",
+        "Room": "STP & Pump Room",
+        "Location": "Ground, STP & Pump Room"
       },
       {
         "1": "",
@@ -85476,7 +91272,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Ground",
+        "Room": "STP & Pump Room",
+        "Location": "Ground, STP & Pump Room"
       },
       {
         "1": "",
@@ -85501,7 +91300,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Ground",
+        "Room": "STP & Pump Room",
+        "Location": "Ground, STP & Pump Room"
       },
       {
         "1": "",
@@ -85526,7 +91328,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Ground",
+        "Room": "STP & Pump Room",
+        "Location": "Ground, STP & Pump Room"
       },
       {
         "1": "",
@@ -85551,7 +91356,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Ground",
+        "Room": "STP & Pump Room",
+        "Location": "Ground, STP & Pump Room"
       },
       {
         "1": "",
@@ -85576,7 +91384,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Ground",
+        "Room": "STP & Pump Room",
+        "Location": "Ground, STP & Pump Room"
       },
       {
         "1": "",
@@ -85601,7 +91412,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Ground",
+        "Room": "STP & Pump Room",
+        "Location": "Ground, STP & Pump Room"
       },
       {
         "1": "",
@@ -85626,7 +91440,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Ground",
+        "Room": "STP & Pump Room",
+        "Location": "Ground, STP & Pump Room"
       },
       {
         "1": "",
@@ -85651,7 +91468,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Ground",
+        "Room": "STP & Pump Room",
+        "Location": "Ground, STP & Pump Room"
       },
       {
         "1": "",
@@ -85676,7 +91496,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Ground",
+        "Room": "STP & Pump Room",
+        "Location": "Ground, STP & Pump Room"
       },
       {
         "1": "",
@@ -85701,7 +91524,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Ground",
+        "Room": "STP & Pump Room",
+        "Location": "Ground, STP & Pump Room"
       },
       {
         "1": "",
@@ -85726,7 +91552,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Ground",
+        "Room": "STP & Pump Room",
+        "Location": "Ground, STP & Pump Room"
       },
       {
         "1": "",
@@ -85751,7 +91580,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Ground",
+        "Room": "STP & Pump Room",
+        "Location": "Ground, STP & Pump Room"
       },
       {
         "1": "",
@@ -85776,7 +91608,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "Ground",
+        "Room": "STP & Pump Room",
+        "Location": "Ground, STP & Pump Room"
       }
     ],
     "itemCount": 15,
@@ -85821,7 +91656,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -85849,7 +91686,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "Outdoor",
+        "Room": "Main Gate Security Perimeter",
+        "Location": "Outdoor, Main Gate Security Perimeter"
       },
       {
         "0": "",
@@ -85876,7 +91716,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "Outdoor",
+        "Room": "Main Gate Security Perimeter",
+        "Location": "Outdoor, Main Gate Security Perimeter"
       }
     ],
     "itemCount": 2,
@@ -85919,7 +91762,9 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
       "DATE_5",
       "QTY_6",
       "DATE_6",
-      "QTY_7"
+      "QTY_7",
+      "Floor",
+      "Room"
     ],
     "items": [
       {
@@ -85945,7 +91790,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "All Area",
+        "Room": "Fire Exit & Technical Access",
+        "Location": "All Area, Fire Exit & Technical Access"
       },
       {
         "1": "",
@@ -85970,7 +91818,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "All Area",
+        "Room": "Fire Exit & Technical Access",
+        "Location": "All Area, Fire Exit & Technical Access"
       },
       {
         "1": "",
@@ -85995,7 +91846,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "All Area",
+        "Room": "Fire Exit & Technical Access",
+        "Location": "All Area, Fire Exit & Technical Access"
       },
       {
         "1": "",
@@ -86020,7 +91874,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "All Area",
+        "Room": "Fire Exit & Technical Access",
+        "Location": "All Area, Fire Exit & Technical Access"
       },
       {
         "1": "",
@@ -86045,7 +91902,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "All Area",
+        "Room": "Fire Exit & Technical Access",
+        "Location": "All Area, Fire Exit & Technical Access"
       },
       {
         "1": "",
@@ -86070,7 +91930,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "All Area",
+        "Room": "Fire Exit & Technical Access",
+        "Location": "All Area, Fire Exit & Technical Access"
       },
       {
         "1": "",
@@ -86095,7 +91958,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "All Area",
+        "Room": "Fire Exit & Technical Access",
+        "Location": "All Area, Fire Exit & Technical Access"
       },
       {
         "1": "",
@@ -86120,7 +91986,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "All Area",
+        "Room": "Fire Exit & Technical Access",
+        "Location": "All Area, Fire Exit & Technical Access"
       },
       {
         "1": "",
@@ -86145,7 +92014,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "All Area",
+        "Room": "Fire Exit & Technical Access",
+        "Location": "All Area, Fire Exit & Technical Access"
       },
       {
         "1": "",
@@ -86170,7 +92042,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "All Area",
+        "Room": "Fire Exit & Technical Access",
+        "Location": "All Area, Fire Exit & Technical Access"
       },
       {
         "1": "",
@@ -86195,7 +92070,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "All Area",
+        "Room": "Fire Exit & Technical Access",
+        "Location": "All Area, Fire Exit & Technical Access"
       },
       {
         "1": "",
@@ -86220,7 +92098,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "All Area",
+        "Room": "Fire Exit & Technical Access",
+        "Location": "All Area, Fire Exit & Technical Access"
       },
       {
         "1": "",
@@ -86245,7 +92126,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "All Area",
+        "Room": "Fire Exit & Technical Access",
+        "Location": "All Area, Fire Exit & Technical Access"
       },
       {
         "1": "",
@@ -86270,7 +92154,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "",
         "DATE_6": "",
-        "QTY_7": ""
+        "QTY_7": "",
+        "Floor": "All Area",
+        "Room": "Fire Exit & Technical Access",
+        "Location": "All Area, Fire Exit & Technical Access"
       },
       {
         "1": "",
@@ -86295,7 +92182,10 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "DATE_5": "",
         "QTY_6": "0",
         "DATE_6": "",
-        "QTY_7": "0"
+        "QTY_7": "0",
+        "Floor": "All Area",
+        "Room": "Fire Exit & Technical Access",
+        "Location": "All Area, Fire Exit & Technical Access"
       }
     ],
     "itemCount": 15,
@@ -86404,8 +92294,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Region": "",
         "Site Group": "",
         "Site+": "Note",
-        "Floor": "",
-        "Room": "",
+        "Floor": "1F",
+        "Room": "Post Security Gate",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "PM Xray per 2 bulan 1X",
@@ -86413,7 +92303,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Used by": "",
         "Managed by": "",
         "PM DATE": "",
-        "QTY": ""
+        "QTY": "",
+        "Location": "1F, Post Security Gate"
       }
     ],
     "itemCount": 2,
@@ -86537,8 +92428,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -86549,7 +92440,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46258",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -86576,8 +92468,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -86588,7 +92480,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46258",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -86615,8 +92508,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -86627,7 +92520,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46258",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -86654,8 +92548,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -86666,7 +92560,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46258",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -86693,8 +92588,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -86705,7 +92600,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46258",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -86732,8 +92628,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -86744,7 +92640,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46258",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -86771,8 +92668,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -86783,7 +92680,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46258",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -86810,8 +92708,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -86822,7 +92720,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46258",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -86849,8 +92748,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -86861,7 +92760,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46260",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -86888,8 +92788,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -86900,7 +92800,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46260",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -86927,8 +92828,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -86939,7 +92840,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46260",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -86966,8 +92868,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -86978,7 +92880,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46260",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87005,8 +92908,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87017,7 +92920,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46260",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87044,8 +92948,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87056,7 +92960,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46260",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87083,8 +92988,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87095,7 +93000,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46260",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87122,8 +93028,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87134,7 +93040,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46260",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87161,8 +93068,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87173,7 +93080,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46260",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87200,8 +93108,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87212,7 +93120,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46260",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87239,8 +93148,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87251,7 +93160,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46260",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87278,8 +93188,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87290,7 +93200,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46260",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87317,8 +93228,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87329,7 +93240,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46260",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87356,8 +93268,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87368,7 +93280,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46260",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87395,8 +93308,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87407,7 +93320,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46260",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87434,8 +93348,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87446,7 +93360,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46260",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87473,8 +93388,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87485,7 +93400,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "Tambahan",
         "PM DATE": "46262",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87512,8 +93428,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87524,7 +93440,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46262",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87551,8 +93468,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87563,7 +93480,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46262",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87590,8 +93508,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87602,7 +93520,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46262",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87629,8 +93548,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87641,7 +93560,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46262",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87668,8 +93588,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87680,7 +93600,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46262",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87707,8 +93628,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87719,7 +93640,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46262",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87746,8 +93668,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87758,7 +93680,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46262",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87785,8 +93708,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87797,7 +93720,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46262",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87824,8 +93748,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87836,7 +93760,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46260",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87863,8 +93788,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87875,7 +93800,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87902,8 +93828,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87914,7 +93840,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87941,8 +93868,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87953,7 +93880,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -87980,8 +93908,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -87992,7 +93920,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88019,8 +93948,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88031,7 +93960,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88058,8 +93988,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88070,7 +94000,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88097,8 +94028,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88109,7 +94040,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88136,8 +94068,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88148,7 +94080,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88175,8 +94108,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88187,7 +94120,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88214,8 +94148,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88226,7 +94160,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88253,8 +94188,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88265,7 +94200,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88292,8 +94228,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88304,7 +94240,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88331,8 +94268,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88343,7 +94280,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88370,8 +94308,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88382,7 +94320,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88409,8 +94348,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88421,7 +94360,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88448,8 +94388,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88460,7 +94400,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88487,8 +94428,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88499,7 +94440,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88526,8 +94468,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88538,7 +94480,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88565,8 +94508,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88577,7 +94520,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88604,8 +94548,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88616,7 +94560,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46261",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88643,8 +94588,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88655,7 +94600,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46262",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88682,8 +94628,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88694,7 +94640,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46262",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88721,8 +94668,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88733,7 +94680,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46262",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88760,8 +94708,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88772,7 +94720,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46262",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88799,8 +94748,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88811,7 +94760,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46262",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88838,8 +94788,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88850,7 +94800,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46262",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88877,8 +94828,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88889,7 +94840,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46262",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88916,8 +94868,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88928,7 +94880,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46262",
         "QTY": "1",
-        "0.6055045872": "Report on Process"
+        "0.6055045872": "Report on Process",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88955,8 +94908,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -88967,7 +94920,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46258",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -88994,8 +94948,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89006,7 +94960,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46258",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89033,8 +94988,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89045,7 +95000,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89072,8 +95028,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89084,7 +95040,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89111,8 +95068,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89123,7 +95080,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "46255",
         "QTY": "1",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89150,8 +95108,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89162,7 +95120,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89189,8 +95148,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89201,7 +95160,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89228,8 +95188,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89240,7 +95200,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89267,8 +95228,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89279,7 +95240,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89306,8 +95268,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89318,7 +95280,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89345,8 +95308,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89357,7 +95320,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89384,8 +95348,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89396,7 +95360,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89423,8 +95388,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89435,7 +95400,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89462,8 +95428,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89474,7 +95440,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89501,8 +95468,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89513,7 +95480,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89540,8 +95508,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89552,7 +95520,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89579,8 +95548,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89591,7 +95560,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89618,8 +95588,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89630,7 +95600,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89657,8 +95628,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89669,7 +95640,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89696,8 +95668,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89708,7 +95680,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89735,8 +95708,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89747,7 +95720,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89774,8 +95748,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89786,7 +95760,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89813,8 +95788,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89825,7 +95800,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89852,8 +95828,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89864,7 +95840,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89891,8 +95868,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89903,7 +95880,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89930,8 +95908,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89942,7 +95920,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -89969,8 +95948,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -89981,7 +95960,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90008,8 +95988,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90020,7 +96000,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90047,8 +96028,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90059,7 +96040,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90086,8 +96068,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90098,7 +96080,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90125,8 +96108,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90137,7 +96120,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90164,8 +96148,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90176,7 +96160,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90203,8 +96188,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90215,7 +96200,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90242,8 +96228,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90254,7 +96240,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90281,8 +96268,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90293,7 +96280,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90320,8 +96308,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90332,7 +96320,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90359,8 +96348,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90371,7 +96360,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90398,8 +96388,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90410,7 +96400,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90437,8 +96428,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90449,7 +96440,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90476,8 +96468,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90488,7 +96480,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90515,8 +96508,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90527,7 +96520,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90554,8 +96548,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90566,7 +96560,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90593,8 +96588,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90605,7 +96600,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90632,8 +96628,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90644,7 +96640,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90671,8 +96668,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90683,7 +96680,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90710,8 +96708,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90722,7 +96720,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90749,8 +96748,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90761,7 +96760,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": "0"
+        "0.6055045872": "0",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       },
       {
         "2750": "",
@@ -90788,8 +96788,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "N/A",
+        "Room": "N/A",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -90800,7 +96800,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "N/A, N/A"
       },
       {
         "2750": "0.008363636364",
@@ -91880,8 +97881,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Site Group": "",
         "Site+": "",
         "Col_23": "",
-        "Floor": "",
-        "Room": "",
+        "Floor": "All Area",
+        "Room": "Campus Perimeter & Operational Area",
         "DC Hall Supplied": "",
         "Lokasi Rack": "",
         "Owned By": "",
@@ -91892,7 +97893,8 @@ export const BOQ_CATEGORIES_DATA: BOQCategory[] = [
         "Col_34": "",
         "PM DATE": "",
         "QTY": "0",
-        "0.6055045872": ""
+        "0.6055045872": "",
+        "Location": "All Area, Campus Perimeter & Operational Area"
       }
     ],
     "itemCount": 139,

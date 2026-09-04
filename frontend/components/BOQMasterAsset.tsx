@@ -56,6 +56,7 @@ export function BOQMasterAsset() {
   // State Filter & Navigasi
   const [selectedGroup, setSelectedGroup] = useState<string>('all');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(BOQ_CATEGORIES_DATA[0]?.id || 'cat_1');
+  const [categorySearchQuery, setCategorySearchQuery] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(25);
@@ -64,12 +65,20 @@ export function BOQMasterAsset() {
   const [selectedItem, setSelectedItem] = useState<{ category: BOQCategory; item: BOQItem } | null>(null);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  // Filter Kategori berdasarkan Group
+  // Filter Kategori berdasarkan Group dan Search Query Kategori
   const filteredCategories = useMemo(() => {
+    const q = categorySearchQuery.toLowerCase().trim();
     return BOQ_CATEGORIES_DATA.filter((cat) => {
-      return selectedGroup === 'all' || cat.group === selectedGroup;
+      const matchesGroup = selectedGroup === 'all' || cat.group === selectedGroup;
+      if (!matchesGroup) return false;
+      if (!q) return true;
+      return (
+        cat.name.toLowerCase().includes(q) ||
+        cat.group.toLowerCase().includes(q) ||
+        (cat.id && cat.id.toLowerCase().includes(q))
+      );
     });
-  }, [selectedGroup]);
+  }, [selectedGroup, categorySearchQuery]);
 
   // Pastikan kategori yang dipilih valid setelah filter berubah
   const activeCategory = useMemo(() => {
@@ -289,7 +298,7 @@ export function BOQMasterAsset() {
           {/* Sidebar / Grid Daftar Kategori Sheet */}
           <div className="lg:col-span-4 flex flex-col gap-3">
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 flex-1 flex flex-col">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-2.5">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                   Daftar Kategori ({filteredCategories.length})
                 </h2>
@@ -298,9 +307,44 @@ export function BOQMasterAsset() {
                 </span>
               </div>
 
+              {/* Input Search Kategori */}
+              <div className="relative mb-3">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={categorySearchQuery}
+                  onChange={(e) => setCategorySearchQuery(e.target.value)}
+                  placeholder="Cari kategori (misal: Trafo, ATS, Panel)..."
+                  className="w-full pl-8 pr-7 py-2 text-xs bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl outline-none transition placeholder:text-slate-400"
+                />
+                {categorySearchQuery && (
+                  <button
+                    onClick={() => setCategorySearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-0.5"
+                    title="Hapus pencarian"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
               {/* List Scrollable Kategori Sheet Tabs */}
               <div className="space-y-1.5 max-h-[480px] overflow-y-auto pr-1 scrollbar-thin">
-                {filteredCategories.map((cat, idx) => {
+                {filteredCategories.length === 0 ? (
+                  <div className="py-8 text-center text-slate-400">
+                    <Search className="w-6 h-6 mx-auto mb-2 opacity-30" />
+                    <p className="text-xs font-medium">Kategori tidak ditemukan</p>
+                    {categorySearchQuery && (
+                      <button
+                        onClick={() => setCategorySearchQuery('')}
+                        className="mt-1.5 text-[11px] text-blue-600 hover:underline font-bold cursor-pointer"
+                      >
+                        Reset pencarian
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  filteredCategories.map((cat, idx) => {
                   const isActive = activeCategory?.id === cat.id;
                   return (
                     <button
@@ -341,7 +385,7 @@ export function BOQMasterAsset() {
                       </span>
                     </button>
                   );
-                })}
+                }))}
               </div>
             </div>
           </div>

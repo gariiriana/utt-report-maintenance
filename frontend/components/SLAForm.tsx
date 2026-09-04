@@ -131,9 +131,10 @@ interface SLAFormProps {
   onCancel: () => void;
   editId?: string;
   prefillData?: SLAPrefillData;
+  availableCMReports?: any[];
 }
 
-export function SLAForm({ onSuccess, onCancel, editId, prefillData }: SLAFormProps) {
+export function SLAForm({ onSuccess, onCancel, editId, prefillData, availableCMReports }: SLAFormProps) {
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -327,6 +328,51 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData }: SLAFormPro
       targetResolutionMin: target
     }));
   }, [formData.priority]);
+
+  // Handler Tautkan ke Laporan CM (Sinkronisasi Otomatis CM ↔ SLA)
+  const handleSelectLinkedCM = (cmId: string) => {
+    if (!cmId) {
+      setFormData(prev => ({
+        ...prev,
+        cmReportId: '',
+      }));
+      toast.info('Tautan ke Laporan CM dilepas.');
+      return;
+    }
+
+    const foundCM = availableCMReports?.find((c: any) => c.id === cmId);
+    if (!foundCM) return;
+
+    // Auto deteksi prioritas katalog dari equipment / incident name CM
+    const rawText = `${foundCM.equipmentName || ''} ${foundCM.incidentName || ''} ${foundCM.issue || ''}`.toLowerCase();
+    const matchedCatalog = EQUIPMENT_SLA_CATALOG.find(eq => {
+      const devName = eq.device.toLowerCase();
+      const idName = eq.id.toLowerCase();
+      const firstWord = devName.split(/[\s(]+/)[0];
+      return devName.includes(rawText) || rawText.includes(idName) || (firstWord.length >= 3 && rawText.includes(firstWord));
+    });
+
+    const finalPriority = matchedCatalog?.defaultPriority || 'Medium';
+
+    setFormData(prev => ({
+      ...prev,
+      ticketName: foundCM.incidentName || foundCM.equipmentName || foundCM.issue || prev.ticketName,
+      location: foundCM.location || prev.location || 'Neutra DC Cikarang',
+      timeOrder: foundCM.incidentDate || (foundCM.reportedAt?.toDate ? foundCM.reportedAt.toDate().toLocaleDateString('id-ID') : prev.timeOrder),
+      priority: prev.priority || finalPriority,
+      remark: foundCM.actionTaken || foundCM.summaryProblemAnalysis || prev.remark,
+      cmReportId: foundCM.id,
+    }));
+
+    if (matchedCatalog) {
+      setSelectedEquipmentItem(matchedCatalog);
+      setEquipmentSearch(matchedCatalog.device);
+    } else if (foundCM.equipmentName) {
+      setEquipmentSearch(foundCM.equipmentName);
+    }
+
+    toast.success(`Berhasil ditautkan ke CM: ${foundCM.incidentName || foundCM.equipmentName || foundCM.issue}`);
+  };
 
   // Equipment SLA Selection Handler
   const handleSelectEquipment = (item: EquipmentSLAItem) => {
@@ -746,11 +792,13 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData }: SLAFormPro
         finalReport.photoResolution = photosReso[0]?.photo || '';
       }
 
+      let slaDocId = editId;
       if (editId) {
         await updateDoc(doc(db, 'corrective_reports', editId), finalReport);
         toast.success('Laporan SLA/SLG Corrective Maintenance berhasil diperbarui!', { id: 'save-sla-report' });
       } else {
-        await addDoc(collection(db, 'corrective_reports'), finalReport);
+        const newDocRef = await addDoc(collection(db, 'corrective_reports'), finalReport);
+        slaDocId = newDocRef.id;
         localStorage.removeItem('sla_form_draft');
         toast.success('Laporan SLA/SLG Corrective Maintenance berhasil disimpan!', { id: 'save-sla-report' });
 
@@ -762,6 +810,18 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData }: SLAFormPro
           targetTab: 'corrective_archive',
           searchQuery: formData.ticketName || ''
         });
+      }
+
+      // Two-way link update: catat slaReportId ke dokumen CM terkait di Firestore
+      if (finalReport.cmReportId && slaDocId) {
+        try {
+          await updateDoc(doc(db, 'corrective_reports', finalReport.cmReportId), {
+            slaReportId: slaDocId,
+            hasSLA: true,
+          });
+        } catch (cmLinkErr) {
+          console.warn('Could not update reverse slaReportId on CM doc:', cmLinkErr);
+        }
       }
       onSuccess();
     } catch (error: any) {
@@ -909,6 +969,82 @@ export function SLAForm({ onSuccess, onCancel, editId, prefillData }: SLAFormPro
                   Step 1: Pencapaian Response Time SLA
                 </h3>
                 <p className="text-slate-500 text-xs">Masukkan informasi order tiket, lokasi, prioritas, dan data Response Time (Target default &lt; 5 Menit).</p>
+              </div>
+
+              {/* Tautkan ke Laporan CM (Two-Way CM Link) */}
+              <div className="bg-gradient-to-r from-blue-50/90 via-white to-blue-50/40 p-4 rounded-2xl border border-blue-200 shadow-xs space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-700 block">
+                      Integrasi Laporan Corrective (CM)
+                    </span>
+                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5 mt-0.5">
+                      <FileText className="w-4 h-4 text-blue-600" />
+                      Tautkan ke Laporan Corrective Maintenance (CM)
+                    </h4>
+                  </div>
+                  {formData.cmReportId ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 self-start sm:self-auto shadow-2xs">
+                      <Check className="w-3.5 h-3.5 text-emerald-700" />
+                      Tertaut ke CM
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 self-start sm:self-auto">
+                      Opsional
+                    </span>
+                  )}
+                </div>
+
+                {formData.cmReportId ? (
+                  <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-xl border border-emerald-300/80 shadow-2xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="p-2 bg-emerald-50 text-emerald-700 rounded-lg shrink-0">
+                        <CheckCircle2 className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-900 truncate">
+                          {(() => {
+                            const found = availableCMReports?.find((c: any) => c.id === formData.cmReportId);
+                            return found ? `${found.incidentName || found.equipmentName || found.issue} (${found.incidentDate || '-'})` : `ID CM: ${formData.cmReportId}`;
+                          })()}
+                        </p>
+                        <p className="text-[11px] text-slate-500 truncate">
+                          Nama tiket, lokasi & waktu insiden telah otomatis disinkronkan dengan laporan CM.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectLinkedCM('')}
+                      className="px-2.5 py-1 text-[11px] font-bold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition border border-red-200 shrink-0 cursor-pointer"
+                      title="Putuskan tautan CM"
+                    >
+                      Putuskan Tautan
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <select
+                      value={formData.cmReportId || ''}
+                      onChange={(e) => handleSelectLinkedCM(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-white border border-blue-300 rounded-xl text-xs sm:text-sm text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition shadow-2xs cursor-pointer font-medium"
+                    >
+                      <option value="">-- Pilih Laporan CM yang Terkait (Atau biarkan kosong jika SLA mandiri) --</option>
+                      {availableCMReports && availableCMReports.length > 0 ? (
+                        availableCMReports.map((cm: any) => (
+                          <option key={cm.id} value={cm.id}>
+                            [{cm.incidentDate || '-'}] {cm.incidentName || cm.equipmentName || cm.issue || 'Laporan CM'} — {cm.location || 'Neutra DC'}
+                          </option>
+                        ))
+                      ) : (
+                        <option value="" disabled>Tidak ada laporan CM yang tersedia untuk ditautkan</option>
+                      )}
+                    </select>
+                    <p className="text-[11px] text-slate-500 mt-1.5">
+                      💡 Memilih CM akan otomatis mengisi Nama Tiket, Lokasi, Waktu, dan mengunci relasi SLA dengan CM tersebut secara permanen.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Searchable Equipment Selector & SLA Guidance */}

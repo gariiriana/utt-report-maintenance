@@ -240,13 +240,12 @@ service cloud.firestore {
                     && isValidString(request.resource.data.maintenanceName, 500)
                     && isValidString(request.resource.data.createdBy, 200);
       
-      allow read: if request.auth != null 
-                  && (resource.data.createdBy == getEmail() || isPrivilegedRole() || isEngineer() || isDME());
+      allow read: if request.auth != null;
       
       allow delete: if request.auth != null && isQcDmeSafe();
       
       allow update: if request.auth != null 
-                    && (resource.data.createdBy == getEmail() || isPrivilegedRole() || isEngineer())
+                    && (resource.data.createdBy == getEmail() || isPrivilegedRole() || isEngineer() || isDME())
                     && hasAcceptableFieldCount(request.resource.data, 40);
 
       match /photos/{photoId} {
@@ -274,13 +273,12 @@ service cloud.firestore {
                     && isValidString(request.resource.data.maintenanceName, 500)
                     && isValidString(request.resource.data.createdBy, 200);
       
-      allow read: if request.auth != null 
-                  && (resource.data.createdBy == getEmail() || isPrivilegedRole() || isEngineer() || isDME());
+      allow read: if request.auth != null;
       
       allow delete: if request.auth != null && isQcDmeSafe();
       
       allow update: if request.auth != null 
-                    && (resource.data.createdBy == getEmail() || isPrivilegedRole() || isEngineer())
+                    && (resource.data.createdBy == getEmail() || isPrivilegedRole() || isEngineer() || isDME())
                     && hasAcceptableFieldCount(request.resource.data, 40);
 
       match /photos/{photoId} {
@@ -420,19 +418,15 @@ service cloud.firestore {
 
     match /findings/{findingId} {
       allow create: if request.auth != null 
-                    && (isAdminOrQcDme() || isEngineer())
-                    && hasAcceptableFieldCount(request.resource.data, 20)
-                    && request.resource.data.keys().hasAll(['partName', 'partNumber', 'quantity', 'findingDate', 'photos', 'createdBy', 'createdByEmail', 'createdAt'])
-                    && request.resource.data.createdBy == request.auth.uid
-                    && request.resource.data.createdByEmail == getEmail()
-                    && isValidString(request.resource.data.partName, 500)
-                    && isValidString(request.resource.data.partNumber, 200);
+                    && (isAdminOrQcDme() || isEngineer() || isPrivilegedRole() || isDME() || isStandbyEngineer())
+                    && hasAcceptableFieldCount(request.resource.data, 20);
       
-      allow read: if request.auth != null 
-                  && (resource.data.createdBy == request.auth.uid 
-                      || isPrivilegedRole()
-                      || getEmail().matches('.*dwimitra.*'));
+      allow read: if request.auth != null;
       
+      allow update: if request.auth != null 
+                    && (isAdminOrQcDme() || isEngineer() || isPrivilegedRole() || isDME() || isStandbyEngineer() || resource.data.createdBy == request.auth.uid)
+                    && hasAcceptableFieldCount(request.resource.data, 20);
+
       allow delete: if request.auth != null 
                     && (isAdminOrQcDme() 
                         || resource.data.createdBy == request.auth.uid);
@@ -624,6 +618,17 @@ service cloud.firestore {
                     && (isAdminOrQcDme() || isDME() || isSiteManagerDME() || isEngineer() || isPrivilegedRole() || resource.data.createdBy == getEmail());
       allow delete: if request.auth != null 
                     && (isAdminOrQcDme() || isDME() || isSiteManagerDME() || isPrivilegedRole() || resource.data.createdBy == getEmail());
+    }
+
+    // ============================================================================
+    // Koleksi: monthly_reports — Data & Draft Laporan Bulanan (Monthly Report)
+    // Akses: Admin, DME, Site Manager, Engineer, Standby dapat CRUD. Auth users read.
+    // ============================================================================
+    match /monthly_reports/{docId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null 
+                            && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isEngineer() || isStandbyEngineer() || isPrivilegedRole());
+      allow delete: if request.auth != null && (isAdminOrQcDme() || isSiteManagerDME() || isPrivilegedRole());
     }
 
     match /{document=**} {

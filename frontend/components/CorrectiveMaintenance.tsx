@@ -629,46 +629,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         return createdB - createdA;
     });
 
-    // Helper: Algoritma Matching CM vs SLA (4-Layer: Direct ID -> Incident ID -> Incident Date -> Title Match)
-    const cleanStringForMatch = (s?: string) => {
-        if (!s) return '';
-        return s
-            .toLowerCase()
-            .replace(/\[sla\s*\/?\s*slg\]/gi, '')
-            .replace(/laporan\s+corrective\s+maintenance/gi, '')
-            .replace(/laporan\s+cm/gi, '')
-            .replace(/corrective\s+maintenance/gi, '')
-            .replace(/pemeliharaan\s+corrective/gi, '')
-            .replace(/wo[-_:\s]*/gi, '')
-            .replace(/[^a-z0-9]/g, '')
-            .trim();
-    };
-
-    // Normalize tanggal ke format YYYY-MM-DD agar bisa dicocokkan (abaikan jam/menit)
-    const getDateKey = (r: CorrectiveReport): string => {
-        const ts = getReportIncidentTime(r);
-        if (ts > 0) {
-            const d = new Date(ts);
-            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        }
-        return '';
-    };
-
-    const getCMTitles = (cm: CorrectiveReport): string[] => {
-        const candidates = [cm.incidentName, cm.equipmentName, cm.issue];
-        return candidates
-            .map(c => cleanStringForMatch(c))
-            .filter(c => c.length >= 5);
-    };
-
-    const getSLATitles = (sla: CorrectiveReport): string[] => {
-        const candidates = [sla.ticketName, sla.issue];
-        return candidates
-            .map(c => cleanStringForMatch(c))
-            .filter(c => c.length >= 5);
-    };
-
-    // Helper: Ekstrak kata-kata penting (tokens >= 4 chars) untuk fuzzy token matching
+    // Helper: Ekstrak kata-kata penting (tokens >= 3 chars) untuk fuzzy token matching
     const extractSignificantTokens = (s?: string): string[] => {
         if (!s) return [];
         const clean = s.toLowerCase()
@@ -680,70 +641,70 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             .replace(/neutra\s+dc\s+cikarang/gi, ' ')
             .replace(/[^a-z0-9]/g, ' ');
 
-        const stopWords = new Set(['laporan', 'report', 'pada', 'unit', 'dan', 'atau', 'yang', 'room', 'area', 'gedung', 'office', 'lantai', 'kondisi', 'terdapat', 'mengalami', 'sudah', 'telah']);
+        // STOP WORDS LENGKAP: Filter kata umum insiden / status agar tidak terjadi salah jodoh
+        const stopWords = new Set([
+            'laporan', 'report', 'pada', 'unit', 'dan', 'atau', 'yang', 'room', 'area',
+            'gedung', 'office', 'lantai', 'kondisi', 'terdapat', 'mengalami', 'sudah', 'telah',
+            'alarm', 'indikasi', 'masalah', 'issue', 'problem', 'troubleshoot', 'gangguan',
+            'pengecekan', 'perbaikan', 'temuan', 'maintenance', 'corrective', 'rusak', 'error',
+            'failure', 'normal', 'status', 'hasil', 'pekerjaan', 'tindakan', 'action', 'taken',
+            'summary', 'analisis', 'analysis', 'sistem', 'system', 'device', 'perangkat', 'alat',
+            'order', 'tiket', 'ticket', 'work', 'form', 'data', 'center', 'cikarang', 'neutra'
+        ]);
+
         return clean.split(/\s+/)
-            .filter(w => w.length >= 4 && !stopWords.has(w));
+            .filter(w => w.length >= 3 && !stopWords.has(w));
     };
 
+    interface CMSLAMappingResult {
+        matchedCMIds: Set<string>;
+        cmToSLAMap: Map<string, CorrectiveReport>;
+        slaToCMMap: Map<string, CorrectiveReport>;
+        claimedSLAIds: Set<string>;
+    }
+
     // ===== Global 1-to-1 CM↔SLA Matching (each SLA can only be claimed once) =====
-    const buildCMSLAMapping = (cmList: CorrectiveReport[], slaList: CorrectiveReport[]): Set<string> => {
+    const buildCMSLAMapping = (cmList: CorrectiveReport[], slaList: CorrectiveReport[]): CMSLAMappingResult => {
         const claimedSLAIds = new Set<string>();  // SLA IDs yang sudah dipasangkan
         const matchedCMIds = new Set<string>();    // CM IDs yang sudah punya SLA
+        const cmToSLAMap = new Map<string, CorrectiveReport>();
+        const slaToCMMap = new Map<string, CorrectiveReport>();
 
         // Helper: try to claim an SLA for a CM
-        const tryClaim = (cmId: string, sla: CorrectiveReport): boolean => {
-            if (!sla.id || claimedSLAIds.has(sla.id)) return false;
+        const tryClaim = (cm: CorrectiveReport, sla: CorrectiveReport): boolean => {
+            if (!cm.id || !sla.id || claimedSLAIds.has(sla.id) || matchedCMIds.has(cm.id)) return false;
             claimedSLAIds.add(sla.id);
-            matchedCMIds.add(cmId);
+            matchedCMIds.add(cm.id);
+            cmToSLAMap.set(cm.id, sla);
+            slaToCMMap.set(sla.id, cm);
             return true;
         };
 
-        // Pass 1: Direct cmReportId matching (Exact 100%)
+        // Pass 1: Direct cmReportId / slaReportId matching (Exact 100% ID Link)
         for (const cm of cmList) {
             if (!cm.id || matchedCMIds.has(cm.id)) continue;
-            const match = slaList.find(s => s.id && !claimedSLAIds.has(s.id) && (s as any).cmReportId === cm.id);
-            if (match) tryClaim(cm.id, match);
+            const match = slaList.find(s => s.id && !claimedSLAIds.has(s.id) && (
+                (s as any).cmReportId === cm.id || (cm as any).slaReportId === s.id
+            ));
+            if (match) tryClaim(cm, match);
         }
 
-        // Pass 2: Incident ID / Ticket ID matching
+        // Pass 2: Incident ID / Ticket ID matching (Explicit identical identifier)
         for (const cm of cmList) {
             if (!cm.id || matchedCMIds.has(cm.id)) continue;
             if (!cm.incidentId || cm.incidentId === 'N/A' || cm.incidentId.trim() === '') continue;
-            const match = slaList.find(s => s.id && !claimedSLAIds.has(s.id) && (s.incidentId === cm.incidentId || (s as any).ticketId === cm.incidentId));
-            if (match) tryClaim(cm.id, match);
-        }
-
-        // Pass 3: Specific Title / Equipment Substring Matching (±60 hari)
-        for (const cm of cmList) {
-            if (!cm.id || matchedCMIds.has(cm.id)) continue;
-            const cmTitles = getCMTitles(cm);
-            if (cmTitles.length === 0) continue;
-            const cmTime = getReportIncidentTime(cm);
-
+            const cleanIncId = cm.incidentId.trim().toLowerCase();
             const match = slaList.find(s => {
                 if (!s.id || claimedSLAIds.has(s.id)) return false;
-                const slaTitles = getSLATitles(s);
-                if (slaTitles.length === 0) return false;
-
-                const slaTime = getReportIncidentTime(s);
-                const isDateClose = (cmTime > 0 && slaTime > 0)
-                    ? Math.abs(cmTime - slaTime) <= 60 * 24 * 60 * 60 * 1000
-                    : true;
-                if (!isDateClose) return false;
-
-                for (const cmTitle of cmTitles) {
-                    for (const slaTitle of slaTitles) {
-                        if (cmTitle === slaTitle) return true;
-                        if (cmTitle.length >= 5 && slaTitle.includes(cmTitle)) return true;
-                        if (slaTitle.length >= 5 && cmTitle.includes(slaTitle)) return true;
-                    }
-                }
-                return false;
+                const sInc = (s.incidentId || '').trim().toLowerCase();
+                const sTick = ((s as any).ticketId || '').trim().toLowerCase();
+                return (sInc !== '' && sInc !== 'n/a' && sInc === cleanIncId) ||
+                       (sTick !== '' && sTick !== 'n/a' && sTick === cleanIncId);
             });
-            if (match) tryClaim(cm.id, match);
+            if (match) tryClaim(cm, match);
         }
 
-        // Pass 4: Multi-Token Keyword Overlap Match (±45 hari, minimal 2 kata kunci cocok)
+        // Pass 3: Strict Specific Equipment & Token Overlap (Window waktu KETAT: maksimal 3 hari!)
         for (const cm of cmList) {
             if (!cm.id || matchedCMIds.has(cm.id)) continue;
             const cmTokens = extractSignificantTokens(`${cm.incidentName || ''} ${cm.equipmentName || ''} ${cm.issue || ''}`);
@@ -752,32 +713,36 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
             const match = slaList.find(s => {
                 if (!s.id || claimedSLAIds.has(s.id)) return false;
-                const slaTokens = extractSignificantTokens(`${s.ticketName || ''} ${s.issue || ''} ${s.remark || ''}`);
-                if (slaTokens.length === 0) return false;
 
                 const slaTime = getReportIncidentTime(s);
-                const isDateClose = (cmTime > 0 && slaTime > 0)
-                    ? Math.abs(cmTime - slaTime) <= 45 * 24 * 60 * 60 * 1000
-                    : true;
-                if (!isDateClose) return false;
+                // Toleransi waktu ketat: maksimal 3 hari (259200000 ms)
+                // Jika kedua timestamp valid, selisih hari tidak boleh lebih dari 3 hari
+                if (cmTime > 0 && slaTime > 0) {
+                    const diffDays = Math.abs(cmTime - slaTime) / (1000 * 60 * 60 * 24);
+                    if (diffDays > 3) return false;
+                }
 
-                // Hitung berapa token yang sama
-                const sharedTokens = cmTokens.filter(t => slaTokens.some(st => st === t || (st.length >= 5 && st.includes(t)) || (t.length >= 5 && t.includes(st))));
-                return sharedTokens.length >= 2 || (cmTokens.length === 1 && sharedTokens.length === 1);
+                const slaTokens = extractSignificantTokens(`${s.ticketName || ''} ${s.issue || ''} ${s.remark || ''} ${(s as any).equipmentName || ''}`);
+                if (slaTokens.length === 0) return false;
+
+                // Hitung berapa token non-stopword spesifik yang cocok
+                const sharedTokens = cmTokens.filter(t => slaTokens.some(st => st === t || (st.length >= 6 && st.includes(t)) || (t.length >= 6 && t.includes(st))));
+
+                // Minimal 2 token spesifik cocok (misal: 'genset' & '1f-dg-c', atau 'water' & 'softener')
+                // Atau jika ada 1 token khusus yang sangat spesifik (panjang >= 6 atau mengandung angka unik)
+                const hasStrongSpecificToken = sharedTokens.some(t => t.length >= 6 || /^[0-9]+[a-z0-9\-_]+$/i.test(t));
+                if (sharedTokens.length >= 2 || (sharedTokens.length >= 1 && hasStrongSpecificToken)) {
+                    return true;
+                }
+                return false;
             });
-            if (match) tryClaim(cm.id, match);
+            if (match) tryClaim(cm, match);
         }
 
-        // Pass 5: Fallback Tanggal Sama (Date-based 1-to-1)
-        for (const cm of cmList) {
-            if (!cm.id || matchedCMIds.has(cm.id)) continue;
-            const cmDate = getDateKey(cm);
-            if (!cmDate) continue;
-            const match = slaList.find(s => s.id && !claimedSLAIds.has(s.id) && getDateKey(s) === cmDate);
-            if (match) tryClaim(cm.id, match);
-        }
+        // Catatan: Pass 5 (Date-only matching tanpa cek nama alat) sengaja DIHAPUS 100%
+        // karena menyebabkan CM baru mencaplok SLA dari perangkat lain yang berbeda.
 
-        return matchedCMIds;
+        return { matchedCMIds, cmToSLAMap, slaToCMMap, claimedSLAIds };
     };
 
     const allCMReports = reports.filter(r => r.reportType !== 'SLA' && r.reportType !== 'PIR');
@@ -808,7 +773,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         return true;
     };
 
-    const matchedCMIds = buildCMSLAMapping(
+    const { matchedCMIds, cmToSLAMap, slaToCMMap } = buildCMSLAMapping(
         allCMReports.filter(cm => !cm.deleteRequested),
         allSLAReports
     );
@@ -1171,6 +1136,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                 <SLAForm
                                     editId={editingReportId || undefined}
                                     prefillData={prefillSlaData || undefined}
+                                    availableCMReports={cmRequiringSLAReports}
                                     onSuccess={handleCloseForm}
                                     onCancel={handleCloseForm}
                                 />
@@ -1546,6 +1512,21 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                     <div className="px-2.5 py-1 bg-red-500/10 border border-red-500/30 rounded-lg text-xs font-bold text-red-600 uppercase tracking-wider">
                                                         SLA / SLG
                                                     </div>
+                                                    {(() => {
+                                                        const linkedCM = report.id ? slaToCMMap.get(report.id) : null;
+                                                        if (linkedCM) {
+                                                            return (
+                                                                <span 
+                                                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs" 
+                                                                    title={`Tertaut ke Laporan CM: ${linkedCM.incidentName || linkedCM.equipmentName || linkedCM.issue}`}
+                                                                >
+                                                                    <FileText className="w-3 h-3 text-blue-600" />
+                                                                    CM: {linkedCM.incidentName ? (linkedCM.incidentName.length > 24 ? linkedCM.incidentName.slice(0, 24) + '...' : linkedCM.incidentName) : (linkedCM.equipmentName || 'Terkait CM')}
+                                                                </span>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
                                                     <div className="flex items-center gap-1.5 text-xs text-slate-400">
                                                         <Calendar className="w-3.5 h-3.5 text-slate-500" />
                                                         <span>{(report as any).timeOrder ? new Date((report as any).timeOrder).toLocaleDateString() : (report.reportedAt?.toDate?.()?.toLocaleDateString() || '-')}</span>
@@ -1800,16 +1781,30 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                     );
                                                                 }
 
-                                                                const hasSLA = report.id ? matchedCMIds.has(report.id) : false;
+                                                                const linkedSLA = report.id ? cmToSLAMap.get(report.id) : null;
+                                                                const hasSLA = Boolean(linkedSLA);
                                                                 if (hasSLA) {
                                                                     return (
-                                                                        <span
-                                                                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                                                            title="SLA sudah terbit"
-                                                                        >
-                                                                            <Check className="w-3 h-3 text-emerald-600" />
-                                                                            SLA Terbit
-                                                                        </span>
+                                                                        <div className="inline-flex items-center gap-1.5 flex-wrap">
+                                                                            <span
+                                                                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs"
+                                                                                title={`SLA sudah terbit: ${linkedSLA?.ticketName || 'Form SLA/SLG'}`}
+                                                                            >
+                                                                                <Check className="w-3 h-3 text-emerald-600" />
+                                                                                SLA Terbit {linkedSLA?.ticketName ? `(${linkedSLA.ticketName.length > 22 ? linkedSLA.ticketName.slice(0, 22) + '...' : linkedSLA.ticketName})` : ''}
+                                                                            </span>
+                                                                            {isAuthorizedRole && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => handleCreateSLAFromCM(report)}
+                                                                                    className="px-2 py-0.5 bg-slate-100 hover:bg-amber-100 text-slate-600 hover:text-amber-800 text-[10px] font-bold rounded-md transition border border-slate-300 hover:border-amber-300 flex items-center gap-1 cursor-pointer"
+                                                                                    title="Buat Form SLA tambahan atau buat baru jika SLA terkait tidak cocok"
+                                                                                >
+                                                                                    <Zap className="w-2.5 h-2.5 text-amber-600 fill-current" />
+                                                                                    <span>+ Buat SLA Baru</span>
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
                                                                     );
                                                                 }
                                                                 return (
