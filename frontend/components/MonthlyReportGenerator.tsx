@@ -1265,26 +1265,26 @@ export function MonthlyReportGenerator() {
                       />
                       <button
                         onClick={() => {
-                          const updated = { ...reportData };
-                          if (!updated.tableOfContents) {
-                            updated.tableOfContents = [
-                              { title: '1. Executive Summary', page: '5' },
-                              { title: '2. Key Highlight', page: '5' },
-                              { title: '3. General Information', page: '218' },
-                              { title: '4. Maintenance Objectives', page: '218' },
-                              { title: '5. Equipment and System Details', page: '220' },
-                              { title: '6. Scope of Work', page: '238' },
-                              { title: '7. Observation and Finding', page: '252' },
-                              { title: '8. Repairs, Replacement & Services', page: '256' },
-                              { title: '9. Testing & Validation', page: '258' },
-                              { title: '10. Challenges, Mitigation and Lesson Learned', page: '259' },
-                              { title: '11. Recommendations and Future Action', page: '264' },
-                              { title: '12. Photo and Documentation Log', page: '265' },
-                              { title: '13. Appendices', page: '268' }
-                            ];
-                          }
-                          updated.tableOfContents.splice(idx, 1);
-                          setReportData(updated);
+                          const defaultTOC = [
+                            { title: '1. Executive Summary', page: '5' },
+                            { title: '2. Key Highlight', page: '5' },
+                            { title: '3. General Information', page: '218' },
+                            { title: '4. Maintenance Objectives', page: '218' },
+                            { title: '5. Equipment and System Details', page: '220' },
+                            { title: '6. Scope of Work', page: '238' },
+                            { title: '7. Observation and Finding', page: '252' },
+                            { title: '8. Repairs, Replacement & Services', page: '256' },
+                            { title: '9. Testing & Validation', page: '258' },
+                            { title: '10. Challenges, Mitigation and Lesson Learned', page: '259' },
+                            { title: '11. Recommendations and Future Action', page: '264' },
+                            { title: '12. Photo and Documentation Log', page: '265' },
+                            { title: '13. Appendices', page: '268' }
+                          ];
+                          const currentTOC = reportData.tableOfContents && reportData.tableOfContents.length > 0
+                            ? reportData.tableOfContents
+                            : defaultTOC;
+                          const newTOC = currentTOC.filter((_, i) => i !== idx);
+                          setReportData({ ...reportData, tableOfContents: newTOC });
                           toast.info('Bab dihapus dari Daftar Isi.');
                         }}
                         className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-600 transition-opacity cursor-pointer print:hidden"
@@ -1520,9 +1520,8 @@ export function MonthlyReportGenerator() {
                             { title: 'Table 35. Recommendations and Future Action', page: '264' },
                             { title: 'Table 36. Photo and Documentation Log', page: '265' }
                           ];
-                          list.splice(idx, 1);
-                          updated.listOfTables = list;
-                          setReportData(updated);
+                          const newList = list.filter((_, i) => i !== idx);
+                          setReportData({ ...reportData, listOfTables: newList });
                           toast.info('Tabel dihapus dari List of Tables.');
                         }}
                         className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-600 transition-opacity cursor-pointer print:hidden"
@@ -1658,17 +1657,17 @@ export function MonthlyReportGenerator() {
                       </div>
                       <button
                         onClick={() => {
-                          const updated = { ...reportData };
-                          if (!updated.purposePoints) {
-                            updated.purposePoints = [
-                              { title: 'Documentation of Preventive Maintenance Activities:', desc: 'Records all PM activities that have been carried out for one month. Include details such as schedule, equipment maintained, methods used, inspection results, and corrective actions if any.' },
-                              { title: 'Equipment and System Performance Evaluation:', desc: 'Assess the condition of equipment based on inspection and maintenance results.' },
-                              { title: 'Reporting to Management:', desc: 'Provides management with a comprehensive overview of the condition of the facility and the effectiveness of the PM program.' },
-                              { title: 'Ensure Compliance with Procedures and Standards:', desc: 'Prove that PM activities are carried out in accordance with applicable Procedures and regulations (e.g. national/international standards).' }
-                            ];
-                          }
-                          updated.purposePoints.splice(pIdx, 1);
-                          setReportData(updated);
+                          const defaultPoints = [
+                            { title: 'Documentation of Preventive Maintenance Activities:', desc: 'Records all PM activities that have been carried out for one month. Include details such as schedule, equipment maintained, methods used, inspection results, and corrective actions if any.' },
+                            { title: 'Equipment and System Performance Evaluation:', desc: 'Assess the condition of equipment based on inspection and maintenance results.' },
+                            { title: 'Reporting to Management:', desc: 'Provides management with a comprehensive overview of the condition of the facility and the effectiveness of the PM program.' },
+                            { title: 'Ensure Compliance with Procedures and Standards:', desc: 'Prove that PM activities are carried out in accordance with applicable Procedures and regulations (e.g. national/international standards).' }
+                          ];
+                          const curPoints = reportData.purposePoints && reportData.purposePoints.length > 0
+                            ? reportData.purposePoints
+                            : defaultPoints;
+                          const newPoints = curPoints.filter((_, i) => i !== pIdx);
+                          setReportData({ ...reportData, purposePoints: newPoints });
                           toast.info('Poin tujuan dihapus.');
                         }}
                         className="absolute right-0 top-1 opacity-0 group-hover:opacity-100 p-1 hover:text-red-600 transition-opacity cursor-pointer print:hidden"
@@ -1819,10 +1818,10 @@ export function MonthlyReportGenerator() {
                         <td className="py-1 px-1 text-center print:hidden">
                           <button
                             onClick={() => {
-                              const updated = { ...reportData };
-                              updated.scheduleTable1.splice(idx, 1);
-                              updated.scheduleTable1.forEach((s, i) => { s.no = i + 1; });
-                              setReportData(updated);
+                              const newSched = reportData.scheduleTable1
+                                .filter((_, i) => i !== idx)
+                                .map((s, i) => ({ ...s, no: i + 1 }));
+                              setReportData({ ...reportData, scheduleTable1: newSched });
                               toast.info('Baris jadwal dihapus.');
                             }}
                             className="p-1 hover:text-red-600 transition-colors cursor-pointer"
@@ -1845,30 +1844,68 @@ export function MonthlyReportGenerator() {
                       <p className="font-bold text-slate-900 text-sm font-serif">
                         {tTable.title}
                       </p>
-                      <button
-                        onClick={() => {
-                          const updated = { ...reportData };
-                          const newNo = updated.taskPerformanceTables[tIdx].items.length + 1;
-                          updated.taskPerformanceTables[tIdx].items.push({
-                            no: newNo,
-                            className: `${tTable.scope} #${newNo}`,
-                            capacity: 'Standard Rating',
-                            location: 'NeutraDC Campus',
-                            productName: 'OEM Certified',
-                            taskPM: 'Inspection, cleaning, parameter checks, and functional testing.',
-                            criticalRepairs: '-',
-                            operationalStatus: 'Good Condition / Normal Operation',
-                            issues: '-',
-                            recommendations: '-'
-                          });
-                          setReportData(updated);
-                          toast.success(`Baris baru ditambahkan ke ${tTable.scope}!`);
-                        }}
-                        className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold font-sans transition-all cursor-pointer print:hidden"
-                      >
-                        <Plus className="w-3 h-3" />
-                        <span>Tambah Alat {tTable.scope}</span>
-                      </button>
+                      <div className="flex items-center gap-2 print:hidden">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updatedTables = reportData.taskPerformanceTables.map((tbl, ti) => {
+                              if (ti !== tIdx) return tbl;
+                              const newNo = tbl.items.length + 1;
+                              return {
+                                ...tbl,
+                                items: [
+                                  ...tbl.items,
+                                  {
+                                    no: newNo,
+                                    className: `${tbl.scope} #${newNo}`,
+                                    capacity: 'Standard Rating',
+                                    location: 'NeutraDC Campus',
+                                    productName: 'OEM Certified',
+                                    taskPM: 'Inspection, cleaning, parameter checks, and functional testing.',
+                                    criticalRepairs: '-',
+                                    operationalStatus: 'Good Condition / Normal Operation',
+                                    issues: '-',
+                                    recommendations: '-'
+                                  }
+                                ]
+                              };
+                            });
+                            setReportData({
+                              ...reportData,
+                              taskPerformanceTables: updatedTables
+                            });
+                            toast.success(`Baris baru ditambahkan ke ${tTable.scope}!`);
+                          }}
+                          className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold font-sans transition-all cursor-pointer"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>Tambah Alat {tTable.scope}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm(`Hapus seluruh tabel "${tTable.title}"?`)) {
+                              const newTables = reportData.taskPerformanceTables
+                                .filter((_, i) => i !== tIdx)
+                                .map((tbl, i) => ({
+                                  ...tbl,
+                                  no: i + 2,
+                                  title: `Table ${i + 2}. Maintenance Scope for ${tbl.scope}`
+                                }));
+                              setReportData({
+                                ...reportData,
+                                taskPerformanceTables: newTables
+                              });
+                              toast.info(`Tabel "${tTable.title}" berhasil dihapus.`);
+                            }
+                          }}
+                          className="flex items-center gap-1 px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-lg text-xs font-bold font-sans transition-all cursor-pointer"
+                          title="Hapus tabel ini"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Hapus Tabel</span>
+                        </button>
+                      </div>
                     </div>
 
                     <div className="overflow-x-auto border border-black">
@@ -2012,11 +2049,19 @@ export function MonthlyReportGenerator() {
                               </td>
                               <td className="py-1 px-1 text-center print:hidden">
                                 <button
+                                  type="button"
                                   onClick={() => {
-                                    const updated = { ...reportData };
-                                    updated.taskPerformanceTables[tIdx].items.splice(iIdx, 1);
-                                    updated.taskPerformanceTables[tIdx].items.forEach((it, idx) => { it.no = idx + 1; });
-                                    setReportData(updated);
+                                    const updatedTables = reportData.taskPerformanceTables.map((tbl, ti) => {
+                                      if (ti !== tIdx) return tbl;
+                                      const newItems = tbl.items
+                                        .filter((_, ii) => ii !== iIdx)
+                                        .map((it, idx) => ({ ...it, no: idx + 1 }));
+                                      return { ...tbl, items: newItems };
+                                    });
+                                    setReportData({
+                                      ...reportData,
+                                      taskPerformanceTables: updatedTables
+                                    });
                                     toast.info('Baris peralatan dihapus.');
                                   }}
                                   className="p-1 hover:text-red-600 transition-colors cursor-pointer"
@@ -2205,10 +2250,13 @@ export function MonthlyReportGenerator() {
                         className="w-full text-center text-xs py-0.5 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none font-medium text-slate-800"
                       />
                       <button
+                        type="button"
                         onClick={() => {
-                          const updated = { ...reportData };
-                          updated.generalInfo.teamMembers.splice(idx, 1);
-                          setReportData(updated);
+                          const newMembers = (reportData.generalInfo.teamMembers || []).filter((_, i) => i !== idx);
+                          setReportData({
+                            ...reportData,
+                            generalInfo: { ...reportData.generalInfo, teamMembers: newMembers }
+                          });
                           toast.info('Anggota tim dihapus.');
                         }}
                         className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-600 transition-opacity cursor-pointer print:hidden"
@@ -2571,12 +2619,9 @@ export function MonthlyReportGenerator() {
                             type="button"
                             title="Hapus baris PM"
                             onClick={() => {
-                              const updated = { ...reportData };
-                              if (updated.progressPmTable19) {
-                                updated.progressPmTable19.splice(idx, 1);
-                                setReportData(updated);
-                                toast.info('Baris PM berhasil dihapus');
-                              }
+                              const newPm = (reportData.progressPmTable19 || []).filter((_, i) => i !== idx);
+                              setReportData({ ...reportData, progressPmTable19: newPm });
+                              toast.info('Baris PM berhasil dihapus');
                             }}
                             className="p-1 text-slate-400 hover:text-red-500 rounded cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
                           >
@@ -2765,12 +2810,9 @@ export function MonthlyReportGenerator() {
                             type="button"
                             title="Hapus baris SLA"
                             onClick={() => {
-                              const updated = { ...reportData };
-                              if (updated.slaOrdersTable19) {
-                                updated.slaOrdersTable19.splice(sIdx, 1);
-                                setReportData(updated);
-                                toast.info('Baris SLA berhasil dihapus');
-                              }
+                              const newSla = (reportData.slaOrdersTable19 || []).filter((_, i) => i !== sIdx);
+                              setReportData({ ...reportData, slaOrdersTable19: newSla });
+                              toast.info('Baris SLA berhasil dihapus');
                             }}
                             className="p-1 text-slate-400 hover:text-red-500 rounded cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
                           >
@@ -2940,23 +2982,29 @@ export function MonthlyReportGenerator() {
                 <h2 className="text-xl font-bold text-slate-900">5. Equipment and System Details</h2>
                 <div className="flex items-center gap-2 print:hidden">
                   <button
+                    type="button"
                     onClick={() => {
-                      const updated = { ...reportData };
                       const targetSys = selectedEquipmentCategory !== 'ALL' ? selectedEquipmentCategory : 'Transformer';
-                      const existingInSys = updated.equipmentDetailsTable20.filter(e => (e.system || 'Other Equipment') === targetSys);
-                      updated.equipmentDetailsTable20.push({
-                        no: existingInSys.length + 1,
-                        system: targetSys,
-                        className: 'New Facility Asset',
-                        modelSN: '-',
-                        manufacture: 'OEM Certified',
-                        installDate: '2021',
-                        location: 'Campus Area',
-                        lastMaintenanceDate: '',
-                        currentOperationalDate: '',
-                        statusBeforeMaintenance: 'Good Operation / Normal\nBeroperasi Baik / Normal'
+                      const existingInSys = (reportData.equipmentDetailsTable20 || []).filter(e => (e.system || 'Other Equipment') === targetSys);
+                      const newEquip = [
+                        ...(reportData.equipmentDetailsTable20 || []),
+                        {
+                          no: existingInSys.length + 1,
+                          system: targetSys,
+                          className: 'New Facility Asset',
+                          modelSN: '-',
+                          manufacture: 'OEM Certified',
+                          installDate: '2021',
+                          location: 'Campus Area',
+                          lastMaintenanceDate: '',
+                          currentOperationalDate: '',
+                          statusBeforeMaintenance: 'Good Operation / Normal\nBeroperasi Baik / Normal'
+                        }
+                      ];
+                      setReportData({
+                        ...reportData,
+                        equipmentDetailsTable20: newEquip
                       });
-                      setReportData(updated);
                       toast.success(`Equipment baru berhasil ditambahkan ke kategori ${targetSys}!`);
                     }}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold font-sans transition-all cursor-pointer"
@@ -3061,9 +3109,37 @@ export function MonthlyReportGenerator() {
                             <td colSpan={10} className="py-2 px-3 font-bold text-[#1F4E79] text-xs sm:text-sm">
                               <div className="flex items-center justify-between">
                                 <span className="font-serif tracking-wide">{sysName}</span>
-                                <span className="text-[11px] font-sans font-normal text-slate-600 print:hidden">
-                                  {visibleItems.length} unit
-                                </span>
+                                <div className="flex items-center gap-2 print:hidden">
+                                  <span className="text-[11px] font-sans font-normal text-slate-600">
+                                    {visibleItems.length} unit
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (window.confirm(`Hapus seluruh peralatan dalam kategori "${sysName}"?`)) {
+                                        const newEquip = (reportData.equipmentDetailsTable20 || []).filter(
+                                          (e) => (e.system || 'General Equipment') !== sysName
+                                        );
+                                        const sysCounter = new Map<string, number>();
+                                        newEquip.forEach((item) => {
+                                          const s = item.system || 'Other Equipment';
+                                          const count = (sysCounter.get(s) || 0) + 1;
+                                          sysCounter.set(s, count);
+                                          item.no = count;
+                                        });
+                                        setReportData({
+                                          ...reportData,
+                                          equipmentDetailsTable20: newEquip
+                                        });
+                                        toast.info(`Kategori "${sysName}" berhasil dihapus.`);
+                                      }
+                                    }}
+                                    className="p-1 hover:text-red-600 text-slate-500 hover:bg-red-100/50 rounded transition-colors cursor-pointer"
+                                    title={`Hapus seluruh kategori ${sysName}`}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
                             </td>
                           </tr>
@@ -3177,17 +3253,20 @@ export function MonthlyReportGenerator() {
                               </td>
                               <td className="py-1 px-1 text-center print:hidden">
                                 <button
+                                  type="button"
                                   onClick={() => {
-                                    const updated = { ...reportData };
-                                    updated.equipmentDetailsTable20.splice(idx, 1);
+                                    const newEquip = (reportData.equipmentDetailsTable20 || []).filter((_, i) => i !== idx);
                                     const sysCounter = new Map<string, number>();
-                                    updated.equipmentDetailsTable20.forEach((item) => {
+                                    newEquip.forEach((item) => {
                                       const s = item.system || 'Other Equipment';
                                       const count = (sysCounter.get(s) || 0) + 1;
                                       sysCounter.set(s, count);
                                       item.no = count;
                                     });
-                                    setReportData(updated);
+                                    setReportData({
+                                      ...reportData,
+                                      equipmentDetailsTable20: newEquip
+                                    });
                                     toast.info('Equipment dihapus.');
                                   }}
                                   className="p-1 hover:text-red-600 transition-colors cursor-pointer"
@@ -3273,11 +3352,15 @@ export function MonthlyReportGenerator() {
                           </td>
                           <td className="py-1 px-1 text-center print:hidden">
                             <button
+                              type="button"
                               onClick={() => {
-                                const updated = { ...reportData };
-                                updated.systemOverviewTable21.splice(idx, 1);
-                                updated.systemOverviewTable21.forEach((it, i) => { it.no = i + 1; });
-                                setReportData(updated);
+                                const newSys = (reportData.systemOverviewTable21 || [])
+                                  .filter((_, i) => i !== idx)
+                                  .map((it, i) => ({ ...it, no: i + 1 }));
+                                setReportData({
+                                  ...reportData,
+                                  systemOverviewTable21: newSys
+                                });
                                 toast.info('Komponen dihapus.');
                               }}
                               className="p-1 hover:text-red-600 transition-colors cursor-pointer"
@@ -3385,10 +3468,11 @@ export function MonthlyReportGenerator() {
                         </button>
                         <button
                           onClick={() => {
-                            const updated = { ...reportData };
-                            updated.scopeOfWorkTable22.splice(sIdx, 1);
-                            setReportData(updated);
-                            toast.info('Kategori SOP dihapus.');
+                            if (window.confirm(`Hapus seluruh SOP kategori "${sow.scope}"?`)) {
+                              const newSow = reportData.scopeOfWorkTable22.filter((_, i) => i !== sIdx);
+                              setReportData({ ...reportData, scopeOfWorkTable22: newSow });
+                              toast.info('Kategori SOP dihapus.');
+                            }
                           }}
                           className="p-1 hover:text-red-200 transition-colors cursor-pointer"
                           title="Hapus Kategori"
@@ -3427,10 +3511,17 @@ export function MonthlyReportGenerator() {
                                 + Task
                               </button>
                               <button
+                                type="button"
                                 onClick={() => {
-                                  const updated = { ...reportData };
-                                  updated.scopeOfWorkTable22[sIdx].items.splice(stIdx, 1);
-                                  setReportData(updated);
+                                  const newSow = reportData.scopeOfWorkTable22.map((cat, ci) => {
+                                    if (ci !== sIdx) return cat;
+                                    return {
+                                      ...cat,
+                                      items: cat.items.filter((_, ii) => ii !== stIdx)
+                                    };
+                                  });
+                                  setReportData({ ...reportData, scopeOfWorkTable22: newSow });
+                                  toast.info('Tahapan SOP dihapus.');
                                 }}
                                 className="p-0.5 hover:text-red-600 cursor-pointer"
                               >
@@ -3456,10 +3547,21 @@ export function MonthlyReportGenerator() {
                                   indentId={true}
                                 />
                                 <button
+                                  type="button"
                                   onClick={() => {
-                                    const updated = { ...reportData };
-                                    updated.scopeOfWorkTable22[sIdx].items[stIdx].tasks.splice(tIdx, 1);
-                                    setReportData(updated);
+                                    const newSow = reportData.scopeOfWorkTable22.map((cat, ci) => {
+                                      if (ci !== sIdx) return cat;
+                                      const newItems = cat.items.map((it, ii) => {
+                                        if (ii !== stIdx) return it;
+                                        return {
+                                          ...it,
+                                          tasks: it.tasks.filter((_, ti) => ti !== tIdx)
+                                        };
+                                      });
+                                      return { ...cat, items: newItems };
+                                    });
+                                    setReportData({ ...reportData, scopeOfWorkTable22: newSow });
+                                    toast.info('Poin task dihapus.');
                                   }}
                                   className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-600 transition-opacity cursor-pointer print:hidden self-start mt-1"
                                 >
@@ -3610,11 +3712,16 @@ export function MonthlyReportGenerator() {
                             </td>
                             <td className="py-1 px-1 text-center print:hidden">
                               <button
+                                type="button"
                                 onClick={() => {
-                                  const updated = { ...reportData };
-                                  updated.observationTable23[sIdx].items.splice(iIdx, 1);
-                                  updated.observationTable23[sIdx].items.forEach((it, idx) => { it.no = idx + 1; });
-                                  setReportData(updated);
+                                  const newObs = reportData.observationTable23.map((sec, si) => {
+                                    if (si !== sIdx) return sec;
+                                    const newItems = sec.items
+                                      .filter((_, ii) => ii !== iIdx)
+                                      .map((it, idx) => ({ ...it, no: idx + 1 }));
+                                    return { ...sec, items: newItems };
+                                  });
+                                  setReportData({ ...reportData, observationTable23: newObs });
                                   toast.info('Baris temuan dihapus.');
                                 }}
                                 className="p-1 hover:text-red-600 transition-colors cursor-pointer"
@@ -3636,15 +3743,18 @@ export function MonthlyReportGenerator() {
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold text-slate-900">Root Cause Analysis</h3>
                   <button
+                    type="button"
                     onClick={() => {
-                      const updated = { ...reportData };
-                      updated.rootCauseAnalyses.push({
-                        title: 'Analisis Root Cause Baru',
-                        system: 'General Facility System',
-                        description: 'Jelaskan kronologi, faktor penyebab utama, serta dampaknya terhadap sistem.',
-                        photos: []
-                      });
-                      setReportData(updated);
+                      const newRca = [
+                        ...(reportData.rootCauseAnalyses || []),
+                        {
+                          title: 'Analisis Root Cause Baru',
+                          system: 'General Facility System',
+                          description: 'Jelaskan kronologi, faktor penyebab utama, serta dampaknya terhadap sistem.',
+                          photos: []
+                        }
+                      ];
+                      setReportData({ ...reportData, rootCauseAnalyses: newRca });
                       toast.success('RCA baru berhasil ditambahkan!');
                     }}
                     className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold font-sans transition-all cursor-pointer print:hidden"
@@ -3668,10 +3778,10 @@ export function MonthlyReportGenerator() {
                         className="text-sm font-bold text-blue-950 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-2 py-1 outline-none w-3/4 resize-none leading-tight font-serif whitespace-pre-line"
                       />
                       <button
+                        type="button"
                         onClick={() => {
-                          const updated = { ...reportData };
-                          updated.rootCauseAnalyses.splice(rIdx, 1);
-                          setReportData(updated);
+                          const newRca = (reportData.rootCauseAnalyses || []).filter((_, i) => i !== rIdx);
+                          setReportData({ ...reportData, rootCauseAnalyses: newRca });
                           toast.info('RCA dihapus.');
                         }}
                         className="p-1 hover:text-red-600 transition-colors cursor-pointer print:hidden"

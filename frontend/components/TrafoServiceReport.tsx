@@ -41,7 +41,7 @@ export function TrafoServiceReport({ prefillData, onClearPrefill, onChange }: Tr
     if (onChange) {
       onChange({ customerInfo, reportData, timeSpent });
     }
-  }, [customerInfo, reportData, timeSpent, onChange]);
+   }, [customerInfo, reportData, timeSpent, onChange]);
 
   // Load from prefill or sinkronisasi
   useEffect(() => {

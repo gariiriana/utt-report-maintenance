@@ -17,10 +17,11 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/components/AuthContext';
 import { WAGatewayModal } from '@/components/WAGatewayModal';
+import { MASTER_PM_SCHEDULES } from '@/utils/monthlyReportData';
 
-// ─── SCHEDULE DATA (from official 2026 PM spreadsheet) ────────────────────────
+// ─── SCHEDULE DATA (Synchronized from MASTER_PM_SCHEDULES / 2026 PM spreadsheet) ─────────
 
-interface PMScheduleItem {
+export interface PMScheduleItem {
   device: string;
   location: string;
   months: (string | null)[]; // 12 months: Jan..Dec, null = no plan
@@ -28,288 +29,25 @@ interface PMScheduleItem {
   category: 'electrical' | 'mechanical' | 'safety' | 'hvac' | 'civil' | 'general';
 }
 
-const SCHEDULE_DATA: PMScheduleItem[] = [
-  {
-    device: 'UPS',
-    location: 'Elecroom and Power Room',
-    months: [null, null, '02 - 06', null, null, '02 - 08', null, null, '01 - 07', null, null, '07 - 11'],
-    remarks: '- Offline Maintenance\na. Deep cleaning module (partial)\nb. Tightening torque termination\n- Special Test\na. Test bypass static & manual bypass\nb. Mechanical test\nc. Electrical test\nd. Alarm test\ne. Integration system test',
-    category: 'electrical'
-  },
-  {
-    device: 'CRAC Data Hall & Supporting Room',
-    location: 'CRAC Room 3 & 4',
-    months: [null, null, '25 - 31', null, null, '22 - 26', null, null, '21 - 25', null, null, '07 - 11'],
-    remarks: '- Special Test\na. EC Fan and motorized valve control\nb. Simulated alarm test\nc. Automatic back up test\nd. ATS test\ne. Interlock simulation',
-    category: 'hvac'
-  },
-  {
-    device: 'Chiller',
-    location: '1F Power House',
-    months: [null, '18 - 24', null, null, '18 - 22', null, null, '18 - 24', null, null, '16 - 20', null],
-    remarks: "Maintenance activity doesn't interfere equipment that is in operation condition",
-    category: 'hvac'
-  },
-  {
-    device: 'Cooling Tower',
-    location: '4F Power House',
-    months: [null, '18 - 24', null, null, '18 - 22', null, null, '18 - 24', null, null, '16 - 20', null],
-    remarks: "Maintenance activity doesn't interfere equipment that is in operation condition",
-    category: 'hvac'
-  },
-  {
-    device: 'Cooling Pump',
-    location: '1F Power House',
-    months: [null, null, '09 - 13', null, null, '08 - 12', null, null, '07 - 11', null, null, '07 - 11'],
-    remarks: "Maintenance activity doesn't interfere equipment that is in operation condition",
-    category: 'mechanical'
-  },
-  {
-    device: 'ATS',
-    location: 'Power Room and Elec Room',
-    months: [null, null, '02 - 06', null, null, '02 - 08', null, null, '01 - 07', null, null, '07 - 11'],
-    remarks: 'Maintenance activity performed in operation condition',
-    category: 'electrical'
-  },
-  {
-    device: 'Transformer',
-    location: 'Power Room and Trafo Room',
-    months: [null, '23 - 27', null, null, '22 - 29', null, null, '24 - 31', null, null, '16 - 20', null],
-    remarks: '- Offline Maintenance\na. Repaint (if necessary)\nb. Tightening torque termination\nc. TTR measurement\nd. Insulation measurement\n- Special Test\na. Protection system test (Protection Relay, Temperature control)',
-    category: 'electrical'
-  },
-  {
-    device: 'Generator & Fuel System',
-    location: '2F Power House',
-    months: [null, '16 - 23', null, null, '18 - 22', null, null, '18 - 31', null, null, '16 - 20', null],
-    remarks: '- Consumable Material Replacement\na. Oil engine & oil filter\nb. Filter water separator\nc. Oil separator water element\nd. Air filter & coolant (if necessary)\ne. Fuel pre-filter & fuel filter\n- Special Test\na. Test performance with dummy load\nb. Fuel, oil, and coolant test lab',
-    category: 'electrical'
-  },
-  {
-    device: 'MV and RMU Panel',
-    location: 'MV Room',
-    months: [null, null, '23 - 27', null, null, '15 - 22', null, null, '14 - 18', null, null, '14 - 18'],
-    remarks: '- Offline Maintenance\na. Cleaning CT/VT, cubicle, circuit breaker, protection relay\nb. Tightening torque termination\n- Special Test\na. Protection relay test\nb. Mechanical test\nc. Electrical test',
-    category: 'electrical'
-  },
-  {
-    device: 'LV Panel',
-    location: 'Power Room',
-    months: [null, '23 - 27', null, null, '04 - 08', null, null, '03 - 07', null, null, '02 - 06', null],
-    remarks: 'Maintenance activity performed in operation condition',
-    category: 'electrical'
-  },
-  {
-    device: 'PDU Panel',
-    location: 'CRAC Room 1-4',
-    months: [null, '13 - 20', null, null, '18 - 22', null, null, '18 - 24', null, null, '16 - 20', null],
-    remarks: 'Maintenance activity performed in operation condition',
-    category: 'electrical'
-  },
-  {
-    device: 'FSS',
-    location: 'ALL Area Campus',
-    months: [null, '16 - 27', null, null, '18 - 29', null, null, '17 - 28', null, null, '16 - 30', null],
-    remarks: "Maintenance activity doesn't interfere equipment that is in operation condition",
-    category: 'safety'
-  },
-  {
-    device: 'Hydrant System',
-    location: 'ALL Area Campus',
-    months: ['19 - 23', null, null, '20 - 24', null, null, '20 - 24', null, null, '19 - 23', null, null],
-    remarks: '- Consumable Material Replacement\na. Oil engine & oil filter\nb. Filter water separator\nc. Oil separator water element\nd. Air filter & coolant (if necessary)\ne. Accu\n- Special Test\na. Fuel and oil lab test',
-    category: 'safety'
-  },
-  {
-    device: 'Pre-Action System',
-    location: 'ALL Area Campus',
-    months: [null, '02 - 06', null, null, '04 - 08', null, null, '03 - 07', null, null, '02 - 06', null],
-    remarks: "Maintenance activity doesn't interfere equipment that is in operation condition",
-    category: 'safety'
-  },
-  {
-    device: 'Lighting Point',
-    location: 'ALL Area Campus',
-    months: [null, null, '16 - 27', null, null, '15 - 26', null, null, '14 - 25', null, null, '07 - 18'],
-    remarks: 'Maintenance activity performed in operation condition',
-    category: 'electrical'
-  },
-  {
-    device: 'Grounding System',
-    location: 'ALL Area Campus',
-    months: [null, null, '16 - 27', null, null, '15 - 26', null, null, '14 - 25', null, null, '07 - 18'],
-    remarks: 'Maintenance activity performed in operation condition',
-    category: 'electrical'
-  },
-  {
-    device: 'Lightning Protection System',
-    location: 'ALL Area Campus',
-    months: [null, '09 - 13', null, null, '11 - 18', null, null, '10 - 14', null, null, '09 - 13', null],
-    remarks: 'Maintenance activity performed in operation condition',
-    category: 'electrical'
-  },
-  {
-    device: 'Water Leak',
-    location: 'ALL Area Campus',
-    months: ['05 - 08', null, null, '06 - 10', null, null, '06 - 10', null, null, '05 - 09', null, null],
-    remarks: 'Maintenance activity performed in operation condition',
-    category: 'safety'
-  },
-  {
-    device: 'Fuel Leak',
-    location: 'Ground Tank',
-    months: ['12 - 19', null, null, '13 - 17', null, null, '13 - 17', null, null, '12 - 16', null, null],
-    remarks: 'Maintenance activity performed in operation condition',
-    category: 'safety'
-  },
-  {
-    device: 'FCU',
-    location: 'ALL Area Campus',
-    months: ['05 - 14', null, null, '06 - 15', null, null, '06 - 15', null, null, '05 - 14', null, null],
-    remarks: "Maintenance activity doesn't interfere equipment that is in operation condition",
-    category: 'hvac'
-  },
-  {
-    device: 'AHU',
-    location: 'ALL Area Campus',
-    months: ['27 - 30', null, null, '27 - 30', null, null, '27 - 30', null, null, '26 - 29', null, null],
-    remarks: "Maintenance activity doesn't interfere equipment that is in operation condition",
-    category: 'hvac'
-  },
-  {
-    device: 'VRV',
-    location: 'Office',
-    months: [null, '16 - 27', null, null, '18 - 29', null, null, '18 - 31', null, null, '09 - 20', null],
-    remarks: "Maintenance activity doesn't interfere equipment that is in operation condition",
-    category: 'hvac'
-  },
-  {
-    device: 'AC Splits',
-    location: 'Office and Campus',
-    months: [null, '24 - 27', null, null, '25 - 29', null, null, '24 - 28', null, null, '23 - 27', null],
-    remarks: "Maintenance activity doesn't interfere equipment that is in operation condition",
-    category: 'hvac'
-  },
-  {
-    device: 'Cooling Tower Water Treatment',
-    location: '4F Power House',
-    months: ['05 - 09', '02 - 06', '02 - 06', '06 - 10', '04 - 08', '02 - 05', '06 - 10', '03 - 07', '01 - 04', '05 - 09', '02 - 06', '07 - 11'],
-    remarks: '- Consumable Material Replacement\na. Chemical refill',
-    category: 'hvac'
-  },
-  {
-    device: 'Lift Units',
-    location: 'Office and Campus',
-    months: ['08 - 15', '09 - 13', '09 - 13', '13 - 17', '11 - 19', '08 - 15', '06 - 10', '10 - 14', '07 - 11', '05 - 09', '09 - 13', '07 - 11'],
-    remarks: '- Consumable Material Replacement\na. Battery',
-    category: 'mechanical'
-  },
-  {
-    device: 'Panel LDB & RDB (Distribution)',
-    location: 'All Area',
-    months: [null, null, '04 - 13', null, null, '16 - 26', null, null, '16 - 25', null, null, '09 - 18'],
-    remarks: "Maintenance activity doesn't interfere equipment that is in operation condition",
-    category: 'electrical'
-  },
-  {
-    device: 'PJU',
-    location: 'Outdoor Area',
-    months: ['19 - 30', null, null, null, '18 - 29', null, null, '18 - 31', null, null, '16 - 27', null],
-    remarks: 'Maintenance activity performed in operation condition',
-    category: 'electrical'
-  },
-  {
-    device: 'Gate',
-    location: 'Outdoor Area',
-    months: ['26 - 30', null, null, '24 - 30', null, null, '27 - 31', null, null, '26 - 30', null, null],
-    remarks: 'Maintenance activity performed in operation condition',
-    category: 'mechanical'
-  },
-  {
-    device: 'Road Blocker',
-    location: 'Outdoor Area',
-    months: [null, null, null, null, '04 - 05', null, null, null, null, null, '05 - 06', null],
-    remarks: 'Maintenance activity performed in operation condition',
-    category: 'mechanical'
-  },
-  {
-    device: 'Dock Leveler',
-    location: 'CAMPUS 1',
-    months: ['12 - 15', null, null, '13 - 17', null, null, '13 - 17', null, null, '12 - 16', null, null],
-    remarks: 'Maintenance activity performed in operation condition',
-    category: 'mechanical'
-  },
-  {
-    device: 'X-Ray',
-    location: 'Post Bravo',
-    months: [null, '12 - 13', null, '13 - 14', null, '11 - 12', null, '10 - 11', null, '12 - 13', null, '14 - 15'],
-    remarks: "Maintenance activity doesn't interfere equipment that is in operation condition",
-    category: 'safety'
-  },
-  {
-    device: 'Pressurization & Degassing',
-    location: '1F Power House',
-    months: [null, null, '25 - 27', null, null, '24 - 26', null, null, '22 - 24', null, null, '16 - 18'],
-    remarks: "Maintenance activity doesn't interfere equipment that is in operation condition",
-    category: 'safety'
-  },
-  {
-    device: 'Pumps',
-    location: 'All Area',
-    months: [null, null, '10 - 14', null, null, '09 - 13', null, null, '08 - 12', null, null, '01 - 05'],
-    remarks: "Maintenance activity doesn't interfere equipment that is in operation condition",
-    category: 'mechanical'
-  },
-  {
-    device: 'STP & Plumbing',
-    location: 'All Area',
-    months: ['26 - 30', null, null, '23 - 30', null, null, '27 - 31', null, null, '26 - 30', null, null],
-    remarks: "Maintenance activity doesn't interfere equipment that is in operation condition",
-    category: 'civil'
-  },
-  {
-    device: 'Door',
-    location: 'All Area',
-    months: ['12 - 15', null, null, '13 - 17', null, null, '13 - 17', null, null, '12 - 16', null, null],
-    remarks: "Maintenance activity doesn't interfere equipment that is in operation condition",
-    category: 'civil'
-  },
-  {
-    device: 'Water Softener',
-    location: 'Water Softener Room',
-    months: [null, '23 - 25', null, null, '25 - 28', null, null, '26 - 28', null, null, '23 - 25', null],
-    remarks: '- Consumable Material Replacement\na. Chemical/brine refill',
-    category: 'mechanical'
-  },
-  {
-    device: 'Exhaust Fan',
-    location: 'PH and Campus',
-    months: ['26 - 30', null, null, '24 - 30', null, null, '27 - 31', null, null, '26 - 30', null, null],
-    remarks: "Maintenance activity doesn't interfere equipment that is in operation condition",
-    category: 'hvac'
-  },
-  {
-    device: 'Busduct',
-    location: 'PH and Campus',
-    months: [null, null, '09 - 13', null, null, '08 - 12', null, null, '07 - 11', null, null, '07 - 11'],
-    remarks: "Maintenance activity doesn't interfere equipment that is in operation condition",
-    category: 'electrical'
-  },
-  {
-    device: 'Capacitor Bank',
-    location: 'Campus and PH Office',
-    months: ['26 - 30', null, null, '27 - 30', null, null, '27 - 31', null, null, '26 - 30', null, null],
-    remarks: '- Special Test\na. Capacitance and impedance measurement (partial)',
-    category: 'electrical'
-  },
-  {
-    device: 'Physical Cooling Automation',
-    location: 'All Area',
-    months: [null, null, '16 - 31', null, null, '15 - 30', null, null, '17 - 30', null, null, '07 - 18'],
-    remarks: 'Maintenance activity performed in operation condition',
-    category: 'hvac'
-  },
-];
+function mapScheduleCategory(cat: string = '', device: string = ''): 'electrical' | 'mechanical' | 'safety' | 'hvac' | 'civil' | 'general' {
+  const d = device.toLowerCase().trim();
+  if (d === 'door' || d.includes('civil') || d.includes('arsitektur') || d.includes('building')) return 'civil';
+  const c = cat.toLowerCase().trim();
+  if (c === 'cooling' || c === 'hvac') return 'hvac';
+  if (c === 'security' || c === 'safety') return 'safety';
+  if (c === 'plumbing' || c === 'mechanical') return 'mechanical';
+  if (c === 'electrical') return 'electrical';
+  if (c === 'civil') return 'civil';
+  return 'general';
+}
+
+export const SCHEDULE_DATA: PMScheduleItem[] = MASTER_PM_SCHEDULES.map(s => ({
+  device: s.device,
+  location: s.location,
+  months: s.months,
+  remarks: s.remark || "Maintenance activity doesn't interfere equipment that is in operation condition",
+  category: mapScheduleCategory(s.category, s.device)
+}));
 
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 const MONTHS_FULL = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
