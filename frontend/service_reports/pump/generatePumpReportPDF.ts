@@ -443,11 +443,11 @@ export async function generatePumpReportPDF(
 
   // ─── 5. VOLTAGE & CURRENT MEASUREMENT ─────────────────────────────────────
   const vc = reportData.voltageCurrent || {
-    rs: '385', st: '382', tr: '384',
-    rn: '220', sn: '221', tn: '220', ng: '1.2',
-    r: '18.5', s: '18.2', t: '18.4', n: '0.8',
+    rs: '-', st: '-', tr: '-',
+    rn: '-', sn: '-', tn: '-', ng: '-',
+    r: '-', s: '-', t: '-', n: '-',
     standard: '+5% - 10% from 380V &\n220V load deviation 10%',
-    remarks: 'Normal & Balanced'
+    remarks: '-'
   };
 
   autoTable(doc, {
@@ -477,7 +477,7 @@ export async function generatePumpReportPDF(
         { content: 'R', styles: { fontStyle: 'bold', fillColor: [248, 250, 252], halign: 'center' } },
         { content: vc.r || '-', styles: { halign: 'center' } },
         { content: vc.standard || '+5% - 10% from 380V &\n220V load deviation 10%', rowSpan: 4, styles: { fillColor: YELLOW_STANDARD_BG, halign: 'center', valign: 'middle', fontStyle: 'bold', textColor: [185, 28, 28] } },
-        { content: vc.remarks || 'Normal & Balanced', rowSpan: 4, styles: { halign: 'center', valign: 'middle' } }
+        { content: vc.remarks || '-', rowSpan: 4, styles: { halign: 'center', valign: 'middle' } }
       ],
       [
         { content: 'S-T', styles: { fontStyle: 'bold', fillColor: [248, 250, 252], halign: 'center' } },
@@ -522,7 +522,7 @@ export async function generatePumpReportPDF(
   // ─── 6. EMPAT TABEL PENGUKURAN (THERMAL, VIBRATION, PRESSURE, GROUNDING) ───
 
   // A. Thermal Meassurement (Casing Pump)
-  const thermal = reportData.thermal || { item: 'Casing Pump', resultTemp: '42.5', standard: '≤ 80°C.', remarks: 'Normal & aman' };
+  const thermal = reportData.thermal || { item: 'Casing Pump', resultTemp: '-', standard: '≤ 80°C.', remarks: '-' };
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
@@ -536,9 +536,9 @@ export async function generatePumpReportPDF(
         { content: 'Remarks', styles: { halign: 'center', cellWidth: 'auto' } }
       ],
       [
-        { content: thermal.resultTemp || '42.5', styles: { halign: 'center', fontStyle: 'bold', minCellHeight: 4.0 } },
+        { content: thermal.resultTemp || '-', styles: { halign: 'center', fontStyle: 'bold', minCellHeight: 4.0 } },
         { content: thermal.standard || '≤ 80°C.', styles: { fillColor: YELLOW_STANDARD_BG, halign: 'center', fontStyle: 'bold', textColor: [185, 28, 28] } },
-        { content: thermal.remarks || 'Suhu normal & aman', styles: { halign: 'center' } }
+        { content: thermal.remarks || '-', styles: { halign: 'center' } }
       ]
     ],
     headStyles: { fillColor: SUB_HEADER_BG, textColor: DARK_TEXT, fontStyle: 'bold', fontSize: 5.6, cellPadding: 0.6 },
@@ -554,7 +554,7 @@ export async function generatePumpReportPDF(
   y = (doc as any).lastAutoTable.finalY + 1.8;
 
   // B. Vibration Meassurement (Casing Pump)
-  const vibration = reportData.vibration || { item: 'Casing Pump', vibration: '1.8', standard: '≤ 4.5 mm/s.', remarks: 'Getaran stabil' };
+  const vibration = reportData.vibration || { item: 'Casing Pump', vibration: '-', standard: '≤ 4.5 mm/s.', remarks: '-' };
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
@@ -568,9 +568,9 @@ export async function generatePumpReportPDF(
         { content: 'Remarks', styles: { halign: 'center', cellWidth: 'auto' } }
       ],
       [
-        { content: vibration.vibration || '1.8', styles: { halign: 'center', fontStyle: 'bold', minCellHeight: 4.0 } },
+        { content: vibration.vibration || '-', styles: { halign: 'center', fontStyle: 'bold', minCellHeight: 4.0 } },
         { content: vibration.standard || '≤ 4.5 mm/s.', styles: { fillColor: YELLOW_STANDARD_BG, halign: 'center', fontStyle: 'bold', textColor: [185, 28, 28] } },
-        { content: vibration.remarks || 'Vibrasi normal & halus', styles: { halign: 'center' } }
+        { content: vibration.remarks || '-', styles: { halign: 'center' } }
       ]
     ],
     headStyles: { fillColor: SUB_HEADER_BG, textColor: DARK_TEXT, fontStyle: 'bold', fontSize: 5.6, cellPadding: 0.6 },
@@ -586,7 +586,7 @@ export async function generatePumpReportPDF(
   y = (doc as any).lastAutoTable.finalY + 1.8;
 
   // C. Pressure Meassurement (Pressure Pump)
-  const pressure = reportData.pressure || { item: 'Pressure Pump', resultTemp: '45.0', standard: '≤ 80°C.', remarks: 'Normal' };
+  const pressure = reportData.pressure || { item: 'Pressure Pump', resultTemp: '-', standard: '≤ 80°C.', remarks: '-' };
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
@@ -600,9 +600,9 @@ export async function generatePumpReportPDF(
         { content: 'Remarks', styles: { halign: 'center', cellWidth: 'auto' } }
       ],
       [
-        { content: pressure.resultTemp || '45.0', styles: { halign: 'center', fontStyle: 'bold', minCellHeight: 4.0 } },
+        { content: pressure.resultTemp || '-', styles: { halign: 'center', fontStyle: 'bold', minCellHeight: 4.0 } },
         { content: pressure.standard || '≤ 80°C.', styles: { fillColor: YELLOW_STANDARD_BG, halign: 'center', fontStyle: 'bold', textColor: [185, 28, 28] } },
-        { content: pressure.remarks || 'Normal & stabil', styles: { halign: 'center' } }
+        { content: pressure.remarks || '-', styles: { halign: 'center' } }
       ]
     ],
     headStyles: { fillColor: SUB_HEADER_BG, textColor: DARK_TEXT, fontStyle: 'bold', fontSize: 5.6, cellPadding: 0.6 },

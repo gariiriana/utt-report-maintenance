@@ -15,8 +15,9 @@ import { ExcelDocument } from '@/components/DocumentList';
 import { ImageEditor } from '@/components/ImageEditor';
 import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
-import { collection, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, getDocs } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, updateDoc, doc, deleteDoc, getDocs, setDoc } from 'firebase/firestore';
 import { db, auth } from '@/api/firebase';
+import { offlineReportStorage } from '@/utils/offlineReportStorage';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoK2 from '@/assets/logo_k2.png';
@@ -36,10 +37,7 @@ import { PreviewReport } from '@/components/PreviewReport';
 import { CameraModal } from '@/components/CameraModal';
 import { draftStorage } from '@/utils/draftStorage';
 import { sendFileNotification } from '@/utils/notificationService';
-import { ServiceReportContainer } from '@/components/ServiceReportContainer';
-import { ServiceReportPayload } from '@/types/serviceReportTypes';
-import { generateUniversalServiceReportPDF } from '@/service_reports/universalServiceReportPDF';
-import { isServiceReportSupported } from '@/config/serviceReportRegistry';
+
 
 
 import imgStatusWld from '@/assets/Wld/status.jpeg';
@@ -75,7 +73,6 @@ export interface ReportUnit {
   archiveType?: 'pdf' | 'excel' | 'hse';
   cards: PhotoCard[];
   isExported?: boolean;
-  serviceReportData?: ServiceReportPayload | null;
 }
 
 interface ReportFormProps {
@@ -89,7 +86,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   const [companyType, setCompanyType] = useState<'neutra' | 'bri' | 'k2'>(authCompanyType || (userRole === 'Engineer_K2' || userRole === 'engineer_k2' ? 'k2' : 'neutra'));
   const [maintenanceName, setMaintenanceName] = useState('');
   const [maintenanceTime, setMaintenanceTime] = useState('');
-  const [serviceReportData, setServiceReportData] = useState<ServiceReportPayload | null>(null);
+
 
   const isFssAccount = user?.email?.toLowerCase() === 'fss@gmail.com';
 
@@ -552,74 +549,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         }))
         : createDefaultCards(11);
 
-      let editSR: ServiceReportPayload | null = editingData.serviceReportPayload || null;
-      if (!editSR && (editingData as any).busductCustomerInfo) {
-        const bCust = (editingData as any).busductCustomerInfo;
-        const bRep = (editingData as any).busductReportData;
-        const bTime = (editingData as any).busductTimeSpent;
-        editSR = {
-          equipmentKey: 'busduct',
-          equipmentName: bCust?.equipmentName || 'Panel Busduct',
-          accountEmail: 'busduct@gmail.com',
-          customerInfo: {
-            companyName: bCust?.companyName || 'NeutraDC Cikarang',
-            mopNo: bCust?.mopNo || '',
-            equipmentName: bCust?.equipmentName || 'BUSDUCT',
-            serialNo: bCust?.serialNo || '',
-            quarter: bCust?.quarter || 'Q2',
-            ciDescription: bCust?.ciDescription || '',
-            productName: bCust?.productName || '',
-            location: bCust?.location || '',
-            date: bCust?.date || '',
-            ciName: bCust?.ciName || '',
-            prodYear: bCust?.prodYear || '',
-            area: bCust?.area || '',
-            engineer: bCust?.engineer || '',
-            specification: bCust?.specification || '',
-            type: bCust?.type || ''
-          },
-          visualChecklist: [
-            ...(bRep?.visualInspection || []).map((v: any, idx: number) => ({
-              no: v.no || `${idx + 1}`,
-              activity: v.activity || '',
-              parameter: v.parameter || '',
-              condition: v.isGood ? 'Good' : (v.isNotGood ? 'Not Good' : 'Good'),
-              remarks: v.remarks || ''
-            })),
-            ...(bRep?.cleaning || []).map((c: any, idx: number) => ({
-              no: c.no || `${idx + 1}`,
-              activity: c.activity || '',
-              parameter: c.parameter || '',
-              condition: c.isGood ? 'Good' : (c.isNotGood ? 'Not Good' : 'Good'),
-              remarks: c.remarks || ''
-            }))
-          ],
-          measurements: {
-            thermal_joint_breaker: bRep?.thermal?.breaker || 'Joint Busduct',
-            thermal_joint_temp: bRep?.thermal?.resultTemp || '32.5',
-            thermal_standard: bRep?.thermal?.standard || '<40°C',
-            thermal_remarks: bRep?.thermal?.remarks || 'Suhu normal & aman'
-          },
-          operationStatus: {
-            isNormal: bRep?.analysis?.isNormal !== false,
-            remark: bRep?.analysis?.remark || '',
-            faultSymptom: bRep?.analysis?.faultSymptom || '',
-            faultAnalysis: bRep?.analysis?.faultAnalysis || '',
-            workDone: bRep?.analysis?.workDone || '',
-            faultPartSN: bRep?.analysis?.faultPartSN || '',
-            faultPartName: bRep?.analysis?.faultPartName || ''
-          },
-          timeSpent: {
-            date: bTime?.date || '',
-            departure: bTime?.departure || '08:00',
-            arrival: bTime?.departure || '08:00',
-            start: bTime?.start || '09:00',
-            finish: bTime?.finish || '17:00'
-          }
-        };
-      }
-      setServiceReportData(editSR);
-
       const editUnit: ReportUnit = {
         id: `edit-${Date.now()}`,
         tabName: (finalSpec || 'Edit').toUpperCase(),
@@ -628,7 +557,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         archiveId: editingData.id,
         archiveType: editingData.documentType,
         cards: photos,
-        serviceReportData: editSR
       };
 
       setUnits([editUnit]);
@@ -669,6 +597,65 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     const timeoutId = setTimeout(saveDraft, 1000);
     return () => clearTimeout(timeoutId);
   }, [maintenanceName, maintenanceTime, companyType, units, user?.email, editingData, isDraftLoading, isExporting]);
+
+  // Listener sinkronisasi otomatis untuk laporan offline yang belum terunggah ke Cloud Firestore
+  useEffect(() => {
+    const syncOfflineReports = async () => {
+      if (!navigator.onLine) return;
+      try {
+        const unsynced = await offlineReportStorage.getUnsyncedReports();
+        if (unsynced.length === 0) return;
+
+        for (const rep of unsynced) {
+          const photos = await offlineReportStorage.getPhotos(rep.id);
+          const colName = rep.documentType === 'excel' ? 'excel_documents' : (rep.documentType === 'hse' ? 'hse' : 'pdf_documents');
+
+          const docData: Record<string, any> = {
+            fileName: rep.fileName,
+            maintenanceName: rep.maintenanceName,
+            maintenanceTime: rep.maintenanceTime,
+            specificDetail: rep.specificDetail || '',
+            fileSize: rep.fileSize || 0,
+            totalPhotos: rep.totalPhotos || photos.length,
+            photosWithImage: rep.photosWithImage || photos.filter(p => p.photoBase64).length,
+            hasAbnormal: rep.hasAbnormal || false,
+            serviceReportPayload: rep.serviceReportPayload || null,
+            hasServiceReport: rep.hasServiceReport || false,
+            createdBy: rep.createdBy,
+            updatedAt: serverTimestamp(),
+          };
+
+          if (rep.attachedSrFile) docData.attachedSrFile = rep.attachedSrFile;
+          if (rep.attachedSrBase64) docData.attachedSrBase64 = rep.attachedSrBase64;
+
+          await setDoc(doc(db, colName, rep.id), docData, { merge: true });
+
+          // Sinkronkan foto subcollection
+          const photosRef = collection(db, `${colName}/${rep.id}/photos`);
+          for (const p of photos) {
+            if (p.photoBase64) {
+              await addDoc(photosRef, {
+                index: p.index,
+                photoBase64: p.photoBase64,
+                description: p.description || '',
+                parameter: p.parameter || '',
+                hasPhoto: !!p.photoBase64,
+                savedAt: serverTimestamp()
+              }).catch(() => {});
+            }
+          }
+
+          await offlineReportStorage.markSynced(rep.id);
+        }
+      } catch (err) {
+        console.warn('[Sync] Offline report sync error:', err);
+      }
+    };
+
+    window.addEventListener('online', syncOfflineReports);
+    syncOfflineReports();
+    return () => window.removeEventListener('online', syncOfflineReports);
+  }, []);
 
   const handlePhotoChange = async (id: string, file: File | null) => {
     if (file) {
@@ -900,19 +887,6 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   };
 
   const generatePDFDocument = async (unit: ReportUnit) => {
-
-    const isSRSupported = isServiceReportSupported(user?.email);
-    const activeSR = isSRSupported ? (unit.serviceReportData || serviceReportData) : null;
-    if (activeSR) {
-      const srDoc = await generateUniversalServiceReportPDF(
-        activeSR,
-        unit.cards.map(c => ({ photoBase64: c.photoBase64, description: c.description || '' })),
-        false
-      );
-      const srFileName = `Service_Report_${(activeSR.equipmentName || maintenanceName).replace(/[^a-zA-Z0-9]/g, '_')}_${activeSR.customerInfo?.quarter || 'Q3'}.pdf`;
-      return { doc: srDoc, fileName: srFileName, filled: unit.cards.filter(c => c.photoBase64 || c.description) };
-    }
-
     const logoLeftB64 = await loadLogoBase64(companyType === 'bri' ? logoBRILeft : logoDwimitra);
     const logoRightB64 = await loadLogoBase64(companyType === 'bri' ? logoBRI : companyType === 'k2' ? logoK2 : logoNeutraDC);
 
@@ -1010,8 +984,9 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     try {
       const photosWithImage = cardsToSave.filter(c => c.photoBase64).length;
       const fileName = pdfData?.fileName || editingData?.fileName || `${maintenanceName}${finalSpecificDetail ? ` (${finalSpecificDetail})` : ''}`.trim().replace(/\s+/g, ' ') + '.pdf';
-      const isSRSupported = isServiceReportSupported(user?.email);
-      const activeSR = isSRSupported ? (unit.serviceReportData || serviceReportData) : null;
+      const hasExistingRealSR = Boolean(
+        editingData?.hasServiceReport && (editingData?.attachedSrFile || editingData?.attachedSrBase64)
+      );
 
       const reportData: any = {
         fileName,
@@ -1023,8 +998,11 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         totalPhotos: cardsToSave.length,
         photosWithImage,
         hasAbnormal: abnormalStatus === 'abnormal',
-        serviceReportPayload: activeSR || null,
-        hasServiceReport: !!activeSR || user?.email === 'busduct@gmail.com' || user?.email === 'pump@gmail.com'
+        // Status SR dan file SR HANYA dikelola dari fitur Upload SR di Arsip Dokumen
+        serviceReportPayload: hasExistingRealSR ? (editingData?.serviceReportPayload || null) : null,
+        hasServiceReport: hasExistingRealSR,
+        attachedSrFile: hasExistingRealSR ? (editingData?.attachedSrFile || null) : null,
+        attachedSrBase64: hasExistingRealSR ? (editingData?.attachedSrBase64 || null) : null,
       };
 
       if (!editingData) {
@@ -1052,6 +1030,29 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         if (docIdFromAPI) {
           setUnits(prev => prev.map(u => u.id === unit.id ? { ...u, archiveId: docIdFromAPI, archiveType: 'pdf' } : u));
           toast.success(`Unit ${unit.specificDetail} disimpan (via API)`, { id: toastId });
+
+          // Cadangkan ke offline storage lokal
+          offlineReportStorage.saveReport({
+            id: docIdFromAPI,
+            fileName: reportData.fileName,
+            maintenanceName: reportData.maintenanceName,
+            maintenanceTime: reportData.maintenanceTime,
+            specificDetail: reportData.specificDetail,
+            companyType: companyType,
+            documentType: 'pdf',
+            fileSize: reportData.fileSize,
+            totalPhotos: cardsToSave.length,
+            photosWithImage,
+            hasAbnormal: reportData.hasAbnormal,
+            serviceReportPayload: reportData.serviceReportPayload,
+            hasServiceReport: reportData.hasServiceReport,
+            attachedSrFile: reportData.attachedSrFile || undefined,
+            attachedSrBase64: reportData.attachedSrBase64 || undefined,
+            createdBy: reportData.createdBy || user?.email || '',
+            createdAt: Date.now(),
+            isSynced: true,
+          }, photos).catch(err => console.warn('Offline backup error:', err));
+
           return docIdFromAPI;
         }
       }
@@ -1084,6 +1085,40 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
           targetTab: 'documents',
           searchQuery: mName || reportData.fileName || ''
         });
+      }
+
+      // Cadangkan ke Offline Storage lokal (IndexedDB) agar foto & laporan 100% aman dan bisa diakses tanpa internet
+      try {
+        const offlinePhotos = cardsToSave.map((card, i) => ({
+          index: i + 1,
+          photoBase64: card.photoBase64 || '',
+          description: card.description || '',
+          parameter: card.parameter || '',
+          hasPhoto: !!card.photoBase64
+        }));
+
+        await offlineReportStorage.saveReport({
+          id: docId,
+          fileName: reportData.fileName,
+          maintenanceName: reportData.maintenanceName,
+          maintenanceTime: reportData.maintenanceTime,
+          specificDetail: reportData.specificDetail,
+          companyType: companyType,
+          documentType: 'pdf',
+          fileSize: reportData.fileSize,
+          totalPhotos: cardsToSave.length,
+          photosWithImage,
+          hasAbnormal: reportData.hasAbnormal,
+          serviceReportPayload: reportData.serviceReportPayload,
+          hasServiceReport: reportData.hasServiceReport,
+          attachedSrFile: reportData.attachedSrFile || undefined,
+          attachedSrBase64: reportData.attachedSrBase64 || undefined,
+          createdBy: reportData.createdBy || user?.email || '',
+          createdAt: Date.now(),
+          isSynced: isOnline,
+        }, offlinePhotos);
+      } catch (offErr) {
+        console.warn('Gagal mencadangkan laporan ke offlineReportStorage:', offErr);
       }
 
       if (cardsToSave.length > 0) {
@@ -1334,114 +1369,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }
   };
 
-  const handleExportServiceReportPDF = async (srPayload?: ServiceReportPayload): Promise<void> => {
-    const targetUnit = activeUnit;
-    if (!targetUnit) {
-      toast.error('Unit tidak terpilih');
-      return;
-    }
 
-    const effectiveSRPayload = srPayload || targetUnit.serviceReportData || serviceReportData;
-    if (!effectiveSRPayload) {
-      await handleExportPDF(targetUnit);
-      return;
-    }
-
-    setServiceReportData(effectiveSRPayload);
-    if (activeUnitId) {
-      setUnits(prev => prev.map(u => u.id === activeUnitId ? { ...u, serviceReportData: effectiveSRPayload } : u));
-    }
-
-    setIsExporting(true);
-    const toastId = toast.loading(isDME ? 'Memproses export Service Report PDF...' : 'Memproses export Service Report PDF & Menyimpan data...');
-    try {
-      // Save finding to Firestore collection 'findings' if abnormal
-      if (abnormalStatus === 'abnormal' && user) {
-        try {
-          await addDoc(collection(db, 'findings'), {
-            partName: findingData.partName,
-            partNumber: findingData.partNumber,
-            brandName: findingData.brandName,
-            quantity: findingData.quantity,
-            findingDate: findingData.findingDate,
-            photos: findingPhotos,
-            remark: findingData.remark,
-            maintenanceName: maintenanceName,
-            specificDetail: targetUnit.specificDetail,
-            createdBy: user.uid,
-            createdByEmail: (user.email || '').toLowerCase(),
-            createdAt: serverTimestamp(),
-          });
-        } catch (fErr) {
-          console.error('Error saving finding:', fErr);
-        }
-      }
-
-      const filledCards = targetUnit.cards.filter(c => c.photoBase64 || c.description);
-      const srDoc = await generateUniversalServiceReportPDF(
-        effectiveSRPayload,
-        targetUnit.cards.map(c => ({ photoBase64: c.photoBase64, description: c.description || '' })),
-        false
-      );
-      const srFileName = `Service_Report_${(effectiveSRPayload.equipmentName || maintenanceName).replace(/[^a-zA-Z0-9]/g, '_')}_${effectiveSRPayload.customerInfo?.quarter || 'Q3'}.pdf`;
-
-      const pdfResult = {
-        doc: srDoc,
-        fileName: srFileName,
-        filled: filledCards
-      };
-
-      // Trigger immediate download while user gesture is active
-      triggerImmediatePDFDownload(srDoc, srFileName);
-
-      if (isDME) {
-        toast.success("Service Report berhasil diekspor!", { id: toastId });
-      } else {
-        const updatedUnit = { ...targetUnit, serviceReportData: effectiveSRPayload };
-        const saveResult = await saveReportToFirestore(updatedUnit, pdfResult);
-        if (saveResult) {
-          if (onClearEdit) {
-            onClearEdit();
-          }
-
-          setUnits(prev => {
-            const newUnits = prev.map(u => u.id === targetUnit.id ? { ...u, isExported: true } : u);
-
-            const draft = {
-              userEmail: user?.email,
-              maintenanceName,
-              maintenanceTime,
-              companyType,
-              units: newUnits
-                .filter(u => !u.isExported)
-                .map(u => ({
-                  ...u,
-                  cards: u.cards.map(c => ({
-                    id: c.id,
-                    description: c.description,
-                    photoBase64: c.photoBase64,
-                    parameter: c.parameter || ''
-                  }))
-                })),
-              timestamp: new Date().getTime()
-            };
-            draftStorage.set('report_form_draft_v2', draft).catch(console.error);
-
-            return newUnits;
-          });
-
-          toast.success("Service Report & Dokumentasi berhasil diekspor dan disimpan ke Arsip!", { id: toastId });
-        } else {
-          toast.error("Gagal menyimpan data Service Report ke database. PDF telah diunduh tetapi arsip tidak tersimpan.", { id: toastId });
-        }
-      }
-    } catch (err) {
-      console.error("Export Service Report error:", err);
-      toast.error("Terjadi kesalahan saat export Service Report PDF", { id: toastId });
-    } finally {
-      setIsExporting(false);
-    }
-  };
 
   const uploadedCount = cards.filter(c => c.photoBase64).length;
 
@@ -2093,23 +2021,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
               </button>
             </div>
 
-            {/* Service Report Form (Hanya untuk Akun yang Diaktifkan: ats@gmail.com) */}
-            {isServiceReportSupported(user?.email) && (
-              <ServiceReportContainer
-                key={activeUnitId || 'single-unit'}
-                userEmail={user?.email}
-                companyType={companyType}
-                initialData={activeUnit?.serviceReportData || serviceReportData}
-                photoCards={cards.map(c => ({ photoBase64: c.photoBase64, description: c.description || '' }))}
-                onChange={(payload) => {
-                  setServiceReportData(payload);
-                  if (activeUnitId) {
-                    setUnits(prev => prev.map(u => u.id === activeUnitId ? { ...u, serviceReportData: payload } : u));
-                  }
-                }}
-                onExport={handleExportServiceReportPDF}
-              />
-            )}
+
           </motion.div>
         ) : (
           <PreviewReport

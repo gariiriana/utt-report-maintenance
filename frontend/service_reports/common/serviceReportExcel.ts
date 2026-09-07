@@ -442,3 +442,102 @@ export function writeMeasurementTable(
 
   return row;
 }
+
+/**
+ * Export generic / universal ServiceReportPayload to .xlsx file directly
+ */
+export async function exportUniversalServiceReportExcel(
+  payload: any,
+  fileName: string,
+  photos?: any[]
+) {
+  const customerInfo = payload.customerInfo || {};
+  const timeSpent = payload.timeSpent || {};
+  const operationStatus = payload.operationStatus || {};
+
+  const options: ServiceReportExcelOptions = {
+    title: `SERVICE REPORT: ${payload.equipmentName || 'PERANGKAT M/E'}`,
+    equipmentLabel: payload.equipmentName || 'Perangkat M/E',
+    customerInfo: {
+      companyName: customerInfo.companyName || 'PT. Telkom Data Ekosistem (NeutraDC)',
+      type: customerInfo.type || customerInfo.model || '—',
+      specification: customerInfo.specification || '—',
+      mapNo: customerInfo.mopNo || customerInfo.mapNo || '—',
+      equipmentName: customerInfo.equipmentName || payload.equipmentName || '—',
+      serialNo: customerInfo.serialNo || '—',
+      location: customerInfo.location || 'NeutraDC Cikarang',
+      quarter: customerInfo.quarter || '—',
+      ciDescription: customerInfo.ciDescription || '—',
+      productName: customerInfo.productName || '—',
+      area: customerInfo.area || '—',
+      date: customerInfo.date || timeSpent.date || new Date().toISOString(),
+      ciName: customerInfo.ciName || '—',
+      productYears: customerInfo.prodYear || customerInfo.productYears || '—',
+      engineer: customerInfo.engineer || '—',
+    },
+    timeSpent: {
+      date: timeSpent.date || '',
+      departure: timeSpent.departure || '',
+      start: timeSpent.start || '',
+      finish: timeSpent.finish || '',
+    },
+    visualInspection: (payload.visualChecklist || []).map((v: any) => ({
+      no: String(v.no || ''),
+      activity: v.activity || '',
+      parameter: v.parameter || '',
+      result: (v.condition === 'Good' ? 'Normal' : v.condition === 'Not Good' ? 'Abnormal' : 'N/A') as any,
+      remarks: v.remarks || '',
+    })),
+    operationStatus: {
+      is_normal: operationStatus.isNormal ?? operationStatus.is_normal ?? true,
+      remark: operationStatus.remark || '',
+    },
+    photos: photos?.map((p, idx) => ({
+      id: `p_${idx}`,
+      photo: null,
+      photoBase64: p.photoBase64 || '',
+      description: p.description || '',
+    })),
+    writeMeasurements: (ws, startRow) => {
+      let curRow = startRow;
+      if (payload.customSections && payload.customSections.length > 0) {
+        for (const section of payload.customSections) {
+          if (!section.items || section.items.length === 0) continue;
+          const rows = section.items.map((item: any) => [
+            item.label || item.key || '',
+            item.value || '',
+            item.standard || '—',
+            item.remarks || ''
+          ]);
+          curRow = writeMeasurementTable(
+            ws,
+            curRow,
+            (section.title || 'PENGUKURAN').toUpperCase(),
+            ['Item Pengukuran', 'Hasil Nilai', 'Standar Acuan', 'Keterangan'],
+            rows
+          );
+          curRow++;
+        }
+      } else if (payload.measurements && Object.keys(payload.measurements).length > 0) {
+        const rows = Object.entries(payload.measurements).map(([k, v]) => [
+          k,
+          typeof v === 'object' ? JSON.stringify(v) : String(v || ''),
+          '—',
+          ''
+        ]);
+        curRow = writeMeasurementTable(
+          ws,
+          curRow,
+          'PENGUKURAN & PARAMETER TEKNIS',
+          ['Parameter', 'Nilai Terukur', 'Standar', 'Keterangan'],
+          rows
+        );
+        curRow++;
+      }
+      return curRow;
+    },
+    fileName: fileName.replace(/\.xlsx$/i, '')
+  };
+
+  await generateServiceReportExcel(options);
+}

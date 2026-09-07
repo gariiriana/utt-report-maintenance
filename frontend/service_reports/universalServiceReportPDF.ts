@@ -191,7 +191,7 @@ export async function generateUniversalServiceReportPDF(
       companyName: c.companyName || 'Neutra DC Cikarang',
       type: c.type || '',
       specification: c.specification || '',
-      mopNo: c.mopNo || 'DME-TDE/MOP/PUMP/02 0506/26',
+      mopNo: c.mopNo || '-',
       equipmentName: c.equipmentName || 'Pump',
       serialNo: c.serialNo || '',
       quarter: c.quarter || 'Q2',
@@ -210,43 +210,43 @@ export async function generateUniversalServiceReportPDF(
       visualInspection: visualList,
       cleaning: cleaningList,
       voltageCurrent: {
-        rs: m.vc_voltage_rs || m.dpm_voltage_rs || '385',
-        st: m.vc_voltage_st || m.dpm_voltage_st || '382',
-        tr: m.vc_voltage_tr || m.dpm_voltage_tr || '384',
-        rn: m.vc_voltage_rn || m.dpm_voltage_rn || '220',
-        sn: m.vc_voltage_sn || m.dpm_voltage_sn || '221',
-        tn: m.vc_voltage_tn || m.dpm_voltage_tn || '220',
-        ng: m.vc_voltage_ng || '1.2',
-        r: m.vc_ampere_r || m.dpm_ampere_r || '18.5',
-        s: m.vc_ampere_s || m.dpm_ampere_s || '18.2',
-        t: m.vc_ampere_t || m.dpm_ampere_t || '18.4',
-        n: m.vc_ampere_n || m.dpm_ampere_n || '0.8',
+        rs: m.vc_voltage_rs || m.dpm_voltage_rs || '-',
+        st: m.vc_voltage_st || m.dpm_voltage_st || '-',
+        tr: m.vc_voltage_tr || m.dpm_voltage_tr || '-',
+        rn: m.vc_voltage_rn || m.dpm_voltage_rn || '-',
+        sn: m.vc_voltage_sn || m.dpm_voltage_sn || '-',
+        tn: m.vc_voltage_tn || m.dpm_voltage_tn || '-',
+        ng: m.vc_voltage_ng || '-',
+        r: m.vc_ampere_r || m.dpm_ampere_r || '-',
+        s: m.vc_ampere_s || m.dpm_ampere_s || '-',
+        t: m.vc_ampere_t || m.dpm_ampere_t || '-',
+        n: m.vc_ampere_n || m.dpm_ampere_n || '-',
         standard: '+5% - 10% from 380V &\n220V load deviation 10%',
-        remarks: m.vc_remarks || m.dpm_remarks || 'Normal & Balanced'
+        remarks: m.vc_remarks || m.dpm_remarks || (op.isNormal ? 'Normal & Balanced' : '-')
       },
       thermal: {
         item: m.thermal_item || 'Casing Pump',
-        resultTemp: m.thermal_pump_temp || m.thermal_casing_temp || m.thermal_breaker_temp || '42.5',
+        resultTemp: m.thermal_pump_temp || m.thermal_casing_temp || m.thermal_breaker_temp || '-',
         standard: '≤ 80°C.',
-        remarks: m.thermal_remarks || 'Suhu normal & aman'
+        remarks: m.thermal_remarks || (op.isNormal ? 'Normal & aman' : '-')
       },
       vibration: {
         item: m.vibration_item || 'Casing Pump',
-        vibration: m.vibration_pump_val || m.vibration_casing_val || '1.8',
+        vibration: m.vibration_pump_val || m.vibration_casing_val || '-',
         standard: '≤ 4.5 mm/s.',
-        remarks: m.vibration_remarks || 'Vibrasi normal & halus'
+        remarks: m.vibration_remarks || (op.isNormal ? 'Normal & halus' : '-')
       },
       pressure: {
         item: m.pressure_item || 'Pressure Pump',
-        resultTemp: m.pressure_pump_temp || m.pressure_pump_val || '45.0',
+        resultTemp: m.pressure_pump_temp || m.pressure_pump_val || '-',
         standard: '≤ 80°C.',
-        remarks: m.pressure_remarks || 'Normal & stabil'
+        remarks: m.pressure_remarks || (op.isNormal ? 'Normal & stabil' : '-')
       },
       grounding: {
         wire: 'Grounding',
-        resultOhm: m.grounding_ohm || '1.2',
+        resultOhm: m.grounding_ohm || '-',
         standard: '<5 Ω',
-        remarks: m.grounding_remarks || 'Nilai tahanan pentanahan baik'
+        remarks: m.grounding_remarks || '-'
       },
       analysis: {
         isNormal: op.isNormal === true || (op as any).is_normal === true,
