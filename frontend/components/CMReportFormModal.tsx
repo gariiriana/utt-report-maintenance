@@ -157,9 +157,9 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     photos: [],
 
     authorName: 'Rizki Novri Yanda – Data Center Operation',
-    preparedByName: 'Muhammad Salman Abdurohman',
+    preparedByName: 'Agil Zakia Rahman',
     preparedByTitle: '(Electrical Engineer)',
-    preparedBySign: cleanSignature(PREPARED_BY_SIGNATURES['Muhammad Salman Abdurohman']),
+    preparedBySign: cleanSignature(PREPARED_BY_SIGNATURES['Agil Zakia Rahman']),
     reviewedByName: 'Arif Budiman',
     reviewedByTitle: '(Technical Manager)',
     reviewedBySign: ARIF_BUDIMAN_SIGNATURE_BASE64,
@@ -233,11 +233,11 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
           const parsed = JSON.parse(savedDraft);
           if (parsed.formData) {
             let pName = parsed.formData.preparedByName;
-            if (pName === 'Salman') pName = 'Muhammad Salman Abdurohman';
+            if (pName === 'Salman' || pName === 'Muhammad Salman Abdurohman') pName = 'Agil Zakia Rahman';
             if (pName === 'Agil' || pName === 'Agil Zakia Amanda') pName = 'Agil Zakia Rahman';
             if (pName === 'Asep') pName = 'Asep Mohammad Fauzi';
             if (pName === 'Gilang' || pName === 'Nugroho' || pName?.toLowerCase()?.includes('gilang')) pName = 'Nugroho Gilang Ramadhan';
-            pName = pName || 'Muhammad Salman Abdurohman';
+            pName = pName || 'Agil Zakia Rahman';
 
             const rName = parsed.formData.reviewedByName || 'Arif Budiman';
             const rSign = parsed.formData.reviewedBySign || (rName.toLowerCase().includes('arif') || rName.toLowerCase().includes('budiman') ? ARIF_BUDIMAN_SIGNATURE_BASE64 : '');
@@ -300,9 +300,9 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
       requestSpareparts: [],
       photos: [],
       authorName: 'Rizki Novri Yanda – Data Center Operation',
-      preparedByName: 'Muhammad Salman Abdurohman',
+      preparedByName: 'Agil Zakia Rahman',
       preparedByTitle: '(Electrical Engineer)',
-      preparedBySign: cleanSignature(PREPARED_BY_SIGNATURES['Muhammad Salman Abdurohman']),
+      preparedBySign: cleanSignature(PREPARED_BY_SIGNATURES['Agil Zakia Rahman']),
       reviewedByName: 'Arif Budiman',
       reviewedByTitle: '(Technical Manager)',
       reviewedBySign: ARIF_BUDIMAN_SIGNATURE_BASE64,
@@ -1500,7 +1500,6 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                       }}
                       className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs bg-white text-slate-900 font-semibold outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
                     >
-                      <option value="Muhammad Salman Abdurohman">Muhammad Salman Abdurohman</option>
                       <option value="Agil Zakia Rahman">Agil Zakia Rahman</option>
                       <option value="Asep Mohammad Fauzi">Asep Mohammad Fauzi</option>
                       <option value="Nugroho Gilang Ramadhan">Nugroho Gilang Ramadhan</option>
