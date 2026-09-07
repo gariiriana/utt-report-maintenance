@@ -492,7 +492,7 @@ export async function generatePIRReportPDF(data: PIRReportData) {
       body: [
         ['\n\n\n', '\n\n\n'],
         [
-          `${data.acknowledgedBy1Name || 'Andrean Bima Pratama'}\n(${data.acknowledgedBy1Title || 'Chief Engineer'})`,
+          `${data.acknowledgedBy1Name || 'Habib Mulyana'}\n(${data.acknowledgedBy1Title || 'Chief Engineer'})`,
           `${data.acknowledgedBy2Name || 'Supriyatno'}\n(${data.acknowledgedBy2Title || 'Facility manager'})`
         ]
       ],

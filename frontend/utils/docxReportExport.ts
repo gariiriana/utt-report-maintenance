@@ -790,7 +790,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
           new TableCell({
             width: sigCellWidth,
             margins: { top: 80, bottom: 80, left: 80, right: 80 },
-            children: buildSigCell('', ack1SignBytes, data.acknowledgedBy1Name || 'Andrean Bima Pratama', data.acknowledgedBy1Title || '(Chief Engineer)'),
+            children: buildSigCell('', ack1SignBytes, data.acknowledgedBy1Name || 'Habib Mulyana', data.acknowledgedBy1Title || '(Chief Engineer)'),
           }),
           new TableCell({
             width: sigCellWidth,

@@ -141,7 +141,7 @@ export const INITIAL_PIR_REPORT_DATA: PIRReportData = {
     reviewedBy2Name: 'Dwi Tasmiyadi',
     reviewedBy2Title: '(Project manager)',
 
-    acknowledgedBy1Name: 'Andrean Bima Pratama',
+    acknowledgedBy1Name: 'Habib Mulyana',
     acknowledgedBy1Title: '(Chief Engineer)',
     acknowledgedBy2Name: 'Supriyatno',
     acknowledgedBy2Title: '(Facility manager)',

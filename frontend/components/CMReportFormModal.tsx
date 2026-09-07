@@ -163,7 +163,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     reviewedByName: 'Arif Budiman',
     reviewedByTitle: '(Technical Manager)',
     reviewedBySign: ARIF_BUDIMAN_SIGNATURE_BASE64,
-    acknowledgedBy1Name: 'Andrean Bima Pratama',
+    acknowledgedBy1Name: 'Habib Mulyana',
     acknowledgedBy1Title: '(Chief Engineer)',
     acknowledgedBy2Name: 'Supriyatno',
     acknowledgedBy2Title: '(Facility manager)',
@@ -246,12 +246,18 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
             const isExplicit = parsed.formData.isTroubleshootSelected === true;
             const tType = isExplicit ? parsed.formData.troubleshootType : undefined;
 
+            let ack1Name = parsed.formData.acknowledgedBy1Name;
+            if (!ack1Name || ack1Name === 'Andrean Bima Pratama') {
+              ack1Name = 'Habib Mulyana';
+            }
+
             setFormData({
               ...parsed.formData,
               preparedByName: pName,
               preparedBySign: pSign,
               reviewedByName: rName,
               reviewedBySign: rSign,
+              acknowledgedBy1Name: ack1Name,
               troubleshootType: tType,
               isSparepartReplacement: tType === 'sparepart_replacement',
               spareparts: parsed.formData.spareparts || [],
@@ -300,7 +306,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
       reviewedByName: 'Arif Budiman',
       reviewedByTitle: '(Technical Manager)',
       reviewedBySign: ARIF_BUDIMAN_SIGNATURE_BASE64,
-      acknowledgedBy1Name: 'Andrean Bima Pratama',
+      acknowledgedBy1Name: 'Habib Mulyana',
       acknowledgedBy1Title: '(Chief Engineer)',
       acknowledgedBy2Name: 'Supriyatno',
       acknowledgedBy2Title: '(Facility manager)',
@@ -578,7 +584,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
         reviewedByName: revName,
         reviewedByTitle: formData.reviewedByTitle || '(Technical Manager)',
         reviewedBySign: revSign,
-        acknowledgedBy1Name: formData.acknowledgedBy1Name || 'Andrean Bima Pratama',
+        acknowledgedBy1Name: formData.acknowledgedBy1Name || 'Habib Mulyana',
         acknowledgedBy1Title: formData.acknowledgedBy1Title || '(Chief Engineer)',
         acknowledgedBy2Name: formData.acknowledgedBy2Name || 'Supriyatno',
         acknowledgedBy2Title: formData.acknowledgedBy2Title || '(Facility manager)',
@@ -1534,7 +1540,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                       type="text"
                       value={formData.acknowledgedBy1Name}
                       onChange={e => setFormData({ ...formData, acknowledgedBy1Name: e.target.value })}
-                      placeholder="Nama (e.g. Andrean Bima Pratama)"
+                      placeholder="Nama (e.g. Habib Mulyana)"
                       className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-xs"
                     />
                     <input

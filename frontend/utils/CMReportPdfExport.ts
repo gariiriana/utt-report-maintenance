@@ -740,7 +740,7 @@ export async function generateCMReportPDF(data: CMReportData) {
 
     // Acknowledged 1 Text
     doc.setFont(fontName, 'bold').setFontSize(8.5).setTextColor(0, 0, 0);
-    doc.text(sanitizePdfText(data.acknowledgedBy1Name) || 'Andrean Bima Pratama', margin + sigCellW / 2, row2NameY + 4.2, { align: 'center' });
+    doc.text(sanitizePdfText(data.acknowledgedBy1Name) || 'Habib Mulyana', margin + sigCellW / 2, row2NameY + 4.2, { align: 'center' });
     doc.setFont(fontName, 'normal').setFontSize(7.5).setTextColor(50, 50, 50);
     doc.text(sanitizePdfText(data.acknowledgedBy1Title) || '(Chief Engineer)', margin + sigCellW / 2, row2NameY + 8.5, { align: 'center' });
 

@@ -911,7 +911,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             preparedByTitle: report.preparedByTitle || '(Electrical Engineer)',
             reviewedByName: report.reviewedByName || 'Arif Budiman',
             reviewedByTitle: report.reviewedByTitle || '(Technical Manager)',
-            acknowledgedBy1Name: report.acknowledgedBy1Name || 'Andrean Bima Pratama',
+            acknowledgedBy1Name: report.acknowledgedBy1Name || 'Habib Mulyana',
             acknowledgedBy1Title: report.acknowledgedBy1Title || '(Chief Engineer)',
             acknowledgedBy2Name: report.acknowledgedBy2Name || 'Supriyatno',
             acknowledgedBy2Title: report.acknowledgedBy2Title || '(Facility manager)',
