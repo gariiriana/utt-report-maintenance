@@ -11,7 +11,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '@/components/AuthContext';
 import { toast } from 'sonner';
-import { Lock, Mail, Eye, EyeOff, LogIn, ScanFace, KeyRound, Camera, CheckCircle2, AlertCircle, RefreshCw, Sparkles } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, LogIn, ScanFace, KeyRound, Camera, CheckCircle2, AlertCircle, RefreshCw, Sparkles, SwitchCamera } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { db } from '@/api/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
@@ -45,6 +45,7 @@ export function Login() {
   const [matchedPerson, setMatchedPerson] = useState<RegisteredFace | null>(null);
   const [matchConfidence, setMatchConfidence] = useState<number>(0);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
 
   // Context Auth
   const { login, loginWithFaceVerified } = useAuth();
@@ -76,8 +77,9 @@ export function Login() {
     fetchRegisteredFaces();
   }, []);
 
-  // 2. Kontrol Kamera Webcam
-  const startCamera = async () => {
+  // 2. Kontrol Kamera Webcam Multi-Device
+  const startCamera = async (overrideFacingMode?: 'user' | 'environment') => {
+    const targetMode = overrideFacingMode || facingMode;
     setCameraError(null);
     matchSuccessRef.current = false;
     consecutiveMatchesRef.current = 0;
@@ -85,24 +87,56 @@ export function Login() {
     setScanStatus('searching');
 
     try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Browser Anda tidak mendukung akses kamera.');
+      // Periksa Secure Context (WebRTC mewajibkan HTTPS atau localhost)
+      if (!window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        throw new Error('Akses kamera di browser memerlukan protokol HTTPS yang aman atau dijalankan di localhost.');
       }
 
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user',
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        },
-        audio: false
-      });
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Browser atau perangkat ini tidak mendukung akses kamera langsung (WebRTC).');
+      }
+
+      let mediaStream: MediaStream;
+      try {
+        // Coba constraint ideal (640x480)
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: targetMode,
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          },
+          audio: false
+        });
+      } catch (constraintErr) {
+        // Fallback untuk perangkat/kamera yang tidak mendukung constraint ideal (OverconstrainedError)
+        console.warn('Constraint kamera ideal gagal, mencoba fallback standar:', constraintErr);
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: targetMode },
+            audio: false
+          });
+        } catch {
+          // Fallback paling mendasar untuk webcams lawas
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+          });
+        }
+      }
 
       setStream(mediaStream);
       setIsCameraActive(true);
     } catch (err: any) {
       console.error('Kamera gagal diakses:', err);
-      setCameraError(err.message || 'Kamera gagal diakses. Pastikan izin kamera telah diberikan.');
+      let friendlyMsg = err.message || 'Kamera gagal diakses.';
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        friendlyMsg = 'Izin akses kamera ditolak. Izinkan akses kamera pada browser atau pengaturan perangkat Anda.';
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        friendlyMsg = 'Tidak ditemukan perangkat kamera fisik pada perangkat Anda.';
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        friendlyMsg = 'Kamera sedang digunakan aplikasi lain (Zoom, Teams, Meet). Tutup aplikasi tersebut lalu coba lagi.';
+      }
+      setCameraError(friendlyMsg);
     }
   };
 
@@ -117,6 +151,15 @@ export function Login() {
     }
     setIsCameraActive(false);
     setDetectedBox(null);
+  };
+
+  const toggleFacingMode = () => {
+    const nextMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(nextMode);
+    stopCamera();
+    setTimeout(() => {
+      startCamera(nextMode);
+    }, 250);
   };
 
   // Otomatis aktifkan kamera saat masuk ke mode 'face'
@@ -343,8 +386,18 @@ export function Login() {
                           ref={videoRef}
                           playsInline
                           muted
-                          className="w-full h-full object-cover transform -scale-x-100"
+                          className={`w-full h-full object-cover transform ${facingMode === 'user' ? '-scale-x-100' : ''}`}
                         />
+
+                        {/* Tombol Alih Kamera Depan / Belakang */}
+                        <button
+                          type="button"
+                          onClick={toggleFacingMode}
+                          className="absolute top-3 right-3 p-2 rounded-xl bg-black/60 hover:bg-black/80 text-white backdrop-blur-md border border-white/20 transition cursor-pointer z-10"
+                          title={facingMode === 'user' ? 'Ganti ke Kamera Belakang' : 'Ganti ke Kamera Depan'}
+                        >
+                          <SwitchCamera className="w-4 h-4" />
+                        </button>
 
                         {/* LASER SCANNING BAR EFFECT (BERGERAK ATAS-BAWAH) */}
                         <motion.div
@@ -399,7 +452,14 @@ export function Login() {
                                 Wajah Terverifikasi!
                               </div>
                               <h4 className="text-sm font-black text-white">{matchedPerson.name}</h4>
-                              <p className="text-[11px] text-indigo-300 font-semibold">{matchedPerson.accountEmail}</p>
+                              {matchedPerson.accountEmail && (
+                                <p className="text-[11px] text-indigo-300 font-semibold">{matchedPerson.accountEmail}</p>
+                              )}
+                              {matchedPerson.role && (
+                                <span className="inline-block px-2 py-0.5 mt-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold">
+                                  {matchedPerson.role}
+                                </span>
+                              )}
                               <div className="text-[10px] text-slate-400 mt-1">Akurasi: {matchConfidence}%</div>
                             </div>
                             <div className="w-5 h-5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mt-1" />
@@ -417,7 +477,7 @@ export function Login() {
                         </p>
                         <button
                           type="button"
-                          onClick={startCamera}
+                          onClick={() => startCamera()}
                           className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition cursor-pointer"
                         >
                           Aktifkan Kamera
@@ -456,8 +516,15 @@ export function Login() {
                   </div>
 
                   {cameraError && (
-                    <div className="text-[11px] text-rose-600 bg-rose-50 p-2.5 rounded-xl border border-rose-200 font-medium text-center">
-                      {cameraError}
+                    <div className="text-[11px] text-rose-600 bg-rose-50 p-2.5 rounded-xl border border-rose-200 font-medium text-center space-y-1.5">
+                      <div>{cameraError}</div>
+                      <button
+                        type="button"
+                        onClick={() => setAuthMode('manual')}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-800 underline cursor-pointer"
+                      >
+                        Beralih ke Login Email & Password →
+                      </button>
                     </div>
                   )}
 

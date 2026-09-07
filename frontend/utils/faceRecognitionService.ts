@@ -94,8 +94,10 @@ export function detectFaceInStream(
   const finalX = Math.max(0, Math.round(avgCenterX - finalW / 2));
   const finalY = Math.max(0, Math.round(avgCenterY - finalH / 2));
 
-  // Pastikan berada di dalam frame video
-  if (finalW < 90 || finalH < 110) return null;
+  // Pastikan ukuran wajah wajar terhadap resolusi frame kamera perangkat
+  const minW = Math.min(65, video.videoWidth * 0.15);
+  const minH = Math.min(80, video.videoHeight * 0.15);
+  if (finalW < minW || finalH < minH) return null;
 
   return {
     x: finalX,
@@ -104,6 +106,60 @@ export function detectFaceInStream(
     height: Math.min(finalH, video.videoHeight - finalY),
     confidence: Math.min(0.98, skinPixelCount / (minPixels * 4))
   };
+}
+
+export interface FaceLightingQuality {
+  isValid: boolean;
+  brightness: number; // 0 - 255
+  warning?: string;
+}
+
+/**
+ * Validasi kualitas pencahayaan wajah (mencegah foto terlalu gelap atau overexposed).
+ */
+export function checkFaceLightingQuality(
+  source: HTMLVideoElement | HTMLCanvasElement | HTMLImageElement,
+  box?: DetectedFaceBox
+): FaceLightingQuality {
+  try {
+    const normCanvas = extractNormalizedFaceCanvas(source, box);
+    const ctx = normCanvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return { isValid: true, brightness: 128 };
+
+    const imgData = ctx.getImageData(0, 0, NORMALIZED_FACE_SIZE, NORMALIZED_FACE_SIZE);
+    const data = imgData.data;
+
+    let totalLum = 0;
+    const count = data.length / 4;
+    for (let i = 0; i < data.length; i += 4) {
+      totalLum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    }
+
+    const avgBrightness = Math.round(totalLum / count);
+
+    if (avgBrightness < 30) {
+      return {
+        isValid: false,
+        brightness: avgBrightness,
+        warning: 'Pencahayaan terlalu gelap. Pindah ke tempat yang lebih terang atau dekatkan ke lampu.'
+      };
+    }
+
+    if (avgBrightness > 235) {
+      return {
+        isValid: false,
+        brightness: avgBrightness,
+        warning: 'Pencahayaan terlalu terang/silau. Hindari lampu backlight langsung di belakang kepala.'
+      };
+    }
+
+    return {
+      isValid: true,
+      brightness: avgBrightness
+    };
+  } catch {
+    return { isValid: true, brightness: 128 };
+  }
 }
 
 /**

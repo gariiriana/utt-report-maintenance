@@ -24,7 +24,8 @@ import { RegisteredFace, DetectedFaceBox } from '@/types/faceAuthTypes';
 import {
   detectFaceInStream,
   extractFaceDescriptor,
-  captureFaceCroppedBase64
+  captureFaceCroppedBase64,
+  checkFaceLightingQuality
 } from '@/utils/faceRecognitionService';
 import { toast } from 'sonner';
 import {
@@ -40,7 +41,8 @@ import {
   CheckCircle2,
   User,
   Search,
-  ScanFace
+  ScanFace,
+  SwitchCamera
 } from 'lucide-react';
 
 export function FaceRegistrationManagement() {
@@ -53,8 +55,9 @@ export function FaceRegistrationManagement() {
   const [extractedDescriptor, setExtractedDescriptor] = useState<number[] | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // State Kamera
+  // State Kamera & Kompatibilitas Multi-Device
   const [isCameraActive, setIsCameraActive] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [detectedBox, setDetectedBox] = useState<DetectedFaceBox | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -91,29 +94,53 @@ export function FaceRegistrationManagement() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Kontrol Siklus Kamera
-  const startCamera = async () => {
+  // 2. Kontrol Siklus Kamera (Kompatibel Semua Perangkat & Browser)
+  const startCamera = async (targetFacingMode?: 'user' | 'environment') => {
     setCameraError(null);
+    const activeMode = targetFacingMode || facingMode;
+
     try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Browser Anda tidak mendukung akses kamera.');
+      if (!window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        throw new Error('Akses webcam browser diblokir karena tidak menggunakan HTTPS. Gunakan tombol "Upload Foto" di bawah jika mengakses lewat IP jaringan.');
       }
 
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'user',
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        },
-        audio: false
-      });
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Browser ini tidak mendukung akses kamera langsung. Gunakan Chrome/Safari terbaru atau gunakan tombol Upload.');
+      }
+
+      let mediaStream: MediaStream;
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: activeMode,
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          },
+          audio: false
+        });
+      } catch (constraintErr) {
+        console.warn('Constraint getUserMedia failed, retrying basic video constraint:', constraintErr);
+        // Fallback untuk webcam lama / tablet dengan constraint fleksibel
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: activeMode },
+          audio: false
+        });
+      }
 
       setStream(mediaStream);
       setIsCameraActive(true);
     } catch (err: any) {
       console.error('Failed to start camera:', err);
-      setCameraError(err.message || 'Kamera gagal diakses. Pastikan izin kamera aktif.');
-      toast.error('Gagal mengakses kamera: ' + (err.message || 'Izin ditolak'));
+      let friendlyMsg = err.message || 'Kamera gagal diakses.';
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        friendlyMsg = 'Izin kamera ditolak. Mohon aktifkan izin akses kamera pada setelan browser Anda.';
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        friendlyMsg = 'Tidak ditemukan perangkat kamera yang terhubung.';
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        friendlyMsg = 'Kamera sedang digunakan aplikasi lain (Zoom, Meet, dll). Tutup aplikasi tersebut lalu coba lagi.';
+      }
+      setCameraError(friendlyMsg);
+      toast.error(friendlyMsg);
     }
   };
 
@@ -128,6 +155,15 @@ export function FaceRegistrationManagement() {
     }
     setIsCameraActive(false);
     setDetectedBox(null);
+  };
+
+  const toggleFacingMode = () => {
+    const nextMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(nextMode);
+    stopCamera();
+    setTimeout(() => {
+      startCamera(nextMode);
+    }, 250);
   };
 
   // Kaitkan stream ke elemen <video>
@@ -170,11 +206,17 @@ export function FaceRegistrationManagement() {
     }
 
     try {
+      // Periksa kualitas pencahayaan untuk menghindari foto gelap/silau
+      const lighting = checkFaceLightingQuality(videoRef.current, detectedBox || undefined);
+      if (!lighting.isValid && lighting.warning) {
+        toast.warning(lighting.warning, { duration: 4000 });
+      }
+
       const avatarBase64 = captureFaceCroppedBase64(videoRef.current, detectedBox || undefined);
       const descriptor = extractFaceDescriptor(videoRef.current, detectedBox || undefined);
 
       if (!avatarBase64 || descriptor.length === 0) {
-        toast.error('Gagal mengekstrak fitur wajah. Pastikan wajah terlihat jelas.');
+        toast.error('Gagal mengekstrak fitur wajah. Pastikan wajah berada tepat di dalam area lingkaran.');
         return;
       }
 
@@ -371,7 +413,7 @@ export function FaceRegistrationManagement() {
                     ref={videoRef}
                     playsInline
                     muted
-                    className="w-full h-full object-cover transform -scale-x-100"
+                    className={`w-full h-full object-cover transform ${facingMode === 'user' ? '-scale-x-100' : ''}`}
                   />
                   {/* Lingkaran Panduan Wajah (Face Reticle) */}
                   <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
@@ -413,7 +455,7 @@ export function FaceRegistrationManagement() {
               {!isCameraActive ? (
                 <button
                   type="button"
-                  onClick={startCamera}
+                  onClick={() => startCamera()}
                   className="flex-1 py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm"
                 >
                   <Camera className="w-4 h-4" />
@@ -428,6 +470,14 @@ export function FaceRegistrationManagement() {
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     Ambil Foto Wajah
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleFacingMode}
+                    className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer border border-slate-200"
+                    title={facingMode === 'user' ? 'Ganti ke Kamera Belakang' : 'Ganti ke Kamera Depan'}
+                  >
+                    <SwitchCamera className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
