@@ -35,6 +35,7 @@ import {
   Globe
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { draftStorage } from '@/utils/draftStorage';
 
 import {
   aggregateMonthlyReportData,
@@ -270,7 +271,18 @@ export function MonthlyReportGenerator() {
     setSelectedYear(newYear);
   };
 
-  // Load Laporan dari Database / Cache
+  // Bersihkan legacy localStorage yang menghabiskan kuota 5MB browser
+  useEffect(() => {
+    try {
+      Object.keys(localStorage).forEach(k => {
+        if (k.startsWith('dwimitra_monthly_report_')) {
+          localStorage.removeItem(k);
+        }
+      });
+    } catch (_) {}
+  }, []);
+
+  // Load Laporan dari Database / Cache (IndexedDB via draftStorage)
   const handleGenerateReport = async (
     forceFresh = false,
     targetMonth = selectedMonth,
@@ -279,17 +291,25 @@ export function MonthlyReportGenerator() {
     setGenerating(true);
     const storageKey = `dwimitra_monthly_report_${targetYear}_${targetMonth}`;
 
-    // Cek cache lokal kecuali jika di-force fresh
+    // Cek cache draft (IndexedDB) kecuali jika di-force fresh
     if (!forceFresh) {
       try {
-        const cached = localStorage.getItem(storageKey);
-        if (cached) {
-          const parsed = JSON.parse(cached);
+        let parsed = await draftStorage.get(storageKey);
+        if (!parsed) {
+          const legacy = localStorage.getItem(storageKey);
+          if (legacy) {
+            try {
+              parsed = JSON.parse(legacy);
+            } catch (_) {}
+          }
+        }
 
+        if (parsed) {
           // CRITICAL VALIDATION: Pastikan cache yang dibaca benar-benar milik targetMonth & targetYear!
           if (!parsed || parsed.monthNumber !== targetMonth || parsed.year !== targetYear) {
             console.warn(`[MonthlyReport] Cache mismatch / corrupted: target ${targetMonth}/${targetYear}, found ${parsed?.monthNumber}/${parsed?.year}. Membersihkan cache...`);
-            localStorage.removeItem(storageKey);
+            await draftStorage.remove(storageKey);
+            try { localStorage.removeItem(storageKey); } catch (_) {}
           } else {
             // 1. Normalisasi LPS -> Lightning Protection System pada scheduleTable1 & purge unmapped
             if (Array.isArray(parsed.scheduleTable1)) {
@@ -375,9 +395,10 @@ export function MonthlyReportGenerator() {
             setReportData(parsed);
             setIsSavedLocally(true);
             setGenerating(false);
-            // Simpan kembali cache yang sudah dibersihkan dan disinkronkan
+            // Simpan kembali cache yang sudah dibersihkan dan disinkronkan ke IndexedDB
             try {
-              localStorage.setItem(storageKey, JSON.stringify(parsed));
+              await draftStorage.set(storageKey, parsed);
+              localStorage.removeItem(storageKey);
             } catch (errCache) {
               console.warn('Gagal memperbarui cache tersanitasi:', errCache);
             }
@@ -398,8 +419,14 @@ export function MonthlyReportGenerator() {
         contractNumber: 'K.TDE.0105/LEG.PRJ/VI/2026'
       });
       setReportData(data);
-      setIsSavedLocally(false);
-      localStorage.setItem(storageKey, JSON.stringify(data));
+      setIsSavedLocally(true);
+      // Simpan ke IndexedDB (kapasitas ratusan MB, aman dari QuotaExceededError)
+      try {
+        await draftStorage.set(storageKey, data);
+        localStorage.removeItem(storageKey);
+      } catch (errStorage) {
+        console.warn('Storage save warning:', errStorage);
+      }
       toast.success(`Laporan Bulanan ${data.monthName} ${data.year} Berhasil Digenerate!`);
     } catch (err: any) {
       console.error('Error generating monthly report:', err);
@@ -414,7 +441,7 @@ export function MonthlyReportGenerator() {
     handleGenerateReport(false, selectedMonth, selectedYear);
   }, [selectedMonth, selectedYear]);
 
-  // Auto-save debounced to localStorage when reportData changes
+  // Auto-save debounced to IndexedDB when reportData changes
   useEffect(() => {
     if (!reportData) return;
     // CRITICAL GUARD: Hanya simpan jika data laporan cocok dengan bulan & tahun yang aktif!
@@ -422,10 +449,11 @@ export function MonthlyReportGenerator() {
       return;
     }
     const storageKey = `dwimitra_monthly_report_${selectedYear}_${selectedMonth}`;
-    const timeout = setTimeout(() => {
+    const timeout = setTimeout(async () => {
       try {
-        localStorage.setItem(storageKey, JSON.stringify(reportData));
+        await draftStorage.set(storageKey, reportData);
         setIsSavedLocally(true);
+        try { localStorage.removeItem(storageKey); } catch (_) {}
       } catch (e) {
         console.error('Auto-save error:', e);
       }
@@ -487,11 +515,12 @@ export function MonthlyReportGenerator() {
   };
 
   // Reset Draft to Fresh Database Aggregation
-  const handleResetToDefault = () => {
+  const handleResetToDefault = async () => {
     const currentMonthLabel = MONTH_OPTIONS.find(m => m.value === selectedMonth)?.label || `Bulan ${selectedMonth}`;
     if (confirm(`Yakin ingin mereset perubahan dan menarik ulang data default ${currentMonthLabel} ${selectedYear} dari database?`)) {
       const storageKey = `dwimitra_monthly_report_${selectedYear}_${selectedMonth}`;
       try {
+        await draftStorage.remove(storageKey);
         localStorage.removeItem(storageKey);
       } catch (e) {
         console.warn('Gagal menghapus cache saat reset:', e);
