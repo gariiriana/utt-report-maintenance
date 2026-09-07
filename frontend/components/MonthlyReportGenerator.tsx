@@ -10,7 +10,7 @@
 //            - Fitur Ekspor ke Word (.docx) 100% Presisi & Cetak PDF Resmi
 // ============================================================================
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   FileText,
   Printer,
@@ -32,7 +32,9 @@ import {
   RotateCcw,
   X,
   Upload,
-  Globe
+  Globe,
+  Search,
+  Filter
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { draftStorage } from '@/utils/draftStorage';
@@ -40,6 +42,7 @@ import { draftStorage } from '@/utils/draftStorage';
 import {
   aggregateMonthlyReportData,
   FullMonthlyReportData,
+  EquipmentDetailItem,
   convertReportToBilingual,
   getScopeOfWorkForScope,
   MASTER_PM_SCHEDULES,
@@ -256,6 +259,21 @@ export function MonthlyReportGenerator() {
   const [exportingDocx, setExportingDocx] = useState(false);
   const [activeChapter, setActiveChapter] = useState<number>(0); // 0 = Semua / Cover
   const [isSavedLocally, setIsSavedLocally] = useState(false);
+
+  // Filter & Pencarian Tabel 20 Equipment & System Details (Bab 5)
+  const [selectedEquipmentCategory, setSelectedEquipmentCategory] = useState<string>('ALL');
+  const [equipmentSearchQuery, setEquipmentSearchQuery] = useState<string>('');
+
+  // Grouping equipment per kategori untuk Bab 5 (Tabel 20)
+  const groupedEquipments = useMemo(() => {
+    const map = new Map<string, { item: EquipmentDetailItem; originalIndex: number }[]>();
+    (reportData?.equipmentDetailsTable20 || []).forEach((eq, idx) => {
+      const sys = eq.system || 'General Equipment';
+      if (!map.has(sys)) map.set(sys, []);
+      map.get(sys)!.push({ item: eq, originalIndex: idx });
+    });
+    return map;
+  }, [reportData?.equipmentDetailsTable20]);
 
 
   // Handler Perubahan Periode Bulan & Tahun (Langsung bersihkan stale reportData agar tidak stuck)
@@ -2918,37 +2936,79 @@ export function MonthlyReportGenerator() {
                 <img src={logoNeutraDC} alt="NeutraDC Logo" className="h-10 object-contain" />
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <h2 className="text-xl font-bold text-slate-900">5. Equipment and System Details</h2>
-                <button
-                  onClick={() => {
-                    const updated = { ...reportData };
-                    const newNo = updated.equipmentDetailsTable20.length + 1;
-                    updated.equipmentDetailsTable20.push({
-                      no: newNo,
-                      system: 'General Facility System',
-                      className: 'New Facility Asset',
-                      modelSN: '-',
-                      manufacture: 'OEM Certified',
-                      installDate: '2021',
-                      location: 'Campus Area',
-                      lastMaintenanceDate: '',
-                      currentOperationalDate: '',
-                      statusBeforeMaintenance: 'Good Condition'
-                    });
-                    setReportData(updated);
-                    toast.success('Equipment baru berhasil ditambahkan!');
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold font-sans transition-all cursor-pointer print:hidden"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Tambah Equipment</span>
-                </button>
+                <div className="flex items-center gap-2 print:hidden">
+                  <button
+                    onClick={() => {
+                      const updated = { ...reportData };
+                      const targetSys = selectedEquipmentCategory !== 'ALL' ? selectedEquipmentCategory : 'Transformer';
+                      const existingInSys = updated.equipmentDetailsTable20.filter(e => (e.system || 'Other Equipment') === targetSys);
+                      updated.equipmentDetailsTable20.push({
+                        no: existingInSys.length + 1,
+                        system: targetSys,
+                        className: 'New Facility Asset',
+                        modelSN: '-',
+                        manufacture: 'OEM Certified',
+                        installDate: '2021',
+                        location: 'Campus Area',
+                        lastMaintenanceDate: '',
+                        currentOperationalDate: '',
+                        statusBeforeMaintenance: 'Good Operation / Normal\nBeroperasi Baik / Normal'
+                      });
+                      setReportData(updated);
+                      toast.success(`Equipment baru berhasil ditambahkan ke kategori ${targetSys}!`);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold font-sans transition-all cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Tambah Equipment</span>
+                  </button>
+                </div>
               </div>
 
               <p className="text-sm text-slate-700 leading-relaxed">
                 Rincian aset peralatan dan spesifikasi teknis fasilitas Data Center NeutraDC Cikarang yang tercatat pada Master Asset BOQ beserta riwayat pemeliharaan berkala terakhir dan jam operasionalnya:
               </p>
+
+              {/* Toolbar Filter Kategori & Pencarian Equipment (Web Mode) */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 print:hidden font-sans">
+                <div className="flex items-center gap-2 flex-1 min-w-[280px]">
+                  <Filter className="w-4 h-4 text-slate-500 shrink-0" />
+                  <span className="text-xs font-semibold text-slate-700 shrink-0">Kategori:</span>
+                  <select
+                    value={selectedEquipmentCategory}
+                    onChange={(e) => setSelectedEquipmentCategory(e.target.value)}
+                    className="text-xs py-1 px-2.5 bg-white border border-slate-300 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 font-medium text-slate-800 flex-1 max-w-xs cursor-pointer"
+                  >
+                    <option value="ALL">Semua Kategori ({reportData.equipmentDetailsTable20.length} unit)</option>
+                    {Array.from(groupedEquipments.keys()).map((catName) => (
+                      <option key={catName} value={catName}>
+                        {catName} ({groupedEquipments.get(catName)?.length || 0} unit)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="relative flex-1 min-w-[240px] max-w-sm">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                  <input
+                    type="text"
+                    value={equipmentSearchQuery}
+                    onChange={(e) => setEquipmentSearchQuery(e.target.value)}
+                    placeholder="Cari nama peralatan, serial number, atau area..."
+                    className="w-full text-xs pl-8 pr-7 py-1.5 bg-white border border-slate-300 rounded-lg outline-none focus:ring-1 focus:ring-blue-500 placeholder:text-slate-400"
+                  />
+                  {equipmentSearchQuery && (
+                    <button
+                      onClick={() => setEquipmentSearchQuery('')}
+                      className="absolute right-2 top-2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
 
               <p className="font-bold text-center text-slate-900 text-sm my-3">
                 Table 20. Equipment and System Details
@@ -2959,11 +3019,11 @@ export function MonthlyReportGenerator() {
                   <thead>
                     <tr className="bg-[#0066B3] text-white font-bold border-b border-black">
                       <th className="py-2.5 px-2 text-center border-r border-black w-8">No</th>
-                      <th className="py-2.5 px-2 border-r border-black w-32">Class Name</th>
-                      <th className="py-2.5 px-2 border-r border-black w-24">Model/SN</th>
-                      <th className="py-2.5 px-2 border-r border-black w-24">Manufacture</th>
-                      <th className="py-2.5 px-2 text-center border-r border-black w-16">Install Date</th>
-                      <th className="py-2.5 px-2 border-r border-black w-28">Location</th>
+                      <th className="py-2.5 px-2 border-r border-black w-36">Equipment / System Name</th>
+                      <th className="py-2.5 px-2 border-r border-black w-28">Model / Serial Number</th>
+                      <th className="py-2.5 px-2 border-r border-black w-28">Manufacture</th>
+                      <th className="py-2.5 px-2 text-center border-r border-black w-20">Installation Date</th>
+                      <th className="py-2.5 px-2 border-r border-black w-28">Location / Area</th>
                       <th className="py-2.5 px-2 text-center border-r border-black w-28">Last Maintenance Date</th>
                       <th className="py-2.5 px-2 text-center border-r border-black w-28">Current Operational Hours</th>
                       <th className="py-2.5 px-2 text-center border-r border-black w-28">Status Before Maintenance</th>
@@ -2971,127 +3031,176 @@ export function MonthlyReportGenerator() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-black text-slate-800">
-                    {reportData.equipmentDetailsTable20.slice(0, 45).map((eq, idx) => (
-                      <tr key={idx} className="hover:bg-blue-50/20">
-                        <td className="py-2 px-1 text-center font-bold border-r border-black">{eq.no}</td>
-                        <td className="py-1 px-1 border-r border-black font-bold">
-                          <input
-                            type="text"
-                            value={eq.className}
-                            onChange={(e) => {
-                              const updated = { ...reportData };
-                              updated.equipmentDetailsTable20[idx].className = e.target.value;
-                              setReportData(updated);
-                            }}
-                            className="w-full text-xs font-bold py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none"
-                          />
-                        </td>
-                        <td className="py-1 px-1 font-mono text-[11px] border-r border-black">
-                          <input
-                            type="text"
-                            value={eq.modelSN}
-                            onChange={(e) => {
-                              const updated = { ...reportData };
-                              updated.equipmentDetailsTable20[idx].modelSN = e.target.value;
-                              setReportData(updated);
-                            }}
-                            className="w-full text-[11px] font-mono py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none"
-                          />
-                        </td>
-                        <td className="py-1 px-1 border-r border-black">
-                          <input
-                            type="text"
-                            value={eq.manufacture}
-                            onChange={(e) => {
-                              const updated = { ...reportData };
-                              updated.equipmentDetailsTable20[idx].manufacture = e.target.value;
-                              setReportData(updated);
-                            }}
-                            className="w-full text-xs py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none"
-                          />
-                        </td>
-                        <td className="py-1 px-1 text-center border-r border-black">
-                          <input
-                            type="text"
-                            value={eq.installDate}
-                            onChange={(e) => {
-                              const updated = { ...reportData };
-                              updated.equipmentDetailsTable20[idx].installDate = e.target.value;
-                              setReportData(updated);
-                            }}
-                            className="w-full text-center text-xs py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none"
-                          />
-                        </td>
-                        <td className="py-1 px-1 border-r border-black">
-                          <input
-                            type="text"
-                            value={eq.location}
-                            onChange={(e) => {
-                              const updated = { ...reportData };
-                              updated.equipmentDetailsTable20[idx].location = e.target.value;
-                              setReportData(updated);
-                            }}
-                            className="w-full text-xs py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none"
-                          />
-                        </td>
-                        <td className="py-1 px-1 text-center border-r border-black">
-                          <input
-                            type="text"
-                            value={eq.lastMaintenanceDate}
-                            placeholder="Tgl PM..."
-                            onChange={(e) => {
-                              const updated = { ...reportData };
-                              updated.equipmentDetailsTable20[idx].lastMaintenanceDate = e.target.value;
-                              setReportData(updated);
-                            }}
-                            className="w-full text-center text-xs py-1 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none placeholder:text-slate-300"
-                          />
-                        </td>
-                        <td className="py-1 px-1 text-center border-r border-black">
-                          <input
-                            type="text"
-                            value={eq.currentOperationalDate}
-                            placeholder="misal 2.040 Hours"
-                            onChange={(e) => {
-                              const updated = { ...reportData };
-                              updated.equipmentDetailsTable20[idx].currentOperationalDate = e.target.value;
-                              setReportData(updated);
-                            }}
-                            className="w-full text-center text-xs py-1 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none placeholder:text-slate-300 font-medium"
-                          />
-                        </td>
-                        <td className="py-1 px-1 text-center border-r border-black">
-                          <BilingualTextarea
-                            value={eq.statusBeforeMaintenance}
-                            placeholderEn="Good Condition"
-                            placeholderId="Kondisi Baik (garis miring)..."
-                            onChange={(val) => {
-                              const updated = { ...reportData };
-                              updated.equipmentDetailsTable20[idx].statusBeforeMaintenance = val;
-                              setReportData(updated);
-                            }}
-                            classNameEn="w-full text-center text-xs py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none"
-                            classNameId="w-full text-center text-[10.5px] italic text-slate-500 py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none"
-                            indentId={false}
-                          />
-                        </td>
-                        <td className="py-1 px-1 text-center print:hidden">
-                          <button
-                            onClick={() => {
-                              const updated = { ...reportData };
-                              updated.equipmentDetailsTable20.splice(idx, 1);
-                              updated.equipmentDetailsTable20.forEach((item, i) => { item.no = i + 1; });
-                              setReportData(updated);
-                              toast.info('Equipment dihapus.');
-                            }}
-                            className="p-1 hover:text-red-600 transition-colors cursor-pointer"
-                            title="Hapus baris"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 mx-auto text-slate-400 hover:text-red-600" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {Array.from(groupedEquipments.entries()).map(([sysName, groupItems]) => {
+                      // Filter kategori bila dipilih
+                      if (selectedEquipmentCategory !== 'ALL' && selectedEquipmentCategory !== sysName) {
+                        return null;
+                      }
+
+                      // Filter pencarian
+                      const visibleItems = groupItems.filter(({ item }) => {
+                        if (!equipmentSearchQuery.trim()) return true;
+                        const q = equipmentSearchQuery.toLowerCase();
+                        return (
+                          (item.className || '').toLowerCase().includes(q) ||
+                          (item.modelSN || '').toLowerCase().includes(q) ||
+                          (item.manufacture || '').toLowerCase().includes(q) ||
+                          (item.location || '').toLowerCase().includes(q) ||
+                          (item.system || '').toLowerCase().includes(q)
+                        );
+                      });
+
+                      if (visibleItems.length === 0 && equipmentSearchQuery.trim()) {
+                        return null;
+                      }
+
+                      return (
+                        <React.Fragment key={`group-${sysName}`}>
+                          {/* Header Kategori Peralatan (Sesuai Screenshot 3) */}
+                          <tr className="bg-[#D9E1F2] border-b border-black print:bg-[#D9E1F2]">
+                            <td colSpan={10} className="py-2 px-3 font-bold text-[#1F4E79] text-xs sm:text-sm">
+                              <div className="flex items-center justify-between">
+                                <span className="font-serif tracking-wide">{sysName}</span>
+                                <span className="text-[11px] font-sans font-normal text-slate-600 print:hidden">
+                                  {visibleItems.length} unit
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+
+                          {/* Daftar Peralatan Dalam Kategori (No Urut Restart per Kategori) */}
+                          {visibleItems.map(({ item: eq, originalIndex: idx }, itemIdx) => (
+                            <tr key={idx} className="hover:bg-blue-50/20">
+                              <td className="py-2 px-1 text-center font-bold border-r border-black">
+                                {itemIdx + 1}
+                              </td>
+                              <td className="py-1 px-1 border-r border-black font-bold">
+                                <input
+                                  type="text"
+                                  value={eq.className}
+                                  onChange={(e) => {
+                                    const updated = { ...reportData };
+                                    updated.equipmentDetailsTable20[idx].className = e.target.value;
+                                    setReportData(updated);
+                                  }}
+                                  className="w-full text-xs font-bold py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none"
+                                />
+                              </td>
+                              <td className="py-1 px-1 font-mono text-[11px] border-r border-black">
+                                <input
+                                  type="text"
+                                  value={eq.modelSN}
+                                  onChange={(e) => {
+                                    const updated = { ...reportData };
+                                    updated.equipmentDetailsTable20[idx].modelSN = e.target.value;
+                                    setReportData(updated);
+                                  }}
+                                  className="w-full text-[11px] font-mono py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none"
+                                />
+                              </td>
+                              <td className="py-1 px-1 border-r border-black">
+                                <input
+                                  type="text"
+                                  value={eq.manufacture}
+                                  onChange={(e) => {
+                                    const updated = { ...reportData };
+                                    updated.equipmentDetailsTable20[idx].manufacture = e.target.value;
+                                    setReportData(updated);
+                                  }}
+                                  className="w-full text-xs py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none"
+                                />
+                              </td>
+                              <td className="py-1 px-1 text-center border-r border-black">
+                                <input
+                                  type="text"
+                                  value={eq.installDate}
+                                  onChange={(e) => {
+                                    const updated = { ...reportData };
+                                    updated.equipmentDetailsTable20[idx].installDate = e.target.value;
+                                    setReportData(updated);
+                                  }}
+                                  className="w-full text-center text-xs py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none"
+                                />
+                              </td>
+                              <td className="py-1 px-1 border-r border-black">
+                                <input
+                                  type="text"
+                                  value={eq.location}
+                                  onChange={(e) => {
+                                    const updated = { ...reportData };
+                                    updated.equipmentDetailsTable20[idx].location = e.target.value;
+                                    setReportData(updated);
+                                  }}
+                                  className="w-full text-xs py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none"
+                                />
+                              </td>
+                              <td className="py-1 px-1 text-center border-r border-black">
+                                <input
+                                  type="text"
+                                  value={eq.lastMaintenanceDate}
+                                  placeholder="Tgl PM..."
+                                  onChange={(e) => {
+                                    const updated = { ...reportData };
+                                    updated.equipmentDetailsTable20[idx].lastMaintenanceDate = e.target.value;
+                                    setReportData(updated);
+                                  }}
+                                  className="w-full text-center text-xs py-1 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none placeholder:text-slate-300"
+                                />
+                              </td>
+                              <td className="py-1 px-1 text-center border-r border-black">
+                                <input
+                                  type="text"
+                                  value={eq.currentOperationalDate}
+                                  placeholder="misal 2.040 Hours"
+                                  onChange={(e) => {
+                                    const updated = { ...reportData };
+                                    updated.equipmentDetailsTable20[idx].currentOperationalDate = e.target.value;
+                                    setReportData(updated);
+                                  }}
+                                  className="w-full text-center text-xs py-1 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none placeholder:text-slate-300 font-medium"
+                                />
+                              </td>
+                              <td className="py-1 px-1 text-center border-r border-black">
+                                <BilingualTextarea
+                                  value={eq.statusBeforeMaintenance}
+                                  placeholderEn="Good Condition"
+                                  placeholderId="Kondisi Baik (garis miring)..."
+                                  onChange={(val) => {
+                                    const updated = { ...reportData };
+                                    updated.equipmentDetailsTable20[idx].statusBeforeMaintenance = val;
+                                    setReportData(updated);
+                                  }}
+                                  classNameEn="w-full text-center text-xs py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none"
+                                  classNameId="w-full text-center text-[10.5px] italic text-slate-500 py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none"
+                                  indentId={false}
+                                />
+                              </td>
+                              <td className="py-1 px-1 text-center print:hidden">
+                                <button
+                                  onClick={() => {
+                                    const updated = { ...reportData };
+                                    updated.equipmentDetailsTable20.splice(idx, 1);
+                                    const sysCounter = new Map<string, number>();
+                                    updated.equipmentDetailsTable20.forEach((item) => {
+                                      const s = item.system || 'Other Equipment';
+                                      const count = (sysCounter.get(s) || 0) + 1;
+                                      sysCounter.set(s, count);
+                                      item.no = count;
+                                    });
+                                    setReportData(updated);
+                                    toast.info('Equipment dihapus.');
+                                  }}
+                                  className="p-1 hover:text-red-600 transition-colors cursor-pointer"
+                                  title="Hapus baris"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 mx-auto text-slate-400 hover:text-red-600" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </React.Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

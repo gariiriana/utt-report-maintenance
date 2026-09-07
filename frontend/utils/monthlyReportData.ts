@@ -1550,16 +1550,28 @@ export function extractBOQItemDetails(item: any) {
   
   const modelSN = item['Serial Number'] || item['Model / P/N'] || item['Model/Version'] || item['Specification'] || item['Model'] || item['TAG'] || item['Asset ID'] || '-';
   
-  const manufacture = item['Manufacturer / Principle'] || item['Manufacturer'] || item['Brand'] || item['Principle'] || item['Product Name+'] || item['Product Name'] || (item['CI Description*']?.toLowerCase().includes('air conditioning') || item['CI Description*']?.toLowerCase().includes('split wall') ? 'Daikin' : 'OEM Certified');
+  let manufacture = item['Manufacturer / Principle'] || item['Manufacturer'] || item['Brand'] || item['Principle'] || item['Product Name+'] || item['Product Name'] || (item['CI Description*']?.toLowerCase().includes('air conditioning') || item['CI Description*']?.toLowerCase().includes('split wall') ? 'Daikin' : 'OEM Certified');
+  
+  if (manufacture === 'TRAFINDO' || manufacture === 'PT TRAFINDO' || manufacture === 'TRAFINDO PRIMA PERKASA') {
+    manufacture = 'PT. TRAFINDO PRIMA PERKASA';
+  } else if (manufacture === 'DAIKIN') {
+    manufacture = 'Daikin';
+  }
   
   let installDate = item['Production Year'] || item['Install Date'] || item['Prod.Year'] || '2021';
   if (/^[0-9]{5}$/.test(String(installDate))) {
-    installDate = '2021'; // Clean up Excel date numbers
+    const num = parseInt(String(installDate), 10);
+    const d = new Date((num - 25569) * 86400 * 1000);
+    installDate = isNaN(d.getFullYear()) ? '2021' : String(d.getFullYear());
+  } else if (/^20[0-9]{2}/.test(String(installDate))) {
+    installDate = String(installDate).substring(0, 4);
   }
   
-  const location = (item['Floor'] && item['Room']) 
-    ? `${item['Floor']}, ${item['Room']}` 
-    : (item['Room'] || item['Room Location'] || item['Location'] || item['Area'] || 'NeutraDC Campus');
+  const location = item['Room'] 
+    ? item['Room']
+    : ((item['Floor'] && item['Room']) 
+        ? `${item['Floor']}, ${item['Room']}` 
+        : (item['Room Location'] || item['Location'] || item['Area'] || 'NeutraDC Campus'));
     
   const capacity = item['Capacity'] || item['Specification'] || item['Type'] || 'Standard Rating';
   const productName = item['Product Name+'] || item['Product Name'] || manufacture;
@@ -3305,10 +3317,66 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
   // 6. MASTER EQUIPMENT TABLE 20 & SYSTEM OVERVIEW TABLE 21 (BAB 5)
   // ══════════════════════════════════════════════════════════════════════════
   const equipmentDetailsTable20: EquipmentDetailItem[] = [];
-  let eqCount = 1;
 
-  BOQ_CATEGORIES_DATA.filter(c => !c.isSparepart).forEach(cat => {
-    cat.items.forEach(item => {
+  // Definisi urutan kategori equipment prioritas sesuai standar resmi NeutraDC (Screenshot 3):
+  // 1. Chiller, 2. Cooling Tower, 3. Transformer, 4. Generator, 5. Fuel System, dst.
+  // Lighting (cat_41) dikecualikan dari Critical Equipment agar tidak membanjiri tabel dengan 2.700 bohlam lampu.
+  const CRITICAL_EQUIPMENT_CATEGORIES: {
+    id: string;
+    displayName: string;
+    filterFn?: (item: any) => boolean;
+  }[] = [
+    { id: 'cat_21', displayName: 'Chiller' },
+    { id: 'cat_16', displayName: 'Cooling Tower' },
+    { id: 'cat_1', displayName: 'Transformer' },
+    { id: 'cat_10', displayName: 'Generator' },
+    { id: 'cat_11', displayName: 'Fuel System' },
+    { id: 'cat_4', displayName: 'LV Panel' },
+    { id: 'cat_6', displayName: 'PDU Panel' },
+    {
+      id: 'cat_26',
+      displayName: 'FSS',
+      filterFn: (item: any) => {
+        const name = (item['CI Name*'] || item['Class Name'] || '').toLowerCase();
+        const desc = (item['CI Description*'] || '').toLowerCase();
+        return name.includes('facp') || name.includes('watermist') || name.includes('tabung') || desc.includes('facp') || desc.includes('watermist');
+      }
+    },
+    { id: 'cat_28', displayName: 'Pre-Action System' },
+    { id: 'cat_9', displayName: 'Lightning Protection System' },
+    { id: 'cat_22', displayName: 'VRV' },
+    { id: 'cat_2', displayName: 'ATS' },
+    { id: 'cat_3', displayName: 'MV & RMU Panel' },
+    { id: 'cat_8', displayName: 'UPS' },
+    { id: 'cat_19', displayName: 'CRAC' },
+    { id: 'cat_23', displayName: 'PAHU' },
+    { id: 'cat_25', displayName: 'Splitwall' },
+    { id: 'cat_14', displayName: 'Exhaust Fan' },
+    { id: 'cat_18', displayName: 'Cooling Pump' },
+    { id: 'cat_32', displayName: 'Water & Fuel Leak' },
+    { id: 'cat_33', displayName: 'Water Softener' },
+    { id: 'cat_34', displayName: 'CT Water Treatment' },
+    { id: 'cat_35', displayName: 'Pompa' },
+    { id: 'cat_37', displayName: 'STP & Plumbing' },
+    { id: 'cat_30', displayName: 'Lift' },
+    { id: 'cat_31', displayName: 'Dock Leveler' },
+    { id: 'cat_36', displayName: 'Gate' },
+    { id: 'cat_38', displayName: 'Road Blocker' },
+    { id: 'cat_39', displayName: 'Door' },
+    { id: 'cat_40', displayName: 'X-RAY' }
+  ];
+
+  CRITICAL_EQUIPMENT_CATEGORIES.forEach(cfg => {
+    const cat = BOQ_CATEGORIES_DATA.find(c => c.id === cfg.id);
+    if (!cat) return;
+
+    let items = cat.items;
+    if (cfg.filterFn) {
+      items = items.filter(cfg.filterFn);
+    }
+
+    let categoryNo = 1;
+    items.forEach(item => {
       // 1. Data from BOQ
       const details = extractBOQItemDetails(item);
 
@@ -3329,15 +3397,13 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
         }
       }
 
-      // 3. Current Operational Hours (Dikosongkan untuk diisi user / AI assist)
+      // 3. Current Operational Hours & Status Before Maintenance
       const currentOp = '';
-
-      // 4. Status Before Maintenance (Dikosongkan untuk diisi user / AI assist)
       const statusBf = '';
 
       equipmentDetailsTable20.push({
-        no: eqCount++,
-        system: cat.name,
+        no: categoryNo++,
+        system: cfg.displayName,
         className: details.className,
         modelSN: details.modelSN,
         manufacture: details.manufacture,
@@ -4068,12 +4134,24 @@ export function convertReportToBilingual(data: FullMonthlyReportData): FullMonth
 
   // 10. Bab 5: Equipment Details (Tabel 20) & System Overview (Tabel 21)
   if (Array.isArray(updated.equipmentDetailsTable20)) {
-    updated.equipmentDetailsTable20 = updated.equipmentDetailsTable20.map(item => {
+    // Filter out lighting bulk items if present in old drafts
+    const filtered = updated.equipmentDetailsTable20.filter(item => {
+      const sys = (item.system || '').toLowerCase();
+      const cls = (item.className || '').toLowerCase();
+      return !sys.includes('lighting') && !sys.includes('penerangan') && !cls.includes('pju') && !cls.includes('led downlight');
+    });
+
+    const sysCounter = new Map<string, number>();
+    updated.equipmentDetailsTable20 = filtered.map(item => {
+      const sys = item.system || 'General Equipment';
+      const currentNo = (sysCounter.get(sys) || 0) + 1;
+      sysCounter.set(sys, currentNo);
+
       let st = item.statusBeforeMaintenance || 'Good Operation';
       if (!st.includes('\n')) {
         st = 'Good Operation / Normal\nBeroperasi Baik / Normal';
       }
-      return { ...item, statusBeforeMaintenance: st };
+      return { ...item, no: currentNo, statusBeforeMaintenance: st };
     });
   }
 

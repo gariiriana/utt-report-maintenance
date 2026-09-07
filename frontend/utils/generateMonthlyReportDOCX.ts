@@ -1187,34 +1187,75 @@ export async function generateMonthlyReportDOCX(data: FullMonthlyReportData): Pr
     })
   );
 
-  const eqRows = [
+  const groupedEquipment = new Map<string, EquipmentDetailItem[]>();
+  (data.equipmentDetailsTable20 || []).forEach(eq => {
+    const sys = eq.system || "Other Equipment";
+    if (!groupedEquipment.has(sys)) groupedEquipment.set(sys, []);
+    groupedEquipment.get(sys)!.push(eq);
+  });
+
+  const eqRows: TableRow[] = [
     new TableRow({
       children: [
         new TableCell({ width: { size: 4, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, color: "FFFFFF", size: 15 })] })] }),
-        new TableCell({ width: { size: 16, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Class Name", bold: true, color: "FFFFFF", size: 15 })] })] }),
-        new TableCell({ width: { size: 14, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Model/SN", bold: true, color: "FFFFFF", size: 15 })] })] }),
+        new TableCell({ width: { size: 18, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Equipment / System Name", bold: true, color: "FFFFFF", size: 15 })] })] }),
+        new TableCell({ width: { size: 14, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Model / Serial Number", bold: true, color: "FFFFFF", size: 15 })] })] }),
         new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Manufacture", bold: true, color: "FFFFFF", size: 15 })] })] }),
-        new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Install", bold: true, color: "FFFFFF", size: 15 })] })] }),
-        new TableCell({ width: { size: 14, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Location", bold: true, color: "FFFFFF", size: 15 })] })] }),
-        new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Last Maint Date", bold: true, color: "FFFFFF", size: 15 })] })] }),
-        new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Current Op Date", bold: true, color: "FFFFFF", size: 15 })] })] }),
-        new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Status Before", bold: true, color: "FFFFFF", size: 15 })] })] }),
+        new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Installation Date", bold: true, color: "FFFFFF", size: 15 })] })] }),
+        new TableCell({ width: { size: 14, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Location / Area", bold: true, color: "FFFFFF", size: 15 })] })] }),
+        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Last Maintenance Date", bold: true, color: "FFFFFF", size: 15 })] })] }),
+        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Current Operational Hours", bold: true, color: "FFFFFF", size: 15 })] })] }),
+        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Status Before Maintenance", bold: true, color: "FFFFFF", size: 15 })] })] }),
       ]
-    }),
-    ...data.equipmentDetailsTable20.map(eq => new TableRow({
-      children: [
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(eq.no), size: 15 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: eq.className, bold: true, size: 15 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: eq.modelSN, size: 14 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: eq.manufacture, size: 15 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: eq.installDate, size: 15 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: eq.location, size: 15 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: eq.lastMaintenanceDate, bold: true, size: 15 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: eq.currentOperationalDate, size: 14 })] })] }),
-        new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: formatBilingualCell(eq.statusBeforeMaintenance, "-", true) }),
-      ]
-    }))
+    })
   ];
+
+  groupedEquipment.forEach((items, sysName) => {
+    // 1. Category Subheader Row (sesuai Screenshot 3)
+    eqRows.push(
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 9,
+            shading: { fill: "D9E1F2" },
+            borders: borderThin,
+            children: [
+              new Paragraph({
+                spacing: { before: 80, after: 80 },
+                children: [
+                  new TextRun({
+                    text: sysName,
+                    bold: true,
+                    size: 16,
+                    color: "1F4E79"
+                  })
+                ]
+              })
+            ]
+          })
+        ]
+      })
+    );
+
+    // 2. Category Items (Nomor urut restart dari 1 per kategori)
+    items.forEach((eq, itemIdx) => {
+      eqRows.push(
+        new TableRow({
+          children: [
+            new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(itemIdx + 1), size: 15 })] })] }),
+            new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: eq.className, bold: true, size: 15 })] })] }),
+            new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: eq.modelSN, size: 14 })] })] }),
+            new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: eq.manufacture, size: 15 })] })] }),
+            new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: eq.installDate, size: 15 })] })] }),
+            new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: eq.location, size: 15 })] })] }),
+            new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: eq.lastMaintenanceDate, bold: true, size: 15 })] })] }),
+            new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: eq.currentOperationalDate, size: 14 })] })] }),
+            new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: formatBilingualCell(eq.statusBeforeMaintenance, "-", true) }),
+          ]
+        })
+      );
+    });
+  });
 
   bodyChildren.push(
     new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: eqRows }),
