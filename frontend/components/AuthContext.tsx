@@ -52,7 +52,7 @@ const getRoleFromEmail = (email: string | null): 'admin' | 'qc_dme' | 'engineer'
   if (lowerEmail.includes('dme') || lowerEmail.includes('dwimitra')) return 'DME';
   if (lowerEmail.includes('k2') || lowerEmail.includes('engineer_k2')) return 'Engineer_K2';
   // Email spesifik teknisi Standby Engineer UTT
-  if (lowerEmail === 'agil@utt.com' || lowerEmail === 'krishna@utt.com' || lowerEmail === 'asep@utt.com' || lowerEmail === 'salman@utt.com' || lowerEmail === 'gilang@utt.com' || lowerEmail === 'dison@utt.com' || lowerEmail.includes('standby')) return 'standby_engineer';
+  if (lowerEmail === 'agil@utt.com' || lowerEmail === 'krishna@utt.com' || lowerEmail === 'asep@utt.com' || lowerEmail === 'salman@utt.com' || lowerEmail === 'gilang@utt.com' || lowerEmail === 'dison@utt.com' || lowerEmail === 'riyan@utt.com' || lowerEmail.includes('standby')) return 'standby_engineer';
   return 'engineer';
 };
 

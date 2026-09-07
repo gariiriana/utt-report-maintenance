@@ -63,6 +63,8 @@ export function NotificationPage({ onSelectNotification }: NotificationPageProps
                 };
             });
             updateList();
+        }, (err) => {
+            console.warn('NotificationPage qNotif error (offline/quota):', err?.message || err);
         });
 
         // 2. uploaded_files collection
@@ -87,6 +89,8 @@ export function NotificationPage({ onSelectNotification }: NotificationPageProps
                 }
             });
             updateList();
+        }, (err) => {
+            console.warn('NotificationPage qFiles error (offline/quota):', err?.message || err);
         });
 
         // 3. pdf_documents collection (Dokumentasi Maintenance)
@@ -118,6 +122,8 @@ export function NotificationPage({ onSelectNotification }: NotificationPageProps
                 }
             });
             updateList();
+        }, (err) => {
+            console.warn('NotificationPage qPdfDocs error (offline/quota):', err?.message || err);
         });
 
         // 4. corrective_reports collection (CM, PIR, SLA)
@@ -147,6 +153,8 @@ export function NotificationPage({ onSelectNotification }: NotificationPageProps
                 }
             });
             updateList();
+        }, (err) => {
+            console.warn('NotificationPage qCorrective error (offline/quota):', err?.message || err);
         });
 
         // 5. ptw_records collection
@@ -172,6 +180,8 @@ export function NotificationPage({ onSelectNotification }: NotificationPageProps
                 }
             });
             updateList();
+        }, (err) => {
+            console.warn('NotificationPage qPtw error (offline/quota):', err?.message || err);
         });
 
         function updateList() {

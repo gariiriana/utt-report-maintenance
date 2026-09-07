@@ -8,11 +8,12 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { FileText, FileSpreadsheet, Download, Search, Filter, Calendar, User, Database, Activity, TrendingUp, Pencil, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
-import { collection, getDocs, query, orderBy, Timestamp, getCountFromServer, limit } from 'firebase/firestore';
+import { FileText, FileSpreadsheet, Download, Search, Filter, Calendar, User, Database, Activity, TrendingUp, Pencil, ChevronLeft, ChevronRight, Sparkles, AlertTriangle, X } from 'lucide-react';
+import { collection, getDocs, getDocsFromCache, query, orderBy, Timestamp, getCountFromServer, limit } from 'firebase/firestore';
 import { ExcelDocument, getDocumentDate } from '@/components/DocumentList';
 import { db } from '@/api/firebase';
 import { useAuth } from '@/components/AuthContext';
+import { offlineReportStorage } from '@/utils/offlineReportStorage';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
 import { generateReportPDF, loadLogoBase64 } from '@/utils/ReportPdfExport';
@@ -73,6 +74,9 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
     totalUsers: 0,
   });
 
+  const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [showLeftScroll, setShowLeftScroll] = useState(false);
   const [showRightScroll, setShowRightScroll] = useState(false);
@@ -107,20 +111,35 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
 
       let photosData = doc.photosData || [];
       if (photosData.length === 0) {
-        const colName = doc.type === 'excel' ? 'excel_documents' : 'pdf_documents';
-        const photosSnap = await getDocs(
-          collection(db, `${colName}/${doc.id}/photos`)
-        );
-        if (!photosSnap.empty) {
-          photosData = photosSnap.docs
-            .map(d => d.data() as any)
-            .sort((a, b) => a.index - b.index);
+        try {
+          const colName = doc.type === 'excel' ? 'excel_documents' : 'pdf_documents';
+          const colRef = collection(db, `${colName}/${doc.id}/photos`);
+          let photosSnap: any = null;
+          try {
+            photosSnap = await getDocs(colRef);
+          } catch (fetchErr) {
+            try {
+              photosSnap = await getDocsFromCache(colRef);
+            } catch { /* ignore */ }
+          }
+          if (photosSnap && !photosSnap.empty) {
+            photosData = photosSnap.docs
+              .map((d: any) => d.data() as any)
+              .sort((a: any, b: any) => a.index - b.index);
+          } else {
+            const localPhotos = await offlineReportStorage.getPhotos(doc.id);
+            if (localPhotos && localPhotos.length > 0) {
+              photosData = localPhotos.sort((a, b) => a.index - b.index);
+            }
+          }
+        } catch (photoErr) {
+          console.warn('Could not fetch photos for edit:', photoErr);
         }
       }
 
       const excelDoc: ExcelDocument = {
         ...doc,
-        createdAt: doc.createdAt.toDate(),
+        createdAt: getDocumentDate(doc),
         photosData: photosData,
         documentType: doc.type,
         fileSize: 0
@@ -138,17 +157,50 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
     try {
       setLoading(true);
 
-      // 1. Get exact total counts cheaply using getCountFromServer (1 read per collection!)
-      const [excelCountSnap, pdfCountSnap] = await Promise.all([
-        getCountFromServer(collection(db, 'excel_documents')),
-        getCountFromServer(collection(db, 'pdf_documents')),
-      ]);
+      const safeFetchDocs = async (q: any) => {
+        if (!navigator.onLine) {
+          try {
+            return await getDocsFromCache(q);
+          } catch {
+            return null;
+          }
+        }
+        try {
+          return await getDocs(q);
+        } catch (err: any) {
+          console.warn('Network getDocs failed, fallback to getDocsFromCache:', err?.message || err);
+          if (err?.message?.toLowerCase().includes('quota') || err?.code === 'resource-exhausted') {
+            setIsQuotaExceeded(true);
+          }
+          try {
+            return await getDocsFromCache(q);
+          } catch (cacheErr) {
+            console.warn('getDocsFromCache also failed:', cacheErr);
+            return null;
+          }
+        }
+      };
 
-      const totalExcelCount = excelCountSnap.data().count;
-      const totalPDFCount = pdfCountSnap.data().count;
-      const totalDocsCount = totalExcelCount + totalPDFCount;
+      // 1. Ambil hitungan total dokumen dari server (jika gagal kuota/offline, fallback ke hitungan data lokal)
+      let totalExcelCount = 0;
+      let totalPDFCount = 0;
+      let countSuccess = false;
+      try {
+        const [excelCountSnap, pdfCountSnap] = await Promise.all([
+          getCountFromServer(collection(db, 'excel_documents')),
+          getCountFromServer(collection(db, 'pdf_documents')),
+        ]);
+        totalExcelCount = excelCountSnap.data().count;
+        totalPDFCount = pdfCountSnap.data().count;
+        countSuccess = true;
+      } catch (countErr: any) {
+        console.warn('getCountFromServer failed (quota/offline), fallback to document count:', countErr?.message || countErr);
+        if (countErr?.message?.toLowerCase().includes('quota') || countErr?.code === 'resource-exhausted') {
+          setIsQuotaExceeded(true);
+        }
+      }
 
-      // 2. Fetch the latest documents with limit(50) for fast & lightweight display
+      // 2. Ambil dokumen terbaru dengan limit(50) untuk performa cepat
       const excelQuery = query(
         collection(db, 'excel_documents'),
         orderBy('createdAt', 'desc'),
@@ -161,8 +213,8 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
       );
 
       const [excelSnapshot, pdfSnapshot] = await Promise.all([
-        getDocs(excelQuery),
-        getDocs(pdfQuery)
+        safeFetchDocs(excelQuery),
+        safeFetchDocs(pdfQuery)
       ]);
 
       const normalizeCreatedBy = (email?: string | null): string => {
@@ -174,8 +226,8 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         return clean;
       };
 
-      const excelDocs = excelSnapshot.docs.map(doc => {
-        const data = doc.data();
+      const excelDocs = (excelSnapshot?.docs || []).map(doc => {
+        const data = doc.data() as any;
         return {
           id: doc.id,
           fileName: data.fileName,
@@ -192,8 +244,8 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         };
       }) as DocumentData[];
 
-      const pdfDocs = pdfSnapshot.docs.map(doc => {
-        const data = doc.data();
+      const pdfDocs = (pdfSnapshot?.docs || []).map(doc => {
+        const data = doc.data() as any;
         return {
           id: doc.id,
           fileName: data.fileName,
@@ -210,7 +262,55 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         };
       }) as DocumentData[];
 
-      const allDocs = [...excelDocs, ...pdfDocs].sort((a, b) => {
+      let allDocs = [...excelDocs, ...pdfDocs];
+
+      // Fallback 1: Jika server Firestore & cache Firestore kosong (atau offline pertama kali),
+      // ambil dari IndexedDB offline storage (DwimitraOfflineDB)
+      if (allDocs.length === 0) {
+        try {
+          const offlineReports = await offlineReportStorage.getAllReports();
+          if (offlineReports.length > 0) {
+            allDocs = offlineReports.map(r => ({
+              id: r.id,
+              fileName: r.fileName,
+              maintenanceName: r.maintenanceName,
+              maintenanceTime: r.maintenanceTime,
+              specificDetail: r.specificDetail,
+              createdAt: Timestamp.fromMillis(r.createdAt || Date.now()),
+              createdBy: normalizeCreatedBy(r.createdBy),
+              fileSize: r.fileSize || 0,
+              totalPhotos: r.totalPhotos || 0,
+              photosWithImage: r.photosWithImage || 0,
+              photosData: [],
+              type: (r.documentType === 'excel' ? 'excel' : 'pdf') as 'excel' | 'pdf'
+            }));
+            setIsOfflineMode(true);
+          }
+        } catch { /* ignore */ }
+      }
+
+      // Fallback 2: Cek localStorage dashboard cache jika masih kosong
+      if (allDocs.length === 0) {
+        try {
+          const rawCache = localStorage.getItem('dwimitra_admin_dashboard_cache');
+          if (rawCache) {
+            const parsed = JSON.parse(rawCache);
+            if (parsed.docs && parsed.docs.length > 0) {
+              allDocs = parsed.docs.map((d: any) => ({
+                ...d,
+                createdAt: Timestamp.fromMillis(d.createdAt || Date.now())
+              }));
+              if (parsed.stats) {
+                totalExcelCount = parsed.stats.totalExcel || 0;
+                totalPDFCount = parsed.stats.totalPDF || 0;
+              }
+              setIsOfflineMode(true);
+            }
+          }
+        } catch { /* ignore */ }
+      }
+
+      allDocs.sort((a, b) => {
         const timeA = getDocumentDate(a).getTime();
         const timeB = getDocumentDate(b).getTime();
         return timeB - timeA;
@@ -218,23 +318,72 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
 
       setDocuments(allDocs);
 
+      if (!countSuccess) {
+        totalExcelCount = allDocs.filter(d => d.type === 'excel').length;
+        totalPDFCount = allDocs.filter(d => d.type === 'pdf').length;
+      }
+      const totalDocsCount = countSuccess ? (totalExcelCount + totalPDFCount) : allDocs.length;
+
       const uniqueUsers = new Set(allDocs.map(doc => doc.createdBy));
-      setStats({
+      const computedStats = {
         totalDocuments: totalDocsCount,
         totalExcel: totalExcelCount,
         totalPDF: totalPDFCount,
         totalUsers: Math.max(uniqueUsers.size, 1),
-      });
+      };
+      setStats(computedStats);
+
+      // Simpan snapshot ke localStorage untuk pemulihan instan jika kuota Firestore habis
+      if (allDocs.length > 0) {
+        try {
+          localStorage.setItem('dwimitra_admin_dashboard_cache', JSON.stringify({
+            docs: allDocs.map(d => ({
+              ...d,
+              createdAt: d.createdAt?.toMillis ? d.createdAt.toMillis() : (d.createdAt instanceof Date ? d.createdAt.getTime() : Date.now())
+            })),
+            stats: computedStats,
+            timestamp: Date.now()
+          }));
+        } catch { /* ignore */ }
+      }
 
       setLoading(false);
     } catch (error: any) {
       console.error('Error loading documents:', error);
 
-      if (error?.message?.includes('BloomFilter')) {
+      const isQuota = error?.message?.toLowerCase().includes('quota') || error?.code === 'resource-exhausted';
+      if (isQuota) {
+        setIsQuotaExceeded(true);
+      }
+
+      // Upaya pemulihan dari localStorage cache
+      let recovered = false;
+      try {
+        const rawCache = localStorage.getItem('dwimitra_admin_dashboard_cache');
+        if (rawCache) {
+          const parsed = JSON.parse(rawCache);
+          if (parsed.docs && parsed.docs.length > 0) {
+            const restoredDocs = parsed.docs.map((d: any) => ({
+              ...d,
+              createdAt: Timestamp.fromMillis(d.createdAt || Date.now())
+            }));
+            setDocuments(restoredDocs);
+            if (parsed.stats) setStats(parsed.stats);
+            recovered = true;
+          }
+        }
+      } catch { /* ignore */ }
+
+      if (isQuota) {
+        toast.warning('Kuota harian Firestore tercapai (50.000 read). Menampilkan data dari cache lokal perangkat.', {
+          duration: 7000,
+          id: 'quota-exceeded'
+        });
+      } else if (error?.message?.includes('BloomFilter')) {
         console.warn('BloomFilter error detected. This usually happens when user document is not yet created.');
         toast.error('Tunggu sebentar dan muat ulang halaman.', { duration: 5000 });
-      } else {
-        toast.error('Gagal memuat dokumen');
+      } else if (!recovered) {
+        toast.error('Gagal memuat dokumen dari server');
       }
 
       setLoading(false);
@@ -249,13 +398,25 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
       if (photosData.length === 0) {
         try {
           const colName = doc.type === 'excel' ? 'excel_documents' : 'pdf_documents';
-          const photosSnap = await getDocs(
-            collection(db, `${colName}/${doc.id}/photos`)
-          );
-          if (!photosSnap.empty) {
+          const colRef = collection(db, `${colName}/${doc.id}/photos`);
+          let photosSnap: any = null;
+          try {
+            photosSnap = await getDocs(colRef);
+          } catch (fetchErr) {
+            try {
+              photosSnap = await getDocsFromCache(colRef);
+            } catch { /* ignore */ }
+          }
+          if (photosSnap && !photosSnap.empty) {
             photosData = photosSnap.docs
-              .map(d => d.data() as any)
-              .sort((a, b) => a.index - b.index);
+              .map((d: any) => d.data() as any)
+              .sort((a: any, b: any) => a.index - b.index);
+          } else {
+            // Fallback to offlineReportStorage
+            const localPhotos = await offlineReportStorage.getPhotos(doc.id);
+            if (localPhotos && localPhotos.length > 0) {
+              photosData = localPhotos.sort((a, b) => a.index - b.index);
+            }
           }
         } catch (err) {
           console.error(`Failed to fetch photos for regeneration:`, err);
@@ -544,6 +705,38 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 relative z-10">
 
+      {/* Alert Banner jika Kuota Firebase Habis atau Mode Offline */}
+      {(isQuotaExceeded || isOfflineMode) && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 p-3.5 sm:p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 rounded-2xl flex items-center justify-between text-xs text-amber-900 shadow-sm"
+        >
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+            </div>
+            <div>
+              <p className="font-bold text-amber-900">
+                {isQuotaExceeded ? 'Batas Kuota Harian Firebase (50.000 Reads) Telah Tercapai' : 'Mode Cache Lokal Aktif'}
+              </p>
+              <p className="text-[11px] text-amber-700 mt-0.5">
+                Sistem otomatis beralih menggunakan data cache lokal perangkat agar seluruh dokumen tetap dapat diakses dan diekspor. Kuota server akan di-reset otomatis oleh Firebase setiap 24 jam.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setIsQuotaExceeded(false);
+              setIsOfflineMode(false);
+            }}
+            className="p-1.5 text-amber-500 hover:text-amber-800 rounded-lg hover:bg-amber-100/50 transition-all cursor-pointer flex-shrink-0 ml-2"
+            title="Tutup Pesan"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </motion.div>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
         <motion.div

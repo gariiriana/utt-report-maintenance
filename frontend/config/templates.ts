@@ -16,7 +16,8 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Measurement Voltage N-G',
     'Measurement Ampere R',
     'Measurement Ampere S',
-    'Measurement Ampere T'
+    'Measurement Ampere T',
+    'Measurement Ampere N'
   ],
   'busduct@gmail.com': [
     'Visual inspect busduct',

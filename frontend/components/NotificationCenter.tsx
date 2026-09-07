@@ -69,6 +69,8 @@ function subscribeToFirestoreNotifications() {
             };
         });
         notifySubscribers();
+    }, (err) => {
+        console.warn('NotificationCenter qNotif error (offline/quota):', err?.message || err);
     });
 
     // 2. Listen to uploaded_files collection
@@ -92,6 +94,8 @@ function subscribeToFirestoreNotifications() {
             }
         });
         notifySubscribers();
+    }, (err) => {
+        console.warn('NotificationCenter qFiles error (offline/quota):', err?.message || err);
     });
 
     // 3. Listen to corrective_reports collection
@@ -120,6 +124,8 @@ function subscribeToFirestoreNotifications() {
             }
         });
         notifySubscribers();
+    }, (err) => {
+        console.warn('NotificationCenter qCorrective error (offline/quota):', err?.message || err);
     });
 
     // 4. Listen to pdf_documents collection (Dokumentasi Maintenance)
@@ -151,6 +157,8 @@ function subscribeToFirestoreNotifications() {
             }
         });
         notifySubscribers();
+    }, (err) => {
+        console.warn('NotificationCenter qPdfDocs error (offline/quota):', err?.message || err);
     });
 
     unsubscribers = [unsubNotif, unsubFiles, unsubCorrective, unsubPdfDocs];
