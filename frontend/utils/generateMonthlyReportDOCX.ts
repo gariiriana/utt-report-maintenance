@@ -28,7 +28,7 @@ import {
   PageNumber
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { FullMonthlyReportData } from './monthlyReportData';
+import { FullMonthlyReportData, EquipmentDetailItem } from './monthlyReportData';
 import { ARIF_BUDIMAN_SIGNATURE_BASE64 } from './engineerSignatures';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 
