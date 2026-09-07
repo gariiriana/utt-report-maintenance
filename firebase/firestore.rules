@@ -33,7 +33,7 @@ service cloud.firestore {
                ||
                (
                  request.auth.token != null
-                 && (getEmail().matches('.*qc_dme.*') || getEmail().matches('.*qcdme.*') || getEmail().matches('.*qc-dme.*'))
+                 && (getEmail().matches('.*qc_dme.*') || getEmail().matches('.*qcdme.*') || getEmail().matches('.*qc-dme.*') || getEmail() == 'qc@gmail.com' || getEmail().matches('.*qc@.*'))
                )
              );
     }
@@ -43,7 +43,7 @@ service cloud.firestore {
     }
 
     function isStandbyEngineer() {
-      return request.auth != null 
+      return request.auth != null  
              && (
                (
                  request.auth.uid != null
@@ -629,6 +629,16 @@ service cloud.firestore {
       allow create, update: if request.auth != null 
                             && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isEngineer() || isStandbyEngineer() || isPrivilegedRole());
       allow delete: if request.auth != null && (isAdminOrQcDme() || isSiteManagerDME() || isPrivilegedRole());
+    }
+
+    // ============================================================================
+    // Koleksi: registered_faces — Data Biometrik Wajah untuk Autentikasi Login Face ID
+    // Akses: Publik dapat read (untuk pencocokan wajah di layar login),
+    //        Hanya Admin dan QC DME (qc@gmail.com) yang dapat Create, Update, Delete.
+    // ============================================================================
+    match /registered_faces/{faceId} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null && (isAdminOrQcDme() || getEmail() == 'qc@gmail.com' || isAdminSafe());
     }
 
     match /{document=**} {
