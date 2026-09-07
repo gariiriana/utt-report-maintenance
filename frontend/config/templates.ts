@@ -7,11 +7,17 @@ export const REPORT_TEMPLATES: Record<string, string[]> = {
     'Measurement Vibration',
     'Measurement Temperature',
     'Measurement Grounding',
-    'Measurement Voltage Fasa to Fasa',
-    'Measurement Fasa to Netral',
+    'Measurement Voltage R-S',
+    'Measurement Voltage S-T',
+    'Measurement Voltage R-T',
+    'Measurement Voltage R-N',
+    'Measurement Voltage S-N',
+    'Measurement Voltage T-N',
+    'Measurement Voltage N-G',
     'Measurement Ampere R',
     'Measurement Ampere S',
-    'Measurement Ampere T'
+    'Measurement Ampere T',
+    'Measurement Ampere N'
   ],
   'busduct@gmail.com': [
     'Visual inspect busduct',

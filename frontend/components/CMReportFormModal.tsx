@@ -237,6 +237,8 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
             if (pName === 'Agil' || pName === 'Agil Zakia Amanda') pName = 'Agil Zakia Rahman';
             if (pName === 'Asep') pName = 'Asep Mohammad Fauzi';
             if (pName === 'Gilang' || pName === 'Nugroho' || pName?.toLowerCase()?.includes('gilang')) pName = 'Nugroho Gilang Ramadhan';
+            if (pName?.toLowerCase()?.includes('dison') || pName?.toLowerCase()?.includes('mintuno')) pName = 'Dison Mintuno Andarbeni';
+            if (pName?.toLowerCase()?.includes('riyan') || pName?.toLowerCase()?.includes('bayu')) pName = 'Riyan Bayu Nugroho';
             pName = pName || 'Agil Zakia Rahman';
 
             const rName = parsed.formData.reviewedByName || 'Arif Budiman';
@@ -1503,6 +1505,8 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                       <option value="Agil Zakia Rahman">Agil Zakia Rahman</option>
                       <option value="Asep Mohammad Fauzi">Asep Mohammad Fauzi</option>
                       <option value="Nugroho Gilang Ramadhan">Nugroho Gilang Ramadhan</option>
+                      <option value="Dison Mintuno Andarbeni">Dison Mintuno Andarbeni</option>
+                      <option value="Riyan Bayu Nugroho">Riyan Bayu Nugroho</option>
                     </select>
                     <input
                       type="text"

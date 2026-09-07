@@ -26,6 +26,7 @@ import { ExcelDocument } from '@/components/DocumentList';
 import { useAuth } from '@/components/AuthContext';
 import { parseExcelServiceReport, ParseExcelSRResult } from '@/utils/excelSrParser';
 import { getServiceReportConfigByEmail } from '@/config/serviceReportRegistry';
+import { offlineReportStorage } from '@/utils/offlineReportStorage';
 
 interface UploadSRModalProps {
   isOpen: boolean;
@@ -201,12 +202,34 @@ export function UploadSRModal({
       // Update dokumen Firestore
       await updateDoc(doc(db, colName, docItem.id), updateData);
 
+      // Simpan juga ke IndexedDB lokal agar selalu tersedia bahkan saat offline
+      try {
+        await offlineReportStorage.saveReport({
+          id: docItem.id,
+          fileName: docItem.fileName,
+          maintenanceName: docItem.maintenanceName,
+          maintenanceTime: docItem.maintenanceTime,
+          specificDetail: docItem.specificDetail || '',
+          companyType: docItem.companyType || 'neutra',
+          createdBy: docItem.createdBy || user?.email || '',
+          fileSize: docItem.fileSize || 0,
+          documentType: docItem.documentType || 'pdf',
+          hasServiceReport: true,
+          serviceReportPayload: cleanPayload,
+          attachedSrFile: cleanMeta,
+          attachedSrBase64: fileBase64 || undefined,
+          isSynced: true
+        });
+      } catch (storageErr) {
+        console.warn('Could not save uploaded SR to offlineReportStorage:', storageErr);
+      }
+
       // Beritahu parent component untuk update state lokal real-time
       onSuccess({
         hasServiceReport: true,
         serviceReportPayload: cleanPayload,
         attachedSrFile: cleanMeta,
-        ...(selectedFile.size < 400 * 1024 && fileBase64 ? { attachedSrBase64: fileBase64 } : {})
+        attachedSrBase64: fileBase64 || undefined,
       });
 
       toast.success('Service Report berhasil di-upload & disinkronkan ke dokumen!', { id: toastId });
@@ -264,11 +287,11 @@ export function UploadSRModal({
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Dokumen Target:</span>
                   <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase ${
-                    docItem.hasServiceReport
+                    (docItem.attachedSrFile || docItem.attachedSrBase64)
                       ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                       : 'bg-amber-100 text-amber-800 border border-amber-300'
                   }`}>
-                    {docItem.hasServiceReport ? 'Foto + SR Lengkap' : 'Dokumentasi Foto Saja'}
+                    {(docItem.attachedSrFile || docItem.attachedSrBase64) ? 'Foto + SR Lengkap' : 'Dokumentasi Foto Saja'}
                   </span>
                 </div>
                 <h4 className="text-sm font-black text-slate-900 leading-snug">

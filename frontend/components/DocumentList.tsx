@@ -9,15 +9,19 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp } from 'lucide-react';
-import { collection, query, getDocs, deleteDoc, doc, where, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
+import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp, Layers } from 'lucide-react';
+import { collection, query, getDocs, getDocsFromCache, deleteDoc, doc, where, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
 import { toast } from 'sonner';
 import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import { offlineReportStorage } from '@/utils/offlineReportStorage';
+import { exportUniversalServiceReportExcel } from '@/service_reports/common/serviceReportExcel';
 import { generateReportPDF, loadLogoBase64 } from '@/utils/ReportPdfExport';
+import { PDFDocument } from 'pdf-lib';
+import { renderExcelToPdfPage } from '@/utils/excelToPdfConverter';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoK2 from '@/assets/logo_k2.png';
@@ -28,21 +32,7 @@ import { FileManagement } from './FileManagement';
 import { FindingArchive } from './FindingArchive';
 import { generateHSEPdf, generateHSEPdfBlob } from '@/utils/HSEPdfExport';
 import { exportHSEInspectionRecapPDF } from '@/utils/HSEInspectionRecapPdfExport';
-import {
-  generateATSServiceReportPDF,
-  generateFCUServiceReportPDF,
-  generatePJUServiceReportPDF,
-  generatePDUServiceReportPDF,
-  generateCTReportPDF,
-  generateGeneratorReportPDF,
-  generateACSplitReportPDF,
-  generateTrafoReportPDF,
-  generateCapacitorbankReportPDF,
-  generateBusductReportPDF,
-  generateDocklevelerReportPDF,
-  generateDoorReportPDF,
-  generateLdbrdbReportPDF,
-} from '@/service_reports';
+
 import { generateUniversalServiceReportPDF } from '@/service_reports/universalServiceReportPDF';
 import { downloadPDFBlob } from '@/utils/pdfDownload';
 import { UploadSRModal } from './UploadSRModal';
@@ -192,6 +182,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
   const [documents, setDocuments] = useState<ExcelDocument[]>([]);
   const [uploadSrModalDoc, setUploadSrModalDoc] = useState<ExcelDocument | null>(null);
+  const [downloadChoiceDoc, setDownloadChoiceDoc] = useState<ExcelDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [startDate, setStartDate] = useState('');
@@ -301,6 +292,27 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
         setTimeout(() => reject(new Error('TIMEOUT')), 30000)
       );
 
+      const safeFetchQuery = async (q: any) => {
+        if (!q) return null;
+        if (!navigator.onLine) {
+          try {
+            return await getDocsFromCache(q);
+          } catch {
+            return null;
+          }
+        }
+        try {
+          return await getDocs(q);
+        } catch (err) {
+          console.warn('Network getDocs failed, fallback to getDocsFromCache:', err);
+          try {
+            return await getDocsFromCache(q);
+          } catch {
+            return null;
+          }
+        }
+      };
+
       const fetchAll = async () => {
         const fetchPromises: Promise<any>[] = [];
         const userEmailClean = (user?.email || '').toLowerCase().trim();
@@ -325,7 +337,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               : (isAHUUser
                 ? query(collection(db, 'excel_documents'), where('createdBy', 'in', queryEmails))
                 : query(collection(db, 'excel_documents'), where('createdBy', '==', userEmailClean)));
-            fetchPromises.push(getDocs(excelQuery));
+            fetchPromises.push(safeFetchQuery(excelQuery));
           } else {
             fetchPromises.push(Promise.resolve(null));
           }
@@ -335,7 +347,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
             : (isAHUUser
               ? query(collection(db, 'pdf_documents'), where('createdBy', 'in', queryEmails))
               : query(collection(db, 'pdf_documents'), where('createdBy', '==', userEmailClean)));
-          fetchPromises.push(getDocs(pdfQuery));
+          fetchPromises.push(safeFetchQuery(pdfQuery));
         } else {
           fetchPromises.push(Promise.resolve(null));
           fetchPromises.push(Promise.resolve(null));
@@ -351,7 +363,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           } else {
             hseQuery = query(collection(db, 'hse'), where('authorEmail', 'in', isAHUUser ? queryEmails : [(user.email || '').toLowerCase()]));
           }
-          fetchPromises.push(getDocs(hseQuery));
+          fetchPromises.push(safeFetchQuery(hseQuery));
         } else {
           fetchPromises.push(Promise.resolve(null));
         }
@@ -371,7 +383,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               maintenanceName: data.maintenanceName,
               maintenanceTime: data.maintenanceTime,
               specificDetail: data.specificDetail,
-              createdAt: data.createdAt.toDate(),
+              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
               createdBy: normalizeCreatedBy(data.createdBy),
               fileSize: data.fileSize || 0,
               totalPhotos: data.totalPhotos || 0,
@@ -400,7 +412,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               maintenanceName: data.maintenanceName,
               maintenanceTime: data.maintenanceTime,
               specificDetail: data.specificDetail,
-              createdAt: data.createdAt.toDate(),
+              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
               createdBy: normalizeCreatedBy(data.createdBy),
               fileSize: data.fileSize || 0,
               totalPhotos: data.totalPhotos || 0,
@@ -415,13 +427,48 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               fcuReportData: data.fcuReportData,
               fcuTimeSpent: data.fcuTimeSpent,
               serviceReportPayload: data.serviceReportPayload || null,
-              hasServiceReport: data.hasServiceReport === true || !!(data.serviceReportPayload && Object.keys(data.serviceReportPayload).length > 0),
+              hasServiceReport: Boolean(data.attachedSrFile || data.attachedSrBase64),
               attachedSrFile: data.attachedSrFile || null,
+              attachedSrBase64: data.attachedSrBase64 || null,
               deleteRequested: data.deleteRequested || false,
               deleteRequestedBy: data.deleteRequestedBy || '',
               deleteReason: data.deleteReason || '',
             });
           });
+        }
+
+        // Gabungkan laporan offline dari IndexedDB lokal jika belum ada di Firestore
+        try {
+          const offlineReports = await offlineReportStorage.getAllReports(user?.email || undefined);
+          const existingPdfIds = new Set(pdfDocs.map(d => d.id));
+          offlineReports.forEach(offDoc => {
+            if (!existingPdfIds.has(offDoc.id)) {
+              pdfDocs.push({
+                id: offDoc.id,
+                fileName: offDoc.fileName,
+                maintenanceName: offDoc.maintenanceName,
+                maintenanceTime: offDoc.maintenanceTime,
+                specificDetail: offDoc.specificDetail,
+                createdAt: new Date(offDoc.createdAt || Date.now()),
+                createdBy: normalizeCreatedBy(offDoc.createdBy),
+                fileSize: offDoc.fileSize || 0,
+                totalPhotos: offDoc.totalPhotos || 0,
+                photosWithImage: offDoc.photosWithImage || 0,
+                photosData: [],
+                documentType: offDoc.documentType || 'pdf',
+                hasAbnormal: offDoc.hasAbnormal || false,
+                serviceReportPayload: offDoc.serviceReportPayload || null,
+                hasServiceReport: Boolean(offDoc.attachedSrFile || offDoc.attachedSrBase64),
+                attachedSrFile: offDoc.attachedSrFile || null,
+                attachedSrBase64: offDoc.attachedSrBase64 || null,
+                deleteRequested: false,
+                deleteRequestedBy: '',
+                deleteReason: '',
+              });
+            }
+          });
+        } catch (offErr) {
+          console.warn('Gagal memuat offline reports di DocumentList:', offErr);
         }
 
         if (hseSnapshot) {
@@ -433,7 +480,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               maintenanceName: data.aktivitas,
               maintenanceTime: data.date,
               specificDetail: data.lokasi,
-              createdAt: data.createdAt?.toDate() || new Date(),
+              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
               createdBy: normalizeCreatedBy(data.authorEmail),
               fileSize: 0,
               totalPhotos: data.photos?.length || 0,
@@ -481,6 +528,39 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       await Promise.race([fetchAll(), timeoutPromise]);
     } catch (error: any) {
       console.error('Error fetching documents:', error);
+
+      // Fallback ke offlineReportStorage lokal jika jaringan/koneksi offline
+      try {
+        const fallbackOffline = await offlineReportStorage.getAllReports(user?.email || undefined);
+        if (fallbackOffline.length > 0) {
+          const localDocs: ExcelDocument[] = fallbackOffline.map(offDoc => ({
+            id: offDoc.id,
+            fileName: offDoc.fileName,
+            maintenanceName: offDoc.maintenanceName,
+            maintenanceTime: offDoc.maintenanceTime,
+            specificDetail: offDoc.specificDetail,
+            createdAt: new Date(offDoc.createdAt || Date.now()),
+            createdBy: offDoc.createdBy || 'Teknisi DME',
+            fileSize: offDoc.fileSize || 0,
+            totalPhotos: offDoc.totalPhotos || 0,
+            photosWithImage: offDoc.photosWithImage || 0,
+            photosData: [],
+            documentType: offDoc.documentType || 'pdf',
+            hasAbnormal: offDoc.hasAbnormal || false,
+            serviceReportPayload: offDoc.serviceReportPayload || null,
+            hasServiceReport: Boolean(offDoc.attachedSrFile || offDoc.attachedSrBase64),
+            attachedSrFile: offDoc.attachedSrFile || null,
+            attachedSrBase64: offDoc.attachedSrBase64 || null,
+            deleteRequested: false,
+            deleteRequestedBy: '',
+            deleteReason: '',
+          }));
+          setDocuments(localDocs);
+          setFetchError(null);
+          toast.info('Mode Offline: Memuat dokumen arsip dari memori lokal');
+          return;
+        }
+      } catch {}
 
       if (error?.message === 'TIMEOUT') {
         setFetchError('Koneksi ke server terlalu lama. Pastikan internet stabil dan tidak ada VPN/firewall yang memblokir.');
@@ -744,18 +824,45 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     return { blob, fileName };
   };
 
-  const buildPDFBlob = async (docData: ExcelDocument, saveToFile: boolean = false): Promise<{ blob: Blob; fileName: string }[]> => {
+  const buildPDFBlob = async (docData: ExcelDocument, saveToFile: boolean = false, photosOnly: boolean = false): Promise<{ blob: Blob; fileName: string }[]> => {
     let finalPhotosData = docData.photosData || [];
 
     if (finalPhotosData.length === 0) {
+      // 1. Prioritaskan pembacaan dari IndexedDB lokal (offlineReportStorage)
       try {
-        const photosSnap = await getDocs(
-          collection(db, `pdf_documents/${docData.id}/photos`)
-        );
-        if (!photosSnap.empty) {
+        const offlinePhotos = await offlineReportStorage.getPhotos(docData.id);
+        if (offlinePhotos && offlinePhotos.length > 0) {
+          finalPhotosData = offlinePhotos.map(p => ({
+            index: p.index,
+            description: p.description || '',
+            photoBase64: p.photoBase64 || '',
+            hasPhoto: p.hasPhoto
+          }));
+        }
+      } catch (offErr) {
+        console.warn('offlineReportStorage getPhotos error:', offErr);
+      }
+    }
+
+    if (finalPhotosData.length === 0) {
+      // 2. Fallback ke Firestore subcollection (Online atau Cache)
+      try {
+        const colPath = `pdf_documents/${docData.id}/photos`;
+        let photosSnap: any = null;
+        if (navigator.onLine) {
+          try {
+            photosSnap = await getDocs(collection(db, colPath));
+          } catch (netErr) {
+            photosSnap = await getDocsFromCache(collection(db, colPath)).catch(() => null);
+          }
+        } else {
+          photosSnap = await getDocsFromCache(collection(db, colPath)).catch(() => null);
+        }
+
+        if (photosSnap && !photosSnap.empty) {
           finalPhotosData = photosSnap.docs
-            .map(d => d.data() as PhotoData)
-            .sort((a, b) => a.index - b.index);
+            .map((d: any) => d.data() as PhotoData)
+            .sort((a: any, b: any) => a.index - b.index);
         }
       } catch (err) {
         console.error('Failed to fetch subcollection photos (PDF):', err);
@@ -769,164 +876,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       description: p.description || '',
     }));
 
-    if (docData.serviceReportPayload) {
-      const res = await generateUniversalServiceReportPDF(
-        docData.serviceReportPayload,
-        cards,
-        saveToFile
-      );
-      const blob = res.output('blob');
-      const baseName = docData.fileName || `Service_Report_${(docData.serviceReportPayload.equipmentName || 'Report').replace(/[^a-zA-Z0-9]/g, '_')}`;
-      const fileName = baseName.endsWith('.pdf') ? baseName : `${baseName}.pdf`;
-      return [{ fileName, blob }];
-    }
-
-    if (docData.createdBy === 'ats@gmail.com' && docData.atsCustomerInfo && docData.atsReportData && docData.atsTimeSpent) {
-      const res = await generateATSServiceReportPDF(
-        docData.atsCustomerInfo,
-        docData.atsReportData,
-        docData.atsTimeSpent,
-        cards,
-        saveToFile
-      );
-      return [{ fileName: res.filename, blob: res.blob }];
-    }
-
-    if (docData.createdBy === 'fcu@gmail.com' && docData.fcuCustomerInfo && docData.fcuReportData && docData.fcuTimeSpent) {
-      const res = await generateFCUServiceReportPDF(
-        docData.fcuCustomerInfo,
-        docData.fcuReportData,
-        docData.fcuTimeSpent,
-        cards,
-        saveToFile
-      );
-      return [{ fileName: res.fileName, blob: res.blob }];
-    }
-
-    if (docData.createdBy === 'pju@gmail.com' && docData.pjuCustomerInfo && docData.pjuReportData && docData.pjuTimeSpent) {
-      const res = await generatePJUServiceReportPDF(
-        docData.pjuCustomerInfo,
-        docData.pjuReportData,
-        docData.pjuTimeSpent,
-        cards,
-        saveToFile
-      );
-      return [{ fileName: res.filename, blob: res.blob }];
-    }
-
-    if (docData.createdBy === 'pdu@gmail.com' && docData.pduCustomerInfo && docData.pduReportData && docData.pduTimeSpent) {
-      const res = await generatePDUServiceReportPDF(
-        docData.pduCustomerInfo,
-        docData.pduReportData,
-        docData.pduTimeSpent,
-        cards,
-        saveToFile
-      );
-      return [{ fileName: res.fileName, blob: res.blob }];
-    }
-
-    if (docData.createdBy === 'coolingtower@gmail.com' && docData.ctCustomerInfo && docData.ctReportData && docData.ctTimeSpent) {
-      const res = await generateCTReportPDF(
-        docData.ctCustomerInfo,
-        docData.ctReportData,
-        docData.ctTimeSpent,
-        cards
-      );
-      const blob = res.doc.output('blob');
-      if (saveToFile) {
-        res.doc.save(res.fileName);
-      }
-      return [{ fileName: res.fileName, blob }];
-    }
-
-    if (docData.createdBy === 'generator@gmail.com' && docData.generatorCustomerInfo && docData.generatorReportData && docData.generatorTimeSpent) {
-      const res = await generateGeneratorReportPDF(
-        docData.generatorCustomerInfo,
-        docData.generatorReportData,
-        docData.generatorTimeSpent,
-        cards,
-        saveToFile
-      );
-      return [{ fileName: res.filename, blob: res.blob }];
-    }
-
-    if (docData.createdBy === 'acsplit@gmail.com' && docData.acSplitCustomerInfo && docData.acSplitReportData && docData.acSplitTimeSpent) {
-      const res = await generateACSplitReportPDF(
-        docData.acSplitCustomerInfo,
-        docData.acSplitReportData,
-        docData.acSplitTimeSpent,
-        cards,
-        saveToFile
-      );
-      return [{ fileName: res.filename, blob: res.blob }];
-    }
-
-    if (docData.createdBy === 'trafo@gmail.com' && docData.trafoCustomerInfo && docData.trafoReportData && docData.trafoTimeSpent) {
-      const resList = await generateTrafoReportPDF(
-        docData.trafoCustomerInfo,
-        docData.trafoReportData,
-        docData.trafoTimeSpent,
-        cards,
-        saveToFile
-      );
-      return resList.map(r => ({ fileName: r.filename, blob: r.blob }));
-    }
-
-    if (docData.createdBy === 'capacitorbank@gmail.com' && docData.capacitorbankCustomerInfo && docData.capacitorbankReportData && docData.capacitorbankTimeSpent) {
-      const res = await generateCapacitorbankReportPDF(
-        docData.capacitorbankCustomerInfo,
-        docData.capacitorbankReportData,
-        docData.capacitorbankTimeSpent,
-        cards,
-        saveToFile
-      );
-      return [{ fileName: res.filename, blob: res.blob }];
-    }
-
-    if (docData.createdBy === 'busduct@gmail.com' && (docData as any).busductCustomerInfo) {
-      const res = await generateBusductReportPDF(
-        (docData as any).busductCustomerInfo,
-        (docData as any).busductReportData,
-        (docData as any).busductTimeSpent,
-        cards,
-        saveToFile
-      );
-      return [{ fileName: res.filename, blob: res.blob }];
-    }
-
-    if (docData.createdBy === 'door@gmail.com' && (docData as any).doorCustomerInfo) {
-      const res = await generateDoorReportPDF(
-        (docData as any).doorCustomerInfo,
-        (docData as any).doorReportData,
-        (docData as any).doorTimeSpent,
-        cards,
-        saveToFile
-      );
-      return [{ fileName: res.filename, blob: res.blob }];
-    }
-
-    if (docData.createdBy === 'dockleveler@gmail.com' && (docData as any).docklevelerCustomerInfo) {
-      const res = await generateDocklevelerReportPDF(
-        (docData as any).docklevelerCustomerInfo,
-        (docData as any).docklevelerReportData,
-        (docData as any).docklevelerTimeSpent,
-        cards,
-        saveToFile
-      );
-      return [{ fileName: res.filename, blob: res.blob }];
-    }
-
-    if (docData.createdBy === 'ldb/rdb@gmail.com' && (docData as any).ldbrdbCustomerInfo) {
-      const res = await generateLdbrdbReportPDF(
-        (docData as any).ldbrdbCustomerInfo,
-        (docData as any).ldbrdbReportData,
-        (docData as any).ldbrdbTimeSpent,
-        cards,
-        saveToFile
-      );
-      return [{ fileName: res.filename, blob: res.blob }];
-    }
-
+    // 1. Selalu generate PDF Dokumentasi Foto terlebih dahulu (layout resmi ReportPdfExport)
     const effectiveCompanyType = docData.companyType || companyType || 'neutra';
     const leftLogo = effectiveCompanyType === 'bri' ? logoBRILeft : logoDwimitra;
     const rightLogo = effectiveCompanyType === 'bri' ? logoBRI : effectiveCompanyType === 'k2' ? logoK2 : logoNeutraDC;
@@ -935,7 +885,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       loadLogoBase64(rightLogo),
     ]);
 
-    const result = await generateReportPDF({
+    const docResult = await generateReportPDF({
       maintenanceName: docData.maintenanceName,
       maintenanceTime: docData.maintenanceTime,
       specificDetail: docData.specificDetail || '',
@@ -946,14 +896,115 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       logos: { left: logoLeftB64, right: logoRightB64 },
     });
 
-    if (!result) {
-      throw new Error('Gagal membuat PDF');
+    if (!docResult) {
+      throw new Error('Gagal membuat PDF dokumentasi foto');
     }
 
-    const pdfBlob = result.doc.output('blob');
-    const fileName = docData.fileName.endsWith('.pdf') ? docData.fileName : `${docData.fileName}.pdf`;
+    // Jika user memilih hanya Dokumentasi Foto, langsung kembalikan docResult
+    if (photosOnly) {
+      const pdfBlob = docResult.doc.output('blob');
+      let fileName = docData.fileName.endsWith('.pdf') ? docData.fileName : `${docData.fileName}.pdf`;
+      fileName = fileName.replace(/\.pdf$/i, '') + '_Dokumentasi_Foto.pdf';
+      if (saveToFile) {
+        docResult.doc.save(fileName);
+      }
+      return [{ fileName, blob: pdfBlob }];
+    }
+
+    // 2. Jika photosOnly === false ("Lengkap: Foto + Service Report"), siapkan Halaman 1 Service Report
+    let srBase64 = docData.attachedSrBase64;
+    let srFileName = docData.attachedSrFile?.name;
+
+    if (!srBase64) {
+      try {
+        const offDoc = await offlineReportStorage.getReport(docData.id);
+        if (offDoc?.attachedSrBase64) {
+          srBase64 = offDoc.attachedSrBase64;
+          srFileName = offDoc.attachedSrFile?.name || srFileName;
+        }
+      } catch (e) {
+        console.warn('Could not read attachedSrBase64 from offline storage:', e);
+      }
+    }
+
+    let srPdfBytes: ArrayBuffer | Uint8Array | null = null;
+
+    // Prioritas 1: Render 1:1 dari file Excel (.xlsx / .xls) asli yang di-upload oleh user
+    if (srBase64) {
+      const isPdf =
+        docData.attachedSrFile?.type === 'application/pdf' ||
+        srFileName?.toLowerCase().endsWith('.pdf') ||
+        srBase64.startsWith('data:application/pdf') ||
+        srBase64.includes('JVBERi0');
+
+      if (isPdf) {
+        const cleanBase64 = srBase64.includes(',') ? srBase64.split(',')[1] : srBase64;
+        const binaryString = atob(cleanBase64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        srPdfBytes = bytes;
+      } else {
+        try {
+          // Konversi presisi 1:1 langsung dari lembar kerja Excel (.xlsx) ke A4 PDF
+          srPdfBytes = await renderExcelToPdfPage(srBase64);
+        } catch (excelErr) {
+          console.error('Gagal merender lembar Excel ke PDF:', excelErr);
+        }
+      }
+    }
+
+    // Prioritas 2: Fallback jika tidak ada berkas fisik mentah, render formulir Page 1 dari serviceReportPayload
+    if (!srPdfBytes && docData.serviceReportPayload && Object.keys(docData.serviceReportPayload).length > 0) {
+      try {
+        const srDoc = await generateUniversalServiceReportPDF(
+          docData.serviceReportPayload,
+          [], // KOSONG agar hanya membuat Halaman 1 formulir Service Report (tanpa layout foto bawaan)
+          false
+        );
+        srPdfBytes = srDoc.output('arraybuffer');
+      } catch (srErr) {
+        console.error('Gagal membuat Halaman 1 Universal Service Report:', srErr);
+      }
+    }
+
+    // 3. Gabungkan Halaman 1 (Service Report 1:1) + Halaman 2 dst (Dokumentasi Foto Ber-layout ISO)
+    if (srPdfBytes) {
+      try {
+        const mergedPdf = await PDFDocument.create();
+        const srPdfDoc = await PDFDocument.load(srPdfBytes);
+        const docPdfDoc = await PDFDocument.load(docResult.doc.output('arraybuffer'));
+
+        // Salin halaman Service Report (Halaman 1)
+        const srPages = await mergedPdf.copyPages(srPdfDoc, srPdfDoc.getPageIndices());
+        for (const page of srPages) {
+          mergedPdf.addPage(page);
+        }
+
+        // Salin seluruh halaman Dokumentasi Foto (Halaman 2 dst, format sama persis seperti export dokumentasi)
+        const docPages = await mergedPdf.copyPages(docPdfDoc, docPdfDoc.getPageIndices());
+        for (const page of docPages) {
+          mergedPdf.addPage(page);
+        }
+
+        const mergedBytes = await mergedPdf.save();
+        const mergedBlob = new Blob([mergedBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
+        const fileName = docData.fileName.endsWith('.pdf') ? docData.fileName : `${docData.fileName}.pdf`;
+        if (saveToFile) {
+          saveAs(mergedBlob, fileName);
+        }
+        return [{ fileName, blob: mergedBlob }];
+      } catch (mergeErr) {
+        console.error('Gagal menggabungkan PDF Service Report dan Dokumentasi Foto:', mergeErr);
+      }
+    }
+
+    // 4. Jika tidak ada Service Report sama sekali, kembalikan dokumentasi foto saja
+    const pdfBlob = docResult.doc.output('blob');
+    let fileName = docData.fileName.endsWith('.pdf') ? docData.fileName : `${docData.fileName}.pdf`;
     if (saveToFile) {
-      result.doc.save(fileName);
+      docResult.doc.save(fileName);
     }
     return [{ fileName, blob: pdfBlob }];
   };
@@ -1039,6 +1090,88 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     } catch (error) {
       console.error('Download PDF error:', error);
       toast.error('Gagal mengunduh PDF', { id: 'download-pdf' });
+    }
+  };
+
+  const handleDownloadPhotosOnly = async (docData: ExcelDocument) => {
+    try {
+      toast.loading('Menghasilkan PDF Dokumentasi Foto...', { id: 'download-photos' });
+      const files = await buildPDFBlob(docData, false, true);
+      for (const file of files) {
+        downloadPDFBlob(file.blob, file.fileName);
+      }
+      if (files.length > 0) {
+        toast.success('Dokumentasi foto berhasil diunduh!', { id: 'download-photos' });
+      }
+    } catch (error) {
+      console.error('Download photos-only error:', error);
+      toast.error('Gagal mengunduh dokumentasi foto', { id: 'download-photos' });
+    }
+  };
+
+  const handleDownloadSROnly = async (docData: ExcelDocument) => {
+    try {
+      toast.loading('Menyiapkan file Excel Service Report...', { id: 'download-sr' });
+
+      // 1. Cek apakah ada file mentah yang di-upload (di memory docData atau di IndexedDB lokal)
+      let srBase64 = docData.attachedSrBase64;
+      let srFileName = docData.attachedSrFile?.name;
+
+      if (!srBase64) {
+        try {
+          const offDoc = await offlineReportStorage.getReport(docData.id);
+          if (offDoc?.attachedSrBase64) {
+            srBase64 = offDoc.attachedSrBase64;
+            srFileName = offDoc.attachedSrFile?.name || srFileName;
+          }
+        } catch (e) {
+          console.warn('Could not read attachedSrBase64 from offline storage:', e);
+        }
+      }
+
+      if (srBase64) {
+        const cleanBase64 = srBase64.includes(',') ? srBase64.split(',')[1] : srBase64;
+        const byteCharacters = atob(cleanBase64);
+        const byteNumbers = new Uint8Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const mimeType = docData.attachedSrFile?.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        const blob = new Blob([byteNumbers], { type: mimeType });
+        const finalName = srFileName || `${docData.fileName.replace(/\.pdf$/i, '')}_Service_Report.xlsx`;
+        saveAs(blob, finalName);
+        toast.success('Berkas Service Report Excel berhasil diunduh!', { id: 'download-sr' });
+        return;
+      }
+
+      // 2. Jika tidak ada file upload mentah, generate Excel dari serviceReportPayload terstruktur
+      if (docData.serviceReportPayload && Object.keys(docData.serviceReportPayload).length > 0) {
+        let photos = docData.photosData || [];
+        if (photos.length === 0) {
+          try {
+            const offPhotos = await offlineReportStorage.getPhotos(docData.id);
+            if (offPhotos && offPhotos.length > 0) {
+              photos = offPhotos.map(p => ({
+                index: p.index,
+                description: p.description || '',
+                photoBase64: p.photoBase64 || '',
+                hasPhoto: p.hasPhoto
+              }));
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+        const excelName = `${docData.fileName.replace(/\.pdf$/i, '')}_Service_Report.xlsx`;
+        await exportUniversalServiceReportExcel(docData.serviceReportPayload, excelName, photos);
+        toast.success('File Excel Service Report berhasil diunduh!', { id: 'download-sr' });
+        return;
+      }
+
+      toast.error('Tidak ditemukan berkas Excel Service Report untuk dokumen ini', { id: 'download-sr' });
+    } catch (error: any) {
+      console.error('Download SR error:', error);
+      toast.error(`Gagal mengunduh Service Report: ${error.message || 'Terjadi kesalahan'}`, { id: 'download-sr' });
     }
   };
 
@@ -1185,7 +1318,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       return false;
     }
 
-    const hasSR = Boolean(doc.hasServiceReport || (doc.serviceReportPayload && Object.keys(doc.serviceReportPayload).length > 0));
+    const hasSR = Boolean(doc.attachedSrFile || doc.attachedSrBase64);
     if (srStatusFilter === 'photos_only' && hasSR) {
       return false;
     }
@@ -2074,7 +2207,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                 <AlertTriangle className="w-3 h-3 shrink-0" /> Abnormal
               </span>
             )}
-            {(document.hasServiceReport || (document.serviceReportPayload && Object.keys(document.serviceReportPayload).length > 0)) ? (
+            {(document.attachedSrFile || document.attachedSrBase64) ? (
               <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 shadow-2xs">
                 <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" /> FOTO + SERVICE REPORT
               </span>
@@ -2162,15 +2295,15 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               whileTap={{ scale: 0.98 }}
               onClick={() => setUploadSrModalDoc(document)}
               className={`flex-1 sm:flex-initial py-2 sm:py-2.5 px-3 rounded-xl transition border font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${
-                document.hasServiceReport || (document.serviceReportPayload && Object.keys(document.serviceReportPayload).length > 0)
+                document.attachedSrFile || document.attachedSrBase64
                   ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
                   : 'bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-700 border-indigo-200'
               }`}
-              title={document.hasServiceReport ? "Update / Ganti Berkas Service Report" : "Upload Berkas Service Report (Excel / PDF)"}
+              title={document.attachedSrFile || document.attachedSrBase64 ? "Update / Ganti Berkas Service Report" : "Upload Berkas Service Report (Excel / PDF)"}
             >
               <FileUp className="w-3.5 h-3.5 text-indigo-600" />
               <span className="font-bold">
-                {document.hasServiceReport || (document.serviceReportPayload && Object.keys(document.serviceReportPayload).length > 0) ? 'Update SR' : 'Upload SR'}
+                {document.attachedSrFile || document.attachedSrBase64 ? 'Update SR' : 'Upload SR'}
               </span>
             </motion.button>
           )}
@@ -2178,9 +2311,18 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => {
-              if (document.documentType === 'pdf') handleDownloadPDF(document);
-              else if (document.documentType === 'hse') handleDownloadHSE(document);
-              else handleDownload(document);
+              if (document.documentType === 'pdf') {
+                const hasSR = Boolean(document.attachedSrFile || document.attachedSrBase64);
+                if (hasSR) {
+                  setDownloadChoiceDoc(document);
+                } else {
+                  handleDownloadPDF(document);
+                }
+              } else if (document.documentType === 'hse') {
+                handleDownloadHSE(document);
+              } else {
+                handleDownload(document);
+              }
             }}
             className="flex-1 sm:flex-initial py-2 sm:py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl transition border border-emerald-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
             title={`Download ${document.documentType === 'pdf' ? 'PDF' : 'Excel'}`}
@@ -2220,6 +2362,25 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     try {
       toast.loading('Preparing data for editing...', { id: 'edit-prep' });
       let photosData = doc.photosData || [];
+
+      // 1. Prioritaskan pembacaan dari IndexedDB lokal
+      if (photosData.length === 0) {
+        try {
+          const offPhotos = await offlineReportStorage.getPhotos(doc.id);
+          if (offPhotos && offPhotos.length > 0) {
+            photosData = offPhotos.map(p => ({
+              index: p.index,
+              description: p.description || '',
+              photoBase64: p.photoBase64 || '',
+              hasPhoto: p.hasPhoto
+            }));
+          }
+        } catch (offErr) {
+          console.warn('offlineReportStorage getPhotos on edit error:', offErr);
+        }
+      }
+
+      // 2. Fallback ke Firestore subcollection (Online atau Cache)
       if (photosData.length === 0) {
         let colName = '';
         if (doc.documentType === 'excel') colName = 'excel_documents';
@@ -2227,13 +2388,22 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
         else if (doc.documentType === 'hse') colName = 'hse';
 
         if (colName) {
-          const photosSnap = await getDocs(
-            collection(db, `${colName}/${doc.id}/photos`)
-          );
-          if (!photosSnap.empty) {
+          const colRef = collection(db, `${colName}/${doc.id}/photos`);
+          let photosSnap: any = null;
+          if (navigator.onLine) {
+            try {
+              photosSnap = await getDocs(colRef);
+            } catch {
+              photosSnap = await getDocsFromCache(colRef).catch(() => null);
+            }
+          } else {
+            photosSnap = await getDocsFromCache(colRef).catch(() => null);
+          }
+
+          if (photosSnap && !photosSnap.empty) {
             photosData = photosSnap.docs
-              .map(d => d.data() as any)
-              .sort((a, b) => a.index - b.index);
+              .map((d: any) => d.data() as any)
+              .sort((a: any, b: any) => a.index - b.index);
           }
         }
       }
@@ -2386,7 +2556,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                 <span>Foto Saja</span>
                 <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${srStatusFilter === 'photos_only' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
                   }`}>
-                  {documents.filter(d => !(d.hasServiceReport || (d.serviceReportPayload && Object.keys(d.serviceReportPayload).length > 0))).length}
+                  {documents.filter(d => !(d.attachedSrFile || d.attachedSrBase64)).length}
                 </span>
               </button>
 
@@ -2401,7 +2571,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                 <span>Foto + SR Lengkap</span>
                 <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${srStatusFilter === 'with_sr' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
                   }`}>
-                  {documents.filter(d => Boolean(d.hasServiceReport || (d.serviceReportPayload && Object.keys(d.serviceReportPayload).length > 0))).length}
+                  {documents.filter(d => Boolean(d.attachedSrFile || d.attachedSrBase64)).length}
                 </span>
               </button>
             </div>
@@ -2519,6 +2689,144 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           </AnimatePresence>
         </div>
       )}
+
+      {/* Modal Pilihan Download Dokumen (Foto Saja, Service Report Excel Saja, atau Lengkap Foto+SR) */}
+      <AnimatePresence>
+        {downloadChoiceDoc && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col"
+            >
+              {/* Modal Header */}
+              <div className="px-6 py-5 bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 text-white flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-blue-500/20 border border-blue-400/30 rounded-2xl">
+                    <Download className="w-5 h-5 text-blue-300" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-base text-white">Opsi Download Dokumen</h3>
+                    <p className="text-xs text-blue-200/80 line-clamp-1 max-w-[280px] sm:max-w-xs">
+                      {downloadChoiceDoc.maintenanceName}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setDownloadChoiceDoc(null)}
+                  className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body: Option Cards */}
+              <div className="p-6 space-y-3.5 bg-slate-50/50">
+                <p className="text-xs text-slate-600 font-medium leading-relaxed">
+                  Laporan ini memiliki lembar <strong>Service Report (SR)</strong> dan <strong>Dokumentasi Foto</strong>. Silakan pilih format ekspor yang Anda perlukan:
+                </p>
+
+                {/* Option 1: Foto Saja */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const doc = downloadChoiceDoc;
+                    setDownloadChoiceDoc(null);
+                    handleDownloadPhotosOnly(doc);
+                  }}
+                  className="w-full flex items-start gap-3.5 p-4 rounded-2xl bg-white border border-slate-200/90 hover:border-blue-400 hover:shadow-md hover:bg-blue-50/30 transition-all text-left group cursor-pointer"
+                >
+                  <div className="p-3 rounded-xl bg-blue-50 text-blue-600 border border-blue-200 group-hover:scale-105 transition-transform shrink-0">
+                    <Camera className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-sm text-slate-900 group-hover:text-blue-700 transition-colors">
+                        Dokumentasi Foto Saja
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                        .PDF
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                      Download hanya berkas foto-foto dokumentasi pekerjaan maintenance (tanpa lembar Service Report).
+                    </p>
+                  </div>
+                </button>
+
+                {/* Option 2: Service Report Saja (Excel) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const doc = downloadChoiceDoc;
+                    setDownloadChoiceDoc(null);
+                    handleDownloadSROnly(doc);
+                  }}
+                  className="w-full flex items-start gap-3.5 p-4 rounded-2xl bg-white border border-slate-200/90 hover:border-emerald-500 hover:shadow-md hover:bg-emerald-50/30 transition-all text-left group cursor-pointer"
+                >
+                  <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200 group-hover:scale-105 transition-transform shrink-0">
+                    <FileSpreadsheet className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-sm text-slate-900 group-hover:text-emerald-700 transition-colors">
+                        Service Report Saja (Excel)
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        .XLSX
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                      Download file formulir Service Report format Excel (.xlsx) dari berkas yang di-upload atau format template resmi.
+                    </p>
+                  </div>
+                </button>
+
+                {/* Option 3: Lengkap Foto + Service Report */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const doc = downloadChoiceDoc;
+                    setDownloadChoiceDoc(null);
+                    handleDownloadPDF(doc);
+                  }}
+                  className="w-full flex items-start gap-3.5 p-4 rounded-2xl bg-gradient-to-r from-blue-50/60 to-emerald-50/60 border border-blue-200/80 hover:border-blue-500 hover:shadow-md transition-all text-left group cursor-pointer"
+                >
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-blue-600 to-teal-600 text-white shadow-xs group-hover:scale-105 transition-transform shrink-0">
+                    <Layers className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-sm text-slate-900 group-hover:text-blue-800 transition-colors">
+                        Lengkap: Foto + Service Report
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gradient-to-r from-blue-600 to-teal-600 text-white font-mono">
+                        .PDF
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                      Dokumen resmi komprehensif: lembar formulir Service Report + seluruh dokumentasi foto ber-layout ISO.
+                    </p>
+                  </div>
+                </button>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-3.5 bg-white border-t border-slate-200/80 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setDownloadChoiceDoc(null)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition cursor-pointer"
+                >
+                  Batal
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <DeleteConfirmModal
         isOpen={deleteModalOpen}
