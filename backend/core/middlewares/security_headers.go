@@ -28,11 +28,13 @@ func SecurityHeaders(next http.Handler) http.Handler {
 func buildCSP() string {
 	directives := []string{
 		"default-src 'self'",
-		"script-src 'self'",
-		"style-src 'self' 'unsafe-inline'",
-		"img-src 'self' data: https:",
-		"font-src 'self' https://fonts.gstatic.com",
-		"connect-src 'self' https://*.googleapis.com https://*.firebase.googleapis.com",
+		"script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
+		"worker-src 'self' blob:",
+		"child-src 'self' blob:",
+		"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+		"img-src 'self' data: blob: https:",
+		"font-src 'self' https://fonts.gstatic.com data:",
+		"connect-src 'self' blob: https://*.googleapis.com https://*.firebase.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com",
 		"frame-ancestors 'none'",
 		"base-uri 'self'",
 		"form-action 'self'",
