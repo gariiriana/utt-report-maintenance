@@ -133,8 +133,8 @@ export const BilingualTextarea: React.FC<{
   onChange,
   placeholderEn = "English text...",
   placeholderId = "Bahasa Indonesia (garis miring)...",
-  classNameEn = "w-full text-xs text-slate-900 leading-snug py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none resize-none font-sans",
-  classNameId = "w-full text-[11px] italic text-slate-600 leading-snug py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none resize-none font-sans",
+  classNameEn = "w-full text-xs text-slate-900 leading-snug py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none resize-none font-serif",
+  classNameId = "w-full text-[11px] italic text-slate-600 leading-snug py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none resize-none font-serif",
   containerClassName = "w-full flex flex-col space-y-0.5",
   indentId = true,
 }) => {
@@ -192,8 +192,8 @@ export const BilingualBulletsEditor: React.FC<{
       <BilingualTextarea
         value={value}
         onChange={onChange}
-        classNameEn="w-full text-[10px] leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans text-slate-800"
-        classNameId="w-full text-[9.5px] italic text-slate-600 leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans"
+        classNameEn="w-full text-[10px] leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-serif text-slate-800"
+        classNameId="w-full text-[9.5px] italic text-slate-600 leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-serif"
       />
     );
   }
@@ -230,7 +230,7 @@ export const BilingualBulletsEditor: React.FC<{
               rows={Math.max(1, Math.ceil(b.en.length / 32))}
               value={b.en}
               onChange={(e) => updateBullet(bIdx, 'en', e.target.value)}
-              className="w-full text-[10px] leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none resize-none font-sans text-slate-800"
+              className="w-full text-[10px] leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none resize-none font-serif text-slate-800"
             />
           </div>
           <div className="pl-3 border-l border-slate-200">
@@ -239,7 +239,7 @@ export const BilingualBulletsEditor: React.FC<{
               value={b.id}
               placeholder="Terjemahan bahasa Indonesia (garis miring)..."
               onChange={(e) => updateBullet(bIdx, 'id', e.target.value)}
-              className="w-full text-[9.5px] italic text-slate-600 leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none resize-none font-sans"
+              className="w-full text-[9.5px] italic text-slate-600 leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none resize-none font-serif"
             />
           </div>
         </div>
@@ -629,7 +629,7 @@ export function MonthlyReportGenerator() {
   ];
 
   return (
-    <div className="space-y-6 pb-24 relative">
+    <div className="monthly-report-feature space-y-6 pb-24 relative font-serif" style={{ fontFamily: '"Times New Roman", Times, Georgia, serif' }}>
       {/* ─── Control Bar (Sembunyi saat Print) ─────────────────────────────────── */}
       <div className="print:hidden bg-white text-slate-800 p-6 sm:p-7 rounded-3xl shadow-sm border border-slate-200">
         {/* Tier 1: Judul Laporan & Selektor Periode */}
@@ -797,7 +797,7 @@ export function MonthlyReportGenerator() {
           <p className="text-xs text-slate-500 mt-1">Mengagregasi 13 Bab, 36 Tabel, Master BOQ, dan Dokumen Teknisi.</p>
         </div>
       ) : reportData && (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-12 space-y-16 print:border-none print:shadow-none print:p-0" style={{ fontFamily: '"Times New Roman", Times, serif' }}>
+        <div className="monthly-report-paper bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-12 space-y-16 print:border-none print:shadow-none print:p-0 font-serif" style={{ fontFamily: '"Times New Roman", Times, Georgia, serif' }}>
           
           {/* ===================================================================
               PAGE 1: COVER PAGE (100% CENTERED & BILINGUAL SESUAI ACUAN ASLI)

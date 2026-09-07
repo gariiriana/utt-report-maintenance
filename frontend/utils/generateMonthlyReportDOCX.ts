@@ -12,7 +12,7 @@ import {
   Document,
   Packer,
   Paragraph,
-  TextRun,
+  TextRun as DocxTextRun,
   Table,
   TableRow,
   TableCell,
@@ -31,6 +31,19 @@ import { saveAs } from 'file-saver';
 import { FullMonthlyReportData, EquipmentDetailItem } from './monthlyReportData';
 import { ARIF_BUDIMAN_SIGNATURE_BASE64 } from './engineerSignatures';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
+
+/** Enforces Times New Roman font on every TextRun throughout the DOCX export */
+class TextRun extends DocxTextRun {
+  constructor(options: any) {
+    if (typeof options === 'string') {
+      super({ text: options, font: "Times New Roman" });
+    } else if (options && typeof options === 'object') {
+      super({ font: "Times New Roman", ...options });
+    } else {
+      super(options);
+    }
+  }
+}
 
 /** Helper to convert base64 or URL to Uint8Array for docx ImageRun */
 function base64ToUint8Array(base64?: string): Uint8Array {
@@ -1812,6 +1825,21 @@ export async function generateMonthlyReportDOCX(data: FullMonthlyReportData): Pr
           },
           paragraph: {
             spacing: { line: 276 } // 1.15 line spacing
+          }
+        },
+        heading1: {
+          run: {
+            font: "Times New Roman"
+          }
+        },
+        heading2: {
+          run: {
+            font: "Times New Roman"
+          }
+        },
+        heading3: {
+          run: {
+            font: "Times New Roman"
           }
         }
       }

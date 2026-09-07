@@ -234,3 +234,28 @@ input[type='number'] {
   color: #1e40af !important;
   font-weight: 700 !important;
 }
+
+/* ============================================================================
+   MONTHLY REPORT FEATURE: TIMES NEW ROMAN EVERYWHERE
+   Enforce Times New Roman across all elements, inputs, textareas, buttons,
+   tables, headings, and print preview inside the Monthly Report feature.
+   ============================================================================ */
+.monthly-report-feature,
+.monthly-report-feature *,
+.monthly-report-feature input,
+.monthly-report-feature textarea,
+.monthly-report-feature select,
+.monthly-report-feature button,
+.monthly-report-paper,
+.monthly-report-paper * {
+  font-family: "Times New Roman", Times, Georgia, serif !important;
+}
+
+@media print {
+  .monthly-report-feature,
+  .monthly-report-feature *,
+  .monthly-report-paper,
+  .monthly-report-paper * {
+    font-family: "Times New Roman", Times, Georgia, serif !important;
+  }
+}

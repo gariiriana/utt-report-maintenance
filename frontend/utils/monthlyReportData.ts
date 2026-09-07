@@ -284,52 +284,253 @@ const MONTH_NAMES_EN = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
-// Master 2026 PM Schedule Matrix per Device
-interface MasterPMSchedule {
+// Master 2026 PM Schedule Matrix per Device (Synchronized with 2026 Schedule tab from Progres PM Q3 - 2026.xlsx)
+export interface MasterPMSchedule {
   device: string;
   location: string;
   months: (string | null)[]; // 12 months: Jan=0 .. Dec=11
   category: string;
+  actualMonths?: (string | null)[];
+  remark?: string;
 }
 
 export const MASTER_PM_SCHEDULES: MasterPMSchedule[] = [
-  { device: 'Chiller', location: '1F Power House', months: [null, '18 - 24', null, null, '18 - 22', null, null, '18 - 24', null, null, '16 - 20', null], category: 'Cooling' },
-  { device: 'Cooling Tower', location: '4F Power House', months: [null, '18 - 24', null, null, '18 - 22', null, null, '18 - 24', null, null, '16 - 20', null], category: 'Cooling' },
-  { device: 'Cooling Pump', location: '1F Power House', months: [null, null, '09 - 13', null, null, '08 - 12', null, null, '07 - 11', null, null, '07 - 11'], category: 'Cooling' },
-  { device: 'Transformer', location: 'Power Room and Trafo Room', months: [null, '23 - 27', null, null, '22 - 29', null, null, '24 - 31', null, null, '16 - 20', null], category: 'Electrical' },
-  { device: 'Generator & Fuel System', location: '2F Power House', months: [null, '16 - 23', null, null, '18 - 22', null, null, '18 - 31', null, null, '16 - 20', null], category: 'Electrical' },
-  { device: 'MV and RMU Panel', location: 'MV Room', months: [null, null, '23 - 27', null, null, '15 - 22', null, null, '14 - 18', null, null, '14 - 18'], category: 'Electrical' },
-  { device: 'LV Panel', location: 'Power Room', months: [null, '23 - 27', null, null, '04 - 08', null, null, '03 - 07', null, null, '02 - 06', null], category: 'Electrical' },
-  { device: 'PDU Panel', location: 'CRAC Room 1-4', months: [null, '13 - 20', null, null, '18 - 22', null, null, '18 - 24', null, null, '16 - 20', null], category: 'Electrical' },
-  { device: 'UPS', location: 'Elecroom and Power Room', months: [null, null, '02 - 06', null, null, '02 - 08', null, null, '01 - 07', null, null, '07 - 11'], category: 'Electrical' },
-  { device: 'ATS', location: 'Power Room and Elec Room', months: [null, null, '02 - 06', null, null, '02 - 08', null, null, '01 - 07', null, null, '07 - 11'], category: 'Electrical' },
-  { device: 'Capacitor Bank', location: 'Campus and PH Office', months: [null, null, '16 - 20', null, null, '15 - 19', '27 - 31', null, '14 - 18', null, null, '14 - 18'], category: 'Electrical' },
-  { device: 'Busduct', location: 'Power Room & Riser', months: [null, null, '23 - 27', null, null, '22 - 26', null, null, '24 - 28', null, null, '23 - 27'], category: 'Electrical' },
-  { device: 'FSS', location: 'ALL Area Campus', months: [null, '16 - 27', null, null, '18 - 29', null, null, '17 - 28', null, null, '16 - 30', null], category: 'Safety' },
-  { device: 'Pre-Action System', location: 'ALL Area Campus', months: [null, '02 - 06', null, null, '04 - 08', null, null, '03 - 07', null, null, '02 - 06', null], category: 'Safety' },
-  { device: 'Hydrant System', location: 'ALL Area Campus', months: ['19 - 23', null, null, '20 - 24', null, null, '20 - 24', null, null, '19 - 23', null, null], category: 'Safety' },
-  { device: 'Water Leak', location: 'ALL Area Campus', months: [null, null, null, null, null, null, '06 - 10', null, null, null, null, null], category: 'Safety' },
-  { device: 'Fuel Leak', location: 'Ground Tank', months: [null, null, null, null, null, null, '13 - 17', null, null, null, null, null], category: 'Safety' },
-  { device: 'Lightning Protection System', location: 'Rooftop Campus & Office', months: [null, '09 - 13', null, null, '11 - 18', null, null, '10 - 14', null, null, '09 - 13', null], category: 'Electrical' },
-  { device: 'Grounding System', location: 'ALL Area Campus', months: [null, null, '16 - 27', null, null, '15 - 26', null, null, '14 - 25', null, null, '07 - 18'], category: 'Electrical' },
-  { device: 'Lighting Point / PJU', location: 'Outdoor & Indoor Area', months: ['19 - 30', null, null, null, '18 - 29', null, null, '18 - 31', null, null, '16 - 27', null], category: 'Electrical' },
-  { device: 'VRV', location: 'Office', months: [null, '16 - 27', null, null, '18 - 29', null, null, '18 - 31', null, null, '09 - 20', null], category: 'HVAC' },
-  { device: 'AC Splits', location: 'Office and Campus', months: [null, '24 - 27', null, null, '25 - 29', null, null, '24 - 28', null, null, '23 - 27', null], category: 'HVAC' },
-  { device: 'CRAC Data Hall', location: 'CRAC Room 3 & 4', months: [null, null, '25 - 31', null, null, '22 - 26', null, null, '21 - 25', null, null, '07 - 11'], category: 'HVAC' },
-  { device: 'FCU', location: 'ALL Area Campus', months: ['05 - 14', null, null, '06 - 15', null, null, '06 - 15', null, null, '05 - 14', null, null], category: 'HVAC' },
-  { device: 'AHU', location: 'ALL Area Campus', months: ['27 - 30', null, null, '27 - 30', null, null, '27 - 30', null, null, '26 - 29', null, null], category: 'HVAC' },
-  { device: 'Cooling Tower Water Treatment', location: '4F Power House', months: ['05 - 09', '02 - 06', '02 - 06', '06 - 10', '04 - 08', '02 - 05', '06 - 10', '03 - 07', '01 - 04', '05 - 09', '02 - 06', '07 - 11'], category: 'Cooling' },
-  { device: 'Lift Units', location: 'Office and Campus', months: ['08 - 15', '09 - 13', '09 - 13', '13 - 17', '11 - 19', '08 - 15', '06 - 10', '10 - 14', '07 - 11', '05 - 09', '09 - 13', '07 - 11'], category: 'Mechanical' },
-  { device: 'Gate', location: 'Outdoor Area', months: [null, null, null, null, null, null, '27 - 31', null, null, null, null, null], category: 'Mechanical' },
-  { device: 'Dock Leveler', location: 'CAMPUS 1', months: ['12 - 16', null, null, '14 - 18', null, null, '13 - 17', null, null, '12 - 16', null, null], category: 'Mechanical' },
-  { device: 'STP & Plumbing', location: 'All Area', months: [null, null, null, null, null, null, '27 - 31', null, null, null, null, null], category: 'Plumbing' },
-  { device: 'Door', location: 'All Area', months: [null, null, null, null, null, null, '13 - 17', null, null, null, null, null], category: 'Mechanical' },
-  { device: 'Exhaust Fan', location: 'PH and Campus', months: [null, null, null, null, null, null, '27 - 31', null, null, null, null, null], category: 'HVAC' },
-  { device: 'Load Bank', location: '1F Power House', months: [null, null, null, null, null, null, '27 - 31', null, null, null, null, null], category: 'Electrical' },
-  { device: 'Door Roll / Auto Gate', location: 'Building Access & Perimeter', months: ['26 - 30', null, null, '24 - 30', null, null, null, null, null, '26 - 30', null, null], category: 'Mechanical' },
-  { device: 'X-Ray', location: 'Post Security', months: ['12 - 13', '12 - 13', '12 - 13', '12 - 13', '12 - 13', '12 - 13', '12 - 13', '12 - 13', '12 - 13', '12 - 13', '12 - 13', '12 - 13'], category: 'Security' },
-  { device: 'Water Softener', location: 'Water Softener Room', months: ['23 - 25', '23 - 25', '23 - 25', '23 - 25', '23 - 25', '23 - 25', '23 - 25', '23 - 25', '23 - 25', '23 - 25', '23 - 25', '23 - 25'], category: 'Plumbing' }
+  {
+    device: 'UPS',
+    location: 'Elecroom and Power Room',
+    category: 'Electrical',
+    months: [null, null, '02 - 06', null, null, '02 - 08', null, null, '01 - 07', null, null, '07 - 11'], remark: "- Offline Maintenance\na. Deep cleaning module (partial)\nb. Tightening torque termination\n\n- Special Test\na. Test bypass static & manual bypass\nb. Mechanical test\nc. Electrical test\nd. Alarm test\ne. Integration system test"
+  },
+  {
+    device: 'CRAC Data Hall & Supporting Room',
+    location: 'CRAC Room 3 & 4',
+    category: 'HVAC',
+    months: [null, null, '25 - 31', null, null, '22 - 26', null, null, '21 - 25', null, null, '07 - 11'], remark: "- Special Test\na. EC Fan and motorized valve control\nb. Simulated alarm test\nc. Automatic back up test\nd. ATS test\ne. Interlock simulation"
+  },
+  {
+    device: 'Chiller',
+    location: '1F Power House',
+    category: 'Cooling',
+    months: [null, '18 - 24', null, null, '18 - 22', null, null, '18 -24', null, null, '16 - 20', null]
+  },
+  {
+    device: 'Cooling Tower',
+    location: '4F Power House',
+    category: 'Cooling',
+    months: [null, '18 - 24', null, null, '18 - 22', null, null, '18 -24', null, null, '16 - 20', null]
+  },
+  {
+    device: 'Cooling Pump',
+    location: '1F Power House',
+    category: 'Cooling',
+    months: [null, null, '09 - 13', null, null, '08 - 12', null, null, '07 - 11', null, null, '07 - 11']
+  },
+  {
+    device: 'ATS',
+    location: 'Power Room and Elec Room',
+    category: 'Electrical',
+    months: [null, null, '02 - 06', null, null, '02 - 08', null, null, '01 - 07', null, null, '07 - 11']
+  },
+  {
+    device: 'Transformer',
+    location: 'Power Room  and Trafo room',
+    category: 'Electrical',
+    months: [null, '23 - 27', null, null, '22 - 29', null, null, '24 - 31', null, null, '16 - 20', null], remark: "- Offline Maintenance\na. Repaint (if necessary)\nb. Tightening torque termination\nc. TTR measurement\nd. Insulation measurement\n\n- Special Test\na. Protection system test (DGPT, Temperature control)"
+  },
+  {
+    device: 'Generator & Fuel system',
+    location: '2F Power House',
+    category: 'Electrical',
+    months: [null, '16 - 23', null, null, '18 - 22', null, null, '18 - 31', null, null, '16 - 20', null], remark: "- Consumable Material Replacement\na. Oil engine & oil filter\nb. Filter water separator\nc. Oil separator water element\nd. Air filter & coolant (if necessary)\ne. Fuel pre-filter & fuel filter\n\n- Special Test\na.Test performace with dummy load\nb. Fuel , oil, and coolant test lab"
+  },
+  {
+    device: 'MV and RMU panel',
+    location: 'MV Room',
+    category: 'Electrical',
+    months: [null, null, '23 - 27', null, null, '15 - 22', null, null, '14 - 18', null, null, '14 - 18'], remark: "- Offline Maintenance\na. Cleaning CT/VT, cubicle, circuit breaker, protection relay\nb. Tightening torque termination\n\n- Special Test\na. Protection relay test\nb. mechanical test\nc. electrical test"
+  },
+  {
+    device: 'LV Panel',
+    location: 'Power Room',
+    category: 'Electrical',
+    months: [null, '23 - 27', null, null, '04 - 08', null, null, '03 - 07', null, null, '02 - 06', null]
+  },
+  {
+    device: 'PDU Panel',
+    location: 'CRAC Room 1-4',
+    category: 'Electrical',
+    months: [null, '13 - 20', null, null, '18 - 22', null, null, '18 - 24', null, null, '16 - 20', null]
+  },
+  {
+    device: 'FSS',
+    location: 'ALL Area Campus',
+    category: 'Safety',
+    months: [null, '16 - 27', null, null, '18 - 29', null, null, '17 - 28', null, null, '16 - 30', null]
+  },
+  {
+    device: 'Hydrant System',
+    location: 'ALL Area Campus',
+    category: 'Safety',
+    months: ['19 - 23', null, null, '20 - 24', null, null, '20 - 24', null, null, '19 - 23', null, null], remark: "- Consumable Material Replacement\na. Oil engine & oil filter\nb. Filter water separator\nc. Oil separator water element\nd. Air filter & coolant (if necessary)\ne. Accu\n\n- Special Test\na.Fuel and oil lab test"
+  },
+  {
+    device: 'Pre-Action System',
+    location: 'ALL Area Campus',
+    category: 'Safety',
+    months: [null, '02 - 06', null, null, '04 - 08', null, null, '03 - 07', null, null, '02 - 06', null]
+  },
+  {
+    device: 'Lighting Point',
+    location: 'ALL Area Campus',
+    category: 'Electrical',
+    months: [null, null, '16 - 27', null, null, '15 - 26', null, null, '14 - 25', null, null, '07 - 18']
+  },
+  {
+    device: 'Grounding System',
+    location: 'ALL Area Campus',
+    category: 'Electrical',
+    months: [null, null, '16 - 27', null, null, '15 - 26', null, null, '14 - 25', null, null, '07 - 18']
+  },
+  {
+    device: 'Lightning Protection System',
+    location: 'ALL Area Campus',
+    category: 'Electrical',
+    months: [null, '09 - 13', null, null, '11 - 18', null, null, '10 - 14', null, null, '09 - 13', null]
+  },
+  {
+    device: 'Water Leak',
+    location: 'ALL Area Campus',
+    category: 'Safety',
+    months: ['05 - 08', null, null, '06 - 10', null, null, '06 - 10', null, null, '05 - 09', null, null]
+  },
+  {
+    device: 'Fuel Leak',
+    location: 'Ground Tank',
+    category: 'Safety',
+    months: ['12 - 19', null, null, '13 - 17', null, null, '13 - 17', null, null, '12 - 16', null, null]
+  },
+  {
+    device: 'AHU',
+    location: 'ALL Area Campus',
+    category: 'HVAC',
+    months: ['27 - 30', null, null, '27 - 30', null, null, '27 - 30', null, null, '26 - 29', null, null]
+  },
+  {
+    device: 'VRV',
+    location: 'Office',
+    category: 'HVAC',
+    months: [null, '16 - 27', null, null, '18 - 29', null, null, '18 - 31', null, null, '09 - 20', null]
+  },
+  {
+    device: 'AC Splits',
+    location: 'Office and Campus',
+    category: 'HVAC',
+    months: [null, '24 - 27', null, null, '25 - 29', null, null, '24 - 28', null, null, '23 - 27', null]
+  },
+  {
+    device: 'Cooling Tower Water Treatment',
+    location: '4F Power House',
+    category: 'Cooling',
+    months: ['05 - 09', '02 - 06', '02 - 06', '06 - 10', '04 - 08', '02 - 05', '06 - 10', '03 - 07', '01 - 04', '05 - 09', '02 - 06', '07 - 11'], actualMonths: ['7-', null, null, null, null, null, null, null, null, null, null, null], remark: "- Consumable Material Replacement\na. Chemical refill"
+  },
+  {
+    device: 'Lift Units',
+    location: 'Office and Campus',
+    category: 'Mechanical',
+    months: ['08 - 15', '09 - 13', '09 - 13', '13 - 17', '11 - 19', '08 - 15', '06 - 10', '10 - 14', '07 - 11', '05 - 09', '09 - 13', '07 - 11'], actualMonths: [null, null, null, null, null, null, null, '10 - 13', '10 - 13', '10 - 13', '10 - 13', null], remark: "- Consumable Material Replacement\na. battery"
+  },
+  {
+    device: 'Panel LDB & RDB (Distribution)',
+    location: 'All Area',
+    category: 'Electrical',
+    months: [null, null, '04 - 13', null, null, '16 - 26', null, null, '16 - 25', null, null, '09 - 18']
+  },
+  {
+    device: 'PJU',
+    location: 'Outdoor Area',
+    category: 'Electrical',
+    months: ['19 - 30', null, null, null, '18 - 29', null, null, '18 - 31', null, null, '16 - 27', null]
+  },
+  {
+    device: 'Gate',
+    location: 'Outdoor Area',
+    category: 'Mechanical',
+    months: ['26 - 30', null, null, '24 - 30', null, null, '27 - 31', null, null, '26 - 30', null, null]
+  },
+  {
+    device: 'Road Blocker',
+    location: 'Outdoor Area',
+    category: 'Mechanical',
+    months: [null, null, null, null, '04 - 05', null, null, null, null, null, '05 - 06', null]
+  },
+  {
+    device: 'Dock Leveler',
+    location: 'CAMPUS 1',
+    category: 'Mechanical',
+    months: ['12 - 15', null, null, '13 - 17', null, null, '13 - 17', null, null, '12 - 16', null, null]
+  },
+  {
+    device: 'X-Ray',
+    location: 'Post Bravo',
+    category: 'Security',
+    months: [null, '12 - 13', null, '13 - 14', null, '11 - 12', null, '10 - 11', null, '12 - 13', null, '14 - 15']
+  },
+  {
+    device: 'Pressurization & Degassing',
+    location: '1F Power House',
+    category: 'Cooling',
+    months: [null, null, '25 - 27', null, null, '24 - 26', null, null, '22 - 24', null, null, '16 - 18']
+  },
+  {
+    device: 'Pumps',
+    location: 'All Area',
+    category: 'Plumbing',
+    months: [null, null, '10 - 14', null, null, '09 - 13', null, null, '08 - 12', null, null, '01 - 05']
+  },
+  {
+    device: 'STP & Plumbing',
+    location: 'All Area',
+    category: 'Plumbing',
+    months: ['26 - 30', null, null, '23 -30', null, null, '27 -31', null, null, '26 - 30', null, null]
+  },
+  {
+    device: 'Door',
+    location: 'All Area',
+    category: 'Mechanical',
+    months: ['12 - 15', null, null, '13 - 17', null, null, '13 - 17', null, null, '12 - 16', null, null]
+  },
+  {
+    device: 'Water Softener',
+    location: 'Water Softener Room',
+    category: 'Plumbing',
+    months: [null, '23 - 25', null, null, '25 - 28', null, null, '26 - 28', null, null, '23 - 25', null], remark: "- Consumable Material Replacement\na. Chemical/brine refill"
+  },
+  {
+    device: 'Exhaust Fan',
+    location: 'PH and Campus',
+    category: 'HVAC',
+    months: ['26 - 30', null, null, '24 - 30', null, null, '27 - 31', null, null, '26 - 30', null, null]
+  },
+  {
+    device: 'Busduct',
+    location: 'PH and Campus',
+    category: 'Electrical',
+    months: [null, null, '09 - 13', null, null, '08 - 12', null, null, '07 - 11', null, null, '07 - 11']
+  },
+  {
+    device: 'Capacitor Bank',
+    location: 'Campus and PH Office',
+    category: 'Electrical',
+    months: ['26 - 30', null, null, '27 - 30', null, null, '27 - 31', null, null, '26 - 30', null, null], remark: "- Special Test\na. capacitance and impedance measurement (partial)"
+  },
+  {
+    device: 'Physical Cooling Automation',
+    location: 'All area',
+    category: 'Cooling',
+    months: [null, null, '16 - 31', null, null, '15 - 30', null, null, '17 - 30', null, null, '07 - 18']
+  },
 ];
+
 
 /** Helper to get standard equipment unit count from BOQ data */
 export function getDefaultBoqUnitForDevice(deviceName: string): number {
@@ -349,7 +550,7 @@ export function getDefaultBoqUnitForDevice(deviceName: string): number {
   if (d.includes('load bank')) return 1;
   if (d.includes('chiller')) return 4;
   if (d.includes('cooling tower')) return 4;
-  if (d.includes('cooling pump') || d.includes('pump')) return 6;
+  if (d.includes('cooling pump')) return 6;
   if (d.includes('transformer') || d.includes('trafo')) return 4;
   if (d.includes('generator')) return 4;
   if (d.includes('mv') || d.includes('rmu')) return 10;
@@ -369,6 +570,11 @@ export function getDefaultBoqUnitForDevice(deviceName: string): number {
   if (d.includes('fcu')) return 48;
   if (d.includes('x-ray')) return 2;
   if (d.includes('water softener')) return 2;
+  if (d.includes('ldb') || d.includes('rdb')) return 32;
+  if (d.includes('road blocker')) return 2;
+  if (d.includes('pressurization') || d.includes('degassing')) return 2;
+  if (d.includes('pump')) return 6;
+  if (d.includes('cooling automation') || d.includes('physical cooling')) return 1;
   return 10;
 }
 
@@ -1674,8 +1880,20 @@ export function findBOQCategoryForScope(scopeName: string) {
   if (clean.includes('dock leveler')) {
     return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_31' || c.name.toLowerCase() === 'dock leveler');
   }
-  if (clean.includes('gate') || clean.includes('auto gate') || clean.includes('road blocker')) {
+  if (clean.includes('road blocker')) {
+    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_38' || c.name.toLowerCase().includes('road blocker'));
+  }
+  if (clean.includes('gate') || clean.includes('auto gate')) {
     return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_36' || c.name.toLowerCase() === 'gate');
+  }
+  if (clean.includes('ldb') || clean.includes('rdb')) {
+    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_7' || c.name.toLowerCase().includes('ldb'));
+  }
+  if (clean.includes('pressurization') || clean.includes('degassing')) {
+    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_24' || c.name.toLowerCase().includes('degassing'));
+  }
+  if (clean.includes('cooling automation') || clean.includes('physical cooling')) {
+    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_17' || c.name.toLowerCase().includes('cooling automation'));
   }
   if (clean.includes('door')) {
     return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_39' || c.name.toLowerCase() === 'door');
@@ -2755,7 +2973,11 @@ export function getScopeOfWorkForScope(scopeName: string): ScopeOfWorkCategory {
   if (clean.includes('stp') || clean.includes('plumbing')) return SCOPE_OF_WORK_DICTIONARY['stp & plumbing'];
   if (clean.includes('door roll') || clean.includes('rolling door')) return SCOPE_OF_WORK_DICTIONARY['door roll / auto gate'];
   if (clean.includes('door')) return SCOPE_OF_WORK_DICTIONARY['door'];
-  if (clean.includes('gate') || clean.includes('road blocker')) return SCOPE_OF_WORK_DICTIONARY['gate'];
+  if (clean.includes('road blocker')) return SCOPE_OF_WORK_DICTIONARY['gate'];
+  if (clean.includes('gate')) return SCOPE_OF_WORK_DICTIONARY['gate'];
+  if (clean.includes('ldb') || clean.includes('rdb')) return SCOPE_OF_WORK_DICTIONARY['lv panel'];
+  if (clean.includes('pressurization') || clean.includes('degassing')) return SCOPE_OF_WORK_DICTIONARY['cooling tower'];
+  if (clean.includes('cooling automation') || clean.includes('physical cooling')) return SCOPE_OF_WORK_DICTIONARY['chiller'];
   if (clean.includes('exhaust')) return SCOPE_OF_WORK_DICTIONARY['exhaust fan'];
   if (clean.includes('x-ray') || clean.includes('xray')) return SCOPE_OF_WORK_DICTIONARY['x-ray'];
   if (clean.includes('water softener') || clean.includes('softener')) return SCOPE_OF_WORK_DICTIONARY['water softener'];
