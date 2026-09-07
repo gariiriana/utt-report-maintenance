@@ -170,7 +170,9 @@ export function Login() {
                     setMatchConfidence(matchResult.confidence);
 
                     toast.success(`Wajah Dikenali: ${matchResult.matchedPerson.name}!`, {
-                      description: `Menghubungkan ke akun ${matchResult.matchedPerson.accountEmail}...`
+                      description: matchResult.matchedPerson.accountEmail
+                        ? `Menghubungkan ke akun ${matchResult.matchedPerson.accountEmail}...`
+                        : `Memverifikasi identitas personel ${matchResult.matchedPerson.name}...`
                     });
 
                     // Eksekusi Login Otomatis setelah jeda animasi 800ms

@@ -6,17 +6,17 @@
 
 export interface RegisteredFace {
   id: string;
-  name: string;               // Nama lengkap identitas personel (e.g. "Gari Iriana")
-  accountEmail: string;       // Akun email login yang dituju (e.g. "pump@gmail.com")
-  accountPassword?: string;   // Kata sandi akun (opsional, untuk login otomatis Firebase)
-  role: string;               // Role akun (e.g. "engineer", "qc_dme", "admin")
+  name: string;               // Nama lengkap identitas personel (e.g. "Riyan Bayu Nugroho")
   photoBase64: string;        // Foto wajah avatar yang di-crop
   faceDescriptor: number[];   // Vektor fitur numerik biometrik wajah
   registeredBy: string;       // Email pembuat (qc@gmail.com)
   registeredAt: string;       // Waktu registrasi ISO string
   status: 'active' | 'inactive';
+  accountEmail?: string;      // Opsional
+  accountPassword?: string;   // Opsional
+  role?: string;              // Opsional
   notes?: string;
-  department?: string;        // Divisi / Unit (e.g. "Mechanical & Electrical")
+  department?: string;        // Opsional
 }
 
 export interface FaceMatchResult {

@@ -39,51 +39,15 @@ import {
   Upload,
   CheckCircle2,
   User,
-  Mail,
-  Lock,
   Search,
   ScanFace
 } from 'lucide-react';
 
-// Daftar Akun Resmi Sistem untuk Pilihan Cepat (Autocomplete)
-const PRESET_ACCOUNTS = [
-  { email: 'pump@gmail.com', role: 'engineer', label: 'Cooling / Chilled Pump (pump@gmail.com)' },
-  { email: 'ats@gmail.com', role: 'engineer', label: 'ATS Panel (ats@gmail.com)' },
-  { email: 'busduct@gmail.com', role: 'engineer', label: 'Busduct System (busduct@gmail.com)' },
-  { email: 'trafo@gmail.com', role: 'engineer', label: 'Transformator (trafo@gmail.com)' },
-  { email: 'genset@gmail.com', role: 'engineer', label: 'Genset System (genset@gmail.com)' },
-  { email: 'ups@gmail.com', role: 'engineer', label: 'UPS System (ups@gmail.com)' },
-  { email: 'pdu@gmail.com', role: 'engineer', label: 'PDU (pdu@gmail.com)' },
-  { email: 'coolingtower@gmail.com', role: 'engineer', label: 'Cooling Tower (coolingtower@gmail.com)' },
-  { email: 'chiller@gmail.com', role: 'engineer', label: 'Chiller (chiller@gmail.com)' },
-  { email: 'fcu@gmail.com', role: 'engineer', label: 'FCU (fcu@gmail.com)' },
-  { email: 'ahu@gmail.com', role: 'engineer', label: 'AHU (ahu@gmail.com)' },
-  { email: 'crac@gmail.com', role: 'engineer', label: 'CRAC Unit (crac@gmail.com)' },
-  { email: 'vrv@gmail.com', role: 'engineer', label: 'VRV System (vrv@gmail.com)' },
-  { email: 'pju@gmail.com', role: 'engineer', label: 'PJU & Taman (pju@gmail.com)' },
-  { email: 'lv@gmail.com', role: 'engineer', label: 'Panel LV (lv@gmail.com)' },
-  { email: 'mv@gmail.com', role: 'engineer', label: 'Panel MV & RMU (mv@gmail.com)' },
-  { email: 'grounding@gmail.com', role: 'engineer', label: 'Grounding System (grounding@gmail.com)' },
-  { email: 'ldbrdb@gmail.com', role: 'engineer', label: 'Panel LDB & RDB (ldbrdb@gmail.com)' },
-  { email: 'acsplit@gmail.com', role: 'engineer', label: 'AC Split Wall (acsplit@gmail.com)' },
-  { email: 'lift@gmail.com', role: 'engineer', label: 'Elevator / Lift (lift@gmail.com)' },
-  { email: 'gate@gmail.com', role: 'engineer', label: 'Autogate System (gate@gmail.com)' },
-  { email: 'door@gmail.com', role: 'engineer', label: 'Fire / Auto Door (door@gmail.com)' },
-  { email: 'dockleveler@gmail.com', role: 'engineer', label: 'Dock Leveler (dockleveler@gmail.com)' },
-  { email: 'exhaustfan@gmail.com', role: 'engineer', label: 'Exhaust Fan (exhaustfan@gmail.com)' },
-  { email: 'qc@gmail.com', role: 'qc_dme', label: 'QC DME Officer (qc@gmail.com)' },
-  { email: 'admin@gmail.com', role: 'admin', label: 'Administrator (admin@gmail.com)' },
-  { email: 'standby@dwimitra.com', role: 'standby_engineer', label: 'Standby Engineer (standby@dwimitra.com)' },
-];
-
 export function FaceRegistrationManagement() {
   const { user } = useAuth();
 
-  // State Form Pendaftaran Wajah
+  // State Form Pendaftaran Wajah (Hanya Foto & Nama)
   const [personName, setPersonName] = useState('');
-  const [targetEmail, setTargetEmail] = useState('pump@gmail.com');
-  const [accountPassword, setAccountPassword] = useState('');
-  const [department, setDepartment] = useState('Teknisi Data Center');
   const [notes, setNotes] = useState('');
   const [capturedAvatar, setCapturedAvatar] = useState<string | null>(null);
   const [extractedDescriptor, setExtractedDescriptor] = useState<number[] | null>(null);
@@ -256,17 +220,12 @@ export function FaceRegistrationManagement() {
     reader.readAsDataURL(file);
   };
 
-  // 5. Simpan Data Registrasi ke Firestore
+  // 5. Simpan Data Registrasi ke Firestore (Hanya Foto & Nama)
   const handleSaveRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!personName.trim()) {
-      toast.error('Mohon isi nama identitas personel');
-      return;
-    }
-
-    if (!targetEmail.trim()) {
-      toast.error('Mohon tentukan akun email login tujuan');
+      toast.error('Mohon isi nama lengkap personel/teknisi');
       return;
     }
 
@@ -279,22 +238,18 @@ export function FaceRegistrationManagement() {
     const toastId = toast.loading('Menyimpan data biometrik wajah ke database...');
 
     try {
-      // Buat ID unik berdasarkan email dan timestamp
-      const safeEmail = targetEmail.replace(/[^a-zA-Z0-9]/g, '_');
-      const docId = `face_${safeEmail}_${Date.now().toString().slice(-6)}`;
+      // Buat ID unik berdasarkan nama dan timestamp
+      const safeName = personName.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+      const docId = `face_${safeName}_${Date.now().toString().slice(-6)}`;
 
       const newFaceData: RegisteredFace = {
         id: docId,
         name: personName.trim(),
-        accountEmail: targetEmail.trim().toLowerCase(),
-        accountPassword: accountPassword.trim() || undefined,
-        role: targetEmail.includes('admin') ? 'admin' : (targetEmail.includes('qc') ? 'qc_dme' : 'engineer'),
         photoBase64: capturedAvatar,
         faceDescriptor: extractedDescriptor,
         registeredBy: user?.email || 'qc@gmail.com',
         registeredAt: new Date().toISOString(),
         status: 'active',
-        department: department.trim() || 'Teknisi Data Center',
         notes: notes.trim() || undefined
       };
 
@@ -304,11 +259,10 @@ export function FaceRegistrationManagement() {
         updatedAt: serverTimestamp()
       });
 
-      toast.success(`Wajah ${personName} berhasil didaftarkan untuk login akun ${targetEmail}!`, { id: toastId });
+      toast.success(`Wajah ${personName} berhasil didaftarkan!`, { id: toastId });
 
       // Reset Form
       setPersonName('');
-      setAccountPassword('');
       setNotes('');
       setCapturedAvatar(null);
       setExtractedDescriptor(null);
@@ -336,7 +290,7 @@ export function FaceRegistrationManagement() {
 
   // 7. Hapus Wajah Terdaftar
   const handleDeleteFace = async (item: RegisteredFace) => {
-    if (!window.confirm(`Yakin ingin menghapus data wajah terdaftar atas nama "${item.name}"? Orang ini tidak akan bisa login via Face ID lagi.`)) {
+    if (!window.confirm(`Yakin ingin menghapus data wajah terdaftar atas nama "${item.name}"?`)) {
       return;
     }
 
@@ -350,8 +304,7 @@ export function FaceRegistrationManagement() {
 
   const filteredList = registeredList.filter(f =>
     f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    f.accountEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (f.department && f.department.toLowerCase().includes(searchQuery.toLowerCase()))
+    (f.notes && f.notes.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -373,10 +326,10 @@ export function FaceRegistrationManagement() {
             </div>
             <h2 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-white flex items-center gap-2">
               <ScanFace className="w-7 h-7 text-indigo-400" />
-              <span>Registrasi & Manajemen Akses Wajah</span>
+              <span>Registrasi & Manajemen Identitas Wajah</span>
             </h2>
             <p className="text-xs sm:text-sm text-slate-300 max-w-2xl font-medium leading-relaxed">
-              Daftarkan wajah personel teknisi beserta nama identitas dan akun tujuannya. Hanya wajah yang didaftarkan oleh akun QC yang diizinkan masuk ke sistem melalui pemindaian wajah di halaman login.
+              Daftarkan wajah personel teknisi dengan foto wajah dan nama lengkap. Data biometrik disimpan aman di database QC untuk verifikasi identitas dan presensi.
             </p>
           </div>
 
@@ -513,11 +466,11 @@ export function FaceRegistrationManagement() {
           </div>
 
           {/* FORM IDENTITAS PERSONEL */}
-          <form onSubmit={handleSaveRegistration} className="space-y-3.5 pt-2 border-t border-slate-100">
+          <form onSubmit={handleSaveRegistration} className="space-y-4 pt-2 border-t border-slate-100">
             {/* Input Nama Identitas */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Nama Lengkap Personel <span className="text-rose-500">*</span>
+                Nama Lengkap Personel / Teknisi <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
                 <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -526,63 +479,25 @@ export function FaceRegistrationManagement() {
                   required
                   value={personName}
                   onChange={e => setPersonName(e.target.value)}
-                  placeholder="Contoh: Gari Iriana"
-                  className="w-full pl-9 pr-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                  placeholder="Contoh: Riyan Bayu Nugroho / Dison Mintuno"
+                  className="w-full pl-9 pr-3 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
                 />
               </div>
-            </div>
-
-            {/* Pilihan Akun Login Tujuan */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Akun Email Login Sistem <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <select
-                  value={targetEmail}
-                  onChange={e => setTargetEmail(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 bg-white"
-                >
-                  {PRESET_ACCOUNTS.map(acc => (
-                    <option key={acc.email} value={acc.email}>
-                      {acc.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <p className="text-[10px] text-slate-500 mt-1">
-                Saat wajah orang ini cocok, sistem akan langsung login ke akun email di atas.
+              <p className="text-[10px] text-slate-400 mt-1">
+                Foto wajah yang diambil akan langsung diasosiasikan dengan nama personel di atas.
               </p>
             </div>
 
-            {/* Password Akun (Opsional) */}
+            {/* Catatan / Keterangan (Opsional) */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Kata Sandi Akun (Opsional untuk Full Firebase Auth)
-              </label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="password"
-                  value={accountPassword}
-                  onChange={e => setAccountPassword(e.target.value)}
-                  placeholder="Masukkan kata sandi akun jika ingin login penuh"
-                  className="w-full pl-9 pr-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
-              </div>
-            </div>
-
-            {/* Unit / Divisi */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Unit / Divisi Kerja
+                Keterangan / Divisi <span className="text-slate-400 font-normal">(Opsional)</span>
               </label>
               <input
                 type="text"
-                value={department}
-                onChange={e => setDepartment(e.target.value)}
-                placeholder="Contoh: Mechanical & Electrical / UTT"
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="Contoh: Teknisi Standby / UTT Daily"
                 className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
               />
             </div>
@@ -628,7 +543,7 @@ export function FaceRegistrationManagement() {
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Cari nama atau email..."
+                placeholder="Cari nama personel..."
                 className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
@@ -695,14 +610,11 @@ export function FaceRegistrationManagement() {
                         </span>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                        <span className="font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100">
-                          {item.accountEmail}
-                        </span>
-                        {item.department && (
-                          <span className="truncate max-w-[150px]">{item.department}</span>
-                        )}
-                      </div>
+                      {item.notes && (
+                        <div className="text-[11px] text-indigo-700 font-semibold bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100 inline-block truncate max-w-[240px]">
+                          {item.notes}
+                        </div>
+                      )}
 
                       <div className="text-[10px] text-slate-400 pt-0.5">
                         Didaftarkan: {new Date(item.registeredAt).toLocaleDateString('id-ID', {

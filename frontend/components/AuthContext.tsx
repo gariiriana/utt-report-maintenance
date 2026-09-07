@@ -328,14 +328,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
    * Berjalan seketika saat wajah berhasil diverifikasi cocok dengan data yang didaftarkan QC
    */
   const loginWithFaceVerified = async (face: RegisteredFace) => {
-    if (!face || !face.accountEmail) {
-      throw new Error('Data identitas wajah tidak memiliki akun email valid.');
+    if (!face || !face.name) {
+      throw new Error('Data identitas wajah tidak valid.');
     }
 
-    const targetEmail = face.accountEmail.trim().toLowerCase();
+    const targetEmail = face.accountEmail?.trim().toLowerCase() || `${face.name.toLowerCase().replace(/[^a-z0-9]/g, '')}@utt.com`;
 
     // 1. Coba login kredensial Firebase Auth jika ada password yang disimpan saat pendaftaran QC
-    if (face.accountPassword) {
+    if (face.accountPassword && face.accountEmail) {
       try {
         await login(targetEmail, face.accountPassword);
         return;
@@ -345,7 +345,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // 2. Aktifkan sesi autentikasi resmi sistem untuk akun tersebut
-    const initialRole = getRoleFromEmail(targetEmail);
+    const initialRole = face.role || getRoleFromEmail(targetEmail) || 'engineer';
     const initialCompanyType = (initialRole === 'Engineer_K2' || initialRole === 'engineer_k2') ? 'k2' : 'neutra';
     const faceUid = face.id ? `face_${face.id}` : `face_${Date.now()}`;
 
@@ -370,7 +370,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } as unknown as User;
 
     setUser(faceUser);
-    setUserRole(initialRole);
+    setUserRole(initialRole as any);
     setCompanyType(initialCompanyType);
     setLoading(false);
 

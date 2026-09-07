@@ -321,7 +321,9 @@ export function matchFaceWithRegisteredDatabase(
       confidence,
       matchedPerson: bestMatch,
       distance: lowestDistance,
-      message: `Wajah cocok dengan ${bestMatch.name} (${bestMatch.accountEmail})`
+      message: bestMatch.accountEmail
+        ? `Wajah cocok dengan ${bestMatch.name} (${bestMatch.accountEmail})`
+        : `Wajah cocok dengan ${bestMatch.name}`
     };
   }
 
