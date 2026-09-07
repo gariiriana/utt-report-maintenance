@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { FileType, Zap } from 'lucide-react';
+import { FileType, Zap, Eye } from 'lucide-react';
 import { toast } from 'sonner';
+import { ServiceReportPreviewShell } from '@/components/ServiceReportPreviewShell';
 import {
   BusductCustomerInfo,
   BusductReportData,
@@ -26,11 +27,14 @@ interface UploadedPhoto {
 
 interface BusductServiceReportProps {
   prefillData?: any;
+  photoCards?: Array<{ photoBase64?: string; description: string; parameter?: string }>;
+  companyType?: 'neutra' | 'bri' | 'k2';
+  maintenanceTime?: string;
   onClearPrefill?: () => void;
   onChange?: (data: { customerInfo: BusductCustomerInfo; reportData: BusductReportData; timeSpent: BusductTimeSpent }) => void;
 }
 
-export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: BusductServiceReportProps) {
+export function BusductServiceReport({ prefillData, photoCards, companyType, maintenanceTime, onClearPrefill, onChange }: BusductServiceReportProps) {
   const [customerInfo, setCustomerInfo] = useState<BusductCustomerInfo>(DEFAULT_BUSDUCT_CUSTOMER_INFO);
   const [reportData, setReportData] = useState<BusductReportData>({
     customerInfo: DEFAULT_BUSDUCT_CUSTOMER_INFO,
@@ -45,6 +49,7 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
 
   const [activeTab, setActiveTab] = useState<'visual' | 'cleaning' | 'thermal' | 'analysis' | 'customer' | 'time' | 'photos'>('visual');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [showPreviewShell, setShowPreviewShell] = useState<boolean>(false);
 
   // Sync state with parent
   useEffect(() => {
@@ -77,6 +82,37 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
       if (onClearPrefill) onClearPrefill();
     }
   }, [prefillData, onClearPrefill]);
+
+  // Auto-sync photoCards from ReportForm parent
+  useEffect(() => {
+    if (photoCards && photoCards.length > 0) {
+      const valid = photoCards.filter(c => c.photoBase64 || c.description);
+      if (valid.length > 0) {
+        setPhotos(valid.map((c, i) => ({
+          id: `busduct-card-${i}`,
+          base64: c.photoBase64 || '',
+          preview: c.photoBase64 ? (c.photoBase64.startsWith('data:') ? c.photoBase64 : `data:image/jpeg;base64,${c.photoBase64}`) : '',
+          category: 'busduct',
+          label: c.description || `Foto Busduct #${i + 1}`,
+          parameter: c.parameter || '',
+        })));
+      }
+    }
+  }, [photoCards]);
+
+  // Auto-sync companyType and maintenanceTime
+  useEffect(() => {
+    if (companyType || maintenanceTime) {
+      setCustomerInfo(prev => ({
+        ...prev,
+        ...(maintenanceTime ? { date: maintenanceTime } : {}),
+        ...(companyType ? {
+          companyName: companyType === 'bri' ? 'PT. BANK RAKYAT INDONESIA' : companyType === 'k2' ? 'PT. K2 DATA CENTRES' : 'PT. NEUTRA PRIMA DATA',
+          location: companyType === 'bri' ? 'BANK BRI' : companyType === 'k2' ? 'K2 DATA CENTRES' : 'NEUTRA DC CIKARANG',
+        } : {})
+      }));
+    }
+  }, [companyType, maintenanceTime]);
 
   const updateVisualItem = (idx: number, field: string, val: any) => {
     setReportData((prev) => {
@@ -532,10 +568,18 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
         <div className="text-xs text-slate-500 font-medium">
           * Laporan Service Report & Dokumentasi PDF akan digenerasi secara lengkap sesuai standar resmi PT. Dwi Mitra Ekatama Mandiri
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <button
             type="button"
-            onClick={() => generateBusductReportExcel(reportData.customerInfo, reportData, reportData.timeSpent, photos.map(p => ({ photoBase64: p.preview, description: p.label })))}
+            onClick={() => setShowPreviewShell(true)}
+            className="w-full sm:w-auto px-5 py-3.5 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 font-bold text-xs sm:text-sm rounded-2xl shadow-sm transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Eye className="w-4 h-4 text-sky-700" />
+            PREVIEW SERVICE REPORT
+          </button>
+          <button
+            type="button"
+            onClick={() => generateBusductReportExcel(customerInfo, reportData, timeSpent, photos.map(p => ({ photoBase64: p.preview || p.base64, description: p.label })))}
             className="w-full sm:w-auto px-5 py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-xl shadow-emerald-600/30 transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
           >
             <FileType className="w-4 h-4" />
@@ -551,6 +595,97 @@ export function BusductServiceReport({ prefillData, onClearPrefill, onChange }: 
           </button>
         </div>
       </div>
+
+      {/* Full A4 Service Report Preview Modal */}
+      {showPreviewShell && (
+        <ServiceReportPreviewShell
+          title="SERVICE REPORT PANEL BUSDUCT"
+          equipmentLabel="BUSDUCT"
+          customerInfo={{
+            companyName: customerInfo.companyName,
+            equipmentName: customerInfo.equipmentName,
+            ciDescription: customerInfo.ciDescription,
+            ciName: customerInfo.ciName,
+            type: customerInfo.type,
+            serialNo: customerInfo.serialNo,
+            productName: customerInfo.productName,
+            productYears: customerInfo.prodYear,
+            specification: customerInfo.specification,
+            location: customerInfo.location,
+            area: customerInfo.area,
+            mopNo: customerInfo.mopNo,
+            quarter: customerInfo.quarter,
+            date: customerInfo.date,
+            engineer: customerInfo.engineer,
+          }}
+          timeSpent={timeSpent}
+          visualInspection={reportData.visualInspection.map(v => ({
+            no: v.no,
+            activity: v.activity,
+            parameter: v.parameter,
+            condition: v.isGood ? 'Good' : (v.isNotGood ? 'Not Good' : 'Good'),
+            remarks: v.remarks,
+          }))}
+          cleaning={reportData.cleaning.map(c => ({
+            no: c.no,
+            activity: c.activity,
+            parameter: c.parameter,
+            condition: c.isGood ? 'Good' : (c.isNotGood ? 'Not Good' : 'Good'),
+            remarks: c.remarks,
+          }))}
+          measurementSections={
+            <div className="border border-slate-300 rounded-lg overflow-hidden my-2">
+              <div className="bg-blue-700 text-white px-2 py-1 text-xs font-bold">
+                Thermal Meassurement Please mark OK (√),not OK(×), not applicable (N/A) in the box
+              </div>
+              <table className="w-full text-[10px] text-center border-collapse">
+                <thead>
+                  <tr className="bg-blue-100 text-slate-800 font-bold">
+                    <th className="p-1 border border-slate-300">Breaker</th>
+                    <th className="p-1 border border-slate-300">Result Temperature Joint (°C)</th>
+                    <th className="p-1 border border-slate-300 bg-amber-100">Standard</th>
+                    <th className="p-1 border border-slate-300">Remarks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="p-1 border border-slate-300 font-medium">{reportData.thermal.breaker}</td>
+                    <td className="p-1 border border-slate-300 font-bold">{reportData.thermal.resultTemp} °C</td>
+                    <td className="p-1 border border-slate-300 bg-amber-50 font-bold text-amber-900">{reportData.thermal.standard}</td>
+                    <td className="p-1 border border-slate-300">{reportData.thermal.remarks}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          }
+          operationStatus={{
+            is_normal: reportData.analysis.isNormal,
+            remark: reportData.analysis.remark,
+            fault_symptom: reportData.analysis.faultSymptom,
+            fault_analysis: reportData.analysis.faultAnalysis,
+            work_done: reportData.analysis.workDone,
+            fault_part_sn: reportData.analysis.faultPartSN,
+          }}
+          photos={photos.map(p => ({
+            photoBase64: p.preview || p.base64,
+            description: p.label,
+          }))}
+          onBack={() => setShowPreviewShell(false)}
+          onExportPDF={() => {
+            setShowPreviewShell(false);
+            handleExportPDF();
+          }}
+          onExportExcel={() => {
+            setShowPreviewShell(false);
+            generateBusductReportExcel(
+              customerInfo,
+              reportData,
+              timeSpent,
+              photos.map(p => ({ photoBase64: p.preview || p.base64, description: p.label }))
+            );
+          }}
+        />
+      )}
 
       {/* Preview Modal */}
       {previewImage && (

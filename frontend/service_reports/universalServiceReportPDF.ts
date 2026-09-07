@@ -11,6 +11,9 @@ import { ServiceReportPayload } from '@/types/serviceReportTypes';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import { compressBase64Image } from '@/utils/imageCompression';
+import { generateBusductReportPDF } from '@/service_reports/busduct/generateBusductReportPDF';
+import { generatePumpReportPDF } from '@/service_reports/pump/generatePumpReportPDF';
+import { downloadJsPDFDoc } from '@/utils/pdfDownload';
 import { toast } from 'sonner';
 
 // Color Palette 1:1 Spreadsheet Style
@@ -49,6 +52,230 @@ export async function generateUniversalServiceReportPDF(
 ): Promise<jsPDF> {
   const toastId = 'gen-sr-pdf';
   toast.loading('Membuat Dokumen Service Report PDF...', { id: toastId });
+
+  // 0. Routing Khusus Busduct (1:1 Layout Resmi Spreadsheet & Strikethrough Logic)
+  if (
+    payload.equipmentKey === 'busduct' ||
+    (payload.accountEmail && payload.accountEmail.toLowerCase() === 'busduct@gmail.com') ||
+    (payload.equipmentName && payload.equipmentName.toLowerCase().includes('busduct'))
+  ) {
+    const c = payload.customerInfo || ({} as any);
+    const m = payload.measurements || ({} as any);
+    const op = payload.operationStatus || ({} as any);
+    const t = payload.timeSpent || ({} as any);
+
+    const rawVisual = payload.visualChecklist || [];
+    const busductVisual = rawVisual.some(x => x.activity?.toLowerCase().includes('clean'))
+      ? rawVisual.filter(x => !x.activity?.toLowerCase().includes('clean'))
+      : rawVisual.slice(0, 10);
+    const busductCleaning = rawVisual.some(x => x.activity?.toLowerCase().includes('clean'))
+      ? rawVisual.filter(x => x.activity?.toLowerCase().includes('clean'))
+      : rawVisual.slice(10);
+
+    const visual10 = busductVisual.map((item, idx) => ({
+      no: item.no || String(idx + 1),
+      activity: item.activity,
+      parameter: item.parameter,
+      isGood: item.condition === 'Good',
+      isNotGood: item.condition === 'Not Good',
+      remarks: item.remarks || ''
+    }));
+
+    const cleaning2 = busductCleaning.map((item, idx) => ({
+      no: item.no || String(idx + 1),
+      activity: item.activity,
+      parameter: item.parameter,
+      isGood: item.condition === 'Good',
+      isNotGood: item.condition === 'Not Good',
+      remarks: item.remarks || ''
+    }));
+
+    const busductCustomerInfo = {
+      companyName: c.companyName || 'Neutra DC Cikarang',
+      type: c.type || c.specification || 'IEC 61439-6',
+      specification: c.specification || c.model || '4000A',
+      mopNo: c.mopNo || 'DME-TDE/MOP/BDT/02 2805/26',
+      equipmentName: c.equipmentName || 'BUSDUCT',
+      serialNo: c.serialNo || 'AC-002',
+      quarter: c.quarter || 'Q2',
+      ciDescription: c.ciDescription || 'Line Busduct',
+      productName: c.productName || 'N/A',
+      location: c.location || '-',
+      date: c.date || new Date().toISOString().split('T')[0],
+      ciName: c.ciName || '-',
+      prodYear: c.prodYear || '2022',
+      area: c.area || '-',
+      engineer: c.engineer || payload.accountEmail || '-'
+    };
+
+    const busductReportData = {
+      customerInfo: busductCustomerInfo,
+      visualInspection: visual10,
+      cleaning: cleaning2,
+      thermal: {
+        breaker: m.thermal_joint_breaker || 'Joint Busduct',
+        resultTemp: m.thermal_joint_temp || m.thermal_breaker_temp || '32.5',
+        standard: '<40°C',
+        remarks: m.thermal_remarks || 'Suhu normal & aman'
+      },
+      analysis: {
+        isNormal: op.isNormal === true || (op as any).is_normal === true,
+        isAbnormal: op.isNormal === false || (op as any).is_normal === false,
+        remark: op.remark || 'Panel Busduct beroperasi secara normal, koneksi joint kencang, suhu joint dalam batas aman (<40°C), dan area sekitar bersih dari debu.',
+        faultSymptom: op.faultSymptom || '',
+        faultAnalysis: op.faultAnalysis || '',
+        workDone: op.workDone || '',
+        faultPartSN: op.faultPartSN || '',
+        faultPartName: op.faultPartName || ''
+      },
+      timeSpent: {
+        date: t.date || c.date || new Date().toISOString().split('T')[0],
+        departure: t.departure || '08:00',
+        start: t.start || '09:00',
+        finish: t.finish || '17:00'
+      }
+    };
+
+    const busductRes = await generateBusductReportPDF(
+      busductCustomerInfo,
+      busductReportData,
+      busductReportData.timeSpent,
+      photoCards,
+      saveToFile
+    );
+    toast.dismiss(toastId);
+    return (busductRes as any).doc || busductRes;
+  }
+
+  // 0B. Routing Khusus Pump (1:1 Layout Resmi Spreadsheet & Strikethrough Logic)
+  if (
+    payload.equipmentKey === 'pump' ||
+    (payload.accountEmail && payload.accountEmail.toLowerCase() === 'pump@gmail.com') ||
+    (payload.equipmentName && payload.equipmentName.toLowerCase().includes('pump'))
+  ) {
+    const c = payload.customerInfo || ({} as any);
+    const m = payload.measurements || ({} as any);
+    const op = payload.operationStatus || ({} as any);
+    const t = payload.timeSpent || ({} as any);
+
+    const rawVisual = payload.visualChecklist || [];
+    // Separate a-h (visual) and i-m (cleaning)
+    const pumpVisual = rawVisual.filter(x => {
+      const n = (x.no || '').toLowerCase();
+      return ['a.', 'b.', 'c.', 'd.', 'e.', 'f.', 'g.', 'h.'].some(prefix => n.startsWith(prefix)) || (!x.activity?.toLowerCase().includes('clean') && !n.includes('i') && !n.includes('j') && !n.includes('k') && !n.includes('l') && !n.includes('m'));
+    });
+    const pumpCleaning = rawVisual.filter(x => {
+      const n = (x.no || '').toLowerCase();
+      return ['i.', 'j.', 'k.', 'l.', 'm.'].some(prefix => n.startsWith(prefix)) || x.activity?.toLowerCase().includes('clean');
+    });
+
+    const visualList = (pumpVisual.length > 0 ? pumpVisual : rawVisual.slice(0, 8)).map((item, idx) => ({
+      no: item.no || `${String.fromCharCode(97 + idx)}.`,
+      activity: item.activity,
+      parameter: item.parameter,
+      isGood: item.condition === 'Good',
+      isNotGood: item.condition === 'Not Good',
+      remarks: item.remarks || ''
+    }));
+
+    const cleaningList = (pumpCleaning.length > 0 ? pumpCleaning : rawVisual.slice(8, 13)).map((item, idx) => ({
+      no: item.no || `${String.fromCharCode(105 + idx)}.`,
+      activity: item.activity,
+      parameter: item.parameter,
+      isGood: item.condition === 'Good',
+      isNotGood: item.condition === 'Not Good',
+      remarks: item.remarks || ''
+    }));
+
+    const pumpCustomerInfo = {
+      companyName: c.companyName || 'Neutra DC Cikarang',
+      type: c.type || '',
+      specification: c.specification || '',
+      mopNo: c.mopNo || 'DME-TDE/MOP/PUMP/02 0506/26',
+      equipmentName: c.equipmentName || 'Pump',
+      serialNo: c.serialNo || '',
+      quarter: c.quarter || 'Q2',
+      ciDescription: c.ciDescription || '',
+      productName: c.productName || '',
+      location: c.location || '',
+      date: c.date || new Date().toISOString().split('T')[0],
+      ciName: c.ciName || '',
+      prodYear: c.prodYear || '',
+      area: c.area || '',
+      engineer: c.engineer || payload.accountEmail || 'pump@gmail.com'
+    };
+
+    const pumpReportData = {
+      customerInfo: pumpCustomerInfo,
+      visualInspection: visualList,
+      cleaning: cleaningList,
+      voltageCurrent: {
+        rs: m.vc_voltage_rs || m.dpm_voltage_rs || '385',
+        st: m.vc_voltage_st || m.dpm_voltage_st || '382',
+        tr: m.vc_voltage_tr || m.dpm_voltage_tr || '384',
+        rn: m.vc_voltage_rn || m.dpm_voltage_rn || '220',
+        sn: m.vc_voltage_sn || m.dpm_voltage_sn || '221',
+        tn: m.vc_voltage_tn || m.dpm_voltage_tn || '220',
+        ng: m.vc_voltage_ng || '1.2',
+        r: m.vc_ampere_r || m.dpm_ampere_r || '18.5',
+        s: m.vc_ampere_s || m.dpm_ampere_s || '18.2',
+        t: m.vc_ampere_t || m.dpm_ampere_t || '18.4',
+        n: m.vc_ampere_n || m.dpm_ampere_n || '0.8',
+        standard: '+5% - 10% from 380V &\n220V load deviation 10%',
+        remarks: m.vc_remarks || m.dpm_remarks || 'Normal & Balanced'
+      },
+      thermal: {
+        item: m.thermal_item || 'Casing Pump',
+        resultTemp: m.thermal_pump_temp || m.thermal_casing_temp || m.thermal_breaker_temp || '42.5',
+        standard: '≤ 80°C.',
+        remarks: m.thermal_remarks || 'Suhu normal & aman'
+      },
+      vibration: {
+        item: m.vibration_item || 'Casing Pump',
+        vibration: m.vibration_pump_val || m.vibration_casing_val || '1.8',
+        standard: '≤ 4.5 mm/s.',
+        remarks: m.vibration_remarks || 'Vibrasi normal & halus'
+      },
+      pressure: {
+        item: m.pressure_item || 'Pressure Pump',
+        resultTemp: m.pressure_pump_temp || m.pressure_pump_val || '45.0',
+        standard: '≤ 80°C.',
+        remarks: m.pressure_remarks || 'Normal & stabil'
+      },
+      grounding: {
+        wire: 'Grounding',
+        resultOhm: m.grounding_ohm || '1.2',
+        standard: '<5 Ω',
+        remarks: m.grounding_remarks || 'Nilai tahanan pentanahan baik'
+      },
+      analysis: {
+        isNormal: op.isNormal === true || (op as any).is_normal === true,
+        isAbnormal: op.isNormal === false || (op as any).is_normal === false,
+        remark: op.remark || 'Pump beroperasi secara normal, tidak ada kebocoran, vibrasi dan temperatur kerja berada di dalam batas toleransi standar aman.',
+        faultSymptom: op.faultSymptom || '',
+        faultAnalysis: op.faultAnalysis || '',
+        workDone: op.workDone || '',
+        faultPartSN: op.faultPartSN || '',
+        faultPartName: op.faultPartName || ''
+      },
+      timeSpent: {
+        date: t.date || c.date || new Date().toISOString().split('T')[0],
+        departure: t.departure || '08:00',
+        start: t.start || '08:30',
+        finish: t.finish || '11:30'
+      }
+    };
+
+    const pumpRes = await generatePumpReportPDF(
+      pumpCustomerInfo,
+      pumpReportData,
+      pumpReportData.timeSpent,
+      photoCards,
+      saveToFile
+    );
+    toast.dismiss(toastId);
+    return (pumpRes as any).doc || pumpRes;
+  }
 
   // 1. Inisialisasi dokumen jsPDF (Format A4 Portrait)
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
@@ -726,8 +953,7 @@ export async function generateUniversalServiceReportPDF(
   if (saveToFile) {
     const safeTitle = (c.ciName || payload.equipmentName).replace(/[^a-zA-Z0-9]/g, '_');
     const fileName = `Service_Report_${safeTitle}_${c.quarter || 'Q3'}.pdf`;
-    doc.save(fileName);
-    toast.success(`PDF ${fileName} berhasil diunduh!`);
+    downloadJsPDFDoc(doc, fileName);
   }
 
   return doc;

@@ -550,12 +550,48 @@ function extractFieldsFromVoiceText(text: string) {
 
     // Thermal / Suhu
     const tempVal = findVal([
-      /(?:suhu|thermal|temperature|suhu breaker)\b[^\d]*?(\d+(?:[.,]\d+)?)/i,
+      /(?:suhu|thermal|temperature|suhu breaker|suhu joint|suhu busduct|suhu casing|suhu pump|suhu pompa)\b[^\d]*?(\d+(?:[.,]\d+)?)/i,
       /\b(\d+(?:[.,]\d+)?)\s*(?:derajat|°c|celsius)\b/i
     ]);
     if (tempVal) {
       measurements.thermal_breaker_temp = tempVal;
-      logs.push(`Suhu Breaker → ${tempVal} °C`);
+      measurements.thermal_joint_temp = tempVal;
+      measurements.thermal_pump_temp = tempVal;
+      logs.push(`Suhu / Temperatur → ${tempVal} °C`);
+    }
+
+    // Vibrasi / Getaran (Pump)
+    const vibVal = findVal([
+      /(?:vibrasi|getaran|vibration|getar)\b[^\d]*?(\d+(?:[.,]\d+)?)/i,
+      /\b(\d+(?:[.,]\d+)?)\s*(?:mm\/s|mms)\b/i
+    ]);
+    if (vibVal) {
+      measurements.vibration_pump_val = vibVal;
+      logs.push(`Vibrasi Casing Pump → ${vibVal} mm/s`);
+    }
+
+    // Pressure / Tekanan (Pump)
+    const presVal = findVal([
+      /(?:pressure|tekanan|tekanan pompa|pressure pump)\b[^\d]*?(\d+(?:[.,]\d+)?)/i
+    ]);
+    if (presVal) {
+      measurements.pressure_pump_temp = presVal;
+      logs.push(`Pressure Pump → ${presVal}`);
+    }
+
+    if (textLower.includes('normal dan aman') || textLower.includes('aman dan normal') || textLower.includes('suhu normal')) {
+      measurements.thermal_remarks = 'Suhu normal & aman';
+      logs.push('Remark Suhu → "Suhu normal & aman"');
+    }
+
+    if (textLower.includes('vibrasi normal') || textLower.includes('getaran normal') || textLower.includes('getaran stabil') || textLower.includes('vibrasi halus')) {
+      measurements.vibration_remarks = 'Vibrasi normal & halus';
+      logs.push('Remark Vibrasi → "Vibrasi normal & halus"');
+    }
+
+    if (textLower.includes('pressure normal') || textLower.includes('tekanan normal') || textLower.includes('tekanan stabil')) {
+      measurements.pressure_remarks = 'Normal & stabil';
+      logs.push('Remark Pressure → "Normal & stabil"');
     }
 
     // Grounding
@@ -572,6 +608,16 @@ function extractFieldsFromVoiceText(text: string) {
     if (textLower.includes('neutra')) {
       customerInfo.companyName = 'Neutra DC Cikarang';
       logs.push('Company Name → "Neutra DC Cikarang"');
+    }
+
+    if (textLower.includes('busduct')) {
+      customerInfo.equipmentName = 'BUSDUCT';
+      logs.push('Equipment Name → "BUSDUCT"');
+    }
+
+    if (textLower.includes('pump') || textLower.includes('pompa')) {
+      customerInfo.equipmentName = 'Pump';
+      logs.push('Equipment Name → "Pump"');
     }
 
     const mopMatch = normText.match(/(?:mop(?:\s+no)?)\s*(?:adalah|diisi|:|=)?\s*([A-Za-z0-9\-_/]+)/i);
@@ -621,6 +667,8 @@ export function ServiceReportContainer({
 }: ServiceReportContainerProps) {
   const config = getServiceReportConfigByEmail(userEmail);
   const isSupported = isServiceReportSupported(userEmail);
+  const isBusduct = userEmail?.toLowerCase() === 'busduct@gmail.com' || config?.key === 'busduct';
+  const isPump = userEmail?.toLowerCase() === 'pump@gmail.com' || config?.key === 'pump';
 
   // Status apakah accordion form Service Report dibuka/diaktifkan
   const [isEnabled, setIsEnabled] = useState<boolean>(!!initialData);
@@ -697,27 +745,36 @@ export function ServiceReportContainer({
       dpm_ampere_n: '',
       dpm_remarks: '',
       // Voltage & Current Measurement
-      vc_voltage_rs: '',
-      vc_voltage_st: '',
-      vc_voltage_tr: '',
-      vc_voltage_rn: '',
-      vc_voltage_sn: '',
-      vc_voltage_tn: '',
-      vc_voltage_ng: '',
-      vc_ampere_r: '',
-      vc_ampere_s: '',
-      vc_ampere_t: '',
-      vc_ampere_n: '',
+      vc_voltage_rs: isPump ? '385' : '',
+      vc_voltage_st: isPump ? '382' : '',
+      vc_voltage_tr: isPump ? '384' : '',
+      vc_voltage_rn: isPump ? '220' : '',
+      vc_voltage_sn: isPump ? '221' : '',
+      vc_voltage_tn: isPump ? '220' : '',
+      vc_voltage_ng: isPump ? '1.2' : '',
+      vc_ampere_r: isPump ? '18.5' : '',
+      vc_ampere_s: isPump ? '18.2' : '',
+      vc_ampere_t: isPump ? '18.4' : '',
+      vc_ampere_n: isPump ? '0.8' : '',
       vc_standard: '+5% - 10% from 380V & 220V load deviation 10%',
-      vc_remarks: '',
+      vc_remarks: isPump ? 'Normal & Balanced' : '',
       // Thermal
-      thermal_breaker_temp: '',
-      thermal_standard: '40°C',
-      thermal_remarks: '',
+      thermal_breaker_temp: isBusduct ? '32.5' : '',
+      thermal_joint_temp: isBusduct ? '32.5' : '',
+      thermal_standard: isBusduct ? '<40°C' : (isPump ? '≤ 80°C.' : '40°C'),
+      thermal_remarks: isBusduct ? 'Suhu normal & aman' : (isPump ? 'Suhu normal & aman' : ''),
+      // Pump Specific Measurements
+      thermal_pump_temp: isPump ? '42.5' : '',
+      vibration_pump_val: isPump ? '1.8' : '',
+      vibration_standard: '≤ 4.5 mm/s.',
+      vibration_remarks: isPump ? 'Vibrasi normal & halus' : '',
+      pressure_pump_temp: isPump ? '45.0' : '',
+      pressure_standard: '≤ 80°C.',
+      pressure_remarks: isPump ? 'Normal & stabil' : '',
       // Grounding
-      grounding_ohm: '',
-      grounding_standard: '<5 ꭥ',
-      grounding_remarks: ''
+      grounding_ohm: isPump ? '1.2' : '',
+      grounding_standard: isPump ? '<5 Ω' : '<5 ꭥ',
+      grounding_remarks: isPump ? 'Nilai tahanan pentanahan baik' : ''
     }
   );
 
@@ -1709,25 +1766,77 @@ PENTING:
                   <span className="text-[10px] font-bold text-slate-500">Template Cepat:</span>
                   <button
                     type="button"
-                    onClick={() => handleProcessVoiceInput("Semua inspeksi visual poin a sampai p kondisinya Good")}
+                    onClick={() => handleProcessVoiceInput(isBusduct ? "Semua inspeksi visual kondisinya Good" : "Semua inspeksi visual poin a sampai p kondisinya Good")}
                     className="px-2 py-0.5 bg-white hover:bg-emerald-50 text-emerald-800 rounded-md text-[10px] font-bold border border-emerald-200 transition cursor-pointer"
                   >
                     + Semua Visual Good
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleProcessVoiceInput("Tegangan RS 380 volt, ST 380 volt, TR 380 volt, RN 220 volt, SN 220 volt, TN 220 volt, suhu 34 derajat, grounding 0.8 ohm")}
-                    className="px-2 py-0.5 bg-white hover:bg-sky-50 text-sky-800 rounded-md text-[10px] font-bold border border-sky-200 transition cursor-pointer"
-                  >
-                    + Standar Tegangan & Suhu
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleProcessVoiceInput("Company name Neutra DC Cikarang, MOP no DME-TDE/MOP/ATS/02, lokasi Lt 2 CDC")}
-                    className="px-2 py-0.5 bg-white hover:bg-purple-50 text-purple-800 rounded-md text-[10px] font-bold border border-purple-200 transition cursor-pointer"
-                  >
-                    + Data Pelanggan Neutra DC
-                  </button>
+                  {isPump ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleProcessVoiceInput("Suhu casing pump 42.5 derajat normal dan aman, vibrasi 1.8 mm/s stabil")}
+                        className="px-2 py-0.5 bg-white hover:bg-amber-50 text-amber-900 rounded-md text-[10px] font-bold border border-amber-200 transition cursor-pointer"
+                      >
+                        + Suhu & Vibrasi Normal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleProcessVoiceInput("Tegangan RS 385 volt, ST 382 volt, TR 384 volt, RN 220 volt, SN 221 volt, TN 220 volt, NG 1.2 volt, Arus R 18.5 ampere, S 18.2 ampere, T 18.4 ampere, N 0.8 ampere")}
+                        className="px-2 py-0.5 bg-white hover:bg-sky-50 text-sky-800 rounded-md text-[10px] font-bold border border-sky-200 transition cursor-pointer"
+                      >
+                        + Tegangan & Arus
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleProcessVoiceInput("Grounding 1.2 ohm, pressure pump 45 derajat normal")}
+                        className="px-2 py-0.5 bg-white hover:bg-emerald-50 text-emerald-900 rounded-md text-[10px] font-bold border border-emerald-200 transition cursor-pointer"
+                      >
+                        + Grounding & Pressure
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleProcessVoiceInput("Company name Neutra DC Cikarang, MOP no DME-TDE/MOP/PUMP/02 0506/26, Equipment Name Pump, Quarter Q2")}
+                        className="px-2 py-0.5 bg-white hover:bg-purple-50 text-purple-800 rounded-md text-[10px] font-bold border border-purple-200 transition cursor-pointer"
+                      >
+                        + Data Pelanggan Pump
+                      </button>
+                    </>
+                  ) : isBusduct ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleProcessVoiceInput("Suhu joint busduct 32.5 derajat, standar di bawah 40 derajat celcius, kondisi normal dan aman")}
+                        className="px-2 py-0.5 bg-white hover:bg-amber-50 text-amber-900 rounded-md text-[10px] font-bold border border-amber-200 transition cursor-pointer"
+                      >
+                        + Standar Suhu Busduct (&lt;40°C)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleProcessVoiceInput("Company name NeutraDC Cikarang, MOP no DME-TDE/MOP/BDT/02 2805/26, Equipment Name BUSDUCT, Serial No AC-002, Spesifikasi 4000A")}
+                        className="px-2 py-0.5 bg-white hover:bg-purple-50 text-purple-800 rounded-md text-[10px] font-bold border border-purple-200 transition cursor-pointer"
+                      >
+                        + Data Pelanggan Neutra DC
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleProcessVoiceInput("Tegangan RS 380 volt, ST 380 volt, TR 380 volt, RN 220 volt, SN 220 volt, TN 220 volt, suhu 34 derajat, grounding 0.8 ohm")}
+                        className="px-2 py-0.5 bg-white hover:bg-sky-50 text-sky-800 rounded-md text-[10px] font-bold border border-sky-200 transition cursor-pointer"
+                      >
+                        + Standar Tegangan & Suhu
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleProcessVoiceInput("Company name Neutra DC Cikarang, MOP no DME-TDE/MOP/ATS/02, lokasi Lt 2 CDC")}
+                        className="px-2 py-0.5 bg-white hover:bg-purple-50 text-purple-800 rounded-md text-[10px] font-bold border border-purple-200 transition cursor-pointer"
+                      >
+                        + Data Pelanggan Neutra DC
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -1885,10 +1994,327 @@ PENTING:
               </div>
             )}
 
-            {/* TAB 2: PENGUKURAN & PARAMETER LISTRIK (1:1 SPREADSHEET MEASUREMENTS) */}
+            {/* TAB 2: PENGUKURAN (MEASUREMENTS) */}
             {activeTab === 'measurements' && (
-              <div className="space-y-4">
-                {/* 1. Digital Power Meter Recording */}
+              isPump ? (
+                <div className="space-y-4">
+                  {/* PUMP MEASUREMENT 1: VOLTAGE & CURRENT */}
+                  <div className="overflow-x-auto border border-slate-300 rounded-xl shadow-xs bg-white">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-sky-800 text-white font-extrabold border-b border-sky-900">
+                          <th colSpan={8} className="px-3 py-2 text-xs tracking-wider uppercase">
+                            Voltage &amp; Current Measurement — Pump System
+                          </th>
+                        </tr>
+                        <tr className="bg-sky-100/90 text-sky-950 font-bold border-b border-slate-300 text-center text-[11px]">
+                          <th className="py-2 px-2 border-r border-slate-300 w-16">Wire</th>
+                          <th className="py-2 px-2 border-r border-slate-300 min-w-[90px]">Result (Voltage)</th>
+                          <th className="py-2 px-2 border-r border-slate-300 w-16">Wire</th>
+                          <th className="py-2 px-2 border-r border-slate-300 min-w-[90px]">Result (Voltage)</th>
+                          <th className="py-2 px-2 border-r border-slate-300 w-16">Wire</th>
+                          <th className="py-2 px-2 border-r border-slate-300 min-w-[90px]">Result (Ampere)</th>
+                          <th className="py-2 px-2 border-r border-slate-300 w-48">Standard</th>
+                          <th className="py-2 px-3 min-w-[140px]">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 text-slate-800">
+                        {/* Row 1 */}
+                        <tr>
+                          <td className="py-1.5 px-2 text-center font-bold border-r border-slate-200 bg-slate-50/50">R-S</td>
+                          <td className="py-1 px-1 border-r border-slate-200">
+                            <input type="text" placeholder="385" value={measurements.vc_voltage_rs || ''} onChange={e => handleMeasurementChange('vc_voltage_rs', e.target.value)} className="w-full px-2 py-1 text-xs text-center border border-slate-200 rounded focus:bg-white focus:ring-1 focus:ring-sky-500 outline-none font-semibold" />
+                          </td>
+                          <td className="py-1.5 px-2 text-center font-bold border-r border-slate-200 bg-slate-50/50">R-N</td>
+                          <td className="py-1 px-1 border-r border-slate-200">
+                            <input type="text" placeholder="220" value={measurements.vc_voltage_rn || ''} onChange={e => handleMeasurementChange('vc_voltage_rn', e.target.value)} className="w-full px-2 py-1 text-xs text-center border border-slate-200 rounded focus:bg-white focus:ring-1 focus:ring-sky-500 outline-none font-semibold" />
+                          </td>
+                          <td className="py-1.5 px-2 text-center font-bold border-r border-slate-200 bg-slate-50/50">R</td>
+                          <td className="py-1 px-1 border-r border-slate-200">
+                            <input type="text" placeholder="18.5" value={measurements.vc_ampere_r || ''} onChange={e => handleMeasurementChange('vc_ampere_r', e.target.value)} className="w-full px-2 py-1 text-xs text-center border border-slate-200 rounded focus:bg-white focus:ring-1 focus:ring-sky-500 outline-none font-semibold" />
+                          </td>
+                          <td rowSpan={4} className="py-2 px-3 border-r border-slate-200 text-center align-middle bg-amber-50/40">
+                            <span className="inline-block px-2.5 py-1.5 bg-amber-100 text-amber-900 rounded-lg text-[11px] font-black border border-amber-300 leading-snug">
+                              +5% - 10% from 380V &amp;<br />220V load deviation 10%
+                            </span>
+                          </td>
+                          <td rowSpan={4} className="py-2 px-2 align-middle">
+                            <textarea rows={4} placeholder="Remarks..." value={measurements.vc_remarks || 'Normal & Balanced'} onChange={e => handleMeasurementChange('vc_remarks', e.target.value)} className="w-full h-full p-2 text-xs border border-slate-200 rounded focus:bg-white focus:ring-1 focus:ring-sky-500 outline-none resize-none" />
+                          </td>
+                        </tr>
+                        {/* Row 2 */}
+                        <tr>
+                          <td className="py-1.5 px-2 text-center font-bold border-r border-slate-200 bg-slate-50/50">S-T</td>
+                          <td className="py-1 px-1 border-r border-slate-200">
+                            <input type="text" placeholder="382" value={measurements.vc_voltage_st || ''} onChange={e => handleMeasurementChange('vc_voltage_st', e.target.value)} className="w-full px-2 py-1 text-xs text-center border border-slate-200 rounded focus:bg-white focus:ring-1 focus:ring-sky-500 outline-none font-semibold" />
+                          </td>
+                          <td className="py-1.5 px-2 text-center font-bold border-r border-slate-200 bg-slate-50/50">S-N</td>
+                          <td className="py-1 px-1 border-r border-slate-200">
+                            <input type="text" placeholder="221" value={measurements.vc_voltage_sn || ''} onChange={e => handleMeasurementChange('vc_voltage_sn', e.target.value)} className="w-full px-2 py-1 text-xs text-center border border-slate-200 rounded focus:bg-white focus:ring-1 focus:ring-sky-500 outline-none font-semibold" />
+                          </td>
+                          <td className="py-1.5 px-2 text-center font-bold border-r border-slate-200 bg-slate-50/50">S</td>
+                          <td className="py-1 px-1 border-r border-slate-200">
+                            <input type="text" placeholder="18.2" value={measurements.vc_ampere_s || ''} onChange={e => handleMeasurementChange('vc_ampere_s', e.target.value)} className="w-full px-2 py-1 text-xs text-center border border-slate-200 rounded focus:bg-white focus:ring-1 focus:ring-sky-500 outline-none font-semibold" />
+                          </td>
+                        </tr>
+                        {/* Row 3 */}
+                        <tr>
+                          <td className="py-1.5 px-2 text-center font-bold border-r border-slate-200 bg-slate-50/50">T-R</td>
+                          <td className="py-1 px-1 border-r border-slate-200">
+                            <input type="text" placeholder="384" value={measurements.vc_voltage_tr || ''} onChange={e => handleMeasurementChange('vc_voltage_tr', e.target.value)} className="w-full px-2 py-1 text-xs text-center border border-slate-200 rounded focus:bg-white focus:ring-1 focus:ring-sky-500 outline-none font-semibold" />
+                          </td>
+                          <td className="py-1.5 px-2 text-center font-bold border-r border-slate-200 bg-slate-50/50">T-N</td>
+                          <td className="py-1 px-1 border-r border-slate-200">
+                            <input type="text" placeholder="220" value={measurements.vc_voltage_tn || ''} onChange={e => handleMeasurementChange('vc_voltage_tn', e.target.value)} className="w-full px-2 py-1 text-xs text-center border border-slate-200 rounded focus:bg-white focus:ring-1 focus:ring-sky-500 outline-none font-semibold" />
+                          </td>
+                          <td className="py-1.5 px-2 text-center font-bold border-r border-slate-200 bg-slate-50/50">T</td>
+                          <td className="py-1 px-1 border-r border-slate-200">
+                            <input type="text" placeholder="18.4" value={measurements.vc_ampere_t || ''} onChange={e => handleMeasurementChange('vc_ampere_t', e.target.value)} className="w-full px-2 py-1 text-xs text-center border border-slate-200 rounded focus:bg-white focus:ring-1 focus:ring-sky-500 outline-none font-semibold" />
+                          </td>
+                        </tr>
+                        {/* Row 4 */}
+                        <tr>
+                          <td className="py-1.5 px-2 text-center font-bold border-r border-slate-200 bg-slate-100/40">-</td>
+                          <td className="py-1 px-1 border-r border-slate-200 bg-slate-100/20">-</td>
+                          <td className="py-1.5 px-2 text-center font-bold border-r border-slate-200 bg-slate-50/50">N-G</td>
+                          <td className="py-1 px-1 border-r border-slate-200">
+                            <input type="text" placeholder="1.2" value={measurements.vc_voltage_ng || ''} onChange={e => handleMeasurementChange('vc_voltage_ng', e.target.value)} className="w-full px-2 py-1 text-xs text-center border border-slate-200 rounded focus:bg-white focus:ring-1 focus:ring-sky-500 outline-none font-semibold" />
+                          </td>
+                          <td className="py-1.5 px-2 text-center font-bold border-r border-slate-200 bg-slate-50/50">N</td>
+                          <td className="py-1 px-1 border-r border-slate-200">
+                            <input type="text" placeholder="0.8" value={measurements.vc_ampere_n || ''} onChange={e => handleMeasurementChange('vc_ampere_n', e.target.value)} className="w-full px-2 py-1 text-xs text-center border border-slate-200 rounded focus:bg-white focus:ring-1 focus:ring-sky-500 outline-none font-semibold" />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* PUMP MEASUREMENT 2: THERMAL MEASUREMENT */}
+                  <div className="overflow-x-auto border border-slate-300 rounded-xl shadow-xs bg-white">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-sky-800 text-white font-extrabold border-b border-sky-900">
+                          <th colSpan={4} className="px-3 py-2 text-xs tracking-wider uppercase">
+                            Thermal Meassurement — Casing Pump <span className="font-normal text-[11px] text-sky-100 italic ml-2">Please mark OK (✓), not OK(×), not applicable (N/A) in the box</span>
+                          </th>
+                        </tr>
+                        <tr className="bg-sky-100/90 text-sky-950 font-bold border-b border-slate-300 text-center text-[11px]">
+                          <th className="py-2 px-3 border-r border-slate-300 text-left w-48">Item</th>
+                          <th className="py-2 px-3 border-r border-slate-300 text-center w-52">Result Temperature (°C)</th>
+                          <th className="py-2 px-3 border-r border-slate-300 text-center w-36">Standard</th>
+                          <th className="py-2 px-3 text-left">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 text-slate-800">
+                        <tr>
+                          <td className="py-2.5 px-3 font-bold border-r border-slate-200">Casing Pump</td>
+                          <td className="py-2 px-3 border-r border-slate-200">
+                            <div className="flex items-center gap-1.5 max-w-[180px] mx-auto">
+                              <input type="text" placeholder="42.5" value={measurements.thermal_pump_temp || ''} onChange={e => handleMeasurementChange('thermal_pump_temp', e.target.value)} className="w-full px-2 py-1.5 text-xs text-center border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-sky-500 outline-none font-bold" />
+                              <span className="text-xs font-bold text-slate-500">°C</span>
+                            </div>
+                          </td>
+                          <td className="py-2 px-3 border-r border-slate-200 text-center">
+                            <span className="px-3 py-1 bg-amber-100 text-amber-900 rounded-lg text-xs font-black border border-amber-300">≤ 80°C.</span>
+                          </td>
+                          <td className="py-2 px-3">
+                            <input type="text" placeholder="Suhu normal & aman" value={measurements.thermal_remarks || ''} onChange={e => handleMeasurementChange('thermal_remarks', e.target.value)} className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-sky-500 outline-none" />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* PUMP MEASUREMENT 3: VIBRATION MEASUREMENT */}
+                  <div className="overflow-x-auto border border-slate-300 rounded-xl shadow-xs bg-white">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-sky-800 text-white font-extrabold border-b border-sky-900">
+                          <th colSpan={4} className="px-3 py-2 text-xs tracking-wider uppercase">
+                            Vibration Meassurement — Casing Pump <span className="font-normal text-[11px] text-sky-100 italic ml-2">Please mark OK (✓), not OK(×), not applicable (N/A) in the box</span>
+                          </th>
+                        </tr>
+                        <tr className="bg-sky-100/90 text-sky-950 font-bold border-b border-slate-300 text-center text-[11px]">
+                          <th className="py-2 px-3 border-r border-slate-300 text-left w-48">Item</th>
+                          <th className="py-2 px-3 border-r border-slate-300 text-center w-52">Vibration (mm/s)</th>
+                          <th className="py-2 px-3 border-r border-slate-300 text-center w-36">Standard</th>
+                          <th className="py-2 px-3 text-left">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 text-slate-800">
+                        <tr>
+                          <td className="py-2.5 px-3 font-bold border-r border-slate-200">Casing Pump</td>
+                          <td className="py-2 px-3 border-r border-slate-200">
+                            <div className="flex items-center gap-1.5 max-w-[180px] mx-auto">
+                              <input type="text" placeholder="1.8" value={measurements.vibration_pump_val || ''} onChange={e => handleMeasurementChange('vibration_pump_val', e.target.value)} className="w-full px-2 py-1.5 text-xs text-center border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-sky-500 outline-none font-bold" />
+                              <span className="text-xs font-bold text-slate-500">mm/s</span>
+                            </div>
+                          </td>
+                          <td className="py-2 px-3 border-r border-slate-200 text-center">
+                            <span className="px-3 py-1 bg-amber-100 text-amber-900 rounded-lg text-xs font-black border border-amber-300">≤ 4.5 mm/s.</span>
+                          </td>
+                          <td className="py-2 px-3">
+                            <input type="text" placeholder="Vibrasi normal & halus" value={measurements.vibration_remarks || ''} onChange={e => handleMeasurementChange('vibration_remarks', e.target.value)} className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-sky-500 outline-none" />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* PUMP MEASUREMENT 4: PRESSURE MEASUREMENT */}
+                  <div className="overflow-x-auto border border-slate-300 rounded-xl shadow-xs bg-white">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-sky-800 text-white font-extrabold border-b border-sky-900">
+                          <th colSpan={4} className="px-3 py-2 text-xs tracking-wider uppercase">
+                            Pressure Meassurement — Pressure Pump <span className="font-normal text-[11px] text-sky-100 italic ml-2">Please mark OK (✓), not OK(×), not applicable (N/A) in the box</span>
+                          </th>
+                        </tr>
+                        <tr className="bg-sky-100/90 text-sky-950 font-bold border-b border-slate-300 text-center text-[11px]">
+                          <th className="py-2 px-3 border-r border-slate-300 text-left w-48">Item</th>
+                          <th className="py-2 px-3 border-r border-slate-300 text-center w-52">Result Temperature (°C)</th>
+                          <th className="py-2 px-3 border-r border-slate-300 text-center w-36">Standard</th>
+                          <th className="py-2 px-3 text-left">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 text-slate-800">
+                        <tr>
+                          <td className="py-2.5 px-3 font-bold border-r border-slate-200">Pressure Pump</td>
+                          <td className="py-2 px-3 border-r border-slate-200">
+                            <div className="flex items-center gap-1.5 max-w-[180px] mx-auto">
+                              <input type="text" placeholder="45.0" value={measurements.pressure_pump_temp || ''} onChange={e => handleMeasurementChange('pressure_pump_temp', e.target.value)} className="w-full px-2 py-1.5 text-xs text-center border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-sky-500 outline-none font-bold" />
+                              <span className="text-xs font-bold text-slate-500">°C</span>
+                            </div>
+                          </td>
+                          <td className="py-2 px-3 border-r border-slate-200 text-center">
+                            <span className="px-3 py-1 bg-amber-100 text-amber-900 rounded-lg text-xs font-black border border-amber-300">≤ 80°C.</span>
+                          </td>
+                          <td className="py-2 px-3">
+                            <input type="text" placeholder="Normal & stabil" value={measurements.pressure_remarks || ''} onChange={e => handleMeasurementChange('pressure_remarks', e.target.value)} className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-sky-500 outline-none" />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* PUMP MEASUREMENT 5: GROUNDING RESISTANCE */}
+                  <div className="overflow-x-auto border border-slate-300 rounded-xl shadow-xs bg-white">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-sky-800 text-white font-extrabold border-b border-sky-900">
+                          <th colSpan={4} className="px-3 py-2 text-xs tracking-wider uppercase">
+                            Grounding Resistance Meassurement <span className="font-normal text-[11px] text-sky-100 italic ml-2">Please mark OK (✓), not OK(×), not applicable (N/A) in the box</span>
+                          </th>
+                        </tr>
+                        <tr className="bg-sky-100/90 text-sky-950 font-bold border-b border-slate-300 text-center text-[11px]">
+                          <th className="py-2 px-3 border-r border-slate-300 text-left w-48">Wire</th>
+                          <th className="py-2 px-3 border-r border-slate-300 text-center w-52">Result (Ω)</th>
+                          <th className="py-2 px-3 border-r border-slate-300 text-center w-36">Standard</th>
+                          <th className="py-2 px-3 text-left">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 text-slate-800">
+                        <tr>
+                          <td className="py-2.5 px-3 font-bold border-r border-slate-200">Grounding</td>
+                          <td className="py-2 px-3 border-r border-slate-200">
+                            <div className="flex items-center gap-1.5 max-w-[180px] mx-auto">
+                              <input type="text" placeholder="1.2" value={measurements.grounding_ohm || ''} onChange={e => handleMeasurementChange('grounding_ohm', e.target.value)} className="w-full px-2 py-1.5 text-xs text-center border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-sky-500 outline-none font-bold" />
+                              <span className="text-xs font-bold text-slate-500">Ω</span>
+                            </div>
+                          </td>
+                          <td className="py-2 px-3 border-r border-slate-200 text-center">
+                            <span className="px-3 py-1 bg-amber-100 text-amber-900 rounded-lg text-xs font-black border border-amber-300">&lt;5 Ω</span>
+                          </td>
+                          <td className="py-2 px-3">
+                            <input type="text" placeholder="Nilai pentanahan baik" value={measurements.grounding_remarks || ''} onChange={e => handleMeasurementChange('grounding_remarks', e.target.value)} className="w-full px-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-sky-500 outline-none" />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Info Box Standar Operasi Pompa */}
+                  <div className="p-3.5 bg-sky-50/70 border border-sky-200 rounded-2xl flex items-start gap-3 text-xs text-sky-950">
+                    <ShieldCheck className="w-5 h-5 text-sky-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-extrabold text-sky-900">Standar Pengukuran Sistem Pompa (Neutra DC Cikarang)</p>
+                      <p className="text-slate-600 text-[11px] mt-0.5">
+                        Toleransi tegangan kerja +5% / -10% dari 380V/220V, deviasi beban max 10%. Temperatur casing pump dan pressure pump maksimal 80°C, getaran casing maksimal 4.5 mm/s, dan tahanan pembumian &lt;5 Ω. Ucapkan lewat AI Voice Agent untuk pengisian otomatis.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : isBusduct ? (
+                <div className="space-y-4">
+                  {/* Busduct: Thermal Joint Measurement */}
+                  <div className="overflow-x-auto border border-slate-300 rounded-xl shadow-xs bg-white">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-sky-800 text-white font-extrabold border-b border-sky-900">
+                          <th colSpan={4} className="px-3 py-2 text-xs tracking-wider uppercase">
+                            Thermal Joint Meassurement — Panel Busduct
+                          </th>
+                        </tr>
+                        <tr className="bg-sky-100/90 text-sky-950 font-bold border-b border-slate-300 text-center text-[11px]">
+                          <th className="py-2.5 px-3 border-r border-slate-300 text-left w-48">Breaker / Bagian</th>
+                          <th className="py-2.5 px-3 border-r border-slate-300 text-center w-52">Result Temperature Joint (°C)</th>
+                          <th className="py-2.5 px-3 border-r border-slate-300 text-center w-36">Standard</th>
+                          <th className="py-2.5 px-3 text-left">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 text-slate-800">
+                        <tr className="bg-white hover:bg-sky-50/50 transition-colors">
+                          <td className="py-3 px-3 font-bold border-r border-slate-200 text-slate-800">
+                            Joint Busduct
+                          </td>
+                          <td className="py-2.5 px-3 border-r border-slate-200">
+                            <div className="flex items-center gap-1.5 max-w-[200px] mx-auto">
+                              <input
+                                type="text"
+                                placeholder="Contoh: 32.5"
+                                value={measurements.thermal_joint_temp || measurements.thermal_breaker_temp || ''}
+                                onChange={e => {
+                                  handleMeasurementChange('thermal_joint_temp', e.target.value);
+                                  handleMeasurementChange('thermal_breaker_temp', e.target.value);
+                                }}
+                                className="w-full px-2.5 py-1.5 text-xs text-center border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-sky-500 outline-none font-bold text-slate-900"
+                              />
+                              <span className="text-xs font-bold text-slate-500">°C</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 border-r border-slate-200 text-center font-bold">
+                            <span className="px-3 py-1 bg-amber-100 text-amber-900 rounded-lg text-xs border border-amber-300 font-black">
+                              &lt;40°C
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <input
+                              type="text"
+                              placeholder="Keterangan suhu joint..."
+                              value={measurements.thermal_remarks || ''}
+                              onChange={e => handleMeasurementChange('thermal_remarks', e.target.value)}
+                              className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:bg-white focus:ring-2 focus:ring-sky-500 outline-none"
+                            />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Info Box Standar Operasi Suhu Busduct */}
+                  <div className="p-3.5 bg-sky-50/70 border border-sky-200 rounded-2xl flex items-start gap-3 text-xs text-sky-950">
+                    <ShieldCheck className="w-5 h-5 text-sky-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-extrabold text-sky-900">Standar Pengukuran Suhu Joint Panel Busduct (&lt;40°C)</p>
+                      <p className="text-slate-600 text-[11px] mt-0.5">
+                        Pengukuran suhu menggunakan thermal imager pada titik joint busduct tidak boleh melebihi batas aman 40°C. Ucapkan lewat AI Voice Agent (contoh: <em>"Suhu joint busduct 32.5 derajat normal dan aman"</em>).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* 1. Digital Power Meter Recording */}
                 <div className="overflow-x-auto border border-slate-300 rounded-xl shadow-xs bg-white">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
@@ -2275,6 +2701,7 @@ PENTING:
                   </table>
                 </div>
               </div>
+              )
             )}
 
             {/* TAB 3: CUSTOMER & EQUIPMENT INFO (LENGKAP 1:1 METADATA) */}

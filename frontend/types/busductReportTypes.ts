@@ -14,6 +14,7 @@ export interface BusductCustomerInfo {
   prodYear: string;
   area: string;
   engineer: string;
+  model?: string;
 }
 
 export interface BusductInspectionItem {

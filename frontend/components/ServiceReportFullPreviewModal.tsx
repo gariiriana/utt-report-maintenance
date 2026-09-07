@@ -62,6 +62,50 @@ export function ServiceReportFullPreviewModal({
   const op = payload.operationStatus || ({} as any);
   const t = payload.timeSpent || ({} as any);
   const isNorm = op.isNormal === true || op.isNormal === ('true' as any) || (op as any).is_normal === true;
+  const isBusduct =
+    payload.equipmentKey === 'busduct' ||
+    payload.accountEmail === 'busduct@gmail.com' ||
+    (payload.equipmentName && payload.equipmentName.toLowerCase().includes('busduct'));
+  const isPump =
+    payload.equipmentKey === 'pump' ||
+    payload.accountEmail === 'pump@gmail.com' ||
+    (payload.equipmentName && payload.equipmentName.toLowerCase().includes('pump'));
+
+  const rawVisual = payload.visualChecklist || [];
+  const busductVisual = isBusduct
+    ? (rawVisual.some(x => x.activity?.toLowerCase().includes('clean'))
+        ? rawVisual.filter(x => !x.activity?.toLowerCase().includes('clean'))
+        : rawVisual.slice(0, 10))
+    : [];
+  const busductCleaning = isBusduct
+    ? (rawVisual.some(x => x.activity?.toLowerCase().includes('clean'))
+        ? rawVisual.filter(x => x.activity?.toLowerCase().includes('clean'))
+        : rawVisual.slice(10))
+    : [];
+
+  const pumpVisual = isPump
+    ? (rawVisual.filter(x => {
+        const n = (x.no || '').toLowerCase();
+        return ['a.', 'b.', 'c.', 'd.', 'e.', 'f.', 'g.', 'h.'].some(prefix => n.startsWith(prefix)) || (!x.activity?.toLowerCase().includes('clean') && !n.includes('i') && !n.includes('j') && !n.includes('k') && !n.includes('l') && !n.includes('m'));
+      }).length > 0
+        ? rawVisual.filter(x => {
+            const n = (x.no || '').toLowerCase();
+            return ['a.', 'b.', 'c.', 'd.', 'e.', 'f.', 'g.', 'h.'].some(prefix => n.startsWith(prefix)) || (!x.activity?.toLowerCase().includes('clean') && !n.includes('i') && !n.includes('j') && !n.includes('k') && !n.includes('l') && !n.includes('m'));
+          })
+        : rawVisual.slice(0, 8))
+    : [];
+
+  const pumpCleaning = isPump
+    ? (rawVisual.filter(x => {
+        const n = (x.no || '').toLowerCase();
+        return ['i.', 'j.', 'k.', 'l.', 'm.'].some(prefix => n.startsWith(prefix)) || x.activity?.toLowerCase().includes('clean');
+      }).length > 0
+        ? rawVisual.filter(x => {
+            const n = (x.no || '').toLowerCase();
+            return ['i.', 'j.', 'k.', 'l.', 'm.'].some(prefix => n.startsWith(prefix)) || x.activity?.toLowerCase().includes('clean');
+          })
+        : rawVisual.slice(8, 13))
+    : [];
 
   return (
     <AnimatePresence>
@@ -147,7 +191,7 @@ export function ServiceReportFullPreviewModal({
                   </div>
                   <div className="text-center flex-1 px-2">
                     <h1 className="text-xs sm:text-sm font-black tracking-tight text-slate-900 uppercase">
-                      SERVICE REPORT AUTOMATIC TRANSFER SWITCH
+                      {isPump ? 'SERVICE REPORT PUMP' : isBusduct ? 'SERVICE REPORT PANEL BUSDUCT' : 'SERVICE REPORT AUTOMATIC TRANSFER SWITCH'}
                     </h1>
                     <p className="text-[10px] font-medium text-slate-700">Neutra DC Cikarang</p>
                   </div>
@@ -167,26 +211,26 @@ export function ServiceReportFullPreviewModal({
                         <td className="font-bold bg-slate-50 px-1.5 py-0.5 w-[14%] border-r border-slate-300">Company name</td>
                         <td className="px-1.5 py-0.5 w-[20%] border-r border-slate-300">{c.companyName || 'Neutra DC Cikarang'}</td>
                         <td className="font-bold bg-slate-50 px-1.5 py-0.5 w-[10%] border-r border-slate-300">Type</td>
-                        <td className="px-1.5 py-0.5 w-[14%] border-r border-slate-300">{(c as any).type || c.specification || '-'}</td>
+                        <td className="px-1.5 py-0.5 w-[14%] border-r border-slate-300">{(c as any).type || (isBusduct ? (c.specification || 'IEC 61439-6') : '-')}</td>
                         <td className="font-bold bg-slate-50 px-1.5 py-0.5 w-[13%] border-r border-slate-300">Spesification</td>
-                        <td className="px-1.5 py-0.5 w-[15%] border-r border-slate-300">{c.specification || c.model || '-'}</td>
+                        <td className="px-1.5 py-0.5 w-[15%] border-r border-slate-300">{c.specification || (isBusduct ? (c.model || '4000A') : '-')}</td>
                         <td className="font-bold bg-slate-50 px-1.5 py-0.5 w-[10%] border-r border-slate-300">Mop No:</td>
-                        <td className="px-1.5 py-0.5">{c.mopNo || '-'}</td>
+                        <td className="px-1.5 py-0.5">{c.mopNo || (isPump ? 'DME-TDE/MOP/PUMP/02 0506/26' : isBusduct ? 'DME-TDE/MOP/BDT/02 2805/26' : '-')}</td>
                       </tr>
                       <tr className="border-t border-slate-300">
                         <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Equpment name</td>
-                        <td className="px-1.5 py-0.5 border-r border-slate-300">{c.equipmentName || 'ATS'}</td>
+                        <td className="px-1.5 py-0.5 border-r border-slate-300">{c.equipmentName || (isPump ? 'Pump' : isBusduct ? 'BUSDUCT' : 'ATS')}</td>
                         <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Serial No:</td>
-                        <td className="px-1.5 py-0.5 border-r border-slate-300">{c.serialNo || '-'}</td>
+                        <td className="px-1.5 py-0.5 border-r border-slate-300">{c.serialNo || (isBusduct ? 'AC-002' : '-')}</td>
                         <td colSpan={2} className="border-r border-slate-300"></td>
                         <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Quarter</td>
-                        <td className="px-1.5 py-0.5">{c.quarter || 'Q3'}</td>
+                        <td className="px-1.5 py-0.5">{c.quarter || (isPump ? 'Q2' : isBusduct ? 'Q2' : 'Q3')}</td>
                       </tr>
                       <tr className="border-t border-slate-300">
                         <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">CI Description</td>
-                        <td className="px-1.5 py-0.5 border-r border-slate-300">{c.ciDescription || '-'}</td>
+                        <td className="px-1.5 py-0.5 border-r border-slate-300">{c.ciDescription || (isBusduct ? 'Line Busduct' : '-')}</td>
                         <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Product Name</td>
-                        <td className="px-1.5 py-0.5 border-r border-slate-300">{c.productName || '-'}</td>
+                        <td className="px-1.5 py-0.5 border-r border-slate-300">{c.productName || (isBusduct ? 'N/A' : '-')}</td>
                         <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Location</td>
                         <td className="px-1.5 py-0.5 border-r border-slate-300">{c.location || '-'}</td>
                         <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Date</td>
@@ -196,7 +240,7 @@ export function ServiceReportFullPreviewModal({
                         <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">CI Name</td>
                         <td className="px-1.5 py-0.5 border-r border-slate-300">{c.ciName || '-'}</td>
                         <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Product Years</td>
-                        <td className="px-1.5 py-0.5 border-r border-slate-300">{c.prodYear || '-'}</td>
+                        <td className="px-1.5 py-0.5 border-r border-slate-300">{c.prodYear || (isBusduct ? '2022' : '-')}</td>
                         <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Area</td>
                         <td className="px-1.5 py-0.5 border-r border-slate-300">{c.area || '-'}</td>
                         <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Engginer</td>
@@ -206,273 +250,768 @@ export function ServiceReportFullPreviewModal({
                   </table>
                 </div>
 
-                {/* 3. VISUAL INSPECTION TABLE */}
-                <div className="mb-2 border border-slate-400 overflow-hidden">
-                  <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[9.5px]">
-                    Visual inspection & Check
-                  </div>
-                  <table className="w-full text-[8.5px] border-collapse">
-                    <thead>
-                      <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-t border-b border-slate-400">
-                        <th rowSpan={2} className="py-0.5 px-1 border-r border-slate-300 w-6 text-center">No</th>
-                        <th rowSpan={2} className="py-0.5 px-1.5 border-r border-slate-300 text-left">Activity</th>
-                        <th rowSpan={2} className="py-0.5 px-1.5 border-r border-slate-300 w-48 text-left">Parameter</th>
-                        <th colSpan={2} className="py-0.5 px-1 border-r border-slate-300 text-center w-24">Condition</th>
-                        <th rowSpan={2} className="py-0.5 px-1.5 w-36 text-center">Remarks</th>
-                      </tr>
-                      <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-b border-slate-400">
-                        <th className="py-0.5 px-1 border-r border-slate-300 w-12 text-center">Good</th>
-                        <th className="py-0.5 px-1 border-r border-slate-300 w-12 text-center">Not Good</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {payload.visualChecklist.map((item, idx) => {
-                        const isGood = item.condition === 'Good';
-                        const isNotGood = item.condition === 'Not Good';
-                        return (
-                          <tr key={idx} className={`border-t border-slate-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
-                            <td className="py-0.5 px-1 border-r border-slate-300 text-center font-bold text-slate-700">{item.no || `${String.fromCharCode(97 + idx)}.`}</td>
-                            <td className="py-0.5 px-1.5 border-r border-slate-300 text-slate-900">{item.activity}</td>
-                            <td className="py-0.5 px-1.5 border-r border-slate-300 text-slate-700">{item.parameter}</td>
-                            <td className="py-0.5 px-1 border-r border-slate-300 text-center">
-                              <span className={isNotGood ? "line-through text-slate-400 decoration-slate-900 decoration-[1.5px]" : isGood ? "font-bold text-slate-900" : "text-slate-700"}>
-                                Good
-                              </span>
-                            </td>
-                            <td className="py-0.5 px-1 border-r border-slate-300 text-center">
-                              <span className={isGood ? "line-through text-slate-400 decoration-slate-900 decoration-[1.5px]" : isNotGood ? "font-bold text-red-700" : "text-slate-700"}>
-                                Not Good
-                              </span>
-                            </td>
-                            <td className="py-0.5 px-1.5 text-slate-700 text-center">{item.remarks || ''}</td>
+                {/* ─── KONDISIONAL CONTENT: PUMP vs BUSDUCT vs ATS ─── */}
+                {isPump ? (
+                  <>
+                    {/* 3A. VISUAL INSPECTION & CHECK (8 ITEMS a - h) */}
+                    <div className="mb-2 border border-slate-400 overflow-hidden">
+                      <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[9px] flex items-center justify-between">
+                        <span>Visual inspection &amp; Check</span>
+                      </div>
+                      <table className="w-full text-[8.5px] border-collapse">
+                        <thead>
+                          <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-t border-b border-slate-400">
+                            <th rowSpan={2} className="py-0.5 px-1 border-r border-slate-300 w-7 text-center">No</th>
+                            <th rowSpan={2} className="py-0.5 px-1.5 border-r border-slate-300 text-left">Activity</th>
+                            <th rowSpan={2} className="py-0.5 px-1.5 border-r border-slate-300 w-44 text-center">Parameter</th>
+                            <th colSpan={2} className="py-0.5 px-1 border-r border-slate-300 text-center w-28">Condition</th>
+                            <th rowSpan={2} className="py-0.5 px-1.5 w-36 text-center">Remarks</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* 4. DIGITAL POWER METER RECORDING */}
-                <div className="mb-2 border border-slate-400 overflow-hidden">
-                  <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[9px]">
-                    Digital Power Meter Recording <span className="font-normal text-[8px]">Please mark OK (√),not OK(×), not applicable (N/A) in the box</span>
-                  </div>
-                  <table className="w-full text-[8.5px] border-collapse text-center">
-                    <thead>
-                      <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-t border-b border-slate-400">
-                        <th className="py-0.5 px-1 border-r border-slate-300 w-10">Wire</th>
-                        <th className="py-0.5 px-1 border-r border-slate-300 w-16">Result (Voltage)</th>
-                        <th className="py-0.5 px-1 border-r border-slate-300 w-10">Wire</th>
-                        <th className="py-0.5 px-1 border-r border-slate-300 w-16">Result (Voltage)</th>
-                        <th className="py-0.5 px-1 border-r border-slate-300 w-12">Wire</th>
-                        <th className="py-0.5 px-1 border-r border-slate-300 w-16">Result</th>
-                        <th className="py-0.5 px-1 border-r border-slate-300 w-10">Wire</th>
-                        <th className="py-0.5 px-1 border-r border-slate-300 w-16">Result (Ampere)</th>
-                        <th className="py-0.5 px-1 text-center">Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-t border-slate-200">
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">R-S</td>
-                        <td className="border-r border-slate-300">{m.dpm_voltage_rs || '-'}</td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">R-N</td>
-                        <td className="border-r border-slate-300">{m.dpm_voltage_rn || '-'}</td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">KW</td>
-                        <td className="border-r border-slate-300">{m.dpm_kw || '-'}</td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">R</td>
-                        <td className="border-r border-slate-300">{m.dpm_ampere_r || '-'}</td>
-                        <td rowSpan={4} className="text-center px-2 align-middle">{m.dpm_remarks || ''}</td>
-                      </tr>
-                      <tr className="border-t border-slate-200">
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">S-T</td>
-                        <td className="border-r border-slate-300">{m.dpm_voltage_st || '-'}</td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">S-N</td>
-                        <td className="border-r border-slate-300">{m.dpm_voltage_sn || '-'}</td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">KVA</td>
-                        <td className="border-r border-slate-300">{m.dpm_kva || '-'}</td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">S</td>
-                        <td className="border-r border-slate-300">{m.dpm_ampere_s || '-'}</td>
-                      </tr>
-                      <tr className="border-t border-slate-200">
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">T-R</td>
-                        <td className="border-r border-slate-300">{m.dpm_voltage_tr || '-'}</td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">T-N</td>
-                        <td className="border-r border-slate-300">{m.dpm_voltage_tn || '-'}</td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">KVAR</td>
-                        <td className="border-r border-slate-300">{m.dpm_kvar || '-'}</td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">T</td>
-                        <td className="border-r border-slate-300">{m.dpm_ampere_t || '-'}</td>
-                      </tr>
-                      <tr className="border-t border-slate-200">
-                        <td className="border-r border-slate-300"></td>
-                        <td className="border-r border-slate-300"></td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">N</td>
-                        <td className="border-r border-slate-300">{m.dpm_voltage_n || '-'}</td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">Cos p</td>
-                        <td className="border-r border-slate-300">{m.dpm_cos_p || '-'}</td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">N</td>
-                        <td className="border-r border-slate-300">{m.dpm_ampere_n || '-'}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* 5. VOLTAGE & CURRENT MEASUREMENT */}
-                <div className="mb-2 border border-slate-400 overflow-hidden">
-                  <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[9px]">
-                    Voltage & Current Measurement
-                  </div>
-                  <table className="w-full text-[8.5px] border-collapse text-center">
-                    <thead>
-                      <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-t border-b border-slate-400">
-                        <th className="py-0.5 px-1 border-r border-slate-300 w-10">Wire</th>
-                        <th className="py-0.5 px-1 border-r border-slate-300 w-16">Result (Voltage)</th>
-                        <th className="py-0.5 px-1 border-r border-slate-300 w-10">Wire</th>
-                        <th className="py-0.5 px-1 border-r border-slate-300 w-16">Result (Voltage)</th>
-                        <th className="py-0.5 px-1 border-r border-slate-300 w-10">Wire</th>
-                        <th className="py-0.5 px-1 border-r border-slate-300 w-16">Result (Ampere)</th>
-                        <th className="py-0.5 px-2 border-r border-slate-300 w-44">Standard</th>
-                        <th className="py-0.5 px-1 text-center">Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-t border-slate-200">
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">R-S</td>
-                        <td className="border-r border-slate-300">{m.vc_voltage_rs || '-'}</td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">R-N</td>
-                        <td className="border-r border-slate-300">{m.vc_voltage_rn || '-'}</td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">R</td>
-                        <td className="border-r border-slate-300">{m.vc_ampere_r || '-'}</td>
-                        <td rowSpan={4} className="bg-[#FFF2CC] text-red-700 font-bold border-r border-slate-300 text-[8px] px-1 align-middle">
-                          +5% - 10% from 380V & 220V load deviation 10%
-                        </td>
-                        <td rowSpan={4} className="text-center px-2 align-middle">{m.vc_remarks || ''}</td>
-                      </tr>
-                      <tr className="border-t border-slate-200">
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">S-T</td>
-                        <td className="border-r border-slate-300">{m.vc_voltage_st || '-'}</td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">S-N</td>
-                        <td className="border-r border-slate-300">{m.vc_voltage_sn || '-'}</td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">S</td>
-                        <td className="border-r border-slate-300">{m.vc_ampere_s || '-'}</td>
-                      </tr>
-                      <tr className="border-t border-slate-200">
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">T-R</td>
-                        <td className="border-r border-slate-300">{m.vc_voltage_tr || '-'}</td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">T-N</td>
-                        <td className="border-r border-slate-300">{m.vc_voltage_tn || '-'}</td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">T</td>
-                        <td className="border-r border-slate-300">{m.vc_ampere_t || '-'}</td>
-                      </tr>
-                      <tr className="border-t border-slate-200">
-                        <td className="border-r border-slate-300"></td>
-                        <td className="border-r border-slate-300"></td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">N-G</td>
-                        <td className="border-r border-slate-300">{m.vc_voltage_ng || '-'}</td>
-                        <td className="font-bold bg-slate-50 border-r border-slate-300">N</td>
-                        <td className="border-r border-slate-300">{m.vc_ampere_n || '-'}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* 6. THERMAL & GROUNDING */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
-                  <div className="border border-slate-400 overflow-hidden">
-                    <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[8.5px]">
-                      Thermal Meassurement
+                          <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-b border-slate-400">
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-14 text-center">Good</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-14 text-center">Not Good</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pumpVisual.map((item, idx) => {
+                            const isGood = item.condition === 'Good';
+                            const isNotGood = item.condition === 'Not Good';
+                            return (
+                              <tr key={idx} className={`border-t border-slate-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                                <td className="py-0.5 px-1 border-r border-slate-300 text-center font-bold text-slate-700">{item.no || `${String.fromCharCode(97 + idx)}.`}</td>
+                                <td className="py-0.5 px-1.5 border-r border-slate-300 text-slate-900">{item.activity}</td>
+                                <td className="py-0.5 px-1.5 border-r border-slate-300 text-slate-700 text-center">{item.parameter}</td>
+                                <td className="py-0.5 px-1 border-r border-slate-300 text-center">
+                                  <span className={isNotGood ? "line-through text-slate-400 decoration-slate-900 decoration-[1.5px]" : isGood ? "font-bold text-slate-900" : "text-slate-700"}>
+                                    Good
+                                  </span>
+                                </td>
+                                <td className="py-0.5 px-1 border-r border-slate-300 text-center">
+                                  <span className={isGood ? "line-through text-slate-400 decoration-slate-900 decoration-[1.5px]" : isNotGood ? "font-bold text-red-700" : "text-slate-700"}>
+                                    Not Good
+                                  </span>
+                                </td>
+                                <td className="py-0.5 px-1.5 text-slate-700 text-center">{item.remarks || ''}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-                    <table className="w-full text-[8.5px] border-collapse text-center">
-                      <thead>
-                        <tr className="bg-[#D9E2F3] font-bold border-t border-b border-slate-400">
-                          <th className="py-0.5 px-1 border-r border-slate-300 w-16 text-left">Breaker</th>
-                          <th className="py-0.5 px-1 border-r border-slate-300 w-24">Result (°C)</th>
-                          <th className="py-0.5 px-1 border-r border-slate-300 w-16">Standard</th>
-                          <th className="py-0.5 px-1 text-center">Remarks</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-t border-slate-200">
-                          <td className="font-bold bg-slate-50 border-r border-slate-300 text-left px-1">Breaker</td>
-                          <td className="border-r border-slate-300">{m.thermal_breaker_temp ? `${m.thermal_breaker_temp}°C` : '-'}</td>
-                          <td className="bg-[#FFF2CC] font-bold border-r border-slate-300">40°C</td>
-                          <td className="text-center px-1.5">{m.thermal_remarks || ''}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
 
-                  <div className="border border-slate-400 overflow-hidden">
-                    <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[8.5px]">
-                      Grounding Resistance Meassurement
+                    {/* 3B. INSPECTION & CLEANING (5 ITEMS i - m) */}
+                    <div className="mb-2 border border-slate-400 overflow-hidden">
+                      <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[9px] flex items-center justify-between">
+                        <span>Inspection &amp; Cleaning</span>
+                      </div>
+                      <table className="w-full text-[8.5px] border-collapse">
+                        <thead>
+                          <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-t border-b border-slate-400">
+                            <th rowSpan={2} className="py-0.5 px-1 border-r border-slate-300 w-7 text-center">No</th>
+                            <th rowSpan={2} className="py-0.5 px-1.5 border-r border-slate-300 text-left">Activity</th>
+                            <th rowSpan={2} className="py-0.5 px-1.5 border-r border-slate-300 w-44 text-center">Parameter</th>
+                            <th colSpan={2} className="py-0.5 px-1 border-r border-slate-300 text-center w-28">Condition</th>
+                            <th rowSpan={2} className="py-0.5 px-1.5 w-36 text-center">Remarks</th>
+                          </tr>
+                          <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-b border-slate-400">
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-14 text-center">Good</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-14 text-center">Not Good</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {pumpCleaning.map((item, idx) => {
+                            const isGood = item.condition === 'Good';
+                            const isNotGood = item.condition === 'Not Good';
+                            return (
+                              <tr key={idx} className={`border-t border-slate-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                                <td className="py-0.5 px-1 border-r border-slate-300 text-center font-bold text-slate-700">{item.no || `${String.fromCharCode(105 + idx)}.`}</td>
+                                <td className="py-0.5 px-1.5 border-r border-slate-300 text-slate-900">{item.activity}</td>
+                                <td className="py-0.5 px-1.5 border-r border-slate-300 text-slate-700 text-center">{item.parameter}</td>
+                                <td className="py-0.5 px-1 border-r border-slate-300 text-center">
+                                  <span className={isNotGood ? "line-through text-slate-400 decoration-slate-900 decoration-[1.5px]" : isGood ? "font-bold text-slate-900" : "text-slate-700"}>
+                                    Good
+                                  </span>
+                                </td>
+                                <td className="py-0.5 px-1 border-r border-slate-300 text-center">
+                                  <span className={isGood ? "line-through text-slate-400 decoration-slate-900 decoration-[1.5px]" : isNotGood ? "font-bold text-red-700" : "text-slate-700"}>
+                                    Not Good
+                                  </span>
+                                </td>
+                                <td className="py-0.5 px-1.5 text-slate-700 text-center">{item.remarks || ''}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-                    <table className="w-full text-[8.5px] border-collapse text-center">
-                      <thead>
-                        <tr className="bg-[#D9E2F3] font-bold border-t border-b border-slate-400">
-                          <th className="py-0.5 px-1 border-r border-slate-300 w-16 text-left">Wire</th>
-                          <th className="py-0.5 px-1 border-r border-slate-300 w-24">Result (Ohm)</th>
-                          <th className="py-0.5 px-1 border-r border-slate-300 w-16">Standard</th>
-                          <th className="py-0.5 px-1 text-center">Remarks</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-t border-slate-200">
-                          <td className="font-bold bg-slate-50 border-r border-slate-300 text-left px-1">Grounding</td>
-                          <td className="border-r border-slate-300">{m.grounding_ohm ? `${m.grounding_ohm} Ohm` : '-'}</td>
-                          <td className="bg-[#FFF2CC] font-bold border-r border-slate-300">&lt;5 Ohm</td>
-                          <td className="text-center px-1.5">{m.grounding_remarks || ''}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
 
-                {/* 7. OPERATION STATUS */}
-                <div className="border border-slate-400 mb-2 overflow-hidden">
-                  <table className="w-full text-[8.5px] border-collapse">
-                    <tbody>
-                      <tr className="border-t border-slate-200">
-                        <td className="font-bold px-2 py-0.5 w-[38%] border-r border-slate-300">
-                          <span className="inline-flex items-center gap-1 font-bold">
-                            [{isNorm ? '✓' : '  '}] Normal operation
-                          </span>
-                        </td>
-                        <td className="font-bold bg-slate-50 px-1.5 py-0.5 w-[14%] border-r border-slate-300">Remark:</td>
-                        <td className="px-2 py-0.5">{op.remark || 'Unit beroperasi normal.'}</td>
-                      </tr>
-                      <tr className="border-t border-slate-200">
-                        <td className="font-bold px-2 py-0.5 border-r border-slate-300">
-                          <span className="inline-flex items-center gap-1 font-bold">
-                            [{!isNorm ? '✓' : '  '}] Abnormal operation
-                          </span>
-                        </td>
-                        <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Fault symptom</td>
-                        <td className="px-2 py-0.5">{op.faultSymptom || ''}</td>
-                      </tr>
-                      <tr className="border-t border-slate-200">
-                        <td className="italic text-[7.5px] text-slate-500 px-2 py-0.5 border-r border-slate-300">
-                          (Please fill the items if the service is repair)
-                        </td>
-                        <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Fault analysis</td>
-                        <td className="px-2 py-0.5">{op.faultAnalysis || ''}</td>
-                      </tr>
-                      <tr className="border-t border-slate-200">
-                        <td className="border-r border-slate-300"></td>
-                        <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Work done/action taken</td>
-                        <td className="px-2 py-0.5">{op.workDone || ''}</td>
-                      </tr>
-                      <tr className="border-t border-slate-200">
-                        <td className="border-r border-slate-300"></td>
-                        <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Faul Part SN</td>
-                        <td className="px-2 py-0.5">
-                          <span>{op.faultPartSN || '-'}</span>
-                          <span className="ml-6 font-bold">Fault part Name: </span>
-                          <span>{op.faultPartName || '-'}</span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                    {/* 3C. VOLTAGE & CURRENT MEASUREMENT */}
+                    <div className="border border-slate-400 mb-2 overflow-hidden">
+                      <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[9px]">
+                        Voltage &amp; Current Measurement
+                      </div>
+                      <table className="w-full text-[8.5px] border-collapse">
+                        <thead>
+                          <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-t border-b border-slate-300 text-center">
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-12">Wire</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-16">Result (Voltage)</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-12">Wire</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-16">Result (Voltage)</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-12">Wire</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-16">Result (Ampere)</th>
+                            <th className="py-0.5 px-1.5 border-r border-slate-300 w-36">Standard</th>
+                            <th className="py-0.5 px-1.5">Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 text-center py-0.5 border-r border-slate-300">R-S</td>
+                            <td className="text-center py-0.5 border-r border-slate-300">{m.vc_voltage_rs || '385'}</td>
+                            <td className="font-bold bg-slate-50 text-center py-0.5 border-r border-slate-300">R-N</td>
+                            <td className="text-center py-0.5 border-r border-slate-300">{m.vc_voltage_rn || '220'}</td>
+                            <td className="font-bold bg-slate-50 text-center py-0.5 border-r border-slate-300">R</td>
+                            <td className="text-center py-0.5 border-r border-slate-300">{m.vc_ampere_r || '18.5'}</td>
+                            <td rowSpan={4} className="text-center py-1 px-1.5 border-r border-slate-300 bg-[#FFF2CC] text-red-700 font-bold align-middle">
+                              +5% - 10% from 380V &amp;<br />220V load deviation 10%
+                            </td>
+                            <td rowSpan={4} className="text-center py-1 px-1.5 align-middle">
+                              {m.vc_remarks || 'Normal & Balanced'}
+                            </td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 text-center py-0.5 border-r border-slate-300">S-T</td>
+                            <td className="text-center py-0.5 border-r border-slate-300">{m.vc_voltage_st || '382'}</td>
+                            <td className="font-bold bg-slate-50 text-center py-0.5 border-r border-slate-300">S-N</td>
+                            <td className="text-center py-0.5 border-r border-slate-300">{m.vc_voltage_sn || '221'}</td>
+                            <td className="font-bold bg-slate-50 text-center py-0.5 border-r border-slate-300">S</td>
+                            <td className="text-center py-0.5 border-r border-slate-300">{m.vc_ampere_s || '18.2'}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 text-center py-0.5 border-r border-slate-300">T-R</td>
+                            <td className="text-center py-0.5 border-r border-slate-300">{m.vc_voltage_tr || '384'}</td>
+                            <td className="font-bold bg-slate-50 text-center py-0.5 border-r border-slate-300">T-N</td>
+                            <td className="text-center py-0.5 border-r border-slate-300">{m.vc_voltage_tn || '220'}</td>
+                            <td className="font-bold bg-slate-50 text-center py-0.5 border-r border-slate-300">T</td>
+                            <td className="text-center py-0.5 border-r border-slate-300">{m.vc_ampere_t || '18.4'}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="border-r border-slate-300 bg-white"></td>
+                            <td className="border-r border-slate-300 bg-white"></td>
+                            <td className="font-bold bg-slate-50 text-center py-0.5 border-r border-slate-300">N-G</td>
+                            <td className="text-center py-0.5 border-r border-slate-300">{m.vc_voltage_ng || '1.2'}</td>
+                            <td className="font-bold bg-slate-50 text-center py-0.5 border-r border-slate-300">N</td>
+                            <td className="text-center py-0.5 border-r border-slate-300">{m.vc_ampere_n || '0.8'}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* 3D. 4 MEASUREMENT TABLES */}
+                    {/* Thermal Meassurement */}
+                    <div className="border border-slate-400 mb-2 overflow-hidden">
+                      <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[9px] flex items-center justify-between">
+                        <span>Thermal Meassurement</span>
+                        <span className="font-normal text-[8px]">Please mark OK (✓),not OK(×), not applicable (N/A) in the box</span>
+                      </div>
+                      <table className="w-full text-[8.5px] border-collapse">
+                        <thead>
+                          <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-t border-b border-slate-300 text-center">
+                            <th className="py-0.5 px-2 border-r border-slate-300 w-36 text-left">Item</th>
+                            <th className="py-0.5 px-2 border-r border-slate-300 w-44">Result Temperature (°C)</th>
+                            <th className="py-0.5 px-2 border-r border-slate-300 w-32">Standard</th>
+                            <th className="py-0.5 px-2 text-center">Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 px-2 py-0.5 border-r border-slate-300">Casing Pump</td>
+                            <td className="text-center font-bold px-2 py-0.5 border-r border-slate-300">{m.thermal_pump_temp || '42.5'}</td>
+                            <td className="text-center font-bold px-2 py-0.5 border-r border-slate-300 bg-[#FFF2CC] text-red-700">≤ 80°C.</td>
+                            <td className="text-center px-2 py-0.5">{m.thermal_remarks || 'Suhu normal & aman'}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Vibration Meassurement */}
+                    <div className="border border-slate-400 mb-2 overflow-hidden">
+                      <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[9px] flex items-center justify-between">
+                        <span>Vibration Meassurement</span>
+                        <span className="font-normal text-[8px]">Please mark OK (✓),not OK(×), not applicable (N/A) in the box</span>
+                      </div>
+                      <table className="w-full text-[8.5px] border-collapse">
+                        <thead>
+                          <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-t border-b border-slate-300 text-center">
+                            <th className="py-0.5 px-2 border-r border-slate-300 w-36 text-left">Item</th>
+                            <th className="py-0.5 px-2 border-r border-slate-300 w-44">Vibration (mm/s)</th>
+                            <th className="py-0.5 px-2 border-r border-slate-300 w-32">Standard</th>
+                            <th className="py-0.5 px-2 text-center">Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 px-2 py-0.5 border-r border-slate-300">Casing Pump</td>
+                            <td className="text-center font-bold px-2 py-0.5 border-r border-slate-300">{m.vibration_pump_val || '1.8'}</td>
+                            <td className="text-center font-bold px-2 py-0.5 border-r border-slate-300 bg-[#FFF2CC] text-red-700">≤ 4.5 mm/s.</td>
+                            <td className="text-center px-2 py-0.5">{m.vibration_remarks || 'Vibrasi normal & halus'}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Pressure Meassurement */}
+                    <div className="border border-slate-400 mb-2 overflow-hidden">
+                      <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[9px] flex items-center justify-between">
+                        <span>Pressure Meassurement</span>
+                        <span className="font-normal text-[8px]">Please mark OK (✓),not OK(×), not applicable (N/A) in the box</span>
+                      </div>
+                      <table className="w-full text-[8.5px] border-collapse">
+                        <thead>
+                          <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-t border-b border-slate-300 text-center">
+                            <th className="py-0.5 px-2 border-r border-slate-300 w-36 text-left">Item</th>
+                            <th className="py-0.5 px-2 border-r border-slate-300 w-44">Result Temperature (°C)</th>
+                            <th className="py-0.5 px-2 border-r border-slate-300 w-32">Standard</th>
+                            <th className="py-0.5 px-2 text-center">Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 px-2 py-0.5 border-r border-slate-300">Pressure Pump</td>
+                            <td className="text-center font-bold px-2 py-0.5 border-r border-slate-300">{m.pressure_pump_temp || '45.0'}</td>
+                            <td className="text-center font-bold px-2 py-0.5 border-r border-slate-300 bg-[#FFF2CC] text-red-700">≤ 80°C.</td>
+                            <td className="text-center px-2 py-0.5">{m.pressure_remarks || 'Normal & stabil'}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Grounding Resistance Meassurement */}
+                    <div className="border border-slate-400 mb-2 overflow-hidden">
+                      <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[9px] flex items-center justify-between">
+                        <span>Grounding Resistance Meassurement</span>
+                        <span className="font-normal text-[8px]">Please mark OK (✓),not OK(×), not applicable (N/A) in the box</span>
+                      </div>
+                      <table className="w-full text-[8.5px] border-collapse">
+                        <thead>
+                          <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-t border-b border-slate-300 text-center">
+                            <th className="py-0.5 px-2 border-r border-slate-300 w-36 text-left">Wire</th>
+                            <th className="py-0.5 px-2 border-r border-slate-300 w-44">Result (Ω)</th>
+                            <th className="py-0.5 px-2 border-r border-slate-300 w-32">Standard</th>
+                            <th className="py-0.5 px-2 text-center">Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 px-2 py-0.5 border-r border-slate-300">Grounding</td>
+                            <td className="text-center font-bold px-2 py-0.5 border-r border-slate-300">{m.grounding_ohm || '1.2'}</td>
+                            <td className="text-center font-bold px-2 py-0.5 border-r border-slate-300 bg-[#FFF2CC] text-red-700">&lt;5 Ω</td>
+                            <td className="text-center px-2 py-0.5">{m.grounding_remarks || 'Nilai pentanahan baik'}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* 3E. ANALYSIS / REMARK PUMP */}
+                    <div className="border border-slate-400 mb-2 overflow-hidden">
+                      <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[9px]">
+                        Analysis/Remark
+                      </div>
+                      <table className="w-full text-[8.5px] border-collapse">
+                        <tbody>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold px-2 py-0.5 w-[38%] border-r border-slate-300">
+                              <span className="inline-flex items-center gap-1 font-bold">
+                                [{isNorm ? '✓' : '  '}] Normal operation
+                              </span>
+                            </td>
+                            <td className="font-bold bg-slate-50 px-1.5 py-0.5 w-[14%] border-r border-slate-300">Remark :</td>
+                            <td className="px-2 py-0.5">{op.remark || 'Pump beroperasi secara normal, tidak ada kebocoran, vibrasi dan temperatur kerja berada di dalam batas toleransi standar aman.'}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold px-2 py-0.5 border-r border-slate-300" rowSpan={4}>
+                              <div className="flex flex-col justify-start h-full">
+                                <span className="inline-flex items-center gap-1 font-bold">
+                                  [{!isNorm ? '✓' : '  '}] Abnormal operation
+                                </span>
+                                <span className="italic text-[7.5px] text-slate-500 mt-2">
+                                  (Please fill the items if the service is repair)
+                                </span>
+                              </div>
+                            </td>
+                            <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Fault symptom</td>
+                            <td className="px-2 py-0.5">{op.faultSymptom || ''}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Fault analysis</td>
+                            <td className="px-2 py-0.5">{op.faultAnalysis || ''}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Work done/action taken</td>
+                            <td className="px-2 py-0.5">{op.workDone || ''}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Faul Part SN</td>
+                            <td className="px-2 py-0.5">
+                              <span>{op.faultPartSN || '-'}</span>
+                              <span className="ml-6 font-bold">Fault part Name: </span>
+                              <span>{op.faultPartName || '-'}</span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                ) : isBusduct ? (
+                  <>
+                    {/* 3A. VISUAL INSPECTION & MAINTENANCE (10 ITEMS) */}
+                    <div className="mb-2 border border-slate-400 overflow-hidden">
+                      <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[9px] flex items-center justify-between">
+                        <span>Visual inspection & Maintenance</span>
+                        <span className="font-normal text-[8px]">Please mark (✓) in good condition and cross (✗) in not good condition</span>
+                      </div>
+                      <table className="w-full text-[8.5px] border-collapse">
+                        <thead>
+                          <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-t border-b border-slate-400">
+                            <th rowSpan={2} className="py-0.5 px-1 border-r border-slate-300 w-7 text-center">No</th>
+                            <th rowSpan={2} className="py-0.5 px-1.5 border-r border-slate-300 text-left">Activity</th>
+                            <th rowSpan={2} className="py-0.5 px-1.5 border-r border-slate-300 w-44 text-center">Parameter</th>
+                            <th colSpan={2} className="py-0.5 px-1 border-r border-slate-300 text-center w-28">Condition</th>
+                            <th rowSpan={2} className="py-0.5 px-1.5 w-36 text-center">Remarks</th>
+                          </tr>
+                          <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-b border-slate-400">
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-14 text-center">Good</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-14 text-center">Not Good</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {busductVisual.map((item, idx) => {
+                            const isGood = item.condition === 'Good';
+                            const isNotGood = item.condition === 'Not Good';
+                            return (
+                              <tr key={idx} className={`border-t border-slate-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                                <td className="py-0.5 px-1 border-r border-slate-300 text-center font-bold text-slate-700">{idx + 1}</td>
+                                <td className="py-0.5 px-1.5 border-r border-slate-300 text-slate-900">{item.activity}</td>
+                                <td className="py-0.5 px-1.5 border-r border-slate-300 text-slate-700 text-center">{item.parameter}</td>
+                                <td className="py-0.5 px-1 border-r border-slate-300 text-center">
+                                  <span className={isNotGood ? "line-through text-slate-400 decoration-slate-900 decoration-[1.5px]" : isGood ? "font-bold text-slate-900" : "text-slate-700"}>
+                                    Good
+                                  </span>
+                                </td>
+                                <td className="py-0.5 px-1 border-r border-slate-300 text-center">
+                                  <span className={isGood ? "line-through text-slate-400 decoration-slate-900 decoration-[1.5px]" : isNotGood ? "font-bold text-red-700" : "text-slate-700"}>
+                                    Not Good
+                                  </span>
+                                </td>
+                                <td className="py-0.5 px-1.5 text-slate-700 text-center">{item.remarks || ''}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* 3B. CLEANING & MAINTENANCE (2 ITEMS) */}
+                    <div className="mb-2 border border-slate-400 overflow-hidden">
+                      <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[9px] flex items-center justify-between">
+                        <span>Cleaning & Maintenance</span>
+                        <span className="font-normal text-[8px]">Please mark (✓) in good condition and cross (✗) in not good condition</span>
+                      </div>
+                      <table className="w-full text-[8.5px] border-collapse">
+                        <thead>
+                          <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-t border-b border-slate-400">
+                            <th rowSpan={2} className="py-0.5 px-1 border-r border-slate-300 w-7 text-center">No</th>
+                            <th rowSpan={2} className="py-0.5 px-1.5 border-r border-slate-300 text-left">Activity</th>
+                            <th rowSpan={2} className="py-0.5 px-1.5 border-r border-slate-300 w-44 text-center">Parameter</th>
+                            <th colSpan={2} className="py-0.5 px-1 border-r border-slate-300 text-center w-28">Condition</th>
+                            <th rowSpan={2} className="py-0.5 px-1.5 w-36 text-center">Remarks</th>
+                          </tr>
+                          <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-b border-slate-400">
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-14 text-center">Good</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-14 text-center">Not Good</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {busductCleaning.map((item, idx) => {
+                            const isGood = item.condition === 'Good';
+                            const isNotGood = item.condition === 'Not Good';
+                            return (
+                              <tr key={idx} className={`border-t border-slate-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                                <td className="py-0.5 px-1 border-r border-slate-300 text-center font-bold text-slate-700">{idx + 1}</td>
+                                <td className="py-0.5 px-1.5 border-r border-slate-300 text-slate-900">{item.activity}</td>
+                                <td className="py-0.5 px-1.5 border-r border-slate-300 text-slate-700 text-center">{item.parameter}</td>
+                                <td className="py-0.5 px-1 border-r border-slate-300 text-center">
+                                  <span className={isNotGood ? "line-through text-slate-400 decoration-slate-900 decoration-[1.5px]" : isGood ? "font-bold text-slate-900" : "text-slate-700"}>
+                                    Good
+                                  </span>
+                                </td>
+                                <td className="py-0.5 px-1 border-r border-slate-300 text-center">
+                                  <span className={isGood ? "line-through text-slate-400 decoration-slate-900 decoration-[1.5px]" : isNotGood ? "font-bold text-red-700" : "text-slate-700"}>
+                                    Not Good
+                                  </span>
+                                </td>
+                                <td className="py-0.5 px-1.5 text-slate-700 text-center">{item.remarks || ''}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* 3C. THERMAL MEASUREMENT BUSDUCT */}
+                    <div className="mb-2 border border-slate-400 overflow-hidden">
+                      <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[9px] flex items-center justify-between">
+                        <span>Thermal Meassurement</span>
+                        <span className="font-normal text-[8px]">Please mark (✓) in good condition and cross (✗) in not good condition</span>
+                      </div>
+                      <table className="w-full text-[8.5px] border-collapse text-center">
+                        <thead>
+                          <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-t border-b border-slate-400">
+                            <th className="py-0.5 px-2 border-r border-slate-300 w-32 text-left">Breaker</th>
+                            <th className="py-0.5 px-2 border-r border-slate-300 w-52 text-center">Result Temperature Joint (°C)</th>
+                            <th className="py-0.5 px-2 border-r border-slate-300 w-36 text-center">Standard</th>
+                            <th className="py-0.5 px-2 text-center">Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 border-r border-slate-300 text-left px-2">
+                              {m.thermal_joint_breaker || 'Joint Busduct'}
+                            </td>
+                            <td className="border-r border-slate-300 text-center font-bold">
+                              {m.thermal_joint_temp || m.thermal_breaker_temp || '32.5'}
+                            </td>
+                            <td className="bg-[#FFF2CC] text-red-700 font-bold border-r border-slate-300 text-center">
+                              &lt;40°C
+                            </td>
+                            <td className="text-center px-2">
+                              {m.thermal_remarks || 'Suhu normal & aman'}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* 3D. ANALYSIS / REMARK BUSDUCT */}
+                    <div className="border border-slate-400 mb-2 overflow-hidden">
+                      <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[9px]">
+                        Analysis/Remark
+                      </div>
+                      <table className="w-full text-[8.5px] border-collapse">
+                        <tbody>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold px-2 py-0.5 w-[38%] border-r border-slate-300">
+                              <span className="inline-flex items-center gap-1 font-bold">
+                                [{isNorm ? '✓' : '  '}] Normal operation
+                              </span>
+                            </td>
+                            <td className="font-bold bg-slate-50 px-1.5 py-0.5 w-[14%] border-r border-slate-300">Remark :</td>
+                            <td className="px-2 py-0.5">{op.remark || 'Panel Busduct beroperasi secara normal, koneksi joint kencang, suhu joint dalam batas aman (<40°C), dan area sekitar bersih dari debu.'}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold px-2 py-0.5 border-r border-slate-300" rowSpan={4}>
+                              <div className="flex flex-col justify-start h-full">
+                                <span className="inline-flex items-center gap-1 font-bold">
+                                  [{!isNorm ? '✓' : '  '}] Abnormal operation
+                                </span>
+                                <span className="italic text-[7.5px] text-slate-500 mt-2">
+                                  (Please fill the items if the service is repair)
+                                </span>
+                              </div>
+                            </td>
+                            <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Fault symptom</td>
+                            <td className="px-2 py-0.5">{op.faultSymptom || ''}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Fault analysis</td>
+                            <td className="px-2 py-0.5">{op.faultAnalysis || ''}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Work done/action taken</td>
+                            <td className="px-2 py-0.5">{op.workDone || ''}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Faul Part SN</td>
+                            <td className="px-2 py-0.5">
+                              <span>{op.faultPartSN || '-'}</span>
+                              <span className="ml-6 font-bold">Fault part Name: </span>
+                              <span>{op.faultPartName || '-'}</span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* 3. VISUAL INSPECTION TABLE (ATS) */}
+                    <div className="mb-2 border border-slate-400 overflow-hidden">
+                      <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[9.5px]">
+                        Visual inspection & Check
+                      </div>
+                      <table className="w-full text-[8.5px] border-collapse">
+                        <thead>
+                          <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-t border-b border-slate-400">
+                            <th rowSpan={2} className="py-0.5 px-1 border-r border-slate-300 w-6 text-center">No</th>
+                            <th rowSpan={2} className="py-0.5 px-1.5 border-r border-slate-300 text-left">Activity</th>
+                            <th rowSpan={2} className="py-0.5 px-1.5 border-r border-slate-300 w-48 text-left">Parameter</th>
+                            <th colSpan={2} className="py-0.5 px-1 border-r border-slate-300 text-center w-24">Condition</th>
+                            <th rowSpan={2} className="py-0.5 px-1.5 w-36 text-center">Remarks</th>
+                          </tr>
+                          <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-b border-slate-400">
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-12 text-center">Good</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-12 text-center">Not Good</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {payload.visualChecklist.map((item, idx) => {
+                            const isGood = item.condition === 'Good';
+                            const isNotGood = item.condition === 'Not Good';
+                            return (
+                              <tr key={idx} className={`border-t border-slate-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}`}>
+                                <td className="py-0.5 px-1 border-r border-slate-300 text-center font-bold text-slate-700">{item.no || `${String.fromCharCode(97 + idx)}.`}</td>
+                                <td className="py-0.5 px-1.5 border-r border-slate-300 text-slate-900">{item.activity}</td>
+                                <td className="py-0.5 px-1.5 border-r border-slate-300 text-slate-700">{item.parameter}</td>
+                                <td className="py-0.5 px-1 border-r border-slate-300 text-center">
+                                  <span className={isNotGood ? "line-through text-slate-400 decoration-slate-900 decoration-[1.5px]" : isGood ? "font-bold text-slate-900" : "text-slate-700"}>
+                                    Good
+                                  </span>
+                                </td>
+                                <td className="py-0.5 px-1 border-r border-slate-300 text-center">
+                                  <span className={isGood ? "line-through text-slate-400 decoration-slate-900 decoration-[1.5px]" : isNotGood ? "font-bold text-red-700" : "text-slate-700"}>
+                                    Not Good
+                                  </span>
+                                </td>
+                                <td className="py-0.5 px-1.5 text-slate-700 text-center">{item.remarks || ''}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* 4. DIGITAL POWER METER RECORDING (ATS) */}
+                    <div className="mb-2 border border-slate-400 overflow-hidden">
+                      <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[9px]">
+                        Digital Power Meter Recording <span className="font-normal text-[8px]">Please mark OK (√),not OK(×), not applicable (N/A) in the box</span>
+                      </div>
+                      <table className="w-full text-[8.5px] border-collapse text-center">
+                        <thead>
+                          <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-t border-b border-slate-400">
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-10">Wire</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-16">Result (Voltage)</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-10">Wire</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-16">Result (Voltage)</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-12">Wire</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-16">Result</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-10">Wire</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-16">Result (Ampere)</th>
+                            <th className="py-0.5 px-1 text-center">Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">R-S</td>
+                            <td className="border-r border-slate-300">{m.dpm_voltage_rs || '-'}</td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">R-N</td>
+                            <td className="border-r border-slate-300">{m.dpm_voltage_rn || '-'}</td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">KW</td>
+                            <td className="border-r border-slate-300">{m.dpm_kw || '-'}</td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">R</td>
+                            <td className="border-r border-slate-300">{m.dpm_ampere_r || '-'}</td>
+                            <td rowSpan={4} className="text-center px-2 align-middle">{m.dpm_remarks || ''}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">S-T</td>
+                            <td className="border-r border-slate-300">{m.dpm_voltage_st || '-'}</td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">S-N</td>
+                            <td className="border-r border-slate-300">{m.dpm_voltage_sn || '-'}</td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">KVA</td>
+                            <td className="border-r border-slate-300">{m.dpm_kva || '-'}</td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">S</td>
+                            <td className="border-r border-slate-300">{m.dpm_ampere_s || '-'}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">T-R</td>
+                            <td className="border-r border-slate-300">{m.dpm_voltage_tr || '-'}</td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">T-N</td>
+                            <td className="border-r border-slate-300">{m.dpm_voltage_tn || '-'}</td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">KVAR</td>
+                            <td className="border-r border-slate-300">{m.dpm_kvar || '-'}</td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">T</td>
+                            <td className="border-r border-slate-300">{m.dpm_ampere_t || '-'}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="border-r border-slate-300"></td>
+                            <td className="border-r border-slate-300"></td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">N</td>
+                            <td className="border-r border-slate-300">{m.dpm_voltage_n || '-'}</td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">Cos p</td>
+                            <td className="border-r border-slate-300">{m.dpm_cos_p || '-'}</td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">N</td>
+                            <td className="border-r border-slate-300">{m.dpm_ampere_n || '-'}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* 5. VOLTAGE & CURRENT MEASUREMENT (ATS) */}
+                    <div className="mb-2 border border-slate-400 overflow-hidden">
+                      <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[9px]">
+                        Voltage & Current Measurement
+                      </div>
+                      <table className="w-full text-[8.5px] border-collapse text-center">
+                        <thead>
+                          <tr className="bg-[#D9E2F3] text-slate-900 font-bold border-t border-b border-slate-400">
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-10">Wire</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-16">Result (Voltage)</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-10">Wire</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-16">Result (Voltage)</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-10">Wire</th>
+                            <th className="py-0.5 px-1 border-r border-slate-300 w-16">Result (Ampere)</th>
+                            <th className="py-0.5 px-2 border-r border-slate-300 w-44">Standard</th>
+                            <th className="py-0.5 px-1 text-center">Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">R-S</td>
+                            <td className="border-r border-slate-300">{m.vc_voltage_rs || '-'}</td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">R-N</td>
+                            <td className="border-r border-slate-300">{m.vc_voltage_rn || '-'}</td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">R</td>
+                            <td className="border-r border-slate-300">{m.vc_ampere_r || '-'}</td>
+                            <td rowSpan={4} className="bg-[#FFF2CC] text-red-700 font-bold border-r border-slate-300 text-[8px] px-1 align-middle">
+                              +5% - 10% from 380V & 220V load deviation 10%
+                            </td>
+                            <td rowSpan={4} className="text-center px-2 align-middle">{m.vc_remarks || ''}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">S-T</td>
+                            <td className="border-r border-slate-300">{m.vc_voltage_st || '-'}</td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">S-N</td>
+                            <td className="border-r border-slate-300">{m.vc_voltage_sn || '-'}</td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">S</td>
+                            <td className="border-r border-slate-300">{m.vc_ampere_s || '-'}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">T-R</td>
+                            <td className="border-r border-slate-300">{m.vc_voltage_tr || '-'}</td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">T-N</td>
+                            <td className="border-r border-slate-300">{m.vc_voltage_tn || '-'}</td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">T</td>
+                            <td className="border-r border-slate-300">{m.vc_ampere_t || '-'}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="border-r border-slate-300"></td>
+                            <td className="border-r border-slate-300"></td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">N-G</td>
+                            <td className="border-r border-slate-300">{m.vc_voltage_ng || '-'}</td>
+                            <td className="font-bold bg-slate-50 border-r border-slate-300">N</td>
+                            <td className="border-r border-slate-300">{m.vc_ampere_n || '-'}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* 6. THERMAL & GROUNDING (ATS) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                      <div className="border border-slate-400 overflow-hidden">
+                        <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[8.5px]">
+                          Thermal Meassurement
+                        </div>
+                        <table className="w-full text-[8.5px] border-collapse text-center">
+                          <thead>
+                            <tr className="bg-[#D9E2F3] font-bold border-t border-b border-slate-400">
+                              <th className="py-0.5 px-1 border-r border-slate-300 w-16 text-left">Breaker</th>
+                              <th className="py-0.5 px-1 border-r border-slate-300 w-24">Result (°C)</th>
+                              <th className="py-0.5 px-1 border-r border-slate-300 w-16">Standard</th>
+                              <th className="py-0.5 px-1 text-center">Remarks</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className="border-t border-slate-200">
+                              <td className="font-bold bg-slate-50 border-r border-slate-300 text-left px-1">Breaker</td>
+                              <td className="border-r border-slate-300">{m.thermal_breaker_temp ? `${m.thermal_breaker_temp}°C` : '-'}</td>
+                              <td className="bg-[#FFF2CC] font-bold border-r border-slate-300">40°C</td>
+                              <td className="text-center px-1.5">{m.thermal_remarks || ''}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div className="border border-slate-400 overflow-hidden">
+                        <div className="bg-[#8EB4E2] text-slate-900 font-bold px-2 py-0.5 text-[8.5px]">
+                          Grounding Resistance Meassurement
+                        </div>
+                        <table className="w-full text-[8.5px] border-collapse text-center">
+                          <thead>
+                            <tr className="bg-[#D9E2F3] font-bold border-t border-b border-slate-400">
+                              <th className="py-0.5 px-1 border-r border-slate-300 w-16 text-left">Wire</th>
+                              <th className="py-0.5 px-1 border-r border-slate-300 w-24">Result (Ohm)</th>
+                              <th className="py-0.5 px-1 border-r border-slate-300 w-16">Standard</th>
+                              <th className="py-0.5 px-1 text-center">Remarks</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className="border-t border-slate-200">
+                              <td className="font-bold bg-slate-50 border-r border-slate-300 text-left px-1">Grounding</td>
+                              <td className="border-r border-slate-300">{m.grounding_ohm ? `${m.grounding_ohm} Ohm` : '-'}</td>
+                              <td className="bg-[#FFF2CC] font-bold border-r border-slate-300">&lt;5 Ohm</td>
+                              <td className="text-center px-1.5">{m.grounding_remarks || ''}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* 7. OPERATION STATUS (ATS) */}
+                    <div className="border border-slate-400 mb-2 overflow-hidden">
+                      <table className="w-full text-[8.5px] border-collapse">
+                        <tbody>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold px-2 py-0.5 w-[38%] border-r border-slate-300">
+                              <span className="inline-flex items-center gap-1 font-bold">
+                                [{isNorm ? '✓' : '  '}] Normal operation
+                              </span>
+                            </td>
+                            <td className="font-bold bg-slate-50 px-1.5 py-0.5 w-[14%] border-r border-slate-300">Remark:</td>
+                            <td className="px-2 py-0.5">{op.remark || 'Unit beroperasi normal.'}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="font-bold px-2 py-0.5 border-r border-slate-300">
+                              <span className="inline-flex items-center gap-1 font-bold">
+                                [{!isNorm ? '✓' : '  '}] Abnormal operation
+                              </span>
+                            </td>
+                            <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Fault symptom</td>
+                            <td className="px-2 py-0.5">{op.faultSymptom || ''}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="italic text-[7.5px] text-slate-500 px-2 py-0.5 border-r border-slate-300">
+                              (Please fill the items if the service is repair)
+                            </td>
+                            <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Fault analysis</td>
+                            <td className="px-2 py-0.5">{op.faultAnalysis || ''}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="border-r border-slate-300"></td>
+                            <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Work done/action taken</td>
+                            <td className="px-2 py-0.5">{op.workDone || ''}</td>
+                          </tr>
+                          <tr className="border-t border-slate-200">
+                            <td className="border-r border-slate-300"></td>
+                            <td className="font-bold bg-slate-50 px-1.5 py-0.5 border-r border-slate-300">Faul Part SN</td>
+                            <td className="px-2 py-0.5">
+                              <span>{op.faultPartSN || '-'}</span>
+                              <span className="ml-6 font-bold">Fault part Name: </span>
+                              <span>{op.faultPartName || '-'}</span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
 
                 {/* 8. TIME SPENT */}
                 <div className="mb-2 border border-slate-400 overflow-hidden">

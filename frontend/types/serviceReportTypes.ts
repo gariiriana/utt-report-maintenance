@@ -22,6 +22,7 @@ export interface UniversalCustomerInfo {
   contractType?: string;     // Warranty, Contract, Invoice
   specification?: string;
   model?: string;
+  type?: string;
 }
 
 export interface UniversalTimeSpent {

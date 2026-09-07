@@ -13,7 +13,9 @@ import {
   Clock,
   FileDown,
   Maximize2,
-  X
+  X,
+  RotateCcw,
+  PlusCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -312,9 +314,24 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
   // --------------------------------------------------------------------------
   // Reset Form (Mulai Temuan Baru)
   // --------------------------------------------------------------------------
-  const handleResetForm = () => {
+  const handleResetForm = (showToast = true) => {
+    const hasData =
+      formData.title.trim() ||
+      formData.description.trim() ||
+      formData.location.trim() ||
+      (formData.beforePhotos && formData.beforePhotos.length > 0) ||
+      formData.beforePhoto;
+
+    if (hasData) {
+      const confirmReset = window.confirm('Apakah Anda yakin ingin mengosongkan form dan membuat temuan K3 baru? Data yang belum tersimpan akan dibersihkan.');
+      if (!confirmReset) return;
+    }
+
     safeStorage.removeItem(DRAFT_STORAGE_KEY);
     setSavedDocId(null);
+    if (beforeFileInputRef.current) {
+      beforeFileInputRef.current.value = '';
+    }
     setFormData({
       title: '',
       description: '',
@@ -329,6 +346,10 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
       beforePhotos: [],
       beforeNotes: ''
     });
+
+    if (showToast) {
+      toast.success('Form temuan K3 berhasil di-reset! Siap untuk input baru.');
+    }
   };
 
   // --------------------------------------------------------------------------
@@ -353,12 +374,33 @@ export function HSEFindings({ onSuccess }: HSEFindingsProps) {
         { id: toastId }
       );
 
+      // Bersihkan draft & reset form agar siap untuk form temuan baru berikutnya
+      safeStorage.removeItem(DRAFT_STORAGE_KEY);
+      setSavedDocId(null);
+      if (beforeFileInputRef.current) {
+        beforeFileInputRef.current.value = '';
+      }
+      setFormData({
+        title: '',
+        description: '',
+        location: '',
+        inspectorName: getDefaultInspectorName(),
+        category: '',
+        severity: 'unsafe_condition',
+        targetPerson: '',
+        findingDate: new Date().toISOString().split('T')[0],
+        findingTime: new Date().toTimeString().split(' ')[0].substring(0, 5),
+        beforePhoto: '',
+        beforePhotos: [],
+        beforeNotes: ''
+      });
+
       if (onSuccess) {
         onSuccess();
       }
     } catch (error) {
       console.error('Error saving finding:', error);
-toast.error('Gagal menyimpan data temuan', { id: toastId });
+      toast.error('Gagal menyimpan data temuan', { id: toastId });
     } finally {
       setIsSubmitting(false);
     }
@@ -407,15 +449,39 @@ toast.error('Gagal menyimpan data temuan', { id: toastId });
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handleResetForm}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-2xl text-xs font-bold backdrop-blur-sm border border-white/15 transition cursor-pointer"
+              onClick={() => handleResetForm(true)}
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-2xl text-xs sm:text-sm font-bold backdrop-blur-sm border border-white/30 transition cursor-pointer shadow-sm active:scale-95"
+              title="Reset seluruh isian dan buat form temuan K3 baru"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Reset Form</span>
+              <RotateCcw className="w-4 h-4" />
+              <span>Reset / Form Baru</span>
             </button>
           </div>
         </div>
       </motion.div>
+
+      {/* Banner Mode Edit Draft (Jika ada data tersimpan di arsip / draft) */}
+      {savedDocId && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 bg-amber-50 border border-amber-200 rounded-3xl text-amber-900 text-xs shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-100 rounded-2xl text-amber-800 shrink-0">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-bold text-sm text-amber-900">Mode Edit Temuan (Tersimpan di Arsip)</p>
+              <p className="text-amber-700 text-xs mt-0.5">Perubahan yang disimpan akan memperbarui data temuan ini. Ingin membuat temuan lain?</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleResetForm(true)}
+            className="w-full sm:w-auto px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold transition flex items-center justify-center gap-1.5 shadow-xs shrink-0 cursor-pointer text-xs active:scale-95"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>Buat Form Baru</span>
+          </button>
+        </div>
+      )}
 
       {/* Main Form Card */}
       <motion.form
@@ -721,6 +787,16 @@ toast.error('Gagal menyimpan data temuan', { id: toastId });
         {/* Section 4: Action Buttons */}
         <div className="pt-6 border-t border-slate-100 flex flex-col lg:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto">
+            <button
+              type="button"
+              onClick={() => handleResetForm(true)}
+              disabled={isSubmitting}
+              className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl text-xs sm:text-sm font-bold border border-slate-200 shadow-xs transition cursor-pointer disabled:opacity-50"
+              title="Kosongkan seluruh isian dan mulai form temuan baru"
+            >
+              <RotateCcw className="w-4 h-4 text-slate-500" />
+              <span>Reset / Form Baru</span>
+            </button>
             <button
               type="button"
               onClick={() => handleExportPDF('neutradc')}

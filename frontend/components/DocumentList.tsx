@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2 } from 'lucide-react';
+import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp } from 'lucide-react';
 import { collection, query, getDocs, deleteDoc, doc, where, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { useAuth } from './AuthContext';
@@ -44,6 +44,9 @@ import {
   generateLdbrdbReportPDF,
 } from '@/service_reports';
 import { generateUniversalServiceReportPDF } from '@/service_reports/universalServiceReportPDF';
+import { downloadPDFBlob } from '@/utils/pdfDownload';
+import { UploadSRModal } from './UploadSRModal';
+import { isServiceReportSupported } from '@/config/serviceReportRegistry';
 import { getDoc } from 'firebase/firestore';
 import { safeStorage } from '@/utils/safeStorage';
 
@@ -184,10 +187,11 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
   const isAdmin = userRole === 'admin' || isQcDme;
   const isPrivileged = isAdmin || userRole === 'manager' || userRole === 'site_manager' || userRole === 'hse' ||
     userRole === 'dirut' || userRole === 'direksiSDM' || userRole === 'DireksiKeuangan';
-  const isEngineer = userRole === 'engineer' || userRole === 'Engineer_K2' || userRole === 'engineer_k2' || userRole === 'standby_engineer' || userRole === 'tde' || userRole === 'cbre';
+  const isEngineer = userRole === 'engineer' || userRole === 'Engineer_K2' || userRole === 'engineer_k2' || userRole === 'standby_engineer' || userRole === 'tde' || userRole === 'cbre' || Boolean(user?.email && isServiceReportSupported(user.email));
   const canDelete = isPrivileged || isEngineer;
 
   const [documents, setDocuments] = useState<ExcelDocument[]>([]);
+  const [uploadSrModalDoc, setUploadSrModalDoc] = useState<ExcelDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [startDate, setStartDate] = useState('');
@@ -411,7 +415,8 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               fcuReportData: data.fcuReportData,
               fcuTimeSpent: data.fcuTimeSpent,
               serviceReportPayload: data.serviceReportPayload || null,
-              hasServiceReport: !!(data.serviceReportPayload && Object.keys(data.serviceReportPayload).length > 0),
+              hasServiceReport: data.hasServiceReport === true || !!(data.serviceReportPayload && Object.keys(data.serviceReportPayload).length > 0),
+              attachedSrFile: data.attachedSrFile || null,
               deleteRequested: data.deleteRequested || false,
               deleteRequestedBy: data.deleteRequestedBy || '',
               deleteReason: data.deleteReason || '',
@@ -771,7 +776,8 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
         saveToFile
       );
       const blob = res.output('blob');
-      const fileName = docData.fileName || `Service_Report_${(docData.serviceReportPayload.equipmentName || 'Report').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      const baseName = docData.fileName || `Service_Report_${(docData.serviceReportPayload.equipmentName || 'Report').replace(/[^a-zA-Z0-9]/g, '_')}`;
+      const fileName = baseName.endsWith('.pdf') ? baseName : `${baseName}.pdf`;
       return [{ fileName, blob }];
     }
 
@@ -1023,8 +1029,11 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
   const handleDownloadPDF = async (docData: ExcelDocument) => {
     try {
       toast.loading('Menghasilkan PDF dari database...', { id: 'download-pdf' });
-      const files = await buildPDFBlob(docData, true);
-      if (files.length === 1 && !docData.createdBy?.startsWith('trafo')) {
+      const files = await buildPDFBlob(docData, false);
+      for (const file of files) {
+        downloadPDFBlob(file.blob, file.fileName);
+      }
+      if (files.length > 0) {
         toast.success('PDF berhasil diunduh!', { id: 'download-pdf' });
       }
     } catch (error) {
@@ -1036,7 +1045,8 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
   const handleDownloadHSE = async (docData: ExcelDocument) => {
     try {
       toast.loading('Memuat data laporan HSE...', { id: 'download-hse' });
-      await buildHSEBlob(docData, true);
+      const res = await buildHSEBlob(docData, false);
+      downloadPDFBlob(res.blob, res.fileName);
       toast.success('PDF HSE berhasil diunduh!', { id: 'download-hse' });
     } catch (error) {
       console.error('Download HSE error:', error);
@@ -1175,7 +1185,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       return false;
     }
 
-    const hasSR = Boolean(doc.serviceReportPayload && Object.keys(doc.serviceReportPayload).length > 0);
+    const hasSR = Boolean(doc.hasServiceReport || (doc.serviceReportPayload && Object.keys(doc.serviceReportPayload).length > 0));
     if (srStatusFilter === 'photos_only' && hasSR) {
       return false;
     }
@@ -2064,7 +2074,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                 <AlertTriangle className="w-3 h-3 shrink-0" /> Abnormal
               </span>
             )}
-            {document.serviceReportPayload && Object.keys(document.serviceReportPayload).length > 0 ? (
+            {(document.hasServiceReport || (document.serviceReportPayload && Object.keys(document.serviceReportPayload).length > 0)) ? (
               <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 shadow-2xs">
                 <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" /> FOTO + SERVICE REPORT
               </span>
@@ -2143,6 +2153,25 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                   <span className="sm:hidden font-bold">Edit</span>
                 </>
               )}
+            </motion.button>
+          )}
+          {/* Tombol Upload Service Report (Khusus Akun Engineer / Dokumen PDF) */}
+          {(isEngineer || isPrivileged || isServiceReportSupported(document.createdBy)) && document.documentType === 'pdf' && (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setUploadSrModalDoc(document)}
+              className={`flex-1 sm:flex-initial py-2 sm:py-2.5 px-3 rounded-xl transition border font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${
+                document.hasServiceReport || (document.serviceReportPayload && Object.keys(document.serviceReportPayload).length > 0)
+                  ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
+                  : 'bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-700 border-indigo-200'
+              }`}
+              title={document.hasServiceReport ? "Update / Ganti Berkas Service Report" : "Upload Berkas Service Report (Excel / PDF)"}
+            >
+              <FileUp className="w-3.5 h-3.5 text-indigo-600" />
+              <span className="font-bold">
+                {document.hasServiceReport || (document.serviceReportPayload && Object.keys(document.serviceReportPayload).length > 0) ? 'Update SR' : 'Upload SR'}
+              </span>
             </motion.button>
           )}
           <motion.button
@@ -2357,7 +2386,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                 <span>Foto Saja</span>
                 <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${srStatusFilter === 'photos_only' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
                   }`}>
-                  {documents.filter(d => !(d.serviceReportPayload && Object.keys(d.serviceReportPayload).length > 0)).length}
+                  {documents.filter(d => !(d.hasServiceReport || (d.serviceReportPayload && Object.keys(d.serviceReportPayload).length > 0))).length}
                 </span>
               </button>
 
@@ -2372,7 +2401,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                 <span>Foto + SR Lengkap</span>
                 <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${srStatusFilter === 'with_sr' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
                   }`}>
-                  {documents.filter(d => Boolean(d.serviceReportPayload && Object.keys(d.serviceReportPayload).length > 0)).length}
+                  {documents.filter(d => Boolean(d.hasServiceReport || (d.serviceReportPayload && Object.keys(d.serviceReportPayload).length > 0))).length}
                 </span>
               </button>
             </div>
@@ -2503,6 +2532,21 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
         isAdmin={isQcDme}
         deleteReason={documentToDelete?.deleteReason || ''}
         requireReason={!isQcDme}
+      />
+
+      <UploadSRModal
+        isOpen={!!uploadSrModalDoc}
+        onClose={() => setUploadSrModalDoc(null)}
+        document={uploadSrModalDoc}
+        onSuccess={(updatedFields) => {
+          if (!uploadSrModalDoc) return;
+          setDocuments(prev =>
+            prev.map(d =>
+              d.id === uploadSrModalDoc.id ? { ...d, ...updatedFields } : d
+            )
+          );
+          setUploadSrModalDoc(null);
+        }}
       />
     </div>
   );

@@ -2598,164 +2598,58 @@ export const SERVICE_REPORT_MASTER_REGISTRY: Record<string, ServiceReportConfigI
   },
   "pump@gmail.com": {
     "key": "pump",
-    "number": 31,
-    "name": "Cooling Pump System",
+    "number": 3,
+    "name": "PUMP (Pump System)",
     "email": "pump@gmail.com",
     "defaultCustomerInfo": {
       "companyName": "Neutra DC Cikarang",
-      "mopNo": "",
-      "equipmentName": "Cooling Pump System",
+      "mopNo": "DME-TDE/MOP/PUMP/02 0506/26",
+      "equipmentName": "Pump",
       "serialNo": "",
-      "quarter": "Q3",
+      "quarter": "Q2",
       "ciDescription": "",
       "productName": "",
       "location": "",
-      "date": "2026-09-01",
+      "date": new Date().toISOString().split('T')[0],
       "ciName": "",
       "prodYear": "",
       "area": "",
-      "engineer": "",
+      "engineer": "pump@gmail.com",
       "serviceType": "Preventive maintenance",
       "contractType": "Contract",
       "specification": "",
       "model": ""
     },
     "defaultTimeSpent": {
-      "date": "2026-09-01",
+      "date": new Date().toISOString().split('T')[0],
       "departure": "08:00",
       "arrival": "08:30",
-      "start": "09:00",
-      "finish": "17:00"
+      "start": "08:30",
+      "finish": "11:30"
     },
     "defaultOperationStatus": {
       "isNormal": true,
-      "remark": "All systems operating within normal parameters.",
+      "remark": "Pump beroperasi secara normal, tidak ada kebocoran, vibrasi dan temperatur kerja berada di dalam batas toleransi standar aman.",
       "faultSymptom": "",
       "faultAnalysis": "",
-      "workDone": "",
+      "workDone": "Preventive maintenance completed according to SOP.",
       "faultPartSN": "",
       "faultPartName": ""
     },
     "checklistTemplate": [
-      {
-        "no": "a.",
-        "activity": "Ensure pump unit is in standby & isolated",
-        "parameter": "Pump in safe standby & isolated from operation",
-        "condition": "Good",
-        "remarks": ""
-      },
-      {
-        "no": "b.",
-        "activity": "Switch control mode to Off (duty/backup running)",
-        "parameter": "Set to OFF; duty/backup pump running normally",
-        "condition": "Good",
-        "remarks": ""
-      },
-      {
-        "no": "c.",
-        "activity": "Close inlet & outlet isolation valves",
-        "parameter": "Inlet & outlet isolation valves fully closed",
-        "condition": "Good",
-        "remarks": ""
-      },
-      {
-        "no": "d.",
-        "activity": "Turn off power supply from MCB at control panel",
-        "parameter": "MCB at control panel is turned OFF",
-        "condition": "Good",
-        "remarks": ""
-      },
-      {
-        "no": "f.",
-        "activity": "Lubricate motor & pump bearings (Greasing)",
-        "parameter": "Bearings properly lubricated with correct grease",
-        "condition": "Good",
-        "remarks": ""
-      },
-      {
-        "no": "g.",
-        "activity": "Inspect motor terminal block bolts tightness",
-        "parameter": "Bolts are tight (checked with torque tool)",
-        "condition": "Good",
-        "remarks": ""
-      },
-      {
-        "no": "h.",
-        "activity": "Housekeeping tools and work area",
-        "parameter": "Tools & work area are clean and organized",
-        "condition": "Good",
-        "remarks": ""
-      },
-      {
-        "no": "i.",
-        "activity": "Open isolation valves for normal operation",
-        "parameter": "Isolation valves opened properly for operation",
-        "condition": "Good",
-        "remarks": ""
-      },
-      {
-        "no": "j.",
-        "activity": "Coordinate to return pump to AUTO mode",
-        "parameter": "Pump returned to AUTO mode & normal config",
-        "condition": "Good",
-        "remarks": ""
-      },
-      {
-        "no": "k",
-        "activity": "Check control panel & TMW panel termination",
-        "parameter": "No loose, damaged, or overheated connections",
-        "condition": "Good",
-        "remarks": ""
-      },
-      {
-        "no": "l",
-        "activity": "Check panel for damage, corrosion, & lock",
-        "parameter": "No corrosion, properly locked, and well supported",
-        "condition": "Good",
-        "remarks": ""
-      },
-      {
-        "no": "m",
-        "activity": "Check control panel & TMW control function",
-        "parameter": "Start/Stop & Auto/Manual operate normally",
-        "condition": "Good",
-        "remarks": ""
-      },
-      {
-        "no": "2",
-        "activity": "Cleaning",
-        "parameter": "Good condition / Standard",
-        "condition": "Good",
-        "remarks": ""
-      },
-      {
-        "no": "a.",
-        "activity": "Cleaning motor fan & body",
-        "parameter": "No dust/dirt (vacuum/dry cloth)",
-        "condition": "Good",
-        "remarks": ""
-      },
-      {
-        "no": "b.",
-        "activity": "Cleaning strainer/filter",
-        "parameter": "Water/compressed air used",
-        "condition": "Good",
-        "remarks": ""
-      },
-      {
-        "no": "c.",
-        "activity": "Cleaning terminal box",
-        "parameter": "Inside clean and dry",
-        "condition": "Good",
-        "remarks": ""
-      },
-      {
-        "no": "d.",
-        "activity": "Cleaning control & TMW panel",
-        "parameter": "No dust remains, properly closed",
-        "condition": "Good",
-        "remarks": ""
-      }
+      { "no": "a.", "activity": "Inspect pump body for leakage, corrosion and cracks", "parameter": "No leakage, corrosion, cracks", "condition": "Good", "remarks": "" },
+      { "no": "b.", "activity": "Check pump condition, mounting bolts, and base frame for looseness", "parameter": "good condition", "condition": "Good", "remarks": "" },
+      { "no": "c.", "activity": "Check seals, gaskets and bearings for any abnormal signs", "parameter": "no leakage or overheating", "condition": "Good", "remarks": "" },
+      { "no": "d.", "activity": "Inspect Valves Condition (Suction & Discharge)", "parameter": "no leakage, no corrosion, and positioned correctly", "condition": "Good", "remarks": "" },
+      { "no": "e.", "activity": "Check motor condition, Check mounting bolts and base frame for looseness", "parameter": "not overheating, Bolts and frame not loose.", "condition": "Good", "remarks": "" },
+      { "no": "f.", "activity": "Check Level Sensor", "parameter": "Level normal.", "condition": "Good", "remarks": "" },
+      { "no": "g.", "activity": "Inspect Pressure Gauge Condition", "parameter": "Gauge is not damage", "condition": "Good", "remarks": "" },
+      { "no": "h.", "activity": "Check Flexible Connection", "parameter": "Flexible is not cracked, leaking, or damaged.", "condition": "Good", "remarks": "" },
+      { "no": "i.", "activity": "Clean pump body and Remove debris around pump base and surrounding area", "parameter": "free of dust and dirt.", "condition": "Good", "remarks": "" },
+      { "no": "j.", "activity": "Clean motor surface and clean ventilation holes to ensure proper cooling", "parameter": "free of dust and dirt.", "condition": "Good", "remarks": "" },
+      { "no": "k.", "activity": "Ensure cooling fins and fan cover are free from blockage", "parameter": "fan cover are clean and unobstructed", "condition": "Good", "remarks": "" },
+      { "no": "l.", "activity": "Cleaning the Sump / Control Tank", "parameter": "Tank and is free of sludge and debris.", "condition": "Good", "remarks": "" },
+      { "no": "m.", "activity": "cleaning the Water Trap", "parameter": "Water trap is free of sludge and debris", "condition": "Good", "remarks": "" }
     ]
   },
   "dockleveler@gmail.com": {
@@ -3385,7 +3279,63 @@ export const SERVICE_REPORT_MASTER_REGISTRY: Record<string, ServiceReportConfigI
         "remarks": ""
       }
     ]
-  }
+  },
+  "busduct@gmail.com": {
+    "key": "busduct",
+    "number": 2,
+    "name": "BUSDUCT (Busduct System)",
+    "email": "busduct@gmail.com",
+    "defaultCustomerInfo": {
+      "companyName": "NeutraDC Cikarang",
+      "mopNo": "DME-TDE/MOP/BDT/02 2805/26",
+      "equipmentName": "BUSDUCT",
+      "serialNo": "AC-002",
+      "quarter": "Q2",
+      "ciDescription": "Line Busduct",
+      "productName": "N/A",
+      "location": "Data Center",
+      "date": new Date().toISOString().split('T')[0],
+      "ciName": "",
+      "prodYear": "2022",
+      "area": "Building Data Center",
+      "engineer": "busduct@gmail.com",
+      "serviceType": "Preventive maintenance",
+      "contractType": "Contract",
+      "specification": "4000A",
+      "model": "IEC 61439-6"
+    },
+    "defaultTimeSpent": {
+      "date": new Date().toISOString().split('T')[0],
+      "departure": "08:00",
+      "arrival": "08:30",
+      "start": "08:30",
+      "finish": "11:30"
+    },
+    "defaultOperationStatus": {
+      "isNormal": true,
+      "remark": "Panel Busduct beroperasi secara normal, koneksi joint kencang, suhu joint dalam batas aman (<40°C), dan area sekitar bersih dari debu.",
+      "faultSymptom": "",
+      "faultAnalysis": "",
+      "workDone": "Preventive maintenance completed according to SOP.",
+      "faultPartSN": "",
+      "faultPartName": ""
+    },
+    "checklistTemplate": [
+      { "no": "1.1", "activity": "Inspection & Checked of door movement", "parameter": "Door operates smoothly", "condition": "Good", "remarks": "Sesuai standar" },
+      { "no": "1.2", "activity": "Inspection & Checked of signs of waer, rust, dents, and damageon door tracks", "parameter": "Door tracks are free from excessive wear", "condition": "Good", "remarks": "Kondisi bersih & terawat" },
+      { "no": "1.3", "activity": "Inspection & Checked door tracks are aligned and not sagging", "parameter": "Door tracks are properly aligned, straight, and not sagging", "condition": "Good", "remarks": "Rapi & simetris" },
+      { "no": "1.4", "activity": "Inspection & Checked of door parts for any signs of damage (spring, motor, frame, cover)", "parameter": "All door components (spring, motor, frame, cover)", "condition": "Good", "remarks": "Utuh & berfungsi baik" },
+      { "no": "1.5", "activity": "Inspection & Checked of Bumper , Rubber Lip and Lip hinge", "parameter": "Bumper, rubber lip, and lip hinge are intact", "condition": "Good", "remarks": "Utuh & tidak retak" },
+      { "no": "1.6", "activity": "Inspection & Checked of Controller Swicth button", "parameter": "Controller switch buttons are fully functional", "condition": "Good", "remarks": "Berfungsi normal" },
+      { "no": "1.7", "activity": "Check Motor Condition, Check motor body for overheating, Listen for abnormal sound, Check cable connection", "parameter": "Motor runs normally without overheating", "condition": "Good", "remarks": "Suara halus & normal" },
+      { "no": "1.8", "activity": "Check Base Frame, Shaft & Door Alignment Base Frame", "parameter": "Base Frame & Door Alignment", "condition": "Good", "remarks": "Presisi & kokoh" },
+      { "no": "1.9", "activity": "Motor & Gearbox Inspection", "parameter": "Mounting bolts are tight. Cables are in good condition", "condition": "Good", "remarks": "Baut kencang & kabel rapi" },
+      { "no": "2.0", "activity": "Check Roller Shutter Kit", "parameter": "No wear, corrosion, or damage", "condition": "Good", "remarks": "Bebas aus & korosi" },
+      { "no": "2.1", "activity": "Cleaning Of Electrical Panel & Electrrical Swicth button", "parameter": "The outer surface of the busduct is free of dust, dirt, and debris", "condition": "Good", "remarks": "Bersih dari debu" },
+      { "no": "2.2", "activity": "Clean the door tracks from dust, dirt, and debris using a brush or cloth", "parameter": "The insulation and protective barriers are in good condition", "condition": "Good", "remarks": "Bersih & bebas kotoran" }
+    ]
+  },
+
 };
 
 export function getServiceReportConfigByEmail(email?: string | null): ServiceReportConfigItem | null {
@@ -3397,11 +3347,11 @@ export function getServiceReportConfigByEmail(email?: string | null): ServiceRep
 
 /**
  * Memeriksa apakah suatu akun diizinkan menggunakan fitur Service Report.
- * Sesuai arahan: HANYA akun ats@gmail.com yang diaktifkan untuk Service Report di production/deploy.
+ * Diaktifkan untuk seluruh 23 akun engineer resmi di master registry.
  */
 export function isServiceReportSupported(email?: string | null): boolean {
   if (!email) return false;
   const normalized = email.toLowerCase().trim();
-  return normalized === 'ats@gmail.com';
+  return Boolean(SERVICE_REPORT_MASTER_REGISTRY[normalized]);
 }
 

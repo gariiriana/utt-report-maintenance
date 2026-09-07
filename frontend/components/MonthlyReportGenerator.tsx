@@ -3468,11 +3468,11 @@ export function MonthlyReportGenerator() {
                         </button>
                         <button
                           onClick={() => {
-                            if (window.confirm(`Hapus seluruh SOP kategori "${sow.scope}"?`)) {
+                            if (window.confirm(`Hapus seluruh SOP kategori "${sow.category}"?`)) {
                               const newSow = reportData.scopeOfWorkTable22.filter((_, i) => i !== sIdx);
                               setReportData({ ...reportData, scopeOfWorkTable22: newSow });
                               toast.info('Kategori SOP dihapus.');
-                            }
+                            } 
                           }}
                           className="p-1 hover:text-red-200 transition-colors cursor-pointer"
                           title="Hapus Kategori"

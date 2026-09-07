@@ -31,6 +31,7 @@ import {
 } from '@/config/templates';
 import { generateReportPDF, loadLogoBase64 } from '@/utils/ReportPdfExport';
 import { compressImage, compressBase64Image } from '@/utils/imageCompression';
+import { downloadJsPDFDoc } from '@/utils/pdfDownload';
 import { PreviewReport } from '@/components/PreviewReport';
 import { CameraModal } from '@/components/CameraModal';
 import { draftStorage } from '@/utils/draftStorage';
@@ -551,7 +552,72 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         }))
         : createDefaultCards(11);
 
-      const editSR = editingData.serviceReportPayload || null;
+      let editSR: ServiceReportPayload | null = editingData.serviceReportPayload || null;
+      if (!editSR && (editingData as any).busductCustomerInfo) {
+        const bCust = (editingData as any).busductCustomerInfo;
+        const bRep = (editingData as any).busductReportData;
+        const bTime = (editingData as any).busductTimeSpent;
+        editSR = {
+          equipmentKey: 'busduct',
+          equipmentName: bCust?.equipmentName || 'Panel Busduct',
+          accountEmail: 'busduct@gmail.com',
+          customerInfo: {
+            companyName: bCust?.companyName || 'NeutraDC Cikarang',
+            mopNo: bCust?.mopNo || '',
+            equipmentName: bCust?.equipmentName || 'BUSDUCT',
+            serialNo: bCust?.serialNo || '',
+            quarter: bCust?.quarter || 'Q2',
+            ciDescription: bCust?.ciDescription || '',
+            productName: bCust?.productName || '',
+            location: bCust?.location || '',
+            date: bCust?.date || '',
+            ciName: bCust?.ciName || '',
+            prodYear: bCust?.prodYear || '',
+            area: bCust?.area || '',
+            engineer: bCust?.engineer || '',
+            specification: bCust?.specification || '',
+            type: bCust?.type || ''
+          },
+          visualChecklist: [
+            ...(bRep?.visualInspection || []).map((v: any, idx: number) => ({
+              no: v.no || `${idx + 1}`,
+              activity: v.activity || '',
+              parameter: v.parameter || '',
+              condition: v.isGood ? 'Good' : (v.isNotGood ? 'Not Good' : 'Good'),
+              remarks: v.remarks || ''
+            })),
+            ...(bRep?.cleaning || []).map((c: any, idx: number) => ({
+              no: c.no || `${idx + 1}`,
+              activity: c.activity || '',
+              parameter: c.parameter || '',
+              condition: c.isGood ? 'Good' : (c.isNotGood ? 'Not Good' : 'Good'),
+              remarks: c.remarks || ''
+            }))
+          ],
+          measurements: {
+            thermal_joint_breaker: bRep?.thermal?.breaker || 'Joint Busduct',
+            thermal_joint_temp: bRep?.thermal?.resultTemp || '32.5',
+            thermal_standard: bRep?.thermal?.standard || '<40°C',
+            thermal_remarks: bRep?.thermal?.remarks || 'Suhu normal & aman'
+          },
+          operationStatus: {
+            isNormal: bRep?.analysis?.isNormal !== false,
+            remark: bRep?.analysis?.remark || '',
+            faultSymptom: bRep?.analysis?.faultSymptom || '',
+            faultAnalysis: bRep?.analysis?.faultAnalysis || '',
+            workDone: bRep?.analysis?.workDone || '',
+            faultPartSN: bRep?.analysis?.faultPartSN || '',
+            faultPartName: bRep?.analysis?.faultPartName || ''
+          },
+          timeSpent: {
+            date: bTime?.date || '',
+            departure: bTime?.departure || '08:00',
+            arrival: bTime?.departure || '08:00',
+            start: bTime?.start || '09:00',
+            finish: bTime?.finish || '17:00'
+          }
+        };
+      }
       setServiceReportData(editSR);
 
       const editUnit: ReportUnit = {
@@ -834,6 +900,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
   };
 
   const generatePDFDocument = async (unit: ReportUnit) => {
+
     const isSRSupported = isServiceReportSupported(user?.email);
     const activeSR = isSRSupported ? (unit.serviceReportData || serviceReportData) : null;
     if (activeSR) {
@@ -957,7 +1024,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         photosWithImage,
         hasAbnormal: abnormalStatus === 'abnormal',
         serviceReportPayload: activeSR || null,
-        hasServiceReport: !!activeSR
+        hasServiceReport: !!activeSR || user?.email === 'busduct@gmail.com' || user?.email === 'pump@gmail.com'
       };
 
       if (!editingData) {
@@ -1160,6 +1227,10 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
     }
   };
 
+  const triggerImmediatePDFDownload = (doc: jsPDF, fileName: string) => {
+    downloadJsPDFDoc(doc, fileName);
+  };
+
   const handleExportPDF = async (unit?: ReportUnit) => {
     const targetUnit = unit || activeUnit;
     if (!targetUnit) return toast.error('Unit tidak terpilih');
@@ -1213,14 +1284,15 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
       if (result) {
         const { doc, fileName } = result;
 
+        // Trigger immediate download while user gesture is active
+        triggerImmediatePDFDownload(doc, fileName);
+
         if (isDME) {
-          doc.save(fileName);
           toast.success("Laporan berhasil diekspor!", { id: toastId });
         } else {
           const saveResult = await saveReportToFirestore(targetUnit, result);
           if (saveResult) {
             if (onClearEdit) onClearEdit();
-            doc.save(fileName);
 
             setUnits(prev => {
               const newUnits = prev.map(u => u.id === targetUnit.id ? { ...u, isExported: true } : u);
@@ -1250,7 +1322,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
             toast.success("Laporan berhasil diekspor & disimpan!", { id: toastId });
           } else {
-            toast.error("Gagal menyimpan data ke database. PDF tidak diunduh.", { id: toastId });
+            toast.error("Gagal menyimpan data ke database. PDF telah diunduh tetapi arsip tidak tersimpan.", { id: toastId });
           }
         }
       }
@@ -1319,14 +1391,15 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
         filled: filledCards
       };
 
+      // Trigger immediate download while user gesture is active
+      triggerImmediatePDFDownload(srDoc, srFileName);
+
       if (isDME) {
-        srDoc.save(srFileName);
         toast.success("Service Report berhasil diekspor!", { id: toastId });
       } else {
         const updatedUnit = { ...targetUnit, serviceReportData: effectiveSRPayload };
         const saveResult = await saveReportToFirestore(updatedUnit, pdfResult);
         if (saveResult) {
-          srDoc.save(srFileName);
           if (onClearEdit) {
             onClearEdit();
           }
@@ -1359,7 +1432,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
 
           toast.success("Service Report & Dokumentasi berhasil diekspor dan disimpan ke Arsip!", { id: toastId });
         } else {
-          toast.error("Gagal menyimpan data Service Report ke database. PDF tidak diunduh.", { id: toastId });
+          toast.error("Gagal menyimpan data Service Report ke database. PDF telah diunduh tetapi arsip tidak tersimpan.", { id: toastId });
         }
       }
     } catch (err) {
@@ -1712,7 +1785,7 @@ export function ReportForm({ editingData, onClearEdit }: ReportFormProps) {
                   </div>
                   <div className="relative w-full">
                     <textarea title="Deskripsi Foto" value={card.description} onChange={e => handleDescriptionChange(card.id, e.target.value)} disabled={isDME || translatingCardId === card.id} className="w-full bg-slate-50 border border-slate-200 rounded-lg sm:rounded-xl p-1.5 pr-6 sm:p-3 sm:pr-10 text-[11px] sm:text-sm text-slate-900 font-medium outline-none focus:bg-white focus:border-blue-500 transition placeholder:text-slate-400 disabled:opacity-75 disabled:cursor-not-allowed resize-none leading-snug" rows={2} placeholder="Masukkan deskripsi dokumentasi..." />
-                    {(user?.email === 'ats@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com' || user?.email === 'dockleveler@gmail.com' || user?.email === 'door@gmail.com' || user?.email === 'gate@gmail.com' || user?.email === 'capacitorbank@gmail.com' || user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') && (
+                    {(user?.email === 'ats@gmail.com' || user?.email === 'pju@gmail.com' || user?.email === 'pdu@gmail.com' || user?.email === 'coolingtower@gmail.com' || user?.email === 'generator@gmail.com' || user?.email === 'acsplit@gmail.com' || user?.email === 'trafo@gmail.com' || user?.email === 'busduct@gmail.com' || user?.email === 'pump@gmail.com' || user?.email === 'dockleveler@gmail.com' || user?.email === 'door@gmail.com' || user?.email === 'gate@gmail.com' || user?.email === 'capacitorbank@gmail.com' || user?.email === 'ldbrdb@gmail.com' || user?.email === 'ldb/rdb@gmail.com' || user?.email === 'ldb@gmail.com') && (
                       <button
                         type="button"
                         onClick={() => handleTranslateCardDescription(card.id)}

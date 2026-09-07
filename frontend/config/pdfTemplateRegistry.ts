@@ -84,6 +84,14 @@ export const PDF_TEMPLATE_REGISTRY: Record<string, PDFTemplateConfig> = {
     maintenanceType: 'Busduct',
     description: 'Template PDF Service Report khusus Panel Busduct Neutra DC Cikarang',
   },
+  'pump@gmail.com': {
+    accountEmail: 'pump@gmail.com',
+    templateName: 'Service Report Pump',
+    templateFileName: 'pump@gmail.com.pdf',
+    templatePath: '/templates/pdf_service_reports/pump@gmail.com.pdf',
+    maintenanceType: 'Pump',
+    description: 'Template PDF Service Report khusus Pump Neutra DC Cikarang',
+  },
   'dockleveler@gmail.com': {
     accountEmail: 'dockleveler@gmail.com',
     templateName: 'Service Report Dock Leveler',
