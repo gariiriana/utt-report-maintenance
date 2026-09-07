@@ -3,7 +3,7 @@
 // Deskripsi: Generator Dokumen Microsoft Word (.docx) Resmi untuk Monthly Report.
 //            Mengikuti standar dokumen resmi NeutraDC Cikarang:
 //            - Cover Page (PREVENTIVE MAINTENANCE REPORT Q1- FEBRUARY, HDC Cikarang)
-//            - Lembar Pengesahan 6 Orang (Approval Sheet: Dwi Tasmiyadi, Arif Budiman + TTD, OCS, TDE)
+//            - Lembar Pengesahan 6 Orang (Approval Sheet: Arif Budiman + TTD, Dwi Tasmiyadi, OCS, TDE)
 //            - Table of Contents & List of Tables
 //            - Bab 1 - Bab 13 (Tabel 1 - Tabel 36) dengan styling warna Biru Resmi (#1E64B4 & #92B8DE)
 // ============================================================================
@@ -431,7 +431,7 @@ export async function generateMonthlyReportDOCX(data: FullMonthlyReportData): Pr
       width: { size: 100, type: WidthType.PERCENTAGE },
       borders: borderNone,
       rows: [
-        // Row 1: Prepared by Dwi Tasmiyadi vs Reviewed by Arif Budiman
+        // Row 1: Prepared by Arif Budiman vs Reviewed by Dwi Tasmiyadi
         new TableRow({
           children: [
             new TableCell({
@@ -439,16 +439,6 @@ export async function generateMonthlyReportDOCX(data: FullMonthlyReportData): Pr
               borders: borderNone,
               children: [
                 new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Prepared By", size: 22, bold: true })] }),
-                new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 900, after: 300 }, children: [new TextRun({ text: "", size: 20 })] }),
-                new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.approvalSheet.preparedBy.name, bold: true, size: 22 })] }),
-                new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.approvalSheet.preparedBy.company, size: 20, color: "4B5563" })] }),
-              ]
-            }),
-            new TableCell({
-              width: { size: 50, type: WidthType.PERCENTAGE },
-              borders: borderNone,
-              children: [
-                new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Reviewed By", size: 22, bold: true })] }),
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
                   spacing: { before: 200, after: 200 },
@@ -464,6 +454,16 @@ export async function generateMonthlyReportDOCX(data: FullMonthlyReportData): Pr
                     ])
                   ]
                 }),
+                new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.approvalSheet.preparedBy.name, bold: true, size: 22 })] }),
+                new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.approvalSheet.preparedBy.company, size: 20, color: "4B5563" })] }),
+              ]
+            }),
+            new TableCell({
+              width: { size: 50, type: WidthType.PERCENTAGE },
+              borders: borderNone,
+              children: [
+                new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Reviewed By", size: 22, bold: true })] }),
+                new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 900, after: 300 }, children: [new TextRun({ text: "", size: 20 })] }),
                 new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.approvalSheet.reviewedBy1.name, bold: true, size: 22 })] }),
                 new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.approvalSheet.reviewedBy1.company, size: 20, color: "4B5563" })] }),
               ]
@@ -472,7 +472,7 @@ export async function generateMonthlyReportDOCX(data: FullMonthlyReportData): Pr
         }),
         // Spacing Row
         new TableRow({ children: [new TableCell({ borders: borderNone, children: [new Paragraph({ spacing: { before: 600 } })] }), new TableCell({ borders: borderNone, children: [new Paragraph({ spacing: { before: 600 } })] })] }),
-        // Row 2: Reviewed by Andrean Bima Pratama vs Supriyatno (OCS)
+        // Row 2: Reviewed by Habib Mulyana vs Supriyatno (OCS)
         new TableRow({
           children: [
             new TableCell({

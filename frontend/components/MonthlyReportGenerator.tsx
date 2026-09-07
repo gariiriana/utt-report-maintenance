@@ -1,17 +1,16 @@
 // ============================================================================
 // FILE: frontend/components/MonthlyReportGenerator.tsx
-// Deskripsi: 1-Click Monthly Report Generator & Interactive Web Editor dengan AI Copilot.
+// Deskripsi: 1-Click Monthly Report Generator & Interactive Web Editor.
 //            Format Dokumen Mengikuti 100% Persis Standar Asli NeutraDC Cikarang:
 //            - Cover Page (PREVENTIVE MAINTENANCE REPORT Q1– FEBRUARY / Q3– JULY)
-//            - 6-Person Approval Sheet (Dwi Tasmiyadi, Arif Budiman + TTD, OCS, TDE)
+//            - 6-Person Approval Sheet (Arif Budiman + TTD, Dwi Tasmiyadi, OCS, TDE)
 //            - Table of Contents & List of Tables
 //            - Bab 1 - Bab 13 (Tabel 1 - Tabel 36) dengan Deep Blue Header (#0066B3)
 //            - Seluruh sel tabel & narasi inline-editable secara interaktif di web
-//            - Fitur AI Copilot Asisten (Voice Note & Chat Dialog)
 //            - Fitur Ekspor ke Word (.docx) 100% Presisi & Cetak PDF Resmi
 // ============================================================================
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FileText,
   Printer,
@@ -27,23 +26,16 @@ import {
   Package,
   Cpu,
   Download,
-  Mic,
-  MicOff,
-  Send,
-  Bot,
-  User as UserIcon,
   Plus,
   Trash2,
   CheckCircle2,
   RotateCcw,
-  Minus,
-  Maximize2,
   X,
   Upload,
   Globe
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from './AuthContext';
+
 import {
   aggregateMonthlyReportData,
   FullMonthlyReportData,
@@ -57,8 +49,6 @@ import {
   generateRecommendationsFromFindings,
   generateTestingAndValidation,
   generateChallengesAndMitigations,
-  executeReportCommandWithAI,
-  askReportCopilot,
   convertReportToBilingualWithAI
 } from '@/utils/monthlyReportAI';
 import { ARIF_BUDIMAN_SIGNATURE_BASE64 } from '@/utils/engineerSignatures';
@@ -255,8 +245,6 @@ export const BilingualBulletsEditor: React.FC<{
 };
 
 export function MonthlyReportGenerator() {
-  const { user } = useAuth();
-
   // State Pilihan Bulan & Tahun (Default: Juli 2026 sesuai file acuan)
   const [selectedMonth, setSelectedMonth] = useState<number>(7);
   const [selectedYear, setSelectedYear] = useState<number>(2026);
@@ -268,28 +256,28 @@ export function MonthlyReportGenerator() {
   const [activeChapter, setActiveChapter] = useState<number>(0); // 0 = Semua / Cover
   const [isSavedLocally, setIsSavedLocally] = useState(false);
 
-  // State AI Copilot Floating Widget
-  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
-  const [isCopilotMinimized, setIsCopilotMinimized] = useState(false);
-  const [copilotTab, setCopilotTab] = useState<'voice' | 'chat'>('voice');
-  const [isListening, setIsListening] = useState(false);
-  const [voiceTranscript, setVoiceTranscript] = useState('');
-  const [chatInput, setChatInput] = useState('');
-  const [isChatLoading, setIsChatLoading] = useState(false);
-  const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; text: string }>>([
-    {
-      role: 'assistant',
-      text: 'Halo Bro! Saya AI Report Copilot PT Dwimitra Ekatama Mandiri. Ada yang bisa saya bantu untuk menyempurnakan Monthly Report ini? Anda bisa bicara via suara atau ketik instruksi di sini.'
-    }
-  ]);
 
-  // Speech Recognition Reference
-  const recognitionRef = useRef<any>(null);
+  // Handler Perubahan Periode Bulan & Tahun (Langsung bersihkan stale reportData agar tidak stuck)
+  const handleMonthChange = (newMonth: number) => {
+    if (newMonth === selectedMonth) return;
+    setReportData(null);
+    setSelectedMonth(newMonth);
+  };
+
+  const handleYearChange = (newYear: number) => {
+    if (newYear === selectedYear) return;
+    setReportData(null);
+    setSelectedYear(newYear);
+  };
 
   // Load Laporan dari Database / Cache
-  const handleGenerateReport = async (forceFresh = false) => {
+  const handleGenerateReport = async (
+    forceFresh = false,
+    targetMonth = selectedMonth,
+    targetYear = selectedYear
+  ) => {
     setGenerating(true);
-    const storageKey = `dwimitra_monthly_report_${selectedYear}_${selectedMonth}`;
+    const storageKey = `dwimitra_monthly_report_${targetYear}_${targetMonth}`;
 
     // Cek cache lokal kecuali jika di-force fresh
     if (!forceFresh) {
@@ -298,85 +286,104 @@ export function MonthlyReportGenerator() {
         if (cached) {
           const parsed = JSON.parse(cached);
 
-          // 1. Normalisasi LPS -> Lightning Protection System pada scheduleTable1 & purge unmapped
-          if (Array.isArray(parsed.scheduleTable1)) {
-            parsed.scheduleTable1 = parsed.scheduleTable1.filter((s: any) => 
-              !s.plan?.toLowerCase().includes('ad-hoc') && !s.plan?.toLowerCase().includes('corrective')
-            );
-            parsed.scheduleTable1.forEach((s: any) => {
-              if (s.device?.toUpperCase() === 'LPS' || s.device?.toLowerCase() === 'lightning protection') {
-                s.device = 'Lightning Protection System';
-              }
-            });
-            // Hapus duplikasi jika ada 2 item device yang sama di scheduleTable1
-            const seenDevices = new Set<string>();
-            parsed.scheduleTable1 = parsed.scheduleTable1.filter((s: any) => {
-              if (seenDevices.has(s.device)) return false;
-              seenDevices.add(s.device);
-              return true;
-            });
-            parsed.scheduleTable1.forEach((s: any, idx: number) => { s.no = idx + 1; });
-          }
-
-          // 2. Normalisasi LPS -> Lightning Protection System pada taskPerformanceTables
-          if (Array.isArray(parsed.taskPerformanceTables)) {
-            parsed.taskPerformanceTables.forEach((t: any) => {
-              if (t.scope?.toUpperCase() === 'LPS' || t.scope?.toLowerCase() === 'lightning protection') {
-                t.scope = 'Lightning Protection System';
-                t.title = `Table ${t.tableNo}. Total Task Performance Lightning Protection System`;
-              }
-            });
-            // Hapus duplikasi tabel jika ada 2 tabel Lightning Protection System
-            const seenScopes = new Set<string>();
-            parsed.taskPerformanceTables = parsed.taskPerformanceTables.filter((t: any) => {
-              if (seenScopes.has(t.scope)) return false;
-              seenScopes.add(t.scope);
-              return true;
-            });
-            // Filter hanya tabel yang equipment-nya memang ada di scheduleTable1
-            const validSchedScopes = new Set((parsed.scheduleTable1 || []).map((s: any) => s.device));
-            if (validSchedScopes.size > 0) {
-              parsed.taskPerformanceTables = parsed.taskPerformanceTables.filter((t: any) => validSchedScopes.has(t.scope));
+          // CRITICAL VALIDATION: Pastikan cache yang dibaca benar-benar milik targetMonth & targetYear!
+          if (!parsed || parsed.monthNumber !== targetMonth || parsed.year !== targetYear) {
+            console.warn(`[MonthlyReport] Cache mismatch / corrupted: target ${targetMonth}/${targetYear}, found ${parsed?.monthNumber}/${parsed?.year}. Membersihkan cache...`);
+            localStorage.removeItem(storageKey);
+          } else {
+            // 1. Normalisasi LPS -> Lightning Protection System pada scheduleTable1 & purge unmapped
+            if (Array.isArray(parsed.scheduleTable1)) {
+              parsed.scheduleTable1 = parsed.scheduleTable1.filter((s: any) => 
+                !s.plan?.toLowerCase().includes('ad-hoc') && !s.plan?.toLowerCase().includes('corrective')
+              );
+              parsed.scheduleTable1.forEach((s: any) => {
+                if (s.device?.toUpperCase() === 'LPS' || s.device?.toLowerCase() === 'lightning protection') {
+                  s.device = 'Lightning Protection System';
+                }
+              });
+              // Hapus duplikasi jika ada 2 item device yang sama di scheduleTable1
+              const seenDevices = new Set<string>();
+              parsed.scheduleTable1 = parsed.scheduleTable1.filter((s: any) => {
+                if (seenDevices.has(s.device)) return false;
+                seenDevices.add(s.device);
+                return true;
+              });
+              parsed.scheduleTable1.forEach((s: any, idx: number) => { s.no = idx + 1; });
             }
-            // Re-index nomor tabel (Tabel 2, 3, ...)
-            let tableNum = 2;
-            parsed.taskPerformanceTables.forEach((t: any) => {
-              t.tableNo = tableNum;
-              t.title = `Table ${tableNum}. Total Task Performance ${t.scope}`;
-              tableNum++;
-            });
-          }
 
-          // 3. Sinkronisasi Dinamis Bab 6 Scope of Work (Tabel 22):
-          // Jika data cache masih format lama/dummy atau belum versi detail SR terbaru, perbarui otomatis!
-          const schedScopes: string[] = (parsed.scheduleTable1 || []).map((s: any) => s.device);
-          if (
-            !Array.isArray(parsed.scopeOfWorkTable22) ||
-            parsed.scopeOfWorkTable22.length !== schedScopes.length ||
-            parsed._sowDetailedVersion !== 3 ||
-            parsed.scopeOfWorkTable22.some((c: any) => 
-              c.items?.some((it: any) => it.tasks?.some((t: string) => !t.includes('\n'))) ||
-              c.category?.includes('BARU') || 
-              c.category?.includes('DUMMY') || 
-              c.category === 'CHILLER & HVAC SYSTEM' ||
-              c.category === 'CHILLER & PRIMARY COOLING SYSTEM' && schedScopes.length > 1 && parsed.scopeOfWorkTable22.length === 1
-            )
-          ) {
-            parsed.scopeOfWorkTable22 = schedScopes.map((scope: string) => getScopeOfWorkForScope(scope));
-            parsed._sowDetailedVersion = 3;
-          }
+            // 2. Normalisasi LPS -> Lightning Protection System pada taskPerformanceTables
+            if (Array.isArray(parsed.taskPerformanceTables)) {
+              parsed.taskPerformanceTables.forEach((t: any) => {
+                if (t.scope?.toUpperCase() === 'LPS' || t.scope?.toLowerCase() === 'lightning protection') {
+                  t.scope = 'Lightning Protection System';
+                  t.title = `Table ${t.tableNo}. Total Task Performance Lightning Protection System`;
+                }
+              });
+              // Hapus duplikasi tabel jika ada 2 tabel Lightning Protection System
+              const seenScopes = new Set<string>();
+              parsed.taskPerformanceTables = parsed.taskPerformanceTables.filter((t: any) => {
+                if (seenScopes.has(t.scope)) return false;
+                seenScopes.add(t.scope);
+                return true;
+              });
+              // Filter hanya tabel yang equipment-nya memang ada di scheduleTable1
+              const validSchedScopes = new Set((parsed.scheduleTable1 || []).map((s: any) => s.device));
+              if (validSchedScopes.size > 0) {
+                parsed.taskPerformanceTables = parsed.taskPerformanceTables.filter((t: any) => validSchedScopes.has(t.scope));
+              }
+              // Re-index nomor tabel (Tabel 2, 3, ...)
+              let tableNum = 2;
+              parsed.taskPerformanceTables.forEach((t: any) => {
+                t.tableNo = tableNum;
+                t.title = `Table ${tableNum}. Total Task Performance ${t.scope}`;
+                tableNum++;
+              });
+            }
 
-          setReportData(parsed);
-          setIsSavedLocally(true);
-          setGenerating(false);
-          // Simpan kembali cache yang sudah dibersihkan dan disinkronkan
-          try {
-            localStorage.setItem(storageKey, JSON.stringify(parsed));
-          } catch (errCache) {
-            console.warn('Gagal memperbarui cache tersanitasi:', errCache);
+            // 3. Sinkronisasi Dinamis Bab 6 Scope of Work (Tabel 22):
+            // Jika data cache masih format lama/dummy atau belum versi detail SR terbaru, perbarui otomatis!
+            const schedScopes: string[] = (parsed.scheduleTable1 || []).map((s: any) => s.device);
+            if (
+              !Array.isArray(parsed.scopeOfWorkTable22) ||
+              parsed.scopeOfWorkTable22.length !== schedScopes.length ||
+              parsed._sowDetailedVersion !== 3 ||
+              parsed.scopeOfWorkTable22.some((c: any) => 
+                c.items?.some((it: any) => it.tasks?.some((t: string) => !t.includes('\n'))) ||
+                c.category?.includes('BARU') || 
+                c.category?.includes('DUMMY') || 
+                c.category === 'CHILLER & HVAC SYSTEM' ||
+                c.category === 'CHILLER & PRIMARY COOLING SYSTEM' && schedScopes.length > 1 && parsed.scopeOfWorkTable22.length === 1
+              )
+            ) {
+              parsed.scopeOfWorkTable22 = schedScopes.map((scope: string) => getScopeOfWorkForScope(scope));
+              parsed._sowDetailedVersion = 3;
+            }
+
+            // 4. Normalisasi signer reviewedBy2 OCS -> Habib Mulyana
+            if (parsed.approvalSheet?.reviewedBy2?.name === 'Andrean Bima Pratama') {
+              parsed.approvalSheet.reviewedBy2.name = 'Habib Mulyana';
+            }
+
+            // 5. Normalisasi signer Row 1: Prepared by Arif Budiman & Reviewed by Dwi Tasmiyadi
+            if (parsed.approvalSheet) {
+              if (parsed.approvalSheet.preparedBy?.name === 'Dwi Tasmiyadi' && parsed.approvalSheet.reviewedBy1?.name === 'Arif Budiman') {
+                parsed.approvalSheet.preparedBy.name = 'Arif Budiman';
+                parsed.approvalSheet.reviewedBy1.name = 'Dwi Tasmiyadi';
+              }
+            }
+
+            setReportData(parsed);
+            setIsSavedLocally(true);
+            setGenerating(false);
+            // Simpan kembali cache yang sudah dibersihkan dan disinkronkan
+            try {
+              localStorage.setItem(storageKey, JSON.stringify(parsed));
+            } catch (errCache) {
+              console.warn('Gagal memperbarui cache tersanitasi:', errCache);
+            }
+            toast.info(`Draft ${parsed.monthName} ${parsed.year} tersinkronisasi dan dimuat!`);
+            return;
           }
-          toast.info(`Draft ${parsed.monthName} ${parsed.year} tersinkronisasi dan dimuat!`);
-          return;
         }
       } catch (e) {
         console.warn('Gagal membaca cache lokal:', e);
@@ -385,9 +392,9 @@ export function MonthlyReportGenerator() {
 
     try {
       const data = await aggregateMonthlyReportData({
-        month: selectedMonth,
-        year: selectedYear,
-        preparedBy: user?.displayName || 'Dwi Tasmiyadi',
+        month: targetMonth,
+        year: targetYear,
+        preparedBy: 'Arif Budiman',
         contractNumber: 'K.TDE.0105/LEG.PRJ/VI/2026'
       });
       setReportData(data);
@@ -404,12 +411,16 @@ export function MonthlyReportGenerator() {
 
   // Generate on initial mount or when month/year changes
   useEffect(() => {
-    handleGenerateReport(false);
+    handleGenerateReport(false, selectedMonth, selectedYear);
   }, [selectedMonth, selectedYear]);
 
   // Auto-save debounced to localStorage when reportData changes
   useEffect(() => {
     if (!reportData) return;
+    // CRITICAL GUARD: Hanya simpan jika data laporan cocok dengan bulan & tahun yang aktif!
+    if (reportData.monthNumber !== selectedMonth || reportData.year !== selectedYear) {
+      return;
+    }
     const storageKey = `dwimitra_monthly_report_${selectedYear}_${selectedMonth}`;
     const timeout = setTimeout(() => {
       try {
@@ -422,120 +433,7 @@ export function MonthlyReportGenerator() {
     return () => clearTimeout(timeout);
   }, [reportData, selectedMonth, selectedYear]);
 
-  // Setup Web Speech Recognition
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'id-ID';
 
-        recognition.onresult = (event: any) => {
-          let current = '';
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            current += event.results[i][0].transcript;
-          }
-          setVoiceTranscript(current);
-        };
-
-        recognition.onerror = (event: any) => {
-          console.error('Speech recognition error:', event.error);
-          setIsListening(false);
-        };
-
-        recognition.onend = () => {
-          setIsListening(false);
-        };
-
-        recognitionRef.current = recognition;
-      }
-    }
-  }, []);
-
-  const toggleListening = () => {
-    if (!recognitionRef.current) {
-      toast.error('Browser ini belum mendukung Speech Recognition. Silakan gunakan tab Chat.');
-      return;
-    }
-
-    if (isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    } else {
-      setVoiceTranscript('');
-      try {
-        recognitionRef.current.start();
-        setIsListening(true);
-        toast.info('Mendengarkan... Silakan bicara instruksi Anda.');
-      } catch (err) {
-        console.error('Start recognition error:', err);
-      }
-    }
-  };
-
-  // Execute Voice or Text Command onto Report Data
-  const handleApplyVoiceCommand = async (commandOverride?: string) => {
-    const textToExecute = (commandOverride || voiceTranscript).trim();
-    if (!textToExecute || !reportData) {
-      toast.error('Belum ada ucapan atau instruksi yang terdeteksi.');
-      return;
-    }
-
-    const toastId = toast.loading('Memproses instruksi ke laporan...');
-    try {
-      const res = await executeReportCommandWithAI(textToExecute, reportData);
-      toast.dismiss(toastId);
-      if (res.updatedData && res.success) {
-        setReportData(res.updatedData);
-        toast.success(res.message, { duration: 5000 });
-      } else {
-        toast.info(res.message, { duration: 6000 });
-      }
-    } catch (err: any) {
-      toast.dismiss(toastId);
-      toast.error('Gagal mengeksekusi instruksi: ' + err.message);
-    }
-    if (!commandOverride) {
-      setVoiceTranscript('');
-    }
-  };
-
-  // Send Chat to Copilot (handles BOTH chat dialogue AND document modifications)
-  const handleSendChat = async (presetPrompt?: string) => {
-    const textToSend = presetPrompt || chatInput;
-    if (!textToSend.trim() || !reportData) return;
-
-    setChatMessages(prev => [...prev, { role: 'user', text: textToSend }]);
-    if (!presetPrompt) setChatInput('');
-    setIsChatLoading(true);
-
-    try {
-      // 1. Cek apakah pesan user berisi instruksi pengisian, penghapusan, atau perubahan data
-      const actionRes = await executeReportCommandWithAI(textToSend, reportData);
-      if (actionRes.success && actionRes.updatedData) {
-        setReportData(actionRes.updatedData);
-        toast.success(actionRes.message);
-        setChatMessages(prev => [
-          ...prev,
-          {
-            role: 'assistant',
-            text: `⚡ **Instruksi Berhasil Diterapkan ke Dokumen!**\n\n${actionRes.message}\n\nTabel di layar sudah langsung diperbarui. Ada instruksi lain yang mau dieksekusi, Bro?`
-          }
-        ]);
-        return;
-      }
-
-      // 2. Jika bukan perintah perubahan data, jawab sebagai asisten teknis percakapan
-      const reply = await askReportCopilot(textToSend, reportData);
-      setChatMessages(prev => [...prev, { role: 'assistant', text: reply }]);
-    } catch (err: any) {
-      setChatMessages(prev => [...prev, { role: 'assistant', text: `Maaf, terjadi kendala saat memproses: ${err.message}` }]);
-    } finally {
-      setIsChatLoading(false);
-    }
-  };
 
   // Quick Action AI Triggers
   const handleAIRecs = () => {
@@ -590,8 +488,16 @@ export function MonthlyReportGenerator() {
 
   // Reset Draft to Fresh Database Aggregation
   const handleResetToDefault = () => {
-    if (confirm('Yakin ingin mereset perubahan dan menarik ulang data default dari database?')) {
-      handleGenerateReport(true);
+    const currentMonthLabel = MONTH_OPTIONS.find(m => m.value === selectedMonth)?.label || `Bulan ${selectedMonth}`;
+    if (confirm(`Yakin ingin mereset perubahan dan menarik ulang data default ${currentMonthLabel} ${selectedYear} dari database?`)) {
+      const storageKey = `dwimitra_monthly_report_${selectedYear}_${selectedMonth}`;
+      try {
+        localStorage.removeItem(storageKey);
+      } catch (e) {
+        console.warn('Gagal menghapus cache saat reset:', e);
+      }
+      setReportData(null);
+      handleGenerateReport(true, selectedMonth, selectedYear);
     }
   };
 
@@ -684,14 +590,14 @@ export function MonthlyReportGenerator() {
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold mb-2.5">
               <Sparkles className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
-              <span>Interactive Monthly Report Engine & AI Copilot (Format Standar NeutraDC Cikarang)</span>
+              <span>Interactive Monthly Report Engine (Format Standar NeutraDC Cikarang)</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
               Laporan Bulanan Maintenance (Monthly Report)
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl leading-relaxed">
               Format halaman cetak resmi, tabel Deep Blue (#0066B3), lembar pengesahan 6 signer, dan seluruh tabel
-              dapat langsung diedit di web serta dibantu asisten AI Copilot (Voice & Chat).
+              dapat langsung diedit di web.
             </p>
           </div>
 
@@ -703,7 +609,7 @@ export function MonthlyReportGenerator() {
             </div>
             <select
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+              onChange={(e) => handleMonthChange(Number(e.target.value))}
               className="bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-xs"
             >
               {MONTH_OPTIONS.map(m => (
@@ -715,7 +621,7 @@ export function MonthlyReportGenerator() {
 
             <select
               value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              onChange={(e) => handleYearChange(Number(e.target.value))}
               className="bg-white text-slate-800 text-xs font-bold px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer shadow-xs"
             >
               {[2025, 2026, 2027, 2028].map(y => (
@@ -757,15 +663,6 @@ export function MonthlyReportGenerator() {
               <span>{isTranslatingBilingual ? 'AI Menerjemahkan...' : 'Format Bilingual (EN + ID)'}</span>
             </button>
 
-            {/* AI Copilot Toggle Button */}
-            <button
-              onClick={() => setIsCopilotOpen(true)}
-              className="flex items-center gap-2 px-3.5 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-sm shadow-indigo-500/20 transition-all cursor-pointer active:scale-95"
-              title="Buka AI Report Copilot (Voice & Chat)"
-            >
-              <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
-              <span>AI Copilot</span>
-            </button>
           </div>
 
           {/* Export & Output Actions */}
@@ -971,7 +868,7 @@ export function MonthlyReportGenerator() {
 
               {/* 6-Signer Grid: 2 Columns x 3 Rows */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-10 max-w-4xl mx-auto text-center font-serif">
-                {/* Row 1: Prepared by Dwi Tasmiyadi vs Reviewed by Arif Budiman */}
+                {/* Row 1: Prepared by Arif Budiman vs Reviewed by Dwi Tasmiyadi */}
                 <div className="space-y-1">
                   <textarea
                     rows={reportData.approvalSheet.preparedBy.title?.includes('\n') ? 2 : 1}
@@ -984,7 +881,7 @@ export function MonthlyReportGenerator() {
                     className="text-xs font-bold text-slate-600 text-center w-full bg-transparent hover:bg-slate-50 focus:bg-white rounded outline-none p-0.5 resize-none leading-tight font-serif"
                   />
                   <div className="h-20 flex items-center justify-center">
-                    <span className="text-xs italic text-slate-400">[ Signed ]</span>
+                    <img src={ARIF_BUDIMAN_SIGNATURE_BASE64} alt="TTD Arif Budiman" className="h-16 object-contain" />
                   </div>
                   <input
                     type="text"
@@ -1020,7 +917,7 @@ export function MonthlyReportGenerator() {
                     className="text-xs font-bold text-slate-600 text-center w-full bg-transparent hover:bg-slate-50 focus:bg-white rounded outline-none p-0.5 resize-none leading-tight font-serif"
                   />
                   <div className="h-20 flex items-center justify-center">
-                    <img src={ARIF_BUDIMAN_SIGNATURE_BASE64} alt="TTD Arif Budiman" className="h-16 object-contain" />
+                    <span className="text-xs italic text-slate-400">[ Signed ]</span>
                   </div>
                   <input
                     type="text"
@@ -1044,7 +941,7 @@ export function MonthlyReportGenerator() {
                   />
                 </div>
 
-                {/* Row 2: Reviewed by Andrean Bima Pratama vs Supriyatno (OCS) */}
+                {/* Row 2: Reviewed by Habib Mulyana vs Supriyatno (OCS) */}
                 <div className="space-y-1 pt-6">
                   <textarea
                     rows={reportData.approvalSheet.reviewedBy2.title?.includes('\n') ? 2 : 1}
@@ -4863,361 +4760,7 @@ export function MonthlyReportGenerator() {
         </div>
       )}
 
-      {/* ─── AI Copilot Floating Action Button (Pojok Kanan Bawah) ─────────────── */}
-      {!isCopilotOpen && (
-        <div className="fixed bottom-6 right-6 z-40 print:hidden">
-          <button
-            onClick={() => {
-              setIsCopilotOpen(true);
-              setIsCopilotMinimized(false);
-            }}
-            className="flex items-center gap-3 px-5 py-3.5 bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white rounded-full shadow-2xl shadow-indigo-500/40 hover:scale-105 active:scale-95 transition-all cursor-pointer border border-white/20"
-          >
-            <div className="relative">
-              <Bot className="w-5 h-5 text-white" />
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full animate-ping" />
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full" />
-            </div>
-            <div className="text-left">
-              <span className="block text-xs font-black tracking-wider uppercase">AI Report Copilot</span>
-              <span className="block text-[10px] text-indigo-200 font-medium">Voice Note & Chat</span>
-            </div>
-          </button>
-        </div>
-      )}
 
-      {/* ─── Non-blocking Floating AI Copilot Widget (NO Backdrop, Fully Visible Document) ─── */}
-      {isCopilotOpen && (
-        <div className="fixed bottom-6 right-6 z-50 print:hidden transition-all duration-300 pointer-events-auto">
-          {isCopilotMinimized ? (
-            /* ─── Minimized Compact Voice Pill / Bar ─── */
-            <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-900/95 text-white backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 w-80 sm:w-96 animate-in fade-in slide-in-from-bottom-2">
-              <button
-                onClick={toggleListening}
-                className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 shadow-md transition-all cursor-pointer ${
-                  isListening ? 'bg-red-600 text-white animate-pulse ring-4 ring-red-400/30' : 'bg-indigo-600 hover:bg-indigo-500 text-white'
-                }`}
-                title={isListening ? 'Stop Mic' : 'Mulai Bicara'}
-              >
-                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-              </button>
-
-              <div className="flex-1 min-w-0 text-left">
-                <span className="block text-[10px] font-bold text-indigo-300 uppercase tracking-wider">
-                  {isListening ? 'Mendengarkan...' : 'Voice Note Aktif'}
-                </span>
-                <p className="text-xs text-slate-200 truncate">
-                  {voiceTranscript || 'Tekan mic lalu bicara...'}
-                </p>
-              </div>
-
-              {voiceTranscript && (
-                <button
-                  onClick={() => handleApplyVoiceCommand()}
-                  className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-[10px] font-bold transition-all cursor-pointer shrink-0"
-                  title="Terapkan ke Laporan"
-                >
-                  ⚡ Terapkan
-                </button>
-              )}
-
-              <div className="flex items-center gap-1 border-l border-white/10 pl-2">
-                <button
-                  onClick={() => setIsCopilotMinimized(false)}
-                  className="p-1 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                  title="Perbesar Panel"
-                >
-                  <Maximize2 className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setIsCopilotOpen(false)}
-                  className="p-1 rounded-lg hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                  title="Tutup Copilot"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* ─── Expanded Floating Card (Non-blocking: sits in bottom-right corner) ─── */
-            <div className="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-200/90 w-[380px] sm:w-[420px] max-w-[calc(100vw-2rem)] h-[520px] max-h-[75vh] flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200">
-              {/* Card Header */}
-              <div className="px-4 py-3 bg-gradient-to-r from-indigo-900 via-blue-900 to-slate-900 text-white flex items-center justify-between shadow-xs">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center border border-white/20">
-                    <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-xs text-white">AI Report Copilot</h3>
-                    <p className="text-[10px] text-indigo-200">Bicara sambil melihat tabel dokumen</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setIsCopilotMinimized(true)}
-                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-                    title="Minimize ke Voice Bar"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => setIsCopilotOpen(false)}
-                    className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-                    title="Tutup Copilot"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Tab Selector */}
-              <div className="flex border-b border-slate-200 bg-slate-50/80 p-1.5 gap-1.5">
-                <button
-                  onClick={() => setCopilotTab('voice')}
-                  className={`flex-1 py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                    copilotTab === 'voice'
-                      ? 'bg-white text-indigo-600 shadow-xs border border-slate-200'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Mic className="w-3.5 h-3.5" />
-                  <span>Voice Note</span>
-                </button>
-                <button
-                  onClick={() => setCopilotTab('chat')}
-                  className={`flex-1 py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                    copilotTab === 'chat'
-                      ? 'bg-white text-indigo-600 shadow-xs border border-slate-200'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Bot className="w-3.5 h-3.5" />
-                  <span>Chat Asisten</span>
-                </button>
-              </div>
-
-              {/* Body */}
-              <div className="flex-1 overflow-y-auto p-4">
-                {copilotTab === 'voice' ? (
-                  /* ─── TAB VOICE NOTE ─── */
-                  <div className="h-full flex flex-col items-center justify-between text-center">
-                    <div>
-                      <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest block mb-0.5">
-                        Kontrol Suara Interaktif
-                      </span>
-                      <h4 className="text-sm font-black text-slate-900">Bicara Sambil Lihat Tabel Dokumen</h4>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Tabel di belakang tetap bisa dibaca & di-scroll bebas.
-                      </p>
-                    </div>
-
-                    {/* Mic Button */}
-                    <div className="my-2.5 relative flex items-center justify-center">
-                      {isListening && (
-                        <div className="absolute w-24 h-24 rounded-full bg-red-400/20 animate-ping" />
-                      )}
-                      <button
-                        onClick={toggleListening}
-                        className={`w-18 h-18 rounded-full flex items-center justify-center shadow-xl transition-all cursor-pointer ${
-                          isListening
-                            ? 'bg-red-600 hover:bg-red-500 text-white ring-8 ring-red-100 scale-105'
-                            : 'bg-indigo-600 hover:bg-indigo-500 text-white ring-8 ring-indigo-50 hover:scale-105'
-                        }`}
-                      >
-                        {isListening ? (
-                          <MicOff className="w-7 h-7 animate-pulse" />
-                        ) : (
-                          <Mic className="w-7 h-7" />
-                        )}
-                      </button>
-                    </div>
-
-                    {/* Status & Live Transcript */}
-                    <div className="w-full space-y-2">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                        isListening ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-slate-100 text-slate-600'
-                      }`}>
-                        <span className={`w-2 h-2 rounded-full ${isListening ? 'bg-red-500 animate-pulse' : 'bg-slate-400'}`} />
-                        <span>{isListening ? 'Mendengarkan ucapan Anda...' : 'Tekan mic untuk mulai bicara'}</span>
-                      </span>
-
-                      {/* Editable Transcript & Apply Button */}
-                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-left flex flex-col justify-between focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent transition-all">
-                        <div className="flex items-center justify-between pb-1 mb-1 border-b border-slate-200/60 text-[10px] text-slate-400 font-medium">
-                          <span>Instruksi Suara / Teks:</span>
-                          {voiceTranscript && (
-                            <button
-                              onClick={() => setVoiceTranscript('')}
-                              className="text-red-500 hover:text-red-700 hover:underline cursor-pointer"
-                              title="Hapus teks"
-                            >
-                              Hapus Teks
-                            </button>
-                          )}
-                        </div>
-                        <textarea
-                          value={voiceTranscript}
-                          onChange={(e) => setVoiceTranscript(e.target.value)}
-                          placeholder="Bicara atau ketik perintah di sini (misal: 'Hapus baris Chiller', 'Isi semua status Completed', 'Kosongkan semua status')..."
-                          rows={2}
-                          className="w-full text-xs text-slate-800 bg-transparent outline-none resize-none placeholder:text-slate-400 placeholder:italic"
-                        />
-                        {voiceTranscript.trim() && (
-                          <button
-                            onClick={() => handleApplyVoiceCommand()}
-                            className="mt-2 w-full py-1.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-lg text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-98"
-                          >
-                            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                            <span>⚡ Terapkan Perintah ke Laporan</span>
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Interactive Quick Action Chips for Instant Fill & Delete */}
-                      <div className="text-left space-y-1.5 pt-0.5">
-                        <div className="flex items-center justify-between text-[10px] font-bold text-slate-500">
-                          <span>⚡ Aksi Cepat (1-Klik Terapkan):</span>
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          <button
-                            onClick={() => handleApplyVoiceCommand('hapus baris terakhir')}
-                            className="text-[10px] font-semibold px-2 py-1 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
-                            title="Hapus baris paling bawah di Tabel 1"
-                          >
-                            <Trash2 className="w-2.5 h-2.5" /> Hapus Baris Terakhir
-                          </button>
-                          <button
-                            onClick={() => handleApplyVoiceCommand('kosongkan semua status')}
-                            className="text-[10px] font-semibold px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg transition-colors cursor-pointer"
-                            title="Kosongkan seluruh kolom status"
-                          >
-                            🧹 Kosongkan Status
-                          </button>
-                          <button
-                            onClick={() => handleApplyVoiceCommand('isi semua status completed')}
-                            className="text-[10px] font-semibold px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
-                            title="Isi seluruh status jadwal jadi Completed"
-                          >
-                            <CheckCircle2 className="w-2.5 h-2.5" /> Set Semua Completed
-                          </button>
-                          <button
-                            onClick={() => handleApplyVoiceCommand('set semua status on schedule')}
-                            className="text-[10px] font-semibold px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg transition-colors cursor-pointer"
-                            title="Isi status jadwal jadi On Schedule"
-                          >
-                            📅 Set On Schedule
-                          </button>
-                          <button
-                            onClick={() => handleApplyVoiceCommand('samakan actual dengan plan')}
-                            className="text-[10px] font-semibold px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg transition-colors cursor-pointer"
-                            title="Salin tanggal Plan ke kolom Actual"
-                          >
-                            🔄 Actual = Plan
-                          </button>
-                          <button
-                            onClick={() => handleApplyVoiceCommand('isi rekomendasi bab 11')}
-                            className="text-[10px] font-semibold px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg transition-colors cursor-pointer"
-                            title="Susun rekomendasi teknis dari temuan"
-                          >
-                            💡 Rekomendasi Bab 11
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Helpful command examples */}
-                      <div className="text-left bg-indigo-50/60 p-2 rounded-xl border border-indigo-100 text-[10px] text-slate-600 space-y-0.5">
-                        <span className="font-bold text-indigo-900 block">Bisa sebutkan atau ketik perintah:</span>
-                        <p>🎙️ <em>"Hapus baris Chiller"</em> atau <em>"Hapus baris 2"</em></p>
-                        <p>🎙️ <em>"Isi status Generator Completed tanggal 20-22 Agustus"</em></p>
-                        <p>🎙️ <em>"Tambah baris jadwal Pompa Transfer"</em></p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* ─── TAB CHAT ASISTEN ─── */
-                  <div className="h-full flex flex-col justify-between">
-                    <div className="flex flex-wrap gap-1 pb-2 border-b border-slate-100 mb-2">
-                      <button
-                        onClick={() => handleSendChat('Tolong susunkan ringkasan rekomendasi Bab 11 berdasarkan anomali di Bab 7')}
-                        className="text-[9px] font-bold px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-md hover:bg-indigo-100 transition-colors"
-                      >
-                        💡 Rekomendasi Bab 11
-                      </button>
-                      <button
-                        onClick={() => handleSendChat('Jelaskan tantangan operasional dan mitigasi pemeliharaan live data center bulan ini')}
-                        className="text-[9px] font-bold px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-md hover:bg-indigo-100 transition-colors"
-                      >
-                        ⚡ Tantangan Bab 10
-                      </button>
-                      <button
-                        onClick={() => handleSendChat('Bagaimana metode validasi pengujian untuk sistem Hydrant dan Fuel Leak?')}
-                        className="text-[9px] font-bold px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-md hover:bg-indigo-100 transition-colors"
-                      >
-                        📋 Validasi Bab 9
-                      </button>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 text-xs">
-                      {chatMessages.map((msg, mIdx) => (
-                        <div
-                          key={mIdx}
-                          className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                        >
-                          {msg.role === 'assistant' && (
-                            <div className="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
-                              <Bot className="w-3.5 h-3.5" />
-                            </div>
-                          )}
-                          <div
-                            className={`p-2.5 rounded-2xl max-w-[85%] leading-relaxed whitespace-pre-line text-xs ${
-                              msg.role === 'user'
-                                ? 'bg-blue-600 text-white rounded-br-none'
-                                : 'bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200/80'
-                            }`}
-                          >
-                            {msg.text}
-                          </div>
-                          {msg.role === 'user' && (
-                            <div className="w-6 h-6 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center shrink-0">
-                              <UserIcon className="w-3.5 h-3.5" />
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      {isChatLoading && (
-                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 italic">
-                          <Loader2 className="w-3 h-3 animate-spin text-indigo-600" />
-                          <span>AI sedang menganalisis dokumen...</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-200 flex items-center gap-1.5 mt-2">
-                      <input
-                        type="text"
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleSendChat();
-                        }}
-                        placeholder="Ketik pertanyaan atau instruksi..."
-                        className="flex-1 text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white"
-                      />
-                      <button
-                        onClick={() => handleSendChat()}
-                        disabled={isChatLoading || !chatInput.trim()}
-                        className="p-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-all cursor-pointer disabled:opacity-50"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

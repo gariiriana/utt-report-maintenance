@@ -1622,6 +1622,9 @@ export function findBOQCategoryForScope(scopeName: string) {
   if (clean.includes('ups')) {
     return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_8' || c.name.toLowerCase() === 'ups');
   }
+  if (clean.includes('ats')) {
+    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_2' || c.name.toLowerCase() === 'ats');
+  }
   if (clean.includes('pdu')) {
     return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_6' || c.name.toLowerCase() === 'pdu');
   }
@@ -3549,19 +3552,19 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
   // ══════════════════════════════════════════════════════════════════════════
   const approvalSheet = {
     preparedBy: {
+      name: options.preparedBy || 'Arif Budiman',
+      title: 'Technical Manager',
+      company: 'PT Dwimitra Ekatama Mandiri',
+      signed: true
+    },
+    reviewedBy1: {
       name: 'Dwi Tasmiyadi',
       title: 'Project Manager',
       company: 'PT Dwimitra Ekatama Mandiri',
       signed: true
     },
-    reviewedBy1: {
-      name: 'Arif Budiman',
-      title: 'Technical Manager',
-      company: 'PT Dwimitra Ekatama Mandiri',
-      signed: true
-    },
     reviewedBy2: {
-      name: 'Andrean Bima Pratama',
+      name: 'Habib Mulyana',
       title: 'Facility Manager',
       company: 'OCS',
       signed: true
