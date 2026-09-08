@@ -11,6 +11,7 @@
 import { collection, getDocs, query, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { BOQ_CATEGORIES_DATA } from '@/data/boqAssetData';
+import { SERVICE_REPORT_MASTER_REGISTRY } from '@/config/serviceReportRegistry';
 import { SparepartLogItem } from '@/types/sparepartTypes';
 
 export interface MonthlyReportOptions {
@@ -1751,8 +1752,22 @@ export function convertTaskPMToBilingual(taskPM: string, scopeName?: string): st
   return getTaskPMForScope(scopeName || '');
 }
 
+export function isValidBOQItem(item: any): boolean {
+  if (!item) return false;
+  const rawCI = (item['CI Name*'] || item['Class Name'] || item['Equipment Name'] || item['CI Description*'] || '').trim();
+  const classId = (item['Class Id'] || '').trim();
+  const no = (item['No'] || '').trim();
+  if (!rawCI && !classId) return false;
+  const ciLower = rawCI.toLowerCase();
+  if (ciLower === 'equipment' || ciLower === 'total' || ciLower === 'grand total' || ciLower === 'sub total') return false;
+  const noLower = no.toLowerCase();
+  if (noLower === 'total' || noLower === 'grand total') return false;
+  return true;
+}
+
 export function extractBOQItemDetails(item: any) {
-  const className = item['CI Name*'] || item['Class Name'] || item['Equipment Name'] || item['CI Description*'] || Object.values(item)[1] || 'Equipment';
+  const rawCI = (item['CI Name*'] || item['Class Name'] || item['Equipment Name'] || item['CI Description*'] || '').trim();
+  const className = (rawCI && rawCI.toLowerCase() !== 'equipment') ? rawCI : (item['Class Id'] || item['TAG'] || '-');
   
   const modelSN = item['Serial Number'] || item['Model / P/N'] || item['Model/Version'] || item['Specification'] || item['Model'] || item['TAG'] || item['Asset ID'] || '-';
   
@@ -1783,6 +1798,58 @@ export function extractBOQItemDetails(item: any) {
   const productName = item['Product Name+'] || item['Product Name'] || manufacture;
 
   return { className, modelSN, manufacture, installDate, location, capacity, productName };
+}
+
+/**
+ * Resolves Task Preventive Maintenance checklist activities directly from
+ * dedicated Service Report (SR) configuration in SERVICE_REPORT_MASTER_REGISTRY.
+ */
+export function getTaskPMFromSR(equipmentOrScopeName: string): string {
+  const clean = (equipmentOrScopeName || '').toLowerCase().trim();
+  
+  let targetEmail = '';
+  if (clean.includes('trafo') || clean.includes('transform')) targetEmail = 'trafo@gmail.com';
+  else if (clean.includes('lv') || clean.includes('low voltage')) targetEmail = 'lv@gmail.com';
+  else if (clean.includes('ats')) targetEmail = 'ats@gmail.com';
+  else if (clean.includes('generator') || clean.includes('genset')) targetEmail = 'genset@gmail.com';
+  else if (clean.includes('cooling tower') || clean === 'ct') targetEmail = 'coolingtower@gmail.com';
+  else if (clean.includes('fcu')) targetEmail = 'fcu@gmail.com';
+  else if (clean.includes('pdu')) targetEmail = 'pdu@gmail.com';
+  else if (clean.includes('pju') || clean.includes('street lighting') || clean.includes('taman')) targetEmail = 'pju@gmail.com';
+  else if (clean.includes('crac')) targetEmail = 'crac@gmail.com';
+  else if (clean.includes('vrv') || clean.includes('vrf')) targetEmail = 'vrv@gmail.com';
+  else if (clean.includes('split') || clean.includes('ac split')) targetEmail = 'acsplit@gmail.com';
+  else if (clean.includes('pump') || clean.includes('pompa')) targetEmail = 'pump@gmail.com';
+  else if (clean.includes('busduct')) targetEmail = 'busduct@gmail.com';
+  else if (clean.includes('mv') || clean.includes('rmu') || clean.includes('medium voltage')) targetEmail = 'mv@gmail.com';
+  else if (clean.includes('grounding')) targetEmail = 'grounding@gmail.com';
+  else if (clean.includes('lift') || clean.includes('elevator')) targetEmail = 'lift@gmail.com';
+  else if (clean.includes('x-ray') || clean.includes('xray')) targetEmail = 'xray@gmail.com';
+  else if (clean.includes('ahu')) targetEmail = 'ahu@gmail.com';
+  else if (clean.includes('dock leveler')) targetEmail = 'dockleveler@gmail.com';
+  else if (clean.includes('door') || clean.includes('pintu')) targetEmail = 'door@gmail.com';
+  else if (clean.includes('exhaust')) targetEmail = 'exhaustfan@gmail.com';
+  else if (clean.includes('ldb') || clean.includes('rdb')) targetEmail = 'ldbrdb@gmail.com';
+  else if (clean.includes('ups')) targetEmail = 'ups@gmail.com';
+  else if (clean.includes('gate') || clean.includes('gerbang')) targetEmail = 'gate@gmail.com';
+
+  const config = targetEmail ? SERVICE_REPORT_MASTER_REGISTRY[targetEmail] : null;
+  if (config && Array.isArray(config.checklistTemplate) && config.checklistTemplate.length > 0) {
+    const validActivities = config.checklistTemplate
+      .map(item => (item.activity || '').trim())
+      .filter(act => {
+        if (!act || act.length < 3) return false;
+        const low = act.toLowerCase();
+        return low !== 'indoor' && low !== 'outdoor' && low !== 'machine room' && low !== 'lift shaft' && low !== 'lv switchbard';
+      });
+    
+    if (validActivities.length > 0) {
+      return validActivities.map(a => `• ${a}`).join('\n');
+    }
+  }
+
+  // Fallback to SCOPE_TASK_PM_MAPPING if not in registry
+  return getTaskPMForScope(equipmentOrScopeName);
 }
 
 export function getTaskPMForScope(scopeName: string): string {
@@ -3282,8 +3349,9 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
     const items: SystemPerformanceItem[] = [];
 
     if (boqCategory && boqCategory.items.length > 0) {
-      // Pull Class Name, Capacity, Location, Product Name directly from BOQ Master Asset
-      boqCategory.items.forEach((boqItem, idx) => {
+      // Pull Class Name, Capacity, Location, Product Name directly from BOQ Master Asset (filtering out empty/summary rows)
+      const validItems = boqCategory.items.filter(isValidBOQItem);
+      validItems.forEach((boqItem, idx) => {
         const details = extractBOQItemDetails(boqItem);
 
         items.push({
@@ -3292,7 +3360,7 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
           capacity: details.capacity,
           location: details.location,
           productName: details.manufacture,
-          taskPM: getTaskPMForScope(scopeName),
+          taskPM: getTaskPMFromSR(scopeName),
           criticalRepairs: 'No critical repair is required.\nSaat ini tidak diperlukan perbaikan mendesak.',
           operationalStatus: 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal',
           issues: 'No abnormality was observed during normal operation.\nTidak ditemukan adanya kelainan selama pengoperasian normal.',
@@ -3592,7 +3660,7 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
     const cat = BOQ_CATEGORIES_DATA.find(c => c.id === cfg.id);
     if (!cat) return;
 
-    let items = cat.items;
+    let items = cat.items.filter(isValidBOQItem);
     if (cfg.filterFn) {
       items = items.filter(cfg.filterFn);
     }
@@ -4617,4 +4685,110 @@ export function convertReportToBilingual(data: FullMonthlyReportData): FullMonth
   updated.appendicesNote = "Attach the original service report & supporting documents for certification, test results, etc.\nLampirkan lembar laporan servis asli & dokumen pendukung untuk sertifikasi, hasil uji, dll.";
 
   return updated;
+}
+
+export interface SelectedBOQCategoryInput {
+  categoryId: string;
+  categoryName: string;
+  selectedCINames: string[];
+}
+
+export type CustomBOQSelection = SelectedBOQCategoryInput;
+
+/**
+ * Builds custom scheduleTable1, taskPerformanceTables, equipmentDetailsTable20, and scopeOfWorkTable22
+ * based on user's manual equipment & CI Name selection from BOQ (mirroring BA Report behavior).
+ */
+export function buildCustomScopeTablesFromBOQ(
+  selections: SelectedBOQCategoryInput[],
+  monthNameEn: string = 'February',
+  _currentYear: number = 2026
+) {
+  const scheduleTable1: FullMonthlyReportData['scheduleTable1'] = [];
+  const taskPerformanceTables: FullMonthlyReportData['taskPerformanceTables'] = [];
+  const equipmentDetailsTable20: FullMonthlyReportData['equipmentDetailsTable20'] = [];
+  const targetScopes: string[] = [];
+
+  let schedCount = 1;
+  let tableCounter = 2;
+
+  selections.forEach(sel => {
+    const cat = BOQ_CATEGORIES_DATA.find(c => c.id === sel.categoryId || c.name.toLowerCase() === sel.categoryName.toLowerCase());
+    if (!cat) return;
+
+    const ciSet = new Set(sel.selectedCINames);
+    const chosenItems = cat.items.filter(it => {
+      if (!isValidBOQItem(it)) return false;
+      const ciName = (it['CI Name*'] || it['Class Name'] || it['Equipment Name'] || it['CI Description*'] || '').trim();
+      return ciSet.has(ciName);
+    });
+
+    if (chosenItems.length === 0) return;
+
+    targetScopes.push(cat.name);
+
+    // 1. Table 1 (Schedule)
+    const firstLoc = chosenItems[0]['Room'] || chosenItems[0]['Location'] || 'NeutraDC Campus';
+    scheduleTable1.push({
+      no: schedCount++,
+      device: cat.name,
+      location: firstLoc,
+      maintenancePartner: 'PT. Dwimitra Ekatama Mandiri',
+      plan: `10 - 20 ${monthNameEn}`,
+      actual: '',
+      status: '',
+      engineerAccount: 'PT. Dwimitra Ekatama Mandiri'
+    });
+
+    // 2. Table 2 - 17 (Task Performance)
+    const taskPM = getTaskPMFromSR(cat.name);
+    const perfItems: SystemPerformanceItem[] = chosenItems.map((item, idx) => {
+      const details = extractBOQItemDetails(item);
+      return {
+        no: idx + 1,
+        className: details.className,
+        capacity: details.capacity,
+        location: details.location,
+        productName: details.productName,
+        taskPM,
+        criticalRepairs: 'No critical repair is required.\nSaat ini tidak diperlukan perbaikan mendesak.',
+        operationalStatus: 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal',
+        issues: 'No abnormality was observed during normal operation.\nTidak ditemukan adanya kelainan selama pengoperasian normal.',
+        recommendations: 'Continue routine monitoring and preventive maintenance to ensure reliable operation.\nLanjutkan pemantauan rutin dan pemeliharaan preventif untuk memastikan pengoperasian yang andal.'
+      };
+    });
+
+    taskPerformanceTables.push({
+      tableNo: tableCounter++,
+      title: `Table ${tableCounter - 1}. Total Task Performance ${cat.name}`,
+      scope: cat.name,
+      items: perfItems
+    });
+
+    // 3. Table 20 (Equipment Details)
+    chosenItems.forEach((item, idx) => {
+      const details = extractBOQItemDetails(item);
+      equipmentDetailsTable20.push({
+        no: idx + 1,
+        system: cat.name,
+        className: details.className,
+        modelSN: details.modelSN,
+        manufacture: details.manufacture,
+        installDate: details.installDate,
+        location: details.location,
+        lastMaintenanceDate: '',
+        currentOperationalDate: '',
+        statusBeforeMaintenance: 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal'
+      });
+    });
+  });
+
+  const scopeOfWorkTable22: ScopeOfWorkCategory[] = targetScopes.map(scope => getScopeOfWorkForScope(scope));
+
+  return {
+    scheduleTable1,
+    taskPerformanceTables,
+    equipmentDetailsTable20,
+    scopeOfWorkTable22
+  };
 }

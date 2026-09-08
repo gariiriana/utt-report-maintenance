@@ -10,7 +10,7 @@
 //            - Fitur Ekspor ke Word (.docx) 100% Presisi & Cetak PDF Resmi
 // ============================================================================
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   FileText,
   Printer,
@@ -34,10 +34,23 @@ import {
   Upload,
   Globe,
   Search,
-  Filter
+  Filter,
+  Layers,
+  CheckSquare,
+  Square,
+  ChevronDown,
+  ChevronUp,
+  CheckCheck,
+  XCircle,
+  FolderArchive,
+  Edit3
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { draftStorage } from '@/utils/draftStorage';
+import { useAuth } from '@/components/AuthContext';
+import { db } from '@/api/firebase';
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
+import { BOQ_CATEGORIES_DATA } from '@/data/boqAssetData';
 
 import {
   aggregateMonthlyReportData,
@@ -46,7 +59,9 @@ import {
   convertReportToBilingual,
   getScopeOfWorkForScope,
   MASTER_PM_SCHEDULES,
-  getDefaultBoqUnitForDevice
+  getDefaultBoqUnitForDevice,
+  buildCustomScopeTablesFromBOQ,
+  CustomBOQSelection
 } from '@/utils/monthlyReportData';
 import { generateMonthlyReportDOCX } from '@/utils/generateMonthlyReportDOCX';
 import {
@@ -249,6 +264,74 @@ export const BilingualBulletsEditor: React.FC<{
 };
 
 export function MonthlyReportGenerator() {
+  const { user } = useAuth();
+
+  // ─── Main Navigation Tab: 'editor' | 'archives' ───────────────────
+  const [activeMainTab, setActiveMainTab] = useState<'editor' | 'archives'>('editor');
+
+  // ─── Firestore Archives State ─────────────────────────────────────
+  const [archives, setArchives] = useState<any[]>([]);
+  const [loadingArchives, setLoadingArchives] = useState<boolean>(true);
+
+  // ─── BOQ Equipment & CI Name Selector Modal State ─────────────────
+  const [isBoqSelectorOpen, setIsBoqSelectorOpen] = useState(false);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<Set<string>>(new Set());
+  const [selectedCINames, setSelectedCINames] = useState<Map<string, Set<string>>>(new Map());
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [categorySearchQuery, setCategorySearchQuery] = useState('');
+
+  // Maintenance Categories dari BOQ (tanpa Spareparts)
+  const MAINTENANCE_BOQ_CATEGORIES = useMemo(() => {
+    return BOQ_CATEGORIES_DATA.filter(cat => !cat.isSparepart);
+  }, []);
+
+  // Filtered categories berdasarkan pencarian di modal BOQ
+  const filteredBOQCategories = useMemo(() => {
+    if (!categorySearchQuery.trim()) return MAINTENANCE_BOQ_CATEGORIES;
+    const q = categorySearchQuery.toLowerCase().trim();
+    return MAINTENANCE_BOQ_CATEGORIES.filter(cat =>
+      cat.name.toLowerCase().includes(q) ||
+      cat.items.some(it => (it['CI Name*'] || '').toLowerCase().includes(q) || (it['Class Name*'] || '').toLowerCase().includes(q))
+    );
+  }, [categorySearchQuery, MAINTENANCE_BOQ_CATEGORIES]);
+
+  // Total CI terpilih pada modal BOQ
+  const totalSelectedBOQCI = useMemo(() => {
+    let count = 0;
+    for (const ciSet of selectedCINames.values()) {
+      count += ciSet.size;
+    }
+    return count;
+  }, [selectedCINames]);
+
+  // Load Archives from Firestore (monthly_reports)
+  useEffect(() => {
+    const q = query(collection(db, 'monthly_reports'), orderBy('createdAt', 'desc'));
+    const unsub = onSnapshot(q, (snap) => {
+      setArchives(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLoadingArchives(false);
+    }, (err) => {
+      console.error('Error loading monthly_reports archives:', err);
+      setLoadingArchives(false);
+    });
+    return () => unsub();
+  }, []);
+
+  // Filtered Archives pencarian
+  const [archiveSearchQuery, setArchiveSearchQuery] = useState('');
+  const filteredArchives = useMemo(() => {
+    if (!archiveSearchQuery.trim()) return archives;
+    const q = archiveSearchQuery.toLowerCase().trim();
+    return archives.filter(a =>
+      (a.title || '').toLowerCase().includes(q) ||
+      (a.monthName || '').toLowerCase().includes(q) ||
+      (a.quarter || '').toLowerCase().includes(q) ||
+      (a.createdByName || '').toLowerCase().includes(q) ||
+      (a.createdBy || '').toLowerCase().includes(q) ||
+      (a.selectedEquipments || []).some((eq: string) => eq.toLowerCase().includes(q))
+    );
+  }, [archives, archiveSearchQuery]);
+
   // State Pilihan Bulan & Tahun (Default: Juli 2026 sesuai file acuan)
   const [selectedMonth, setSelectedMonth] = useState<number>(7);
   const [selectedYear, setSelectedYear] = useState<number>(2026);
@@ -274,7 +357,6 @@ export function MonthlyReportGenerator() {
     });
     return map;
   }, [reportData?.equipmentDetailsTable20]);
-
 
   // Handler Perubahan Periode Bulan & Tahun (Langsung bersihkan stale reportData agar tidak stuck)
   const handleMonthChange = (newMonth: number) => {
@@ -396,18 +478,24 @@ export function MonthlyReportGenerator() {
               parsed.scopeOfWorkTable22 = schedScopes.map((scope: string) => getScopeOfWorkForScope(scope));
               parsed._sowDetailedVersion = 3;
             }
-
-            // 4. Normalisasi signer reviewedBy2 OCS -> Habib Mulyana
-            if (parsed.approvalSheet?.reviewedBy2?.name === 'Andrean Bima Pratama') {
-              parsed.approvalSheet.reviewedBy2.name = 'Habib Mulyana';
+            // 6. Pembersihan Anomali baris "Equipment" / summary kosong dari taskPerformanceTables & equipmentDetailsTable20
+            if (Array.isArray(parsed.taskPerformanceTables)) {
+              parsed.taskPerformanceTables.forEach((tbl: any) => {
+                if (Array.isArray(tbl.items)) {
+                  tbl.items = tbl.items.filter((it: any) => {
+                    const cls = (it.className || '').trim().toLowerCase();
+                    const prod = (it.productName || '').trim().toLowerCase();
+                    return cls !== 'equipment' && cls !== 'total' && cls !== 'grand total' && cls !== '' && prod !== 'total';
+                  }).map((it: any, i: number) => ({ ...it, no: i + 1 }));
+                }
+              });
             }
-
-            // 5. Normalisasi signer Row 1: Prepared by Arif Budiman & Reviewed by Dwi Tasmiyadi
-            if (parsed.approvalSheet) {
-              if (parsed.approvalSheet.preparedBy?.name === 'Dwi Tasmiyadi' && parsed.approvalSheet.reviewedBy1?.name === 'Arif Budiman') {
-                parsed.approvalSheet.preparedBy.name = 'Arif Budiman';
-                parsed.approvalSheet.reviewedBy1.name = 'Dwi Tasmiyadi';
-              }
+            if (Array.isArray(parsed.equipmentDetailsTable20)) {
+              parsed.equipmentDetailsTable20 = parsed.equipmentDetailsTable20.filter((eq: any) => {
+                const cls = (eq.className || '').trim().toLowerCase();
+                const name = (eq.name || '').trim().toLowerCase();
+                return cls !== 'equipment' && cls !== 'total' && cls !== '' && name !== 'equipment' && name !== 'total';
+              }).map((eq: any, i: number) => ({ ...eq, no: i + 1 }));
             }
 
             setReportData(parsed);
@@ -479,36 +567,238 @@ export function MonthlyReportGenerator() {
     return () => clearTimeout(timeout);
   }, [reportData, selectedMonth, selectedYear]);
 
+  // ─── BOQ Equipment Selector Handlers (Mirip Berita Acara) ────────
+  const openBoqSelector = useCallback(() => {
+    const catIds = new Set<string>();
+    const ciMap = new Map<string, Set<string>>();
+    const expanded = new Set<string>();
 
+    if (reportData) {
+      const activeScopes = new Set((reportData.scheduleTable1 || []).map(s => s.device.toLowerCase()));
+      MAINTENANCE_BOQ_CATEGORIES.forEach(cat => {
+        const match = activeScopes.has(cat.name.toLowerCase()) ||
+          Array.from(activeScopes).some(sc => cat.name.toLowerCase().includes(sc) || sc.includes(cat.name.toLowerCase()));
+        if (match) {
+          catIds.add(cat.id);
+          expanded.add(cat.id);
+          const relatedTable = (reportData.taskPerformanceTables || []).find(t => 
+            t.scope.toLowerCase() === cat.name.toLowerCase() ||
+            cat.name.toLowerCase().includes(t.scope.toLowerCase()) ||
+            t.scope.toLowerCase().includes(cat.name.toLowerCase())
+          );
+          if (relatedTable && relatedTable.items?.length > 0) {
+            const cis = new Set<string>(relatedTable.items.map(it => it.className || '').filter(Boolean));
+            ciMap.set(cat.id, cis);
+          } else {
+            const all = new Set<string>(cat.items.map(it => it['CI Name*'] || '').filter(Boolean));
+            ciMap.set(cat.id, all);
+          }
+        }
+      });
+    }
+
+    if (catIds.size === 0) {
+      const monthIdx = selectedMonth - 1;
+      const scheduledDevices = MASTER_PM_SCHEDULES
+        .filter(s => s.months[monthIdx] !== null)
+        .map(s => s.device.toLowerCase());
+      MAINTENANCE_BOQ_CATEGORIES.forEach(cat => {
+        const catNameLower = cat.name.toLowerCase();
+        if (scheduledDevices.some(dev => catNameLower.includes(dev) || dev.includes(catNameLower))) {
+          catIds.add(cat.id);
+          expanded.add(cat.id);
+          const all = new Set<string>(cat.items.map(it => it['CI Name*'] || '').filter(Boolean));
+          ciMap.set(cat.id, all);
+        }
+      });
+    }
+
+    setSelectedCategoryIds(catIds);
+    setSelectedCINames(ciMap);
+    setExpandedCategories(expanded);
+    setIsBoqSelectorOpen(true);
+  }, [reportData, MAINTENANCE_BOQ_CATEGORIES, selectedMonth]);
+
+  const toggleCategory = useCallback((catId: string) => {
+    setSelectedCategoryIds(prev => {
+      const next = new Set(prev);
+      if (next.has(catId)) {
+        next.delete(catId);
+        setSelectedCINames(old => {
+          const m = new Map(old);
+          m.delete(catId);
+          return m;
+        });
+      } else {
+        next.add(catId);
+        setExpandedCategories(ex => {
+          const s = new Set(ex);
+          s.add(catId);
+          return s;
+        });
+        // Auto select all CIs in this category
+        const cat = BOQ_CATEGORIES_DATA.find(c => c.id === catId);
+        if (cat) {
+          const all = new Set(cat.items.map(it => it['CI Name*'] || '').filter(Boolean));
+          setSelectedCINames(old => {
+            const m = new Map(old);
+            m.set(catId, all);
+            return m;
+          });
+        }
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleExpand = useCallback((catId: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(catId)) next.delete(catId);
+      else next.add(catId);
+      return next;
+    });
+  }, []);
+
+  const toggleCIName = useCallback((catId: string, ciName: string) => {
+    setSelectedCINames(prev => {
+      const m = new Map(prev);
+      const current = m.get(catId) || new Set<string>();
+      const next = new Set(current);
+      if (next.has(ciName)) next.delete(ciName);
+      else next.add(ciName);
+      m.set(catId, next);
+      return m;
+    });
+  }, []);
+
+  const selectAllCINames = useCallback((catId: string) => {
+    const cat = BOQ_CATEGORIES_DATA.find(c => c.id === catId);
+    if (!cat) return;
+    setSelectedCINames(prev => {
+      const m = new Map(prev);
+      const all = new Set(cat.items.map(item => item['CI Name*'] || '').filter(Boolean));
+      m.set(catId, all);
+      return m;
+    });
+  }, []);
+
+  const deselectAllCINames = useCallback((catId: string) => {
+    setSelectedCINames(prev => {
+      const m = new Map(prev);
+      m.set(catId, new Set());
+      return m;
+    });
+  }, []);
+
+  const handleApplyBOQSelection = useCallback(() => {
+    if (selectedCategoryIds.size === 0) {
+      toast.error('Pilih minimal 1 equipment dari BOQ.');
+      return;
+    }
+
+    const selections: CustomBOQSelection[] = [];
+    for (const catId of selectedCategoryIds) {
+      const cat = BOQ_CATEGORIES_DATA.find(c => c.id === catId);
+      if (!cat) continue;
+      const cis = selectedCINames.get(catId);
+      const ciList = cis ? Array.from(cis) : [];
+      if (ciList.length === 0) {
+        toast.error(`Pilih minimal 1 CI Name untuk equipment "${cat.name}".`);
+        return;
+      }
+      selections.push({
+        categoryId: cat.id,
+        categoryName: cat.name,
+        selectedCINames: ciList
+      });
+    }
+
+    if (!reportData) return;
+
+    const custom = buildCustomScopeTablesFromBOQ(selections, reportData.monthName, reportData.year);
+    setReportData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        scheduleTable1: custom.scheduleTable1,
+        taskPerformanceTables: custom.taskPerformanceTables,
+        equipmentDetailsTable20: custom.equipmentDetailsTable20,
+        scopeOfWorkTable22: custom.scopeOfWorkTable22
+      };
+    });
+
+    setIsBoqSelectorOpen(false);
+    toast.success(`Berhasil menerapkan ${selections.length} equipment & ${selections.reduce((acc, s) => acc + s.selectedCINames.length, 0)} CI ke Monthly Report!`);
+  }, [selectedCategoryIds, selectedCINames, reportData]);
+
+  // ─── Archive Handlers ─────────────────────────────────────────────
+  const handleLoadArchiveToEditor = useCallback((archive: any) => {
+    if (!archive.reportData) {
+      toast.error('Data laporan arsip tidak ditemukan.');
+      return;
+    }
+    setReportData(archive.reportData);
+    if (archive.monthNumber) setSelectedMonth(archive.monthNumber);
+    if (archive.year) setSelectedYear(archive.year);
+    setActiveMainTab('editor');
+    toast.success(`Data "${archive.title}" berhasil dimuat kembali ke Editor! Silakan lakukan revisi.`);
+  }, []);
+
+  const handleDownloadArchive = useCallback(async (archive: any) => {
+    if (!archive.reportData) {
+      toast.error('Data laporan arsip tidak tersedia.');
+      return;
+    }
+    try {
+      toast.info(`Menyusun file DOCX untuk ${archive.title}...`);
+      await generateMonthlyReportDOCX(archive.reportData);
+      toast.success('File Microsoft Word (.docx) berhasil diunduh!');
+    } catch (err: any) {
+      console.error('Error downloading from archive:', err);
+      toast.error('Gagal mengunduh file DOCX: ' + err.message);
+    }
+  }, []);
+
+  const handleDeleteArchive = useCallback(async (archiveId: string) => {
+    if (!window.confirm('Yakin ingin menghapus arsip dokumen laporan bulanan ini?')) return;
+    try {
+      await deleteDoc(doc(db, 'monthly_reports', archiveId));
+      toast.success('Arsip dokumen berhasil dihapus dari cloud.');
+    } catch (err: any) {
+      console.error('Gagal menghapus arsip:', err);
+      toast.error('Gagal menghapus arsip: ' + err.message);
+    }
+  }, []);
 
   // Quick Action AI Triggers
   const handleAIRecs = () => {
     if (!reportData) return;
     const newRecs = generateRecommendationsFromFindings(reportData.observationTable23);
-    setReportData({ ...reportData, recommendationsTable35: newRecs });
+    setReportData(prev => prev ? { ...prev, recommendationsTable35: newRecs } : prev);
     toast.success('Rekomendasi Teknis Bab 11 berhasil disusun oleh AI berdasarkan temuan!');
   };
 
   const handleAITesting = () => {
     if (!reportData) return;
     const tv = generateTestingAndValidation(reportData.scheduleTable1.map(s => s.device));
-    setReportData({
-      ...reportData,
+    setReportData(prev => prev ? {
+      ...prev,
       calibrationTable30: tv.calibration,
       validationMethodsTable31: tv.validation
-    });
+    } : prev);
     toast.success('Metode Uji & Validasi Bab 9 berhasil digenerate oleh AI!');
   };
 
   const handleAIChallenges = () => {
     if (!reportData) return;
     const cm = generateChallengesAndMitigations(reportData.monthName);
-    setReportData({
-      ...reportData,
+    setReportData(prev => prev ? {
+      ...prev,
       challengesTable32: cm.challenges,
       mitigationTable33: cm.mitigations,
       lessonsLearnedTable34: cm.lessonsLearned
-    });
+    } : prev);
     toast.success('Tantangan, Mitigasi, & Lesson Learned Bab 10 berhasil disusun oleh AI!');
   };
 
@@ -517,13 +807,37 @@ export function MonthlyReportGenerator() {
     window.print();
   };
 
-  // Export to DOCX Handler
+  // Export to DOCX Handler + Auto-Save to Cloud Archive (Firestore: monthly_reports)
   const handleExportDocx = async () => {
     if (!reportData) return;
     setExportingDocx(true);
     try {
       await generateMonthlyReportDOCX(reportData);
       toast.success('File Microsoft Word (.docx) berhasil dibuat dan diunduh!');
+
+      // Auto-save arsip ke Firestore: monthly_reports
+      try {
+        const eqNames = (reportData.scheduleTable1 || []).map(s => s.device);
+        const totalCI = (reportData.taskPerformanceTables || []).reduce((acc, t) => acc + (t.items?.length || 0), 0);
+        await addDoc(collection(db, 'monthly_reports'), {
+          title: `Laporan Bulanan Maintenance ${reportData.monthName} ${reportData.year}`,
+          monthNumber: selectedMonth,
+          monthName: reportData.monthName,
+          year: selectedYear,
+          quarter: reportData.quarter || 'Q3',
+          contractNumber: reportData.contractNumber || reportData.generalInfo?.contractReference || 'K.TDE.0105/LEG.PRJ/VI/2026',
+          selectedEquipments: eqNames,
+          totalCINames: totalCI,
+          createdAt: Timestamp.now(),
+          createdBy: user?.email || '',
+          createdByName: user?.displayName || user?.email?.split('@')[0] || 'User',
+          reportData: reportData
+        });
+        toast.success('Dokumen otomatis tersimpan di Arsip Dokumen Monthly Report (Cloud Firestore)!');
+      } catch (saveErr: any) {
+        console.warn('Gagal menyimpan arsip ke Firestore:', saveErr);
+        toast.warning('DOCX terunduh, namun arsip ke cloud gagal: ' + (saveErr?.message || 'Permission issue'));
+      }
     } catch (err: any) {
       console.error('Error exporting docx:', err);
       toast.error(`Gagal mengekspor file DOCX: ${err.message}`);
@@ -630,8 +944,45 @@ export function MonthlyReportGenerator() {
 
   return (
     <div className="monthly-report-feature space-y-6 pb-24 relative font-serif" style={{ fontFamily: '"Times New Roman", Times, Georgia, serif' }}>
-      {/* ─── Control Bar (Sembunyi saat Print) ─────────────────────────────────── */}
-      <div className="print:hidden bg-white text-slate-800 p-6 sm:p-7 rounded-3xl shadow-sm border border-slate-200">
+      {/* ─── Main Navigation Tab Switcher (Sembunyi saat Print) ─────────────── */}
+      <div className="print:hidden flex items-center justify-between gap-4 border-b border-slate-200 pb-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveMainTab('editor')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-sm transition-all cursor-pointer ${
+              activeMainTab === 'editor'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+                : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
+            }`}
+          >
+            <FileText className="w-4 h-4" />
+            <span>📝 Editor Laporan</span>
+          </button>
+          <button
+            onClick={() => setActiveMainTab('archives')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-sm transition-all cursor-pointer ${
+              activeMainTab === 'archives'
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+                : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
+            }`}
+          >
+            <FolderArchive className="w-4 h-4" />
+            <span>📁 Arsip Dokumen Monthly Report</span>
+            {archives.length > 0 && (
+              <span className={`px-2 py-0.5 rounded-full text-xs font-black ${
+                activeMainTab === 'archives' ? 'bg-white text-blue-700' : 'bg-blue-100 text-blue-700'
+              }`}>
+                {archives.length}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* ─── Control Bar (Sembunyi saat Print & hanya tampil di Editor Tab) ───── */}
+      {activeMainTab === 'editor' && (
+        <>
+          <div className="print:hidden bg-white text-slate-800 p-6 sm:p-7 rounded-3xl shadow-sm border border-slate-200">
         {/* Tier 1: Judul Laporan & Selektor Periode */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
           <div>
@@ -693,8 +1044,18 @@ export function MonthlyReportGenerator() {
 
         {/* Tier 2: Dedicated Action Toolbar */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 mt-5 border-t border-slate-100">
-          {/* Smart Features / AI Tools */}
+          {/* Smart Features / AI Tools / Equipment Selector */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            {/* Tombol Pilih Equipment dari BOQ */}
+            <button
+              onClick={openBoqSelector}
+              className="flex items-center gap-2 px-3.5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-sm shadow-blue-500/20 transition-all cursor-pointer active:scale-95"
+              title="Pilih lingkup equipment & CI Name langsung dari Master BOQ seperti pada Berita Acara"
+            >
+              <Layers className="w-4 h-4 text-blue-200" />
+              <span>Pilih Equipment dari BOQ</span>
+            </button>
+
             {/* Bilingual (EN + ID) Button with AI Agent */}
             <button
               onClick={handleConvertToBilingual}
@@ -709,7 +1070,6 @@ export function MonthlyReportGenerator() {
               )}
               <span>{isTranslatingBilingual ? 'AI Menerjemahkan...' : 'Format Bilingual (EN + ID)'}</span>
             </button>
-
           </div>
 
           {/* Export & Output Actions */}
@@ -730,7 +1090,7 @@ export function MonthlyReportGenerator() {
               className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-xl text-xs font-bold text-white shadow-sm shadow-blue-500/20 transition-all cursor-pointer disabled:opacity-50 active:scale-95"
             >
               {exportingDocx ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              <span>{exportingDocx ? 'Menyusun Word...' : 'Ekspor Word (.docx)'}</span>
+              <span>{exportingDocx ? 'Menyusun Word & Arsip...' : 'Ekspor Word (.docx)'}</span>
             </button>
           </div>
         </div>
@@ -1280,11 +1640,13 @@ export function MonthlyReportGenerator() {
                             { title: '12. Photo and Documentation Log', page: '265' },
                             { title: '13. Appendices', page: '268' }
                           ];
-                          const currentTOC = reportData.tableOfContents && reportData.tableOfContents.length > 0
-                            ? reportData.tableOfContents
-                            : defaultTOC;
-                          const newTOC = currentTOC.filter((_, i) => i !== idx);
-                          setReportData({ ...reportData, tableOfContents: newTOC });
+                          setReportData(prev => {
+                            if (!prev) return prev;
+                            const currentTOC = prev.tableOfContents && prev.tableOfContents.length > 0
+                              ? prev.tableOfContents
+                              : defaultTOC;
+                            return { ...prev, tableOfContents: currentTOC.filter((_, i) => i !== idx) };
+                          });
                           toast.info('Bab dihapus dari Daftar Isi.');
                         }}
                         className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-600 transition-opacity cursor-pointer print:hidden"
@@ -1480,9 +1842,10 @@ export function MonthlyReportGenerator() {
                       />
                       <button
                         type="button"
-                        onClick={() => {
-                          const updated = { ...reportData };
-                          const list = updated.listOfTables ? [...updated.listOfTables] : [
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          const defaultLOT = [
                             { title: `Table 1. Schedule Maintenance – ${reportData.monthNameEn} ${reportData.year}`, page: '5' },
                             { title: 'Table 2. Task Performance – Chiller System', page: '6' },
                             { title: 'Table 3. Task Performance – Cooling Tower & Piping', page: '8' },
@@ -1520,8 +1883,13 @@ export function MonthlyReportGenerator() {
                             { title: 'Table 35. Recommendations and Future Action', page: '264' },
                             { title: 'Table 36. Photo and Documentation Log', page: '265' }
                           ];
-                          const newList = list.filter((_, i) => i !== idx);
-                          setReportData({ ...reportData, listOfTables: newList });
+                          setReportData(prev => {
+                            if (!prev) return prev;
+                            const currentList = prev.listOfTables && prev.listOfTables.length > 0
+                              ? prev.listOfTables
+                              : defaultLOT;
+                            return { ...prev, listOfTables: currentList.filter((_, i) => i !== idx) };
+                          });
                           toast.info('Tabel dihapus dari List of Tables.');
                         }}
                         className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-600 transition-opacity cursor-pointer print:hidden"
@@ -1656,18 +2024,22 @@ export function MonthlyReportGenerator() {
                         />
                       </div>
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
                           const defaultPoints = [
                             { title: 'Documentation of Preventive Maintenance Activities:', desc: 'Records all PM activities that have been carried out for one month. Include details such as schedule, equipment maintained, methods used, inspection results, and corrective actions if any.' },
                             { title: 'Equipment and System Performance Evaluation:', desc: 'Assess the condition of equipment based on inspection and maintenance results.' },
                             { title: 'Reporting to Management:', desc: 'Provides management with a comprehensive overview of the condition of the facility and the effectiveness of the PM program.' },
                             { title: 'Ensure Compliance with Procedures and Standards:', desc: 'Prove that PM activities are carried out in accordance with applicable Procedures and regulations (e.g. national/international standards).' }
                           ];
-                          const curPoints = reportData.purposePoints && reportData.purposePoints.length > 0
-                            ? reportData.purposePoints
-                            : defaultPoints;
-                          const newPoints = curPoints.filter((_, i) => i !== pIdx);
-                          setReportData({ ...reportData, purposePoints: newPoints });
+                          setReportData(prev => {
+                            if (!prev) return prev;
+                            const curPoints = prev.purposePoints && prev.purposePoints.length > 0
+                              ? prev.purposePoints
+                              : defaultPoints;
+                            return { ...prev, purposePoints: curPoints.filter((_, i) => i !== pIdx) };
+                          });
                           toast.info('Poin tujuan dihapus.');
                         }}
                         className="absolute right-0 top-1 opacity-0 group-hover:opacity-100 p-1 hover:text-red-600 transition-opacity cursor-pointer print:hidden"
@@ -1817,11 +2189,16 @@ export function MonthlyReportGenerator() {
                         </td>
                         <td className="py-1 px-1 text-center print:hidden">
                           <button
-                            onClick={() => {
-                              const newSched = reportData.scheduleTable1
-                                .filter((_, i) => i !== idx)
-                                .map((s, i) => ({ ...s, no: i + 1 }));
-                              setReportData({ ...reportData, scheduleTable1: newSched });
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setReportData(prev => {
+                                if (!prev) return prev;
+                                const newSched = (prev.scheduleTable1 || [])
+                                  .filter((_, i) => i !== idx)
+                                  .map((s, i) => ({ ...s, no: i + 1 }));
+                                return { ...prev, scheduleTable1: newSched };
+                              });
                               toast.info('Baris jadwal dihapus.');
                             }}
                             className="p-1 hover:text-red-600 transition-colors cursor-pointer"
@@ -1883,18 +2260,20 @@ export function MonthlyReportGenerator() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
                             if (window.confirm(`Hapus seluruh tabel "${tTable.title}"?`)) {
-                              const newTables = reportData.taskPerformanceTables
-                                .filter((_, i) => i !== tIdx)
-                                .map((tbl, i) => ({
-                                  ...tbl,
-                                  no: i + 2,
-                                  title: `Table ${i + 2}. Maintenance Scope for ${tbl.scope}`
-                                }));
-                              setReportData({
-                                ...reportData,
-                                taskPerformanceTables: newTables
+                              setReportData(prev => {
+                                if (!prev) return prev;
+                                const newTables = (prev.taskPerformanceTables || [])
+                                  .filter((_, i) => i !== tIdx)
+                                  .map((tbl, i) => ({
+                                    ...tbl,
+                                    no: i + 2,
+                                    title: `Table ${i + 2}. Maintenance Scope for ${tbl.scope}`
+                                  }));
+                                return { ...prev, taskPerformanceTables: newTables };
                               });
                               toast.info(`Tabel "${tTable.title}" berhasil dihapus.`);
                             }
@@ -2050,17 +2429,19 @@ export function MonthlyReportGenerator() {
                               <td className="py-1 px-1 text-center print:hidden">
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    const updatedTables = reportData.taskPerformanceTables.map((tbl, ti) => {
-                                      if (ti !== tIdx) return tbl;
-                                      const newItems = tbl.items
-                                        .filter((_, ii) => ii !== iIdx)
-                                        .map((it, idx) => ({ ...it, no: idx + 1 }));
-                                      return { ...tbl, items: newItems };
-                                    });
-                                    setReportData({
-                                      ...reportData,
-                                      taskPerformanceTables: updatedTables
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    setReportData(prev => {
+                                      if (!prev) return prev;
+                                      const updatedTables = (prev.taskPerformanceTables || []).map((tbl, ti) => {
+                                        if (ti !== tIdx) return tbl;
+                                        const newItems = (tbl.items || [])
+                                          .filter((_, ii) => ii !== iIdx)
+                                          .map((it, idx) => ({ ...it, no: idx + 1 }));
+                                        return { ...tbl, items: newItems };
+                                      });
+                                      return { ...prev, taskPerformanceTables: updatedTables };
                                     });
                                     toast.info('Baris peralatan dihapus.');
                                   }}
@@ -2251,11 +2632,16 @@ export function MonthlyReportGenerator() {
                       />
                       <button
                         type="button"
-                        onClick={() => {
-                          const newMembers = (reportData.generalInfo.teamMembers || []).filter((_, i) => i !== idx);
-                          setReportData({
-                            ...reportData,
-                            generalInfo: { ...reportData.generalInfo, teamMembers: newMembers }
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setReportData(prev => {
+                            if (!prev) return prev;
+                            const newMembers = (prev.generalInfo.teamMembers || []).filter((_, i) => i !== idx);
+                            return {
+                              ...prev,
+                              generalInfo: { ...prev.generalInfo, teamMembers: newMembers }
+                            };
                           });
                           toast.info('Anggota tim dihapus.');
                         }}
@@ -2618,9 +3004,14 @@ export function MonthlyReportGenerator() {
                           <button
                             type="button"
                             title="Hapus baris PM"
-                            onClick={() => {
-                              const newPm = (reportData.progressPmTable19 || []).filter((_, i) => i !== idx);
-                              setReportData({ ...reportData, progressPmTable19: newPm });
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setReportData(prev => {
+                                if (!prev) return prev;
+                                const newPm = (prev.progressPmTable19 || []).filter((_, i) => i !== idx);
+                                return { ...prev, progressPmTable19: newPm };
+                              });
                               toast.info('Baris PM berhasil dihapus');
                             }}
                             className="p-1 text-slate-400 hover:text-red-500 rounded cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
@@ -2809,9 +3200,14 @@ export function MonthlyReportGenerator() {
                           <button
                             type="button"
                             title="Hapus baris SLA"
-                            onClick={() => {
-                              const newSla = (reportData.slaOrdersTable19 || []).filter((_, i) => i !== sIdx);
-                              setReportData({ ...reportData, slaOrdersTable19: newSla });
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setReportData(prev => {
+                                if (!prev) return prev;
+                                const newSla = (prev.slaOrdersTable19 || []).filter((_, i) => i !== sIdx);
+                                return { ...prev, slaOrdersTable19: newSla };
+                              });
                               toast.info('Baris SLA berhasil dihapus');
                             }}
                             className="p-1 text-slate-400 hover:text-red-500 rounded cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
@@ -2946,12 +3342,14 @@ export function MonthlyReportGenerator() {
                               <button
                                 type="button"
                                 title="Hapus Tier"
-                                onClick={() => {
-                                  const updated = { ...reportData };
-                                  const matrix = [...(updated.serviceCreditMatrix || [])];
-                                  matrix.splice(rIdx, 1);
-                                  updated.serviceCreditMatrix = matrix;
-                                  setReportData(updated);
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  setReportData(prev => {
+                                    if (!prev) return prev;
+                                    const matrix = (prev.serviceCreditMatrix || []).filter((_, i) => i !== rIdx);
+                                    return { ...prev, serviceCreditMatrix: matrix };
+                                  });
                                   toast.info('Tier berhasil dihapus');
                                 }}
                                 className="p-1 text-slate-400 hover:text-red-500 rounded cursor-pointer"
@@ -3115,21 +3513,23 @@ export function MonthlyReportGenerator() {
                                   </span>
                                   <button
                                     type="button"
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
                                       if (window.confirm(`Hapus seluruh peralatan dalam kategori "${sysName}"?`)) {
-                                        const newEquip = (reportData.equipmentDetailsTable20 || []).filter(
-                                          (e) => (e.system || 'General Equipment') !== sysName
-                                        );
-                                        const sysCounter = new Map<string, number>();
-                                        newEquip.forEach((item) => {
-                                          const s = item.system || 'Other Equipment';
-                                          const count = (sysCounter.get(s) || 0) + 1;
-                                          sysCounter.set(s, count);
-                                          item.no = count;
-                                        });
-                                        setReportData({
-                                          ...reportData,
-                                          equipmentDetailsTable20: newEquip
+                                        setReportData(prev => {
+                                          if (!prev) return prev;
+                                          const newEquip = (prev.equipmentDetailsTable20 || []).filter(
+                                            (item) => (item.system || 'General Equipment') !== sysName
+                                          );
+                                          const sysCounter = new Map<string, number>();
+                                          newEquip.forEach((item) => {
+                                            const s = item.system || 'Other Equipment';
+                                            const count = (sysCounter.get(s) || 0) + 1;
+                                            sysCounter.set(s, count);
+                                            item.no = count;
+                                          });
+                                          return { ...prev, equipmentDetailsTable20: newEquip };
                                         });
                                         toast.info(`Kategori "${sysName}" berhasil dihapus.`);
                                       }
@@ -3254,18 +3654,20 @@ export function MonthlyReportGenerator() {
                               <td className="py-1 px-1 text-center print:hidden">
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    const newEquip = (reportData.equipmentDetailsTable20 || []).filter((_, i) => i !== idx);
-                                    const sysCounter = new Map<string, number>();
-                                    newEquip.forEach((item) => {
-                                      const s = item.system || 'Other Equipment';
-                                      const count = (sysCounter.get(s) || 0) + 1;
-                                      sysCounter.set(s, count);
-                                      item.no = count;
-                                    });
-                                    setReportData({
-                                      ...reportData,
-                                      equipmentDetailsTable20: newEquip
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    setReportData(prev => {
+                                      if (!prev) return prev;
+                                      const newEquip = (prev.equipmentDetailsTable20 || []).filter((_, i) => i !== idx);
+                                      const sysCounter = new Map<string, number>();
+                                      newEquip.forEach((item) => {
+                                        const s = item.system || 'Other Equipment';
+                                        const count = (sysCounter.get(s) || 0) + 1;
+                                        sysCounter.set(s, count);
+                                        item.no = count;
+                                      });
+                                      return { ...prev, equipmentDetailsTable20: newEquip };
                                     });
                                     toast.info('Equipment dihapus.');
                                   }}
@@ -3353,13 +3755,15 @@ export function MonthlyReportGenerator() {
                           <td className="py-1 px-1 text-center print:hidden">
                             <button
                               type="button"
-                              onClick={() => {
-                                const newSys = (reportData.systemOverviewTable21 || [])
-                                  .filter((_, i) => i !== idx)
-                                  .map((it, i) => ({ ...it, no: i + 1 }));
-                                setReportData({
-                                  ...reportData,
-                                  systemOverviewTable21: newSys
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                setReportData(prev => {
+                                  if (!prev) return prev;
+                                  const newSys = (prev.systemOverviewTable21 || [])
+                                    .filter((_, i) => i !== idx)
+                                    .map((it, i) => ({ ...it, no: i + 1 }));
+                                  return { ...prev, systemOverviewTable21: newSys };
                                 });
                                 toast.info('Komponen dihapus.');
                               }}
@@ -3467,10 +3871,15 @@ export function MonthlyReportGenerator() {
                           + Step
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
                             if (window.confirm(`Hapus seluruh SOP kategori "${sow.category}"?`)) {
-                              const newSow = reportData.scopeOfWorkTable22.filter((_, i) => i !== sIdx);
-                              setReportData({ ...reportData, scopeOfWorkTable22: newSow });
+                              setReportData(prev => {
+                                if (!prev) return prev;
+                                const newSow = (prev.scopeOfWorkTable22 || []).filter((_, i) => i !== sIdx);
+                                return { ...prev, scopeOfWorkTable22: newSow };
+                              });
                               toast.info('Kategori SOP dihapus.');
                             } 
                           }}
@@ -3512,15 +3921,20 @@ export function MonthlyReportGenerator() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => {
-                                  const newSow = reportData.scopeOfWorkTable22.map((cat, ci) => {
-                                    if (ci !== sIdx) return cat;
-                                    return {
-                                      ...cat,
-                                      items: cat.items.filter((_, ii) => ii !== stIdx)
-                                    };
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  setReportData(prev => {
+                                    if (!prev) return prev;
+                                    const newSow = (prev.scopeOfWorkTable22 || []).map((cat, ci) => {
+                                      if (ci !== sIdx) return cat;
+                                      return {
+                                        ...cat,
+                                        items: (cat.items || []).filter((_, ii) => ii !== stIdx)
+                                      };
+                                    });
+                                    return { ...prev, scopeOfWorkTable22: newSow };
                                   });
-                                  setReportData({ ...reportData, scopeOfWorkTable22: newSow });
                                   toast.info('Tahapan SOP dihapus.');
                                 }}
                                 className="p-0.5 hover:text-red-600 cursor-pointer"
@@ -3548,19 +3962,24 @@ export function MonthlyReportGenerator() {
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    const newSow = reportData.scopeOfWorkTable22.map((cat, ci) => {
-                                      if (ci !== sIdx) return cat;
-                                      const newItems = cat.items.map((it, ii) => {
-                                        if (ii !== stIdx) return it;
-                                        return {
-                                          ...it,
-                                          tasks: it.tasks.filter((_, ti) => ti !== tIdx)
-                                        };
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    setReportData(prev => {
+                                      if (!prev) return prev;
+                                      const newSow = (prev.scopeOfWorkTable22 || []).map((cat, ci) => {
+                                        if (ci !== sIdx) return cat;
+                                        const newItems = (cat.items || []).map((it, ii) => {
+                                          if (ii !== stIdx) return it;
+                                          return {
+                                            ...it,
+                                            tasks: (it.tasks || []).filter((_, ti) => ti !== tIdx)
+                                          };
+                                        });
+                                        return { ...cat, items: newItems };
                                       });
-                                      return { ...cat, items: newItems };
+                                      return { ...prev, scopeOfWorkTable22: newSow };
                                     });
-                                    setReportData({ ...reportData, scopeOfWorkTable22: newSow });
                                     toast.info('Poin task dihapus.');
                                   }}
                                   className="opacity-0 group-hover:opacity-100 p-0.5 hover:text-red-600 transition-opacity cursor-pointer print:hidden self-start mt-1"
@@ -3713,15 +4132,20 @@ export function MonthlyReportGenerator() {
                             <td className="py-1 px-1 text-center print:hidden">
                               <button
                                 type="button"
-                                onClick={() => {
-                                  const newObs = reportData.observationTable23.map((sec, si) => {
-                                    if (si !== sIdx) return sec;
-                                    const newItems = sec.items
-                                      .filter((_, ii) => ii !== iIdx)
-                                      .map((it, idx) => ({ ...it, no: idx + 1 }));
-                                    return { ...sec, items: newItems };
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  setReportData(prev => {
+                                    if (!prev) return prev;
+                                    const newObs = (prev.observationTable23 || []).map((sec, si) => {
+                                      if (si !== sIdx) return sec;
+                                      const newItems = (sec.items || [])
+                                        .filter((_, ii) => ii !== iIdx)
+                                        .map((it, idx) => ({ ...it, no: idx + 1 }));
+                                      return { ...sec, items: newItems };
+                                    });
+                                    return { ...prev, observationTable23: newObs };
                                   });
-                                  setReportData({ ...reportData, observationTable23: newObs });
                                   toast.info('Baris temuan dihapus.');
                                 }}
                                 className="p-1 hover:text-red-600 transition-colors cursor-pointer"
@@ -3779,9 +4203,14 @@ export function MonthlyReportGenerator() {
                       />
                       <button
                         type="button"
-                        onClick={() => {
-                          const newRca = (reportData.rootCauseAnalyses || []).filter((_, i) => i !== rIdx);
-                          setReportData({ ...reportData, rootCauseAnalyses: newRca });
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setReportData(prev => {
+                            if (!prev) return prev;
+                            const newRca = (prev.rootCauseAnalyses || []).filter((_, i) => i !== rIdx);
+                            return { ...prev, rootCauseAnalyses: newRca };
+                          });
                           toast.info('RCA dihapus.');
                         }}
                         className="p-1 hover:text-red-600 transition-colors cursor-pointer print:hidden"
@@ -3946,10 +4375,14 @@ export function MonthlyReportGenerator() {
                           </td>
                           <td className="py-1 px-2 text-center print:hidden">
                             <button
-                              onClick={() => {
-                                const updated = { ...reportData };
-                                updated.repairsTable29.splice(idx, 1);
-                                setReportData(updated);
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                setReportData(prev => {
+                                  if (!prev) return prev;
+                                  const newRepairs = (prev.repairsTable29 || []).filter((_, i) => i !== idx);
+                                  return { ...prev, repairsTable29: newRepairs };
+                                });
                                 toast.info('Baris perbaikan dihapus.');
                               }}
                               className="p-1 hover:text-red-600 transition-colors cursor-pointer"
@@ -4053,11 +4486,16 @@ export function MonthlyReportGenerator() {
                         </td>
                         <td className="py-1 px-1 text-center print:hidden">
                           <button
-                            onClick={() => {
-                              const updated = { ...reportData };
-                              updated.calibrationTable30.splice(idx, 1);
-                              updated.calibrationTable30.forEach((it, i) => { it.no = i + 1; });
-                              setReportData(updated);
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setReportData(prev => {
+                                if (!prev) return prev;
+                                const newCal = (prev.calibrationTable30 || [])
+                                  .filter((_, i) => i !== idx)
+                                  .map((it, i) => ({ ...it, no: i + 1 }));
+                                return { ...prev, calibrationTable30: newCal };
+                              });
                               toast.info('Baris kalibrasi dihapus.');
                             }}
                             className="p-1 hover:text-red-600 transition-colors cursor-pointer"
@@ -4138,11 +4576,16 @@ export function MonthlyReportGenerator() {
                         </td>
                         <td className="py-1 px-1 text-center print:hidden">
                           <button
-                            onClick={() => {
-                              const updated = { ...reportData };
-                              updated.validationMethodsTable31.splice(idx, 1);
-                              updated.validationMethodsTable31.forEach((it, i) => { it.no = i + 1; });
-                              setReportData(updated);
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setReportData(prev => {
+                                if (!prev) return prev;
+                                const newVal = (prev.validationMethodsTable31 || [])
+                                  .filter((_, i) => i !== idx)
+                                  .map((it, i) => ({ ...it, no: i + 1 }));
+                                return { ...prev, validationMethodsTable31: newVal };
+                              });
                               toast.info('Baris validasi dihapus.');
                             }}
                             className="p-1 hover:text-red-600 transition-colors cursor-pointer"
@@ -4245,11 +4688,16 @@ export function MonthlyReportGenerator() {
                         </td>
                         <td className="py-1 px-1 text-center print:hidden">
                           <button
-                            onClick={() => {
-                              const updated = { ...reportData };
-                              updated.challengesTable32.splice(idx, 1);
-                              updated.challengesTable32.forEach((it, i) => { it.no = i + 1; });
-                              setReportData(updated);
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setReportData(prev => {
+                                if (!prev) return prev;
+                                const newCh = (prev.challengesTable32 || [])
+                                  .filter((_, i) => i !== idx)
+                                  .map((it, i) => ({ ...it, no: i + 1 }));
+                                return { ...prev, challengesTable32: newCh };
+                              });
                               toast.info('Tantangan dihapus.');
                             }}
                             className="p-1 hover:text-red-600 transition-colors cursor-pointer"
@@ -4330,11 +4778,16 @@ export function MonthlyReportGenerator() {
                         </td>
                         <td className="py-1 px-1 text-center print:hidden">
                           <button
-                            onClick={() => {
-                              const updated = { ...reportData };
-                              updated.mitigationTable33.splice(idx, 1);
-                              updated.mitigationTable33.forEach((it, i) => { it.no = i + 1; });
-                              setReportData(updated);
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setReportData(prev => {
+                                if (!prev) return prev;
+                                const newMit = (prev.mitigationTable33 || [])
+                                  .filter((_, i) => i !== idx)
+                                  .map((it, i) => ({ ...it, no: i + 1 }));
+                                return { ...prev, mitigationTable33: newMit };
+                              });
                               toast.info('Mitigasi dihapus.');
                             }}
                             className="p-1 hover:text-red-600 transition-colors cursor-pointer"
@@ -4415,11 +4868,16 @@ export function MonthlyReportGenerator() {
                         </td>
                         <td className="py-1 px-1 text-center print:hidden">
                           <button
-                            onClick={() => {
-                              const updated = { ...reportData };
-                              updated.lessonsLearnedTable34.splice(idx, 1);
-                              updated.lessonsLearnedTable34.forEach((it, i) => { it.no = i + 1; });
-                              setReportData(updated);
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setReportData(prev => {
+                                if (!prev) return prev;
+                                const newLL = (prev.lessonsLearnedTable34 || [])
+                                  .filter((_, i) => i !== idx)
+                                  .map((it, i) => ({ ...it, no: i + 1 }));
+                                return { ...prev, lessonsLearnedTable34: newLL };
+                              });
                               toast.info('Lesson learned dihapus.');
                             }}
                             className="p-1 hover:text-red-600 transition-colors cursor-pointer"
@@ -4583,11 +5041,20 @@ export function MonthlyReportGenerator() {
                             </td>
                             <td className="py-1 px-1 text-center print:hidden">
                               <button
-                                onClick={() => {
-                                  const updated = { ...reportData };
-                                  updated.recommendationsTable35[sIdx].items.splice(iIdx, 1);
-                                  updated.recommendationsTable35[sIdx].items.forEach((it, idx) => { it.no = idx + 1; });
-                                  setReportData(updated);
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  setReportData(prev => {
+                                    if (!prev) return prev;
+                                    const newRecs = (prev.recommendationsTable35 || []).map((sec, si) => {
+                                      if (si !== sIdx) return sec;
+                                      const newItems = (sec.items || [])
+                                        .filter((_, idx) => idx !== iIdx)
+                                        .map((it, idx) => ({ ...it, no: idx + 1 }));
+                                      return { ...sec, items: newItems };
+                                    });
+                                    return { ...prev, recommendationsTable35: newRecs };
+                                  });
                                   toast.info('Baris rekomendasi dihapus.');
                                 }}
                                 className="p-1 hover:text-red-600 transition-colors cursor-pointer"
@@ -4963,11 +5430,16 @@ export function MonthlyReportGenerator() {
                         <td className="py-2 px-1 text-center print:hidden">
                           <button
                             type="button"
-                            onClick={() => {
-                              const updated = { ...reportData };
-                              updated.photoLogsTable36.splice(idx, 1);
-                              updated.photoLogsTable36.forEach((p, pIdx) => { p.no = pIdx + 1; });
-                              setReportData(updated);
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setReportData(prev => {
+                                if (!prev) return prev;
+                                const newPhotos = (prev.photoLogsTable36 || [])
+                                  .filter((_, i) => i !== idx)
+                                  .map((p, pIdx) => ({ ...p, no: pIdx + 1 }));
+                                return { ...prev, photoLogsTable36: newPhotos };
+                              });
                               toast.info('Baris dokumentasi foto dihapus');
                             }}
                             className="p-1 text-slate-400 hover:text-red-500 rounded cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
@@ -5007,7 +5479,434 @@ export function MonthlyReportGenerator() {
 
         </div>
       )}
+        </>
+      )}
 
+      {/* ─── Tab 2: Arsip Dokumen Monthly Report ──────────────────────────────── */}
+      {activeMainTab === 'archives' && (
+        <div className="space-y-6 font-sans">
+          {/* Header Arsip */}
+          <div className="bg-white p-6 sm:p-7 rounded-3xl shadow-sm border border-slate-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold mb-2">
+                  <FolderArchive className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Arsip Dokumen Cloud Firestore</span>
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  Arsip Dokumen Monthly Report
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-2xl leading-relaxed">
+                  Daftar laporan bulanan yang telah diekspor ke Word (.docx) dan tersimpan di database. Anda dapat mengunduh ulang file atau memuatnya kembali ke editor untuk direvisi.
+                </p>
+              </div>
+
+              {/* Counter Badge */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 flex items-center gap-3 shrink-0">
+                <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl">
+                  <FolderArchive className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-[11px] font-semibold text-slate-500 block">Total Arsip</span>
+                  <span className="text-xl font-black text-slate-800">{archives.length} Dokumen</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Search Bar */}
+            <div className="mt-5 pt-5 border-t border-slate-100 flex flex-col sm:flex-row items-center gap-3">
+              <div className="relative flex-1 w-full">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={archiveSearchQuery}
+                  onChange={(e) => setArchiveSearchQuery(e.target.value)}
+                  placeholder="Cari arsip berdasarkan judul, periode, quarter, equipment, atau pembuat..."
+                  className="w-full pl-10 pr-10 py-2.5 bg-slate-50 hover:bg-white focus:bg-white rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-xs text-slate-800 font-sans outline-none transition-all"
+                />
+                {archiveSearchQuery && (
+                  <button
+                    onClick={() => setArchiveSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* List Kartu Arsip */}
+          {loadingArchives ? (
+            <div className="bg-white p-16 rounded-3xl border border-slate-200 text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3" />
+              <p className="text-sm font-bold text-slate-700">Memuat arsip laporan...</p>
+            </div>
+          ) : filteredArchives.length === 0 ? (
+            <div className="bg-white p-16 rounded-3xl border border-slate-200 text-center space-y-3">
+              <FolderArchive className="w-12 h-12 text-slate-300 mx-auto" />
+              <h3 className="text-base font-bold text-slate-800">
+                {archiveSearchQuery ? 'Tidak Ada Arsip yang Cocok' : 'Belum Ada Arsip Dokumen Monthly Report'}
+              </h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                {archiveSearchQuery
+                  ? 'Coba gunakan kata kunci pencarian yang lain.'
+                  : 'Klik tombol "Ekspor Word (.docx)" di Editor Laporan untuk menyimpan dokumen secara otomatis ke arsip ini.'}
+              </p>
+              {!archiveSearchQuery && (
+                <button
+                  onClick={() => setActiveMainTab('editor')}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+                >
+                  Buka Editor Laporan
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {filteredArchives.map((archive) => (
+                <div
+                  key={archive.id}
+                  className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/90 hover:border-blue-300 hover:shadow-md transition-all space-y-4"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div className="space-y-1.5 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                          {archive.quarter || 'Q3'}
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                          {archive.monthName} {archive.year}
+                        </span>
+                        <span className="text-[11px] text-slate-400 font-medium">
+                          {archive.createdAt?.toDate ? (
+                            archive.createdAt.toDate().toLocaleDateString('id-ID', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                          ) : 'Tanggal tidak tersedia'}
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-black text-slate-900 tracking-tight">
+                        {archive.title}
+                      </h3>
+                      <p className="text-xs text-slate-500 font-sans">
+                        Kontrak: <span className="font-semibold text-slate-700">{archive.contractNumber || 'K.TDE.0105/LEG.PRJ/VI/2026'}</span> · Dibuat oleh: <span className="font-semibold text-slate-700">{archive.createdByName || archive.createdBy || 'Teknisi'}</span>
+                      </p>
+                    </div>
+
+                    {/* Tombol Aksi */}
+                    <div className="flex items-center gap-2 self-start shrink-0 font-sans">
+                      <button
+                        onClick={() => handleLoadArchiveToEditor(archive)}
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                        title="Buka kembali di Editor untuk diedit / direvisi"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Edit Kembali</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleDownloadArchive(archive)}
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                        title="Download ulang file .docx"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Unduh .docx</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteArchive(archive.id)}
+                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl border border-transparent hover:border-red-200 transition-all cursor-pointer"
+                        title="Hapus arsip ini"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Ringkasan Scope Equipment & CI */}
+                  <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs">
+                    <div className="space-y-1">
+                      <span className="font-bold text-slate-700 block text-[11px] uppercase tracking-wider">
+                        Lingkup Peralatan ({archive.selectedEquipments?.length || 0} Equipment):
+                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {(archive.selectedEquipments || []).map((eq: string, idx: number) => (
+                          <span
+                            key={idx}
+                            className="px-2 py-0.5 bg-white border border-slate-200 text-slate-700 rounded-md text-[10px] font-semibold"
+                          >
+                            {eq}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="text-right sm:border-l sm:border-slate-200 sm:pl-4 shrink-0">
+                      <span className="text-[10px] text-slate-500 font-semibold block">Total CI Terdaftar</span>
+                      <span className="text-sm font-black text-blue-700">
+                        {archive.totalCINames || (archive.reportData?.taskPerformanceTables || []).reduce((acc: number, t: any) => acc + (t.items?.length || 0), 0)} CI
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ─── Modal Pilih Equipment & CI Name dari BOQ ─────────────────────────── */}
+      {isBoqSelectorOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 print:hidden">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 font-sans">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-blue-700 to-indigo-700 text-white px-6 py-4 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/10 rounded-xl backdrop-blur-xs">
+                  <Layers className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black tracking-tight leading-tight">
+                    Pilih Equipment & CI Name dari BOQ
+                  </h3>
+                  <p className="text-xs text-blue-100 mt-0.5">
+                    Tentukan lingkup peralatan yang masuk ke dalam Monthly Report (Bab 2, 5, dan 6)
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="hidden sm:inline-block px-3 py-1 bg-white/15 rounded-full text-xs font-bold text-white border border-white/20">
+                  {selectedCategoryIds.size} Equipment · {totalSelectedBOQCI} CI Terpilih
+                </span>
+                <button
+                  onClick={() => setIsBoqSelectorOpen(false)}
+                  className="p-1.5 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Search & Quick Selection Toolbar */}
+            <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row items-center gap-3 shrink-0">
+              <div className="relative flex-1 w-full">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={categorySearchQuery}
+                  onChange={(e) => setCategorySearchQuery(e.target.value)}
+                  placeholder="Cari nama equipment (cth: Trafo, Chiller, Genset, LV, CRAC)..."
+                  className="w-full pl-9 pr-9 py-2 bg-white text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                />
+                {categorySearchQuery && (
+                  <button
+                    onClick={() => setCategorySearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allIds = new Set(MAINTENANCE_BOQ_CATEGORIES.map(c => c.id));
+                    setSelectedCategoryIds(allIds);
+                    const map = new Map<string, Set<string>>();
+                    MAINTENANCE_BOQ_CATEGORIES.forEach(c => {
+                      map.set(c.id, new Set(c.items.map(it => it['CI Name*'] || '').filter(Boolean)));
+                    });
+                    setSelectedCINames(map);
+                  }}
+                  className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Pilih Semua Equipment
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategoryIds(new Set());
+                    setSelectedCINames(new Map());
+                  }}
+                  className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  Batal Semua
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body: Accordion Equipment & CI Checklist */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
+              {filteredBOQCategories.length === 0 ? (
+                <div className="py-12 text-center text-slate-400">
+                  <Package className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm font-semibold">Tidak ditemukan equipment dengan kata kunci "{categorySearchQuery}"</p>
+                </div>
+              ) : (
+                filteredBOQCategories.map((cat) => {
+                  const isSelected = selectedCategoryIds.has(cat.id);
+                  const isExpanded = expandedCategories.has(cat.id);
+                  const ciSet = selectedCINames.get(cat.id);
+                  const selectedCount = ciSet?.size || 0;
+                  const totalItems = cat.items.length;
+
+                  return (
+                    <div
+                      key={cat.id}
+                      className={`border rounded-2xl overflow-hidden transition-all ${
+                        isSelected
+                          ? 'border-blue-400 bg-blue-50/30 shadow-xs'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      {/* Accordion Category Header */}
+                      <div className="flex items-center gap-3 px-4 py-3 cursor-pointer bg-white">
+                        <button
+                          type="button"
+                          onClick={() => toggleCategory(cat.id)}
+                          className="flex-shrink-0 transition-colors cursor-pointer"
+                        >
+                          {isSelected ? (
+                            <CheckSquare className="w-5 h-5 text-blue-600" />
+                          ) : (
+                            <Square className="w-5 h-5 text-slate-400 hover:text-slate-600" />
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!isSelected) toggleCategory(cat.id);
+                            else toggleExpand(cat.id);
+                          }}
+                          className="flex-1 text-left flex items-center gap-2.5 min-w-0 cursor-pointer"
+                        >
+                          <span className="text-sm font-bold text-slate-900 truncate">
+                            {cat.name}
+                          </span>
+                          <span className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full font-semibold shrink-0">
+                            {totalItems} CI
+                          </span>
+                          {isSelected && (
+                            <span className="text-[10px] px-2 py-0.5 bg-blue-600 text-white rounded-full font-bold shrink-0">
+                              {selectedCount} Dipilih
+                            </span>
+                          )}
+                        </button>
+
+                        {isSelected && (
+                          <button
+                            type="button"
+                            onClick={() => toggleExpand(cat.id)}
+                            className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+                          >
+                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Accordion Content: CI Checklist */}
+                      {isSelected && isExpanded && (
+                        <div className="p-4 border-t border-slate-100 bg-slate-50/50 space-y-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-slate-700">
+                              Daftar CI Name ({cat.name}):
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => selectAllCINames(cat.id)}
+                                className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-blue-700 bg-blue-100/80 hover:bg-blue-200 rounded-lg transition-colors cursor-pointer"
+                              >
+                                <CheckCheck className="w-3 h-3" />
+                                <span>Pilih Semua CI</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deselectAllCINames(cat.id)}
+                                className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-red-600 bg-red-100/80 hover:bg-red-200 rounded-lg transition-colors cursor-pointer"
+                              >
+                                <XCircle className="w-3 h-3" />
+                                <span>Batal Semua</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="max-h-48 overflow-y-auto space-y-1 pr-1 border border-slate-200 rounded-xl p-2 bg-white">
+                            {cat.items.map((item, itIdx) => {
+                              const ciName = item['CI Name*'] || '';
+                              if (!ciName) return null;
+                              const isChecked = ciSet?.has(ciName) || false;
+                              return (
+                                <button
+                                  key={itIdx}
+                                  type="button"
+                                  onClick={() => toggleCIName(cat.id, ciName)}
+                                  className={`w-full text-left flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
+                                    isChecked
+                                      ? 'bg-blue-50 text-blue-900 font-semibold'
+                                      : 'text-slate-600 hover:bg-slate-50'
+                                  }`}
+                                >
+                                  {isChecked ? (
+                                    <CheckSquare className="w-4 h-4 text-blue-600 shrink-0" />
+                                  ) : (
+                                    <Square className="w-4 h-4 text-slate-300 shrink-0" />
+                                  )}
+                                  <span className="truncate">{ciName}</span>
+                                  {item['Class Name*'] && (
+                                    <span className="text-[10px] text-slate-400 font-normal ml-auto shrink-0">
+                                      {item['Class Name*']}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+              <div className="text-[11px] text-slate-500 leading-tight">
+                💡 <span className="font-semibold text-slate-700">Auto-fill Task PM:</span> Otomatis ditarik dari checklist Service Report (SR) masing-masing peralatan.
+              </div>
+
+              <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsBoqSelectorOpen(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplyBOQSelection}
+                  disabled={selectedCategoryIds.size === 0 || totalSelectedBOQCI === 0}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Terapkan ke Laporan ({totalSelectedBOQCI} CI)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
