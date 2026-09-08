@@ -11,8 +11,9 @@ import { DetectedFaceBox, FaceMatchResult, RegisteredFace } from '@/types/faceAu
 
 // Ukuran standar normalisasi wajah untuk ekstraksi fitur
 const NORMALIZED_FACE_SIZE = 128;
-// Threshold batas minimal kemiripan untuk dinyatakan cocok (0.83 = 83% similarity)
-const MATCH_SIMILARITY_THRESHOLD = 0.82;
+// Threshold batas minimal kemiripan untuk dinyatakan cocok (0.85 = 85% similarity)
+// Diperketat dari 0.82 untuk mencegah false-positive, tapi cukup untuk real face match
+const MATCH_SIMILARITY_THRESHOLD = 0.85;
 
 /**
  * Deteksi perkiraan area wajah pada elemen Video atau Canvas menggunakan
@@ -76,10 +77,18 @@ export function detectFaceInStream(
     }
   }
 
-  // Wajah valid harus memiliki cukup pixel kulit (minimal 3% dari luas layar)
-  const minPixels = (w * h) * 0.03;
+  // Wajah valid harus memiliki cukup pixel kulit (minimal 5% dari luas layar)
+  const minPixels = (w * h) * 0.05;
   if (skinPixelCount < minPixels || maxX <= minX || maxY <= minY) {
     return null;
+  }
+
+  // Validasi aspect ratio — wajah harus portrait-ish (tinggi >= lebar * 0.8)
+  const rawW = maxX - minX;
+  const rawH = maxY - minY;
+  const aspectRatio = rawH / rawW;
+  if (aspectRatio < 0.7 || aspectRatio > 3.0) {
+    return null; // Bukan bentuk wajah manusia (terlalu lebar atau terlalu tipis)
   }
 
   const boxW = (maxX - minX) / scale;

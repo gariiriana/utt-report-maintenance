@@ -634,11 +634,14 @@ service cloud.firestore {
     // ============================================================================
     // Koleksi: registered_faces — Data Biometrik Wajah untuk Autentikasi Login Face ID
     // Akses: Publik dapat read (untuk pencocokan wajah di layar login),
-    //        Hanya Admin dan QC DME (qc@gmail.com) yang dapat Create, Update, Delete.
+    //        Admin, QC DME, Engineer, Standby Engineer dapat Create, Update, Delete.
     // ============================================================================
     match /registered_faces/{faceId} {
       allow read: if true;
-      allow create, update, delete: if request.auth != null && (isAdminOrQcDme() || getEmail() == 'qc@gmail.com' || isAdminSafe());
+      allow create, update: if request.auth != null 
+                            && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || getEmail() == 'qc@gmail.com');
+      allow delete: if request.auth != null 
+                    && (isAdminOrQcDme() || isPrivilegedRole() || getEmail() == 'qc@gmail.com');
     }
 
     match /{document=**} {
