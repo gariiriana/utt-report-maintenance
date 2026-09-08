@@ -11,8 +11,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Calendar, FileText, FileSpreadsheet,
   Plus, Trash2, Search, RefreshCw,
-  Folder, ChevronLeft, Pencil,
-  Camera, X, Save, Users, Building2, MessageSquare
+  Folder, ChevronLeft, ChevronDown, ChevronUp, Pencil,
+  Camera, X, Save, Users, Building2, MessageSquare,
+  Download, Eye
 } from 'lucide-react';
 import { collection, addDoc, deleteDoc, doc, onSnapshot, query, serverTimestamp, updateDoc, where, getDocs } from 'firebase/firestore';
 import { db } from '@/api/firebase';
@@ -21,6 +22,8 @@ import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as pdfjsLib from 'pdfjs-dist';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 // Konfigurasi Web Worker pdf.js untuk pembacaan & render berkas PDF di browser
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -50,7 +53,22 @@ interface DocumentationRecord {
   pdfs?: Array<{ id: string; name: string; base64: string; isChunked?: boolean; description?: string }>;
 }
 
+interface TbmDocRecord {
+  id: string;
+  tanggal: string; // YYYY-MM-DD
+  photos: string[]; // array of base64 compressed photos
+  category?: string;
+}
+
 // ─── Helper Functions ───
+const getDayName = (dateStr: string) => {
+  if (!dateStr) return '';
+  const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const parts = dateStr.split('-');
+  if (parts.length < 3) return '';
+  const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  return days[d.getDay()] || '';
+};
 const getIndonesianMonthYear = (dateStr: string) => {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
@@ -402,6 +420,13 @@ export function AbsenInduction() {
   const [docRecords, setDocRecords] = useState<DocumentationRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // TBM Documentation Data state
+  const [tbmDocRecords, setTbmDocRecords] = useState<TbmDocRecord[]>([]);
+  const [loadingTbmDocs, setLoadingTbmDocs] = useState(true);
+  const [isTbmSectionOpen, setIsTbmSectionOpen] = useState(true);
+  const [tbmCategoryFilter, setTbmCategoryFilter] = useState<string>('Semua');
+  const [isDownloadingTbmZip, setIsDownloadingTbmZip] = useState(false);
+
   // Filters
   const [startDate, setStartDate] = useState<string>(() => {
     const d = new Date();
@@ -560,6 +585,135 @@ export function AbsenInduction() {
     });
     return () => unsubscribe();
   }, []);
+
+  // ─── TBM Documentation Firestore Realtime Listener ───
+  useEffect(() => {
+    setLoadingTbmDocs(true);
+    const q = query(
+      collection(db, 'absen_tbm'),
+      where('isDocumentation', '==', true)
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const docs: TbmDocRecord[] = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const rawPhotos = data.photos;
+        let photosList: string[] = [];
+        if (Array.isArray(rawPhotos)) {
+          photosList = rawPhotos.map((p: any) => {
+            if (typeof p === 'string') return p;
+            if (p && typeof p === 'object') return p.base64 || p.url || p.photo || '';
+            return '';
+          }).filter((p: string) => !!p);
+        }
+        if (photosList.length > 0) {
+          docs.push({
+            id: docSnap.id,
+            tanggal: data.tanggal || '',
+            photos: photosList,
+            category: data.category || 'Semua'
+          });
+        }
+      });
+      docs.sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+      setTbmDocRecords(docs);
+      setLoadingTbmDocs(false);
+    }, (error) => {
+      console.error("Firestore listener for TBM documentation failed:", error);
+      setLoadingTbmDocs(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // ─── Filtered TBM Documentation Records ───
+  const filteredTbmDocs = useMemo(() => {
+    return tbmDocRecords.filter(docItem => {
+      if (!docItem.tanggal) return false;
+      const matchStart = !startDate || docItem.tanggal >= startDate;
+      const matchEnd = !endDate || docItem.tanggal <= endDate;
+      const matchCat = tbmCategoryFilter === 'Semua' || docItem.category === tbmCategoryFilter;
+      return matchStart && matchEnd && matchCat;
+    });
+  }, [tbmDocRecords, startDate, endDate, tbmCategoryFilter]);
+
+  const availableTbmCategories = useMemo(() => {
+    const cats = new Set<string>();
+    tbmDocRecords.forEach(d => {
+      const matchStart = !startDate || d.tanggal >= startDate;
+      const matchEnd = !endDate || d.tanggal <= endDate;
+      if (matchStart && matchEnd && d.category && d.category !== 'Semua') {
+        cats.add(d.category);
+      }
+    });
+    return Array.from(cats);
+  }, [tbmDocRecords, startDate, endDate]);
+
+  const totalTbmPhotos = useMemo(() => {
+    return filteredTbmDocs.reduce((acc, d) => acc + d.photos.length, 0);
+  }, [filteredTbmDocs]);
+
+  const selectedDateTbmDoc = useMemo(() => {
+    if (!selectedDate) return null;
+    return tbmDocRecords.find(d => d.tanggal === selectedDate);
+  }, [tbmDocRecords, selectedDate]);
+
+  // ─── Download All Filtered TBM Photos as ZIP ───
+  const handleDownloadAllTbmPhotosZip = async () => {
+    if (totalTbmPhotos === 0) {
+      toast.error("Tidak ada foto TBM untuk diunduh pada periode ini");
+      return;
+    }
+    setIsDownloadingTbmZip(true);
+    const toastId = toast.loading(`Menyiapkan ${totalTbmPhotos} foto TBM ke dalam file ZIP...`);
+    try {
+      const zip = new JSZip();
+      const folderName = `Dokumentasi_TBM_${startDate || 'Awal'}_sd_${endDate || 'Akhir'}`;
+      const folder = zip.folder(folderName) || zip;
+
+      let count = 0;
+      for (const docItem of filteredTbmDocs) {
+        const catClean = (docItem.category || 'TBM').replace(/[^a-zA-Z0-9_-]/g, '_');
+        for (let i = 0; i < docItem.photos.length; i++) {
+          const ph = docItem.photos[i];
+          const match = ph.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
+          if (match) {
+            const ext = match[1] === 'jpeg' ? 'jpg' : match[1];
+            const base64Data = match[2];
+            const fileName = `${docItem.tanggal}_${catClean}_Foto_${i + 1}.${ext}`;
+            folder.file(fileName, base64Data, { base64: true });
+            count++;
+          }
+        }
+      }
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      saveAs(content, `${folderName}.zip`);
+      toast.success(`Berhasil mengunduh ${count} foto TBM dalam format ZIP!`, { id: toastId });
+    } catch (err) {
+      console.error("Gagal mendownload ZIP foto TBM:", err);
+      toast.error("Gagal membuat file ZIP", { id: toastId });
+    } finally {
+      setIsDownloadingTbmZip(false);
+    }
+  };
+
+  // ─── Download Single TBM Photo ───
+  const handleDownloadSingleTbmPhoto = (photoBase64: string, tanggal: string, index: number) => {
+    try {
+      const match = photoBase64.match(/^data:image\/([a-zA-Z0-9]+);base64,/);
+      const ext = match && match[1] === 'jpeg' ? 'jpg' : (match ? match[1] : 'jpg');
+      const link = document.createElement('a');
+      link.href = photoBase64;
+      link.download = `Foto_TBM_${tanggal}_${index + 1}.${ext}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("Foto berhasil diunduh");
+    } catch (err) {
+      console.error("Gagal mengunduh foto:", err);
+      toast.error("Gagal mengunduh foto");
+    }
+  };
 
   // ─── Filtered Records ───
   const filteredRecords = useMemo(() => {
@@ -2130,6 +2284,179 @@ export function AbsenInduction() {
         </div>
       </div>
 
+      {/* ─── TBM Documentation Gallery Section (Filtered by startDate & endDate) ─── */}
+      <div className="bg-white/90 backdrop-blur-xl border border-sky-100/90 rounded-2xl overflow-hidden shadow-lg text-slate-800 transition-all">
+        {/* Header Bar */}
+        <div className="px-5 py-4 bg-gradient-to-r from-sky-50/90 via-blue-50/40 to-indigo-50/90 border-b border-sky-100 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl shadow-md shadow-blue-500/20">
+              <Camera className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-black text-slate-900 tracking-tight">
+                  Dokumentasi Foto Absen TBM
+                </h2>
+                <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-blue-100 text-blue-700 border border-blue-200">
+                  {totalTbmPhotos} Foto
+                </span>
+                <span className="hidden sm:inline-block text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                  {filteredTbmDocs.length} Hari Kegiatan
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                Periode: <strong className="text-slate-700">{formatIndonesianDate(startDate)}</strong> s/d <strong className="text-slate-700">{formatIndonesianDate(endDate)}</strong>
+              </p>
+            </div>
+          </div>
+
+          {/* Right Controls */}
+          <div className="flex items-center gap-2">
+            {/* Category Filter if available */}
+            {availableTbmCategories.length > 0 && (
+              <select
+                value={tbmCategoryFilter}
+                onChange={e => setTbmCategoryFilter(e.target.value)}
+                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 shadow-sm"
+              >
+                <option value="Semua">Semua Kategori</option>
+                {availableTbmCategories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            )}
+
+            {/* Download All ZIP */}
+            {totalTbmPhotos > 0 && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleDownloadAllTbmPhotosZip}
+                disabled={isDownloadingTbmZip}
+                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                title="Download semua foto TBM dalam format ZIP"
+              >
+                {isDownloadingTbmZip ? (
+                  <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Mengunduh...</>
+                ) : (
+                  <><Download className="w-3.5 h-3.5" /> Unduh Semua (ZIP)</>
+                )}
+              </motion.button>
+            )}
+
+            {/* Collapse/Expand toggle */}
+            <button
+              onClick={() => setIsTbmSectionOpen(!isTbmSectionOpen)}
+              className="p-1.5 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-xl transition-all shadow-sm cursor-pointer"
+              title={isTbmSectionOpen ? 'Sembunyikan' : 'Tampilkan'}
+            >
+              {isTbmSectionOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Content Body */}
+        <AnimatePresence initial={false}>
+          {isTbmSectionOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="overflow-hidden"
+            >
+              <div className="p-5">
+                {loadingTbmDocs ? (
+                  <div className="py-12 flex flex-col items-center justify-center gap-2 text-slate-400">
+                    <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+                    <p className="text-xs font-bold">Memuat dokumentasi foto TBM...</p>
+                  </div>
+                ) : filteredTbmDocs.length === 0 ? (
+                  <div className="text-center py-12 px-4 bg-slate-50/50 border border-dashed border-slate-200 rounded-2xl">
+                    <Camera className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                    <h4 className="text-sm font-black text-slate-700">Belum Ada Foto Absen TBM Pada Periode Ini</h4>
+                    <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                      Tidak ditemukan dokumentasi foto TBM pada rentang tanggal <span className="font-semibold text-slate-700">{formatIndonesianDate(startDate)}</span> sampai <span className="font-semibold text-slate-700">{formatIndonesianDate(endDate)}</span>.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {filteredTbmDocs.map((docItem) => {
+                      const dayName = getDayName(docItem.tanggal);
+                      return (
+                        <div key={docItem.id} className="bg-slate-50/70 border border-slate-200/90 rounded-2xl p-4 shadow-sm">
+                          {/* Date Header for this group */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2 border-b border-slate-200/80">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full bg-blue-600 shadow-sm" />
+                              <h4 className="text-sm font-black text-slate-900">
+                                {dayName ? `${dayName}, ` : ''}{formatIndonesianDate(docItem.tanggal)}
+                              </h4>
+                              {docItem.category && docItem.category !== 'Semua' && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-md font-bold bg-purple-100 text-purple-700 border border-purple-200">
+                                  {docItem.category}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs font-bold text-slate-500">
+                              {docItem.photos.length} Foto
+                            </span>
+                          </div>
+
+                          {/* Photos Grid for this date */}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                            {docItem.photos.map((ph, pIdx) => (
+                              <div
+                                key={pIdx}
+                                className="group relative aspect-video w-full rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all"
+                              >
+                                <img
+                                  src={ph}
+                                  alt={`TBM ${docItem.tanggal} - ${pIdx + 1}`}
+                                  loading="lazy"
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
+                                  onClick={() => setPreviewPhoto(ph)}
+                                />
+
+                                {/* Subtle badge in corner */}
+                                <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-black/60 backdrop-blur-sm rounded text-[9px] font-bold text-white pointer-events-none">
+                                  #{pIdx + 1}
+                                </div>
+
+                                {/* Hover Overlay with Actions */}
+                                <div className="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewPhoto(ph)}
+                                    className="p-2 bg-white/90 hover:bg-white text-slate-800 rounded-full shadow-md transition-transform hover:scale-110 cursor-pointer"
+                                    title="Lihat Foto Lebih Besar"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDownloadSingleTbmPhoto(ph, docItem.tanggal, pIdx)}
+                                    className="p-2 bg-white/90 hover:bg-white text-blue-600 rounded-full shadow-md transition-transform hover:scale-110 cursor-pointer"
+                                    title="Unduh Foto Ini"
+                                  >
+                                    <Download className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
       {/* ─── Main Grid: Input Form + Data Browser ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* ─── LEFT: Input Form ─── */}
@@ -2506,6 +2833,46 @@ export function AbsenInduction() {
                      </div>
                    )}
 
+                    {/* Dokumentasi Foto Absen TBM Tanggal */}
+                    {selectedDateTbmDoc && selectedDateTbmDoc.photos && selectedDateTbmDoc.photos.length > 0 && (
+                      <div className="bg-sky-50/70 border border-sky-200 rounded-xl p-3 space-y-2 mb-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[10px] font-bold text-sky-800 uppercase tracking-wider flex items-center gap-1.5">
+                            <Camera className="w-3.5 h-3.5 text-sky-600" /> Dokumentasi Foto Absen TBM ({selectedDateTbmDoc.photos.length} Foto)
+                          </p>
+                          {selectedDateTbmDoc.category && selectedDateTbmDoc.category !== 'Semua' && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded font-bold bg-sky-100 text-sky-700 border border-sky-200">
+                              {selectedDateTbmDoc.category}
+                            </span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {selectedDateTbmDoc.photos.map((ph, idx) => (
+                            <div key={idx} className="bg-white rounded-lg p-1.5 border border-sky-100 space-y-1 relative group shadow-sm">
+                              <div className="aspect-video w-full rounded overflow-hidden bg-slate-100">
+                                <img
+                                  src={ph}
+                                  alt={`TBM ${selectedDateTbmDoc.tanggal} - ${idx + 1}`}
+                                  className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                  onClick={() => setPreviewPhoto(ph)}
+                                />
+                              </div>
+                              <div className="flex items-center justify-between px-0.5">
+                                <span className="text-[9px] text-slate-500 font-medium">Foto #{idx + 1}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDownloadSingleTbmPhoto(ph, selectedDateTbmDoc.tanggal, idx)}
+                                  className="text-[9px] text-blue-600 hover:text-blue-700 font-bold cursor-pointer"
+                                >
+                                  Unduh
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Dokumentasi PDF Tanggal */}
                     {selectedDateDoc && (selectedDateDoc as any).pdfs && (selectedDateDoc as any).pdfs.length > 0 && (
                       <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2 mb-2">
@@ -2881,13 +3248,32 @@ export function AbsenInduction() {
               exit={{ opacity: 0, scale: 0.8 }}
               className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[110] max-w-[90vw] max-h-[90vh]"
             >
-              <button
-                onClick={() => setPreviewPhoto(null)}
-                title="Tutup"
-                className="absolute -top-3 -right-3 p-2 bg-white rounded-full border border-slate-200 text-slate-700 hover:bg-slate-100 transition-all z-10 shadow-md"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="absolute -top-3 -right-3 flex items-center gap-1.5 z-10">
+                <button
+                  onClick={() => {
+                    if (previewPhoto) {
+                      const link = document.createElement('a');
+                      link.href = previewPhoto;
+                      link.download = `Foto_Dokumentasi_${Date.now()}.jpg`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      toast.success("Foto berhasil diunduh");
+                    }
+                  }}
+                  title="Unduh Foto"
+                  className="p-2 bg-white rounded-full border border-slate-200 text-blue-600 hover:bg-slate-100 transition-all shadow-md cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setPreviewPhoto(null)}
+                  title="Tutup"
+                  className="p-2 bg-white rounded-full border border-slate-200 text-slate-700 hover:bg-slate-100 transition-all shadow-md cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
               <img
                 src={previewPhoto}
                 alt="Preview"
