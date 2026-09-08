@@ -15,7 +15,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle, Database, Package, Award, FileSignature } from 'lucide-react';
+import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle, Database, Package, Award, FileSignature, ScanFace } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 import { ReportForm } from '@/components/ReportForm';
@@ -40,10 +40,11 @@ import { BeritaAcaraReport } from '@/components/BeritaAcaraReport';
 import { NotificationCenter, AppNotificationItem } from '@/components/NotificationCenter';
 import { StandbyKPIInput } from '@/components/StandbyKPIInput';
 import { NotificationPage } from '@/components/NotificationPage';
+import { FaceRegistrationManagement } from '@/components/FaceRegistrationManagement';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
 // Tipe Tab Navigasi yang Tersedia dalam Aplikasi
-type Tab = 'notifications' | 'report' | 'documents' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'spareparts' | 'monthly_report' | 'standby_kpi' | 'berita_acara';
+type Tab = 'notifications' | 'report' | 'documents' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'spareparts' | 'monthly_report' | 'standby_kpi' | 'berita_acara' | 'face_registration';
 
 export function MainApp() {
   // State autentikasi & peranan user dari AuthContext
@@ -62,6 +63,7 @@ export function MainApp() {
   // Daftar item navigasi aplikasi beserta batasan hak akses (fitur show)
   const navItems = [
     { id: 'admin', label: 'Dashboard', icon: Shield, color: 'from-purple-600 to-pink-600', show: isAdmin },
+    { id: 'face_registration', label: 'Registrasi Wajah', icon: ScanFace, color: 'from-blue-600 to-indigo-600', show: isQcDme || isAdmin },
     { id: 'absen_tbm', label: 'Absen TBM', icon: Calendar, color: 'from-pink-500 to-rose-600', show: isAdmin },
     { id: 'absen_induction', label: 'Absen Induction', icon: Calendar, color: 'from-blue-500 to-blue-600', show: isAdmin },
     { id: 'ptw', label: 'PTW', icon: Clipboard, color: 'from-indigo-600 to-blue-600', show: (isAdmin || userRole === 'engineer') && !isStandby && !isK2Engineer },
@@ -346,6 +348,8 @@ export function MainApp() {
               <PMSchedule />
             ) : activeTab === 'berita_acara' ? (
               <BeritaAcaraReport />
+            ) : activeTab === 'face_registration' ? (
+              <FaceRegistrationManagement />
             ) : (
               <DocumentList onEdit={handleEditReport} initialSearchQuery={navSearchQuery} />
             )}
