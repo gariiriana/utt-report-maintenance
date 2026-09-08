@@ -226,6 +226,15 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
   });
   const [managementFilesCount, setManagementFilesCount] = useState(0);
   const [managementFilesSize, setManagementFilesSize] = useState(0);
+  const [dmeSearchMode, setDmeSearchMode] = useState<'folder' | 'files'>(() => {
+    return initialSearchQuery ? 'files' : 'folder';
+  });
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setDmeSearchMode('folder');
+    }
+  }, [searchQuery]);
 
   useEffect(() => {
     safeStorage.setItem('dme_folder_level', dmeLevel);
@@ -1367,19 +1376,18 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
   }, [documents, filteredDocuments]);
 
   const renderDmeContent = () => {
-    if (searchQuery.trim() !== '') {
+    // Mode tampilan file langsung hanya saat user memilih melihat file secara eksplisit
+    if (dmeSearchMode === 'files' && searchQuery.trim() !== '') {
       return (
         <div className="space-y-4 w-full max-w-6xl">
           <div className="bg-white/90 backdrop-blur-xl p-4 rounded-2xl border border-slate-200 shadow-xl flex items-center justify-between flex-wrap gap-3">
             <button
               onClick={() => {
-                setSearchQuery('');
-                setDmeSelectedFolder(null);
-                setDmeLevel('root');
+                setDmeSearchMode('folder');
               }}
               className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-amber-50 text-slate-700 hover:text-amber-800 rounded-xl transition-all text-xs font-bold cursor-pointer border border-slate-200 shadow-xs"
             >
-              <ChevronLeft className="w-4 h-4" /> Kembali ke Folder Utama
+              <Folder className="w-4 h-4 text-amber-600" /> Kembali ke Tampilan Folder
             </button>
             <div className="text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
               Hasil Pencarian File: "{searchQuery}" ({filteredDocuments.length} dokumen)
@@ -1418,10 +1426,22 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       { name: 'Service Report Approved', desc: 'Laporan Service Maintenance (Approved)' },
     ];
 
+    const query = searchQuery.trim().toLowerCase();
+    const isPmMatch = !query ||
+      'folder pm'.includes(query) ||
+      'preventive maintenance'.includes(query) ||
+      'pm'.includes(query) ||
+      uniqueAccounts.length > 0;
+
+    const filteredManagementFolders = managementFolders.filter(folder => {
+      if (!query) return true;
+      return folder.name.toLowerCase().includes(query) || folder.desc.toLowerCase().includes(query);
+    });
+
     if (dmeLevel === 'root') {
       return (
         <div className="bg-white/90 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 shadow-xl w-full max-w-6xl space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200">
                 <Folder className="w-5 h-5 text-amber-600" />
@@ -1431,32 +1451,69 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                 <p className="text-xs text-slate-500 font-medium">Pilih folder utama untuk melihat arsip laporan & dokumentasi maintenance</p>
               </div>
             </div>
+            {query && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                  Filter: "{searchQuery}"
+                </span>
+              </div>
+            )}
           </div>
+
+          {query && (
+            <div className="flex items-center justify-between bg-amber-50/80 border border-amber-200 rounded-xl p-3 flex-wrap gap-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-amber-900">
+                <Search className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Menyaring folder untuk kata kunci: <strong>"{searchQuery}"</strong></span>
+              </div>
+              <div className="flex items-center gap-2">
+                {filteredDocuments.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setDmeSearchMode('files')}
+                    className="px-2.5 py-1 bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Lihat Semua File Langsung ({filteredDocuments.length})</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="px-2 py-1 text-slate-500 hover:text-slate-800 text-xs font-medium hover:underline cursor-pointer"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {/* PM Folder Card */}
-            <motion.button
-              whileHover={{ y: -2, scale: 1.01 }}
-              whileTap={{ scale: 0.99 }}
-              onClick={() => setDmeLevel('account')}
-              className="flex items-center gap-3.5 p-3.5 bg-white hover:bg-amber-50/60 border border-slate-200 hover:border-amber-400 rounded-xl transition-all text-left group shadow-xs hover:shadow-md cursor-pointer"
-            >
-              <div className="p-2.5 bg-amber-50 rounded-xl group-hover:bg-amber-100 transition-colors shrink-0">
-                <Folder className="w-5 h-5 text-amber-600" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-sm font-bold text-slate-900 group-hover:text-amber-900 transition-colors truncate block">
-                  Folder PM (Preventive Maintenance)
-                </span>
-                <span className="text-xs font-medium text-slate-500 block mt-0.5">
-                  {uniqueAccounts.length} Akun Maintenance
-                </span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-amber-600 transition-colors shrink-0" />
-            </motion.button>
+            {isPmMatch && (
+              <motion.button
+                whileHover={{ y: -2, scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                onClick={() => setDmeLevel('account')}
+                className="flex items-center gap-3.5 p-3.5 bg-white hover:bg-amber-50/60 border border-slate-200 hover:border-amber-400 rounded-xl transition-all text-left group shadow-xs hover:shadow-md cursor-pointer"
+              >
+                <div className="p-2.5 bg-amber-50 rounded-xl group-hover:bg-amber-100 transition-colors shrink-0">
+                  <Folder className="w-5 h-5 text-amber-600" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-sm font-bold text-slate-900 group-hover:text-amber-900 transition-colors truncate block">
+                    Folder PM (Preventive Maintenance)
+                  </span>
+                  <span className="text-xs font-medium text-slate-500 block mt-0.5">
+                    {query ? `${uniqueAccounts.length} Akun Cocok` : `${uniqueAccounts.length} Akun Maintenance`}
+                  </span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-amber-600 transition-colors shrink-0" />
+              </motion.button>
+            )}
 
             {/* Management File Folders */}
-            {managementFolders.map((folder) => (
+            {filteredManagementFolders.map((folder) => (
               <motion.button
                 key={folder.name}
                 whileHover={{ y: -2, scale: 1.01 }}
@@ -1481,6 +1538,22 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-amber-600 transition-colors shrink-0" />
               </motion.button>
             ))}
+
+            {!isPmMatch && filteredManagementFolders.length === 0 && (
+              <div className="col-span-full text-center py-12 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                <Folder className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-slate-600">Tidak ada folder yang sesuai dengan "{searchQuery}"</p>
+                {filteredDocuments.length > 0 && (
+                  <button
+                    onClick={() => setDmeSearchMode('files')}
+                    className="mt-3 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors shadow-2xs cursor-pointer inline-flex items-center gap-1.5"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    <span>Lihat {filteredDocuments.length} File Terkait Langsung</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       );
@@ -1530,10 +1603,48 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
             </div>
           </div>
 
+          {searchQuery.trim() !== '' && (
+            <div className="flex items-center justify-between bg-amber-50/80 border border-amber-200 rounded-xl p-3 mb-4 flex-wrap gap-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-amber-900">
+                <Search className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Menyaring folder akun untuk: <strong>"{searchQuery}"</strong> ({uniqueAccounts.length} akun, {filteredDocuments.length} laporan)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {filteredDocuments.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setDmeSearchMode('files')}
+                    className="px-2.5 py-1 bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Lihat Semua File Langsung ({filteredDocuments.length})</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="px-2 py-1 text-slate-500 hover:text-slate-800 text-xs font-medium hover:underline cursor-pointer"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          )}
+
           {uniqueAccounts.length === 0 ? (
             <div className="text-center py-12 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
               <Folder className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-slate-600">Tidak ada dokumen ditemukan</p>
+              <p className="text-sm font-semibold text-slate-600">
+                {searchQuery.trim() ? `Tidak ada folder akun yang sesuai dengan "${searchQuery}"` : 'Tidak ada dokumen ditemukan'}
+              </p>
+              {searchQuery.trim() && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="mt-3 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors shadow-2xs cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  Reset Pencarian
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -1656,10 +1767,48 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
             </div>
           </div>
 
+          {searchQuery.trim() !== '' && (
+            <div className="flex items-center justify-between bg-amber-50/80 border border-amber-200 rounded-xl p-3 flex-wrap gap-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-amber-900">
+                <Search className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Menyaring bulan untuk: <strong>"{searchQuery}"</strong> ({sortedMonths.length} bulan cocok, {accountDocs.length} laporan)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {accountDocs.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setDmeSearchMode('files')}
+                    className="px-2.5 py-1 bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Lihat Semua File Akun Ini ({accountDocs.length})</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="px-2 py-1 text-slate-500 hover:text-slate-800 text-xs font-medium hover:underline cursor-pointer"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          )}
+
           {sortedMonths.length === 0 ? (
             <div className="text-center py-12 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
               <Folder className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-slate-600">Tidak ada folder bulan</p>
+              <p className="text-sm font-semibold text-slate-600">
+                {searchQuery.trim() ? `Tidak ada folder bulan yang sesuai dengan "${searchQuery}" di akun ini` : 'Tidak ada folder bulan'}
+              </p>
+              {searchQuery.trim() && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="mt-3 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors shadow-2xs cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  Reset Pencarian
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -1788,10 +1937,48 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
             </div>
           </div>
 
+          {searchQuery.trim() !== '' && (
+            <div className="flex items-center justify-between bg-amber-50/80 border border-amber-200 rounded-xl p-3 flex-wrap gap-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-amber-900">
+                <Search className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Menyaring tanggal untuk: <strong>"{searchQuery}"</strong> ({sortedDates.length} tanggal cocok, {monthDocs.length} laporan)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {monthDocs.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setDmeSearchMode('files')}
+                    className="px-2.5 py-1 bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Lihat Semua File Bulan Ini ({monthDocs.length})</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="px-2 py-1 text-slate-500 hover:text-slate-800 text-xs font-medium hover:underline cursor-pointer"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          )}
+
           {sortedDates.length === 0 ? (
             <div className="text-center py-12 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
               <Folder className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-slate-600">Tidak ada folder tanggal</p>
+              <p className="text-sm font-semibold text-slate-600">
+                {searchQuery.trim() ? `Tidak ada folder tanggal yang sesuai dengan "${searchQuery}" di bulan ini` : 'Tidak ada folder tanggal'}
+              </p>
+              {searchQuery.trim() && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="mt-3 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors shadow-2xs cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  Reset Pencarian
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -1914,9 +2101,46 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
             </button>
           </div>
         </div>
-        <div className="grid grid-cols-1 gap-4">
-          {dateDocs.map((document, index) => renderDocumentCard(document, index))}
-        </div>
+
+        {searchQuery.trim() !== '' && (
+          <div className="flex items-center justify-between bg-amber-50/80 border border-amber-200 rounded-xl p-3 flex-wrap gap-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-amber-900">
+              <Search className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Menyaring file tanggal {dmeSelectedDate} untuk: <strong>"{searchQuery}"</strong> ({dateDocs.length} file cocok)</span>
+            </div>
+            {filteredDocuments.length > dateDocs.length && (
+              <button
+                type="button"
+                onClick={() => setDmeSearchMode('files')}
+                className="px-2.5 py-1 bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-amber-600" />
+                <span>Lihat Semua {filteredDocuments.length} File di Semua Folder</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {dateDocs.length === 0 ? (
+          <div className="text-center py-12 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+            <Search className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+            <p className="text-sm font-semibold text-slate-600">Tidak ada file di tanggal ini yang sesuai dengan "{searchQuery}"</p>
+            {filteredDocuments.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setDmeSearchMode('files')}
+                className="mt-3 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors shadow-2xs cursor-pointer inline-flex items-center gap-1.5"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Lihat {filteredDocuments.length} File di Semua Folder</span>
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {dateDocs.map((document, index) => renderDocumentCard(document, index))}
+          </div>
+        )}
       </div>
     );
   };
@@ -2441,7 +2665,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               <button
                 onClick={() => {
                   setSearchQuery('');
-                  setDmeLevel('root');
+                  setDmeSearchMode('folder');
                 }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full transition-colors cursor-pointer"
                 title="Bersihkan pencarian"

@@ -63,7 +63,7 @@ export function MainApp() {
   // Daftar item navigasi aplikasi beserta batasan hak akses (fitur show)
   const navItems = [
     { id: 'admin', label: 'Dashboard', icon: Shield, color: 'from-purple-600 to-pink-600', show: isAdmin },
-    { id: 'face_registration', label: 'Registrasi Wajah', icon: ScanFace, color: 'from-blue-600 to-indigo-600', show: isQcDme || isAdmin },
+    { id: 'face_registration', label: 'Registrasi Wajah', icon: ScanFace, color: 'from-blue-600 to-indigo-600', show: false },
     { id: 'absen_tbm', label: 'Absen TBM', icon: Calendar, color: 'from-pink-500 to-rose-600', show: isAdmin },
     { id: 'absen_induction', label: 'Absen Induction', icon: Calendar, color: 'from-blue-500 to-blue-600', show: isAdmin },
     { id: 'ptw', label: 'PTW', icon: Clipboard, color: 'from-indigo-600 to-blue-600', show: (isAdmin || userRole === 'engineer') && !isStandby && !isK2Engineer },

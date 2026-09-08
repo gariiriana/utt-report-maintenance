@@ -10,6 +10,9 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import JSZip from 'jszip';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/api/firebase';
 import { loadLogoBase64 } from './ReportPdfExport';
 import logoNeutra from '@/assets/logo_neutradc.png';
 import logoDME from '@/assets/logo_dwimitra_v2.png';
@@ -26,7 +29,9 @@ export interface PTWExportRecord {
   notes?: string;
   ptwType?: 'CM' | 'PM';
   fileName?: string;
+  totalChunks?: number;
   closingFileName?: string;
+  closingTotalChunks?: number;
 }
 
 export interface WeeklyExportData {
@@ -1011,3 +1016,178 @@ export async function exportPTWWeeklyReportToPDF(
     toast.error('Gagal mengekspor laporan mingguan ke PDF', { id: toastId });
   }
 }
+
+/**
+ * Helper to fetch file blob from Firestore chunks
+ */
+export async function fetchPTWFileBlob(
+  recordId: string,
+  isClosing: boolean = false
+): Promise<{ blob: Blob; mimeType: string } | null> {
+  const chunksSnap = await getDocs(
+    collection(db, 'ptw_records', recordId, 'chunks')
+  );
+  if (chunksSnap.empty) return null;
+
+  const docs = chunksSnap.docs
+    .filter(d => isClosing ? d.data().isClosing === true : !d.data().isClosing)
+    .sort((a, b) => (a.data().index || 0) - (b.data().index || 0));
+
+  if (docs.length === 0) return null;
+
+  const byteArrays: Uint8Array[] = [];
+  let mimeString = 'application/pdf';
+
+  docs.forEach((d) => {
+    const chunkData = d.data().data as string;
+    let base64Part = chunkData;
+    if (chunkData.includes(';base64,')) {
+      const parts = chunkData.split(';base64,');
+      mimeString = parts[0].split(':')[1] || mimeString;
+      base64Part = parts[1];
+    }
+    const cleanBase64 = base64Part.trim().replace(/\s/g, '');
+    const byteStr = atob(cleanBase64);
+    const bytes = new Uint8Array(byteStr.length);
+    for (let i = 0; i < byteStr.length; i++) bytes[i] = byteStr.charCodeAt(i);
+    byteArrays.push(bytes);
+  });
+
+  const blob = new Blob(byteArrays as any[], { type: mimeString });
+  return { blob, mimeType: mimeString };
+}
+
+/**
+ * Export all PTW files matching filter to a ZIP file.
+ */
+export async function exportPTWFilesToZIP(
+  periodLabel: string,
+  records: PTWExportRecord[],
+  customZipFileName?: string
+): Promise<void> {
+  const itemsToDownload: Array<{
+    recordId: string;
+    ptwNumber: string;
+    equipmentCode: string;
+    fileName: string;
+    isClosing: boolean;
+  }> = [];
+
+  for (const r of records) {
+    if (r.fileName && (r.totalChunks ?? 1) > 0) {
+      itemsToDownload.push({
+        recordId: r.id,
+        ptwNumber: r.ptwNumber || `PTW_${r.sequenceNumber}`,
+        equipmentCode: r.equipmentCode || '',
+        fileName: r.fileName,
+        isClosing: false,
+      });
+    }
+    if (r.closingFileName && (r.closingTotalChunks ?? 1) > 0) {
+      itemsToDownload.push({
+        recordId: r.id,
+        ptwNumber: r.ptwNumber || `PTW_${r.sequenceNumber}`,
+        equipmentCode: r.equipmentCode || '',
+        fileName: r.closingFileName,
+        isClosing: true,
+      });
+    }
+  }
+
+  if (itemsToDownload.length === 0) {
+    toast.error(`Tidak ada file lampiran PTW yang ditemukan untuk ${periodLabel}.`);
+    return;
+  }
+
+  const toastId = toast.loading(`Menyiapkan unduhan ${itemsToDownload.length} file PTW (${periodLabel})...`);
+
+  try {
+    const zip = new JSZip();
+    const usedNames = new Set<string>();
+    let processedCount = 0;
+    let failedCount = 0;
+
+    const BATCH_SIZE = 4;
+    for (let i = 0; i < itemsToDownload.length; i += BATCH_SIZE) {
+      const batch = itemsToDownload.slice(i, i + BATCH_SIZE);
+      await Promise.all(
+        batch.map(async (item) => {
+          try {
+            const fileData = await fetchPTWFileBlob(item.recordId, item.isClosing);
+            if (!fileData) {
+              failedCount++;
+              return;
+            }
+
+            const cleanPtw = item.ptwNumber.replace(/[/\\?%*:|"<>]/g, '_').trim();
+            let baseName = item.fileName.trim();
+            if (!baseName.toLowerCase().endsWith('.pdf')) {
+              baseName += '.pdf';
+            }
+
+            let entryName = baseName;
+            if (item.isClosing) {
+              if (!entryName.toLowerCase().includes('closing')) {
+                entryName = `CLOSING_${entryName}`;
+              }
+              if (!entryName.includes(cleanPtw)) {
+                entryName = `${cleanPtw}_${entryName}`;
+              }
+            } else {
+              if (!entryName.includes(cleanPtw)) {
+                entryName = `${cleanPtw}_${entryName}`;
+              }
+            }
+
+            let safeName = entryName.replace(/[/\\?%*:|"<>]/g, '_');
+            let counter = 1;
+            while (usedNames.has(safeName)) {
+              const dotIdx = entryName.lastIndexOf('.');
+              if (dotIdx !== -1) {
+                safeName = `${entryName.substring(0, dotIdx)} (${counter})${entryName.substring(dotIdx)}`;
+              } else {
+                safeName = `${entryName} (${counter})`;
+              }
+              counter++;
+            }
+            usedNames.add(safeName);
+
+            zip.file(safeName, fileData.blob);
+          } catch (err) {
+            console.error(`Gagal mengunduh file ${item.fileName} (${item.ptwNumber}):`, err);
+            failedCount++;
+          } finally {
+            processedCount++;
+            toast.loading(`[${processedCount}/${itemsToDownload.length}] Memproses file PTW: ${item.ptwNumber}...`, { id: toastId });
+          }
+        })
+      );
+    }
+
+    if (usedNames.size === 0) {
+      toast.error('Gagal membuat arsip ZIP: Tidak ada file PTW yang berhasil diunduh.', { id: toastId });
+      return;
+    }
+
+    toast.loading(`Mengompres ${usedNames.size} file ke format .ZIP...`, { id: toastId });
+    const content = await zip.generateAsync({
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 6 },
+    });
+
+    const cleanPeriod = periodLabel.replace(/[\s\-_/]+/g, '_');
+    const finalZipName = customZipFileName || `PTW_Files_${cleanPeriod}.zip`;
+    saveAs(content, finalZipName);
+
+    if (failedCount > 0) {
+      toast.success(`File ZIP berhasil diunduh! (${usedNames.size} file berhasil, ${failedCount} file gagal).`, { id: toastId });
+    } else {
+      toast.success(`File ZIP berhasil diunduh! (${usedNames.size} file PTW - ${periodLabel}).`, { id: toastId });
+    }
+  } catch (err: any) {
+    console.error('ZIP export error:', err);
+    toast.error(`Gagal membuat file ZIP PTW: ${err.message || 'Terjadi kesalahan'}`, { id: toastId });
+  }
+}
+
