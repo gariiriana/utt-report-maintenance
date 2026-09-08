@@ -61,7 +61,8 @@ import {
   MASTER_PM_SCHEDULES,
   getDefaultBoqUnitForDevice,
   buildCustomScopeTablesFromBOQ,
-  CustomBOQSelection
+  CustomBOQSelection,
+  getTaskPMFromSR
 } from '@/utils/monthlyReportData';
 import { generateMonthlyReportDOCX } from '@/utils/generateMonthlyReportDOCX';
 import {
@@ -486,7 +487,13 @@ export function MonthlyReportGenerator() {
                     const cls = (it.className || '').trim().toLowerCase();
                     const prod = (it.productName || '').trim().toLowerCase();
                     return cls !== 'equipment' && cls !== 'total' && cls !== 'grand total' && cls !== '' && prod !== 'total';
-                  }).map((it: any, i: number) => ({ ...it, no: i + 1 }));
+                  }).map((it: any, i: number) => {
+                    // Normalisasi Task PM ke format 1 paragraf ringkas bilingual jika masih berformat bullets lama / terlalu panjang
+                    if (it.taskPM && (it.taskPM.includes('•') || it.taskPM.split('\n').length > 3)) {
+                      it.taskPM = getTaskPMFromSR(tbl.scope || it.className);
+                    }
+                    return { ...it, no: i + 1 };
+                  });
                 }
               });
             }
@@ -569,55 +576,13 @@ export function MonthlyReportGenerator() {
 
   // ─── BOQ Equipment Selector Handlers (Mirip Berita Acara) ────────
   const openBoqSelector = useCallback(() => {
-    const catIds = new Set<string>();
-    const ciMap = new Map<string, Set<string>>();
-    const expanded = new Set<string>();
-
-    if (reportData) {
-      const activeScopes = new Set((reportData.scheduleTable1 || []).map(s => s.device.toLowerCase()));
-      MAINTENANCE_BOQ_CATEGORIES.forEach(cat => {
-        const match = activeScopes.has(cat.name.toLowerCase()) ||
-          Array.from(activeScopes).some(sc => cat.name.toLowerCase().includes(sc) || sc.includes(cat.name.toLowerCase()));
-        if (match) {
-          catIds.add(cat.id);
-          expanded.add(cat.id);
-          const relatedTable = (reportData.taskPerformanceTables || []).find(t => 
-            t.scope.toLowerCase() === cat.name.toLowerCase() ||
-            cat.name.toLowerCase().includes(t.scope.toLowerCase()) ||
-            t.scope.toLowerCase().includes(cat.name.toLowerCase())
-          );
-          if (relatedTable && relatedTable.items?.length > 0) {
-            const cis = new Set<string>(relatedTable.items.map(it => it.className || '').filter(Boolean));
-            ciMap.set(cat.id, cis);
-          } else {
-            const all = new Set<string>(cat.items.map(it => it['CI Name*'] || '').filter(Boolean));
-            ciMap.set(cat.id, all);
-          }
-        }
-      });
-    }
-
-    if (catIds.size === 0) {
-      const monthIdx = selectedMonth - 1;
-      const scheduledDevices = MASTER_PM_SCHEDULES
-        .filter(s => s.months[monthIdx] !== null)
-        .map(s => s.device.toLowerCase());
-      MAINTENANCE_BOQ_CATEGORIES.forEach(cat => {
-        const catNameLower = cat.name.toLowerCase();
-        if (scheduledDevices.some(dev => catNameLower.includes(dev) || dev.includes(catNameLower))) {
-          catIds.add(cat.id);
-          expanded.add(cat.id);
-          const all = new Set<string>(cat.items.map(it => it['CI Name*'] || '').filter(Boolean));
-          ciMap.set(cat.id, all);
-        }
-      });
-    }
-
-    setSelectedCategoryIds(catIds);
-    setSelectedCINames(ciMap);
-    setExpandedCategories(expanded);
+    // Mulai dari state bersih tanpa checklist (0 equipment terpilih) sesuai permintaan user
+    setSelectedCategoryIds(new Set());
+    setSelectedCINames(new Map());
+    setExpandedCategories(new Set());
+    setCategorySearchQuery('');
     setIsBoqSelectorOpen(true);
-  }, [reportData, MAINTENANCE_BOQ_CATEGORIES, selectedMonth]);
+  }, []);
 
   const toggleCategory = useCallback((catId: string) => {
     setSelectedCategoryIds(prev => {
@@ -2357,13 +2322,18 @@ export function MonthlyReportGenerator() {
                                 />
                               </td>
                               <td className="py-1 px-1 border-r border-black text-[10px]">
-                                <BilingualBulletsEditor
+                                <BilingualTextarea
                                   value={item.taskPM}
+                                  placeholderEn="Task Preventive Maintenance (English)..."
+                                  placeholderId="Pemeliharaan Preventif (Bahasa Indonesia - garis miring)..."
                                   onChange={(val) => {
                                     const updated = { ...reportData };
                                     updated.taskPerformanceTables[tIdx].items[iIdx].taskPM = val;
                                     setReportData(updated);
                                   }}
+                                  classNameEn="w-full text-[10px] leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans text-slate-800"
+                                  classNameId="w-full text-[9.5px] italic text-slate-600 leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans"
+                                  indentId={true}
                                 />
                               </td>
                               <td className="py-1 px-1 border-r border-black text-[10px]">
