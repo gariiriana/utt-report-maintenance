@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Clipboard as ClipboardIcon, Plus, Search, Trash2, Edit2,
   X, CheckCircle2, Loader2, Calendar, Hash, Package,
-  AlertCircle, Download, FileUp, File, ChevronDown, Eye
+  AlertCircle, Download, FileUp, File, ChevronDown, Eye, FolderArchive
 } from 'lucide-react';
 import { parsePTWPdf, parsePTWFromFilename } from '@/utils/ptwPdfParser';
 import {
@@ -30,7 +30,8 @@ import {
   exportPTWListToExcel, 
   exportPTWListToPDF, 
   exportPTWWeeklyReportToExcel, 
-  exportPTWWeeklyReportToPDF 
+  exportPTWWeeklyReportToPDF,
+  exportPTWFilesToZIP
 } from '@/utils/ptwExport';
 
 const CHUNK_SIZE = 750 * 1024; // ~750KB per chunk
@@ -105,6 +106,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
   const [isDeleteCategoryModalOpen, setIsDeleteCategoryModalOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<{ name: string; records: PTWRecord[] } | null>(null);
   const [shouldDeleteFile, setShouldDeleteFile] = useState(false);
+  const [isDownloadingZip, setIsDownloadingZip] = useState(false);
 
   const toggleGroup = (code: string) => {
     setExpandedGroups(prev => ({
@@ -1294,6 +1296,57 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
     }
   };
 
+  const handleDownloadMonthlyPtwZip = async () => {
+    if (isDownloadingZip) return;
+    setIsDownloadingZip(true);
+    try {
+      const monthNames = [
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+      ];
+      const monthLabel = `${monthNames[selectedMonth - 1]} ${selectedYear}`;
+
+      // Filter all records for the selected month and year
+      const monthRecords = records
+        .filter(r => {
+          if (!r.startDate) return false;
+          const parts = r.startDate.split('-');
+          if (parts.length < 2) return false;
+          const y = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10);
+          return y === selectedYear && m === selectedMonth;
+        })
+        .sort((a, b) => (a.sequenceNumber || 0) - (b.sequenceNumber || 0));
+
+      await exportPTWFilesToZIP(monthLabel, monthRecords);
+    } catch (err: any) {
+      console.error('Monthly PTW ZIP export failed:', err);
+      toast.error('Gagal mengekspor file ZIP PTW: ' + (err.message || 'Error'));
+    } finally {
+      setIsDownloadingZip(false);
+    }
+  };
+
+  const handleDownloadWeeklyPtwZip = async (weekNum: number) => {
+    if (isDownloadingZip) return;
+    const week = weeklyData.find(w => w.weekNum === weekNum);
+    if (!week || week.records.length === 0) {
+      toast.error(`Tidak ada data PTW pada Minggu ${weekNum}.`);
+      return;
+    }
+    setIsDownloadingZip(true);
+    try {
+      const weekLabel = `${week.rangeLabel} ${selectedYear}`;
+      const cleanWeekName = `PTW_Files_Minggu_${weekNum}_${selectedYear}.zip`;
+      await exportPTWFilesToZIP(weekLabel, week.records, cleanWeekName);
+    } catch (err: any) {
+      console.error('Weekly PTW ZIP export failed:', err);
+      toast.error('Gagal mengekspor file ZIP PTW: ' + (err.message || 'Error'));
+    } finally {
+      setIsDownloadingZip(false);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
       <div className="bg-white/90 backdrop-blur-xl rounded-2xl p-6 mb-8 border border-sky-100/90 shadow-md text-slate-800">
@@ -1782,7 +1835,7 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
               </div>
             </div>
 
-            <div className="flex gap-2 w-full sm:w-auto">
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
               <button
                 onClick={handleExportExcelReport}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-50 text-emerald-600 rounded-2xl border border-slate-200 text-xs font-bold transition shadow-sm cursor-pointer"
@@ -1796,6 +1849,24 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
               >
                 <Download className="w-4 h-4" />
                 PDF Laporan
+              </button>
+              <button
+                onClick={handleDownloadMonthlyPtwZip}
+                disabled={isDownloadingZip}
+                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white hover:bg-blue-50 text-blue-600 hover:text-blue-700 rounded-2xl border border-slate-200 hover:border-blue-200 text-xs font-bold transition shadow-sm cursor-pointer disabled:opacity-50"
+                title="Download semua file lampiran PTW bulan ini dalam format .ZIP"
+              >
+                {isDownloadingZip ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                    <span>Mengunduh ZIP...</span>
+                  </>
+                ) : (
+                  <>
+                    <FolderArchive className="w-4 h-4 text-blue-600" />
+                    <span>ZIP File PTW</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -2004,9 +2075,22 @@ export function PTWManagement({ initialSearchQuery }: PTWManagementProps = {}) {
                     <h3 className="text-lg font-bold text-slate-900 uppercase">Detail Minggu {selectedWeek}</h3>
                     <p className="text-slate-500 text-xs font-semibold">{weeklyData[selectedWeek - 1]?.dateRange}</p>
                   </div>
-                  <span className="px-3.5 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-bold shadow-sm">
-                    {weeklyData[selectedWeek - 1]?.totalCount || 0} Total PTW
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3.5 py-1.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-bold shadow-sm">
+                      {weeklyData[selectedWeek - 1]?.totalCount || 0} Total PTW
+                    </span>
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleDownloadWeeklyPtwZip(selectedWeek)}
+                        disabled={isDownloadingZip}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-indigo-50 text-indigo-600 rounded-xl border border-indigo-200 text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
+                        title={`Download ZIP file PTW Minggu ${selectedWeek}`}
+                      >
+                        <FolderArchive className="w-3.5 h-3.5" />
+                        <span>ZIP Minggu Ini</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {weeklyData[selectedWeek - 1].records.length === 0 ? (
