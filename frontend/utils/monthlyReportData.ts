@@ -3266,15 +3266,120 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
   const progressPmAverage = month === 7 ? '97,44%' : `${avgFinishNum.toFixed(2).replace('.', ',')}%`;
 
   // ══════════════════════════════════════════════════════════════════════════
-  // 5.C SLA ORDER PERFORMANCE TABLE 19 (SESUAI FOTO 1 BAWAH)
+  // 5.C SLA ORDER PERFORMANCE TABLE 19 (SESUAI ATURAN LOGIK KUMULATIF & REKAP BULANAN)
   // ══════════════════════════════════════════════════════════════════════════
-  const slaOrdersTable19: SlaOrderItem[] = [
+  const getPrioTargetMin = (prio?: string) => {
+    if (prio === 'Critical') return 120;
+    if (prio === 'High') return 240;
+    if (prio === 'Low') return 2880;
+    return 360;
+  };
+
+  let respActualSum = 0;
+  let respTargetSum = 0;
+  let respComplyCount = 0;
+
+  let onsiteActualSum = 0;
+  let onsiteTargetSum = 0;
+  let onsiteComplyCount = 0;
+
+  let restoreActualSum = 0;
+  let restoreTargetSum = 0;
+  let restoreComplyCount = 0;
+
+  let resoActualSum = 0;
+  let resoTargetSum = 0;
+  let resoComplyCount = 0;
+
+  if (slaTotal > 0) {
+    monthSlaReports.forEach(r => {
+      // Response Time
+      const rTarget = r.targetResponseMin || 5;
+      const rActual = r.actualResponseTimeMin ?? 0;
+      respTargetSum += rTarget;
+      respActualSum += rActual;
+      if (r.responseComply !== false && rActual <= rTarget) respComplyCount++;
+
+      // Onsite Support
+      const oTarget = r.targetOnsiteMin || 120;
+      const oActual = r.actualOnsiteTimeMin ?? 0;
+      onsiteTargetSum += oTarget;
+      onsiteActualSum += oActual;
+      if (r.onsiteComply !== false && oActual <= oTarget) onsiteComplyCount++;
+
+      // Restore Time
+      const restTarget = r.targetRestoreMin || getPrioTargetMin(r.priority);
+      const restActual = r.actualRestoreTimeMin ?? 0;
+      restoreTargetSum += restTarget;
+      restoreActualSum += restActual;
+      if (r.restoreComply !== false && restActual <= restTarget) restoreComplyCount++;
+
+      // Resolution Time
+      const resTarget = r.targetResolutionMin || getPrioTargetMin(r.priority);
+      const resActual = r.actualResolutionTimeMin ?? 0;
+      resoTargetSum += resTarget;
+      resoActualSum += resActual;
+      if (r.resolutionComply !== false && resActual <= resTarget) resoComplyCount++;
+    });
+  }
+
+  // Comply Kumulatif: jika Total Aktual <= Total Target maka 'M', sebaliknya jika Total Aktual > Total Target maka 'TM'
+  const isRespComply = slaTotal > 0 ? (respActualSum <= respTargetSum) : false; // Default fallback Agustus: TM (83,33%)
+  const isOnsiteComply = slaTotal > 0 ? (onsiteActualSum <= onsiteTargetSum) : true;
+  const isRestoreComply = slaTotal > 0 ? (restoreActualSum <= restoreTargetSum) : true;
+  const isResoComply = slaTotal > 0 ? (resoActualSum <= resoTargetSum) : true;
+
+  const slaOrdersTable19: SlaOrderItem[] = slaTotal > 0 ? [
+    {
+      no: '1.',
+      activity: 'Response Time',
+      unit: 'Order',
+      actual: slaTotal,
+      finish: respComplyCount,
+      pctFinish: `${((respComplyCount / slaTotal) * 100).toFixed(2).replace('.', ',')}%`,
+      comply: isRespComply ? 'M' : 'TM',
+      pctComply: `${Math.round((respComplyCount / slaTotal) * 100)}%`
+    },
+    {
+      no: '2.',
+      activity: 'Onsite Time',
+      unit: 'Order',
+      actual: slaTotal,
+      finish: onsiteComplyCount,
+      pctFinish: `${((onsiteComplyCount / slaTotal) * 100).toFixed(2).replace('.', ',')}%`,
+      comply: isOnsiteComply ? 'M' : 'TM',
+      pctComply: `${Math.round((onsiteComplyCount / slaTotal) * 100)}%`
+    },
+    {
+      no: '3.',
+      activity: 'Restore Time',
+      unit: 'Order',
+      actual: slaTotal,
+      finish: restoreComplyCount,
+      pctFinish: `${((restoreComplyCount / slaTotal) * 100).toFixed(2).replace('.', ',')}%`,
+      comply: isRestoreComply ? 'M' : 'TM',
+      pctComply: `${Math.round((restoreComplyCount / slaTotal) * 100)}%`
+    },
+    {
+      no: '4.',
+      activity: 'Resolution Time',
+      unit: 'Order',
+      actual: slaTotal,
+      finish: resoComplyCount,
+      pctFinish: `${((resoComplyCount / slaTotal) * 100).toFixed(2).replace('.', ',')}%`,
+      comply: isResoComply ? 'M' : 'TM',
+      pctComply: `${Math.round((resoComplyCount / slaTotal) * 100)}%`
+    }
+  ] : [
     { no: '1.', activity: 'Response Time', unit: 'Order', actual: slaRespOrder || 18, finish: slaRespFinish || 15, pctFinish: '83,33%', comply: 'TM', pctComply: '83%' },
     { no: '2.', activity: 'Onsite Time', unit: 'Order', actual: slaOnsiteOrder || 18, finish: slaOnsiteFinish || 18, pctFinish: '100%', comply: 'M', pctComply: '100%' },
     { no: '3.', activity: 'Restore Time', unit: 'Order', actual: slaRestoreOrder || 18, finish: slaRestoreFinish || 18, pctFinish: '100%', comply: 'M', pctComply: '100%' },
     { no: '4.', activity: 'Resolution Time', unit: 'Order', actual: slaResoOrder || 18, finish: slaResoFinish || 18, pctFinish: '100%', comply: 'M', pctComply: '100%' }
   ];
-  const slaOrdersPeriodTotal = '%';
+
+  const totalComplyPcts = slaOrdersTable19.map(item => parseFloat(item.pctComply.replace('%', '')) || 100);
+  const avgComplyPct = totalComplyPcts.length > 0 ? (totalComplyPcts.reduce((a, b) => a + b, 0) / totalComplyPcts.length) : 100;
+  const slaOrdersPeriodTotal = slaTotal > 0 ? `${avgComplyPct.toFixed(2).replace('.', ',')}%` : '%';
 
   // ══════════════════════════════════════════════════════════════════════════
   // 5.D SERVICE CREDIT MATRIX (SESUAI FOTO 2)

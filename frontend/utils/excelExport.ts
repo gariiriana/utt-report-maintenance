@@ -866,6 +866,46 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     });
   });
 
+  // TOTAL ROW: Response Time
+  const totalRespRowNum = 7 + reports.length;
+  const rTotalResp = wsResp.getRow(totalRespRowNum);
+  rTotalResp.height = 22;
+
+  const totalRespActualMin = reports.reduce((sum, r) => sum + (r.actualResponseTimeMin ?? 0), 0);
+  const totalRespTargetMin = reports.reduce((sum, r) => sum + (r.targetResponseMin || 5), 0);
+  const isRespTotalComply = totalRespActualMin <= totalRespTargetMin;
+
+  wsResp.mergeCells(`A${totalRespRowNum}:G${totalRespRowNum}`);
+  const lblResp = wsResp.getCell(`A${totalRespRowNum}`);
+  lblResp.value = `TOTAL (${reports.length} Order Tiket):`;
+  lblResp.font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+  lblResp.alignment = { horizontal: 'right', vertical: 'middle' };
+  lblResp.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
+
+  wsResp.getCell(`H${totalRespRowNum}`).value = totalRespActualMin;
+  wsResp.getCell(`H${totalRespRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+  wsResp.getCell(`H${totalRespRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+  wsResp.getCell(`H${totalRespRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+
+  wsResp.getCell(`I${totalRespRowNum}`).value = totalRespTargetMin;
+  wsResp.getCell(`I${totalRespRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+  wsResp.getCell(`I${totalRespRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+  wsResp.getCell(`I${totalRespRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+
+  wsResp.getCell(`J${totalRespRowNum}`).value = isRespTotalComply ? 'M' : 'TM';
+  wsResp.getCell(`J${totalRespRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: isRespTotalComply ? '166534' : '991B1B' } };
+  wsResp.getCell(`J${totalRespRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+  wsResp.getCell(`J${totalRespRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isRespTotalComply ? 'DCFCE7' : 'FEE2E2' } };
+
+  wsResp.getCell(`K${totalRespRowNum}`).value = isRespTotalComply ? 'Memenuhi' : 'Tidak Memenuhi';
+  wsResp.getCell(`K${totalRespRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: isRespTotalComply ? '166534' : '991B1B' } };
+  wsResp.getCell(`K${totalRespRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+  wsResp.getCell(`K${totalRespRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isRespTotalComply ? 'DCFCE7' : 'FEE2E2' } };
+
+  respCols.forEach(col => {
+    wsResp.getCell(`${col}${totalRespRowNum}`).border = thinBorder;
+  });
+
   wsResp.getColumn('A').width = 6;
   wsResp.getColumn('B').width = 24;
   wsResp.getColumn('C').width = 16;
@@ -934,6 +974,46 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: comply ? 'DCFCE7' : 'FEE2E2' } };
       }
     });
+  });
+
+  // TOTAL ROW: Onsite Support
+  const totalOnsiteRowNum = 7 + reports.length;
+  const rTotalOnsite = wsOnsite.getRow(totalOnsiteRowNum);
+  rTotalOnsite.height = 22;
+
+  const totalOnsiteActualMin = reports.reduce((sum, r) => sum + (r.actualOnsiteTimeMin ?? 0), 0);
+  const totalOnsiteTargetMin = reports.reduce((sum, r) => sum + (r.targetOnsiteMin || 120), 0);
+  const isOnsiteTotalComply = totalOnsiteActualMin <= totalOnsiteTargetMin;
+
+  wsOnsite.mergeCells(`A${totalOnsiteRowNum}:G${totalOnsiteRowNum}`);
+  const lblOnsite = wsOnsite.getCell(`A${totalOnsiteRowNum}`);
+  lblOnsite.value = `TOTAL (${reports.length} Order Tiket):`;
+  lblOnsite.font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+  lblOnsite.alignment = { horizontal: 'right', vertical: 'middle' };
+  lblOnsite.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
+
+  wsOnsite.getCell(`H${totalOnsiteRowNum}`).value = totalOnsiteActualMin;
+  wsOnsite.getCell(`H${totalOnsiteRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+  wsOnsite.getCell(`H${totalOnsiteRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+  wsOnsite.getCell(`H${totalOnsiteRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+
+  wsOnsite.getCell(`I${totalOnsiteRowNum}`).value = totalOnsiteTargetMin;
+  wsOnsite.getCell(`I${totalOnsiteRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+  wsOnsite.getCell(`I${totalOnsiteRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+  wsOnsite.getCell(`I${totalOnsiteRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+
+  wsOnsite.getCell(`J${totalOnsiteRowNum}`).value = isOnsiteTotalComply ? 'M' : 'TM';
+  wsOnsite.getCell(`J${totalOnsiteRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: isOnsiteTotalComply ? '166534' : '991B1B' } };
+  wsOnsite.getCell(`J${totalOnsiteRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+  wsOnsite.getCell(`J${totalOnsiteRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isOnsiteTotalComply ? 'DCFCE7' : 'FEE2E2' } };
+
+  wsOnsite.getCell(`K${totalOnsiteRowNum}`).value = isOnsiteTotalComply ? 'Memenuhi' : 'Tidak Memenuhi';
+  wsOnsite.getCell(`K${totalOnsiteRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: isOnsiteTotalComply ? '166534' : '991B1B' } };
+  wsOnsite.getCell(`K${totalOnsiteRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+  wsOnsite.getCell(`K${totalOnsiteRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isOnsiteTotalComply ? 'DCFCE7' : 'FEE2E2' } };
+
+  onsiteCols.forEach(col => {
+    wsOnsite.getCell(`${col}${totalOnsiteRowNum}`).border = thinBorder;
   });
 
   wsOnsite.getColumn('A').width = 6;
@@ -1005,6 +1085,46 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
     });
   });
 
+  // TOTAL ROW: Restore Time
+  const totalRestoreRowNum = 7 + reports.length;
+  const rTotalRestore = wsRestore.getRow(totalRestoreRowNum);
+  rTotalRestore.height = 22;
+
+  const totalRestoreActualMin = reports.reduce((sum, r) => sum + (r.actualRestoreTimeMin ?? 0), 0);
+  const totalRestoreTargetMin = reports.reduce((sum, r) => sum + (r.targetRestoreMin || getTargetByPriority(r.priority)), 0);
+  const isRestoreTotalComply = totalRestoreActualMin <= totalRestoreTargetMin;
+
+  wsRestore.mergeCells(`A${totalRestoreRowNum}:E${totalRestoreRowNum}`);
+  const lblRestore = wsRestore.getCell(`A${totalRestoreRowNum}`);
+  lblRestore.value = `TOTAL (${reports.length} Order Tiket):`;
+  lblRestore.font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+  lblRestore.alignment = { horizontal: 'right', vertical: 'middle' };
+  lblRestore.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
+
+  wsRestore.getCell(`F${totalRestoreRowNum}`).value = totalRestoreActualMin;
+  wsRestore.getCell(`F${totalRestoreRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+  wsRestore.getCell(`F${totalRestoreRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+  wsRestore.getCell(`F${totalRestoreRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+
+  wsRestore.getCell(`G${totalRestoreRowNum}`).value = totalRestoreTargetMin;
+  wsRestore.getCell(`G${totalRestoreRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+  wsRestore.getCell(`G${totalRestoreRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+  wsRestore.getCell(`G${totalRestoreRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+
+  wsRestore.getCell(`H${totalRestoreRowNum}`).value = isRestoreTotalComply ? 'M' : 'TM';
+  wsRestore.getCell(`H${totalRestoreRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: isRestoreTotalComply ? '166534' : '991B1B' } };
+  wsRestore.getCell(`H${totalRestoreRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+  wsRestore.getCell(`H${totalRestoreRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isRestoreTotalComply ? 'DCFCE7' : 'FEE2E2' } };
+
+  wsRestore.getCell(`I${totalRestoreRowNum}`).value = isRestoreTotalComply ? 'Memenuhi' : 'Tidak Memenuhi';
+  wsRestore.getCell(`I${totalRestoreRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: isRestoreTotalComply ? '166534' : '991B1B' } };
+  wsRestore.getCell(`I${totalRestoreRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+  wsRestore.getCell(`I${totalRestoreRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isRestoreTotalComply ? 'DCFCE7' : 'FEE2E2' } };
+
+  restCols.forEach(col => {
+    wsRestore.getCell(`${col}${totalRestoreRowNum}`).border = thinBorder;
+  });
+
   wsRestore.getColumn('A').width = 6;
   wsRestore.getColumn('B').width = 24;
   wsRestore.getColumn('C').width = 16;
@@ -1071,6 +1191,46 @@ export async function exportSLAMonthlyRecapToExcel(rawReports: any[], periodTitl
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: comply ? 'DCFCE7' : 'FEE2E2' } };
       }
     });
+  });
+
+  // TOTAL ROW: Resolution Time
+  const totalResoRowNum = 7 + reports.length;
+  const rTotalReso = wsReso.getRow(totalResoRowNum);
+  rTotalReso.height = 22;
+
+  const totalResoActualMin = reports.reduce((sum, r) => sum + (r.actualResolutionTimeMin ?? 0), 0);
+  const totalResoTargetMin = reports.reduce((sum, r) => sum + (r.targetResolutionMin || getTargetByPriority(r.priority)), 0);
+  const isResoTotalComply = totalResoActualMin <= totalResoTargetMin;
+
+  wsReso.mergeCells(`A${totalResoRowNum}:F${totalResoRowNum}`);
+  const lblReso = wsReso.getCell(`A${totalResoRowNum}`);
+  lblReso.value = `TOTAL (${reports.length} Order Tiket):`;
+  lblReso.font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+  lblReso.alignment = { horizontal: 'right', vertical: 'middle' };
+  lblReso.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2E8F0' } };
+
+  wsReso.getCell(`G${totalResoRowNum}`).value = totalResoActualMin;
+  wsReso.getCell(`G${totalResoRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+  wsReso.getCell(`G${totalResoRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+  wsReso.getCell(`G${totalResoRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+
+  wsReso.getCell(`H${totalResoRowNum}`).value = totalResoTargetMin;
+  wsReso.getCell(`H${totalResoRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: textDark } };
+  wsReso.getCell(`H${totalResoRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+  wsReso.getCell(`H${totalResoRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F1F5F9' } };
+
+  wsReso.getCell(`I${totalResoRowNum}`).value = isResoTotalComply ? 'M' : 'TM';
+  wsReso.getCell(`I${totalResoRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: isResoTotalComply ? '166534' : '991B1B' } };
+  wsReso.getCell(`I${totalResoRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+  wsReso.getCell(`I${totalResoRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isResoTotalComply ? 'DCFCE7' : 'FEE2E2' } };
+
+  wsReso.getCell(`J${totalResoRowNum}`).value = isResoTotalComply ? 'Memenuhi' : 'Tidak Memenuhi';
+  wsReso.getCell(`J${totalResoRowNum}`).font = { name: 'Calibri', size: 10, bold: true, color: { argb: isResoTotalComply ? '166534' : '991B1B' } };
+  wsReso.getCell(`J${totalResoRowNum}`).alignment = { horizontal: 'center', vertical: 'middle' };
+  wsReso.getCell(`J${totalResoRowNum}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isResoTotalComply ? 'DCFCE7' : 'FEE2E2' } };
+
+  resoCols.forEach(col => {
+    wsReso.getCell(`${col}${totalResoRowNum}`).border = thinBorder;
   });
 
   wsReso.getColumn('A').width = 6;

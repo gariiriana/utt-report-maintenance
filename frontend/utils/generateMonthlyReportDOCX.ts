@@ -13,9 +13,9 @@ import {
   Packer,
   Paragraph,
   TextRun as DocxTextRun,
-  Table,
+  Table as DocxTable,
   TableRow,
-  TableCell,
+  TableCell as DocxTableCell,
   WidthType,
   AlignmentType,
   BorderStyle,
@@ -42,6 +42,38 @@ class TextRun extends DocxTextRun {
     } else {
       super(options);
     }
+  }
+}
+
+/**
+ * Standard cell margins: 0.15 cm (1.5 mm = 85 twip/dxa) pada sisi kiri & kanan
+ * serta 0 cm pada sisi atas & bawah agar teks tidak dempet dengan garis tabel.
+ */
+const standardCellMargins = {
+  top: 0,
+  bottom: 0,
+  left: 85, // 0.15 cm in twips (1.5mm / 25.4 * 1440 ≈ 85 dxa)
+  right: 85,
+  marginUnitType: WidthType.DXA
+};
+
+/** Enforces 0.15 cm left and right cell margins on every TableCell throughout the DOCX export */
+class TableCell extends DocxTableCell {
+  constructor(options: any) {
+    super({
+      ...options,
+      margins: options?.margins ?? standardCellMargins
+    });
+  }
+}
+
+/** Enforces 0.15 cm default left and right cell margins on every Table throughout the DOCX export */
+class Table extends DocxTable {
+  constructor(options: any) {
+    super({
+      ...options,
+      margins: options?.margins ?? standardCellMargins
+    });
   }
 }
 

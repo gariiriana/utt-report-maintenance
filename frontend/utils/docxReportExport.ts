@@ -1589,21 +1589,18 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
     });
   };
 
-  const createNotesSection = (note1: string, note2: string, note3: string) => {
-    return [
-      new Paragraph({
-        spacing: { before: 120, after: 40 },
-        children: [new TextRun({ text: note1, size: 16, color: '334155' })],
-      }),
-      new Paragraph({
-        spacing: { after: 40 },
-        children: [new TextRun({ text: note2, bold: true, size: 16, color: '1E293B' })],
-      }),
-      new Paragraph({
-        spacing: { after: 200 },
-        children: [new TextRun({ text: note3, bold: true, size: 16, color: '166534' })],
-      }),
-    ];
+  const createNotesSection = (...notes: string[]) => {
+    return notes.map((text, idx) => {
+      const isLast = idx === notes.length - 1;
+      const isFirst = idx === 0;
+      const isFailed = text.includes('Status Total: TM') || text.includes('Melebihi');
+      const isResult = text.includes('Hasil perhitungan') || text.includes('Status Total: M');
+      const textColor = isFailed ? '991B1B' : isResult ? '166534' : idx > 0 ? '1E293B' : '334155';
+      return new Paragraph({
+        spacing: { before: isFirst ? 120 : 0, after: isLast ? 200 : 40 },
+        children: [new TextRun({ text, bold: idx > 0, size: 16, color: textColor })],
+      });
+    });
   };
 
   // Helper to get array of photos from report
@@ -1687,6 +1684,106 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
     });
   });
 
+  // Calculate Response Compliance
+  const totalRespTargetMin = reports.reduce((sum, r) => sum + (r.targetResponseMin || 5), 0);
+  const totalRespActualMin = reports.reduce((sum, r) => sum + (r.actualResponseTimeMin || 0), 0);
+  const isRespTotalComply = totalRespActualMin <= totalRespTargetMin;
+
+  const respTotalRow = new TableRow({
+    children: [
+      new TableCell({
+        columnSpan: 7,
+        shading: { fill: 'E2E8F0', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.RIGHT,
+            children: [
+              new TextRun({
+                text: `TOTAL (${reports.length} Order Tiket):`,
+                bold: true,
+                size: 14,
+                color: '0F172A',
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: respWidths[7], type: WidthType.PERCENTAGE },
+        shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: `${formatMinToHHMM(totalRespActualMin)}\n(${totalRespActualMin} Mnt)`,
+                bold: true,
+                size: 13,
+                color: '0F172A',
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: respWidths[8], type: WidthType.PERCENTAGE },
+        shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: `${formatMinToHHMM(totalRespTargetMin)}\n(${totalRespTargetMin} Mnt)`,
+                bold: true,
+                size: 13,
+                color: '0F172A',
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: respWidths[9], type: WidthType.PERCENTAGE },
+        shading: { fill: isRespTotalComply ? 'DCFCE7' : 'FEE2E2', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: isRespTotalComply ? 'M' : 'TM',
+                bold: true,
+                size: 16,
+                color: isRespTotalComply ? '166534' : '991B1B',
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: respWidths[10], type: WidthType.PERCENTAGE },
+        shading: { fill: isRespTotalComply ? 'DCFCE7' : 'FEE2E2', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: isRespTotalComply ? 'Memenuhi' : 'Tidak Memenuhi',
+                bold: true,
+                size: 13,
+                color: isRespTotalComply ? '166534' : '991B1B',
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+
   const tableResponse = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: cellBorderThin,
@@ -1695,7 +1792,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
         children: respHeaders.map((hText, cIdx) => new TableCell({
           width: { size: respWidths[cIdx], type: WidthType.PERCENTAGE },
           shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
-          margins: { top: 80, bottom: 80, left: 40, right: 40 },
+          margins: { top: 80, bottom: 80, left: 85, right: 85 },
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -1705,10 +1802,10 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
         })),
       }),
       ...respRows,
+      respTotalRow,
     ],
   });
 
-  // Calculate Response Compliance
   const respMCount = reports.filter(r => r.responseComply !== false).length;
   const respScore = reports.length > 0 ? Number(((respMCount / reports.length) * 5).toFixed(2)) : 5.00;
 
@@ -1736,7 +1833,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
       ].map((val, cIdx) => new TableCell({
         width: { size: onsiteWidths[cIdx], type: WidthType.PERCENTAGE },
         shading: cIdx === 9 ? { fill: comply ? 'F0FDF4' : 'FEF2F2', type: ShadingType.CLEAR } : undefined,
-        margins: { top: 60, bottom: 60, left: 40, right: 40 },
+        margins: { top: 60, bottom: 60, left: 85, right: 85 },
         children: [
           new Paragraph({
             alignment: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].includes(cIdx) ? AlignmentType.CENTER : AlignmentType.LEFT,
@@ -1754,6 +1851,105 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
     });
   });
 
+  const totalOnsiteTargetMin = reports.reduce((sum, r) => sum + (r.targetOnsiteMin || 120), 0);
+  const totalOnsiteActualMin = reports.reduce((sum, r) => sum + (r.actualOnsiteTimeMin || 0), 0);
+  const isOnsiteTotalComply = totalOnsiteActualMin <= totalOnsiteTargetMin;
+
+  const onsiteTotalRow = new TableRow({
+    children: [
+      new TableCell({
+        columnSpan: 7,
+        shading: { fill: 'E2E8F0', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.RIGHT,
+            children: [
+              new TextRun({
+                text: `TOTAL (${reports.length} Order Tiket):`,
+                bold: true,
+                size: 14,
+                color: '0F172A',
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: onsiteWidths[7], type: WidthType.PERCENTAGE },
+        shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: `${formatMinToHHMM(totalOnsiteActualMin)}\n(${totalOnsiteActualMin} Mnt)`,
+                bold: true,
+                size: 13,
+                color: '0F172A',
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: onsiteWidths[8], type: WidthType.PERCENTAGE },
+        shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: `${formatMinToHHMM(totalOnsiteTargetMin)}\n(${totalOnsiteTargetMin} Mnt)`,
+                bold: true,
+                size: 13,
+                color: '0F172A',
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: onsiteWidths[9], type: WidthType.PERCENTAGE },
+        shading: { fill: isOnsiteTotalComply ? 'DCFCE7' : 'FEE2E2', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: isOnsiteTotalComply ? 'M' : 'TM',
+                bold: true,
+                size: 16,
+                color: isOnsiteTotalComply ? '166534' : '991B1B',
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: onsiteWidths[10], type: WidthType.PERCENTAGE },
+        shading: { fill: isOnsiteTotalComply ? 'DCFCE7' : 'FEE2E2', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: isOnsiteTotalComply ? 'Memenuhi' : 'Tidak Memenuhi',
+                bold: true,
+                size: 13,
+                color: isOnsiteTotalComply ? '166534' : '991B1B',
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+
   const tableOnsite = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: cellBorderThin,
@@ -1762,7 +1958,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
         children: onsiteHeaders.map((hText, cIdx) => new TableCell({
           width: { size: onsiteWidths[cIdx], type: WidthType.PERCENTAGE },
           shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
-          margins: { top: 80, bottom: 80, left: 40, right: 40 },
+          margins: { top: 80, bottom: 80, left: 85, right: 85 },
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -1772,6 +1968,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
         })),
       }),
       ...onsiteRows,
+      onsiteTotalRow,
     ],
   });
 
@@ -1801,7 +1998,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
       ].map((val, cIdx) => new TableCell({
         width: { size: restoreWidths[cIdx], type: WidthType.PERCENTAGE },
         shading: cIdx === 7 ? { fill: comply ? 'F0FDF4' : 'FEF2F2', type: ShadingType.CLEAR } : undefined,
-        margins: { top: 60, bottom: 60, left: 40, right: 40 },
+        margins: { top: 60, bottom: 60, left: 85, right: 85 },
         children: [
           new Paragraph({
             alignment: [0, 3, 4, 5, 6, 7].includes(cIdx) ? AlignmentType.CENTER : AlignmentType.LEFT,
@@ -1819,6 +2016,105 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
     });
   });
 
+  const totalRestoreTargetMin = reports.reduce((sum, r) => sum + (r.targetRestoreMin || (r.priority === 'Critical' ? 120 : r.priority === 'High' ? 240 : r.priority === 'Low' ? 2880 : 360)), 0);
+  const totalRestoreActualMin = reports.reduce((sum, r) => sum + (r.actualRestoreTimeMin || 0), 0);
+  const isRestoreTotalComply = totalRestoreActualMin <= totalRestoreTargetMin;
+
+  const restoreTotalRow = new TableRow({
+    children: [
+      new TableCell({
+        columnSpan: 5,
+        shading: { fill: 'E2E8F0', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.RIGHT,
+            children: [
+              new TextRun({
+                text: `TOTAL (${reports.length} Order Tiket):`,
+                bold: true,
+                size: 14,
+                color: '0F172A',
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: restoreWidths[5], type: WidthType.PERCENTAGE },
+        shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: `${formatMinToHHMM(totalRestoreActualMin)}\n(${totalRestoreActualMin} Mnt)`,
+                bold: true,
+                size: 13,
+                color: '0F172A',
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: restoreWidths[6], type: WidthType.PERCENTAGE },
+        shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: `${formatMinToHHMM(totalRestoreTargetMin)}\n(${totalRestoreTargetMin} Mnt)`,
+                bold: true,
+                size: 13,
+                color: '0F172A',
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: restoreWidths[7], type: WidthType.PERCENTAGE },
+        shading: { fill: isRestoreTotalComply ? 'DCFCE7' : 'FEE2E2', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: isRestoreTotalComply ? 'M' : 'TM',
+                bold: true,
+                size: 16,
+                color: isRestoreTotalComply ? '166534' : '991B1B',
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: restoreWidths[8], type: WidthType.PERCENTAGE },
+        shading: { fill: isRestoreTotalComply ? 'DCFCE7' : 'FEE2E2', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: isRestoreTotalComply ? 'Memenuhi' : 'Tidak Memenuhi',
+                bold: true,
+                size: 13,
+                color: isRestoreTotalComply ? '166534' : '991B1B',
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+
   const tableRestore = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: cellBorderThin,
@@ -1827,7 +2123,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
         children: restoreHeaders.map((hText, cIdx) => new TableCell({
           width: { size: restoreWidths[cIdx], type: WidthType.PERCENTAGE },
           shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
-          margins: { top: 80, bottom: 80, left: 40, right: 40 },
+          margins: { top: 80, bottom: 80, left: 85, right: 85 },
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -1837,6 +2133,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
         })),
       }),
       ...restoreRows,
+      restoreTotalRow,
     ],
   });
 
@@ -1866,7 +2163,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
       ].map((val, cIdx) => new TableCell({
         width: { size: resolutionWidths[cIdx], type: WidthType.PERCENTAGE },
         shading: cIdx === 7 ? { fill: comply ? 'F0FDF4' : 'FEF2F2', type: ShadingType.CLEAR } : undefined,
-        margins: { top: 60, bottom: 60, left: 40, right: 40 },
+        margins: { top: 60, bottom: 60, left: 85, right: 85 },
         children: [
           new Paragraph({
             alignment: [0, 3, 4, 5, 6, 7].includes(cIdx) ? AlignmentType.CENTER : AlignmentType.LEFT,
@@ -1884,6 +2181,105 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
     });
   });
 
+  const totalResolutionTargetMin = reports.reduce((sum, r) => sum + (r.targetResolutionMin || (r.priority === 'Critical' ? 120 : r.priority === 'High' ? 240 : r.priority === 'Low' ? 2880 : 360)), 0);
+  const totalResolutionActualMin = reports.reduce((sum, r) => sum + (r.actualResolutionTimeMin || 0), 0);
+  const isResolutionTotalComply = totalResolutionActualMin <= totalResolutionTargetMin;
+
+  const resolutionTotalRow = new TableRow({
+    children: [
+      new TableCell({
+        columnSpan: 5,
+        shading: { fill: 'E2E8F0', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.RIGHT,
+            children: [
+              new TextRun({
+                text: `TOTAL (${reports.length} Order Tiket):`,
+                bold: true,
+                size: 14,
+                color: '0F172A',
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: resolutionWidths[5], type: WidthType.PERCENTAGE },
+        shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: `${formatMinToHHMM(totalResolutionActualMin)}\n(${totalResolutionActualMin} Mnt)`,
+                bold: true,
+                size: 13,
+                color: '0F172A',
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: resolutionWidths[6], type: WidthType.PERCENTAGE },
+        shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: `${formatMinToHHMM(totalResolutionTargetMin)}\n(${totalResolutionTargetMin} Mnt)`,
+                bold: true,
+                size: 13,
+                color: '0F172A',
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: resolutionWidths[7], type: WidthType.PERCENTAGE },
+        shading: { fill: isResolutionTotalComply ? 'DCFCE7' : 'FEE2E2', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: isResolutionTotalComply ? 'M' : 'TM',
+                bold: true,
+                size: 16,
+                color: isResolutionTotalComply ? '166534' : '991B1B',
+              }),
+            ],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: resolutionWidths[8], type: WidthType.PERCENTAGE },
+        shading: { fill: isResolutionTotalComply ? 'DCFCE7' : 'FEE2E2', type: ShadingType.CLEAR },
+        margins: { top: 80, bottom: 80, left: 85, right: 85 },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({
+                text: isResolutionTotalComply ? 'Memenuhi' : 'Tidak Memenuhi',
+                bold: true,
+                size: 13,
+                color: isResolutionTotalComply ? '166534' : '991B1B',
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  });
+
   const tableResolution = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     borders: cellBorderThin,
@@ -1892,7 +2288,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
         children: resolutionHeaders.map((hText, cIdx) => new TableCell({
           width: { size: resolutionWidths[cIdx], type: WidthType.PERCENTAGE },
           shading: { fill: 'F1F5F9', type: ShadingType.CLEAR },
-          margins: { top: 80, bottom: 80, left: 40, right: 40 },
+          margins: { top: 80, bottom: 80, left: 85, right: 85 },
           children: [
             new Paragraph({
               alignment: AlignmentType.CENTER,
@@ -1902,6 +2298,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
         })),
       }),
       ...resolutionRows,
+      resolutionTotalRow,
     ],
   });
 
@@ -2123,6 +2520,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
           tableResponse,
           ...createNotesSection(
             '• M = Memenuhi, TM = Tidak Memenuhi, Diambil dari Laporan Kegiatan yang mencatat data Response Time dan telah di-approve User',
+            `• Total Target Kumulatif: ${totalRespTargetMin} Menit (${reports.length} Order x 5 Menit), Total Aktual: ${totalRespActualMin} Menit [Status Total: ${isRespTotalComply ? 'M - Memenuhi' : 'TM - Tidak Memenuhi'}]`,
             '• Formula perhitungan Kinerja Response Time (RT) x 5%',
             `• Hasil perhitungan Kinerja Response Time (RT): ${respScore.toFixed(2)}%`
           ),
@@ -2133,6 +2531,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
           tableOnsite,
           ...createNotesSection(
             '• M = Memenuhi, TM = Tidak Memenuhi, Diambil dari Laporan Kegiatan yang mencatat data Onsite Time dan telah di-approve User',
+            `• Total Target Kumulatif: ${totalOnsiteTargetMin} Menit (${reports.length} Order x 120 Menit), Total Aktual: ${totalOnsiteActualMin} Menit [Status Total: ${isOnsiteTotalComply ? 'M - Memenuhi' : 'TM - Tidak Memenuhi'}]`,
             '• Formula perhitungan Onsite Time (OT) x 5%',
             `• Hasil perhitungan Kinerja Onsite Time (OT): ${onsiteScore.toFixed(2)}%`
           ),
@@ -2143,8 +2542,9 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
           tableRestore,
           ...createNotesSection(
             '• M = Memenuhi, TM = Tidak Memenuhi, Diambil dari Laporan Kegiatan yang mencatat data Restore Time dan telah di-approve User',
+            `• Total Target Kumulatif: ${totalRestoreTargetMin} Menit, Total Aktual: ${totalRestoreActualMin} Menit [Status Total: ${isRestoreTotalComply ? 'M - Memenuhi' : 'TM - Tidak Memenuhi'}]`,
             '• Formula perhitungan Kinerja Restore Time (RST) x 15%',
-            `• Hasil perhitungan Kinerja Response Time (RST): ${restoreScore.toFixed(2)}%`
+            `• Hasil perhitungan Kinerja Restore Time (RST): ${restoreScore.toFixed(2)}%`
           ),
 
           // Section 4
@@ -2153,6 +2553,7 @@ export async function exportSLAMonthlyRecapToDocx(rawReports: any[], periodTitle
           tableResolution,
           ...createNotesSection(
             '• M = Memenuhi, TM = Tidak Memenuhi, Diambil dari Laporan Kegiatan yang mencatat data Resolution Time dan telah di-approve User',
+            `• Total Target Kumulatif: ${totalResolutionTargetMin} Menit, Total Aktual: ${totalResolutionActualMin} Menit [Status Total: ${isResolutionTotalComply ? 'M - Memenuhi' : 'TM - Tidak Memenuhi'}]`,
             '• Formula perhitungan Kinerja Resolution Time (RSP) X 15%',
             `• Hasil perhitungan Kinerja Resolution Time (RSP): ${resolutionScore.toFixed(2)}%`
           ),
