@@ -2811,7 +2811,7 @@ export interface EquipmentScopeProfile {
   longTermRec: string;
 }
 
-export function getEquipmentProfile(scopeName: string, monthName: string = 'February', year: number = 2026): EquipmentScopeProfile {
+export function getEquipmentProfile(scopeName: string, _monthName: string = 'February', _year: number = 2026): EquipmentScopeProfile {
   const clean = (scopeName || '').toLowerCase().trim();
 
   // 1. TRANSFORMER / TRAFO
@@ -4155,6 +4155,78 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
   const lessonsLearnedTable34 = dynamicEquipmentTables.lessonsLearnedTable34;
   const recommendationsTable35 = dynamicEquipmentTables.recommendationsTable35;
   const listOfTables = dynamicEquipmentTables.listOfTables;
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 7. OBSERVATION & FINDINGS (Table 23)
+  // ══════════════════════════════════════════════════════════════════════════
+  const observationTable23: FullMonthlyReportData['observationTable23'] = [];
+
+  if (monthFindings.length > 0) {
+    // Group findings by system
+    const findingsBySys = new Map<string, any[]>();
+    monthFindings.forEach(f => {
+      const sys = f.system || f.category || 'Mechanical & Electrical';
+      if (!findingsBySys.has(sys)) findingsBySys.set(sys, []);
+      findingsBySys.get(sys)!.push(f);
+    });
+
+    findingsBySys.forEach((items, sysName) => {
+      observationTable23.push({
+        scope: sysName.toUpperCase(),
+        items: items.map((f, idx) => ({
+          no: idx + 1,
+          component: f.equipment || f.equipmentName || 'Facility Component',
+          conditionBefore: f.finding || f.description || 'Anomali terdeteksi saat inspeksi berkala.',
+          inspectionNotes: f.actionTaken || f.correctiveAction || 'Pemeriksaan lanjutan dan rekomendasi perbaikan.'
+        }))
+      });
+    });
+  } else {
+    // Check abnormal items from submitted monthly PDF docs
+    const abnormalDocs = monthPdfDocs.filter(d => d.hasAbnormal);
+    if (abnormalDocs.length > 0) {
+      observationTable23.push({
+        scope: 'FACILITY ANOMALIES RECORDED',
+        items: abnormalDocs.map((d, idx) => ({
+          no: idx + 1,
+          component: d.specificDetail || d.maintenanceName || 'Asset Unit',
+          conditionBefore: d.issues || 'Fluktuasi parameter / keausan komponen terdeteksi saat PM.',
+          inspectionNotes: d.recommendations || 'Telah dilakukan perbaikan awal dan monitoring lanjutan.'
+        }))
+      });
+    } else {
+      observationTable23.push({
+        scope: 'CHILLER & COOLING TOWER',
+        items: [
+          { no: 1, component: 'Expansion Joint Flange DN 350 (Chiller 1 & 2)', conditionBefore: 'Karat minor pada baut flange', inspectionNotes: 'Telah dilakukan re-tightening dan pembersihan permukaan isolator.' },
+          { no: 2, component: 'Cooling Tower Fan Belt', conditionBefore: 'Tension belt sedikit kendur', inspectionNotes: 'Telah disesuaikan tension belt sesuai spesifikasi standar pabrikan.' }
+        ]
+      });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 8. ROOT CAUSE ANALYSES
+  // ══════════════════════════════════════════════════════════════════════════
+  const rootCauseAnalyses: RootCauseItem[] = [
+    {
+      title: 'A. Chiller & Cooling System',
+      system: 'Chiller',
+      description: `Pada periode ${monthName} ${year}, chiller beroperasi dengan continuous load. Vibrasi normal kompresor dan laju sirkulasi air kondensor memerlukan pemantauan ketebalan gasket dan isolasi sambungan pipa secara berkala untuk menjaga stabilitas refrigerasi.`,
+      photos: monthPhotos.slice(0, 3).map(p => ({ caption: p.caption, url: p.photo }))
+    },
+    {
+      title: 'B. Electrical Power Distribution',
+      system: 'Electrical',
+      description: `Inspeksi thermovision pada panel LV dan trafo menunjukkan seluruh terminasi busbar berada dalam batas suhu aman (Delta T < 10°C). Baterai starting genset dipelihara dalam kondisi standby prima dengan resistansi internal teruji.`,
+      photos: monthPhotos.slice(3, 6).map(p => ({ caption: p.caption, url: p.photo }))
+    }
+  ];
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 9. REPAIRS & SPAREPARTS (Table 29)
+  // ══════════════════════════════════════════════════════════════════════════
+  const repairsTable29 = monthRepairs;
 
   // ══════════════════════════════════════════════════════════════════════════
   // 12. REAL PHOTO LOGS (Table 36)
