@@ -311,20 +311,18 @@ service cloud.firestore {
       allow update: if request.auth != null 
                     && (
                       isAdminOrQcDme()
-                      || (
-                        (isEngineer() || isPrivilegedRole() || resource.data.uploadedBy == request.auth.uid)
-                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      || request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                           'status',
                           'deleteRequested',
                           'deleteRequestedBy',
+                          'deleteRequestedRole',
                           'deleteRequestedTo',
                           'deleteReason',
                           'deleteRequestedAt'
                         ])
-                      )
                     );
       
-      allow delete: if request.auth != null && (isQcDmeSafe() || isAdminSafe());
+      allow delete: if request.auth != null && isQcDmeSafe();
 
       match /chunks/{chunkId} {
         allow create: if request.auth != null 
@@ -333,7 +331,7 @@ service cloud.firestore {
         
         allow read: if request.auth != null;
         
-        allow delete: if request.auth != null && (isQcDmeSafe() || isAdminSafe());
+        allow delete: if request.auth != null && isQcDmeSafe();
       }
     }
 
@@ -411,17 +409,15 @@ service cloud.firestore {
                     && division in ['pmo', 'sales', 'presales', 'purchasing']
                     && (
                       isAdminOrQcDme()
-                      || (
-                        (isDivision(division) || resource.data.uploadedBy == request.auth.uid)
-                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                      || request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                           'status',
                           'deleteRequested',
                           'deleteRequestedBy',
+                          'deleteRequestedRole',
                           'deleteRequestedTo',
                           'deleteReason',
                           'deleteRequestedAt'
                         ])
-                      )
                     );
 
       allow delete: if request.auth != null && (isAdminOrQcDme() || isDivision(division) || resource.data.uploadedBy == request.auth.uid);
@@ -590,7 +586,7 @@ service cloud.firestore {
                     && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME());
       allow update: if request.auth != null 
                     && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || isDME() || resource.data.reportedBy == request.auth.uid || resource.data.createdBy == request.auth.uid);
-      allow delete: if request.auth != null && (isQcDmeSafe() || isAdminSafe());
+      allow delete: if request.auth != null && isQcDmeSafe();
     }
 
     match /standby_kpi_inputs/{docId} {

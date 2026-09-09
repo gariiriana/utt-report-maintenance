@@ -397,6 +397,7 @@ interface FileManagementProps {
     initialFolder?: string | null;
     onBackToRoot?: () => void;
     initialSearchQuery?: string;
+    deleteRequestMode?: boolean;
 }
 
 export function FileManagement({
@@ -407,6 +408,7 @@ export function FileManagement({
     initialFolder = null,
     onBackToRoot,
     initialSearchQuery = '',
+    deleteRequestMode = false,
 }: FileManagementProps = {}) {
     const { user, userRole } = useAuth();
     const userEmailLower = (user?.email || '').toLowerCase();
@@ -415,8 +417,8 @@ export function FileManagement({
     const canUpload = propAllowUpload !== undefined
         ? propAllowUpload
         : (isAdmin || (collectionName !== 'files' && userRole === collectionName));
-    // Admin dan QC DME memiliki wewenang untuk seleksi & aksi hapus (Admin mengajukan ke qcdme@dme.com, QC DME menyetujui/hapus permanen)
-    const canDeleteOrRequest = isAdmin || isQcDme;
+    // Semua role authenticated berhak mengajukan permohonan hapus berkas ke qcdme@dme.com (hanya QC DME yang berhak approve & hapus permanen)
+    const canDeleteOrRequest = Boolean(user);
     const isEngineer = userRole === 'engineer' || userRole === 'standby_engineer';
 
     useEffect(() => {
@@ -442,12 +444,21 @@ export function FileManagement({
     const [failedUploads, setFailedUploads] = useState<{ file: File; error: string }[]>([]);
 
     const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
-    const [filterCategory, setFilterCategory] = useState('All');
+    const [filterCategory, setFilterCategory] = useState(deleteRequestMode ? 'PENDING_DELETE' : 'All');
     const [filterYear, setFilterYear] = useState('All');
     const [selectedFolder, setSelectedFolder] = useState<string | null>(initialFolder);
     const [selectedQuarter, setSelectedQuarter] = useState<string | null>(null);
     const [selectedMType, setSelectedMType] = useState<string | null>(null);
     const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (deleteRequestMode) {
+            setFilterCategory('PENDING_DELETE');
+            setSelectedFolder(null);
+            setSelectedQuarter(null);
+            setSelectedMType(null);
+        }
+    }, [deleteRequestMode]);
 
     useEffect(() => {
         setSelectedFolder(initialFolder || null);
@@ -952,7 +963,8 @@ export function FileManagement({
             for (const fileId of targetFileIds) {
                 const updatePayload = {
                     deleteRequested: true,
-                    deleteRequestedBy: user?.email || (userRole === 'admin' ? 'Admin' : 'User'),
+                    deleteRequestedBy: user?.email || (userRole ? `${userRole}` : 'User'),
+                    deleteRequestedRole: userRole || 'User',
                     deleteRequestedTo: 'qcdme@dme.com',
                     deleteReason: deleteReason.trim(),
                     deleteRequestedAt: serverTimestamp(),
@@ -1012,6 +1024,7 @@ export function FileManagement({
                     deleteRequested: deleteField(),
                     deleteRequestedBy: deleteField(),
                     deleteRequestedTo: deleteField(),
+                    deleteRequestedRole: deleteField(),
                     deleteReason: deleteField(),
                     deleteRequestedAt: deleteField(),
                 };

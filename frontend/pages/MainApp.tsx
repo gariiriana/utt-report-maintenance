@@ -15,7 +15,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle, Database, Package, Award, FileSignature, ScanFace } from 'lucide-react';
+import { FileText, FolderOpen, LogOut, Menu, X, Shield, Files, PenTool, Search, Clipboard, Calendar, CalendarDays, AlertTriangle, Database, Package, Award, FileSignature, ScanFace, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 import { ReportForm } from '@/components/ReportForm';
@@ -41,21 +41,58 @@ import { NotificationCenter, AppNotificationItem } from '@/components/Notificati
 import { StandbyKPIInput } from '@/components/StandbyKPIInput';
 import { NotificationPage } from '@/components/NotificationPage';
 import { FaceRegistrationManagement } from '@/components/FaceRegistrationManagement';
+import { DeleteRequestsManager } from '@/components/DeleteRequestsManager';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '@/api/firebase';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
 // Tipe Tab Navigasi yang Tersedia dalam Aplikasi
-type Tab = 'notifications' | 'report' | 'documents' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'spareparts' | 'monthly_report' | 'standby_kpi' | 'berita_acara' | 'face_registration';
+type Tab = 'notifications' | 'report' | 'documents' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'spareparts' | 'monthly_report' | 'standby_kpi' | 'berita_acara' | 'face_registration' | 'delete_requests';
 
 export function MainApp() {
   // State autentikasi & peranan user dari AuthContext
   const { user, userRole, logout } = useAuth();
 
   // Flag evaluasi hak akses peranan user
-  const isQcDme = userRole === 'qc_dme';
+  const userEmailLower = (user?.email || '').toLowerCase();
+  const isQcDme = userRole === 'qc_dme' || userEmailLower.includes('qcdme') || userEmailLower === 'qcdme@dme.com' || userEmailLower === 'qc@gmail.com';
   const isAdmin = userRole === 'admin' || isQcDme;
   const isTDEorCBRE = userRole === 'tde' || userRole === 'cbre';
   const isStandby = userRole === 'standby_engineer';
   const isK2Engineer = userRole === 'Engineer_K2' || userRole === 'engineer_k2';
+
+  // Badge jumlah pengajuan delete yang menunggu persetujuan (khusus akun QC DME)
+  const [pendingDeleteCount, setPendingDeleteCount] = useState(0);
+
+  useEffect(() => {
+    if (!isQcDme) return;
+
+    let cFiles = 0;
+    let cCM = 0;
+
+    const unsubFiles = onSnapshot(
+      query(collection(db, 'files'), where('deleteRequested', '==', true)),
+      (snap) => {
+        cFiles = snap.size;
+        setPendingDeleteCount(cFiles + cCM);
+      },
+      () => {}
+    );
+
+    const unsubCM = onSnapshot(
+      query(collection(db, 'corrective_reports'), where('deleteRequested', '==', true)),
+      (snap) => {
+        cCM = snap.size;
+        setPendingDeleteCount(cFiles + cCM);
+      },
+      () => {}
+    );
+
+    return () => {
+      unsubFiles();
+      unsubCM();
+    };
+  }, [isQcDme]);
 
   // State data laporan yang sedang disunting (edit mode)
   const [editingData, setEditingData] = useState<ExcelDocument | null>(null);
@@ -63,6 +100,7 @@ export function MainApp() {
   // Daftar item navigasi aplikasi beserta batasan hak akses (fitur show)
   const navItems = [
     { id: 'admin', label: 'Dashboard', icon: Shield, color: 'from-purple-600 to-pink-600', show: isAdmin },
+    { id: 'delete_requests', label: 'Pengajuan Hapus', icon: Trash2, color: 'from-rose-600 to-red-600', show: isQcDme },
     { id: 'face_registration', label: 'Registrasi Wajah', icon: ScanFace, color: 'from-blue-600 to-indigo-600', show: false },
     { id: 'absen_tbm', label: 'Absen TBM', icon: Calendar, color: 'from-pink-500 to-rose-600', show: isAdmin },
     { id: 'absen_induction', label: 'Absen Induction', icon: Calendar, color: 'from-blue-500 to-blue-600', show: isAdmin },
@@ -225,6 +263,11 @@ export function MainApp() {
                 >
                   <item.icon className="w-3.5 h-3.5 flex-shrink-0" />
                   <span>{item.label}</span>
+                  {item.id === 'delete_requests' && pendingDeleteCount > 0 && (
+                    <span className="ml-1 px-1.5 py-0.2 bg-rose-500 text-white rounded-full text-[10px] font-black animate-pulse shadow-xs">
+                      {pendingDeleteCount}
+                    </span>
+                  )}
                 </motion.button>
               ))}
             </div>
@@ -270,13 +313,20 @@ export function MainApp() {
                       setActiveTab(item.id as Tab);
                       setMobileMenuOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl font-bold transition-all border ${activeTab === item.id
+                    className={`w-full flex items-center justify-between px-4 py-4 rounded-2xl font-bold transition-all border ${activeTab === item.id
                       ? `bg-gradient-to-r ${item.color} text-white border-transparent shadow-md shadow-blue-500/20`
                       : 'bg-slate-50 text-slate-700 border-slate-200/80 hover:bg-white hover:text-slate-900'
                       }`}
                   >
-                    <item.icon className="w-5 h-5" />
-                    <span>{item.label}</span>
+                    <div className="flex items-center gap-3">
+                      <item.icon className="w-5 h-5" />
+                      <span>{item.label}</span>
+                    </div>
+                    {item.id === 'delete_requests' && pendingDeleteCount > 0 && (
+                      <span className="px-2 py-0.5 bg-rose-500 text-white rounded-full text-xs font-bold shadow-xs">
+                        {pendingDeleteCount}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -313,6 +363,8 @@ export function MainApp() {
               <NotificationPage onSelectNotification={handleSelectNotification} />
             ) : activeTab === 'admin' ? (
               <AdminDashboard onEdit={handleEditReport} />
+            ) : activeTab === 'delete_requests' ? (
+              <DeleteRequestsManager />
             ) : activeTab === 'absen_tbm' ? (
               <AbsenTBM />
             ) : activeTab === 'absen_induction' ? (
