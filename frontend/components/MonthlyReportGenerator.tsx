@@ -44,7 +44,9 @@ import {
   CheckCheck,
   XCircle,
   FolderArchive,
-  Edit3
+  Edit3,
+  Save,
+  Check
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { draftStorage } from '@/utils/draftStorage';
@@ -378,6 +380,29 @@ export function MonthlyReportGenerator() {
   const [exportingDocx, setExportingDocx] = useState(false);
   const [activeChapter, setActiveChapter] = useState<number>(0); // 0 = Semua / Cover
   const [isSavedLocally, setIsSavedLocally] = useState(false);
+  const [isSavingManual, setIsSavingManual] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
+
+  // Manual save handler untuk tombol floating save
+  const handleManualSave = useCallback(async () => {
+    if (!reportData) return;
+    setIsSavingManual(true);
+    try {
+      const storageKey = `dwimitra_monthly_report_${selectedYear}_${selectedMonth}`;
+      await draftStorage.set(storageKey, reportData);
+      setIsSavedLocally(true);
+      setJustSaved(true);
+      toast.success(`Laporan Bulanan ${reportData.monthName} ${reportData.year} berhasil disimpan! Data aman saat halaman direfresh.`);
+      setTimeout(() => {
+        setJustSaved(false);
+      }, 3000);
+    } catch (error: any) {
+      console.error('Gagal menyimpan laporan:', error);
+      toast.error(`Gagal menyimpan laporan: ${error?.message || 'Error tidak diketahui'}`);
+    } finally {
+      setIsSavingManual(false);
+    }
+  }, [reportData, selectedYear, selectedMonth]);
 
   // Filter & Pencarian Tabel 20 Equipment & System Details (Bab 5)
   const [selectedEquipmentCategory, setSelectedEquipmentCategory] = useState<string>('ALL');
@@ -2643,10 +2668,18 @@ export function MonthlyReportGenerator() {
                               <td className="py-1 px-1 border-r border-black font-semibold text-[10px]">
                                 {(() => {
                                   const status = item.operationalStatus || '';
-                                  const statusLower = status.toLowerCase();
-                                  const isNotGood = statusLower.includes('not good') || statusLower.includes('tidak baik') || statusLower.includes('abnormal') || statusLower.includes('rusak');
-                                  const isGood = !isNotGood && (statusLower.includes('good') || statusLower.includes('baik') || statusLower.includes('normal') || !status.trim());
-                                  const selectValue = isGood ? 'good' : (isNotGood ? 'not_good' : 'custom');
+                                  const isGoodPreset = status.trim() === 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal' ||
+                                                       status.trim().toLowerCase() === 'good condition\nkondisi baik';
+                                  const isNotGoodPreset = status.trim() === 'Not Good Condition / Abnormal Operation\nKondisi Tidak Baik / Beroperasi Abnormal' ||
+                                                          status.trim().toLowerCase() === 'not good condition\nkondisi tidak baik';
+
+                                  // Determine mode: if explicit item.statusMode exists, use it; otherwise infer from text
+                                  const selectValue: 'good' | 'not_good' | 'custom' =
+                                    (item as any).statusMode || (isNotGoodPreset ? 'not_good' : isGoodPreset ? 'good' : (status.trim() ? 'custom' : 'good'));
+
+                                  const isGood = selectValue === 'good';
+                                  const isNotGood = selectValue === 'not_good';
+                                  const isCustom = selectValue === 'custom';
 
                                   return (
                                     <div className="flex flex-col space-y-1">
@@ -2655,14 +2688,21 @@ export function MonthlyReportGenerator() {
                                         <select
                                           value={selectValue}
                                           onChange={(e) => {
-                                            const val = e.target.value;
+                                            const val = e.target.value as 'good' | 'not_good' | 'custom';
                                             const updated = { ...reportData };
+                                            const targetItem = updated.taskPerformanceTables[tIdx].items[iIdx] as any;
+                                            targetItem.statusMode = val;
                                             if (val === 'good') {
-                                              updated.taskPerformanceTables[tIdx].items[iIdx].operationalStatus =
+                                              targetItem.operationalStatus =
                                                 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal';
                                             } else if (val === 'not_good') {
-                                              updated.taskPerformanceTables[tIdx].items[iIdx].operationalStatus =
+                                              targetItem.operationalStatus =
                                                 'Not Good Condition / Abnormal Operation\nKondisi Tidak Baik / Beroperasi Abnormal';
+                                            } else if (val === 'custom') {
+                                              // Jika sebelumnya preset atau kosong, sediakan teks starter agar langsung siap diedit
+                                              if (!targetItem.operationalStatus || isGoodPreset || isNotGoodPreset) {
+                                                targetItem.operationalStatus = 'Operational / Running\nBeroperasi Normal';
+                                              }
                                             }
                                             setReportData(updated);
                                           }}
@@ -2671,28 +2711,30 @@ export function MonthlyReportGenerator() {
                                               ? 'bg-emerald-50/90 border-emerald-300 text-emerald-800 hover:bg-emerald-100/70'
                                               : isNotGood
                                               ? 'bg-rose-50/90 border-rose-300 text-rose-800 font-bold hover:bg-rose-100/70'
-                                              : 'bg-slate-50 border-slate-300 text-slate-800'
+                                              : 'bg-blue-50/90 border-blue-300 text-blue-800 font-medium'
                                           }`}
                                         >
                                           <option value="good">Good Condition</option>
                                           <option value="not_good">Not Good Condition</option>
-                                          <option value="custom">Custom / Manual</option>
+                                          <option value="custom">Custom / Manual (Ketik)</option>
                                         </select>
                                       </div>
 
                                       {/* Display / Editable Content */}
-                                      {selectValue === 'custom' ? (
+                                      {isCustom ? (
                                         <BilingualTextarea
                                           value={item.operationalStatus}
-                                          placeholderEn="Good Condition..."
-                                          placeholderId="Kondisi Baik... (garis miring)"
+                                          placeholderEn="Type operational status (English)..."
+                                          placeholderId="Ketik status operasional (Bahasa Indonesia)..."
                                           onChange={(val) => {
                                             const updated = { ...reportData };
-                                            updated.taskPerformanceTables[tIdx].items[iIdx].operationalStatus = val;
+                                            const targetItem = updated.taskPerformanceTables[tIdx].items[iIdx] as any;
+                                            targetItem.operationalStatus = val;
+                                            targetItem.statusMode = 'custom';
                                             setReportData(updated);
                                           }}
-                                          classNameEn="w-full text-[10px] font-semibold leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans text-slate-800"
-                                          classNameId="w-full text-[9.5px] font-semibold italic text-slate-600 leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans"
+                                          classNameEn="w-full text-[10px] font-semibold leading-tight py-0.5 px-1 bg-white border border-blue-300 focus:border-blue-500 rounded outline-none resize-none font-sans text-slate-800 shadow-2xs print:bg-transparent print:border-none print:shadow-none"
+                                          classNameId="w-full text-[9.5px] font-semibold italic text-slate-600 leading-tight py-0.5 px-1 bg-white border border-blue-300 focus:border-blue-500 rounded outline-none resize-none font-sans shadow-2xs print:bg-transparent print:border-none print:shadow-none"
                                           indentId={true}
                                         />
                                       ) : (
@@ -6725,6 +6767,40 @@ export function MonthlyReportGenerator() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ─── Floating Persistent Save Button (Bottom Right) ─── */}
+      {reportData && (
+        <div className="fixed bottom-6 right-6 z-50 print:hidden flex items-center gap-2 pointer-events-auto">
+          <button
+            type="button"
+            onClick={handleManualSave}
+            disabled={isSavingManual}
+            className={`group flex items-center gap-2.5 px-5 py-3.5 rounded-2xl font-bold text-sm shadow-2xl transition-all duration-200 transform active:scale-95 cursor-pointer backdrop-blur-md ${
+              justSaved
+                ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/40 ring-2 ring-emerald-300'
+                : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/40 hover:shadow-blue-600/60 ring-2 ring-blue-400/40 hover:scale-105'
+            }`}
+            title="Simpan seluruh perubahan laporan ini agar tetap tersimpan saat halaman direfresh"
+          >
+            {isSavingManual ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin text-white" />
+                <span>Menyimpan...</span>
+              </>
+            ) : justSaved ? (
+              <>
+                <Check className="w-5 h-5 text-emerald-200 animate-in zoom-in-50 duration-200" />
+                <span>Tersimpan!</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-5 h-5 text-blue-200 group-hover:scale-110 transition-transform" />
+                <span>Simpan Perubahan</span>
+              </>
+            )}
+          </button>
         </div>
       )}
 
