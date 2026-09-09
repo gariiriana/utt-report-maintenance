@@ -2396,189 +2396,212 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     );
   };
 
-  const renderDocumentCard = (document: ExcelDocument, index: number) => (
-    <motion.div
-      key={document.id}
-      layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.2, delay: index * 0.05 }}
-      className="bg-white/90 backdrop-blur-xl rounded-2xl p-3.5 sm:p-5 border border-sky-100/90 hover:border-blue-300 shadow-md text-slate-800 transition group w-full max-w-full overflow-hidden"
-    >
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full min-w-0">
-        <div className="p-2 sm:p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex-shrink-0">
-          {document.documentType === 'pdf' ? (
-            <FileType className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
-          ) : (
-            <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
-          )}
-        </div>
+  const renderDocumentCard = (document: ExcelDocument, index: number) => {
+    const showUploadSR = Boolean(
+      (isEngineer || isPrivileged || isServiceReportSupported(document.createdBy)) &&
+      document.documentType === 'pdf'
+    );
+    const hasSR = Boolean(document.attachedSrFile || document.attachedSrBase64);
 
-        <div className="flex-1 min-w-0 w-full">
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            <h3 className="text-sm sm:text-lg font-black text-slate-900 truncate">
-              {document.maintenanceName}
-            </h3>
-            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${document.documentType === 'pdf'
-              ? 'bg-red-50 text-red-600 border border-red-200'
-              : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-              }`}>
-              {document.documentType.toUpperCase()}
-            </span>
-            {document.hasAbnormal && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-red-600 text-white border border-red-700 shadow-xs flex items-center gap-1 animate-pulse">
-                <AlertTriangle className="w-3 h-3 shrink-0" /> Abnormal
-              </span>
-            )}
-            {(document.attachedSrFile || document.attachedSrBase64) ? (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 shadow-2xs">
-                <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" /> FOTO + SERVICE REPORT
-              </span>
-            ) : document.documentType === 'pdf' ? (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                DOKUMENTASI FOTO
-              </span>
-            ) : null}
-            {document.hseType && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase">
-                {document.hseType}
-              </span>
-            )}
-            {document.deleteRequested && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse uppercase">
-                Menunggu Hapus
-              </span>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-1.5 text-xs text-slate-500">
-            <div className="flex items-center gap-1 shrink-0">
-              <Clock className="w-3.5 h-3.5 text-slate-400" />
-              <span>
-                {(() => {
-                  if (document.maintenanceTime?.includes(' - ')) {
-                    return document.maintenanceTime.split(' - ').map(part => {
-                      const d = getDocumentDate({ maintenanceTime: part.trim() });
-                      return isNaN(d.getTime()) ? part : d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-                    }).join(' - ');
-                  }
-                  const d = getDocumentDate(document);
-                  return isNaN(d.getTime())
-                    ? document.maintenanceTime
-                    : d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-                })()}
-              </span>
-            </div>
-            {document.documentType !== 'hse' && (
-              <div className="flex items-center gap-1 shrink-0">
-                <FileDown className="w-3.5 h-3.5 text-slate-400" />
-                <span>{(document.fileSize / 1024).toFixed(0)} KB</span>
-              </div>
-            )}
-            {document.specificDetail && (
-              <div className="flex items-center gap-1 min-w-0 max-w-full">
-                <Box className="w-3.5 h-3.5 flex-shrink-0 text-blue-500" />
-                <span className="truncate text-blue-600 font-semibold">{document.specificDetail}</span>
-              </div>
-            )}
-            {document.maintenanceType && (
-              <div className="flex items-center gap-1 shrink-0">
-                <FileType className="w-3.5 h-3.5 text-orange-500" />
-                <span className="text-orange-600 font-bold">{document.maintenanceType}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0">
-          {onEdit && (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => handleEditClick(document)}
-              className="flex-1 sm:flex-initial py-2 sm:py-2.5 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition border border-blue-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-              title={isDME ? "View Report" : "Edit Report"}
-            >
-              {isDME ? (
-                <>
-                  <Search className="w-3.5 h-3.5" />
-                  <span className="sm:hidden font-bold">Lihat</span>
-                </>
+    return (
+      <motion.div
+        key={document.id}
+        layout
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.2, delay: index * 0.05 }}
+        className="bg-white/90 backdrop-blur-xl rounded-2xl p-3.5 sm:p-5 border border-sky-100/90 hover:border-blue-300 shadow-md text-slate-800 transition group w-full max-w-full overflow-hidden"
+      >
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full min-w-0">
+          <div className="flex items-start gap-3 flex-1 min-w-0 w-full">
+            <div className={`p-2.5 sm:p-3 rounded-xl border flex-shrink-0 mt-0.5 sm:mt-0 ${
+              document.documentType === 'pdf'
+                ? 'bg-red-50/80 border-red-200 text-red-600'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-600'
+            }`}>
+              {document.documentType === 'pdf' ? (
+                <FileType className="w-5 h-5 sm:w-6 sm:h-6" />
               ) : (
-                <>
-                  <Pencil className="w-3.5 h-3.5" />
-                  <span className="sm:hidden font-bold">Edit</span>
-                </>
+                <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6" />
               )}
-            </motion.button>
-          )}
-          {/* Tombol Upload Service Report (Khusus Akun Engineer / Dokumen PDF) */}
-          {(isEngineer || isPrivileged || isServiceReportSupported(document.createdBy)) && document.documentType === 'pdf' && (
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <h3 className="text-sm sm:text-lg font-black text-slate-900 leading-snug break-words">
+                  {document.maintenanceName}
+                </h3>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                  document.documentType === 'pdf'
+                    ? 'bg-red-50 text-red-600 border border-red-200'
+                    : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                }`}>
+                  {document.documentType.toUpperCase()}
+                </span>
+                {document.hasAbnormal && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-red-600 text-white border border-red-700 shadow-xs flex items-center gap-1 animate-pulse">
+                    <AlertTriangle className="w-3 h-3 shrink-0" /> Abnormal
+                  </span>
+                )}
+                {hasSR ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 shadow-2xs">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" /> FOTO + SERVICE REPORT
+                  </span>
+                ) : document.documentType === 'pdf' ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                    DOKUMENTASI FOTO
+                  </span>
+                ) : null}
+                {document.hseType && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase">
+                    {document.hseType}
+                  </span>
+                )}
+                {document.deleteRequested && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse uppercase">
+                    Menunggu Hapus
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-1.5 text-xs text-slate-500">
+                <div className="flex items-center gap-1 shrink-0">
+                  <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span>
+                    {(() => {
+                      if (document.maintenanceTime?.includes(' - ')) {
+                        return document.maintenanceTime.split(' - ').map(part => {
+                          const d = getDocumentDate({ maintenanceTime: part.trim() });
+                          return isNaN(d.getTime()) ? part : d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                        }).join(' - ');
+                      }
+                      const d = getDocumentDate(document);
+                      return isNaN(d.getTime())
+                        ? document.maintenanceTime
+                        : d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                    })()}
+                  </span>
+                </div>
+                {document.documentType !== 'hse' && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <FileDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>{(document.fileSize / 1024).toFixed(0)} KB</span>
+                  </div>
+                )}
+                {document.specificDetail && (
+                  <div className="flex items-center gap-1 min-w-0 max-w-full">
+                    <Box className="w-3.5 h-3.5 flex-shrink-0 text-blue-500" />
+                    <span className="truncate text-blue-600 font-semibold">{document.specificDetail}</span>
+                  </div>
+                )}
+                {document.maintenanceType && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <FileType className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                    <span className="text-orange-600 font-bold">{document.maintenanceType}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons: Responsive 2-column grid on mobile, inline flex row on desktop */}
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2 w-full sm:w-auto mt-3 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0">
+            {onEdit && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handleEditClick(document)}
+                className="w-full sm:w-auto py-2 sm:py-2.5 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition border border-blue-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
+                title={isDME ? "View Report" : "Edit Report"}
+              >
+                {isDME ? (
+                  <>
+                    <Search className="w-3.5 h-3.5 shrink-0" />
+                    <span className="sm:hidden font-bold">Lihat</span>
+                  </>
+                ) : (
+                  <>
+                    <Pencil className="w-3.5 h-3.5 shrink-0" />
+                    <span className="sm:hidden font-bold">Edit</span>
+                  </>
+                )}
+              </motion.button>
+            )}
+
+            {/* Tombol Upload Service Report (Khusus Akun Engineer / Dokumen PDF) */}
+            {showUploadSR && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setUploadSrModalDoc(document)}
+                className={`w-full sm:w-auto py-2 sm:py-2.5 px-3 rounded-xl transition border font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap ${
+                  hasSR
+                    ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
+                    : 'bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-700 border-indigo-200'
+                }`}
+                title={hasSR ? "Update / Ganti Berkas Service Report" : "Upload Berkas Service Report (Excel / PDF)"}
+              >
+                <FileUp className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span className="font-bold">
+                  {hasSR ? 'Update SR' : 'Upload SR'}
+                </span>
+              </motion.button>
+            )}
+
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => setUploadSrModalDoc(document)}
-              className={`flex-1 sm:flex-initial py-2 sm:py-2.5 px-3 rounded-xl transition border font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${
-                document.attachedSrFile || document.attachedSrBase64
-                  ? 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
-                  : 'bg-gradient-to-r from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-700 border-indigo-200'
-              }`}
-              title={document.attachedSrFile || document.attachedSrBase64 ? "Update / Ganti Berkas Service Report" : "Upload Berkas Service Report (Excel / PDF)"}
-            >
-              <FileUp className="w-3.5 h-3.5 text-indigo-600" />
-              <span className="font-bold">
-                {document.attachedSrFile || document.attachedSrBase64 ? 'Update SR' : 'Upload SR'}
-              </span>
-            </motion.button>
-          )}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => {
-              if (document.documentType === 'pdf') {
-                const hasSR = Boolean(document.attachedSrFile || document.attachedSrBase64);
-                if (hasSR) {
-                  setDownloadChoiceDoc(document);
-                } else {
-                  handleDownloadPDF(document);
-                }
-              } else if (document.documentType === 'hse') {
-                handleDownloadHSE(document);
-              } else {
-                handleDownload(document);
-              }
-            }}
-            className="flex-1 sm:flex-initial py-2 sm:py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl transition border border-emerald-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-            title={`Download ${document.documentType === 'pdf' ? 'PDF' : 'Excel'}`}
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span className="sm:hidden font-bold">Download</span>
-          </motion.button>
-          {canDelete && (
-            <motion.button
-              whileHover={{ scale: document.deleteRequested && !isQcDme ? 1 : 1.02 }}
-              whileTap={{ scale: document.deleteRequested && !isQcDme ? 1 : 0.98 }}
               onClick={() => {
-                if (document.deleteRequested && !isQcDme) return;
-                openDeleteModal(document);
+                if (document.documentType === 'pdf') {
+                  if (hasSR) {
+                    setDownloadChoiceDoc(document);
+                  } else {
+                    handleDownloadPDF(document);
+                  }
+                } else if (document.documentType === 'hse') {
+                  handleDownloadHSE(document);
+                } else {
+                  handleDownload(document);
+                }
               }}
-              disabled={document.deleteRequested && !isQcDme}
-              className={`flex-1 sm:flex-initial py-2 sm:py-2.5 px-3 rounded-xl transition border font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs ${document.deleteRequested
-                  ? isQcDme
-                    ? 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-300'
-                    : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50'
-                  : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200'
-                }`}
-              title={document.deleteRequested ? isQcDme ? "Tinjau Pengajuan Hapus" : "Menunggu Persetujuan Hapus QC DME" : isQcDme ? "Hapus Permanen" : "Ajukan Hapus ke QC DME"}
+              className="w-full sm:w-auto py-2 sm:py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl transition border border-emerald-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap"
+              title={`Download ${document.documentType === 'pdf' ? 'PDF' : 'Excel'}`}
             >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span className="sm:hidden font-bold">{document.deleteRequested ? (isQcDme ? 'Tinjau' : 'Menunggu') : (isQcDme ? 'Hapus' : 'Ajukan Hapus')}</span>
+              <Download className="w-3.5 h-3.5 shrink-0" />
+              <span className="sm:hidden font-bold">Download</span>
             </motion.button>
-          )}
+
+            {canDelete && (
+              <motion.button
+                whileHover={{ scale: document.deleteRequested && !isQcDme ? 1 : 1.02 }}
+                whileTap={{ scale: document.deleteRequested && !isQcDme ? 1 : 0.98 }}
+                onClick={() => {
+                  if (document.deleteRequested && !isQcDme) return;
+                  openDeleteModal(document);
+                }}
+                disabled={document.deleteRequested && !isQcDme}
+                className={`w-full sm:w-auto py-2 sm:py-2.5 px-3 rounded-xl transition border font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap ${
+                  !showUploadSR && onEdit ? 'col-span-2 sm:col-span-1' : ''
+                } ${
+                  document.deleteRequested
+                    ? isQcDme
+                      ? 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-300'
+                      : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50'
+                    : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200'
+                }`}
+                title={document.deleteRequested ? isQcDme ? "Tinjau Pengajuan Hapus" : "Menunggu Persetujuan Hapus QC DME" : isQcDme ? "Hapus Permanen" : "Ajukan Hapus ke QC DME"}
+              >
+                <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                <span className="sm:hidden font-bold">
+                  {document.deleteRequested ? (isQcDme ? 'Tinjau' : 'Menunggu') : (isQcDme ? 'Hapus' : 'Ajukan Hapus')}
+                </span>
+              </motion.button>
+            )}
+          </div>
         </div>
-      </div>
-    </motion.div>
-  );
+      </motion.div>
+    );
+  };
 
   const handleEditClick = async (doc: ExcelDocument) => {
     if (!onEdit) return;
@@ -2752,49 +2775,60 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
         {/* Status Filter Tabs (Foto Saja vs Foto + Service Report) - Hidden in HSE Role & DME Role */}
         {filterOverride !== 'hse_utt' && !isDME && (
-          <div className="mt-3 pt-3 border-t border-slate-200/80 w-full overflow-hidden">
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5 w-full">
+          <div className="mt-3 pt-3 border-t border-slate-200/80 w-full">
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 w-full">
               <button
+                type="button"
                 onClick={() => setSrStatusFilter('all')}
-                className={`px-3 py-1.5 sm:py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap text-xs shrink-0 cursor-pointer ${srStatusFilter === 'all'
+                className={`w-full py-1.5 sm:py-2 px-1 sm:px-3 rounded-xl transition-all flex items-center justify-center gap-1 sm:gap-1.5 text-xs cursor-pointer min-w-0 ${
+                  srStatusFilter === 'all'
                     ? 'bg-slate-900 text-white shadow-sm font-bold'
                     : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200/80 font-semibold'
-                  }`}
+                }`}
               >
-                <FolderArchive className={`w-3.5 h-3.5 ${srStatusFilter === 'all' ? 'text-amber-400' : 'text-slate-400'}`} />
-                <span>Semua Dokumen</span>
-                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${srStatusFilter === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-                  }`}>
+                <FolderArchive className={`w-3.5 h-3.5 shrink-0 ${srStatusFilter === 'all' ? 'text-amber-400' : 'text-slate-400'}`} />
+                <span className="hidden sm:inline">Semua Dokumen</span>
+                <span className="sm:hidden truncate">Semua</span>
+                <span className={`px-1 sm:px-1.5 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
+                  srStatusFilter === 'all' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                }`}>
                   {documents.length}
                 </span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setSrStatusFilter('photos_only')}
-                className={`px-3 py-1.5 sm:py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap text-xs shrink-0 cursor-pointer ${srStatusFilter === 'photos_only'
+                className={`w-full py-1.5 sm:py-2 px-1 sm:px-3 rounded-xl transition-all flex items-center justify-center gap-1 sm:gap-1.5 text-xs cursor-pointer min-w-0 ${
+                  srStatusFilter === 'photos_only'
                     ? 'bg-slate-900 text-white shadow-sm font-bold'
                     : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200/80 font-semibold'
-                  }`}
+                }`}
               >
-                <Camera className={`w-3.5 h-3.5 ${srStatusFilter === 'photos_only' ? 'text-amber-400' : 'text-slate-400'}`} />
-                <span>Foto Saja</span>
-                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${srStatusFilter === 'photos_only' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-                  }`}>
+                <Camera className={`w-3.5 h-3.5 shrink-0 ${srStatusFilter === 'photos_only' ? 'text-amber-400' : 'text-slate-400'}`} />
+                <span className="truncate">Foto Saja</span>
+                <span className={`px-1 sm:px-1.5 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
+                  srStatusFilter === 'photos_only' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                }`}>
                   {documents.filter(d => !(d.attachedSrFile || d.attachedSrBase64)).length}
                 </span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setSrStatusFilter('with_sr')}
-                className={`px-3 py-1.5 sm:py-2 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap text-xs shrink-0 cursor-pointer ${srStatusFilter === 'with_sr'
+                className={`w-full py-1.5 sm:py-2 px-1 sm:px-3 rounded-xl transition-all flex items-center justify-center gap-1 sm:gap-1.5 text-xs cursor-pointer min-w-0 ${
+                  srStatusFilter === 'with_sr'
                     ? 'bg-slate-900 text-white shadow-sm font-bold'
                     : 'bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200/80 font-semibold'
-                  }`}
+                }`}
               >
-                <FileCheck className={`w-3.5 h-3.5 ${srStatusFilter === 'with_sr' ? 'text-amber-400' : 'text-slate-400'}`} />
-                <span>Foto + SR Lengkap</span>
-                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${srStatusFilter === 'with_sr' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-                  }`}>
+                <FileCheck className={`w-3.5 h-3.5 shrink-0 ${srStatusFilter === 'with_sr' ? 'text-amber-400' : 'text-slate-400'}`} />
+                <span className="hidden sm:inline">Foto + SR Lengkap</span>
+                <span className="sm:hidden truncate">Foto + SR</span>
+                <span className={`px-1 sm:px-1.5 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
+                  srStatusFilter === 'with_sr' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                }`}>
                   {documents.filter(d => Boolean(d.attachedSrFile || d.attachedSrBase64)).length}
                 </span>
               </button>
