@@ -730,7 +730,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 300, after: 200 },
-      children: [new TextRun({ text: "1. Executive Summary", bold: true, size: 28, color: "1E40AF" })]
+      children: [new TextRun({ text: "1. Executive Summary", bold: true, size: 22, color: "1E40AF" })]
     }),
     ...(() => {
       const summaryText = data.executiveSummaryText || "Maintenance is a series of activities to maintain facilities and equipment so that they are always ready to use to carry out production effectively and efficiently according to the schedule that has been set and based on standards (functional and quality). The term maintenance comes from the Greek word tera which means to care for, maintain, and maintain. Maintenance is a system consisting of several elements in the form of facilities (machines), replacement of components or spare parts (materials), maintenance costs (money), maintenance activity planning (method) and maintenance executors (man).";
@@ -762,12 +762,12 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
         const parts = title.split('\n');
         if (parts.length > 1) {
           return [
-            new TextRun({ text: parts[0], bold: true, size: 24 }),
+            new TextRun({ text: parts[0], bold: true, size: 22 }),
             new TextRun({ break: 1 }),
             new TextRun({ text: `   ${parts[1]}`, bold: true, italics: true, size: 20, color: "4B5563" })
           ];
         }
-        return [new TextRun({ text: title, bold: true, size: 24 })];
+        return [new TextRun({ text: title, bold: true, size: 22 })];
       })()
     }),
     ...(() => {
@@ -831,7 +831,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 400, after: 200 },
-      children: [new TextRun({ text: "2. Key Highlight", bold: true, size: 28, color: "1E40AF" })]
+      children: [new TextRun({ text: "2. Key Highlight", bold: true, size: 22, color: "1E40AF" })]
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -1006,7 +1006,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 400, after: 200 },
-      children: [new TextRun({ text: "3. General Information", bold: true, size: 28, color: "1E40AF" })]
+      children: [new TextRun({ text: "3. General Information", bold: true, size: 22, color: "1E40AF" })]
     }),
     new Paragraph({
       children: [
@@ -1074,7 +1074,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 400, after: 200 },
-      children: [new TextRun({ text: "4. Maintenance Objectives & KPI Metrics", bold: true, size: 28, color: "1E40AF" })]
+      children: [new TextRun({ text: "4. Maintenance Objectives & KPI Metrics", bold: true, size: 22, color: "1E40AF" })]
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -1241,7 +1241,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 400, after: 200 },
-      children: [new TextRun({ text: "5. Equipment and System Details", bold: true, size: 28, color: "1E40AF" })]
+      children: [new TextRun({ text: "5. Equipment and System Details", bold: true, size: 22, color: "1E40AF" })]
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -1363,7 +1363,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 400, after: 200 },
-      children: [new TextRun({ text: "6. Scope of Work", bold: true, size: 28, color: "1E40AF" })]
+      children: [new TextRun({ text: "6. Scope of Work", bold: true, size: 22, color: "1E40AF" })]
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -1469,7 +1469,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 400, after: 200 },
-      children: [new TextRun({ text: "7. Observation and Finding", bold: true, size: 28, color: "1E40AF" })]
+      children: [new TextRun({ text: "7. Observation and Finding", bold: true, size: 22, color: "1E40AF" })]
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -1523,7 +1523,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 400, after: 200 },
-      children: [new TextRun({ text: "8. Repairs, Replacement & Services", bold: true, size: 28, color: "1E40AF" })]
+      children: [new TextRun({ text: "8. Repairs, Replacement & Services", bold: true, size: 22, color: "1E40AF" })]
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -1589,7 +1589,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 400, after: 200 },
-      children: [new TextRun({ text: "9. Testing & Validation", bold: true, size: 28, color: "1E40AF" })]
+      children: [new TextRun({ text: "9. Testing & Validation", bold: true, size: 22, color: "1E40AF" })]
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -1657,7 +1657,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 400, after: 200 },
-      children: [new TextRun({ text: "10. Challenges, Mitigation and Lesson Learned", bold: true, size: 28, color: "1E40AF" })]
+      children: [new TextRun({ text: "10. Challenges, Mitigation and Lesson Learned", bold: true, size: 22, color: "1E40AF" })]
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -1755,7 +1755,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 400, after: 200 },
-      children: [new TextRun({ text: "11. Recommendations and Future Action", bold: true, size: 28, color: "1E40AF" })]
+      children: [new TextRun({ text: "11. Recommendations and Future Action", bold: true, size: 22, color: "1E40AF" })]
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -1809,7 +1809,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 400, after: 200 },
-      children: [new TextRun({ text: "12. Photo and Documentation Log", bold: true, size: 28, color: "1E40AF" })]
+      children: [new TextRun({ text: "12. Photo and Documentation Log", bold: true, size: 22, color: "1E40AF" })]
     }),
     new Paragraph({
       alignment: AlignmentType.CENTER,
@@ -1851,7 +1851,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 400, after: 200 },
-      children: [new TextRun({ text: "13. Appendices", bold: true, size: 28, color: "1E40AF" })]
+      children: [new TextRun({ text: "13. Appendices", bold: true, size: 22, color: "1E40AF" })]
     }),
     new Paragraph({
       children: [
@@ -1879,17 +1879,26 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
         },
         heading1: {
           run: {
-            font: "Times New Roman"
+            font: "Times New Roman",
+            size: 22,
+            bold: true,
+            color: "1E40AF"
           }
         },
         heading2: {
           run: {
-            font: "Times New Roman"
+            font: "Times New Roman",
+            size: 22,
+            bold: true,
+            color: "1E40AF"
           }
         },
         heading3: {
           run: {
-            font: "Times New Roman"
+            font: "Times New Roman",
+            size: 22,
+            bold: true,
+            color: "1E40AF"
           }
         }
       }

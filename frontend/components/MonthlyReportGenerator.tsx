@@ -2160,7 +2160,7 @@ export function MonthlyReportGenerator() {
               </div>
 
               <div className="font-serif space-y-4 text-slate-800 leading-relaxed text-sm">
-                <h2 className="text-xl font-bold text-slate-900">1. Executive Summary</h2>
+                <h2 className="text-[11pt] font-bold text-slate-900">1. Executive Summary</h2>
                 <BilingualTextarea
                   value={reportData.executiveSummaryText !== undefined ? reportData.executiveSummaryText : 'Maintenance is a series of activities to maintain facilities and equipment so that they are always ready to use to carry out production effectively and efficiently according to the schedule that has been set and based on standards (functional and quality). The term maintenance comes from the Greek word tera which means to care for, maintain, and maintain. Maintenance is a system consisting of several elements in the form of facilities (machines), replacement of components or spare parts (materials), maintenance costs (money), maintenance activity planning (method) and maintenance executors (man).'}
                   onChange={(val) => {
@@ -2296,7 +2296,7 @@ export function MonthlyReportGenerator() {
                 </ol>
 
                 <div className="pt-6 flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-slate-900">2. Key Highlight</h2>
+                  <h2 className="text-[11pt] font-bold text-slate-900">2. Key Highlight</h2>
                   <span className="text-[11px] text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200 font-sans font-medium print:hidden">
                     💡 Klik kolom Actual / Status untuk mengedit
                   </span>
@@ -2766,7 +2766,7 @@ export function MonthlyReportGenerator() {
                 <img src={logoNeutraDC} alt="NeutraDC Logo" className="h-10 object-contain" />
               </div>
 
-              <h2 className="text-xl font-bold text-slate-900">3. General Information</h2>
+              <h2 className="text-[11pt] font-bold text-slate-900">3. General Information</h2>
               <div className="text-xs space-y-2 text-slate-800 font-sans">
                 <div className="flex items-center gap-3">
                   <span className="w-36 font-bold text-slate-900">Maintenance Type :</span>
@@ -2963,7 +2963,7 @@ export function MonthlyReportGenerator() {
 
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">4. Maintenance Objectives & KPI Metrics</h2>
+                  <h2 className="text-[11pt] font-bold text-slate-900">4. Maintenance Objectives & KPI Metrics</h2>
                   <p className="text-xs text-slate-500 mt-0.5">Ringkasan KPI Pemeliharaan Preventif, SLA Respon Insiden, dan Matriks Kredit Layanan</p>
                 </div>
                 <div className="flex items-center gap-2 print:hidden">
@@ -3672,7 +3672,7 @@ export function MonthlyReportGenerator() {
               </div>
 
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <h2 className="text-xl font-bold text-slate-900">5. Equipment and System Details</h2>
+                <h2 className="text-[11pt] font-bold text-slate-900">5. Equipment and System Details</h2>
                 <div className="flex items-center gap-2 print:hidden">
                   <button
                     type="button"
@@ -4087,7 +4087,7 @@ export function MonthlyReportGenerator() {
               </div>
 
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-900">6. Scope of Work</h2>
+                <h2 className="text-[11pt] font-bold text-slate-900">6. Scope of Work</h2>
                 <div className="flex items-center gap-2 print:hidden">
                   <button
                     onClick={() => {
@@ -4303,7 +4303,7 @@ export function MonthlyReportGenerator() {
               </div>
 
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-900">7. Observation and Finding</h2>
+                <h2 className="text-[11pt] font-bold text-slate-900">7. Observation and Finding</h2>
                 <button
                   onClick={() => {
                     const updated = { ...reportData };
@@ -4551,7 +4551,7 @@ export function MonthlyReportGenerator() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">8. Repairs, Replacement & Services</h2>
+                  <h2 className="text-[11pt] font-bold text-slate-900">8. Repairs, Replacement & Services</h2>
                   <p className="text-xs text-slate-500 font-sans mt-0.5">
                     Data suku cadang ditarik 100% dari Laporan Corrective Maintenance (CM) Standby Engineer bulan ini.
                   </p>
@@ -4705,7 +4705,7 @@ export function MonthlyReportGenerator() {
               </div>
 
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-900">9. Testing & Validation</h2>
+                <h2 className="text-[11pt] font-bold text-slate-900">9. Testing & Validation</h2>
                 <div className="flex items-center gap-2 print:hidden">
                   <button
                     onClick={() => {
@@ -4907,7 +4907,7 @@ export function MonthlyReportGenerator() {
               </div>
 
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-900">10. Challenges, Mitigation and Lesson Learned</h2>
+                <h2 className="text-[11pt] font-bold text-slate-900">10. Challenges, Mitigation and Lesson Learned</h2>
                 <button
                   onClick={handleAIChallenges}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold font-sans shadow-xs transition-all cursor-pointer print:hidden"
@@ -5200,7 +5200,7 @@ export function MonthlyReportGenerator() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">11. Recommendations and Future Action</h2>
+                  <h2 className="text-[11pt] font-bold text-slate-900">11. Recommendations and Future Action</h2>
                   <p className="text-xs text-slate-500 font-sans mt-0.5">
                     Dihubungkan langsung dari temuan anomali Bab 7 ke rekomendasi Short-Term dan Long-Term.
                   </p>
@@ -5378,7 +5378,7 @@ export function MonthlyReportGenerator() {
               </div>
 
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-slate-900">12. Photo and Documentation Log</h2>
+                <h2 className="text-[11pt] font-bold text-slate-900">12. Photo and Documentation Log</h2>
                 <button
                   type="button"
                   onClick={() => {
@@ -5756,7 +5756,7 @@ export function MonthlyReportGenerator() {
               =================================================================== */}
           {(activeChapter === 0 || activeChapter === 13 || window.matchMedia('print').matches) && (
             <section className="space-y-4 font-serif border-t border-slate-200 pt-8">
-              <h2 className="text-xl font-bold text-slate-900">13. Appendices</h2>
+              <h2 className="text-[11pt] font-bold text-slate-900">13. Appendices</h2>
               <textarea
                 rows={3}
                 value={reportData.appendicesNote !== undefined ? reportData.appendicesNote : 'Attach the original service report & supporting documents for certification, test results, etc.'}
