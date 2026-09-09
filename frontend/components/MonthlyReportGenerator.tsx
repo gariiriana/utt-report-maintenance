@@ -66,7 +66,10 @@ import {
   getTaskPMFromSR,
   getBOQItemIdentifier,
   buildAllDynamicEquipmentTables,
-  buildDynamicListOfTables
+  buildDynamicListOfTables,
+  findBOQCategoryForScope,
+  extractBOQItemDetails,
+  isValidBOQItem
 } from '@/utils/monthlyReportData';
 import { generateMonthlyReportDOCX } from '@/utils/generateMonthlyReportDOCX';
 import {
@@ -286,6 +289,26 @@ export function MonthlyReportGenerator() {
   const [selectedCINames, setSelectedCINames] = useState<Map<string, Set<string>>>(new Map());
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
+
+  // ─── Modal "Tambah Alat ke Tabel Scope" State ─────────────────────
+  const [addToolTargetTable, setAddToolTargetTable] = useState<{
+    tIdx: number;
+    scope: string;
+    title: string;
+  } | null>(null);
+  const [addToolSearchQuery, setAddToolSearchQuery] = useState('');
+  const [selectedAddToolCIs, setSelectedAddToolCIs] = useState<Set<string>>(new Set());
+  const [isAddToolCustomMode, setIsAddToolCustomMode] = useState(false);
+  const [customToolForm, setCustomToolForm] = useState({
+    className: '',
+    capacity: 'Standard Rating',
+    location: 'NeutraDC Campus',
+    productName: 'OEM Certified'
+  });
+
+  // ─── Modal "Tambah Tabel Scope Baru dari BOQ" State ───────────────
+  const [isAddScopeTableModalOpen, setIsAddScopeTableModalOpen] = useState(false);
+  const [newScopeSearchQuery, setNewScopeSearchQuery] = useState('');
 
   // Maintenance Categories dari BOQ (tanpa Spareparts)
   const MAINTENANCE_BOQ_CATEGORIES = useMemo(() => {
@@ -749,6 +772,203 @@ export function MonthlyReportGenerator() {
     setIsBoqSelectorOpen(false);
     toast.success(`Berhasil menerapkan ${selections.length} equipment & ${selections.reduce((acc, s) => acc + s.selectedCINames.length, 0)} CI ke Monthly Report!`);
   }, [selectedCategoryIds, selectedCINames, reportData]);
+
+  // ─── Modal "Tambah Alat ke Tabel Scope" Handlers ─────────────────
+  const handleOpenAddToolModal = useCallback((tIdx: number, scope: string, title: string) => {
+    setAddToolTargetTable({ tIdx, scope, title });
+    setAddToolSearchQuery('');
+    setSelectedAddToolCIs(new Set());
+    setIsAddToolCustomMode(false);
+    setCustomToolForm({
+      className: '',
+      capacity: 'Standard Rating',
+      location: 'NeutraDC Campus',
+      productName: 'OEM Certified'
+    });
+  }, []);
+
+  const activeAddToolBOQCategory = useMemo(() => {
+    if (!addToolTargetTable) return undefined;
+    return findBOQCategoryForScope(addToolTargetTable.scope);
+  }, [addToolTargetTable]);
+
+  const filteredAddToolBOQItems = useMemo(() => {
+    if (!activeAddToolBOQCategory) return [];
+    const valid = activeAddToolBOQCategory.items.filter(isValidBOQItem);
+    if (!addToolSearchQuery.trim()) return valid;
+    const q = addToolSearchQuery.toLowerCase().trim();
+    return valid.filter(it => {
+      const iden = getBOQItemIdentifier(it).toLowerCase();
+      const cls = (it['Class Id'] || '').toLowerCase();
+      const loc = (it['Room'] || it['Floor'] || it['Location'] || '').toLowerCase();
+      const cap = (it['Capacity'] || '').toLowerCase();
+      const prod = (it['Product Name+'] || it['Manufacturer'] || '').toLowerCase();
+      return iden.includes(q) || cls.includes(q) || loc.includes(q) || cap.includes(q) || prod.includes(q);
+    });
+  }, [activeAddToolBOQCategory, addToolSearchQuery]);
+
+  const handleToggleAddToolCI = useCallback((id: string) => {
+    setSelectedAddToolCIs(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleSelectAllAddToolCIs = useCallback(() => {
+    const all = new Set(filteredAddToolBOQItems.map(it => getBOQItemIdentifier(it)).filter(Boolean));
+    setSelectedAddToolCIs(all);
+  }, [filteredAddToolBOQItems]);
+
+  const handleDeselectAllAddToolCIs = useCallback(() => {
+    setSelectedAddToolCIs(new Set());
+  }, []);
+
+  const handleConfirmAddTools = useCallback(() => {
+    if (!addToolTargetTable || !reportData) return;
+    const { tIdx, scope } = addToolTargetTable;
+    const targetTable = reportData.taskPerformanceTables[tIdx];
+    if (!targetTable) return;
+
+    let newRows: any[] = [];
+
+    if (isAddToolCustomMode) {
+      if (!customToolForm.className.trim()) {
+        toast.error('Mohon masukkan Class Name alat.');
+        return;
+      }
+      newRows.push({
+        no: targetTable.items.length + 1,
+        className: customToolForm.className.trim(),
+        capacity: customToolForm.capacity.trim() || 'Standard Rating',
+        location: customToolForm.location.trim() || 'NeutraDC Campus',
+        productName: customToolForm.productName.trim() || 'OEM Certified',
+        taskPM: getTaskPMFromSR(scope),
+        criticalRepairs: 'No critical repair is required.\nSaat ini tidak diperlukan perbaikan mendesak.',
+        operationalStatus: 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal',
+        issues: 'No abnormality observed.\nTidak ditemukan kelainan.',
+        recommendations: 'Continue routine maintenance and periodic inspection.\nLanjutkan pemeliharaan rutin dan inspeksi berkala.'
+      });
+    } else {
+      if (selectedAddToolCIs.size === 0) {
+        toast.error('Pilih minimal 1 alat dari daftar BOQ.');
+        return;
+      }
+      if (!activeAddToolBOQCategory) {
+        toast.error('Kategori BOQ tidak ditemukan untuk scope ini.');
+        return;
+      }
+
+      const matchingItems = activeAddToolBOQCategory.items.filter(it => {
+        const iden = getBOQItemIdentifier(it);
+        return selectedAddToolCIs.has(iden) ||
+               (it['CI Name*'] && selectedAddToolCIs.has(it['CI Name*'])) ||
+               (it['Class Id'] && selectedAddToolCIs.has(it['Class Id']));
+      });
+
+      newRows = matchingItems.map((it, idx) => {
+        const details = extractBOQItemDetails(it);
+        return {
+          no: targetTable.items.length + idx + 1,
+          className: details.className,
+          capacity: details.capacity,
+          location: details.location,
+          productName: details.productName,
+          taskPM: getTaskPMFromSR(scope),
+          criticalRepairs: 'No critical repair is required.\nSaat ini tidak diperlukan perbaikan mendesak.',
+          operationalStatus: 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal',
+          issues: 'No abnormality observed.\nTidak ditemukan kelainan.',
+          recommendations: 'Continue routine maintenance and periodic inspection.\nLanjutkan pemeliharaan rutin dan inspeksi berkala.'
+        };
+      });
+    }
+
+    if (newRows.length === 0) {
+      toast.error('Tidak ada alat yang dapat ditambahkan.');
+      return;
+    }
+
+    const updatedTables = reportData.taskPerformanceTables.map((tbl, i) => {
+      if (i !== tIdx) return tbl;
+      const combined = [...tbl.items, ...newRows].map((it, nIdx) => ({
+        ...it,
+        no: nIdx + 1
+      }));
+      return { ...tbl, items: combined };
+    });
+
+    setReportData({
+      ...reportData,
+      taskPerformanceTables: updatedTables
+    });
+
+    toast.success(`${newRows.length} alat berhasil ditambahkan ke ${scope}!`);
+    setAddToolTargetTable(null);
+  }, [addToolTargetTable, reportData, isAddToolCustomMode, customToolForm, selectedAddToolCIs, activeAddToolBOQCategory]);
+
+  // ─── Modal "Tambah Tabel Scope Baru dari BOQ" Handlers ───────────
+  const handleAddNewScopeTable = useCallback((catId: string) => {
+    if (!reportData) return;
+    const cat = BOQ_CATEGORIES_DATA.find(c => c.id === catId);
+    if (!cat) return;
+
+    const validItems = cat.items.filter(isValidBOQItem);
+    const initialItems = (validItems.length > 20 ? validItems.slice(0, 15) : validItems);
+
+    const newTableNo = (reportData.taskPerformanceTables?.length || 0) + 2;
+    const newTableTitle = `Table ${newTableNo}. Total Task Performance ${cat.name}`;
+
+    const items = initialItems.length > 0 ? initialItems.map((it, idx) => {
+      const details = extractBOQItemDetails(it);
+      return {
+        no: idx + 1,
+        className: details.className,
+        capacity: details.capacity,
+        location: details.location,
+        productName: details.productName,
+        taskPM: getTaskPMFromSR(cat.name),
+        criticalRepairs: 'No critical repair is required.\nSaat ini tidak diperlukan perbaikan mendesak.',
+        operationalStatus: 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal',
+        issues: 'No abnormality observed.\nTidak ditemukan kelainan.',
+        recommendations: 'Continue routine maintenance and periodic inspection.\nLanjutkan pemeliharaan rutin dan inspeksi berkala.'
+      };
+    }) : [
+      {
+        no: 1,
+        className: `${cat.name} Unit 01`,
+        capacity: 'Standard Rating',
+        location: 'NeutraDC Campus',
+        productName: 'OEM Certified',
+        taskPM: getTaskPMFromSR(cat.name),
+        criticalRepairs: 'No critical repair is required.\nSaat ini tidak diperlukan perbaikan mendesak.',
+        operationalStatus: 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal',
+        issues: 'No abnormality observed.\nTidak ditemukan kelainan.',
+        recommendations: 'Continue routine maintenance and periodic inspection.\nLanjutkan pemeliharaan rutin dan inspeksi berkala.'
+      }
+    ];
+
+    const newTable = {
+      tableNo: newTableNo,
+      title: newTableTitle,
+      scope: cat.name,
+      items
+    };
+
+    const updatedTables = [...(reportData.taskPerformanceTables || []), newTable].map((tbl, i) => ({
+      ...tbl,
+      tableNo: i + 2,
+      title: `Table ${i + 2}. Total Task Performance ${tbl.scope}`
+    }));
+
+    setReportData({
+      ...reportData,
+      taskPerformanceTables: updatedTables
+    });
+
+    toast.success(`Tabel Scope "${cat.name}" berhasil dibuat dengan ${items.length} alat!`);
+    setIsAddScopeTableModalOpen(false);
+  }, [reportData]);
 
   // ─── Archive Handlers ─────────────────────────────────────────────
   const handleLoadArchiveToEditor = useCallback((archive: any) => {
@@ -2239,6 +2459,30 @@ export function MonthlyReportGenerator() {
 
               {/* Task Performance Scope Tables (Tabel 2 - 17) */}
               <div className="space-y-8 pt-8">
+                {/* Header with Tambah Tabel Scope Baru button */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-gradient-to-r from-blue-50/70 to-slate-50 border border-blue-200/80 rounded-2xl print:hidden shadow-xs">
+                  <div>
+                    <h4 className="text-xs font-bold text-blue-950 flex items-center gap-1.5">
+                      <Layers className="w-4 h-4 text-blue-600" />
+                      <span>Daftar Tabel Task Performance ({reportData.taskPerformanceTables?.length || 0} Scope)</span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Tabel scope pemeliharaan preventif. Anda dapat menambah atau memulihkan tabel scope dari BOQ.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewScopeSearchQuery('');
+                      setIsAddScopeTableModalOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold font-sans shadow-sm transition-all cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Tambah Tabel Scope Baru dari BOQ</span>
+                  </button>
+                </div>
+
                 {reportData.taskPerformanceTables.map((tTable, tIdx) => (
                   <div key={tIdx} className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -2248,35 +2492,7 @@ export function MonthlyReportGenerator() {
                       <div className="flex items-center gap-2 print:hidden">
                         <button
                           type="button"
-                          onClick={() => {
-                            const updatedTables = reportData.taskPerformanceTables.map((tbl, ti) => {
-                              if (ti !== tIdx) return tbl;
-                              const newNo = tbl.items.length + 1;
-                              return {
-                                ...tbl,
-                                items: [
-                                  ...tbl.items,
-                                  {
-                                    no: newNo,
-                                    className: `${tbl.scope} #${newNo}`,
-                                    capacity: 'Standard Rating',
-                                    location: 'NeutraDC Campus',
-                                    productName: 'OEM Certified',
-                                    taskPM: 'Inspection, cleaning, parameter checks, and functional testing.',
-                                    criticalRepairs: '-',
-                                    operationalStatus: 'Good Condition / Normal Operation',
-                                    issues: '-',
-                                    recommendations: '-'
-                                  }
-                                ]
-                              };
-                            });
-                            setReportData({
-                              ...reportData,
-                              taskPerformanceTables: updatedTables
-                            });
-                            toast.success(`Baris baru ditambahkan ke ${tTable.scope}!`);
-                          }}
+                          onClick={() => handleOpenAddToolModal(tIdx, tTable.scope, tTable.title)}
                           className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold font-sans transition-all cursor-pointer"
                         >
                           <Plus className="w-3 h-3" />
@@ -2294,8 +2510,8 @@ export function MonthlyReportGenerator() {
                                   .filter((_, i) => i !== tIdx)
                                   .map((tbl, i) => ({
                                     ...tbl,
-                                    no: i + 2,
-                                    title: `Table ${i + 2}. Maintenance Scope for ${tbl.scope}`
+                                    tableNo: i + 2,
+                                    title: `Table ${i + 2}. Total Task Performance ${tbl.scope}`
                                   }));
                                 return { ...prev, taskPerformanceTables: newTables };
                               });
@@ -2321,7 +2537,7 @@ export function MonthlyReportGenerator() {
                             <th className="py-2.5 px-2 border-r border-black w-28">Location</th>
                             <th className="py-2.5 px-2 border-r border-black w-24">Product Name</th>
                             <th className="py-2.5 px-2 border-r border-black">Task Preventive Maintenance</th>
-                            <th className="py-2.5 px-2 border-r border-black w-24">Critical Repairs</th>
+                            <th className="py-2.5 px-2 border-r border-black min-w-[135px] w-36">Critical Repairs</th>
                             <th className="py-2.5 px-2 border-r border-black w-28">Operational Status</th>
                             <th className="py-2.5 px-2 border-r border-black w-28">Issues</th>
                             <th className="py-2.5 px-2 w-28 border-r border-black">Recommendations</th>
@@ -2396,19 +2612,69 @@ export function MonthlyReportGenerator() {
                                 />
                               </td>
                               <td className="py-1 px-1 border-r border-black text-[10px]">
-                                <BilingualTextarea
-                                  value={item.criticalRepairs}
-                                  placeholderEn="No critical repair..."
-                                  placeholderId="Tidak ada perbaikan... (garis miring)"
-                                  onChange={(val) => {
-                                    const updated = { ...reportData };
-                                    updated.taskPerformanceTables[tIdx].items[iIdx].criticalRepairs = val;
-                                    setReportData(updated);
-                                  }}
-                                  classNameEn="w-full text-[10px] leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans text-slate-800"
-                                  classNameId="w-full text-[9.5px] italic text-slate-600 leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans"
-                                  indentId={true}
-                                />
+                                {(() => {
+                                  const cleanCrit = (item.criticalRepairs || '').toLowerCase().trim();
+                                  const isNoCritical = !cleanCrit ||
+                                    cleanCrit === '-' ||
+                                    cleanCrit.includes('no critical repair') ||
+                                    cleanCrit.includes('tidak diperlukan perbaikan') ||
+                                    cleanCrit.includes('tidak ada perbaikan');
+
+                                  return (
+                                    <div className="flex flex-col space-y-1">
+                                      {/* Dropdown Selector */}
+                                      <div className="print:hidden">
+                                        <select
+                                          value={isNoCritical ? 'no_critical' : 'critical'}
+                                          onChange={(e) => {
+                                            const val = e.target.value;
+                                            const updated = { ...reportData };
+                                            if (val === 'no_critical') {
+                                              updated.taskPerformanceTables[tIdx].items[iIdx].criticalRepairs =
+                                                'No critical repair is required.\nSaat ini tidak diperlukan perbaikan mendesak.';
+                                            } else {
+                                              updated.taskPerformanceTables[tIdx].items[iIdx].criticalRepairs =
+                                                'Critical repair required:\nPerlu perbaikan mendesak:';
+                                            }
+                                            setReportData(updated);
+                                          }}
+                                          className={`w-full text-[10px] font-sans font-medium px-1.5 py-0.5 rounded border transition-colors cursor-pointer outline-none ${
+                                            isNoCritical
+                                              ? 'bg-blue-50/80 border-blue-200 text-blue-800'
+                                              : 'bg-amber-50 border-amber-300 text-amber-900 font-bold'
+                                          }`}
+                                        >
+                                          <option value="no_critical">No critical repair</option>
+                                          <option value="critical">Critical repair (Manual)</option>
+                                        </select>
+                                      </div>
+
+                                      {/* Tampilan Sesuai Pilihan */}
+                                      {isNoCritical ? (
+                                        <div className="font-serif leading-tight py-0.5 px-0.5">
+                                          <div className="text-slate-800 font-medium text-[10px]">No critical repair is required.</div>
+                                          <div className="pl-2 border-l-2 border-blue-400 text-[9px] italic text-slate-500 mt-0.5">
+                                            Saat ini tidak diperlukan perbaikan mendesak.
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <BilingualTextarea
+                                          value={item.criticalRepairs}
+                                          placeholderEn="Describe critical repairs required (English)..."
+                                          placeholderId="Jelaskan perbaikan mendesak yang diperlukan (Bahasa Indonesia)..."
+                                          onChange={(val) => {
+                                            const updated = { ...reportData };
+                                            updated.taskPerformanceTables[tIdx].items[iIdx].criticalRepairs = val;
+                                            setReportData(updated);
+                                          }}
+                                          classNameEn="w-full text-[10px] leading-tight py-0.5 px-1 bg-amber-50/60 border border-amber-300 hover:bg-white focus:bg-white rounded outline-none resize-none font-sans text-amber-950 font-medium"
+                                          classNameId="w-full text-[9.5px] italic text-amber-800 leading-tight py-0.5 px-1 bg-amber-50/60 border border-amber-300 hover:bg-white focus:bg-white rounded outline-none resize-none font-sans"
+                                          indentId={true}
+                                        />
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </td>
                               <td className="py-1 px-1 border-r border-black font-semibold text-[10px]">
                                 <BilingualTextarea
@@ -6018,6 +6284,381 @@ export function MonthlyReportGenerator() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* ─── Modal Tambah Alat ke Tabel Scope Spesifik dari BOQ / Manual ─── */}
+      {addToolTargetTable && (
+        <div
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[100] p-4"
+          onClick={() => setAddToolTargetTable(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-5 border-b border-slate-200 bg-gradient-to-r from-blue-50/70 to-indigo-50/40 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 leading-tight">
+                    Tambah Alat ke {addToolTargetTable.scope}
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {activeAddToolBOQCategory
+                      ? `Kategori BOQ: ${activeAddToolBOQCategory.name} (${filteredAddToolBOQItems.length} alat tersedia)`
+                      : `Scope: ${addToolTargetTable.scope}`}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAddToolTargetTable(null)}
+                className="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Tab switch: BOQ vs Manual */}
+            <div className="px-5 pt-3 pb-2 bg-slate-50/80 border-b border-slate-200 flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsAddToolCustomMode(false)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  !isAddToolCustomMode
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <Package className="w-3.5 h-3.5" />
+                <span>Pilih dari BOQ Asset</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAddToolCustomMode(true)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  isAddToolCustomMode
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Input Manual (Custom)</span>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 overflow-y-auto flex-1 space-y-4">
+              {!isAddToolCustomMode ? (
+                <>
+                  {/* Search & Action Bar */}
+                  <div className="flex flex-col sm:flex-row items-center gap-2">
+                    <div className="relative flex-1 w-full">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={addToolSearchQuery}
+                        onChange={(e) => setAddToolSearchQuery(e.target.value)}
+                        placeholder={`Cari Class Name, lokasi, kapasitas ${addToolTargetTable.scope}...`}
+                        className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                      />
+                      {addToolSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setAddToolSearchQuery('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleSelectAllAddToolCIs}
+                        className="px-2.5 py-1.5 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <CheckCheck className="w-3.5 h-3.5" />
+                        <span>Pilih Semua ({filteredAddToolBOQItems.length})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDeselectAllAddToolCIs}
+                        className="px-2.5 py-1.5 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg border border-red-200 transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <XCircle className="w-3.5 h-3.5" />
+                        <span>Batal Semua</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Items List */}
+                  {filteredAddToolBOQItems.length === 0 ? (
+                    <div className="text-center py-10 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                      <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                      <p className="text-xs font-bold text-slate-700">
+                        Tidak ada peralatan BOQ yang cocok
+                      </p>
+                      <p className="text-[11px] text-slate-500 mt-1 max-w-sm mx-auto">
+                        {addToolSearchQuery
+                          ? 'Coba ganti kata kunci pencarian Anda, atau gunakan tab "Input Manual".'
+                          : 'Kategori BOQ untuk scope ini belum memiliki asset terdaftar. Anda dapat menggunakan tab "Input Manual" untuk menambah alat baru.'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-2xl bg-white">
+                      {filteredAddToolBOQItems.map((it, itIdx) => {
+                        const iden = getBOQItemIdentifier(it);
+                        if (!iden) return null;
+                        const isChecked = selectedAddToolCIs.has(iden) ||
+                                          (it['CI Name*'] && selectedAddToolCIs.has(it['CI Name*'])) ||
+                                          (it['Class Id'] && selectedAddToolCIs.has(it['Class Id']));
+                        const details = extractBOQItemDetails(it);
+
+                        return (
+                          <div
+                            key={itIdx}
+                            onClick={() => handleToggleAddToolCI(iden)}
+                            className={`p-3 flex items-start gap-3 hover:bg-blue-50/40 cursor-pointer transition-colors ${
+                              isChecked ? 'bg-blue-50/60' : ''
+                            }`}
+                          >
+                            <div className="pt-0.5 shrink-0">
+                              {isChecked ? (
+                                <CheckSquare className="w-4 h-4 text-blue-600" />
+                              ) : (
+                                <Square className="w-4 h-4 text-slate-300" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-xs text-slate-900 truncate">
+                                  {details.className}
+                                </span>
+                                {it['Class Id'] && it['Class Id'] !== details.className && (
+                                  <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">
+                                    {it['Class Id']}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 text-[11px] text-slate-500 mt-1 flex-wrap">
+                                <span>📍 {details.location}</span>
+                                <span>⚡ {details.capacity}</span>
+                                <span>🏷️ {details.productName}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* Custom Manual Form */
+                <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Class Name / CI Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={customToolForm.className}
+                      onChange={(e) => setCustomToolForm({ ...customToolForm, className: e.target.value })}
+                      placeholder={`Contoh: ${addToolTargetTable.scope} Unit 01`}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Kapasitas / Rating
+                      </label>
+                      <input
+                        type="text"
+                        value={customToolForm.capacity}
+                        onChange={(e) => setCustomToolForm({ ...customToolForm, capacity: e.target.value })}
+                        placeholder="Contoh: 2000 kVA / Standard Rating"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Lokasi / Room
+                      </label>
+                      <input
+                        type="text"
+                        value={customToolForm.location}
+                        onChange={(e) => setCustomToolForm({ ...customToolForm, location: e.target.value })}
+                        placeholder="Contoh: Lt. 1, Power Room"
+                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Product Name / Manufacturer
+                    </label>
+                    <input
+                      type="text"
+                      value={customToolForm.productName}
+                      onChange={(e) => setCustomToolForm({ ...customToolForm, productName: e.target.value })}
+                      placeholder="Contoh: Schneider / Trafindo / OEM Certified"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-200 bg-slate-50/50 flex items-center justify-between gap-3 shrink-0">
+              <div className="text-xs text-slate-500">
+                {!isAddToolCustomMode ? (
+                  <span>Terpilih: <strong className="text-blue-700">{selectedAddToolCIs.size}</strong> alat</span>
+                ) : (
+                  <span>Mode manual: 1 alat baru</span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAddToolTargetTable(null)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmAddTools}
+                  disabled={!isAddToolCustomMode && selectedAddToolCIs.size === 0}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>
+                    {!isAddToolCustomMode
+                      ? `Tambahkan (${selectedAddToolCIs.size} Alat)`
+                      : 'Tambahkan Alat Manual'}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Modal Tambah Tabel Scope Baru dari BOQ (Kembalikan Tabel Terhapus) ─── */}
+      {isAddScopeTableModalOpen && (
+        <div
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[100] p-4"
+          onClick={() => setIsAddScopeTableModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-slate-200 bg-gradient-to-r from-blue-50/70 to-indigo-50/40 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 leading-tight">
+                    Tambah / Pulihkan Tabel Scope dari BOQ
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Pilih scope peralatan dari master BOQ untuk menambahkan atau mengembalikan tabel task performance.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAddScopeTableModalOpen(false)}
+                className="w-8 h-8 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Search */}
+            <div className="p-4 bg-slate-50/80 border-b border-slate-200 shrink-0">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={newScopeSearchQuery}
+                  onChange={(e) => setNewScopeSearchQuery(e.target.value)}
+                  placeholder="Cari scope equipment (contoh: Water Leak, Trafo, UPS, Chiller, PAC)..."
+                  className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Categories List */}
+            <div className="p-4 overflow-y-auto flex-1 divide-y divide-slate-100">
+              {MAINTENANCE_BOQ_CATEGORIES.filter(cat => {
+                if (!newScopeSearchQuery.trim()) return true;
+                const q = newScopeSearchQuery.toLowerCase().trim();
+                return cat.name.toLowerCase().includes(q) || cat.id.toLowerCase().includes(q);
+              }).map((cat) => {
+                const alreadyExists = (reportData?.taskPerformanceTables || []).some(
+                  tbl => tbl.scope.toLowerCase().trim() === cat.name.toLowerCase().trim()
+                );
+                const validCount = cat.items.filter(isValidBOQItem).length;
+
+                return (
+                  <div
+                    key={cat.id}
+                    className="py-3 px-2 flex items-center justify-between hover:bg-blue-50/40 rounded-xl transition-colors"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs text-slate-900">{cat.name}</span>
+                        <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">
+                          {validCount} asset
+                        </span>
+                        {alreadyExists && (
+                          <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded font-semibold">
+                            Sudah ada di Laporan
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        {cat.items[0]?.['Room Location'] || cat.items[0]?.Room || 'NeutraDC Campus'}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleAddNewScopeTable(cat.id)}
+                      className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ml-3"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Tambahkan Tabel</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="p-4 border-t border-slate-200 bg-slate-50/50 flex justify-end shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsAddScopeTableModalOpen(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200/60 rounded-xl transition-colors cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
