@@ -2612,84 +2612,110 @@ export function MonthlyReportGenerator() {
                                 />
                               </td>
                               <td className="py-1 px-1 border-r border-black text-[10px]">
+                                <BilingualTextarea
+                                  value={item.criticalRepairs}
+                                  placeholderEn="No critical repair..."
+                                  placeholderId="Tidak ada perbaikan... (garis miring)"
+                                  onChange={(val) => {
+                                    const updated = { ...reportData };
+                                    updated.taskPerformanceTables[tIdx].items[iIdx].criticalRepairs = val;
+                                    setReportData(updated);
+                                  }}
+                                  classNameEn="w-full text-[10px] leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans text-slate-800"
+                                  classNameId="w-full text-[9.5px] italic text-slate-600 leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans"
+                                  indentId={true}
+                                />
+                              </td>
+                              <td className="py-1 px-1 border-r border-black font-semibold text-[10px]">
                                 {(() => {
-                                  const cleanCrit = (item.criticalRepairs || '').toLowerCase().trim();
-                                  const isNoCritical = !cleanCrit ||
-                                    cleanCrit === '-' ||
-                                    cleanCrit.includes('no critical repair') ||
-                                    cleanCrit.includes('tidak diperlukan perbaikan') ||
-                                    cleanCrit.includes('tidak ada perbaikan');
+                                  const status = item.operationalStatus || '';
+                                  const statusLower = status.toLowerCase();
+                                  const isNotGood = statusLower.includes('not good') || statusLower.includes('tidak baik') || statusLower.includes('abnormal') || statusLower.includes('rusak');
+                                  const isGood = !isNotGood && (statusLower.includes('good') || statusLower.includes('baik') || statusLower.includes('normal') || !status.trim());
+                                  const selectValue = isGood ? 'good' : (isNotGood ? 'not_good' : 'custom');
 
                                   return (
                                     <div className="flex flex-col space-y-1">
                                       {/* Dropdown Selector */}
                                       <div className="print:hidden">
                                         <select
-                                          value={isNoCritical ? 'no_critical' : 'critical'}
+                                          value={selectValue}
                                           onChange={(e) => {
                                             const val = e.target.value;
                                             const updated = { ...reportData };
-                                            if (val === 'no_critical') {
-                                              updated.taskPerformanceTables[tIdx].items[iIdx].criticalRepairs =
-                                                'No critical repair is required.\nSaat ini tidak diperlukan perbaikan mendesak.';
-                                            } else {
-                                              updated.taskPerformanceTables[tIdx].items[iIdx].criticalRepairs =
-                                                'Critical repair required:\nPerlu perbaikan mendesak:';
+                                            if (val === 'good') {
+                                              updated.taskPerformanceTables[tIdx].items[iIdx].operationalStatus =
+                                                'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal';
+                                            } else if (val === 'not_good') {
+                                              updated.taskPerformanceTables[tIdx].items[iIdx].operationalStatus =
+                                                'Not Good Condition / Abnormal Operation\nKondisi Tidak Baik / Beroperasi Abnormal';
                                             }
                                             setReportData(updated);
                                           }}
                                           className={`w-full text-[10px] font-sans font-medium px-1.5 py-0.5 rounded border transition-colors cursor-pointer outline-none ${
-                                            isNoCritical
-                                              ? 'bg-blue-50/80 border-blue-200 text-blue-800'
-                                              : 'bg-amber-50 border-amber-300 text-amber-900 font-bold'
+                                            isGood
+                                              ? 'bg-emerald-50/90 border-emerald-300 text-emerald-800 hover:bg-emerald-100/70'
+                                              : isNotGood
+                                              ? 'bg-rose-50/90 border-rose-300 text-rose-800 font-bold hover:bg-rose-100/70'
+                                              : 'bg-slate-50 border-slate-300 text-slate-800'
                                           }`}
                                         >
-                                          <option value="no_critical">No critical repair</option>
-                                          <option value="critical">Critical repair (Manual)</option>
+                                          <option value="good">Good Condition</option>
+                                          <option value="not_good">Not Good Condition</option>
+                                          <option value="custom">Custom / Manual</option>
                                         </select>
                                       </div>
 
-                                      {/* Tampilan Sesuai Pilihan */}
-                                      {isNoCritical ? (
-                                        <div className="font-serif leading-tight py-0.5 px-0.5">
-                                          <div className="text-slate-800 font-medium text-[10px]">No critical repair is required.</div>
-                                          <div className="pl-2 border-l-2 border-blue-400 text-[9px] italic text-slate-500 mt-0.5">
-                                            Saat ini tidak diperlukan perbaikan mendesak.
-                                          </div>
-                                        </div>
-                                      ) : (
+                                      {/* Display / Editable Content */}
+                                      {selectValue === 'custom' ? (
                                         <BilingualTextarea
-                                          value={item.criticalRepairs}
-                                          placeholderEn="Describe critical repairs required (English)..."
-                                          placeholderId="Jelaskan perbaikan mendesak yang diperlukan (Bahasa Indonesia)..."
+                                          value={item.operationalStatus}
+                                          placeholderEn="Good Condition..."
+                                          placeholderId="Kondisi Baik... (garis miring)"
                                           onChange={(val) => {
                                             const updated = { ...reportData };
-                                            updated.taskPerformanceTables[tIdx].items[iIdx].criticalRepairs = val;
+                                            updated.taskPerformanceTables[tIdx].items[iIdx].operationalStatus = val;
                                             setReportData(updated);
                                           }}
-                                          classNameEn="w-full text-[10px] leading-tight py-0.5 px-1 bg-amber-50/60 border border-amber-300 hover:bg-white focus:bg-white rounded outline-none resize-none font-sans text-amber-950 font-medium"
-                                          classNameId="w-full text-[9.5px] italic text-amber-800 leading-tight py-0.5 px-1 bg-amber-50/60 border border-amber-300 hover:bg-white focus:bg-white rounded outline-none resize-none font-sans"
+                                          classNameEn="w-full text-[10px] font-semibold leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans text-slate-800"
+                                          classNameId="w-full text-[9.5px] font-semibold italic text-slate-600 leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans"
                                           indentId={true}
                                         />
+                                      ) : (
+                                        <div className="font-serif leading-tight py-0.5 px-0.5">
+                                          {(() => {
+                                            const displayVal = item.operationalStatus || (isGood
+                                              ? 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal'
+                                              : 'Not Good Condition / Abnormal Operation\nKondisi Tidak Baik / Beroperasi Abnormal');
+                                            const parts = displayVal.split('\n');
+                                            const en = parts[0] || '';
+                                            const id = parts.slice(1).join('\n') || '';
+                                            return (
+                                              <>
+                                                <div className={`font-semibold text-[10px] ${
+                                                  isGood
+                                                    ? 'text-emerald-950 print:text-black'
+                                                    : 'text-rose-950 print:text-black font-bold'
+                                                }`}>
+                                                  {en}
+                                                </div>
+                                                {id && (
+                                                  <div className={`pl-2 border-l-2 text-[9px] italic mt-0.5 ${
+                                                    isGood
+                                                      ? 'border-emerald-400 text-emerald-800 print:border-black print:text-black'
+                                                      : 'border-rose-400 text-rose-800 print:border-black print:text-black'
+                                                  }`}>
+                                                    {id}
+                                                  </div>
+                                                )}
+                                              </>
+                                            );
+                                          })()}
+                                        </div>
                                       )}
                                     </div>
                                   );
                                 })()}
-                              </td>
-                              <td className="py-1 px-1 border-r border-black font-semibold text-[10px]">
-                                <BilingualTextarea
-                                  value={item.operationalStatus}
-                                  placeholderEn="Good Condition..."
-                                  placeholderId="Kondisi Baik... (garis miring)"
-                                  onChange={(val) => {
-                                    const updated = { ...reportData };
-                                    updated.taskPerformanceTables[tIdx].items[iIdx].operationalStatus = val;
-                                    setReportData(updated);
-                                  }}
-                                  classNameEn="w-full text-[10px] font-semibold leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans text-slate-800"
-                                  classNameId="w-full text-[9.5px] font-semibold italic text-slate-600 leading-tight py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white rounded outline-none resize-none font-sans"
-                                  indentId={true}
-                                />
                               </td>
                               <td className="py-1 px-1 border-r border-black text-[10px] text-amber-900">
                                 <BilingualTextarea
