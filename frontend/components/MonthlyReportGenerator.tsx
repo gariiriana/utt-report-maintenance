@@ -792,32 +792,51 @@ export function MonthlyReportGenerator() {
     return findBOQCategoryForScope(addToolTargetTable.scope);
   }, [addToolTargetTable]);
 
-  const filteredAddToolBOQItems = useMemo(() => {
+  // Prepared BOQ items with guaranteed unique key per item
+  const preparedAddToolBOQItems = useMemo(() => {
     if (!activeAddToolBOQCategory) return [];
-    const valid = activeAddToolBOQCategory.items.filter(isValidBOQItem);
-    if (!addToolSearchQuery.trim()) return valid;
+    return activeAddToolBOQCategory.items
+      .map((item, originalIndex) => {
+        const uniqueKey = `${activeAddToolBOQCategory.id}_${originalIndex}_${item['Asset ID'] || item['TAG'] || item['Serial Number'] || item['No'] || originalIndex}`;
+        const identifier = getBOQItemIdentifier(item);
+        const details = extractBOQItemDetails(item);
+        return {
+          item,
+          originalIndex,
+          uniqueKey,
+          identifier,
+          details,
+          isValid: isValidBOQItem(item)
+        };
+      })
+      .filter(x => x.isValid);
+  }, [activeAddToolBOQCategory]);
+
+  const filteredAddToolBOQItems = useMemo(() => {
+    if (!preparedAddToolBOQItems.length) return [];
+    if (!addToolSearchQuery.trim()) return preparedAddToolBOQItems;
     const q = addToolSearchQuery.toLowerCase().trim();
-    return valid.filter(it => {
-      const iden = getBOQItemIdentifier(it).toLowerCase();
-      const cls = (it['Class Id'] || '').toLowerCase();
-      const loc = (it['Room'] || it['Floor'] || it['Location'] || '').toLowerCase();
-      const cap = (it['Capacity'] || '').toLowerCase();
-      const prod = (it['Product Name+'] || it['Manufacturer'] || '').toLowerCase();
+    return preparedAddToolBOQItems.filter(({ item, identifier, details }) => {
+      const iden = identifier.toLowerCase();
+      const cls = (item['Class Id'] || '').toLowerCase();
+      const loc = (details.location || '').toLowerCase();
+      const cap = (details.capacity || '').toLowerCase();
+      const prod = (details.productName || '').toLowerCase();
       return iden.includes(q) || cls.includes(q) || loc.includes(q) || cap.includes(q) || prod.includes(q);
     });
-  }, [activeAddToolBOQCategory, addToolSearchQuery]);
+  }, [preparedAddToolBOQItems, addToolSearchQuery]);
 
-  const handleToggleAddToolCI = useCallback((id: string) => {
+  const handleToggleAddToolCI = useCallback((uniqueKey: string) => {
     setSelectedAddToolCIs(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(uniqueKey)) next.delete(uniqueKey);
+      else next.add(uniqueKey);
       return next;
     });
   }, []);
 
   const handleSelectAllAddToolCIs = useCallback(() => {
-    const all = new Set(filteredAddToolBOQItems.map(it => getBOQItemIdentifier(it)).filter(Boolean));
+    const all = new Set(filteredAddToolBOQItems.map(it => it.uniqueKey));
     setSelectedAddToolCIs(all);
   }, [filteredAddToolBOQItems]);
 
@@ -860,15 +879,10 @@ export function MonthlyReportGenerator() {
         return;
       }
 
-      const matchingItems = activeAddToolBOQCategory.items.filter(it => {
-        const iden = getBOQItemIdentifier(it);
-        return selectedAddToolCIs.has(iden) ||
-               (it['CI Name*'] && selectedAddToolCIs.has(it['CI Name*'])) ||
-               (it['Class Id'] && selectedAddToolCIs.has(it['Class Id']));
-      });
+      const matchingPrepared = preparedAddToolBOQItems.filter(p => selectedAddToolCIs.has(p.uniqueKey));
 
-      newRows = matchingItems.map((it, idx) => {
-        const details = extractBOQItemDetails(it);
+      newRows = matchingPrepared.map((prep, idx) => {
+        const details = prep.details;
         return {
           no: targetTable.items.length + idx + 1,
           className: details.className,
@@ -905,7 +919,7 @@ export function MonthlyReportGenerator() {
 
     toast.success(`${newRows.length} alat berhasil ditambahkan ke ${scope}!`);
     setAddToolTargetTable(null);
-  }, [addToolTargetTable, reportData, isAddToolCustomMode, customToolForm, selectedAddToolCIs, activeAddToolBOQCategory]);
+  }, [addToolTargetTable, reportData, isAddToolCustomMode, customToolForm, selectedAddToolCIs, activeAddToolBOQCategory, preparedAddToolBOQItems]);
 
   // ─── Modal "Tambah Tabel Scope Baru dari BOQ" Handlers ───────────
   const handleAddNewScopeTable = useCallback((catId: string) => {
@@ -6468,18 +6482,14 @@ export function MonthlyReportGenerator() {
                     </div>
                   ) : (
                     <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-2xl bg-white">
-                      {filteredAddToolBOQItems.map((it, itIdx) => {
-                        const iden = getBOQItemIdentifier(it);
-                        if (!iden) return null;
-                        const isChecked = selectedAddToolCIs.has(iden) ||
-                                          (it['CI Name*'] && selectedAddToolCIs.has(it['CI Name*'])) ||
-                                          (it['Class Id'] && selectedAddToolCIs.has(it['Class Id']));
-                        const details = extractBOQItemDetails(it);
+                      {filteredAddToolBOQItems.map((prep) => {
+                        const { details, item: it, uniqueKey } = prep;
+                        const isChecked = selectedAddToolCIs.has(uniqueKey);
 
                         return (
                           <div
-                            key={itIdx}
-                            onClick={() => handleToggleAddToolCI(iden)}
+                            key={uniqueKey}
+                            onClick={() => handleToggleAddToolCI(uniqueKey)}
                             className={`p-3 flex items-start gap-3 hover:bg-blue-50/40 cursor-pointer transition-colors ${
                               isChecked ? 'bg-blue-50/60' : ''
                             }`}

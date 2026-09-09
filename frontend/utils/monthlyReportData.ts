@@ -1600,7 +1600,10 @@ export function findBOQCategoryForScope(scopeName: string) {
   if (clean.includes('pdu')) {
     return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_6' || c.name.toLowerCase() === 'pdu');
   }
-  if (clean.includes('crac') || clean.includes('pac')) {
+  if (clean.includes('capacitor bank') || clean.includes('cap bank') || clean.includes('capacitor') || clean.includes('apfcr')) {
+    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_13' || c.name.toLowerCase().includes('cap bank'));
+  }
+  if (clean.includes('crac') || /\bpac\b/i.test(clean) || clean.includes('precision air')) {
     return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_19' || c.name.toLowerCase() === 'crac');
   }
   if (clean.includes('fcu')) {
@@ -1663,9 +1666,6 @@ export function findBOQCategoryForScope(scopeName: string) {
   }
   if (clean.includes('busduct')) {
     return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_15' || c.name.toLowerCase() === 'busduct');
-  }
-  if (clean.includes('capacitor bank') || clean.includes('cap bank')) {
-    return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_13' || c.name.toLowerCase().includes('cap bank'));
   }
   if (clean.includes('load bank')) {
     return BOQ_CATEGORIES_DATA.find(c => c.id === 'cat_12' || c.name.toLowerCase() === 'load bank');
