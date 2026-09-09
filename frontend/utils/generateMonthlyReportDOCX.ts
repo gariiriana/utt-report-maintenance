@@ -25,7 +25,8 @@ import {
   HeadingLevel,
   VerticalMergeType,
   VerticalAlign,
-  PageNumber
+  PageNumber,
+  HeightRule
 } from 'docx';
 import { saveAs } from 'file-saver';
 import {
@@ -836,7 +837,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 200, after: 200 },
-      children: [new TextRun({ text: `Table 1. Schedule Maintenance – ${data.monthNameEn} ${data.year}`, bold: true, size: 22 })]
+      children: [new TextRun({ text: `Table 1. Schedule Maintenance – ${data.monthNameEn} ${data.year}`, bold: true, size: 20 })]
     })
   );
 
@@ -864,7 +865,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
           new TextRun({
             text: line,
             italics: isItalic,
-            size: 14,
+            size: 18,
             font: "Times New Roman",
             color: isItalic ? "4B5563" : "000000"
           })
@@ -884,7 +885,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
           borders: borderThin,
           verticalMerge: VerticalMergeType.RESTART,
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Device", bold: true, color: "FFFFFF", size: 19, font: "Times New Roman" })] })]
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Device", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })]
         }),
         new TableCell({
           width: { size: 20, type: WidthType.PERCENTAGE },
@@ -892,7 +893,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
           borders: borderThin,
           verticalMerge: VerticalMergeType.RESTART,
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Location", bold: true, color: "FFFFFF", size: 19, font: "Times New Roman" })] })]
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Location", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })]
         }),
         new TableCell({
           width: { size: 28, type: WidthType.PERCENTAGE },
@@ -900,14 +901,14 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
           borders: borderThin,
           verticalMerge: VerticalMergeType.RESTART,
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Maintenance Partner", bold: true, color: "FFFFFF", size: 19, font: "Times New Roman" })] })]
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Maintenance Partner", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })]
         }),
         new TableCell({
           width: { size: 20, type: WidthType.PERCENTAGE },
           columnSpan: 2,
           shading: { fill: COLOR_HEADER_BLUE },
           borders: borderThin,
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.monthNameEn, bold: true, color: "FFFFFF", size: 19, font: "Times New Roman" })] })]
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: data.monthNameEn, bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })]
         }),
         new TableCell({
           width: { size: 12, type: WidthType.PERCENTAGE },
@@ -915,7 +916,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
           borders: borderThin,
           verticalMerge: VerticalMergeType.RESTART,
           verticalAlign: VerticalAlign.CENTER,
-          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Status", bold: true, color: "FFFFFF", size: 19, font: "Times New Roman" })] })]
+          children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Status", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })]
         }),
       ]
     }),
@@ -925,8 +926,8 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
         new TableCell({ width: { size: 20, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalMerge: VerticalMergeType.CONTINUE, children: [] }),
         new TableCell({ width: { size: 20, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalMerge: VerticalMergeType.CONTINUE, children: [] }),
         new TableCell({ width: { size: 28, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalMerge: VerticalMergeType.CONTINUE, children: [] }),
-        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Plan", bold: true, color: "FFFFFF", size: 19, font: "Times New Roman" })] })] }),
-        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Actual", bold: true, color: "FFFFFF", size: 19, font: "Times New Roman" })] })] }),
+        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Plan", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
+        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Actual", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
         new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalMerge: VerticalMergeType.CONTINUE, children: [] }),
       ]
     }),
@@ -966,25 +967,25 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
           rows: [
             new TableRow({
               children: [
-                new TableCell({ width: { size: 4, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, color: "FFFFFF", size: 15, font: "Times New Roman" })] })] }),
-                new TableCell({ width: { size: 9, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Class Name", bold: true, color: "FFFFFF", size: 15, font: "Times New Roman" })] })] }),
-                new TableCell({ width: { size: 7, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Capacity", bold: true, color: "FFFFFF", size: 15, font: "Times New Roman" })] })] }),
-                new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Location", bold: true, color: "FFFFFF", size: 15, font: "Times New Roman" })] })] }),
-                new TableCell({ width: { size: 7, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Product Name", bold: true, color: "FFFFFF", size: 15, font: "Times New Roman" })] })] }),
-                new TableCell({ width: { size: 19, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Task Preventif Maintenance", bold: true, color: "FFFFFF", size: 15, font: "Times New Roman" })] })] }),
-                new TableCell({ width: { size: 14, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Critical Repairs", bold: true, color: "FFFFFF", size: 15, font: "Times New Roman" })] })] }),
-                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Operational Status", bold: true, color: "FFFFFF", size: 15, font: "Times New Roman" })] })] }),
-                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Issues", bold: true, color: "FFFFFF", size: 15, font: "Times New Roman" })] })] }),
-                new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Recommendations", bold: true, color: "FFFFFF", size: 15, font: "Times New Roman" })] })] }),
+                new TableCell({ width: { size: 4, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ width: { size: 9, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Class Name", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ width: { size: 7, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Capacity", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Location", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ width: { size: 7, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Product Name", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ width: { size: 19, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Task Preventif Maintenance", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ width: { size: 14, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Critical Repairs", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Operational Status", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Issues", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Recommendations", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
               ]
             }),
             ...t.items.map(item => new TableRow({
               children: [
-                new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${item.no}.`, size: 15, font: "Times New Roman" })] })] }),
-                new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.className, bold: true, size: 15, font: "Times New Roman" })] })] }),
-                new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.capacity || "-", size: 15, font: "Times New Roman" })] })] }),
-                new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.location || "-", size: 15, font: "Times New Roman" })] })] }),
-                new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.productName || "N/A", size: 15, font: "Times New Roman" })] })] }),
+                new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${item.no}.`, size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.className, bold: true, size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.capacity || "-", size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.location || "-", size: 18, font: "Times New Roman" })] })] }),
+                new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.productName || "N/A", size: 18, font: "Times New Roman" })] })] }),
                 new TableCell({ borders: borderThin, children: formatBilingualCell(item.taskPM, "Inspect, clean, and test equipment to ensure reliable operation.\nInspeksi, bersihkan, dan uji peralatan untuk memastikan pengoperasian yang andal.") }),
                 new TableCell({ borders: borderThin, children: formatBilingualCell(item.criticalRepairs, "No critical repair is required.\nSaat ini tidak diperlukan perbaikan mendesak.") }),
                 new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: formatBilingualCell(item.operationalStatus, "Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal", true) }),
@@ -1019,7 +1020,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 200, after: 200 },
-      children: [new TextRun({ text: "Table 18. Team Composition", bold: true, size: 22 })]
+      children: [new TextRun({ text: "Table 18. Team Composition", bold: true, size: 20 })]
     })
   );
 
@@ -1035,7 +1036,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
             new Paragraph({
               alignment: AlignmentType.CENTER,
               children: [
-                new TextRun({ text: "Team Leader\n", bold: true, size: 20 }),
+                new TextRun({ text: "Team Leader\n", bold: true, size: 18 }),
                 new TextRun({ text: `${data.generalInfo.teamLeader.name} / ${data.generalInfo.teamLeader.role} / ${data.generalInfo.teamLeader.phone}`, size: 18 })
               ]
             })
@@ -1045,7 +1046,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     }),
     new TableRow({
       children: [
-        new TableCell({ columnSpan: 3, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Team Member", bold: true, color: "FFFFFF", size: 20 })] })] })
+        new TableCell({ columnSpan: 3, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Team Member", bold: true, color: "FFFFFF", size: 18 })] })] })
       ]
     })
   ];
@@ -1079,7 +1080,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 200, after: 200 },
-      children: [new TextRun({ text: "Table 19. KPI Metric", bold: true, size: 22 })]
+      children: [new TextRun({ text: "Table 19. KPI Metric", bold: true, size: 20 })]
     })
   );
 
@@ -1101,7 +1102,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
                   text: `Progress Preventive Maintenance ${data.monthNameEn || 'July'} ${data.year || 2026}`,
                   bold: true,
                   color: "FFFFFF",
-                  size: 20
+                  size: 18
                 })
               ]
             })
@@ -1112,36 +1113,36 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     // Header Row 2 & 3: Columns with Sub-headers Plan & Actual
     new TableRow({
       children: [
-        new TableCell({ width: { size: 5, type: WidthType.PERCENTAGE }, rowSpan: 2, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, color: "FFFFFF", size: 17 })] })] }),
-        new TableCell({ width: { size: 22, type: WidthType.PERCENTAGE }, rowSpan: 2, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Activity", bold: true, color: "FFFFFF", size: 17 })] })] }),
-        new TableCell({ width: { size: 6, type: WidthType.PERCENTAGE }, rowSpan: 2, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Unit", bold: true, color: "FFFFFF", size: 17 })] })] }),
-        new TableCell({ width: { size: 16, type: WidthType.PERCENTAGE }, columnSpan: 2, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Plan", bold: true, color: "FFFFFF", size: 17 })] })] }),
-        new TableCell({ width: { size: 22, type: WidthType.PERCENTAGE }, columnSpan: 3, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Actual", bold: true, color: "FFFFFF", size: 17 })] })] }),
-        new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, rowSpan: 2, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "%Finish", bold: true, color: "FFFFFF", size: 17 })] })] }),
-        new TableCell({ width: { size: 21, type: WidthType.PERCENTAGE }, rowSpan: 2, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Remark", bold: true, color: "FFFFFF", size: 17 })] })] }),
+        new TableCell({ width: { size: 5, type: WidthType.PERCENTAGE }, rowSpan: 2, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 22, type: WidthType.PERCENTAGE }, rowSpan: 2, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Activity", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 6, type: WidthType.PERCENTAGE }, rowSpan: 2, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Unit", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 16, type: WidthType.PERCENTAGE }, columnSpan: 2, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Plan", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 22, type: WidthType.PERCENTAGE }, columnSpan: 3, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Actual", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, rowSpan: 2, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "%Finish", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 21, type: WidthType.PERCENTAGE }, rowSpan: 2, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Remark", bold: true, color: "FFFFFF", size: 18 })] })] }),
       ]
     }),
     new TableRow({
       children: [
-        new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Start", bold: true, color: "FFFFFF", size: 16 })] })] }),
-        new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Finish", bold: true, color: "FFFFFF", size: 16 })] })] }),
-        new TableCell({ width: { size: 7, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Start", bold: true, color: "FFFFFF", size: 16 })] })] }),
-        new TableCell({ width: { size: 7, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Finish", bold: true, color: "FFFFFF", size: 16 })] })] }),
-        new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Unit", bold: true, color: "FFFFFF", size: 16 })] })] }),
+        new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Start", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Finish", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 7, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Start", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 7, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Finish", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Unit", bold: true, color: "FFFFFF", size: 18 })] })] }),
       ]
     }),
     ...pmItems.map(row => new TableRow({
       children: [
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(row.no), size: 16 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: row.activity, bold: true, size: 16 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(row.unit), size: 16 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.planStart, size: 15 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.planFinish, size: 15 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.actualStart, size: 15 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.actualFinish, size: 15 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(row.actualUnit), size: 16 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.pctFinish, bold: true, size: 16 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: row.remark || "", size: 14 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(row.no), size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: row.activity, bold: true, size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(row.unit), size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.planStart, size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.planFinish, size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.actualStart, size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.actualFinish, size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(row.actualUnit), size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.pctFinish, bold: true, size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: row.remark || "", size: 18 })] })] }),
       ]
     })),
     // Summary Row: Avarage
@@ -1165,26 +1166,26 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
   const slaDocxRows: TableRow[] = [
     new TableRow({
       children: [
-        new TableCell({ width: { size: 6, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, color: "FFFFFF", size: 17 })] })] }),
-        new TableCell({ width: { size: 26, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Activity", bold: true, color: "FFFFFF", size: 17 })] })] }),
-        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Unit", bold: true, color: "FFFFFF", size: 17 })] })] }),
-        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Actual", bold: true, color: "FFFFFF", size: 17 })] })] }),
-        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Finish", bold: true, color: "FFFFFF", size: 17 })] })] }),
-        new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "%Finish", bold: true, color: "FFFFFF", size: 17 })] })] }),
-        new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Comply", bold: true, color: "FFFFFF", size: 17 })] })] }),
-        new TableCell({ width: { size: 14, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "%Comply", bold: true, color: "FFFFFF", size: 17 })] })] }),
+        new TableCell({ width: { size: 6, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 26, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Activity", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Unit", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Actual", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Finish", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "%Finish", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Comply", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 14, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "%Comply", bold: true, color: "FFFFFF", size: 18 })] })] }),
       ]
     }),
     ...slaItems.map(row => new TableRow({
       children: [
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(row.no), size: 16 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: row.activity, bold: true, size: 16 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.unit, size: 16 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(row.actual), size: 16 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(row.finish), size: 16 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.pctFinish, size: 16 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.comply, bold: true, size: 16 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.pctComply, bold: true, size: 16 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(row.no), size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: row.activity, bold: true, size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.unit, size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(row.actual), size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(row.finish), size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.pctFinish, size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.comply, bold: true, size: 18 })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: row.pctComply, bold: true, size: 18 })] })] }),
       ]
     })),
     // Summary Row: Total Fulfillment
@@ -1246,7 +1247,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 200, after: 200 },
-      children: [new TextRun({ text: "Table 20. Equipment and System Details", bold: true, size: 22 })]
+      children: [new TextRun({ text: "Table 20. Equipment and System Details", bold: true, size: 20 })]
     })
   );
 
@@ -1260,15 +1261,15 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
   const eqRows: TableRow[] = [
     new TableRow({
       children: [
-        new TableCell({ width: { size: 4, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, color: "FFFFFF", size: 15 })] })] }),
-        new TableCell({ width: { size: 18, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Equipment / System Name", bold: true, color: "FFFFFF", size: 15 })] })] }),
-        new TableCell({ width: { size: 14, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Model / Serial Number", bold: true, color: "FFFFFF", size: 15 })] })] }),
-        new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Manufacture", bold: true, color: "FFFFFF", size: 15 })] })] }),
-        new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Installation Date", bold: true, color: "FFFFFF", size: 15 })] })] }),
-        new TableCell({ width: { size: 14, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Location / Area", bold: true, color: "FFFFFF", size: 15 })] })] }),
-        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Last Maintenance Date", bold: true, color: "FFFFFF", size: 15 })] })] }),
-        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Current Operational Hours", bold: true, color: "FFFFFF", size: 15 })] })] }),
-        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Status Before Maintenance", bold: true, color: "FFFFFF", size: 15 })] })] }),
+        new TableCell({ width: { size: 4, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 18, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Equipment / System Name", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 14, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Model / Serial Number", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Manufacture", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 8, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Installation Date", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 14, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Location / Area", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Last Maintenance Date", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Current Operational Hours", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 10, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Status Before Maintenance", bold: true, color: "FFFFFF", size: 18 })] })] }),
       ]
     })
   ];
@@ -1289,7 +1290,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
                   new TextRun({
                     text: sysName,
                     bold: true,
-                    size: 16,
+                    size: 18,
                     color: "1F4E79"
                   })
                 ]
@@ -1305,14 +1306,14 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
       eqRows.push(
         new TableRow({
           children: [
-            new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(itemIdx + 1), size: 15 })] })] }),
-            new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: eq.className, bold: true, size: 15 })] })] }),
-            new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: eq.modelSN, size: 14 })] })] }),
-            new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: eq.manufacture, size: 15 })] })] }),
-            new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: eq.installDate, size: 15 })] })] }),
-            new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: eq.location, size: 15 })] })] }),
-            new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: eq.lastMaintenanceDate, bold: true, size: 15 })] })] }),
-            new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: eq.currentOperationalDate, size: 14 })] })] }),
+            new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(itemIdx + 1), size: 18 })] })] }),
+            new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: eq.className, bold: true, size: 18 })] })] }),
+            new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: eq.modelSN, size: 18 })] })] }),
+            new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: eq.manufacture, size: 18 })] })] }),
+            new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: eq.installDate, size: 18 })] })] }),
+            new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: eq.location, size: 18 })] })] }),
+            new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: eq.lastMaintenanceDate, bold: true, size: 18 })] })] }),
+            new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: eq.currentOperationalDate, size: 18 })] })] }),
             new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: formatBilingualCell(eq.statusBeforeMaintenance, "-", true) }),
           ]
         })
@@ -1330,7 +1331,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 200, after: 200 },
-      children: [new TextRun({ text: "Table 21. System Overview", bold: true, size: 22 })]
+      children: [new TextRun({ text: "Table 21. System Overview", bold: true, size: 20 })]
     })
   );
 
@@ -1368,7 +1369,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 200, after: 200 },
-      children: [new TextRun({ text: "Table 22. Scope of Work", bold: true, size: 22 })]
+      children: [new TextRun({ text: "Table 22. Scope of Work", bold: true, size: 20 })]
     })
   );
 
@@ -1382,7 +1383,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
             children: [
               new Paragraph({
                 spacing: { before: 100, after: 100 },
-                children: [new TextRun({ text: sow.category, bold: true, color: "FFFFFF", size: 19 })]
+                children: [new TextRun({ text: sow.category, bold: true, color: "FFFFFF", size: 18 })]
               })
             ]
           })
@@ -1402,7 +1403,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
               children: [
                 new TextRun({ text: stepEn, bold: true, size: 18, color: "1E40AF" }),
                 new TextRun({ break: 1 }),
-                new TextRun({ text: `   ${stepId}`, italics: true, size: 16, color: "4B5563" })
+                new TextRun({ text: `   ${stepId}`, italics: true, size: 18, color: "4B5563" })
               ]
             })
           );
@@ -1427,9 +1428,9 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
                 spacing: { before: 60, after: 40 },
                 indent: { left: 240 },
                 children: [
-                  new TextRun({ text: `• ${enText}`, size: 17, color: "1F2937" }),
+                  new TextRun({ text: `• ${enText}`, size: 18, color: "1F2937" }),
                   new TextRun({ break: 1 }),
-                  new TextRun({ text: `  ${idText}`, size: 15, italics: true, color: "4B5563" })
+                  new TextRun({ text: `  ${idText}`, size: 18, italics: true, color: "4B5563" })
                 ]
               })
             );
@@ -1439,7 +1440,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
                 alignment: AlignmentType.JUSTIFIED,
                 spacing: { before: 60, after: 60 },
                 indent: { left: 240 },
-                children: [new TextRun({ text: `• ${enText}`, size: 17, color: "1F2937" })]
+                children: [new TextRun({ text: `• ${enText}`, size: 18, color: "1F2937" })]
               })
             );
           }
@@ -1474,7 +1475,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 200, after: 200 },
-      children: [new TextRun({ text: "Table 23. Observation & Finding", bold: true, size: 22 })]
+      children: [new TextRun({ text: "Table 23. Observation & Finding", bold: true, size: 20 })]
     })
   );
 
@@ -1513,8 +1514,217 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
 
   bodyChildren.push(
     new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: obsRows }),
-    new Paragraph({ spacing: { after: 400 } })
+    new Paragraph({ spacing: { after: 300 } })
   );
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // ROOT CAUSE ANALYSIS (Sub-section of Chapter 7, below Table 23)
+  // Sesuai Dokumen Resmi Template NeutraDC May 2026:
+  // - Heading 10 pt bold: "Root Cause Analysis:"
+  // - Items A, B, C... dengan Judul, English Desc, Indonesian Desc (italic)
+  // - Tabel "Documentasi Photo" 2 kolom (header biru #2E74B5, row foto, row caption)
+  // ──────────────────────────────────────────────────────────────────────────
+  bodyChildren.push(
+    new Paragraph({
+      spacing: { before: 300, after: 150 },
+      children: [
+        new TextRun({ text: "Root Cause Analysis:", bold: true, size: 20, font: "Times New Roman", color: "000000" })
+      ]
+    })
+  );
+
+  const rcaItems = (data.rootCauseAnalyses && data.rootCauseAnalyses.length > 0)
+    ? data.rootCauseAnalyses
+    : [
+        {
+          title: "A. Penerangan Jalan Umum (PJU)",
+          system: "PJU",
+          description: "The abnormal PJU operation is primarily caused by battery degradation or failure, which reduces the available DC supply and prevents the lighting system from operating properly. Possible contributing factors include battery aging, repeated charge-discharge cycles, insufficient charging performance, loose or corroded connections, and exposure to high environmental temperatures.\nAnalisis akar masalah menunjukkan bahwa operasi PJU yang abnormal terutama disebabkan oleh penurunan kondisi atau kerusakan baterai, sehingga suplai DC menjadi tidak mencukupi dan lampu tidak dapat beroperasi dengan baik. Faktor pendukung yang mungkin meliputi usia baterai, siklus pengisian dan pengosongan berulang, performa pengisian yang kurang optimal, koneksi yang longgar atau berkarat, serta paparan suhu lingkungan yang tinggi.",
+          photos: []
+        },
+        {
+          title: "B. AC Split",
+          system: "AC Split",
+          description: "The AC Split abnormality is primarily caused by a short circuit in the compressor, which triggers the protection system and causes the outdoor unit to shut down. Possible contributing factors include compressor winding damage, insulation deterioration, electrical connection faults, overheating, unstable power supply, or internal compressor failure.\nAnalisis akar masalah menunjukkan bahwa abnormalitas AC Split terutama disebabkan oleh short circuit pada compressor, yang memicu sistem proteksi dan menyebabkan unit outdoor berhenti beroperasi. Faktor yang mungkin berkontribusi meliputi kerusakan winding compressor, penurunan kualitas isolasi, gangguan koneksi listrik, overheating, suplai daya yang tidak stabil, atau kerusakan internal compressor.",
+          photos: []
+        },
+        {
+          title: "C. Road Blocker",
+          system: "Road Blocker",
+          description: "The Road Blocker abnormalities are likely caused by mechanical wear or loosening of the hinge shaft, failure or power supply issues affecting the panel fan/blower, and improper panel lock configuration resulting in bypass condition. These conditions may be influenced by continuous operation, vibration, component aging, and insufficient periodic inspection.\nAnalisis akar masalah Road Blocker kemungkinan disebabkan oleh keausan mekanis atau kelonggaran pada as engsel, gangguan atau masalah suplai daya pada kipas/blower panel, serta konfigurasi kunci panel yang tidak sesuai sehingga berada dalam kondisi bypass. Kondisi tersebut dapat dipengaruhi oleh operasi terus-menerus, getaran, usia komponen, dan kurangnya pemeriksaan berkala.",
+          photos: []
+        }
+      ];
+
+  rcaItems.forEach((rca, rcaIdx) => {
+    const letter = String.fromCharCode(65 + rcaIdx);
+    const cleanTitle = rca.title.replace(/^[A-Z]\.\s*/, '').trim();
+    const displayTitle = `${letter}. ${cleanTitle}`;
+
+    // Item Title: 10 pt bold (size: 20)
+    bodyChildren.push(
+      new Paragraph({
+        spacing: { before: 200, after: 80 },
+        children: [
+          new TextRun({ text: displayTitle, bold: true, size: 20, font: "Times New Roman", color: "000000" })
+        ]
+      })
+    );
+
+    // Bilingual description: split English and Indonesian
+    let descEn = '';
+    let descId = '';
+    if (rca.descriptionEn || rca.descriptionId) {
+      descEn = rca.descriptionEn || '';
+      descId = rca.descriptionId || '';
+    } else {
+      const parts = (rca.description || '').split('\n');
+      descEn = parts[0] || '';
+      descId = parts.slice(1).join('\n').trim();
+    }
+
+    if (descEn) {
+      bodyChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.JUSTIFIED,
+          spacing: { before: 40, after: descId ? 40 : 120 },
+          children: [
+            new TextRun({ text: descEn, size: 20, font: "Times New Roman", color: "000000" })
+          ]
+        })
+      );
+    }
+
+    if (descId) {
+      bodyChildren.push(
+        new Paragraph({
+          alignment: AlignmentType.JUSTIFIED,
+          spacing: { before: 40, after: 140 },
+          children: [
+            new TextRun({ text: descId, size: 20, italics: true, font: "Times New Roman", color: "4B5563" })
+          ]
+        })
+      );
+    }
+
+    // Photo Table: Documentasi Photo (2 columns, 50% each)
+    const photo1 = rca.photos?.[0];
+    const photo2 = rca.photos?.[1];
+
+    let p1ImageRun: ImageRun | null = null;
+    let p2ImageRun: ImageRun | null = null;
+
+    if (photo1?.url) {
+      const bytes = base64ToUint8Array(photo1.url);
+      if (bytes.length > 0) {
+        p1ImageRun = new ImageRun({ data: bytes, transformation: { width: 280, height: 180 }, type: 'jpg' });
+      }
+    }
+
+    if (photo2?.url) {
+      const bytes = base64ToUint8Array(photo2.url);
+      if (bytes.length > 0) {
+        p2ImageRun = new ImageRun({ data: bytes, transformation: { width: 280, height: 180 }, type: 'jpg' });
+      }
+    }
+
+    const photoRows: TableRow[] = [
+      // Header: Documentasi Photo
+      new TableRow({
+        children: [
+          new TableCell({
+            columnSpan: 2,
+            shading: { fill: "2E74B5" },
+            borders: borderThin,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 80, after: 80 },
+                children: [
+                  new TextRun({ text: "Documentasi Photo", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })
+                ]
+              })
+            ]
+          })
+        ]
+      }),
+      // Row 2: Photos / Visual area (height ~2056 dxa)
+      new TableRow({
+        height: { value: 2056, rule: HeightRule.ATLEAST },
+        children: [
+          new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            borders: borderThin,
+            verticalAlign: VerticalAlign.CENTER,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 60, after: 60 },
+                children: p1ImageRun ? [p1ImageRun] : [
+                  new TextRun({ text: photo1?.caption ? "" : " ", size: 18, italics: true, color: "6B7280" })
+                ]
+              })
+            ]
+          }),
+          new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            borders: borderThin,
+            verticalAlign: VerticalAlign.CENTER,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 60, after: 60 },
+                children: p2ImageRun ? [p2ImageRun] : [
+                  new TextRun({ text: photo2?.caption ? "" : " ", size: 18, italics: true, color: "6B7280" })
+                ]
+              })
+            ]
+          })
+        ]
+      }),
+      // Row 3: Captions
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            borders: borderThin,
+            verticalAlign: VerticalAlign.CENTER,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 60, after: 60 },
+                children: [
+                  new TextRun({ text: photo1?.caption || `${cleanTitle} - Pre/Issue`, size: 18, font: "Times New Roman" })
+                ]
+              })
+            ]
+          }),
+          new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            borders: borderThin,
+            verticalAlign: VerticalAlign.CENTER,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { before: 60, after: 60 },
+                children: [
+                  new TextRun({ text: photo2?.caption || `${cleanTitle} - Post/Rectified`, size: 18, font: "Times New Roman" })
+                ]
+              })
+            ]
+          })
+        ]
+      })
+    ];
+
+    bodyChildren.push(
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: photoRows
+      }),
+      new Paragraph({ spacing: { after: 300 } })
+    );
+  });
 
   // ══════════════════════════════════════════════════════════════════════════
   // BAB 8: REPAIRS, REPLACEMENT & SERVICES (TABLE 29)
@@ -1528,7 +1738,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 200, after: 200 },
-      children: [new TextRun({ text: "Table 29. Repair, Replacement & Services", bold: true, size: 22 })]
+      children: [new TextRun({ text: "Table 29. Repair, Replacement & Services", bold: true, size: 20 })]
     })
   );
 
@@ -1594,7 +1804,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 200, after: 200 },
-      children: [new TextRun({ text: "Table 30. Calibration and Adjustments Performed", bold: true, size: 22 })]
+      children: [new TextRun({ text: "Table 30. Calibration and Adjustments Performed", bold: true, size: 20 })]
     })
   );
 
@@ -1624,7 +1834,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 200, after: 200 },
-      children: [new TextRun({ text: "Table 31. Validation Methods", bold: true, size: 22 })]
+      children: [new TextRun({ text: "Table 31. Validation Methods", bold: true, size: 20 })]
     })
   );
 
@@ -1662,7 +1872,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 200, after: 200 },
-      children: [new TextRun({ text: "Table 32. Challenges Faced", bold: true, size: 22 })]
+      children: [new TextRun({ text: "Table 32. Challenges Faced", bold: true, size: 20 })]
     })
   );
 
@@ -1692,7 +1902,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 200, after: 200 },
-      children: [new TextRun({ text: "Table 33. Mitigation Steps", bold: true, size: 22 })]
+      children: [new TextRun({ text: "Table 33. Mitigation Steps", bold: true, size: 20 })]
     })
   );
 
@@ -1722,7 +1932,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 200, after: 200 },
-      children: [new TextRun({ text: "Table 34. Lessons Learned", bold: true, size: 22 })]
+      children: [new TextRun({ text: "Table 34. Lessons Learned", bold: true, size: 20 })]
     })
   );
 
@@ -1760,7 +1970,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 200, after: 200 },
-      children: [new TextRun({ text: "Table 35. Recommendations and Future Action", bold: true, size: 22 })]
+      children: [new TextRun({ text: "Table 35. Recommendations and Future Action", bold: true, size: 20 })]
     })
   );
 
@@ -1814,7 +2024,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { before: 200, after: 200 },
-      children: [new TextRun({ text: "Table 36. Photo and Documentation Log", bold: true, size: 22 })]
+      children: [new TextRun({ text: "Table 36. Photo and Documentation Log", bold: true, size: 20 })]
     })
   );
 
@@ -1831,10 +2041,10 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
     ...data.photoLogsTable36.map(item => new TableRow({
       children: [
         new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(item.no), size: 18 })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: item.component, bold: true, size: 18 }), ...(item.caption ? [new TextRun({ text: `\n${item.caption}`, size: 14, color: "6B7280" })] : [])] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.prePhoto ? "[ Foto Terlampir ]" : "[ Visual Normal ]", size: 16, italics: true })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.duringPhoto ? "[ Foto Aktivitas ]" : "[ Pelaksanaan PM ]", size: 16, italics: true })] })] }),
-        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.postPhoto ? "[ Foto Hasil ]" : "[ Verifikasi Normal ]", size: 16, italics: true })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: item.component, bold: true, size: 18 }), ...(item.caption ? [new TextRun({ text: `\n${item.caption}`, size: 18, color: "6B7280" })] : [])] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.prePhoto ? "[ Foto Terlampir ]" : "[ Visual Normal ]", size: 18, italics: true })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.duringPhoto ? "[ Foto Aktivitas ]" : "[ Pelaksanaan PM ]", size: 18, italics: true })] })] }),
+        new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.postPhoto ? "[ Foto Hasil ]" : "[ Verifikasi Normal ]", size: 18, italics: true })] })] }),
       ]
     }))
   ];
@@ -1871,6 +2081,7 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
         document: {
           run: {
             font: "Times New Roman",
+            size: 20,
             color: "000000"
           },
           paragraph: {

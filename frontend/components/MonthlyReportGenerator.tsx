@@ -4424,20 +4424,19 @@ export function MonthlyReportGenerator() {
                                 indentId={true}
                               />
                             </td>
-                            <td className="py-1 px-1 text-center print:hidden">
+                            <td className="py-2 px-1 text-center border-black align-middle print:hidden">
                               <button
                                 type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  e.preventDefault();
+                                onClick={() => {
                                   setReportData(prev => {
                                     if (!prev) return prev;
-                                    const newObs = (prev.observationTable23 || []).map((sec, si) => {
-                                      if (si !== sIdx) return sec;
-                                      const newItems = (sec.items || [])
-                                        .filter((_, ii) => ii !== iIdx)
-                                        .map((it, idx) => ({ ...it, no: idx + 1 }));
-                                      return { ...sec, items: newItems };
+                                    const newObs = prev.observationTable23.map((s, idx) => {
+                                      if (idx !== sIdx) return s;
+                                      const newItems = s.items.filter((_, itemIndex) => itemIndex !== iIdx).map((it, nIdx) => ({
+                                        ...it,
+                                        no: nIdx + 1
+                                      }));
+                                      return { ...s, items: newItems };
                                     });
                                     return { ...prev, observationTable23: newObs };
                                   });
@@ -4446,7 +4445,7 @@ export function MonthlyReportGenerator() {
                                 className="p-1 hover:text-red-600 transition-colors cursor-pointer"
                                 title="Hapus baris"
                               >
-                                <Trash2 className="w-3.5 h-3.5 mx-auto text-slate-400 hover:text-red-600" />
+                                <Trash2 className="w-3.5 h-3.5 mx-auto" />
                               </button>
                             </td>
                           </tr>
@@ -4457,10 +4456,10 @@ export function MonthlyReportGenerator() {
                 </table>
               </div>
 
-              {/* Root Cause Analyses Section */}
+              {/* Root Cause Analyses Section (Sub-section Bab 7) */}
               <div className="space-y-6 pt-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-slate-900">Root Cause Analysis</h3>
+                  <h3 className="text-[10pt] font-bold text-slate-900">Root Cause Analysis:</h3>
                   <button
                     type="button"
                     onClick={() => {
@@ -4469,7 +4468,7 @@ export function MonthlyReportGenerator() {
                         {
                           title: 'Analisis Root Cause Baru',
                           system: 'General Facility System',
-                          description: 'Jelaskan kronologi, faktor penyebab utama, serta dampaknya terhadap sistem.',
+                          description: 'The system operates within normal limits following the corrective action.\nSistem beroperasi dalam batas normal setelah tindakan korektif dilakukan.',
                           photos: []
                         }
                       ];
@@ -4483,59 +4482,92 @@ export function MonthlyReportGenerator() {
                   </button>
                 </div>
 
-                {reportData.rootCauseAnalyses.map((rca, rIdx) => (
-                  <div key={rIdx} className="p-4 border border-black rounded-xl space-y-3 bg-slate-50/40">
-                    <div className="flex items-center justify-between">
+                {(reportData.rootCauseAnalyses || []).map((rca, rIdx) => {
+                  const letter = String.fromCharCode(65 + rIdx);
+                  const cleanTitle = (rca.title || '').replace(/^[A-Z]\.\s*/, '').trim();
+                  const displayTitle = `${letter}. ${cleanTitle}`;
+
+                  return (
+                    <div key={rIdx} className="p-4 border border-black rounded-xl space-y-3 bg-slate-50/40">
+                      <div className="flex items-center justify-between">
+                        <textarea
+                          rows={rca.title?.includes('\n') ? 2 : 1}
+                          value={rca.title || displayTitle}
+                          onChange={(e) => {
+                            const updated = { ...reportData };
+                            updated.rootCauseAnalyses[rIdx].title = e.target.value;
+                            setReportData(updated);
+                          }}
+                          className="text-[10pt] font-bold text-slate-950 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-2 py-1 outline-none w-3/4 resize-none leading-tight font-serif whitespace-pre-line"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            setReportData(prev => {
+                              if (!prev) return prev;
+                              const newRca = (prev.rootCauseAnalyses || []).filter((_, i) => i !== rIdx);
+                              return { ...prev, rootCauseAnalyses: newRca };
+                            });
+                            toast.info('RCA dihapus.');
+                          }}
+                          className="p-1 hover:text-red-600 transition-colors cursor-pointer print:hidden"
+                          title="Hapus RCA"
+                        >
+                          <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-600" />
+                        </button>
+                      </div>
                       <textarea
-                        rows={rca.title?.includes('\n') ? 2 : 1}
-                        value={rca.title}
+                        value={rca.description}
+                        rows={4}
+                        placeholder="Baris 1: Deskripsi bahasa Inggris (regular)&#10;Baris 2: Terjemahan bahasa Indonesia (italic)"
                         onChange={(e) => {
                           const updated = { ...reportData };
-                          updated.rootCauseAnalyses[rIdx].title = e.target.value;
+                          updated.rootCauseAnalyses[rIdx].description = e.target.value;
                           setReportData(updated);
                         }}
-                        className="text-sm font-bold text-blue-950 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded px-2 py-1 outline-none w-3/4 resize-none leading-tight font-serif whitespace-pre-line"
+                        className="w-full text-[10pt] text-slate-800 p-2 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none resize-y font-serif leading-relaxed"
                       />
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          setReportData(prev => {
-                            if (!prev) return prev;
-                            const newRca = (prev.rootCauseAnalyses || []).filter((_, i) => i !== rIdx);
-                            return { ...prev, rootCauseAnalyses: newRca };
-                          });
-                          toast.info('RCA dihapus.');
-                        }}
-                        className="p-1 hover:text-red-600 transition-colors cursor-pointer print:hidden"
-                        title="Hapus RCA"
-                      >
-                        <Trash2 className="w-4 h-4 text-slate-400 hover:text-red-600" />
-                      </button>
-                    </div>
-                    <textarea
-                      value={rca.description}
-                      rows={3}
-                      onChange={(e) => {
-                        const updated = { ...reportData };
-                        updated.rootCauseAnalyses[rIdx].description = e.target.value;
-                        setReportData(updated);
-                      }}
-                      className="w-full text-xs text-slate-700 p-2 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none resize-y"
-                    />
-                    {rca.photos.length > 0 && (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                        {rca.photos.map((ph, pIdx) => (
-                          <div key={pIdx} className="border border-black rounded-xl overflow-hidden text-center bg-white shadow-xs">
-                            <img src={ph.url} alt={ph.caption} className="w-full h-28 object-cover" />
-                            <p className="text-[10px] p-1.5 font-bold text-slate-700">{ph.caption}</p>
-                          </div>
-                        ))}
+                      {/* Tabel Documentasi Photo Sesuai Standar Template NeutraDC */}
+                      <div className="border border-black overflow-hidden font-serif mt-3">
+                        <table className="w-full border-collapse text-[9pt]">
+                          <thead>
+                            <tr className="bg-[#2E74B5] text-white">
+                              <th colSpan={2} className="py-1 px-2 text-center font-bold">Documentasi Photo</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className="h-32 divide-x divide-black border-t border-black">
+                              <td className="w-1/2 p-2 text-center align-middle bg-slate-50/20">
+                                {rca.photos?.[0]?.url ? (
+                                  <img src={rca.photos[0].url} alt="Photo 1" className="max-h-28 mx-auto object-contain" />
+                                ) : (
+                                  <span className="text-slate-400 italic text-xs">[ Area Foto 1 ]</span>
+                                )}
+                              </td>
+                              <td className="w-1/2 p-2 text-center align-middle bg-slate-50/20">
+                                {rca.photos?.[1]?.url ? (
+                                  <img src={rca.photos[1].url} alt="Photo 2" className="max-h-28 mx-auto object-contain" />
+                                ) : (
+                                  <span className="text-slate-400 italic text-xs">[ Area Foto 2 ]</span>
+                                )}
+                              </td>
+                            </tr>
+                            <tr className="divide-x divide-black border-t border-black bg-white">
+                              <td className="w-1/2 py-1 px-2 text-center text-slate-800 font-sans text-xs">
+                                {rca.photos?.[0]?.caption || `${cleanTitle} - Pre / Condition`}
+                              </td>
+                              <td className="w-1/2 py-1 px-2 text-center text-slate-800 font-sans text-xs">
+                                {rca.photos?.[1]?.caption || `${cleanTitle} - Post / Rectified`}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
                       </div>
-                    )}
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}

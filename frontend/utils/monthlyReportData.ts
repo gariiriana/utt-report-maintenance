@@ -64,6 +64,8 @@ export interface RootCauseItem {
   title: string;
   system: string;
   description: string;
+  descriptionEn?: string;
+  descriptionId?: string;
   photos: { caption: string; url: string }[];
 }
 
@@ -4210,16 +4212,22 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
   // ══════════════════════════════════════════════════════════════════════════
   const rootCauseAnalyses: RootCauseItem[] = [
     {
-      title: 'A. Chiller & Cooling System',
-      system: 'Chiller',
-      description: `Pada periode ${monthName} ${year}, chiller beroperasi dengan continuous load. Vibrasi normal kompresor dan laju sirkulasi air kondensor memerlukan pemantauan ketebalan gasket dan isolasi sambungan pipa secara berkala untuk menjaga stabilitas refrigerasi.`,
-      photos: monthPhotos.slice(0, 3).map(p => ({ caption: p.caption, url: p.photo }))
+      title: 'A. Penerangan Jalan Umum (PJU)',
+      system: 'PJU',
+      description: 'The abnormal PJU operation is primarily caused by battery degradation or failure, which reduces the available DC supply and prevents the lighting system from operating properly. Possible contributing factors include battery aging, repeated charge-discharge cycles, insufficient charging performance, loose or corroded connections, and exposure to high environmental temperatures.\nAnalisis akar masalah menunjukkan bahwa operasi PJU yang abnormal terutama disebabkan oleh penurunan kondisi atau kerusakan baterai, sehingga suplai DC menjadi tidak mencukupi dan lampu tidak dapat beroperasi dengan baik. Faktor pendukung yang mungkin meliputi usia baterai, siklus pengisian dan pengosongan berulang, performa pengisian yang kurang optimal, koneksi yang longgar atau berkarat, serta paparan suhu lingkungan yang tinggi.',
+      photos: monthPhotos.slice(0, 2).map(p => ({ caption: p.caption, url: p.photo }))
     },
     {
-      title: 'B. Electrical Power Distribution',
-      system: 'Electrical',
-      description: `Inspeksi thermovision pada panel LV dan trafo menunjukkan seluruh terminasi busbar berada dalam batas suhu aman (Delta T < 10°C). Baterai starting genset dipelihara dalam kondisi standby prima dengan resistansi internal teruji.`,
-      photos: monthPhotos.slice(3, 6).map(p => ({ caption: p.caption, url: p.photo }))
+      title: 'B. AC Split',
+      system: 'AC Split',
+      description: 'The AC Split abnormality is primarily caused by a short circuit in the compressor, which triggers the protection system and causes the outdoor unit to shut down. Possible contributing factors include compressor winding damage, insulation deterioration, electrical connection faults, overheating, unstable power supply, or internal compressor failure.\nAnalisis akar masalah menunjukkan bahwa abnormalitas AC Split terutama disebabkan oleh short circuit pada compressor, yang memicu sistem proteksi dan menyebabkan unit outdoor berhenti beroperasi. Faktor yang mungkin berkontribusi meliputi kerusakan winding compressor, penurunan kualitas isolasi, gangguan koneksi listrik, overheating, suplai daya yang tidak stabil, atau kerusakan internal compressor.',
+      photos: monthPhotos.slice(2, 4).map(p => ({ caption: p.caption, url: p.photo }))
+    },
+    {
+      title: 'C. Road Blocker',
+      system: 'Road Blocker',
+      description: 'The Road Blocker abnormalities are likely caused by mechanical wear or loosening of the hinge shaft, failure or power supply issues affecting the panel fan/blower, and improper panel lock configuration resulting in bypass condition. These conditions may be influenced by continuous operation, vibration, component aging, and insufficient periodic inspection.\nAnalisis akar masalah Road Blocker kemungkinan disebabkan oleh keausan mekanis atau kelonggaran pada as engsel, gangguan atau masalah suplai daya pada kipas/blower panel, serta konfigurasi kunci panel yang tidak sesuai sehingga berada dalam kondisi bypass. Kondisi tersebut dapat dipengaruhi oleh operasi terus-menerus, getaran, usia komponen, dan kurangnya pemeriksaan berkala.',
+      photos: monthPhotos.slice(4, 6).map(p => ({ caption: p.caption, url: p.photo }))
     }
   ];
 
@@ -4908,11 +4916,9 @@ export function convertReportToBilingual(data: FullMonthlyReportData): FullMonth
   // Root Cause Analyses Bilingual
   if (Array.isArray(updated.rootCauseAnalyses)) {
     updated.rootCauseAnalyses.forEach(rc => {
-      if (!rc.title.includes('\n')) {
-        rc.title = `${rc.title}\nAnalisis Akar Masalah Sistem & Verifikasi Lapangan`;
-      }
-      if (!rc.description.includes('\n')) {
-        rc.description = `${rc.description}\nPemeriksaan mendalam menyimpulkan tidak ada dampak pada kontinuitas operasional data center.`;
+      // Ensure description has bilingual text if empty
+      if (!rc.description || rc.description.trim() === '') {
+        rc.description = 'The system operates within normal limits following the corrective action.\nSistem beroperasi dalam batas normal setelah tindakan korektif dilakukan.';
       }
     });
   }
