@@ -33,6 +33,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/components/AuthContext';
 import { BOQ_CATEGORIES_DATA } from '@/data/boqAssetData';
 import { generateBeritaAcaraDOCX, BeritaAcaraConfig, BeritaAcaraEquipmentData } from '@/utils/generateBeritaAcaraDOCX';
+import { getBOQItemIdentifier } from '@/utils/monthlyReportData';
 import { collection, addDoc, query, orderBy, onSnapshot, deleteDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 
@@ -181,7 +182,7 @@ export function BeritaAcaraReport() {
     if (!cat) return;
     setSelectedCINames(prev => {
       const m = new Map(prev);
-      const all = new Set(cat.items.map(item => item['CI Name*'] || '').filter(Boolean));
+      const all = new Set(cat.items.map(item => getBOQItemIdentifier(item)).filter(Boolean));
       m.set(catId, all);
       return m;
     });
@@ -233,7 +234,10 @@ export function BeritaAcaraReport() {
         return;
       }
 
-      const items = cat.items.filter(item => ciNames.has(item['CI Name*'] || ''));
+      const items = cat.items.filter(item => {
+        const iden = getBOQItemIdentifier(item);
+        return ciNames.has(iden) || (item['CI Name*'] && ciNames.has(item['CI Name*'])) || (item['Class Id'] && ciNames.has(item['Class Id']));
+      });
       if (items.length === 0) continue;
 
       hasItems = true;
@@ -718,16 +722,19 @@ export function BeritaAcaraReport() {
                           {/* CI Name List */}
                           <div className="max-h-48 overflow-y-auto space-y-0.5 pr-1 border border-slate-100 rounded-lg p-1.5 bg-white">
                             {cat.items.map((item, idx) => {
-                              const ciName = item['CI Name*'] || '';
-                              if (!ciName) return null;
-                              const isChecked = ciSet?.has(ciName) || false;
+                              const ciIdentifier = getBOQItemIdentifier(item);
+                              if (!ciIdentifier) return null;
+                              const isChecked = ciSet?.has(ciIdentifier) ||
+                                                (item['CI Name*'] && ciSet?.has(item['CI Name*'])) ||
+                                                (item['Class Id'] && ciSet?.has(item['Class Id'])) ||
+                                                false;
                               return (
                                 <button
                                   key={idx}
-                                  onClick={() => toggleCIName(cat.id, ciName)}
+                                  onClick={() => toggleCIName(cat.id, ciIdentifier)}
                                   className={`w-full text-left flex items-center gap-2 px-2 py-1 rounded-lg text-xs transition-colors cursor-pointer ${
                                     isChecked
-                                      ? 'bg-cyan-50 text-cyan-800'
+                                      ? 'bg-cyan-50 text-cyan-800 font-semibold'
                                       : 'hover:bg-slate-50 text-slate-600'
                                   }`}
                                 >
@@ -736,7 +743,12 @@ export function BeritaAcaraReport() {
                                   ) : (
                                     <Square className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                                   )}
-                                  <span className="truncate">{ciName}</span>
+                                  <span className="truncate">{ciIdentifier}</span>
+                                  {item['Class Id'] && item['Class Id'] !== ciIdentifier && (
+                                    <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono font-normal ml-auto shrink-0">
+                                      {item['Class Id']}
+                                    </span>
+                                  )}
                                   {item['Capacity'] && (
                                     <span className="text-[10px] text-slate-400 flex-shrink-0 ml-auto">
                                       {item['Capacity']}

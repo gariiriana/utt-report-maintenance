@@ -11,6 +11,7 @@
 // ============================================================================
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   FileText,
   Printer,
@@ -62,7 +63,8 @@ import {
   getDefaultBoqUnitForDevice,
   buildCustomScopeTablesFromBOQ,
   CustomBOQSelection,
-  getTaskPMFromSR
+  getTaskPMFromSR,
+  getBOQItemIdentifier
 } from '@/utils/monthlyReportData';
 import { generateMonthlyReportDOCX } from '@/utils/generateMonthlyReportDOCX';
 import {
@@ -273,6 +275,8 @@ export function MonthlyReportGenerator() {
   // ─── Firestore Archives State ─────────────────────────────────────
   const [archives, setArchives] = useState<any[]>([]);
   const [loadingArchives, setLoadingArchives] = useState<boolean>(true);
+  const [archiveToDelete, setArchiveToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [isDeletingArchive, setIsDeletingArchive] = useState<boolean>(false);
 
   // ─── BOQ Equipment & CI Name Selector Modal State ─────────────────
   const [isBoqSelectorOpen, setIsBoqSelectorOpen] = useState(false);
@@ -292,7 +296,13 @@ export function MonthlyReportGenerator() {
     const q = categorySearchQuery.toLowerCase().trim();
     return MAINTENANCE_BOQ_CATEGORIES.filter(cat =>
       cat.name.toLowerCase().includes(q) ||
-      cat.items.some(it => (it['CI Name*'] || '').toLowerCase().includes(q) || (it['Class Name*'] || '').toLowerCase().includes(q))
+      cat.items.some(it => {
+        const iden = getBOQItemIdentifier(it).toLowerCase();
+        const cid = (it['Class Id'] || '').toLowerCase();
+        const ci = (it['CI Name*'] || '').toLowerCase();
+        const tag = (it['TAG'] || it['Tag'] || '').toLowerCase();
+        return iden.includes(q) || cid.includes(q) || ci.includes(q) || tag.includes(q);
+      })
     );
   }, [categorySearchQuery, MAINTENANCE_BOQ_CATEGORIES]);
 
@@ -604,7 +614,7 @@ export function MonthlyReportGenerator() {
         // Auto select all CIs in this category
         const cat = BOQ_CATEGORIES_DATA.find(c => c.id === catId);
         if (cat) {
-          const all = new Set(cat.items.map(it => it['CI Name*'] || '').filter(Boolean));
+          const all = new Set(cat.items.map(it => getBOQItemIdentifier(it)).filter(Boolean));
           setSelectedCINames(old => {
             const m = new Map(old);
             m.set(catId, all);
@@ -642,7 +652,7 @@ export function MonthlyReportGenerator() {
     if (!cat) return;
     setSelectedCINames(prev => {
       const m = new Map(prev);
-      const all = new Set(cat.items.map(item => item['CI Name*'] || '').filter(Boolean));
+      const all = new Set(cat.items.map(item => getBOQItemIdentifier(item)).filter(Boolean));
       m.set(catId, all);
       return m;
     });
@@ -725,16 +735,20 @@ export function MonthlyReportGenerator() {
     }
   }, []);
 
-  const handleDeleteArchive = useCallback(async (archiveId: string) => {
-    if (!window.confirm('Yakin ingin menghapus arsip dokumen laporan bulanan ini?')) return;
+  const handleDeleteArchive = useCallback(async () => {
+    if (!archiveToDelete) return;
+    setIsDeletingArchive(true);
     try {
-      await deleteDoc(doc(db, 'monthly_reports', archiveId));
+      await deleteDoc(doc(db, 'monthly_reports', archiveToDelete.id));
       toast.success('Arsip dokumen berhasil dihapus dari cloud.');
+      setArchiveToDelete(null);
     } catch (err: any) {
       console.error('Gagal menghapus arsip:', err);
-      toast.error('Gagal menghapus arsip: ' + err.message);
+      toast.error('Gagal menghapus arsip: ' + (err?.message || 'Terjadi kesalahan'));
+    } finally {
+      setIsDeletingArchive(false);
     }
-  }, []);
+  }, [archiveToDelete]);
 
   // Quick Action AI Triggers
   const handleAIRecs = () => {
@@ -5589,7 +5603,7 @@ export function MonthlyReportGenerator() {
                       </button>
 
                       <button
-                        onClick={() => handleDeleteArchive(archive.id)}
+                        onClick={() => setArchiveToDelete({ id: archive.id, title: archive.title || 'Laporan Bulanan' })}
                         className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl border border-transparent hover:border-red-200 transition-all cursor-pointer"
                         title="Hapus arsip ini"
                       >
@@ -5812,14 +5826,17 @@ export function MonthlyReportGenerator() {
 
                           <div className="max-h-48 overflow-y-auto space-y-1 pr-1 border border-slate-200 rounded-xl p-2 bg-white">
                             {cat.items.map((item, itIdx) => {
-                              const ciName = item['CI Name*'] || '';
-                              if (!ciName) return null;
-                              const isChecked = ciSet?.has(ciName) || false;
+                              const ciIdentifier = getBOQItemIdentifier(item);
+                              if (!ciIdentifier) return null;
+                              const isChecked = ciSet?.has(ciIdentifier) ||
+                                                (item['CI Name*'] && ciSet?.has(item['CI Name*'])) ||
+                                                (item['Class Id'] && ciSet?.has(item['Class Id'])) ||
+                                                false;
                               return (
                                 <button
                                   key={itIdx}
                                   type="button"
-                                  onClick={() => toggleCIName(cat.id, ciName)}
+                                  onClick={() => toggleCIName(cat.id, ciIdentifier)}
                                   className={`w-full text-left flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
                                     isChecked
                                       ? 'bg-blue-50 text-blue-900 font-semibold'
@@ -5831,10 +5848,15 @@ export function MonthlyReportGenerator() {
                                   ) : (
                                     <Square className="w-4 h-4 text-slate-300 shrink-0" />
                                   )}
-                                  <span className="truncate">{ciName}</span>
-                                  {item['Class Name*'] && (
-                                    <span className="text-[10px] text-slate-400 font-normal ml-auto shrink-0">
-                                      {item['Class Name*']}
+                                  <span className="truncate font-medium">{ciIdentifier}</span>
+                                  {item['Class Id'] && item['Class Id'] !== ciIdentifier && (
+                                    <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono font-normal ml-auto shrink-0">
+                                      {item['Class Id']}
+                                    </span>
+                                  )}
+                                  {item['Capacity'] && (
+                                    <span className="text-[10px] text-slate-400 font-normal shrink-0 ml-auto">
+                                      {item['Capacity']}
                                     </span>
                                   )}
                                 </button>
@@ -5877,6 +5899,80 @@ export function MonthlyReportGenerator() {
           </div>
         </div>
       )}
+
+      {/* ─── Modal Konfirmasi Hapus Arsip Monthly Report (In-App Modal) ──────────────── */}
+      <AnimatePresence>
+        {archiveToDelete && (
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[100] p-4"
+            onClick={() => !isDeletingArchive && setArchiveToDelete(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full border border-slate-200 shadow-2xl relative overflow-hidden text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Decorative background glow */}
+              <div className="absolute -top-24 -right-24 w-48 h-48 bg-red-500/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="relative z-10">
+                {/* Warning Icon */}
+                <div className="w-16 h-16 bg-red-50 border border-red-200/80 rounded-2xl flex items-center justify-center mx-auto mb-4 text-red-600 shadow-xs">
+                  <Trash2 className="w-8 h-8" />
+                </div>
+
+                <h3 className="text-xl font-black text-slate-900 mb-2">
+                  Hapus Arsip Laporan?
+                </h3>
+                <p className="text-slate-600 text-sm mb-4 leading-relaxed">
+                  Apakah Anda yakin ingin menghapus arsip dokumen laporan bulanan ini?
+                </p>
+
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-5 text-left">
+                  <span className="text-xs font-bold text-slate-900 block truncate">
+                    {archiveToDelete.title}
+                  </span>
+                  <span className="text-[11px] text-red-600 font-semibold block mt-0.5">
+                    ⚠️ Tindakan ini permanen dan berkas akan dihapus dari Cloud Firestore.
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setArchiveToDelete(null)}
+                    disabled={isDeletingArchive}
+                    className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteArchive}
+                    disabled={isDeletingArchive}
+                    className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-red-500/20 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isDeletingArchive ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Menghapus...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4" />
+                        <span>Ya, Hapus Arsip</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

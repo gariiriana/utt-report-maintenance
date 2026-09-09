@@ -1459,22 +1459,47 @@ export function convertTaskPMToBilingual(taskPM: string, scopeName?: string): st
   return getTaskPMForScope(scopeName || '');
 }
 
+export function getBOQItemIdentifier(item: any): string {
+  if (!item) return '';
+  const ci = (item['CI Name*'] || item['CI Name'] || '').trim();
+  if (ci) return ci;
+  const classId = (item['Class Id'] || '').trim();
+  if (classId) return classId;
+  const equip = (item['Equipment Name'] || item['Class Name*'] || item['Class Name'] || '').trim();
+  if (equip) return equip;
+  const tag = (item['TAG'] || item['Tag'] || '').trim();
+  if (tag) return tag;
+  const desc = (item['CI Description*'] || item['CI Description'] || '').trim();
+  return desc || item['No'] || 'Unit Item';
+}
+
 export function isValidBOQItem(item: any): boolean {
   if (!item) return false;
-  const rawCI = (item['CI Name*'] || item['Class Name'] || item['Equipment Name'] || item['CI Description*'] || '').trim();
+  const rawCI = (item['CI Name*'] || item['CI Name'] || item['Class Name'] || item['Equipment Name'] || item['CI Description*'] || '').trim();
   const classId = (item['Class Id'] || '').trim();
   const no = (item['No'] || '').trim();
   if (!rawCI && !classId) return false;
   const ciLower = rawCI.toLowerCase();
   if (ciLower === 'equipment' || ciLower === 'total' || ciLower === 'grand total' || ciLower === 'sub total') return false;
+  const classIdLower = classId.toLowerCase();
+  if (classIdLower === 'total' || classIdLower.includes('sub total') || classIdLower === 'note') return false;
   const noLower = no.toLowerCase();
   if (noLower === 'total' || noLower === 'grand total') return false;
   return true;
 }
 
 export function extractBOQItemDetails(item: any) {
-  const rawCI = (item['CI Name*'] || item['Class Name'] || item['Equipment Name'] || item['CI Description*'] || '').trim();
-  const className = (rawCI && rawCI.toLowerCase() !== 'equipment') ? rawCI : (item['Class Id'] || item['TAG'] || '-');
+  const identifier = getBOQItemIdentifier(item);
+  const rawCI = (item['CI Name*'] || item['CI Name'] || item['Class Name'] || item['Equipment Name'] || '').trim();
+  const classId = (item['Class Id'] || '').trim();
+  const rawDesc = (item['CI Description*'] || item['CI Description'] || '').trim();
+  
+  let className = identifier;
+  if (!className || className.toLowerCase() === 'equipment' || className === '-') {
+    className = (classId && !['dg', 'mv', 'lv', 'tr', 'ups', 'pump', 'fss', 'hydrant'].includes(classId.toLowerCase()))
+      ? classId
+      : (rawCI || rawDesc || item['TAG'] || '-');
+  }
   
   const modelSN = item['Serial Number'] || item['Model / P/N'] || item['Model/Version'] || item['Specification'] || item['Model'] || item['TAG'] || item['Asset ID'] || '-';
   
@@ -4379,8 +4404,9 @@ export function buildCustomScopeTablesFromBOQ(
     const ciSet = new Set(sel.selectedCINames);
     const chosenItems = cat.items.filter(it => {
       if (!isValidBOQItem(it)) return false;
-      const ciName = (it['CI Name*'] || it['Class Name'] || it['Equipment Name'] || it['CI Description*'] || '').trim();
-      return ciSet.has(ciName);
+      const ciIdentifier = getBOQItemIdentifier(it);
+      const ciName = (it['CI Name*'] || it['CI Name'] || it['Class Name'] || it['Equipment Name'] || it['Class Id'] || '').trim();
+      return ciSet.has(ciIdentifier) || ciSet.has(ciName) || (it['Class Id'] && ciSet.has(it['Class Id'])) || (it['CI Name*'] && ciSet.has(it['CI Name*']));
     });
 
     if (chosenItems.length === 0) return;

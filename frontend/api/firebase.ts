@@ -9,7 +9,7 @@
 // Import modul-modul Firebase yang dibutuhkan
 import { initializeApp } from "firebase/app";             // Inisialisasi app Firebase
 import { getAuth } from "firebase/auth";                   // Autentikasi (login/logout)
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore"; // Database NoSQL (Firestore)
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, setLogLevel } from "firebase/firestore"; // Database NoSQL (Firestore)
 import { getStorage } from "firebase/storage";             // Penyimpanan file (foto, dokumen)
 import { getDatabase } from "firebase/database";           // Realtime Database (untuk data live/realtime)
 import { getAnalytics, isSupported } from "firebase/analytics"; // Analytics (tracking penggunaan app)
@@ -30,6 +30,11 @@ const firebaseConfig = {
 
 // Inisialisasi Firebase App — ini adalah titik awal semua layanan Firebase
 const app = initializeApp(firebaseConfig);
+
+// Suppress verbose Firestore SDK internal logs (gRPC write stream, cache sync, dll.)
+// Tanpa ini, Firestore SDK bisa menghasilkan 500,000+ pesan verbose di console
+// yang memperlambat DevTools dan membingungkan saat debugging
+setLogLevel('error');
 
 // === ANALYTICS (Lazy Initialization) ===
 // Analytics tidak langsung dijalankan supaya tidak memperlambat loading awal aplikasi.
