@@ -64,7 +64,9 @@ import {
   buildCustomScopeTablesFromBOQ,
   CustomBOQSelection,
   getTaskPMFromSR,
-  getBOQItemIdentifier
+  getBOQItemIdentifier,
+  buildAllDynamicEquipmentTables,
+  buildDynamicListOfTables
 } from '@/utils/monthlyReportData';
 import { generateMonthlyReportDOCX } from '@/utils/generateMonthlyReportDOCX';
 import {
@@ -471,23 +473,55 @@ export function MonthlyReportGenerator() {
               });
             }
 
-            // 3. Sinkronisasi Dinamis Bab 6 Scope of Work (Tabel 22):
-            // Jika data cache masih format lama/dummy atau belum versi detail SR terbaru, perbarui otomatis!
-            const schedScopes: string[] = (parsed.scheduleTable1 || []).map((s: any) => s.device);
-            if (
-              !Array.isArray(parsed.scopeOfWorkTable22) ||
-              parsed.scopeOfWorkTable22.length !== schedScopes.length ||
-              parsed._sowDetailedVersion !== 3 ||
-              parsed.scopeOfWorkTable22.some((c: any) => 
-                c.items?.some((it: any) => it.tasks?.some((t: string) => !t.includes('\n'))) ||
-                c.category?.includes('BARU') || 
-                c.category?.includes('DUMMY') || 
-                c.category === 'CHILLER & HVAC SYSTEM' ||
-                c.category === 'CHILLER & PRIMARY COOLING SYSTEM' && schedScopes.length > 1 && parsed.scopeOfWorkTable22.length === 1
-              )
-            ) {
-              parsed.scopeOfWorkTable22 = schedScopes.map((scope: string) => getScopeOfWorkForScope(scope));
-              parsed._sowDetailedVersion = 3;
+            // 3. Sinkronisasi Dinamis Bab 6 Scope of Work (Tabel 22) & Seluruh Tabel Downstream:
+            // Jika data cache masih format lama/dummy atau belum sinkron dengan equipment PM Schedule, perbarui otomatis!
+            const schedScopes: string[] = (parsed.scheduleTable1 || []).map((s: any) => s.device).filter(Boolean);
+            if (schedScopes.length > 0) {
+              const dyn = buildAllDynamicEquipmentTables(
+                schedScopes,
+                parsed.taskPerformanceTables || [],
+                parsed.monthNameEn,
+                parsed.year
+              );
+
+              if (
+                !Array.isArray(parsed.scopeOfWorkTable22) ||
+                parsed.scopeOfWorkTable22.length !== schedScopes.length ||
+                parsed._sowDetailedVersion !== 3 ||
+                parsed.scopeOfWorkTable22.some((c: any) => 
+                  c.items?.some((it: any) => it.tasks?.some((t: string) => !t.includes('\n'))) ||
+                  c.category?.includes('BARU') || 
+                  c.category?.includes('DUMMY') || 
+                  c.category === 'CHILLER & HVAC SYSTEM' ||
+                  c.category === 'CHILLER & PRIMARY COOLING SYSTEM' && schedScopes.length > 1 && parsed.scopeOfWorkTable22.length === 1
+                )
+              ) {
+                parsed.scopeOfWorkTable22 = dyn.scopeOfWorkTable22;
+                parsed._sowDetailedVersion = 3;
+              }
+
+              if (!Array.isArray(parsed.systemOverviewTable21) || parsed.systemOverviewTable21.length !== schedScopes.length) {
+                parsed.systemOverviewTable21 = dyn.systemOverviewTable21;
+              }
+              if (!Array.isArray(parsed.calibrationTable30) || parsed.calibrationTable30.length !== schedScopes.length) {
+                parsed.calibrationTable30 = dyn.calibrationTable30;
+              }
+              if (!Array.isArray(parsed.validationMethodsTable31) || parsed.validationMethodsTable31.length !== schedScopes.length) {
+                parsed.validationMethodsTable31 = dyn.validationMethodsTable31;
+              }
+              if (!Array.isArray(parsed.challengesTable32) || parsed.challengesTable32.length !== schedScopes.length) {
+                parsed.challengesTable32 = dyn.challengesTable32;
+              }
+              if (!Array.isArray(parsed.mitigationTable33) || parsed.mitigationTable33.length !== schedScopes.length) {
+                parsed.mitigationTable33 = dyn.mitigationTable33;
+              }
+              if (!Array.isArray(parsed.lessonsLearnedTable34) || parsed.lessonsLearnedTable34.length !== schedScopes.length) {
+                parsed.lessonsLearnedTable34 = dyn.lessonsLearnedTable34;
+              }
+              if (!Array.isArray(parsed.recommendationsTable35) || parsed.recommendationsTable35.length !== schedScopes.length) {
+                parsed.recommendationsTable35 = dyn.recommendationsTable35;
+              }
+              parsed.listOfTables = buildDynamicListOfTables(parsed.taskPerformanceTables, parsed.monthNameEn, parsed.year);
             }
             // 6. Pembersihan Anomali baris "Equipment" / summary kosong dari taskPerformanceTables & equipmentDetailsTable20
             if (Array.isArray(parsed.taskPerformanceTables)) {
@@ -699,7 +733,16 @@ export function MonthlyReportGenerator() {
         scheduleTable1: custom.scheduleTable1,
         taskPerformanceTables: custom.taskPerformanceTables,
         equipmentDetailsTable20: custom.equipmentDetailsTable20,
-        scopeOfWorkTable22: custom.scopeOfWorkTable22
+        systemOverviewTable21: custom.systemOverviewTable21,
+        scopeOfWorkTable22: custom.scopeOfWorkTable22,
+        calibrationTable30: custom.calibrationTable30,
+        validationMethodsTable31: custom.validationMethodsTable31,
+        challengesTable32: custom.challengesTable32,
+        mitigationTable33: custom.mitigationTable33,
+        lessonsLearnedTable34: custom.lessonsLearnedTable34,
+        recommendationsTable35: custom.recommendationsTable35,
+        listOfTables: custom.listOfTables,
+        progressPmTable19: custom.progressPmTable19
       };
     });
 
@@ -760,7 +803,8 @@ export function MonthlyReportGenerator() {
 
   const handleAITesting = () => {
     if (!reportData) return;
-    const tv = generateTestingAndValidation(reportData.scheduleTable1.map(s => s.device));
+    const scopes = (reportData.scheduleTable1 || []).map(s => s.device);
+    const tv = generateTestingAndValidation(scopes, reportData.monthName, reportData.year);
     setReportData(prev => prev ? {
       ...prev,
       calibrationTable30: tv.calibration,
@@ -771,7 +815,8 @@ export function MonthlyReportGenerator() {
 
   const handleAIChallenges = () => {
     if (!reportData) return;
-    const cm = generateChallengesAndMitigations(reportData.monthName);
+    const scopes = (reportData.scheduleTable1 || []).map(s => s.device);
+    const cm = generateChallengesAndMitigations(reportData.monthName, scopes);
     setReportData(prev => prev ? {
       ...prev,
       challengesTable32: cm.challenges,

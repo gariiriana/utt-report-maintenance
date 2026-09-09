@@ -9,7 +9,16 @@
 //            - Interaksi Chat Asisten Teknis Data Center via backend /api/ai/chat
 // ============================================================================
 
-import { FullMonthlyReportData, convertReportToBilingual, findBulletTranslation } from './monthlyReportData';
+import {
+  FullMonthlyReportData,
+  convertReportToBilingual,
+  findBulletTranslation,
+  buildDynamicCalibrationTable30,
+  buildDynamicValidationMethodsTable31,
+  buildDynamicChallengesTable32,
+  buildDynamicMitigationTable33,
+  buildDynamicLessonsLearnedTable34
+} from './monthlyReportData';
 
 export interface AICopilotResponse {
   success: boolean;
@@ -133,10 +142,21 @@ export function generateRecommendationsFromFindings(
 /**
  * Generate Testing and Validation Methods (Bab 9) based on active devices
  */
-export function generateTestingAndValidation(_activeDevices: string[] = []): {
+export function generateTestingAndValidation(
+  activeDevices: string[] = [],
+  monthName: string = 'Februari',
+  year: number = 2026
+): {
   calibration: FullMonthlyReportData['calibrationTable30'];
   validation: FullMonthlyReportData['validationMethodsTable31'];
 } {
+  const devices = activeDevices.filter(d => (d || '').trim().length > 0);
+  if (devices.length > 0) {
+    return {
+      calibration: buildDynamicCalibrationTable30(devices, monthName, year),
+      validation: buildDynamicValidationMethodsTable31(devices)
+    };
+  }
   return {
     calibration: [
       { no: 1, component: 'Hydrant & Fire Pumps', calibrationDetail: 'Calibration of pressure switch, pump pressure gauges, and automatic cutoff starting.\nKalibrasi pressure switch, pressure gauge inlet/outlet pompa, dan verifikasi cutoff starting otomatis.' },
@@ -158,11 +178,22 @@ export function generateTestingAndValidation(_activeDevices: string[] = []): {
 /**
  * Generate Challenges, Mitigation, and Lessons Learned (Bab 10)
  */
-export function generateChallengesAndMitigations(monthName: string): {
+export function generateChallengesAndMitigations(
+  monthName: string,
+  activeDevices: string[] = []
+): {
   challenges: FullMonthlyReportData['challengesTable32'];
   mitigations: FullMonthlyReportData['mitigationTable33'];
   lessonsLearned: FullMonthlyReportData['lessonsLearnedTable34'];
 } {
+  const devices = activeDevices.filter(d => (d || '').trim().length > 0);
+  if (devices.length > 0) {
+    return {
+      challenges: buildDynamicChallengesTable32(devices, monthName),
+      mitigations: buildDynamicMitigationTable33(devices),
+      lessonsLearned: buildDynamicLessonsLearnedTable34(devices)
+    };
+  }
   return {
     challenges: [
       { no: 1, component: 'Live Data Center Continuity', challenge: `Mechanical & electrical maintenance during ${monthName} was performed in a live Tier-III/IV data center with zero downtime tolerance.\nPemeliharaan sistem mekanikal & elektrikal pada periode ${monthName} dilaksanakan pada fasilitas data center aktif Tier-III/IV dengan toleransi zero downtime.` },

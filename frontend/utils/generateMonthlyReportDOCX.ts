@@ -28,7 +28,12 @@ import {
   PageNumber
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { FullMonthlyReportData, EquipmentDetailItem } from './monthlyReportData';
+import {
+  FullMonthlyReportData,
+  EquipmentDetailItem,
+  buildAllDynamicEquipmentTables,
+  buildDynamicListOfTables
+} from './monthlyReportData';
 import { ARIF_BUDIMAN_SIGNATURE_BASE64 } from './engineerSignatures';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 
@@ -204,7 +209,55 @@ function createTelkomCircuitFooterBytes(): Uint8Array {
 /**
  * Generate full Monthly Report DOCX file
  */
-export async function generateMonthlyReportDOCX(data: FullMonthlyReportData): Promise<void> {
+export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData): Promise<void> {
+  const data: FullMonthlyReportData = JSON.parse(JSON.stringify(inputData));
+
+  // Safety Reconciliation: Ensure all downstream tables match the exact equipment selected in scheduleTable1
+  const activeScopes = (data.scheduleTable1 || []).map(s => (s.device || '').trim()).filter(Boolean);
+  if (activeScopes.length > 0) {
+    const dyn = buildAllDynamicEquipmentTables(
+      activeScopes,
+      data.taskPerformanceTables || [],
+      data.monthNameEn,
+      data.year
+    );
+
+    // Reconcile Table 21 (System Overview) if lengths differ or empty
+    if (!Array.isArray(data.systemOverviewTable21) || data.systemOverviewTable21.length !== activeScopes.length) {
+      data.systemOverviewTable21 = dyn.systemOverviewTable21;
+    }
+    // Reconcile Table 22 (Scope of Work) if lengths differ or empty
+    if (!Array.isArray(data.scopeOfWorkTable22) || data.scopeOfWorkTable22.length !== activeScopes.length) {
+      data.scopeOfWorkTable22 = dyn.scopeOfWorkTable22;
+    }
+    // Reconcile Table 30 (Calibration) if lengths differ
+    if (!Array.isArray(data.calibrationTable30) || data.calibrationTable30.length !== activeScopes.length) {
+      data.calibrationTable30 = dyn.calibrationTable30;
+    }
+    // Reconcile Table 31 (Validation) if lengths differ
+    if (!Array.isArray(data.validationMethodsTable31) || data.validationMethodsTable31.length !== activeScopes.length) {
+      data.validationMethodsTable31 = dyn.validationMethodsTable31;
+    }
+    // Reconcile Table 32 (Challenges) if lengths differ
+    if (!Array.isArray(data.challengesTable32) || data.challengesTable32.length !== activeScopes.length) {
+      data.challengesTable32 = dyn.challengesTable32;
+    }
+    // Reconcile Table 33 (Mitigation) if lengths differ
+    if (!Array.isArray(data.mitigationTable33) || data.mitigationTable33.length !== activeScopes.length) {
+      data.mitigationTable33 = dyn.mitigationTable33;
+    }
+    // Reconcile Table 34 (Lessons Learned) if lengths differ
+    if (!Array.isArray(data.lessonsLearnedTable34) || data.lessonsLearnedTable34.length !== activeScopes.length) {
+      data.lessonsLearnedTable34 = dyn.lessonsLearnedTable34;
+    }
+    // Reconcile Table 35 (Recommendations) if lengths differ
+    if (!Array.isArray(data.recommendationsTable35) || data.recommendationsTable35.length !== activeScopes.length) {
+      data.recommendationsTable35 = dyn.recommendationsTable35;
+    }
+    // Always reconcile List of Tables dynamically to reflect actual task performance tables
+    data.listOfTables = buildDynamicListOfTables(data.taskPerformanceTables, data.monthNameEn, data.year);
+  }
+
   const neutraLogoBytes = await loadImageAsUint8Array(logoNeutraDC);
   const arifSigBytes = base64ToUint8Array(ARIF_BUDIMAN_SIGNATURE_BASE64);
   const circuitFooterBytes = createTelkomCircuitFooterBytes();
@@ -631,44 +684,9 @@ export async function generateMonthlyReportDOCX(data: FullMonthlyReportData): Pr
   // ══════════════════════════════════════════════════════════════════════════
   // PAGE 4: LIST OF TABLES
   // ══════════════════════════════════════════════════════════════════════════
-  const lotItems = data.listOfTables || [
-    { title: `Table 1. Schedule Maintenance – ${data.monthNameEn} ${data.year}`, page: "5" },
-    { title: "Table 2. Task Performance – Chiller System", page: "6" },
-    { title: "Table 3. Task Performance – Cooling Tower & Piping", page: "8" },
-    { title: "Table 4. Task Performance – Cooling Pump", page: "10" },
-    { title: "Table 5. Task Performance – Transformer", page: "12" },
-    { title: "Table 6. Task Performance – Generator & Fuel System", page: "14" },
-    { title: "Table 7. Task Performance – MV & RMU Panel", page: "16" },
-    { title: "Table 8. Task Performance – LV Panel", page: "18" },
-    { title: "Table 9. Task Performance – UPS & Battery Bank", page: "20" },
-    { title: "Table 10. Task Performance – Power Distribution Unit (PDU)", page: "22" },
-    { title: "Table 11. Task Performance – PAC / CRAC Precision Cooling", page: "24" },
-    { title: "Table 12. Task Performance – Fire Alarm & Suppression", page: "26" },
-    { title: "Table 13. Task Performance – VESDA Early Warning", page: "28" },
-    { title: "Table 14. Task Performance – Access Control & CCTV", page: "30" },
-    { title: "Table 15. Task Performance – Lightning Protection & Grounding", page: "32" },
-    { title: "Table 16. Task Performance – Building Automation System (BAS)", page: "34" },
-    { title: "Table 17. Task Performance – Water Treatment Plant", page: "36" },
-    { title: "Table 18. Team Composition", page: "218" },
-    { title: "Table 19. KPI Metric", page: "218" },
-    { title: "Table 20. Equipment and System Details", page: "220" },
-    { title: "Table 21. System Overview", page: "236" },
-    { title: "Table 22. Scope of Work", page: "238" },
-    { title: "Table 23. Observation & Finding", page: "252" },
-    { title: "Table 24. Root Cause Analysis – Electrical System", page: "253" },
-    { title: "Table 25. Root Cause Analysis – Cooling System", page: "254" },
-    { title: "Table 26. Root Cause Analysis – Fire & Safety System", page: "254" },
-    { title: "Table 27. Root Cause Analysis – Civil & Architectural", page: "255" },
-    { title: "Table 28. Finding Severity Matrix", page: "255" },
-    { title: "Table 29. Repair, Replacement & Services", page: "256" },
-    { title: "Table 30. Calibration and Adjustments Performed", page: "258" },
-    { title: "Table 31. Validation Methods", page: "258" },
-    { title: "Table 32. Challenges Faced", page: "259" },
-    { title: "Table 33. Mitigation Steps", page: "261" },
-    { title: "Table 34. Lessons Learned", page: "263" },
-    { title: "Table 35. Recommendations and Future Action", page: "264" },
-    { title: "Table 36. Photo and Documentation Log", page: "265" }
-  ];
+  const lotItems = (data.listOfTables && data.listOfTables.length > 0)
+    ? data.listOfTables
+    : buildDynamicListOfTables(data.taskPerformanceTables, data.monthNameEn, data.year);
 
   bodyChildren.push(
     new Paragraph({

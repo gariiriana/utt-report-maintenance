@@ -2683,6 +2683,32 @@ export const SCOPE_OF_WORK_DICTIONARY: Record<string, ScopeOfWorkCategory> = {
         ]
       }
     ]
+  },
+  "physical cooling automation": {
+    "category": "PHYSICAL COOLING AUTOMATION & TELEMETRY SYSTEM",
+    "items": [
+      {
+        "step": "1. Visual Inspection, Control Panel Integrity & Field Telemetry\nInspeksi Visual, Integritas Panel Kontrol & Telemetri Lapangan",
+        "tasks": [
+          "Conduct visual inspection of cooling automation DDC/PLC control panels, reviewing cable termination cleanliness, 24VDC power supply indicators, communication transceiver LED indicators (Modbus/BACnet), and ensuring enclosure gaskets are tight.\nMelakukan inspeksi visual terhadap panel kontrol DDC/PLC otomasi pendingin, memeriksa kerapian kabel terminasi, indikator power supply 24VDC, lampu status transceiver komunikasi (Modbus/BACnet), dan memastikan gasket penutup panel rapat.",
+          "Inspect physical mounting, cabling seals, and conduit integrity of field telemetry sensors (immersion RTD temperature probes, water differential pressure transmitters, and ultrasonic/magnetic flow meters).\nMemeriksa pemasangan fisik, segel kabel, dan pipa pelindung sensor telemetri lapangan (probe suhu RTD immersion, pemancar beda tekanan air, dan meteran aliran ultrasonik/magnetik)."
+        ]
+      },
+      {
+        "step": "2. Cleaning, Terminal Tightening & Power Supply Calibration\nPembersihan, Pengetatan Baut Terminal & Kalibrasi Catu Daya",
+        "tasks": [
+          "Clean control panel interior from dust using an antistatic vacuum cleaner, inspect panel ventilation louvers, and verify cooling fan operation.\nMembersihkan bagian dalam panel kontrol dari partikel debu menggunakan vacuum cleaner antistatis, memeriksa kisi-kisi ventilasi, dan memastikan kelancaran kipas pendingin panel.",
+          "Check and torque-tighten terminal screw connections on analog/digital I/O modules, verify RS-485 bus terminating resistors, and measure 24VDC power rail ripple and regulation.\nMemeriksa dan mengencangkan baut terminasi modul input/output (I/O) analog dan digital, memeriksa resistor terminasi bus RS-485, serta mengukur kestabilan tegangan catu daya 24VDC."
+        ]
+      },
+      {
+        "step": "3. Measurement, Sensor Loop Calibration & Automated Sequencing Validation\nPengukuran, Kalibrasi Loop Sensor & Validasi Sekuens Otomasi",
+        "tasks": [
+          "Calibrate 4-20 mA / 0-10 V analog transmitter loops against precision calibrators for chilled water supply/return temperatures, header differential pressures, and verify central BAS telemetry reading accuracy (maximum error < 1.0%).\nMelakukan kalibrasi loop transmitter analog 4-20 mA / 0-10 V menggunakan kalibrator presisi untuk suhu air dingin supply/return, beda tekanan header, dan memverifikasi akurasi pembacaan telemetri di layar BAS pusat (deviasi maksimal < 1.0%).",
+          "Perform functional testing of automated chiller staging sequence, duty-standby secondary cooling pump auto-failover switching logic, and simulate interlock protection trips upon low flow switch alarm detection.\nMelakukan pengujian fungsional sekuens otomasi staging chiller, logika peralihan otomatis pompa pendingin duty-standby saat terjadi gangguan, dan simulasi trip interlock keselamatan saat sakelar aliran mendeteksi alarm low flow."
+        ]
+      }
+    ]
   }
 };
 
@@ -2729,7 +2755,7 @@ export function getScopeOfWorkForScope(scopeName: string): ScopeOfWorkCategory {
   if (clean.includes('gate')) return SCOPE_OF_WORK_DICTIONARY['gate'];
   if (clean.includes('ldb') || clean.includes('rdb')) return SCOPE_OF_WORK_DICTIONARY['lv panel'];
   if (clean.includes('pressurization') || clean.includes('degassing')) return SCOPE_OF_WORK_DICTIONARY['cooling tower'];
-  if (clean.includes('cooling automation') || clean.includes('physical cooling')) return SCOPE_OF_WORK_DICTIONARY['chiller'];
+  if (clean.includes('cooling automation') || clean.includes('physical cooling')) return SCOPE_OF_WORK_DICTIONARY['physical cooling automation'];
   if (clean.includes('exhaust')) return SCOPE_OF_WORK_DICTIONARY['exhaust fan'];
   if (clean.includes('x-ray') || clean.includes('xray')) return SCOPE_OF_WORK_DICTIONARY['x-ray'];
   if (clean.includes('water softener') || clean.includes('softener')) return SCOPE_OF_WORK_DICTIONARY['water softener'];
@@ -2764,6 +2790,623 @@ export function getScopeOfWorkForScope(scopeName: string): ScopeOfWorkCategory {
         ]
       }
     ]
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// MASTER DYNAMIC EQUIPMENT KNOWLEDGE BASE & TABLE BUILDERS (BAB 5, 9, 10, 11)
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface EquipmentScopeProfile {
+  id: string;
+  name: string;
+  categoryDomain: 'ELECTRICAL & POWER DISTRIBUTION' | 'HVAC & COOLING SYSTEM' | 'FIRE, SAFETY & FACILITY SYSTEM' | 'GENERAL FACILITY INFRASTRUCTURE';
+  systemOverview: string;
+  calibration: string;
+  validationMethod: string;
+  challenge: string;
+  mitigation: string;
+  lessonLearned: string;
+  shortTermRec: string;
+  longTermRec: string;
+}
+
+export function getEquipmentProfile(scopeName: string, monthName: string = 'February', year: number = 2026): EquipmentScopeProfile {
+  const clean = (scopeName || '').toLowerCase().trim();
+
+  // 1. TRANSFORMER / TRAFO
+  if (clean.includes('transformer') || clean.includes('trafo')) {
+    return {
+      id: 'transformer',
+      name: 'Transformer (Trafo)',
+      categoryDomain: 'ELECTRICAL & POWER DISTRIBUTION',
+      systemOverview: 'A transformer is an essential electrical apparatus that steps down incoming medium voltage (20kV) to low distribution voltage (400V) via electromagnetic induction. Routine maintenance preserves oil/dielectric insulation, winding integrity, and prevents thermal degradation.\nTransformator adalah peralatan kelistrikan utama yang menurunkan tegangan menengah incoming (20kV) menjadi tegangan distribusi rendah (400V) melalui induksi elektromagnetik. Pemeliharaan rutin menjaga isolasi dielektrik/minyak, integritas belitan, dan mencegah degradasi termal.',
+      calibration: `Calibration and testing of winding temperature indicators (WTI/OTI), thermostat alarm/trip relays, and verification of metering CT ratio accuracy.\nKalibrasi dan pengujian indikator temperatur belitan (WTI/OTI), relay proteksi alarm/trip thermostat, serta verifikasi akurasi rasio CT metering.`,
+      validationMethod: 'Insulation resistance testing (Megger 5kV), winding DC resistance ratio validation, and infrared thermography on HV/LV bushing terminations.\nPengujian tahanan isolasi (Megger 5kV), validasi rasio tahanan belitan DC, dan termografi inframerah pada terminasi bushing HV/LV.',
+      challenge: 'Executing offline testing requires precise load switching to redundant feeds without voltage fluctuation affecting mission-critical servers.\nPelaksanaan pengujian offline menuntut pemindahan beban presisi ke jalur redundan tanpa fluktuasi tegangan yang berdampak pada server kritikal.',
+      mitigation: 'Strict implementation of LOTO procedures, verification of zero-voltage with calibrated high-voltage detectors, and synchronized bus-tie transfer.\nPenerapan prosedur LOTO ketat, verifikasi tegangan nol dengan detector tegangan tinggi terkalibrasi, dan transfer sinkron bus-tie.',
+      lessonLearned: 'Regular inspection of bushing seal gaskets and enclosure ventilation grilles effectively prevents moisture ingress and thermal hotspots.\nInspeksi berkala gasket segel bushing dan kisi ventilasi enclosure efektif mencegah masuknya kelembaban dan titik panas termal.',
+      shortTermRec: 'Perform contact tightening and infrared thermography on all primary and secondary busbar connections.\nLakukan pengetatan kontak dan pemindaian termografi inframerah pada seluruh sambungan busbar primer dan sekunder.',
+      longTermRec: 'Schedule comprehensive Dissolved Gas Analysis (DGA) and partial discharge testing during annual facility shutdown.\nJadwalkan uji komprehensif Dissolved Gas Analysis (DGA) dan pengujian partial discharge pada pemeliharaan tahunan fasilitas.'
+    };
+  }
+
+  // 2. MV & RMU PANEL
+  if (clean.includes('mv') || clean.includes('rmu')) {
+    return {
+      id: 'mv_rmu',
+      name: 'MV & RMU Panel (Medium Voltage)',
+      categoryDomain: 'ELECTRICAL & POWER DISTRIBUTION',
+      systemOverview: 'Medium Voltage Switchgear and Ring Main Unit (RMU) manage, protect, and isolate 20kV electrical utility feeds. Preventive maintenance ensures mechanical interlocking reliability, SF6 pressure stability, and circuit breaker operational safety.\nPanel MV dan RMU mengelola, melindungi, dan mengisolasi jalur distribusi tegangan menengah 20kV. Pemeliharaan preventif memastikan keandalan interlock mekanikal, stabilitas tekanan gas SF6, dan keselamatan operasional pemutus sirkuit.',
+      calibration: `Secondary current injection testing for overcurrent and earth fault protection relays (OCR/GFR), and SF6 pressure gauge calibration.\nPengujian injeksi arus sekunder pada relay proteksi arus lebih dan gangguan tanah (OCR/GFR), serta kalibrasi manometer tekanan gas SF6.`,
+      validationMethod: 'Vacuum circuit breaker (VCB) contact resistance measurement, dielectric insulation breakdown testing (Hi-Pot), and mechanical interlocking sequence verification.\nPengukuran tahanan kontak vacuum circuit breaker (VCB), uji ketahanan isolasi dielektrik (Hi-Pot), dan verifikasi sekuens interlock mekanikal.',
+      challenge: 'High arc-flash hazard level and 20kV potential demand extraordinary safety compliance and coordination with upstream utility.\nPotensi bahaya arc-flash tinggi dan tegangan 20kV menuntut kepatuhan keselamatan kerja tingkat tinggi dan koordinasi ketat dengan utilitas.',
+      mitigation: 'Mandatory certified arc-rated PPE (40 cal/cm²), calibrated earthing switch engagement, and dual-technician cross-verification protocols.\nWajib menggunakan APD tahan busur api bersertifikat (40 cal/cm²), penguncian grounding switch terkalibrasi, dan protokol verifikasi ganda dua teknisi.',
+      lessonLearned: 'Periodic mechanical lubrication of trip mechanisms and SF6 density verification prevents breaker sluggishness during emergency clearing.\nPelumasan mekanik berkala pada mekanisme trip dan verifikasi densitas gas SF6 mencegah kelambatan operasi breaker saat gangguan.',
+      shortTermRec: 'Check SF6 gas pressure indicators, clean cubicle air vents, and verify protection relay healthy status.\nPeriksa indikator tekanan gas SF6, bersihkan kisi ventilasi kubikel, dan verifikasi status healthy relay proteksi.',
+      longTermRec: 'Perform comprehensive secondary injection timing tests and breaker timing analysis across all 20kV feeder panels.\nLakukan uji waktu injeksi sekunder komprehensif dan analisis timing breaker di seluruh panel feeder 20kV.'
+    };
+  }
+
+  // 3. X-RAY
+  if (clean.includes('x-ray') || clean.includes('xray')) {
+    return {
+      id: 'xray',
+      name: 'X-Ray Security Screening System',
+      categoryDomain: 'FIRE, SAFETY & FACILITY SYSTEM',
+      systemOverview: 'An X-Ray security screening apparatus provides non-intrusive inspection of baggage, equipment, and packages entering the data center facility, maintaining stringent physical security perimeters.\nPeralatan skrining keamanan X-Ray menyediakan inspeksi non-intrusif barang, peralatan, dan paket yang memasuki fasilitas data center, menjaga perimeter keamanan fisik yang ketat.',
+      calibration: `Radiation scatter leakage calibration (< 0.1 mR/hr), dual-energy color imaging detector calibration, and conveyor speed synchronization.\nKalibrasi kebocoran radiasi hamburan (< 0.1 mR/hr), kalibrasi detektor pencitraan warna energi ganda, dan sinkronisasi kecepatan konveyor.`,
+      validationMethod: 'Standardized test piece evaluation (ASTM/STP wire resolution and steel penetration), emergency stop interlock verification, and lead curtain integrity checks.\nEvaluasi benda uji standar (resolusi kawat dan penetrasi baja ASTM/STP), verifikasi interlock emergency stop, dan pemeriksaan integritas tirai timbal.',
+      challenge: 'Ensuring complete radiological safety for screening personnel while maintaining uninterrupted security checkpoint processing at facility portals.\nMenjamin keselamatan radiologis menyeluruh bagi personel pemeriksa sambil menjaga kelancaran alur pos pemeriksaan di gerbang fasilitas.',
+      mitigation: 'Use of calibrated radiation survey meters, lead shielding inspection, and scheduling intrusive maintenance during off-peak gate clearance hours.\nPenggunaan alat ukur surveymeter radiasi terkalibrasi, inspeksi proteksi timbal, dan penjadwalan servis berat di luar jam sibuk akses gerbang.',
+      lessonLearned: 'Daily cleaning of optical sensor lenses and conveyor roller alignment significantly eliminates baggage feed jamming and false imaging alarms.\nPembersihan harian lensa sensor optik dan pelurusan roller konveyor secara signifikan meniadakan macetnya barang dan alarm pencitraan semu.',
+      shortTermRec: 'Inspect lead curtains for tears, clean optical reflection prisms, and test all emergency stop pushbuttons.\nPeriksa tirai timbal dari robekan, bersihkan prisma refleksi optik, dan uji seluruh tombol emergency stop.',
+      longTermRec: 'Conduct annual regulatory radiation safety certification and sensor array diagnostic recalibration by accredited specialists.\nLakukan sertifikasi keselamatan radiasi berkala tahunan dan re-kalibrasi diagnostik sensor array oleh spesialis terakreditasi.'
+    };
+  }
+
+  // 4. PHYSICAL COOLING AUTOMATION & TELEMETRY
+  if (clean.includes('cooling automation') || clean.includes('physical cooling') || clean.includes('automation')) {
+    return {
+      id: 'cooling_automation',
+      name: 'Physical Cooling Automation & Telemetry',
+      categoryDomain: 'HVAC & COOLING SYSTEM',
+      systemOverview: 'The physical cooling automation and telemetry architecture integrates DDC/PLC automation controllers, precision telemetry sensors, and motorized control valves to optimize chilled water delivery and chiller plant redundancy.\nArsitektur otomasi pendingin fisik dan telemetri mengintegrasikan kontroler DDC/PLC, sensor telemetri presisi, dan katup kontrol motorized untuk mengoptimalkan distribusi air dingin dan redundansi chiller plant.',
+      calibration: `Calibration of 4-20mA / 0-10V analog instrumentation (temperature RTDs, differential pressure transmitters, ultrasonic flow meters), and 24VDC control power rail calibration.\nKalibrasi instrumentasi analog 4-20mA / 0-10V (sensor suhu RTD, transmitter beda tekanan, flow meter ultrasonik), dan kalibrasi tegangan catu daya 24VDC.`,
+      validationMethod: 'Simulated pump and chiller auto-staging failover sequences, flow switch trip interlocks, and telemetry bus packet continuity verification to central BAS/SCADA.\nSimulasi sekuens failover rotasi otomatis pompa dan chiller, interlock trip flow switch, dan verifikasi kontinuitas transmisi bus telemetri ke BAS/SCADA.',
+      challenge: 'Executing control sequence testing without inducing hydronic pressure surges or supply temperature transients in live data hall environments.\nMelaksanakan pengujian sekuens kontrol tanpa memicu lonjakan tekanan hidronik atau lonjakan suhu suplai di ruang data hall aktif.',
+      mitigation: 'Gradual motorized valve ramp-rate modulation, live real-time differential pressure monitoring, and staged standby unit verification.\nModulasi kecepatan bukaan katup motorized secara bertahap, pemantauan beda tekanan real-time, dan verifikasi bertahap unit siaga.',
+      lessonLearned: 'Ensuring robust electrical shielding and terminating communication bus drain wires prevents signal noise from corrupting PLC telemetry metrics.\nMemastikan pelindung kabel elektrik yang kuat dan terminasi kabel drain bus komunikasi mencegah gangguan derau merusak data telemetri PLC.',
+      shortTermRec: 'Backup PLC/DDC program logics, verify 24VDC power supply ripple, and tighten all I/O terminal block screws.\nLakukan backup program logic PLC/DDC, verifikasi riak tegangan catu daya 24VDC, dan kencangkan baut terminal blok I/O.',
+      longTermRec: 'Implement automated predictive telemetry drift detection and recalibrate all differential pressure transmitters annually.\nTerapkan deteksi pergeseran telemetri prediktif otomatis dan kalibrasi ulang seluruh transmitter beda tekanan secara tahunan.'
+    };
+  }
+
+  // 5. EXHAUST FAN
+  if (clean.includes('exhaust')) {
+    return {
+      id: 'exhaust_fan',
+      name: 'Exhaust Fan & Ventilation System',
+      categoryDomain: 'HVAC & COOLING SYSTEM',
+      systemOverview: 'Exhaust fans and mechanical ventilation systems discharge heat, airborne particulates, and hazardous battery off-gases from technical equipment areas, ensuring safe thermal and atmospheric conditions.\nSistem exhaust fan dan ventilasi mekanikal membuang panas, partikel udara, dan emisi gas baterai berbahaya dari area peralatan teknis, menjamin kondisi termal dan atmosfer yang aman.',
+      calibration: `Thermal overload relay (TOR) trip threshold calibration, motorized damper actuator limit switch calibration, and differential pressure switch calibration.\nKalibrasi batas trip thermal overload relay (TOR), kalibrasi limit switch aktuator damper motorized, dan kalibrasi sakelar beda tekanan udara.`,
+      validationMethod: 'Anemometer air velocity and volumetric flow rate (CFM) validation, motor running current phase balancing, and fire alarm emergency shutdown interlock testing.\nValidasi kecepatan aliran udara dan debit volumetrik (CFM) dengan anemometer, keseimbangan arus beban motor per fasa, dan uji interlock pemadaman darurat saat fire alarm aktif.',
+      challenge: 'Working at height for fan units mounted on elevated ceilings or outer building facades requiring specialized safety fall protection.\nPekerjaan di ketinggian untuk unit fan yang terpasang pada plafon tinggi atau fasad luar gedung membutuhkan proteksi jatuh kerja khusus.',
+      mitigation: 'Execution strictly under Working at Height (WAH) permits, certified scaffolding/scissor lifts, full-body safety harnesses, and area barricading.\nPelaksanaan di bawah izin kerja Working at Height (WAH), perancah/scissor lift tersertifikasi, full-body harness, dan barikade area kerja.',
+      lessonLearned: 'Regular inspection of belt tension and dynamic impeller balance significantly minimizes motor bearing fatigue and structure-borne vibration noise.\nInspeksi berkala ketegangan v-belt dan keseimbangan dinamis impeller meminimalkan keausan bantalan motor dan getaran kebisingan struktur.',
+      shortTermRec: 'Clean intake and exhaust louvers, inspect v-belt tension and alignment, and lubricate fan shaft pillow block bearings.\nBersihkan kisi-kisi louver intake dan exhaust, periksa ketegangan dan kelurusan v-belt, serta lumasi bearing poros kipas.',
+      longTermRec: 'Establish semi-annual dynamic impeller vibration analysis and schedule preventative fan motor replacement at 40,000 running hours.\nLakukan analisis getaran dinamis impeller tiap semester dan jadwalkan penggantian preventif motor kipas pada 40.000 jam kerja.'
+    };
+  }
+
+  // 6. CAPACITOR BANK (APFCR)
+  if (clean.includes('cap bank') || clean.includes('apfcr') || clean.includes('capacitor')) {
+    return {
+      id: 'capacitor_bank',
+      name: 'Capacitor Bank & APFCR Panel',
+      categoryDomain: 'ELECTRICAL & POWER DISTRIBUTION',
+      systemOverview: 'Capacitor Banks equipped with Automatic Power Factor Correction Relays (APFCR) dynamically compensate reactive inductive power, maintaining high power factor (cos phi >= 0.95) and optimizing electrical efficiency.\nKapasitor Bank yang dilengkapi Automatic Power Factor Correction Relay (APFCR) mengompensasi daya reaktif induktif secara dinamis, menjaga faktor daya tinggi (cos phi >= 0.95) dan mengoptimalkan efisiensi kelistrikan.',
+      calibration: `Microprocessor APFCR target cos phi setpoint calibration, current transformer (CT) phase angle alignment, and step switching delay timing verification.\nKalibrasi nilai target cos phi pada kontroler mikroprosesor APFCR, penyesuaian sudut fasa transformator arus (CT), dan verifikasi jeda waktu switching bertingkat.`,
+      validationMethod: 'Individual capacitor cell capacitance (microfarad / µF) measurement, contactor switching step validation, and total harmonic distortion (THD) monitoring under load.\nPengukuran nilai kapasitansi per sel kapasitor (mikrofarad / µF), validasi langkah penyalaan kontaktor, dan pemantauan total harmonic distortion (THD) saat berbeban.',
+      challenge: 'Residual electrical energy stored within capacitor cells poses severe electric shock hazard even after upstream breaker isolation.\nSisa energi listrik tersimpan di dalam sel kapasitor menimbulkan bahaya sengatan listrik parah bahkan setelah pemutus sirkuit diputus.',
+      mitigation: 'Strict mandatory 5-minute discharge dwell time, discharge resistor functional checks, and application of portable grounding discharge sticks before touching terminals.\nWajib menunggu waktu pelepasan muatan minimal 5 menit, pengecekan resistor discharge, dan pemasangan grounding discharge stick portabel sebelum menyentuh terminal.',
+      lessonLearned: 'Periodic thermographic scanning of contactor contacts identifies micro-arcing and contact pitting before total capacitor step loss occurs.\nPemindaian termografi berkala pada kontak kontaktor mendeteksi timbulnya percikan api mikro dan keausan kontak sebelum terjadi kegagalan step kapasitor.',
+      shortTermRec: 'Perform infrared thermography on all step contactors and fuses, and record individual phase currents across all active steps.\nLakukan termografi inframerah pada seluruh kontaktor step dan sekring, serta catat arus per fasa pada setiap step yang aktif.',
+      longTermRec: 'Replace degraded capacitor cells exhibiting greater than 10% capacitance loss, and service high-inrush current damping contactors.\nGanti sel kapasitor yang mengalami penurunan kapasitansi lebih dari 10%, dan servis kontaktor peredam arus inrush tinggi.'
+    };
+  }
+
+  // 7. LOAD BANK
+  if (clean.includes('load bank')) {
+    return {
+      id: 'load_bank',
+      name: 'Load Bank Testing System',
+      categoryDomain: 'ELECTRICAL & POWER DISTRIBUTION',
+      systemOverview: 'A portable or stationary resistive/inductive load bank applies precision artificial electrical loads to generators, UPS units, and switchboards to validate load-carrying capacity and thermal equilibrium under controlled stress.\nLoad bank resistif/induktif portabel atau stasioner menyalurkan beban listrik buatan secara presisi ke genset, UPS, dan switchboard guna memvalidasi kapasitas beban dan keseimbangan termal di bawah pengujian terukur.',
+      calibration: `Digital power meter instrumentation calibration (kW, kVA, PF, Voltage, Current, Frequency), and over-temperature safety thermal cutout sensor calibration.\nKalibrasi instrumen power meter digital (kW, kVA, PF, Tegangan, Arus, Frekuensi), dan kalibrasi sensor proteksi suhu berlebih (thermal cutout).`,
+      validationMethod: 'Graduated step-loading performance validation (25%, 50%, 75%, 100%, and 110% overload), airflow differential switch safety trip, and emergency stop interlock testing.\nValidasi performa pembebanan bertahap (25%, 50%, 75%, 100%, dan beban lebih 110%), trip keselamatan sakelar aliran udara, dan uji interlock emergency stop.',
+      challenge: 'Handling immense thermal heat rejection and routing heavy multi-core camlock feeder cables through physical accessways safely.\nMengelola pelepasan energi panas masif dan menggelar kabel feeder camlock tugas berat melalui jalur akses fisik secara aman.',
+      mitigation: 'Establishing clear thermal exclusion safety buffer zones, continuous thermal imaging of camlock terminations, and placing emergency fire extinguishers on site.\nMenetapkan radius zona aman bebas buangan panas, termografi termal terus-menerus pada terminasi camlock, dan menyiagakan APAR di lokasi kerja.',
+      lessonLearned: 'Torque-verifying temporary camlock twist-lock plugs prior to energization completely eliminates high-resistance thermal hotspots during 100% full-load tests.\nMemverifikasi kekencangan penguncian steker camlock sebelum dialiri listrik meniadakan timbulnya titik panas akibat resistansi kontak selama uji beban 100%.',
+      shortTermRec: 'Inspect forced-draft cooling blower fans, clean resistor element enclosures, and test all remote emergency shutdown controls.\nPeriksa kipas pendingin udara paksa, bersihkan kompartemen elemen resistor, dan uji seluruh kendali pemutus darurat jarak jauh.',
+      longTermRec: 'Perform comprehensive insulation resistance testing on internal resistor banks and recalibrate multi-function telemetry power transducers annually.\nLakukan uji tahanan isolasi komprehensif pada bank resistor internal dan kalibrasi ulang transduser daya telemetri multifungsi secara tahunan.'
+    };
+  }
+
+  // 8. CHILLER
+  if (clean.includes('chiller')) {
+    return {
+      id: 'chiller',
+      name: 'Chiller System',
+      categoryDomain: 'HVAC & COOLING SYSTEM',
+      systemOverview: 'A chiller is a centralized cooling system that extracts heat from chilled water loops through a vapor-compression refrigeration cycle to maintain mission-critical data hall temperatures.\nChiller adalah sistem pendingin sentral yang mengekstrak panas dari loop air dingin melalui siklus refrigerasi kompresi uap untuk menjaga suhu ruang data hall yang kritikal.',
+      calibration: `Calibration of refrigerant suction/discharge pressure transducers, chilled and condenser water RTD temperature sensors, and electronic expansion valve actuators.\nKalibrasi transduser tekanan suction/discharge refrigeran, sensor suhu RTD air dingin dan kondensor, serta aktuator katup ekspansi elektronik.`,
+      validationMethod: 'Evaporator and condenser Delta T validation, compressor vibration spectrum analysis, and oil differential pressure operating validation.\nValidasi Delta T evaporator dan kondensor, analisis spektrum vibrasi kompresor, dan validasi tekanan diferensial oli pelumas kompresor.',
+      challenge: 'Carrying out predictive maintenance without interrupting continuous chilled water flow to live customer computing infrastructure.\nMelaksanakan pemeliharaan prediktif tanpa mengganggu aliran air dingin kontinu ke infrastruktur komputasi pelanggan yang sedang aktif.',
+      mitigation: 'Maintaining redundant N+1 chiller staging, continuous monitoring of header pressure, and execution during pre-approved facility maintenance windows.\nMenjaga kesiapan sistem chiller redundan N+1, pemantauan tekanan header secara kontinu, dan eksekusi pada jadwal pemeliharaan fasilitas yang telah disetujui.',
+      lessonLearned: 'Tracking daily refrigerant pressure-temperature log curves allows proactive identification of minor micro-leaks prior to low-pressure alarm thresholds.\nMemantau kurva harian tekanan-suhu refrigeran memungkinkan deteksi dini kebocoran mikro sebelum menyentuh batas alarm tekanan rendah.',
+      shortTermRec: 'Inspect compressor oil levels and color, verify refrigerant charge through sight glasses, and inspect header isolation valves.\nPeriksa level dan kejernihan oli kompresor, verifikasi kondisi refrigeran melalui sight glass, dan periksa katup isolasi header.',
+      longTermRec: 'Schedule comprehensive compressor oil laboratory spectrographic analysis and annual condenser tube eddy current testing.\nJadwalkan analisis spektrografi oli kompresor di laboratorium terakreditasi dan pengujian eddy current pada pipa kondensor tahunan.'
+    };
+  }
+
+  // 9. COOLING TOWER
+  if (clean.includes('cooling tower') || clean === 'ct') {
+    return {
+      id: 'cooling_tower',
+      name: 'Cooling Tower System',
+      categoryDomain: 'HVAC & COOLING SYSTEM',
+      systemOverview: 'Cooling towers reject heat from condenser water into the atmosphere via evaporative cooling, ensuring optimal chiller condensation efficiency and system longevity.\nCooling tower melepaskan panas dari air kondensor ke atmosfer melalui metode pendinginan evaporatif, menjamin efisiensi kondensasi chiller yang optimal.',
+      calibration: `Vibration switch safety trip calibration, water basin level transmitter calibration, and automated chemical dosing probe calibration.\nKalibrasi batas getaran sakelar proteksi vibrasi, kalibrasi pemancar level air basin, dan kalibrasi probe injeksi kimia otomatis.`,
+      validationMethod: 'Condenser water flow rate validation, cooling tower approach temperature measurement, and fan motor dynamic vibration spectrum analysis.\nValidasi debit aliran air kondensor, pengukuran approach temperature cooling tower, dan analisis spektrum getaran dinamis motor kipas.',
+      challenge: 'Outdoor environmental dust exposure and airborne contaminants accelerating scale accumulation and bio-fouling within tower fill media.\nPaparan debu lingkungan luar dan kontaminan udara mempercepat penumpukan kerak dan lumut pada media fill pack cooling tower.',
+      mitigation: 'Implementation of scheduled dual-tower cell rotation, high-pressure eco-friendly basin washing, and continuous biocidal water treatment.\nPenerapan rotasi sel tower ganda secara terjadwal, pencucian basin bertekanan ramah lingkungan, dan pemberian biosida pengolah air secara kontinu.',
+      lessonLearned: 'Maintaining precise water basin chemical conductivity and automated blowdown cycles completely prevents calcium scaling on chiller tubes.\nMenjaga konduktivitas kimia basin air dan siklus blowdown otomatis secara presisi mencegah timbulnya kerak kalsium pada tabung chiller.',
+      shortTermRec: 'Clean debris strainers and spray nozzles, inspect fan drive belt tension, and test basin automated water fill float valves.\nBersihkan saringan debris dan nozzle semprot, periksa ketegangan drive belt kipas, dan uji katup pelampung pengisian air otomatis basin.',
+      longTermRec: 'Conduct dynamic balancing of cooling tower fan impellers and inspect structural integrity of FRP casing and internal fill media.\nLakukan dynamic balancing pada impeller kipas cooling tower dan periksa integritas struktural casing FRP serta media fill internal.'
+    };
+  }
+
+  // 10. COOLING PUMP
+  if (clean.includes('pump') || clean.includes('pompa')) {
+    return {
+      id: 'cooling_pump',
+      name: 'Chilled & Condenser Water Pump',
+      categoryDomain: 'HVAC & COOLING SYSTEM',
+      systemOverview: 'Primary and secondary chilled water and condenser water pumps circulate water loops between chillers, cooling towers, and data hall heat exchangers with optimal hydraulic efficiency.\nPompa air dingin dan pompa air kondensor mensirkulasikan air antara chiller, cooling tower, dan penukar panas data hall dengan efisiensi hidrolik optimal.',
+      calibration: `Differential pressure transmitter calibration across pump suction/discharge headers and VFD speed feedback calibration.\nKalibrasi pemancar beda tekanan pada header suction/discharge pompa dan kalibrasi feedback kecepatan VFD.`,
+      validationMethod: 'Hydraulic flow rate measurement, pump vibration spectrum analysis (bearing defect frequencies), and mechanical seal leakage checks.\nPengukuran debit aliran hidrolik, analisis spektrum getaran pompa (deteksi frekuensi kerusakan bearing), dan pemeriksaan kebocoran mechanical seal.',
+      challenge: 'Preventing hydraulic cavitation and pipe pressure spikes during automated pump auto-changeover sequences.\nMencegah kavitasi hidrolik dan lonjakan tekanan pipa selama sekuens pergantian otomatis pompa (auto-changeover).',
+      mitigation: 'Gradual ramp-down and ramp-up VFD frequency control and maintaining proper suction head pressure at all times.\nPengaturan frekuensi VFD secara bertahap (soft start/stop) dan menjaga tekanan suction head sesuai spesifikasi.',
+      lessonLearned: 'Laser shaft alignment between motor and pump significantly extends mechanical seal and bearing lifespan.\nPenjajaran poros motor dan pompa menggunakan laser alignment secara signifikan memperpanjang umur pakai mechanical seal dan bearing.',
+      shortTermRec: 'Lubricate pump bearings with high-temperature synthetic grease and check mechanical seal gland leakage.\nLumasi bearing pompa dengan grease sintetis tahan panas dan periksa kelayakan mechanical seal.',
+      longTermRec: 'Conduct complete laser alignment and dynamic balancing of pump impellers during scheduled plant shutdowns.\nLaksanakan laser alignment menyeluruh dan penyeimbangan dinamis impeller pompa pada jadwal shutdown pabrik.'
+    };
+  }
+
+  // 11. GENERATOR & FUEL SYSTEM
+  if (clean.includes('generator') || clean.includes('genset') || clean.includes('fuel')) {
+    return {
+      id: 'generator',
+      name: 'Emergency Diesel Generator & Fuel System',
+      categoryDomain: 'ELECTRICAL & POWER DISTRIBUTION',
+      systemOverview: 'Emergency diesel generator sets provide resilient backup electrical power during utility grid outages, ensuring continuous facility operations and data integrity.\nGenset diesel darurat menyediakan pasokan listrik cadangan yang andal saat terjadi pemadaman listrik PLN, memastikan kontinuitas operasional fasilitas dan integritas data.',
+      calibration: `Electronic speed governor calibration, Automatic Voltage Regulator (AVR) voltage setpoint calibration, and oil pressure / water temperature sensor calibration.\nKalibrasi governor kecepatan elektronik, kalibrasi tegangan Automatic Voltage Regulator (AVR), dan kalibrasi sensor tekanan oli serta suhu cairan pendingin.`,
+      validationMethod: 'Automated engine cranking and transfer time validation, 24V starting battery internal conductance testing, and dynamic load acceptance validation.\nValidasi waktu starter dan transfer otomatis, pengujian konduktansi internal baterai starter 24V, dan validasi daya tanggap pembebanan dinamis.',
+      challenge: 'Simulating black-start generator emergency transfer tests without introducing power glitches or harmonics into active server computing loads.\nMelakukan simulasi uji transfer darurat genset (black-start) tanpa menimbulkan lonjakan tegangan atau harmonisa pada beban server yang sedang aktif.',
+      mitigation: 'Utilizing synchronized closed-transition transfer switches (overlap switching) and coordinating pre-test load status with the facility operations team.\nMenggunakan transfer switch sinkron closed-transition (overlap switching) dan mengoordinasikan status beban pra-pengujian bersama tim operasional fasilitas.',
+      lessonLearned: 'Ensuring fresh fuel polishing and maintaining battery float charger health guarantees 100% start reliability during unexpected grid failures.\nMelakukan pembersihan kualitas bahan bakar (fuel polishing) dan menjaga kesehatan charger baterai menjamin keandalan start 100% saat gangguan PLN.',
+      shortTermRec: 'Check engine oil and coolant levels, test block heater temperatures, and inspect fuel day-tank level gauges and valves.\nPeriksa level oli mesin dan cairan pendingin, uji temperatur pemanas blok silinder, dan periksa indikator level tangki harian bahan bakar.',
+      longTermRec: 'Execute annual full-load resistive load bank testing for 4 hours and schedule fuel storage tank bottom sludge filtration.\nLaksanakan uji beban penuh dengan load bank resistif selama 4 jam per tahun dan jadwalkan penyaringan endapan tangki penyimpanan bahan bakar.'
+    };
+  }
+
+  // 12. LV PANEL
+  if (clean.includes('lv panel') || clean === 'lv' || clean.includes('ldb') || clean.includes('rdb')) {
+    return {
+      id: 'lv_panel',
+      name: 'Low Voltage Main Distribution Panel (LV Panel)',
+      categoryDomain: 'ELECTRICAL & POWER DISTRIBUTION',
+      systemOverview: 'Low Voltage distribution panels receive, protect, and route 400V 3-phase electrical power to critical facility infrastructure and sub-distribution boards.\nPanel distribusi tegangan rendah (LV Panel) menerima, melindungi, dan menyalurkan daya listrik 3-fasa 400V ke infrastruktur fasilitas kritikal dan sub-panel distribusi.',
+      calibration: `Air Circuit Breaker (ACB) protection trip unit calibration (LSI parameters), multi-function digital meter calibration, and phase current balance verification.\nKalibrasi unit proteksi trip Air Circuit Breaker (parameter LSI), kalibrasi meteran digital multifungsi, dan verifikasi keseimbangan arus fasa.`,
+      validationMethod: 'ACB contact resistance measurement (micro-ohmmeter), secondary injection testing of overcurrent releases, and thermal infrared scanning under load.\nPengukuran tahanan kontak ACB (mikro-ohmmeter), uji injeksi sekunder pelepasan arus lebih, dan pemindaian inframerah termal saat berbeban.',
+      challenge: 'Performing live thermography and visual inspections on high-current main busbars with strict electrical shock and arc-flash prevention protocols.\nMelakukan termografi dan inspeksi visual langsung pada busbar utama berarus tinggi dengan protokol pencegahan sengatan listrik dan arc flash yang ketat.',
+      mitigation: 'Strict use of NFPA 70E certified arc-flash PPE, insulated diagnostic probes, and pre-planned work boundaries supervised by an HSE officer.\nPenggunaan APD arc-flash bersertifikat NFPA 70E, probe diagnostik berinsulasi, dan pembatasan perimeter area kerja yang diawasi petugas K3.',
+      lessonLearned: 'Routine torque auditing and thermographic monitoring of busbar joint hardware prevents catastrophic thermal connection runaway.\nAudit torsi berkala dan pemantauan termografi pada sambungan busbar mencegah kenaikan suhu berlebih yang dapat merusak koneksi.',
+      shortTermRec: 'Clean external cubicles, inspect digital metering voltage indicators, and verify breaker mechanical status flags.\nBersihkan bagian luar kubikel, periksa indikator tegangan meteran digital, dan verifikasi bendera status mekanikal breaker.',
+      longTermRec: 'Perform scheduled shut-down busbar torque checks and comprehensive ACB electronic trip unit secondary injection certification.\nLakukan pemeriksaan torsi baut busbar saat jadwal shutdown dan sertifikasi injeksi sekunder unit trip elektronik ACB komprehensif.'
+    };
+  }
+
+  // 13. PDU PANEL
+  if (clean.includes('pdu')) {
+    return {
+      id: 'pdu',
+      name: 'Power Distribution Unit (PDU)',
+      categoryDomain: 'ELECTRICAL & POWER DISTRIBUTION',
+      systemOverview: 'Power Distribution Units condition, monitor, and distribute isolated electrical power directly to server cabinet rows and critical IT loads within data halls.\nPower Distribution Unit (PDU) mengondisikan, memantau, dan mendistribusikan daya listrik terisolasi langsung ke barisan rak server dan beban IT kritikal di data hall.',
+      calibration: `Branch circuit monitoring system (BCMS) current transformer calibration, static transfer switch (STS) transfer voltage threshold calibration, and ground fault relay calibration.\nKalibrasi sensor transformator arus Branch Circuit Monitoring System (BCMS), kalibrasi ambang batas tegangan transfer STS, dan kalibrasi relay gangguan tanah.`,
+      validationMethod: 'Branch breaker thermal scanning, STS millisecond sub-cycle transfer validation (< 4ms), and ground bus potential measurement.\nTermografi termal breaker cabang, validasi transfer sub-siklus milidetik STS (< 4ms), dan pengukuran potensial bus pembumian.',
+      challenge: 'Conducting diagnostics within live white space data halls with zero disturbance to customer production server operations.\nMelaksanakan diagnostik di dalam ruang data hall aktif tanpa gangguan sedikit pun terhadap operasional server produksi pelanggan.',
+      mitigation: 'Strict clean-room data hall protocols, HEPA vacuum filtration, non-magnetic insulated hand tools, and dual-technician peer checks.\nProtokol ketat kebersihan data hall, filtrasi vakum HEPA, peralatan tangan berinsulasi non-magnetik, dan verifikasi silang dua teknisi.',
+      lessonLearned: 'Continuous monitoring of phase load balance on branch circuits prevents localized transformer saturation and neutral conductor overheating.\nPemantauan kontinu keseimbangan beban fasa pada sirkuit cabang mencegah saturasi transformator lokal dan panas berlebih pada konduktor netral.',
+      shortTermRec: 'Record branch circuit loading percentages, check front panel LED display statuses, and verify environmental intake temperatures.\nCatat persentase beban sirkuit cabang, periksa status tampilan LED panel depan, dan verifikasi temperatur udara masuk lingkungan.',
+      longTermRec: 'Perform comprehensive thermal imaging under peak IT load conditions and audit isolation transformer winding harmonic losses.\nLakukan pemindaian termal komprehensif saat kondisi beban puncak IT dan audit rugi-rugi harmonisa belitan transformator isolasi.'
+    };
+  }
+
+  // 14. UPS & BATTERY BANK
+  if (clean.includes('ups')) {
+    return {
+      id: 'ups',
+      name: 'UPS & Battery Bank System',
+      categoryDomain: 'ELECTRICAL & POWER DISTRIBUTION',
+      systemOverview: 'Uninterruptible Power Supply (UPS) units and modular battery banks provide instantaneous, seamless emergency power bridge to ensure zero interruption to computing operations.\nSistem UPS dan bank baterai modular menyediakan pasokan daya darurat seketika tanpa jeda untuk menjamin ketiadaan gangguan pada operasional komputasi.',
+      calibration: `Inverter output voltage and frequency regulation calibration, DC bus float charging voltage calibration, and battery internal conductance reference calibration.\nKalibrasi regulasi tegangan dan frekuensi output inverter, kalibrasi tegangan pengisian float bus DC, dan kalibrasi referensi konduktansi internal baterai.`,
+      validationMethod: 'Static bypass transfer speed validation, battery cell internal resistance / conductance testing, and thermal infrared scanning on battery inter-cell busbars.\nValidasi kecepatan transfer static bypass, pengujian resistansi/konduktansi internal sel baterai, dan pemindaian termografi inframerah pada busbar antarsel baterai.',
+      challenge: 'Handling high-voltage DC battery strings (> 480 VDC) requiring extreme caution against accidental terminal short-circuits during maintenance.\nMenangani string baterai DC tegangan tinggi (> 480 VDC) yang menuntut kehati-hatian ekstrem terhadap bahaya korsleting terminal selama pemeliharaan.',
+      mitigation: 'Use of insulated 1000V rated hand tools, electrical safety face shields, acid-resistant protective gear, and strict string isolation procedures.\nPenggunaan peralatan tangan berinsulasi 1000V, pelindung wajah keselamatan listrik, perlengkapan tahan asam, dan prosedur isolasi string yang ketat.',
+      lessonLearned: 'Quarterly conductance trending of battery cells pinpoints failing cells months before they collapse during an actual power anomaly.\nPemantauan tren konduktansi kuartalan sel baterai mendeteksi sel yang melemah berbulan-bulan sebelum gagal saat terjadi gangguan daya sesungguhnya.',
+      shortTermRec: 'Measure individual cell float voltages, verify battery room ambient temperature (20-25°C), and inspect terminals for oxidation.\nUkur tegangan float tiap sel baterai, verifikasi suhu ruang baterai (20-25°C), dan periksa terminal dari tanda-tanda oksidasi.',
+      longTermRec: 'Perform controlled battery capacity discharge testing and replace battery cells exhibiting greater than 20% conductance degradation.\nLakukan uji pelepasan kapasitas baterai terkendali dan ganti sel baterai yang mengalami degradasi konduktansi lebih dari 20%.'
+    };
+  }
+
+  // 15. FSS & FIRE PROTECTION
+  if (clean.includes('fss') || clean.includes('vesda') || clean.includes('inergen') || clean.includes('fire')) {
+    return {
+      id: 'fss',
+      name: 'Fire Suppression System (FSS & VESDA)',
+      categoryDomain: 'FIRE, SAFETY & FACILITY SYSTEM',
+      systemOverview: 'Clean agent fire suppression and aspirating smoke detection (VESDA) systems safeguard personnel and mission-critical electronics by detecting and suppressing combustion instantly without water damage.\nSistem pemadam api gas bersih dan deteksi asap aspirasi (VESDA) melindungi personel dan peralatan elektronik kritikal dengan mendeteksi dan memadamkan kebakaran seketika tanpa kerusakan akibat air.',
+      calibration: `VESDA optical sensor obscuration sensitivity calibration, gas cylinder pressure transmitter calibration, and abort switch delay timer calibration.\nKalibrasi sensitivitas optical obscuration sensor VESDA, kalibrasi transmitter tekanan tabung gas, dan kalibrasi jeda waktu sakelar abort.`,
+      validationMethod: 'Smoke aspiration transit time testing (< 60 seconds), fire alarm control panel (FACP) zone notification validation, and solenoid actuator circuit continuity testing with disconnected discharge heads.\nPengujian waktu transit aspirasi asap (< 60 detik), validasi notifikasi zona panel kontrol fire alarm, dan uji kontinuitas sirkuit aktuator solenoid dengan kepala discharge terlepas.',
+      challenge: 'Preventing accidental clean agent discharge during maintenance testing, which would result in severe financial and environmental impact.\nMencegah terjadinya pelepasan gas pemadam secara tidak sengaja selama pengujian, yang dapat menimbulkan kerugian finansial dan dampak lingkungan yang besar.',
+      mitigation: 'Mandatory physical installation of mechanical safety lock pins and electrical actuator disconnects prior to any alarm simulation testing.\nWajib memasang pin pengunci mekanikal keselamatan fisik dan melepas konektor aktuator elektrik sebelum melakukan simulasi pengujian alarm.',
+      lessonLearned: 'Regular cleaning of VESDA aspirating pipe intake holes prevents dust clogging and false aspiration airflow trouble alerts.\nPembersihan berkala pada lubang sampling pipa aspirasi VESDA mencegah penyumbatan debu dan alarm gangguan aliran udara semu.',
+      shortTermRec: 'Inspect clean agent cylinder pressure gauges, clean aspiration pipe sampling holes, and check FACP status for zero trouble flags.\nPeriksa manometer tekanan tabung gas bersih, bersihkan lubang sampling pipa aspirasi, dan pastikan panel FACP bebas dari indikasi gangguan.',
+      longTermRec: 'Perform hydro-testing of pressure vessels per national safety regulations and calibrate all clean agent weighing load cells.\nLaksanakan pengujian hidrostatik tabung bertekanan sesuai regulasi keselamatan nasional dan kalibrasi load cell penimbang tabung gas bersih.'
+    };
+  }
+
+  // 16. PRE-ACTION SYSTEM
+  if (clean.includes('preaction') || clean.includes('pre-action')) {
+    return {
+      id: 'preaction',
+      name: 'Pre-Action Sprinkler System',
+      categoryDomain: 'FIRE, SAFETY & FACILITY SYSTEM',
+      systemOverview: 'Pre-action systems combine dry pipe sprinkler networks with electric smoke detection to prevent accidental water release in sensitive computer rooms until verified heat and smoke are confirmed.\nSistem pre-action menggabungkan jaringan pipa sprinkler kering dengan deteksi asap elektrik untuk mencegah semburan air tidak sengaja di ruang server hingga terkonfirmasi panas dan asap secara bersamaan.',
+      calibration: `Air maintenance device pressure switch calibration, solenoid release valve timer calibration, and water motor gong pressure switch calibration.\nKalibrasi sakelar tekanan perangkat pemelihara tekanan udara, kalibrasi timer katup solenoid release, dan kalibrasi sakelar tekanan gong motor air.`,
+      validationMethod: 'Low-pressure pneumatic air supervisory alarm testing, solenoid release actuation validation, and main drain water flow rate validation.\nPengujian alarm pengawasan tekanan udara pneumatik rendah, validasi operasi pelepasan katup solenoid, dan validasi debit aliran uji main drain.',
+      challenge: 'Executing valve trip testing safely without allowing actual water to enter dry pipes over active computing hardware racks.\nMelaksanakan pengujian trip katup secara aman tanpa membiarkan air masuk ke dalam pipa kering di atas rak server yang sedang beroperasi.',
+      mitigation: 'Locking downstream riser control valves, conducting dry pneumatic simulation tests, and draining drip legs completely.\nMenutup katup kontrol riser hilir, melaksanakan pengujian simulasi pneumatik kering, dan mengeringkan drip leg secara menyeluruh.',
+      lessonLearned: 'Maintaining steady compressor supervisory air pressure prevents false low-pressure supervisory alarms at the central monitoring panel.\nMenjaga stabilitas tekanan udara pengawas kompresor mencegah timbulnya alarm gangguan tekanan rendah semu pada panel pemantau pusat.',
+      shortTermRec: 'Check supervisory air pressure (standard 1.5 - 2.5 bar), inspect riser gauge readings, and verify drainage valve seal integrity.\nPeriksa tekanan udara pengawas (standar 1.5 - 2.5 bar), periksa pembacaan manometer riser, dan verifikasi kerapatan katup drainase.',
+      longTermRec: 'Perform annual full-flow main drain testing to measure supply water pressure drop and verify riser check valve internal clapper seals.\nLaksanakan uji aliran penuh main drain tahunan untuk mengukur penurunan tekanan pasokan air dan periksa kondisi katup penahan riser.'
+    };
+  }
+
+  // 17. CRAC / PAC PRECISION COOLING
+  if (clean.includes('crac') || clean.includes('pac')) {
+    return {
+      id: 'crac',
+      name: 'CRAC / PAC Precision Cooling Unit',
+      categoryDomain: 'HVAC & COOLING SYSTEM',
+      systemOverview: 'Precision Air Conditioning (PAC/CRAC) units regulate temperature and relative humidity within strict data hall tolerances to protect IT hardware against thermal stress and static discharge.\nPengondisi udara presisi (PAC/CRAC) mengatur temperatur dan kelembaban relatif data hall secara presisi guna melindungi perangkat IT dari stres termal dan listrik statis.',
+      calibration: `Supply/return air temperature and humidity sensor calibration, electronic expansion valve stepping calibration, and filter clogging differential pressure calibration.\nKalibrasi sensor suhu dan kelembaban udara supply/return, kalibrasi katup ekspansi elektronik, dan kalibrasi sensor beda tekanan filter kotor.`,
+      validationMethod: 'Airflow velocity measurement across underfloor plenums, EC fan modulation validation, and humidifier/reheat operational validation.\nPengukuran kecepatan aliran udara underfloor, validasi modulasi putaran kipas EC fan, dan validasi operasional humidifier serta pemanas reheat.',
+      challenge: 'Performing component servicing within pressurized raised-floor white spaces without creating air pressure drops under adjacent server racks.\nMelakukan servis komponen di ruang raised floor bertekanan tanpa menyebabkan penurunan tekanan udara dingin pada rak server terdekat.',
+      mitigation: 'Using containment blanking panels, staging maintenance on redundant units, and monitoring underfloor static pressure continuously.\nMenggunakan sekat blanking panel, melakukan pemeliharaan bergantian pada unit redundan, dan memantau tekanan statis underfloor secara kontinu.',
+      lessonLearned: 'Proactive replacement of pre-filters and steam humidifier canisters prevents sudden humidity drops and high data hall temperatures.\nPenggantian berkala pre-filter dan tabung humidifier uap secara proaktif mencegah penurunan kelembaban mendadak dan kenaikan suhu data hall.',
+      shortTermRec: 'Replace dirty air filters, clean condensation drip pans, and verify EC fan motor vibration levels.\nGanti filter udara yang kotor, bersihkan bak penampung kondensat, dan periksa tingkat vibrasi motor EC fan.',
+      longTermRec: 'Perform annual ultrasonic coil cleaning and recalibrate microprocessor cooling curve setpoints against ASHRAE TC9.9 guidelines.\nLakukan pembersihan koil pendingin ultrasonik tahunan dan kalibrasi ulang kurva pendinginan mikroprosesor sesuai standar ASHRAE TC9.9.'
+    };
+  }
+
+  // 18. LIGHTNING PROTECTION & GROUNDING
+  if (clean.includes('lightning') || clean.includes('grounding') || clean.includes('lps')) {
+    return {
+      id: 'lightning_grounding',
+      name: 'Lightning Protection & Grounding Grid',
+      categoryDomain: 'ELECTRICAL & POWER DISTRIBUTION',
+      systemOverview: 'A lightning protection and grounding mesh safely intercepts and dissipates atmospheric lightning discharges and transient overvoltages directly into earth ground.\nSistem proteksi petir dan jala pembumian menangkap dan menyalurkan arus sambaran petir atmosfer dan tegangan transien langsung ke tanah secara aman.',
+      calibration: `Earth resistance tester calibration against certified precision standards, and lightning strike counter trigger calibration.\nKalibrasi alat ukur tahanan pentanahan terhadap standar presisi terakreditasi, dan kalibrasi pemicu penghitung sambaran petir.`,
+      validationMethod: 'Fall-of-Potential earth resistance testing (< 1.0 Ohm for data center mesh), down-conductor continuity verification, and strike counter log verification.\nPengujian tahanan pembumian metode Fall-of-Potential (< 1.0 Ohm untuk mesh data center), verifikasi kontinuitas konduktor penyalur petir, dan verifikasi counter sambaran.',
+      challenge: 'Accessing rooftop air terminals during windy or rainy weather conditions with lightning hazard risks.\nMengakses terminal penangkal petir di atap gedung saat cuaca berangin atau hujan yang memiliki risiko sambaran petir.',
+      mitigation: 'Strict meteorological tracking, scheduling rooftop inspections during dry clear weather, and using certified harness anchors.\nPemantauan prakiraan cuaca ketat, penjadwalan inspeksi atap saat cuaca cerah dan kering, serta penggunaan titik jangkar harness tersertifikasi.',
+      lessonLearned: 'Ensuring tight CAD-welded connections and corrosion protection on ground inspection pits maintains low earth impedance year-round.\nMemastikan sambungan las eksotermik (CAD-weld) rapat dan anti-korosi pada bak kontrol pembumian menjaga impedansi tanah tetap rendah sepanjang tahun.',
+      shortTermRec: 'Inspect rooftop air terminal tips, verify grounding pit cover seals, and record strike counter readings.\nPeriksa ujung tombak penangkal petir di atap, verifikasi penutup bak kontrol pembumian, dan catat pembacaan counter petir.',
+      longTermRec: 'Conduct comprehensive multi-point earth grid resistance mapping and inspect buried earthing ring continuity annually.\nLaksanakan pemetaan tahanan jala pembumian multi-titik komprehensif dan inspeksi kontinuitas cincin pembumian tertanam secara tahunan.'
+    };
+  }
+
+  // 19. VRV / VRF
+  if (clean.includes('vrv') || clean.includes('vrf')) {
+    return {
+      id: 'vrv',
+      name: 'VRV / VRF Air Conditioning System',
+      categoryDomain: 'HVAC & COOLING SYSTEM',
+      systemOverview: 'Variable Refrigerant Volume (VRV/VRF) systems provide decentralized multi-zone cooling by modulating refrigerant mass flow to match fluctuating office and technical room heat loads.\nSistem VRV/VRF menyediakan pendinginan multi-zona terdesentralisasi dengan memodulasi laju aliran refrigeran sesuai fluktuasi beban panas ruang kantor dan teknis.',
+      calibration: `Inverter compressor frequency feedback calibration, electronic expansion valve orifice stepping calibration, and thermistor temperature calibration.\nKalibrasi umpan balik frekuensi kompresor inverter, kalibrasi langkah bukaan katup ekspansi elektronik, dan kalibrasi termistor suhu.`,
+      validationMethod: 'Refrigerant high/low pressure balance testing, outdoor fan motor current measurement, and indoor unit evaporator Delta T validation.\nPengujian keseimbangan tekanan tinggi/rendah refrigeran, pengukuran arus motor kipas outdoor, dan validasi Delta T evaporator unit indoor.',
+      challenge: 'Troubleshooting extensive branched copper refrigerant piping hidden above technical ceilings without destructive wall access.\nMelakukan pelacakan kebocoran pipa tembaga refrigeran yang bercabang panjang di atas plafon teknis tanpa merusak dinding.',
+      mitigation: 'Using electronic halogen refrigerant leak detectors, ultrasonic listening devices, and nitrogen pressure holding tests.\nMenggunakan detektor kebocoran refrigeran halogen elektronik, alat dengar ultrasonik, dan pengujian penahanan tekanan gas nitrogen.',
+      lessonLearned: 'Regular cleaning of outdoor condenser fins prevents high discharge pressure trips during hot tropical peak hours.\nPembersihan rutin kisi-kisi kondensor outdoor mencegah trip akibat tekanan discharge tinggi saat cuaca panas terik.',
+      shortTermRec: 'Clean indoor unit filters, flush condensate drain lines, and inspect outdoor unit fan clearances.\nBersihkan filter unit indoor, bilas saluran drainase kondensat, dan periksa kebebasan putaran kipas unit outdoor.',
+      longTermRec: 'Perform full system refrigerant charge auditing and electrical compressor winding insulation resistance testing annually.\nLakukan audit jumlah refrigeran sistem menyeluruh dan uji tahanan isolasi belitan kompresor secara tahunan.'
+    };
+  }
+
+  // 20. WATER SOFTENER & WATER TREATMENT
+  if (clean.includes('water softener') || clean.includes('water treatment') || clean.includes('softener') || clean.includes('wtp')) {
+    return {
+      id: 'water_treatment',
+      name: 'Water Softener & Water Treatment Plant',
+      categoryDomain: 'HVAC & COOLING SYSTEM',
+      systemOverview: 'Water softening and chemical treatment facilities condition raw feed water to eliminate hardness ions (calcium/magnesium) and prevent scaling and corrosion in cooling water circuits.\nFasilitas pelunak air dan pengolahan kimia mengondisikan air baku untuk menghilangkan ion kesadahan (kalsium/magnesium) dan mencegah pengerakan serta korosi pada sirkuit pendingin.',
+      calibration: `Chemical dosing pump stroke/frequency calibration, digital conductivity meter calibration, and automatic regeneration water volume meter calibration.\nKalibrasi stroke/frekuensi pompa injeksi kimia, kalibrasi meter konduktivitas digital, dan kalibrasi meteran volume air regenerasi otomatis.`,
+      validationMethod: 'Chemical titration hardness analysis (Total Hardness < 10 ppm CaCO3), pH and conductivity validation, and automated multi-port valve cycle testing.\nAnalisis kesadahan titrasi kimia (Total Hardness < 10 ppm CaCO3), validasi pH dan konduktivitas, serta uji siklus katup multi-arah otomatis.',
+      challenge: 'Handling chemical reagent drums safely and ensuring continuous softened water feed without salt brine tank bridging.\nMenangani drum bahan kimia cair secara aman dan memastikan pasokan air lunak kontinu tanpa terjadi pengendapan garam pada brine tank.',
+      mitigation: 'Wearing chemical-resistant apron, nitrile gloves, safety goggles, and utilizing mechanical brine agitators.\nMenggunakan celemek tahan kimia, sarung tangan nitril, kacamata keselamatan, dan pengaduk mekanis brine tank.',
+      lessonLearned: 'Maintaining high purity solar salt crystals in brine tanks prevents valve nozzle fouling and incomplete ion-exchange resin regeneration.\nMenjaga kemurnian kristal garam pada tangki brine mencegah penyumbatan nozzle katup dan regenerasi resin pertukaran ion yang tidak tuntas.',
+      shortTermRec: 'Replenish salt in brine tank, inspect automatic multi-port valve seals, and test raw vs treated water hardness.\nIsi ulang garam pada tangki brine, periksa segel katup multi-arah otomatis, dan uji kesadahan air baku vs air hasil olahan.',
+      longTermRec: 'Perform resin bed core volume exchange testing and replace degraded cation exchange resin at 3-year service intervals.\nLaksanakan uji kapasitas pertukaran inti resin dan ganti resin kation yang terdegradasi pada interval servis 3 tahun.'
+    };
+  }
+
+  // UNIVERSAL DYNAMIC FALLBACK
+  return {
+    id: clean.replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') || 'equipment',
+    name: scopeName.trim(),
+    categoryDomain: clean.includes('electric') || clean.includes('panel') || clean.includes('power') || clean.includes('trafo') || clean.includes('ups') || clean.includes('cable') ? 'ELECTRICAL & POWER DISTRIBUTION' :
+                    clean.includes('cool') || clean.includes('chiller') || clean.includes('fan') || clean.includes('ac') || clean.includes('hvac') || clean.includes('air') ? 'HVAC & COOLING SYSTEM' :
+                    clean.includes('fire') || clean.includes('leak') || clean.includes('security') || clean.includes('gate') || clean.includes('door') || clean.includes('x-ray') ? 'FIRE, SAFETY & FACILITY SYSTEM' : 'GENERAL FACILITY INFRASTRUCTURE',
+    systemOverview: `${scopeName} is an integral facility asset operating within the data center infrastructure. Scheduled preventive maintenance preserves mechanical integrity, electrical reliability, operational efficiency, and mission-critical uptime standards.\n${scopeName} adalah aset fasilitas terintegrasi yang beroperasi di dalam infrastruktur data center. Pemeliharaan preventif berkala menjaga integritas mekanikal, keandalan elektrikal, efisiensi operasional, dan standar uptime kritikal.`,
+    calibration: `Inspection and calibration of operating setpoints, safety interlock sensors, and verification of operational parameters for ${scopeName}.\nInspeksi dan kalibrasi titik setting operasional, sensor interlock keselamatan, dan verifikasi parameter operasional untuk ${scopeName}.`,
+    validationMethod: `Comprehensive functional testing, sequence validation under load, and thermographic/metering verification for ${scopeName}.\nPengujian fungsional komprehensif, validasi sekuens di bawah pembebanan, dan verifikasi termografi/metering untuk ${scopeName}.`,
+    challenge: `Executing scheduled maintenance on ${scopeName} while maintaining continuous facility operations and full compliance with strict data center safety regulations.\nMelaksanakan pemeliharaan terjadwal pada ${scopeName} dengan tetap mempertahankan operasional fasilitas yang kontinu dan kepatuhan penuh terhadap regulasi keselamatan data center.`,
+    mitigation: `Execution strictly adhering to approved Method of Procedure (MOP), pre-work briefing, calibrated diagnostic tools, and active safety oversight.\nPelaksanaan mengikuti Method of Procedure (MOP) yang disetujui, briefing pra-kerja, penggunaan alat diagnostik terkalibrasi, dan pengawasan K3 aktif.`,
+    lessonLearned: `Routine preventive inspection and parameter trend analysis on ${scopeName} effectively prevents unexpected degradation and ensures uninterrupted system availability.\nInspeksi preventif rutin dan analisis tren parameter pada ${scopeName} efektif mencegah degradasi tak terduga dan memastikan ketersediaan sistem tanpa henti.`,
+    shortTermRec: `Perform visual cleaning, contact tightening, and verify normal operating parameters on ${scopeName}.\nLakukan pembersihan visual, pengetatan kontak, dan verifikasi parameter operasional normal pada ${scopeName}.`,
+    longTermRec: `Implement lifecycle component health monitoring and scheduled comprehensive diagnostic certification for ${scopeName}.\nTerapkan pemantauan kesehatan komponen siklus hidup dan sertifikasi diagnostik komprehensif terjadwal untuk ${scopeName}.`
+  };
+}
+
+/**
+ * Builds dynamic System Overview Table 21 for all scheduled equipment scopes (1 row per equipment)
+ */
+export function buildDynamicSystemOverviewTable21(scopes: string[]): FullMonthlyReportData['systemOverviewTable21'] {
+  const uniqueScopes = Array.from(new Set(scopes.map(s => (s || '').trim()).filter(Boolean)));
+  return uniqueScopes.map((scope, idx) => {
+    const prof = getEquipmentProfile(scope);
+    return {
+      no: idx + 1,
+      component: prof.name,
+      functionDesc: prof.systemOverview
+    };
+  });
+}
+
+/**
+ * Builds dynamic Calibration Table 30 for all scheduled equipment scopes (1 row per equipment)
+ */
+export function buildDynamicCalibrationTable30(scopes: string[], monthName: string = 'February', year: number = 2026): FullMonthlyReportData['calibrationTable30'] {
+  const uniqueScopes = Array.from(new Set(scopes.map(s => (s || '').trim()).filter(Boolean)));
+  return uniqueScopes.map((scope, idx) => {
+    const prof = getEquipmentProfile(scope, monthName, year);
+    return {
+      no: idx + 1,
+      component: prof.name,
+      calibrationDetail: prof.calibration
+    };
+  });
+}
+
+/**
+ * Builds dynamic Validation Methods Table 31 for all scheduled equipment scopes (1 row per equipment)
+ */
+export function buildDynamicValidationMethodsTable31(scopes: string[]): FullMonthlyReportData['validationMethodsTable31'] {
+  const uniqueScopes = Array.from(new Set(scopes.map(s => (s || '').trim()).filter(Boolean)));
+  return uniqueScopes.map((scope, idx) => {
+    const prof = getEquipmentProfile(scope);
+    return {
+      no: idx + 1,
+      component: prof.name,
+      validationMethod: prof.validationMethod
+    };
+  });
+}
+
+/**
+ * Builds dynamic Challenges Table 32 for all scheduled equipment scopes (1 row per equipment)
+ */
+export function buildDynamicChallengesTable32(scopes: string[], monthName: string = 'February'): FullMonthlyReportData['challengesTable32'] {
+  const uniqueScopes = Array.from(new Set(scopes.map(s => (s || '').trim()).filter(Boolean)));
+  return uniqueScopes.map((scope, idx) => {
+    const prof = getEquipmentProfile(scope, monthName);
+    return {
+      no: idx + 1,
+      component: prof.name,
+      challenge: prof.challenge
+    };
+  });
+}
+
+/**
+ * Builds dynamic Mitigation Table 33 for all scheduled equipment scopes (1 row per equipment)
+ */
+export function buildDynamicMitigationTable33(scopes: string[]): FullMonthlyReportData['mitigationTable33'] {
+  const uniqueScopes = Array.from(new Set(scopes.map(s => (s || '').trim()).filter(Boolean)));
+  return uniqueScopes.map((scope, idx) => {
+    const prof = getEquipmentProfile(scope);
+    return {
+      no: idx + 1,
+      component: prof.name,
+      mitigation: prof.mitigation
+    };
+  });
+}
+
+/**
+ * Builds dynamic Lessons Learned Table 34 for all scheduled equipment scopes (1 row per equipment)
+ */
+export function buildDynamicLessonsLearnedTable34(scopes: string[]): FullMonthlyReportData['lessonsLearnedTable34'] {
+  const uniqueScopes = Array.from(new Set(scopes.map(s => (s || '').trim()).filter(Boolean)));
+  return uniqueScopes.map((scope, idx) => {
+    const prof = getEquipmentProfile(scope);
+    return {
+      no: idx + 1,
+      component: prof.name,
+      lessonLearned: prof.lessonLearned
+    };
+  });
+}
+
+/**
+ * Builds dynamic Recommendations Table 35 for all scheduled equipment scopes,
+ * grouped logically by engineering domain with tailored short/long term actions.
+ */
+export function buildDynamicRecommendationsTable35(scopes: string[], monthName: string = 'February'): FullMonthlyReportData['recommendationsTable35'] {
+  const uniqueScopes = Array.from(new Set(scopes.map(s => (s || '').trim()).filter(Boolean)));
+  const profiles = uniqueScopes.map(s => getEquipmentProfile(s, monthName));
+
+  const domainGroups = new Map<string, EquipmentScopeProfile[]>();
+  profiles.forEach(p => {
+    const dom = p.categoryDomain || 'GENERAL FACILITY INFRASTRUCTURE';
+    if (!domainGroups.has(dom)) domainGroups.set(dom, []);
+    domainGroups.get(dom)!.push(p);
+  });
+
+  const result: FullMonthlyReportData['recommendationsTable35'] = [];
+  domainGroups.forEach((items, domainName) => {
+    result.push({
+      scope: domainName,
+      items: items.map((it, idx) => ({
+        no: idx + 1,
+        component: it.name,
+        shortTerm: it.shortTermRec,
+        longTerm: it.longTermRec
+      }))
+    });
+  });
+
+  return result;
+}
+
+/**
+ * Builds dynamic List of Tables for Page 4,
+ * dynamically reflecting the exact Task Performance tables scheduled.
+ */
+export function buildDynamicListOfTables(
+  taskPerfTables: any[] = [],
+  monthNameEn: string = 'February',
+  year: number = 2026
+): { title: string; page: string }[] {
+  const result: { title: string; page: string }[] = [];
+
+  // Table 1. Schedule
+  result.push({
+    title: `Table 1. Schedule Maintenance – ${monthNameEn} ${year}\nTabel 1. Jadwal Pemeliharaan Preventif – ${monthNameEn} ${year}`,
+    page: '5'
+  });
+
+  // Table 2..K+1: Task Performance
+  if (Array.isArray(taskPerfTables) && taskPerfTables.length > 0) {
+    taskPerfTables.forEach((t, idx) => {
+      const tNo = t.tableNo || (idx + 2);
+      const scope = t.scope || '';
+      result.push({
+        title: `Table ${tNo}. Total Task Performance ${scope}\nTabel ${tNo}. Kinerja Pekerjaan – ${scope}`,
+        page: String(6 + idx * 2)
+      });
+    });
+  } else {
+    const defaultScopes = [
+      "Chiller System", "Cooling Tower & Piping", "Cooling Pump", "Transformer",
+      "Generator & Fuel System", "MV & RMU Panel", "LV Panel", "UPS & Battery Bank",
+      "Power Distribution Unit (PDU)", "PAC / CRAC Precision Cooling", "Fire Alarm & Suppression",
+      "VESDA Early Warning", "Access Control & CCTV", "Lightning Protection & Grounding",
+      "Building Automation System (BAS)", "Water Treatment Plant"
+    ];
+    defaultScopes.forEach((sc, idx) => {
+      result.push({
+        title: `Table ${idx + 2}. Task Performance – ${sc}\nTabel ${idx + 2}. Kinerja Pekerjaan – ${sc}`,
+        page: String(6 + idx * 2)
+      });
+    });
+  }
+
+  // Standard subsequent NeutraDC template tables
+  const remainingTables = [
+    { title: "Table 18. Team Composition\nTabel 18. Susunan Tim Pemeliharaan", page: "218" },
+    { title: "Table 19. KPI Metric\nTabel 19. Metrik Indikator Kinerja Utama (KPI)", page: "218" },
+    { title: "Table 20. Equipment and System Details\nTabel 20. Daftar Detail Peralatan dan Aset BOQ", page: "220" },
+    { title: "Table 21. System Overview\nTabel 21. Gambaran Umum Fungsi Sistem", page: "236" },
+    { title: "Table 22. Scope of Work\nTabel 22. Ruang Lingkup Pekerjaan PM", page: "238" },
+    { title: "Table 23. Observation & Finding\nTabel 23. Observasi dan Temuan Lapangan", page: "252" },
+    { title: "Table 24. Root Cause Analysis – Electrical System\nTabel 24. Analisis Akar Masalah – Sistem Kelistrikan", page: "253" },
+    { title: "Table 25. Root Cause Analysis – Cooling System\nTabel 25. Analisis Akar Masalah – Sistem Pendingin", page: "254" },
+    { title: "Table 26. Root Cause Analysis – Fire & Safety System\nTabel 26. Analisis Akar Masalah – Sistem Kebakaran & K3", page: "254" },
+    { title: "Table 27. Root Cause Analysis – Civil & Architectural\nTabel 27. Analisis Akar Masalah – Sipil & Arsitektur", page: "255" },
+    { title: "Table 28. Finding Severity Matrix\nTabel 28. Matriks Tingkat Keparahan Temuan", page: "255" },
+    { title: "Table 29. Repair, Replacement & Services\nTabel 29. Perbaikan, Penggantian Suku Cadang & Servis", page: "256" },
+    { title: "Table 30. Calibration and Adjustments Performed\nTabel 30. Kalibrasi dan Penyesuaian Komponen", page: "258" },
+    { title: "Table 31. Validation Methods\nTabel 31. Metode Pengujian dan Validasi", page: "258" },
+    { title: "Table 32. Challenges Faced\nTabel 32. Tantangan yang Dihadapi", page: "259" },
+    { title: "Table 33. Mitigation Steps\nTabel 33. Langkah Mitigasi Risiko", page: "261" },
+    { title: "Table 34. Lessons Learned\nTabel 34. Pembelajaran Operasional", page: "263" },
+    { title: "Table 35. Recommendations and Future Action\nTabel 35. Rekomendasi dan Tindak Lanjut", page: "264" },
+    { title: "Table 36. Photo and Documentation Log\nTabel 36. Log Foto dan Dokumentasi Visual", page: "265" }
+  ];
+
+  result.push(...remainingTables);
+  return result;
+}
+
+/**
+ * Builds all downstream dynamic tables for given scopes and task performance tables.
+ */
+export function buildAllDynamicEquipmentTables(
+  scopes: string[],
+  taskPerfTables: any[] = [],
+  monthNameEn: string = 'February',
+  year: number = 2026
+) {
+  const uniqueScopes = Array.from(new Set(scopes.map(s => (s || '').trim()).filter(Boolean)));
+  const systemOverviewTable21 = buildDynamicSystemOverviewTable21(uniqueScopes);
+  const scopeOfWorkTable22 = uniqueScopes.map(s => getScopeOfWorkForScope(s));
+  const calibrationTable30 = buildDynamicCalibrationTable30(uniqueScopes, monthNameEn, year);
+  const validationMethodsTable31 = buildDynamicValidationMethodsTable31(uniqueScopes);
+  const challengesTable32 = buildDynamicChallengesTable32(uniqueScopes, monthNameEn);
+  const mitigationTable33 = buildDynamicMitigationTable33(uniqueScopes);
+  const lessonsLearnedTable34 = buildDynamicLessonsLearnedTable34(uniqueScopes);
+  const recommendationsTable35 = buildDynamicRecommendationsTable35(uniqueScopes, monthNameEn);
+  const listOfTables = buildDynamicListOfTables(taskPerfTables, monthNameEn, year);
+
+  const progressPmTable19 = uniqueScopes.map((scope, i) => ({
+    no: `${i + 1}.`,
+    activity: scope,
+    unit: getDefaultBoqUnitForDevice(scope),
+    planStart: `10 ${monthNameEn}`,
+    planFinish: `20 ${monthNameEn}`,
+    actualStart: `10 ${monthNameEn}`,
+    actualFinish: `20 ${monthNameEn}`,
+    actualUnit: getDefaultBoqUnitForDevice(scope),
+    pctFinish: '100%',
+    remark: ''
+  }));
+
+  return {
+    systemOverviewTable21,
+    scopeOfWorkTable22,
+    calibrationTable30,
+    validationMethodsTable31,
+    challengesTable32,
+    mitigationTable33,
+    lessonsLearnedTable34,
+    recommendationsTable35,
+    listOfTables,
+    progressPmTable19
   };
 }
 
@@ -3496,157 +4139,22 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
     });
   });
 
-  const systemOverviewTable21 = [
-    { no: 1, component: 'Chiller', functionDesc: 'A chiller is a cooling system that removes heat from water through a vapor-compression refrigeration cycle to provide chilled water for air conditioning or industrial processes. Proper maintenance is essential to ensure cooling performance, energy efficiency, system reliability, and operational safety.' },
-    { no: 2, component: 'Cooling Tower', functionDesc: 'A cooling tower is a heat exchanger system that removes heat from condenser water and releases it into the atmosphere through evaporative cooling. Proper maintenance is essential to ensure heat transfer efficiency, system reliability, water quality, and operational safety.' },
-    { no: 3, component: 'Transformer', functionDesc: 'A transformer is an electrical device that steps up or steps down voltage through electromagnetic induction to distribute electrical power efficiently. Proper maintenance is necessary to ensure system reliability, operational efficiency, insulation integrity, and operational safety.' },
-    { no: 4, component: 'Generator & Fuel system', functionDesc: 'Generators and fuel systems are backup power systems that convert mechanical energy into electrical energy, supported by a fuel system to ensure a continuous supply. Proper maintenance is essential to maintain operational reliability, combustion efficiency, readiness during emergencies, and operational safety.' },
-    { no: 5, component: 'LV Panel', functionDesc: 'An LV Panel is a low-voltage distribution panel designed to receive, control, protect, and distribute electrical power to loads. Proper maintenance is essential to ensure the reliability of power distribution, the integrity of electrical components, operational efficiency, and operational safety.' },
-    { no: 6, component: 'PDU Panel', functionDesc: 'A PDU panel is a power distribution panel that safely and reliably distributes and divides the electrical supply from the LV panel to equipment or end loads. Proper maintenance is necessary to ensure the reliability of power distribution, the integrity of components, operational efficiency, and operational safety.' },
-    { no: 7, component: 'FSS', functionDesc: 'An FSS is a fire protection system designed to automatically detect and extinguish fires to protect personnel, equipment, and facilities. Proper maintenance is essential to ensure the system’s reliability, operational readiness, and operational safety.' },
-    { no: 8, component: 'Pre-Action System', functionDesc: 'A pre-action system is a sprinkler-based fire protection system that requires a detection signal before water is released into the piping system, thereby minimizing the risk of unintended water discharge. Proper maintenance is necessary to ensure system reliability, operational readiness, and operational safety.' },
-    { no: 9, component: 'Lightning Protection System', functionDesc: 'A Lightning Protection System is a protection system designed to safely capture and divert lightning currents to the ground in order to protect buildings, equipment, and electrical installations. Proper maintenance is necessary to ensure the system’s effectiveness, the continuity of the grounding path, and operational safety.' },
-    { no: 10, component: 'VRV', functionDesc: 'VRV is an air conditioning system that adjusts the refrigerant flow rate according to the load requirements of multiple indoor units to provide efficient cooling. Proper maintenance is necessary to ensure cooling performance, energy efficiency, system reliability, and operational safety.' }
-  ];
+  const dynamicEquipmentTables = buildAllDynamicEquipmentTables(
+    targetScopes,
+    taskPerformanceTables,
+    monthNameEn,
+    year
+  );
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // 6. SCOPE OF WORK (Table 22) - 100% Dynamically Mapped to Scheduled Scopes
-  // ══════════════════════════════════════════════════════════════════════════
-  const scopeOfWorkTable22: ScopeOfWorkCategory[] = targetScopes.map(scopeName => getScopeOfWorkForScope(scopeName));
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // 7. OBSERVATION & FINDINGS (Table 23) from Real Findings or Real Abnormal Docs
-  // ══════════════════════════════════════════════════════════════════════════
-  const observationTable23: FullMonthlyReportData['observationTable23'] = [];
-
-  if (monthFindings.length > 0) {
-    // Group findings by system
-    const findingsBySys = new Map<string, any[]>();
-    monthFindings.forEach(f => {
-      const sys = f.system || f.category || 'Mechanical & Electrical';
-      if (!findingsBySys.has(sys)) findingsBySys.set(sys, []);
-      findingsBySys.get(sys)!.push(f);
-    });
-
-    findingsBySys.forEach((items, sysName) => {
-      observationTable23.push({
-        scope: sysName.toUpperCase(),
-        items: items.map((f, idx) => ({
-          no: idx + 1,
-          component: f.equipment || f.equipmentName || 'Facility Component',
-          conditionBefore: f.finding || f.description || 'Anomali terdeteksi saat inspeksi berkala.',
-          inspectionNotes: f.actionTaken || f.correctiveAction || 'Pemeriksaan lanjutan dan rekomendasi perbaikan.'
-        }))
-      });
-    });
-  } else {
-    // Check abnormal items from submitted monthly PDF docs
-    const abnormalDocs = monthPdfDocs.filter(d => d.hasAbnormal);
-    if (abnormalDocs.length > 0) {
-      observationTable23.push({
-        scope: 'FACILITY ANOMALIES RECORDED',
-        items: abnormalDocs.map((d, idx) => ({
-          no: idx + 1,
-          component: d.specificDetail || d.maintenanceName || 'Asset Unit',
-          conditionBefore: d.issues || 'Fluktuasi parameter / keausan komponen terdeteksi saat PM.',
-          inspectionNotes: d.recommendations || 'Telah dilakukan perbaikan awal dan monitoring lanjutan.'
-        }))
-      });
-    } else {
-      observationTable23.push({
-        scope: 'CHILLER & COOLING TOWER',
-        items: [
-          { no: 1, component: 'Expansion Joint Flange DN 350 (Chiller 1 & 2)', conditionBefore: 'Karat minor pada baut flange', inspectionNotes: 'Telah dilakukan re-tightening dan pembersihan permukaan isolator.' },
-          { no: 2, component: 'Cooling Tower Fan Belt', conditionBefore: 'Tension belt sedikit kendur', inspectionNotes: 'Telah disesuaikan tension belt sesuai spesifikasi standar pabrikan.' }
-        ]
-      });
-    }
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // 8. ROOT CAUSE ANALYSES
-  // ══════════════════════════════════════════════════════════════════════════
-  const rootCauseAnalyses: RootCauseItem[] = [
-    {
-      title: 'A. Chiller & Cooling System',
-      system: 'Chiller',
-      description: `Pada periode ${monthName} ${year}, chiller beroperasi dengan continuous load. Vibrasi normal kompresor dan laju sirkulasi air kondensor memerlukan pemantauan ketebalan gasket dan isolasi sambungan pipa secara berkala untuk menjaga stabilitas refrigerasi.`,
-      photos: monthPhotos.slice(0, 3).map(p => ({ caption: p.caption, url: p.photo }))
-    },
-    {
-      title: 'B. Electrical Power Distribution',
-      system: 'Electrical',
-      description: `Inspeksi thermovision pada panel LV dan trafo menunjukkan seluruh terminasi busbar berada dalam batas suhu aman (Delta T < 10°C). Baterai starting genset dipelihara dalam kondisi standby prima dengan resistansi internal teruji.`,
-      photos: monthPhotos.slice(3, 6).map(p => ({ caption: p.caption, url: p.photo }))
-    }
-  ];
-
-  // If monthPhotos is empty, fallback to clean placeholders
-  if (rootCauseAnalyses[0].photos.length === 0) {
-    rootCauseAnalyses[0].photos = [
-      { caption: `Inspeksi Kompresor ${monthName} ${year}`, url: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop&q=60' },
-      { caption: `Pengecekan Valve & Manifold ${monthName} ${year}`, url: 'https://images.unsplash.com/photo-1581092335397-9583fe92d232?w=500&auto=format&fit=crop&q=60' }
-    ];
-  }
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // 9. REPAIRS & SPAREPARTS (Table 29)
-  // ══════════════════════════════════════════════════════════════════════════
-  const repairsTable29 = monthRepairs;
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // 10. CALIBRATION (Table 30) & VALIDATION (Table 31)
-  // ══════════════════════════════════════════════════════════════════════════
-  const calibrationTable30 = [
-    { no: 1, component: 'Chiller', calibrationDetail: `Kalibrasi sensor temperatur (RTD Pt100) dan transducer tekanan refrigerant pada periode ${monthName} ${year}.` },
-    { no: 2, component: 'Cooling Tower', calibrationDetail: `Verifikasi balancing fan motor dan kalibrasi sensor level air make-up basin.` },
-    { no: 3, component: 'Transformer', calibrationDetail: `Pemeriksaan kalibrasi relay proteksi temperatur belitan dan winding thermistor.` },
-    { no: 4, component: 'Generator Set', calibrationDetail: `Kalibrasi governor speed controller dan automatic voltage regulator (AVR).` },
-    { no: 5, component: 'LV Panel & PDU', calibrationDetail: `Pengujian zero balance CT metering dan thermovision infrared scanning.` }
-  ];
-
-  const validationMethodsTable31 = [
-    { no: 1, component: 'Chiller', validationMethod: 'Pengukuran Delta T evaporator/kondensor, perbandingan manifold gauge vs display HMI, dan uji vibrasi kompresor.' },
-    { no: 2, component: 'Cooling Tower', validationMethod: 'Pengujian sirkulasi debit air, pemeriksaan visual fill pack media, dan pemantauan arus motor fan.' }
-  ];
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // 11. CHALLENGES, MITIGATION, LESSONS LEARNED & RECOMMENDATIONS
-  // ══════════════════════════════════════════════════════════════════════════
-  const challengesTable32 = [
-    { no: 1, component: 'Chiller & Cooling System', challenge: `Pemeliharaan preventif dilaksanakan saat data center aktif melayani beban kritis 24/7, memerlukan prosedur live non-intrusive.` },
-    { no: 2, component: 'Cooling Tower', challenge: `Kondisi cuaca dan debu lingkungan outdoor selama bulan ${monthName} menuntut pembersihan nozzle dan basin berkala.` },
-    { no: 3, component: 'Electrical Power', challenge: `Pelaksanaan thermovision scanning pada panel distribusi utama memerlukan koordinasi izin kerja LOTO yang ketat.` }
-  ];
-
-  const mitigationTable33 = [
-    { no: 1, component: 'Chiller & Cooling System', mitigation: 'Penerapan SOP live inspection, validasi parameter sensor non-intrusif, dan koordinasi bertahap unit backup redundancy N+1.' },
-    { no: 2, component: 'Cooling Tower', mitigation: 'Penjadwalan chemical dosing otomatis dan pembersihan fisik filler media secara bergantian.' },
-    { no: 3, component: 'Electrical Power', mitigation: 'Penggunaan kamera inframerah bersertifikat kalibrasi dan kepatuhan penuh APD K3 Listrik.' }
-  ];
-
-  const lessonsLearnedTable34 = [
-    { no: 1, component: 'Chiller', lessonLearned: 'Pencatatan tren harian parameter refrigerasi sangat efektif mendeteksi anomali tekanan sebelum timbul alarm fault.' },
-    { no: 2, component: 'Cooling Tower', lessonLearned: 'Manajemen blowdown dan kualitas air sirkulasi mencegah timbulnya kerak kalsium pada kondensor.' },
-    { no: 3, component: 'Generator Set', lessonLearned: 'Pengecekan mingguan voltase float charge baterai menjamin kesiapan darurat 100% saat terjadi gangguan PLN.' }
-  ];
-
-  const recommendationsTable35 = [
-    {
-      scope: 'CHILLER & HVAC SYSTEM',
-      items: [
-        { no: 1, component: 'Chilled Water Pumps (CHWP)', shortTerm: `Lakukan pelumasan bearing grease berkala setiap 500 jam pada bulan ${monthName}.`, longTerm: 'Implementasi vibration monitoring online untuk deteksi dini unbalance/misalignment.' },
-        { no: 2, component: 'Cooling Tower Fan Belt', shortTerm: 'Pastikan alignment puli dan ketegangan belt diperiksa setiap 2 minggu.', longTerm: 'Jadwalkan penggantian berkala set belt baru setiap 6 bulan operasional.' }
-      ]
-    },
-    {
-      scope: 'ELECTRICAL & POWER SYSTEM',
-      items: [
-        { no: 1, component: 'Trafo & MV Panel', shortTerm: 'Lakukan pembersihan kisi ventilasi dan pemantauan suhu belitan.', longTerm: 'Jadwalkan shutdown maintenance tahunan untuk pengujian DGA dan isolasi menyeluruh.' },
-        { no: 2, component: 'Battery Starter Genset', shortTerm: 'Jaga kebersihan kutub terminal dari korosi asam sulfat.', longTerm: 'Penggantian baterai terencana maksimal setiap 24 bulan masa pakai.' }
-      ]
-    }
-  ];
+  const systemOverviewTable21 = dynamicEquipmentTables.systemOverviewTable21;
+  const scopeOfWorkTable22 = dynamicEquipmentTables.scopeOfWorkTable22;
+  const calibrationTable30 = dynamicEquipmentTables.calibrationTable30;
+  const validationMethodsTable31 = dynamicEquipmentTables.validationMethodsTable31;
+  const challengesTable32 = dynamicEquipmentTables.challengesTable32;
+  const mitigationTable33 = dynamicEquipmentTables.mitigationTable33;
+  const lessonsLearnedTable34 = dynamicEquipmentTables.lessonsLearnedTable34;
+  const recommendationsTable35 = dynamicEquipmentTables.recommendationsTable35;
+  const listOfTables = dynamicEquipmentTables.listOfTables;
 
   // ══════════════════════════════════════════════════════════════════════════
   // 12. REAL PHOTO LOGS (Table 36)
@@ -3827,44 +4335,7 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
       { title: '12. Photo and Documentation Log', page: '265' },
       { title: '13. Appendices', page: '268' }
     ],
-    listOfTables: [
-      { title: `Table 1. Schedule Maintenance – ${monthNameEn} ${year}`, page: '5' },
-      { title: 'Table 2. Task Performance – Chiller System', page: '6' },
-      { title: 'Table 3. Task Performance – Cooling Tower & Piping', page: '8' },
-      { title: 'Table 4. Task Performance – Cooling Pump', page: '10' },
-      { title: 'Table 5. Task Performance – Transformer', page: '12' },
-      { title: 'Table 6. Task Performance – Generator & Fuel System', page: '14' },
-      { title: 'Table 7. Task Performance – MV & RMU Panel', page: '16' },
-      { title: 'Table 8. Task Performance – LV Panel', page: '18' },
-      { title: 'Table 9. Task Performance – UPS & Battery Bank', page: '20' },
-      { title: 'Table 10. Task Performance – Power Distribution Unit (PDU)', page: '22' },
-      { title: 'Table 11. Task Performance – PAC / CRAC Precision Cooling', page: '24' },
-      { title: 'Table 12. Task Performance – Fire Alarm & Suppression', page: '26' },
-      { title: 'Table 13. Task Performance – VESDA Early Warning', page: '28' },
-      { title: 'Table 14. Task Performance – Access Control & CCTV', page: '30' },
-      { title: 'Table 15. Task Performance – Lightning Protection & Grounding', page: '32' },
-      { title: 'Table 16. Task Performance – Building Automation System (BAS)', page: '34' },
-      { title: 'Table 17. Task Performance – Water Treatment Plant', page: '36' },
-      { title: 'Table 18. Team Composition', page: '218' },
-      { title: 'Table 19. KPI Metric', page: '218' },
-      { title: 'Table 20. Equipment and System Details', page: '220' },
-      { title: 'Table 21. System Overview', page: '236' },
-      { title: 'Table 22. Scope of Work', page: '238' },
-      { title: 'Table 23. Observation & Finding', page: '252' },
-      { title: 'Table 24. Root Cause Analysis – Electrical System', page: '253' },
-      { title: 'Table 25. Root Cause Analysis – Cooling System', page: '254' },
-      { title: 'Table 26. Root Cause Analysis – Fire & Safety System', page: '254' },
-      { title: 'Table 27. Root Cause Analysis – Civil & Architectural', page: '255' },
-      { title: 'Table 28. Finding Severity Matrix', page: '255' },
-      { title: 'Table 29. Repair, Replacement & Services', page: '256' },
-      { title: 'Table 30. Calibration and Adjustments Performed', page: '258' },
-      { title: 'Table 31. Validation Methods', page: '258' },
-      { title: 'Table 32. Challenges Faced', page: '259' },
-      { title: 'Table 33. Mitigation Steps', page: '261' },
-      { title: 'Table 34. Lessons Learned', page: '263' },
-      { title: 'Table 35. Recommendations and Future Action', page: '264' },
-      { title: 'Table 36. Photo and Documentation Log', page: '265' }
-    ],
+    listOfTables: listOfTables,
     executiveSummaryText: 'Maintenance is a series of activities to maintain facilities and equipment so that they are always ready to use to carry out production effectively and efficiently according to the schedule that has been set and based on standards (functional and quality). The term maintenance comes from the Greek word tera which means to care for, maintain, and maintain. Maintenance is a system consisting of several elements in the form of facilities (machines), replacement of components or spare parts (materials), maintenance costs (money), maintenance activity planning (method) and maintenance executors (man).',
     purposeOfReportTitle: 'Purpose of Report',
     purposeOfReportIntro: 'To document, evaluate, and ensure that maintenance activities run according to plans and operational standards such as:',
@@ -4008,21 +4479,26 @@ export function convertReportToBilingual(data: FullMonthlyReportData): FullMonth
   };
 
   if (Array.isArray(updated.listOfTables)) {
-    updated.listOfTables = updated.listOfTables.map((item, idx) => {
+    updated.listOfTables = updated.listOfTables.map((item) => {
       let t = item.title || '';
       if (!t.includes('\n')) {
-        const tableNum = idx + 1;
-        if (bilingualLOTMap[tableNum]) {
-          t = bilingualLOTMap[tableNum];
+        const m = t.match(/Table\s+(\d+)/i);
+        if (m) {
+          const num = parseInt(m[1], 10);
+          if (bilingualLOTMap[num] && num >= 18) {
+            t = bilingualLOTMap[num];
+          } else if (bilingualLOTMap[num] && updated.listOfTables!.length >= 36 && num < 18) {
+            t = bilingualLOTMap[num];
+          } else {
+            const cleanTitle = t.replace(/Table\s+\d+[\.\:\-–\s]*(Total Task Performance|Task Performance)?[\s\-–]*/i, '').trim();
+            t = `${t}\nTabel ${num}. Kinerja Pekerjaan – ${cleanTitle}`;
+          }
         }
       }
       return { ...item, title: t };
     });
   } else {
-    updated.listOfTables = Object.values(bilingualLOTMap).map((title, idx) => ({
-      title,
-      page: ['5', '6', '8', '10', '12', '14', '16', '18', '20', '22', '24', '26', '28', '30', '32', '34', '36', '218', '218', '220', '236', '238', '252', '253', '254', '254', '255', '255', '256', '258', '258', '259', '261', '263', '264', '265'][idx] || '1'
-    }));
+    updated.listOfTables = buildDynamicListOfTables(updated.taskPerformanceTables, updated.monthNameEn, updated.year);
   }
 
   // 5. Bab 1: Executive Summary & Purpose of Report
@@ -4526,8 +5002,8 @@ export function buildCustomScopeTablesFromBOQ(
       location: firstLoc,
       maintenancePartner: 'PT. Dwimitra Ekatama Mandiri',
       plan: `10 - 20 ${monthNameEn}`,
-      actual: '',
-      status: '',
+      actual: `10 - 20 ${monthNameEn}`,
+      status: 'COMPLY / SELESAI\nSELESAI SESUAI JADWAL',
       engineerAccount: 'PT. Dwimitra Ekatama Mandiri'
     });
 
@@ -4574,12 +5050,26 @@ export function buildCustomScopeTablesFromBOQ(
     });
   });
 
-  const scopeOfWorkTable22: ScopeOfWorkCategory[] = targetScopes.map(scope => getScopeOfWorkForScope(scope));
+  const dynamicTables = buildAllDynamicEquipmentTables(
+    targetScopes,
+    taskPerformanceTables,
+    monthNameEn,
+    _currentYear
+  );
 
   return {
     scheduleTable1,
     taskPerformanceTables,
     equipmentDetailsTable20,
-    scopeOfWorkTable22
+    systemOverviewTable21: dynamicTables.systemOverviewTable21,
+    scopeOfWorkTable22: dynamicTables.scopeOfWorkTable22,
+    calibrationTable30: dynamicTables.calibrationTable30,
+    validationMethodsTable31: dynamicTables.validationMethodsTable31,
+    challengesTable32: dynamicTables.challengesTable32,
+    mitigationTable33: dynamicTables.mitigationTable33,
+    lessonsLearnedTable34: dynamicTables.lessonsLearnedTable34,
+    recommendationsTable35: dynamicTables.recommendationsTable35,
+    listOfTables: dynamicTables.listOfTables,
+    progressPmTable19: dynamicTables.progressPmTable19
   };
 }
