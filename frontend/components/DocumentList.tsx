@@ -7,7 +7,7 @@
 //            Mendukung 14 jenis Service Report Perangkat M/E & Laporan Inspeksi HSE.
 // ============================================================================
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FileSpreadsheet, Download, Trash2, Search, Filter, Clock, FileDown, FileType, Pencil, Box, Folder, ChevronLeft, ChevronRight, ClipboardList, FileCheck, Camera, FolderArchive, Shield, X, AlertTriangle, FolderDown, FolderOpen, CheckCircle2, FileUp, Layers } from 'lucide-react';
 import { collection, query, getDocs, getDocsFromCache, deleteDoc, doc, where, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
@@ -54,6 +54,7 @@ export interface ExcelDocument {
   maintenanceTime: string;
   specificDetail?: string;
   createdAt: Date;
+  updatedAt?: Date;
   createdBy: string;
   fileSize: number;
   totalPhotos: number;
@@ -154,6 +155,99 @@ export const getDocumentDate = (doc?: { maintenanceTime?: string; createdAt?: Da
   return new Date();
 };
 
+/**
+ * Mengambil timestamp waktu masuk atau aktivitas update terakhir (dalam milidetik).
+ * Prioritas:
+ * 1. doc.updatedAt (waktu diekspor ulang / di-update / upload SR)
+ * 2. doc.createdAt (waktu file pertama kali dibuat / diekspor ke arsip)
+ * 3. getDocumentDate(doc) (fallback tanggal maintenance jika tidak ada timestamp sistem)
+ */
+export const getDocumentActivityTime = (doc?: { updatedAt?: Date | any; createdAt?: Date | any; maintenanceTime?: string } | null): number => {
+  if (!doc) return 0;
+
+  if (doc.updatedAt) {
+    if (doc.updatedAt instanceof Date && !isNaN(doc.updatedAt.getTime())) {
+      return doc.updatedAt.getTime();
+    }
+    if (typeof doc.updatedAt.toDate === 'function') {
+      const d = doc.updatedAt.toDate();
+      if (!isNaN(d.getTime())) return d.getTime();
+    }
+    const d = new Date(doc.updatedAt);
+    if (!isNaN(d.getTime())) return d.getTime();
+  }
+
+  if (doc.createdAt) {
+    if (doc.createdAt instanceof Date && !isNaN(doc.createdAt.getTime())) {
+      return doc.createdAt.getTime();
+    }
+    if (typeof doc.createdAt.toDate === 'function') {
+      const d = doc.createdAt.toDate();
+      if (!isNaN(d.getTime())) return d.getTime();
+    }
+    const d = new Date(doc.createdAt);
+    if (!isNaN(d.getTime())) return d.getTime();
+  }
+
+  return getDocumentDate(doc).getTime();
+};
+
+export const getTimestampDate = (data: any, field: string): Date | null => {
+  if (!data) return null;
+  const snakeField = field.replace(/([A-Z])/g, '_$1').toLowerCase();
+  const val = data[field] !== undefined ? data[field] : data[snakeField];
+  if (val === null || val === undefined) return null;
+  if (val instanceof Date && !isNaN(val.getTime())) return val;
+  if (typeof val.toDate === 'function') {
+    const d = val.toDate();
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof val === 'number') {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+};
+
+export type SortOption = 'newest_upload' | 'maintenance_newest' | 'maintenance_oldest' | 'newest' | 'oldest';
+
+export const sortDocumentsList = (docs: ExcelDocument[], sortOption: SortOption): ExcelDocument[] => {
+  return [...docs].sort((a, b) => {
+    if (sortOption === 'newest_upload' || sortOption === 'newest') {
+      const actA = getDocumentActivityTime(a);
+      const actB = getDocumentActivityTime(b);
+      if (actB !== actA) return actB - actA;
+      // Tie-breaker: maintenance date desc
+      const maintA = getDocumentDate(a).getTime();
+      const maintB = getDocumentDate(b).getTime();
+      if (maintB !== maintA) return maintB - maintA;
+      return (b.id || '').localeCompare(a.id || '');
+    }
+
+    if (sortOption === 'maintenance_oldest' || sortOption === 'oldest') {
+      const maintA = getDocumentDate(a).getTime();
+      const maintB = getDocumentDate(b).getTime();
+      if (maintA !== maintB) return maintA - maintB;
+      // Tie-breaker: activity asc
+      const actA = getDocumentActivityTime(a);
+      const actB = getDocumentActivityTime(b);
+      if (actA !== actB) return actA - actB;
+      return (a.id || '').localeCompare(b.id || '');
+    }
+
+    // maintenance_newest
+    const maintA = getDocumentDate(a).getTime();
+    const maintB = getDocumentDate(b).getTime();
+    if (maintB !== maintA) return maintB - maintA;
+    // Tie-breaker: activity desc
+    const actA = getDocumentActivityTime(a);
+    const actB = getDocumentActivityTime(b);
+    if (actB !== actA) return actB - actA;
+    return (b.id || '').localeCompare(a.id || '');
+  });
+};
+
 export const getMonthYearString = (date: Date) => {
   return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 };
@@ -194,7 +288,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       setSearchQuery(initialSearchQuery);
     }
   }, [initialSearchQuery]);
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
+  const [sortBy, setSortBy] = useState<SortOption>('newest_upload');
   const [filterType, setFilterType] = useState<'all' | 'excel' | 'pdf' | 'hse'>('all');
   const [srStatusFilter, setSrStatusFilter] = useState<'all' | 'photos_only' | 'with_sr'>('all');
   const [adminDeleteFilter, setAdminDeleteFilter] = useState<'all' | 'pending_delete'>('all');
@@ -385,14 +479,17 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
         if (excelSnapshot) {
           excelSnapshot.forEach((doc: any) => {
-            const data = doc.data();
+            const data = doc.data({ serverTimestamps: 'estimate' }) || doc.data();
+            const createdAt = getTimestampDate(data, 'createdAt') || (data.maintenanceTime ? getDocumentDate(data) : new Date());
+            const updatedAt = getTimestampDate(data, 'updatedAt') || createdAt;
             excelDocs.push({
               id: doc.id,
               fileName: data.fileName,
               maintenanceName: data.maintenanceName,
               maintenanceTime: data.maintenanceTime,
               specificDetail: data.specificDetail,
-              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+              createdAt,
+              updatedAt,
               createdBy: normalizeCreatedBy(data.createdBy),
               fileSize: data.fileSize || 0,
               totalPhotos: data.totalPhotos || 0,
@@ -414,14 +511,17 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
         if (pdfSnapshot) {
           pdfSnapshot.forEach((doc: any) => {
-            const data = doc.data();
+            const data = doc.data({ serverTimestamps: 'estimate' }) || doc.data();
+            const createdAt = getTimestampDate(data, 'createdAt') || (data.maintenanceTime ? getDocumentDate(data) : new Date());
+            const updatedAt = getTimestampDate(data, 'updatedAt') || createdAt;
             pdfDocs.push({
               id: doc.id,
               fileName: data.fileName,
               maintenanceName: data.maintenanceName,
               maintenanceTime: data.maintenanceTime,
               specificDetail: data.specificDetail,
-              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+              createdAt,
+              updatedAt,
               createdBy: normalizeCreatedBy(data.createdBy),
               fileSize: data.fileSize || 0,
               totalPhotos: data.totalPhotos || 0,
@@ -452,13 +552,16 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           const existingPdfIds = new Set(pdfDocs.map(d => d.id));
           offlineReports.forEach(offDoc => {
             if (!existingPdfIds.has(offDoc.id)) {
+              const createdAt = offDoc.createdAt ? new Date(offDoc.createdAt) : new Date();
+              const updatedAt = offDoc.updatedAt ? new Date(offDoc.updatedAt) : createdAt;
               pdfDocs.push({
                 id: offDoc.id,
                 fileName: offDoc.fileName,
                 maintenanceName: offDoc.maintenanceName,
                 maintenanceTime: offDoc.maintenanceTime,
                 specificDetail: offDoc.specificDetail,
-                createdAt: new Date(offDoc.createdAt || Date.now()),
+                createdAt,
+                updatedAt,
                 createdBy: normalizeCreatedBy(offDoc.createdBy),
                 fileSize: offDoc.fileSize || 0,
                 totalPhotos: offDoc.totalPhotos || 0,
@@ -482,14 +585,17 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
         if (hseSnapshot) {
           hseSnapshot.forEach((doc: any) => {
-            const data = doc.data();
+            const data = doc.data({ serverTimestamps: 'estimate' }) || doc.data();
+            const createdAt = getTimestampDate(data, 'createdAt') || (data.date ? getDocumentDate({ maintenanceTime: data.date }) : new Date());
+            const updatedAt = getTimestampDate(data, 'updatedAt') || createdAt;
             hseDocs.push({
               id: doc.id,
               fileName: `HSE_${data.aktivitas}_${data.date}.pdf`,
               maintenanceName: data.aktivitas,
               maintenanceTime: data.date,
               specificDetail: data.lokasi,
-              createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+              createdAt,
+              updatedAt,
               createdBy: normalizeCreatedBy(data.authorEmail),
               fileSize: 0,
               totalPhotos: data.photos?.length || 0,
@@ -509,13 +615,8 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           ? hseDocs
           : [...excelDocs, ...pdfDocs, ...hseDocs];
 
-        allDocs.sort((a, b) => {
-          const timeA = getDocumentDate(a).getTime();
-          const timeB = getDocumentDate(b).getTime();
-          return sortBy === 'newest' ? timeB - timeA : timeA - timeB;
-        });
-
-        setDocuments(allDocs);
+        const sortedAllDocs = sortDocumentsList(allDocs, sortBy);
+        setDocuments(sortedAllDocs);
 
         if (isDME) {
           try {
@@ -542,29 +643,35 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       try {
         const fallbackOffline = await offlineReportStorage.getAllReports(user?.email || undefined);
         if (fallbackOffline.length > 0) {
-          const localDocs: ExcelDocument[] = fallbackOffline.map(offDoc => ({
-            id: offDoc.id,
-            fileName: offDoc.fileName,
-            maintenanceName: offDoc.maintenanceName,
-            maintenanceTime: offDoc.maintenanceTime,
-            specificDetail: offDoc.specificDetail,
-            createdAt: new Date(offDoc.createdAt || Date.now()),
-            createdBy: offDoc.createdBy || 'Teknisi DME',
-            fileSize: offDoc.fileSize || 0,
-            totalPhotos: offDoc.totalPhotos || 0,
-            photosWithImage: offDoc.photosWithImage || 0,
-            photosData: [],
-            documentType: offDoc.documentType || 'pdf',
-            hasAbnormal: offDoc.hasAbnormal || false,
-            serviceReportPayload: offDoc.serviceReportPayload || null,
-            hasServiceReport: Boolean(offDoc.attachedSrFile || offDoc.attachedSrBase64),
-            attachedSrFile: offDoc.attachedSrFile || null,
-            attachedSrBase64: offDoc.attachedSrBase64 || null,
-            deleteRequested: false,
-            deleteRequestedBy: '',
-            deleteReason: '',
-          }));
-          setDocuments(localDocs);
+          const localDocs: ExcelDocument[] = fallbackOffline.map(offDoc => {
+            const createdAt = offDoc.createdAt ? new Date(offDoc.createdAt) : new Date();
+            const updatedAt = offDoc.updatedAt ? new Date(offDoc.updatedAt) : createdAt;
+            return {
+              id: offDoc.id,
+              fileName: offDoc.fileName,
+              maintenanceName: offDoc.maintenanceName,
+              maintenanceTime: offDoc.maintenanceTime,
+              specificDetail: offDoc.specificDetail,
+              createdAt,
+              updatedAt,
+              createdBy: offDoc.createdBy || 'Teknisi DME',
+              fileSize: offDoc.fileSize || 0,
+              totalPhotos: offDoc.totalPhotos || 0,
+              photosWithImage: offDoc.photosWithImage || 0,
+              photosData: [],
+              documentType: offDoc.documentType || 'pdf',
+              hasAbnormal: offDoc.hasAbnormal || false,
+              serviceReportPayload: offDoc.serviceReportPayload || null,
+              hasServiceReport: Boolean(offDoc.attachedSrFile || offDoc.attachedSrBase64),
+              attachedSrFile: offDoc.attachedSrFile || null,
+              attachedSrBase64: offDoc.attachedSrBase64 || null,
+              deleteRequested: false,
+              deleteRequestedBy: '',
+              deleteReason: '',
+            };
+          });
+          const sortedLocalDocs = sortDocumentsList(localDocs, sortBy);
+          setDocuments(sortedLocalDocs);
           setFetchError(null);
           toast.info('Mode Offline: Memuat dokumen arsip dari memori lokal');
           return;
@@ -586,7 +693,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     } finally {
       setLoading(false);
     }
-  }, [user, sortBy, userRole, filterOverride]);
+  }, [user, userRole, filterOverride]);
 
   useEffect(() => {
     fetchDocuments();
@@ -1249,7 +1356,11 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     }
   };
 
-  const filteredDocuments = documents.filter(doc => {
+  const sortedDocuments = useMemo(() => {
+    return sortDocumentsList(documents, sortBy);
+  }, [documents, sortBy]);
+
+  const filteredDocuments = sortedDocuments.filter(doc => {
     // Non-privileged accounts can ONLY see documents created by their own email
     const isPrivilegedOrDME = isPrivileged || isDME;
     if (!isPrivilegedOrDME) {
@@ -2465,7 +2576,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-1.5 text-xs text-slate-500">
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1 shrink-0" title="Tanggal Pelaksanaan Pekerjaan">
                   <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   <span>
                     {(() => {
@@ -2482,6 +2593,30 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                     })()}
                   </span>
                 </div>
+                {(document.updatedAt || document.createdAt) && (
+                  <div
+                    className="flex items-center gap-1 shrink-0 text-slate-500 font-medium"
+                    title={`Waktu Masuk / Export: ${(document.updatedAt || document.createdAt)?.toLocaleString('id-ID')}`}
+                  >
+                    <FileUp className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>
+                      {document.updatedAt ? 'Update: ' : 'Masuk: '}
+                      {(() => {
+                        const actDate = document.updatedAt || document.createdAt;
+                        if (!actDate) return '';
+                        const now = new Date();
+                        const diffMs = now.getTime() - actDate.getTime();
+                        if (diffMs >= 0 && diffMs < 60000) return 'Baru saja';
+                        if (diffMs >= 0 && diffMs < 3600000) return `${Math.floor(diffMs / 60000)} mnt lalu`;
+                        const isToday = actDate.toDateString() === now.toDateString();
+                        if (isToday) {
+                          return `Hari ini, ${actDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`;
+                        }
+                        return actDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+                      })()}
+                    </span>
+                  </div>
+                )}
                 {document.documentType !== 'hse' && (
                   <div className="flex items-center gap-1 shrink-0">
                     <FileDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -2731,12 +2866,13 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
             <Filter className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest')}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
               className="w-full pl-9 sm:pl-12 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition text-slate-900 appearance-none cursor-pointer text-xs sm:text-sm font-medium"
               title="Urutkan dokumen"
             >
-              <option value="newest">Terbaru</option>
-              <option value="oldest">Terlama</option>
+              <option value="newest_upload">Terbaru Masuk / Export (Default)</option>
+              <option value="maintenance_newest">Tanggal Pelaksanaan (Terbaru)</option>
+              <option value="maintenance_oldest">Tanggal Pelaksanaan (Terlama)</option>
             </select>
           </div>
 
@@ -3108,7 +3244,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           if (!uploadSrModalDoc) return;
           setDocuments(prev =>
             prev.map(d =>
-              d.id === uploadSrModalDoc.id ? { ...d, ...updatedFields } : d
+              d.id === uploadSrModalDoc.id ? { ...d, ...updatedFields, updatedAt: new Date() } : d
             )
           );
           setUploadSrModalDoc(null);

@@ -10,7 +10,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { FileText, FileSpreadsheet, Download, Search, Filter, Calendar, User, Database, Activity, TrendingUp, Pencil, ChevronLeft, ChevronRight, Sparkles, AlertTriangle, X } from 'lucide-react';
 import { collection, getDocs, getDocsFromCache, query, orderBy, Timestamp, getCountFromServer, limit } from 'firebase/firestore';
-import { ExcelDocument, getDocumentDate } from '@/components/DocumentList';
+import { ExcelDocument, getDocumentDate, getDocumentActivityTime } from '@/components/DocumentList';
 import { db } from '@/api/firebase';
 import { useAuth } from '@/components/AuthContext';
 import { offlineReportStorage } from '@/utils/offlineReportStorage';
@@ -30,6 +30,7 @@ interface DocumentData {
   maintenanceTime: string;
   specificDetail?: string;
   createdAt: Timestamp;
+  updatedAt?: Timestamp;
   createdBy: string;
   fileSize: number;
   totalPhotos: number;
@@ -235,6 +236,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
           maintenanceTime: data.maintenanceTime,
           specificDetail: data.specificDetail,
           createdAt: data.createdAt,
+          updatedAt: data.updatedAt || data.createdAt,
           createdBy: normalizeCreatedBy(data.createdBy),
           fileSize: data.fileSize || 0,
           totalPhotos: data.totalPhotos || 0,
@@ -253,6 +255,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
           maintenanceTime: data.maintenanceTime,
           specificDetail: data.specificDetail,
           createdAt: data.createdAt,
+          updatedAt: data.updatedAt || data.createdAt,
           createdBy: normalizeCreatedBy(data.createdBy),
           fileSize: data.fileSize || 0,
           totalPhotos: data.totalPhotos || 0,
@@ -277,7 +280,8 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
               maintenanceTime: r.maintenanceTime,
               specificDetail: r.specificDetail,
               createdAt: Timestamp.fromMillis(r.createdAt || Date.now()),
-              createdBy: normalizeCreatedBy(r.createdBy),
+              updatedAt: Timestamp.fromMillis(r.updatedAt || r.createdAt || Date.now()),
+              createdBy: r.createdBy || 'Teknisi DME',
               fileSize: r.fileSize || 0,
               totalPhotos: r.totalPhotos || 0,
               photosWithImage: r.photosWithImage || 0,
@@ -289,16 +293,17 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
         } catch { /* ignore */ }
       }
 
-      // Fallback 2: Cek localStorage dashboard cache jika masih kosong
+      // Fallback 2: Local storage backup lama
       if (allDocs.length === 0) {
         try {
-          const rawCache = localStorage.getItem('dwimitra_admin_dashboard_cache');
-          if (rawCache) {
-            const parsed = JSON.parse(rawCache);
-            if (parsed.docs && parsed.docs.length > 0) {
-              allDocs = parsed.docs.map((d: any) => ({
+          const cached = safeStorage.getItem('offline_admin_documents');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed.documents) && parsed.documents.length > 0) {
+              allDocs = parsed.documents.map((d: any) => ({
                 ...d,
-                createdAt: Timestamp.fromMillis(d.createdAt || Date.now())
+                createdAt: Timestamp.fromMillis(d.createdAt || Date.now()),
+                updatedAt: Timestamp.fromMillis(d.updatedAt || d.createdAt || Date.now())
               }));
               if (parsed.stats) {
                 totalExcelCount = parsed.stats.totalExcel || 0;
@@ -311,9 +316,13 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
       }
 
       allDocs.sort((a, b) => {
-        const timeA = getDocumentDate(a).getTime();
-        const timeB = getDocumentDate(b).getTime();
-        return timeB - timeA;
+        const timeA = getDocumentActivityTime(a as any);
+        const timeB = getDocumentActivityTime(b as any);
+        if (timeB !== timeA) return timeB - timeA;
+        const maintA = getDocumentDate(a).getTime();
+        const maintB = getDocumentDate(b).getTime();
+        if (maintB !== maintA) return maintB - maintA;
+        return (b.id || '').localeCompare(a.id || '');
       });
 
       setDocuments(allDocs);

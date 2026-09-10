@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db, auth } from '@/api/firebase';
-import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { doc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 
 import {
   ATSReportData, ATSCustomerInfo, ATSTimeSpent,
@@ -542,7 +542,8 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
         await updateDoc(docRef, {
           atsCustomerInfo: customerInfo,
           atsReportData: dataToExport,
-          atsTimeSpent: timeSpent
+          atsTimeSpent: timeSpent,
+          updatedAt: serverTimestamp()
         });
         toast.success('PDF berhasil diekspor & divalidasi ke arsip!', { id: toastId });
       } else {
@@ -599,7 +600,8 @@ export function ATSServiceReport({ prefillData, onClearPrefill, onChange }: ATSS
       await updateDoc(docRef, {
         atsCustomerInfo: customerInfo,
         atsReportData: reportData,
-        atsTimeSpent: timeSpent
+        atsTimeSpent: timeSpent,
+        updatedAt: serverTimestamp()
       });
 
       toast.success('Service Report berhasil disimpan ke arsip!', { id: toastId });

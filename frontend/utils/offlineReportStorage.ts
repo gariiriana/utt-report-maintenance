@@ -196,7 +196,7 @@ export const offlineReportStorage = {
             const cleanEmail = userEmail.toLowerCase().trim();
             list = list.filter(r => (r.createdBy || '').toLowerCase().trim() === cleanEmail);
           }
-          list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          list.sort((a, b) => ((b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0)));
           resolve(list);
         };
         request.onerror = () => reject(request.error);
