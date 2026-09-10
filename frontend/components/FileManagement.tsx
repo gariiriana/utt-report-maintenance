@@ -397,6 +397,8 @@ interface FileManagementProps {
     initialFolder?: string | null;
     onBackToRoot?: () => void;
     initialSearchQuery?: string;
+    searchQuery?: string;
+    onSearchChange?: (query: string) => void;
     deleteRequestMode?: boolean;
 }
 
@@ -408,6 +410,8 @@ export function FileManagement({
     initialFolder = null,
     onBackToRoot,
     initialSearchQuery = '',
+    searchQuery: propSearchQuery,
+    onSearchChange: propOnSearchChange,
     deleteRequestMode = false,
 }: FileManagementProps = {}) {
     const { user, userRole } = useAuth();
@@ -443,7 +447,16 @@ export function FileManagement({
     const [forceSelectedMetadata, setForceSelectedMetadata] = useState(true);
     const [failedUploads, setFailedUploads] = useState<{ file: File; error: string }[]>([]);
 
-    const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+    const [internalSearchQuery, setInternalSearchQuery] = useState(initialSearchQuery);
+    const searchQuery = propSearchQuery !== undefined ? propSearchQuery : internalSearchQuery;
+
+    const handleSearchChange = (val: string) => {
+        setInternalSearchQuery(val);
+        if (propOnSearchChange) {
+            propOnSearchChange(val);
+        }
+    };
+
     const [filterCategory, setFilterCategory] = useState(deleteRequestMode ? 'PENDING_DELETE' : 'All');
     const [filterYear, setFilterYear] = useState('All');
     const [selectedFolder, setSelectedFolder] = useState<string | null>(initialFolder);
@@ -481,7 +494,7 @@ export function FileManagement({
 
     useEffect(() => {
         if (initialSearchQuery) {
-            setSearchQuery(initialSearchQuery);
+            handleSearchChange(initialSearchQuery);
             setSelectedFolder(null);
             setSelectedQuarter(null);
             setSelectedMType(null);
@@ -1308,6 +1321,9 @@ export function FileManagement({
         }
 
         const q = searchQuery.trim().toLowerCase();
+        const qNorm = q.replace(/[-_./]/g, ' ');
+        const qStripped = q.replace(/[^a-z0-9]/g, '');
+
         const matchesSearch = !q || [
             file.fileName,
             file.category,
@@ -1315,7 +1331,12 @@ export function FileManagement({
             file.description,
             file.uploadedBy,
             file.uploadedByEmail
-        ].filter(Boolean).some(val => String(val).toLowerCase().includes(q));
+        ].filter(Boolean).some(val => {
+            const s = String(val).toLowerCase();
+            const sNorm = s.replace(/[-_./]/g, ' ');
+            const sStrip = s.replace(/[^a-z0-9]/g, '');
+            return s.includes(q) || sNorm.includes(qNorm) || (qStripped.length >= 2 && sStrip.includes(qStripped));
+        });
 
         const matchesCategory =
             filterCategory === 'All' ||
@@ -1663,13 +1684,13 @@ export function FileManagement({
                                 <input
                                     type="text"
                                     value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onChange={(e) => handleSearchChange(e.target.value)}
                                     placeholder="Cari file..."
                                     className="w-full pl-9 sm:pl-10 pr-10 py-2 sm:py-2.5 bg-slate-50/90 border border-slate-200 rounded-xl text-slate-900 text-sm sm:text-base placeholder-slate-400 font-medium focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition"
                                 />
                                 {searchQuery && (
                                     <button
-                                        onClick={() => setSearchQuery('')}
+                                        onClick={() => handleSearchChange('')}
                                         className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full transition-colors cursor-pointer"
                                         title="Bersihkan pencarian"
                                     >
@@ -1839,10 +1860,10 @@ export function FileManagement({
                                         setSelectedQuarter(null);
                                     } else if (selectedFolder) {
                                         setSelectedFolder(null);
-                                        setSearchQuery('');
+                                        handleSearchChange('');
                                         if (onBackToRoot) onBackToRoot();
                                     } else if (searchQuery) {
-                                        setSearchQuery('');
+                                        handleSearchChange('');
                                     }
                                 }}
                                 className="text-xs sm:text-sm text-slate-600 hover:text-amber-700 font-semibold flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-amber-50 border border-slate-200 rounded-lg transition-all shadow-2xs cursor-pointer"
@@ -1857,6 +1878,36 @@ export function FileManagement({
                         )}
                     </div>
                 </div>
+
+                {searchQuery.trim() !== '' && (
+                    <div className="flex items-center justify-between bg-amber-50/80 border border-amber-200 rounded-xl p-3 mb-4 flex-wrap gap-2">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-amber-900">
+                            <Search className="w-4 h-4 text-amber-600 shrink-0" />
+                            <span>
+                                Menyaring {selectedFolder ? `folder ${selectedFolder}${selectedQuarter ? ` / ${selectedQuarter}` : ''}` : 'semua folder'} untuk: <strong>"{searchQuery}"</strong> ({filteredFiles.length} berkas cocok)
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {selectedFolder && !showAllInFolder && filteredFiles.filter(f => matchCategory(f.category, selectedFolder)).length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAllInFolder(true)}
+                                    className="px-2.5 py-1 bg-white hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
+                                >
+                                    <FileText className="w-3.5 h-3.5 text-amber-600" />
+                                    <span>Lihat {filteredFiles.filter(f => matchCategory(f.category, selectedFolder)).length} Berkas Langsung</span>
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => handleSearchChange('')}
+                                className="px-2 py-1 text-slate-500 hover:text-slate-800 text-xs font-medium hover:underline cursor-pointer"
+                            >
+                                Reset
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {!selectedFolder ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -1961,7 +2012,10 @@ export function FileManagement({
                             .filter(type => {
                                 if (!searchQuery.trim()) return true;
                                 const q = searchQuery.trim().toLowerCase();
-                                const typeMatches = type.toLowerCase().includes(q);
+                                const qNorm = q.replace(/[-_./]/g, ' ');
+                                const typeLower = type.toLowerCase();
+                                const typeNorm = typeLower.replace(/[-_./]/g, ' ');
+                                const typeMatches = typeLower.includes(q) || typeNorm.includes(qNorm);
                                 const hasMatchingFiles = filteredFiles.some(f => matchCategory(f.category, selectedFolder) && (selectedQuarter === 'Tanpa Quarter' ? (!f.quarter || !QUARTERS.includes(f.quarter)) : f.quarter === selectedQuarter) && isTypeMatch(f.maintenanceType, type));
                                 return typeMatches || hasMatchingFiles;
                             })
@@ -2015,7 +2069,10 @@ export function FileManagement({
                         {MAINTENANCE_TYPES.filter(type => {
                             if (!searchQuery.trim()) return true;
                             const q = searchQuery.trim().toLowerCase();
-                            const typeMatches = type.toLowerCase().includes(q);
+                            const qNorm = q.replace(/[-_./]/g, ' ');
+                            const typeLower = type.toLowerCase();
+                            const typeNorm = typeLower.replace(/[-_./]/g, ' ');
+                            const typeMatches = typeLower.includes(q) || typeNorm.includes(qNorm);
                             const hasMatchingFiles = filteredFiles.some(f => matchCategory(f.category, selectedFolder) && (selectedQuarter === 'Tanpa Quarter' ? (!f.quarter || !QUARTERS.includes(f.quarter)) : f.quarter === selectedQuarter) && isTypeMatch(f.maintenanceType, type));
                             return typeMatches || hasMatchingFiles;
                         }).length === 0 && (
