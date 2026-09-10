@@ -842,10 +842,19 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
   );
 
   // Helper to format bilingual text (English on top, Indonesian in italic below)
-  const formatBilingualCell = (text: string, defaultText = "-", isCentered = false) => {
+  const formatBilingualCell = (text: string, defaultText = "-", isCentered = false, isStatusCell = false) => {
     const val = text && text.trim() ? text.trim() : defaultText;
     const lines = val.split('\n');
     const hasBullets = lines.some(l => /^[•\-\*]/.test(l.trim()));
+    const valLower = val.toLowerCase();
+    const isAbnormal = isStatusCell && (
+      valLower.includes('not good') ||
+      valLower.includes('tidak baik') ||
+      valLower.includes('abnormal') ||
+      valLower.includes('rusak') ||
+      valLower.includes('trouble') ||
+      valLower.includes('alarm')
+    );
 
     return lines.map((line, idx) => {
       const trimmed = line.trim();
@@ -865,9 +874,10 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
           new TextRun({
             text: line,
             italics: isItalic,
+            bold: isAbnormal ? true : false,
             size: 18,
             font: "Times New Roman",
-            color: isItalic ? "4B5563" : "000000"
+            color: isAbnormal ? (idx === 0 ? "B91C1C" : "DC2626") : (isItalic ? "4B5563" : "000000")
           })
         ]
       });
@@ -979,20 +989,34 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
                 new TableCell({ width: { size: 12, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Recommendations", bold: true, color: "FFFFFF", size: 18, font: "Times New Roman" })] })] }),
               ]
             }),
-            ...t.items.map(item => new TableRow({
-              children: [
-                new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${item.no}.`, size: 18, font: "Times New Roman" })] })] }),
-                new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.className, bold: true, size: 18, font: "Times New Roman" })] })] }),
-                new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.capacity || "-", size: 18, font: "Times New Roman" })] })] }),
-                new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.location || "-", size: 18, font: "Times New Roman" })] })] }),
-                new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.productName || "N/A", size: 18, font: "Times New Roman" })] })] }),
-                new TableCell({ borders: borderThin, children: formatBilingualCell(item.taskPM, "Inspect, clean, and test equipment to ensure reliable operation.\nInspeksi, bersihkan, dan uji peralatan untuk memastikan pengoperasian yang andal.") }),
-                new TableCell({ borders: borderThin, children: formatBilingualCell(item.criticalRepairs, "No critical repair is required.\nSaat ini tidak diperlukan perbaikan mendesak.") }),
-                new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: formatBilingualCell(item.operationalStatus, "Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal", true) }),
-                new TableCell({ borders: borderThin, children: formatBilingualCell(item.issues, "No abnormality was observed during normal operation.\nTidak ditemukan adanya kelainan selama pengoperasian normal.") }),
-                new TableCell({ borders: borderThin, children: formatBilingualCell(item.recommendations, "Continue routine monitoring and preventive maintenance to ensure reliable operation.\nLanjutkan pemantauan rutin dan pemeliharaan preventif untuk memastikan pengoperasian yang andal.") }),
-              ]
-            }))
+            ...t.items.map(item => {
+              const statusMode = (item as any).statusMode;
+              let opStatus = (item.operationalStatus || '').replace(/\r\n/g, '\n').trim();
+              if (statusMode === 'custom') {
+                if (!opStatus) opStatus = 'Operational / Running\nBeroperasi Normal';
+              } else if (statusMode === 'not_good' || (!opStatus && statusMode === 'not_good')) {
+                opStatus = 'Not Good Condition / Abnormal Operation\nKondisi Tidak Baik / Beroperasi Abnormal';
+              } else if (statusMode === 'good' && !opStatus) {
+                opStatus = 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal';
+              } else if (!opStatus) {
+                opStatus = 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal';
+              }
+
+              return new TableRow({
+                children: [
+                  new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${item.no}.`, size: 18, font: "Times New Roman" })] })] }),
+                  new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.className, bold: true, size: 18, font: "Times New Roman" })] })] }),
+                  new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.capacity || "-", size: 18, font: "Times New Roman" })] })] }),
+                  new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.location || "-", size: 18, font: "Times New Roman" })] })] }),
+                  new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: item.productName || "N/A", size: 18, font: "Times New Roman" })] })] }),
+                  new TableCell({ borders: borderThin, children: formatBilingualCell(item.taskPM, "Inspect, clean, and test equipment to ensure reliable operation.\nInspeksi, bersihkan, dan uji peralatan untuk memastikan pengoperasian yang andal.") }),
+                  new TableCell({ borders: borderThin, children: formatBilingualCell(item.criticalRepairs, "No critical repair is required.\nSaat ini tidak diperlukan perbaikan mendesak.") }),
+                  new TableCell({ borders: borderThin, verticalAlign: VerticalAlign.CENTER, children: formatBilingualCell(opStatus, "Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal", true, true) }),
+                  new TableCell({ borders: borderThin, children: formatBilingualCell(item.issues, "No abnormality was observed during normal operation.\nTidak ditemukan adanya kelainan selama pengoperasian normal.") }),
+                  new TableCell({ borders: borderThin, children: formatBilingualCell(item.recommendations, "Continue routine monitoring and preventive maintenance to ensure reliable operation.\nLanjutkan pemantauan rutin dan pemeliharaan preventif untuk memastikan pengoperasian yang andal.") }),
+                ]
+              });
+            })
           ]
         }),
         new Paragraph({ spacing: { after: 250 } })

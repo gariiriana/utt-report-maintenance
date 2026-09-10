@@ -2667,15 +2667,27 @@ export function MonthlyReportGenerator() {
                               </td>
                               <td className="py-1 px-1 border-r border-black font-semibold text-[10px]">
                                 {(() => {
-                                  const status = item.operationalStatus || '';
-                                  const isGoodPreset = status.trim() === 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal' ||
-                                                       status.trim().toLowerCase() === 'good condition\nkondisi baik';
-                                  const isNotGoodPreset = status.trim() === 'Not Good Condition / Abnormal Operation\nKondisi Tidak Baik / Beroperasi Abnormal' ||
-                                                          status.trim().toLowerCase() === 'not good condition\nkondisi tidak baik';
+                                  const status = (item.operationalStatus || '').replace(/\r\n/g, '\n').trim();
+                                  const statusLower = status.toLowerCase();
+
+                                  const isNotGoodPreset = (item as any).statusMode === 'not_good' ||
+                                    statusLower.includes('not good') ||
+                                    statusLower.includes('tidak baik') ||
+                                    statusLower.includes('abnormal') ||
+                                    statusLower.includes('rusak');
+
+                                  const isGoodPreset = (item as any).statusMode === 'good' ||
+                                    (!isNotGoodPreset && (
+                                      statusLower.includes('good condition') ||
+                                      statusLower.includes('kondisi baik') ||
+                                      statusLower === 'good' ||
+                                      statusLower === 'baik' ||
+                                      statusLower === 'normal'
+                                    ));
 
                                   // Determine mode: if explicit item.statusMode exists, use it; otherwise infer from text
                                   const selectValue: 'good' | 'not_good' | 'custom' =
-                                    (item as any).statusMode || (isNotGoodPreset ? 'not_good' : isGoodPreset ? 'good' : (status.trim() ? 'custom' : 'good'));
+                                    (item as any).statusMode || (isNotGoodPreset ? 'not_good' : isGoodPreset ? 'good' : (status ? 'custom' : 'good'));
 
                                   const isGood = selectValue === 'good';
                                   const isNotGood = selectValue === 'not_good';
@@ -2689,21 +2701,34 @@ export function MonthlyReportGenerator() {
                                           value={selectValue}
                                           onChange={(e) => {
                                             const val = e.target.value as 'good' | 'not_good' | 'custom';
-                                            const updated = { ...reportData };
-                                            const targetItem = updated.taskPerformanceTables[tIdx].items[iIdx] as any;
-                                            targetItem.statusMode = val;
-                                            if (val === 'good') {
-                                              targetItem.operationalStatus =
-                                                'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal';
-                                            } else if (val === 'not_good') {
-                                              targetItem.operationalStatus =
-                                                'Not Good Condition / Abnormal Operation\nKondisi Tidak Baik / Beroperasi Abnormal';
-                                            } else if (val === 'custom') {
-                                              // Jika sebelumnya preset atau kosong, sediakan teks starter agar langsung siap diedit
-                                              if (!targetItem.operationalStatus || isGoodPreset || isNotGoodPreset) {
-                                                targetItem.operationalStatus = 'Operational / Running\nBeroperasi Normal';
-                                              }
-                                            }
+                                            const updated = {
+                                              ...reportData,
+                                              taskPerformanceTables: (reportData.taskPerformanceTables || []).map((tbl, ti) => {
+                                                if (ti !== tIdx) return tbl;
+                                                return {
+                                                  ...tbl,
+                                                  items: (tbl.items || []).map((it, ii) => {
+                                                    if (ii !== iIdx) return it;
+                                                    let newStatus = it.operationalStatus;
+                                                    if (val === 'good') {
+                                                      newStatus = 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal';
+                                                    } else if (val === 'not_good') {
+                                                      newStatus = 'Not Good Condition / Abnormal Operation\nKondisi Tidak Baik / Beroperasi Abnormal';
+                                                    } else if (val === 'custom') {
+                                                      const itLower = (it.operationalStatus || '').toLowerCase();
+                                                      if (!it.operationalStatus || isGoodPreset || isNotGoodPreset || itLower.includes('good condition') || itLower.includes('not good condition')) {
+                                                        newStatus = 'Operational / Running\nBeroperasi Normal';
+                                                      }
+                                                    }
+                                                    return {
+                                                      ...it,
+                                                      statusMode: val,
+                                                      operationalStatus: newStatus
+                                                    };
+                                                  })
+                                                };
+                                              })
+                                            };
                                             setReportData(updated);
                                           }}
                                           className={`w-full text-[10px] font-sans font-medium px-1.5 py-0.5 rounded border transition-colors cursor-pointer outline-none ${
@@ -2727,10 +2752,23 @@ export function MonthlyReportGenerator() {
                                           placeholderEn="Type operational status (English)..."
                                           placeholderId="Ketik status operasional (Bahasa Indonesia)..."
                                           onChange={(val) => {
-                                            const updated = { ...reportData };
-                                            const targetItem = updated.taskPerformanceTables[tIdx].items[iIdx] as any;
-                                            targetItem.operationalStatus = val;
-                                            targetItem.statusMode = 'custom';
+                                            const updated = {
+                                              ...reportData,
+                                              taskPerformanceTables: (reportData.taskPerformanceTables || []).map((tbl, ti) => {
+                                                if (ti !== tIdx) return tbl;
+                                                return {
+                                                  ...tbl,
+                                                  items: (tbl.items || []).map((it, ii) => {
+                                                    if (ii !== iIdx) return it;
+                                                    return {
+                                                      ...it,
+                                                      statusMode: 'custom',
+                                                      operationalStatus: val
+                                                    };
+                                                  })
+                                                };
+                                              })
+                                            };
                                             setReportData(updated);
                                           }}
                                           classNameEn="w-full text-[10px] font-semibold leading-tight py-0.5 px-1 bg-white border border-blue-300 focus:border-blue-500 rounded outline-none resize-none font-sans text-slate-800 shadow-2xs print:bg-transparent print:border-none print:shadow-none"

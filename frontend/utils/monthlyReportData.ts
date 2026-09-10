@@ -4635,23 +4635,53 @@ export function convertReportToBilingual(data: FullMonthlyReportData): FullMonth
       t.items = t.items.map(item => {
         const taskPM = convertTaskPMToBilingual(item.taskPM || '', t.scope || item.className);
 
-        let criticalRepairs = item.criticalRepairs || '';
-        if (!criticalRepairs.includes('\n') || criticalRepairs.trim() === '-' || criticalRepairs.toLowerCase().includes('no critical') || criticalRepairs.toLowerCase().includes('tidak ada perbaikan')) {
+        let criticalRepairs = (item.criticalRepairs || '').replace(/\r\n/g, '\n').trim();
+        const crLower = criticalRepairs.toLowerCase();
+        if (!criticalRepairs || criticalRepairs === '-' || crLower.includes('no critical') || crLower.includes('tidak ada perbaikan')) {
           criticalRepairs = 'No critical repair is required.\nSaat ini tidak diperlukan perbaikan mendesak.';
         }
 
-        let operationalStatus = item.operationalStatus || '';
-        if (!operationalStatus.includes('\n') || operationalStatus.toLowerCase().includes('good') || operationalStatus.toLowerCase().includes('normal') || operationalStatus.toLowerCase().includes('baik')) {
+        let operationalStatus = (item.operationalStatus || '').replace(/\r\n/g, '\n').trim();
+        const opLower = operationalStatus.toLowerCase();
+        const statusMode = (item as any).statusMode;
+
+        if (statusMode === 'custom') {
+          // Explicit custom mode: preserve user custom text!
+          if (!operationalStatus) {
+            operationalStatus = 'Operational / Running\nBeroperasi Normal';
+          }
+        } else if (
+          statusMode === 'not_good' ||
+          opLower.includes('not good') ||
+          opLower.includes('tidak baik') ||
+          opLower.includes('abnormal')
+        ) {
+          operationalStatus = 'Not Good Condition / Abnormal Operation\nKondisi Tidak Baik / Beroperasi Abnormal';
+        } else if (
+          statusMode === 'good' ||
+          opLower.includes('good condition') ||
+          opLower.includes('kondisi baik') ||
+          opLower === 'good' ||
+          opLower === 'baik' ||
+          opLower === 'normal'
+        ) {
+          operationalStatus = 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal';
+        } else if (operationalStatus.length > 0) {
+          // Preserve any existing custom text if no explicit preset matched
+          operationalStatus = operationalStatus;
+        } else {
           operationalStatus = 'Good Condition / Normal Operation\nKondisi Baik / Beroperasi Normal';
         }
 
-        let issues = item.issues || '';
-        if (!issues.includes('\n') || issues.trim() === '-' || issues.toLowerCase().includes('no abnormality') || issues.toLowerCase().includes('tidak ada kendala') || issues.toLowerCase().includes('normal') || issues.toLowerCase().includes('tidak ditemukan')) {
+        let issues = (item.issues || '').replace(/\r\n/g, '\n').trim();
+        const issuesLower = issues.toLowerCase();
+        if (!issues || issues === '-' || issuesLower.includes('no abnormality') || issuesLower.includes('tidak ada kendala') || issuesLower.includes('tidak ditemukan')) {
           issues = 'No abnormality was observed during normal operation.\nTidak ditemukan adanya kelainan selama pengoperasian normal.';
         }
 
-        let recommendations = item.recommendations || '';
-        if (!recommendations.includes('\n') || recommendations.trim() === '-' || recommendations.toLowerCase().includes('continue routine') || recommendations.toLowerCase().includes('lanjutkan pemantauan') || recommendations.toLowerCase().includes('pemeliharaan preventif')) {
+        let recommendations = (item.recommendations || '').replace(/\r\n/g, '\n').trim();
+        const recLower = recommendations.toLowerCase();
+        if (!recommendations || recommendations === '-' || recLower.includes('continue routine') || recLower.includes('lanjutkan pemantauan') || recLower.includes('pemeliharaan preventif')) {
           recommendations = 'Continue routine monitoring and preventive maintenance to ensure reliable operation.\nLanjutkan pemantauan rutin dan pemeliharaan preventif untuk memastikan pengoperasian yang andal.';
         }
 
