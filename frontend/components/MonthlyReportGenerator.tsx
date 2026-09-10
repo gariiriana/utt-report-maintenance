@@ -389,6 +389,9 @@ export function MonthlyReportGenerator() {
   const [editingArchiveTitle, setEditingArchiveTitle] = useState<string>('');
   const [isSavingArchiveTitle, setIsSavingArchiveTitle] = useState<boolean>(false);
 
+  // ─── ID Dokumen Arsip Firestore yang Sedang Diedit di Editor ────────
+  const [activeArchiveId, setActiveArchiveId] = useState<string | null>(null);
+
   // Helper judul default & sanitasi file
   const getDefaultReportTitle = useCallback((monthNum: number, yr: number) => {
     const monthLabel = MONTH_OPTIONS.find(m => m.value === monthNum)?.label || `Bulan ${monthNum}`;
@@ -455,26 +458,92 @@ export function MonthlyReportGenerator() {
   const [isSavingManual, setIsSavingManual] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
 
-  // Manual save handler untuk tombol floating save
+  // Manual save handler untuk tombol floating save & toolbar (Simpan ke IndexedDB dan LANGSUNG ke Arsip Cloud Firestore)
   const handleManualSave = useCallback(async () => {
     if (!reportData) return;
     setIsSavingManual(true);
     try {
+      const finalTitle = reportTitle.trim() || reportData.reportTitle || getDefaultReportTitle(selectedMonth, selectedYear);
+      const cleanFileName = sanitizeFileName(finalTitle) + '.docx';
+      const enrichedData: FullMonthlyReportData = {
+        ...reportData,
+        reportTitle: finalTitle,
+        fileName: cleanFileName
+      };
+
+      // 1. Simpan ke IndexedDB lokal (offline cache draft)
       const storageKey = `dwimitra_monthly_report_${selectedYear}_${selectedMonth}`;
-      await draftStorage.set(storageKey, reportData);
+      await draftStorage.set(storageKey, enrichedData);
+      setReportData(enrichedData);
       setIsSavedLocally(true);
+
+      // 2. Simpan / Perbarui langsung ke Cloud Firestore (monthly_reports)
+      const eqNames = (enrichedData.scheduleTable1 || []).map(s => s.device);
+      const totalCI = (enrichedData.taskPerformanceTables || []).reduce((acc, t) => acc + (t.items?.length || 0), 0);
+
+      let targetId = activeArchiveId;
+      if (!targetId) {
+        // Cek apakah di Firestore sudah ada arsip dengan judul atau periode yang sama
+        const found = archives.find(a => 
+          (a.title === finalTitle) ||
+          (a.monthNumber === selectedMonth && a.year === selectedYear && a.title === finalTitle)
+        );
+        if (found) {
+          targetId = found.id;
+        }
+      }
+
+      if (targetId) {
+        // Update arsip dokumen yang sudah ada di Firestore
+        const archiveRef = doc(db, 'monthly_reports', targetId);
+        await updateDoc(archiveRef, {
+          title: finalTitle,
+          fileName: cleanFileName,
+          monthNumber: selectedMonth,
+          monthName: enrichedData.monthName,
+          year: selectedYear,
+          quarter: enrichedData.quarter || 'Q3',
+          contractNumber: enrichedData.contractNumber || enrichedData.generalInfo?.contractReference || 'K.TDE.0105/LEG.PRJ/VI/2026',
+          selectedEquipments: eqNames,
+          totalCINames: totalCI,
+          updatedAt: Timestamp.now(),
+          reportData: enrichedData
+        });
+        setActiveArchiveId(targetId);
+        toast.success(`Perubahan "${finalTitle}" berhasil disimpan ke Arsip Dokumen Monthly Report!`);
+      } else {
+        // Simpan sebagai dokumen baru di arsip Firestore
+        const newDocRef = await addDoc(collection(db, 'monthly_reports'), {
+          title: finalTitle,
+          fileName: cleanFileName,
+          monthNumber: selectedMonth,
+          monthName: enrichedData.monthName,
+          year: selectedYear,
+          quarter: enrichedData.quarter || 'Q3',
+          contractNumber: enrichedData.contractNumber || enrichedData.generalInfo?.contractReference || 'K.TDE.0105/LEG.PRJ/VI/2026',
+          selectedEquipments: eqNames,
+          totalCINames: totalCI,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
+          createdBy: user?.email || '',
+          createdByName: user?.displayName || user?.email?.split('@')[0] || 'User',
+          reportData: enrichedData
+        });
+        setActiveArchiveId(newDocRef.id);
+        toast.success(`Laporan "${finalTitle}" berhasil disimpan dan masuk ke Arsip Dokumen Monthly Report!`);
+      }
+
       setJustSaved(true);
-      toast.success(`Laporan Bulanan ${reportData.monthName} ${reportData.year} berhasil disimpan! Data aman saat halaman direfresh.`);
       setTimeout(() => {
         setJustSaved(false);
       }, 3000);
     } catch (error: any) {
-      console.error('Gagal menyimpan laporan:', error);
-      toast.error(`Gagal menyimpan laporan: ${error?.message || 'Error tidak diketahui'}`);
+      console.error('Gagal menyimpan laporan ke arsip:', error);
+      toast.error(`Gagal menyimpan ke arsip: ${error?.message || 'Error tidak diketahui'}`);
     } finally {
       setIsSavingManual(false);
     }
-  }, [reportData, selectedYear, selectedMonth]);
+  }, [reportData, reportTitle, selectedYear, selectedMonth, activeArchiveId, archives, user, getDefaultReportTitle, sanitizeFileName]);
 
   // Filter & Pencarian Tabel 20 Equipment & System Details (Bab 5)
   const [selectedEquipmentCategory, setSelectedEquipmentCategory] = useState<string>('ALL');
@@ -496,6 +565,7 @@ export function MonthlyReportGenerator() {
     if (newMonth === selectedMonth) return;
     setReportData(null);
     setSelectedMonth(newMonth);
+    setActiveArchiveId(null);
     const newTitle = getDefaultReportTitle(newMonth, selectedYear);
     setReportTitle(newTitle);
   };
@@ -504,6 +574,7 @@ export function MonthlyReportGenerator() {
     if (newYear === selectedYear) return;
     setReportData(null);
     setSelectedYear(newYear);
+    setActiveArchiveId(null);
     const newTitle = getDefaultReportTitle(selectedMonth, newYear);
     setReportTitle(newTitle);
   };
@@ -733,6 +804,7 @@ export function MonthlyReportGenerator() {
     setSelectedMonth(modalMonth);
     setSelectedYear(modalYear);
     setReportTitle(finalTitle);
+    setActiveArchiveId(null);
     handleGenerateReport(false, modalMonth, modalYear, finalTitle);
   };
 
@@ -1112,6 +1184,7 @@ export function MonthlyReportGenerator() {
       toast.error('Data laporan arsip tidak ditemukan.');
       return;
     }
+    setActiveArchiveId(archive.id);
     const title = archive.title || archive.reportData.reportTitle || `Laporan Bulanan ${archive.monthName} ${archive.year}`;
     const cleanFileName = archive.fileName || `${sanitizeFileName(title)}.docx`;
     setReportTitle(title);
@@ -1249,26 +1322,55 @@ export function MonthlyReportGenerator() {
       await generateMonthlyReportDOCX(enrichedReportData, cleanFileName);
       toast.success(`File Microsoft Word (.docx) "${cleanFileName}" berhasil dibuat dan diunduh!`);
 
-      // Auto-save arsip ke Firestore: monthly_reports
+      // Auto-save / update arsip ke Firestore: monthly_reports
       try {
         const eqNames = (enrichedReportData.scheduleTable1 || []).map(s => s.device);
         const totalCI = (enrichedReportData.taskPerformanceTables || []).reduce((acc, t) => acc + (t.items?.length || 0), 0);
-        await addDoc(collection(db, 'monthly_reports'), {
-          title: finalTitle,
-          fileName: cleanFileName,
-          monthNumber: selectedMonth,
-          monthName: enrichedReportData.monthName,
-          year: selectedYear,
-          quarter: enrichedReportData.quarter || 'Q3',
-          contractNumber: enrichedReportData.contractNumber || enrichedReportData.generalInfo?.contractReference || 'K.TDE.0105/LEG.PRJ/VI/2026',
-          selectedEquipments: eqNames,
-          totalCINames: totalCI,
-          createdAt: Timestamp.now(),
-          updatedAt: Timestamp.now(),
-          createdBy: user?.email || '',
-          createdByName: user?.displayName || user?.email?.split('@')[0] || 'User',
-          reportData: enrichedReportData
-        });
+
+        let targetId = activeArchiveId;
+        if (!targetId) {
+          const found = archives.find(a => 
+            (a.title === finalTitle) ||
+            (a.monthNumber === selectedMonth && a.year === selectedYear && a.title === finalTitle)
+          );
+          if (found) targetId = found.id;
+        }
+
+        if (targetId) {
+          const archiveRef = doc(db, 'monthly_reports', targetId);
+          await updateDoc(archiveRef, {
+            title: finalTitle,
+            fileName: cleanFileName,
+            monthNumber: selectedMonth,
+            monthName: enrichedReportData.monthName,
+            year: selectedYear,
+            quarter: enrichedReportData.quarter || 'Q3',
+            contractNumber: enrichedReportData.contractNumber || enrichedReportData.generalInfo?.contractReference || 'K.TDE.0105/LEG.PRJ/VI/2026',
+            selectedEquipments: eqNames,
+            totalCINames: totalCI,
+            updatedAt: Timestamp.now(),
+            reportData: enrichedReportData
+          });
+          setActiveArchiveId(targetId);
+        } else {
+          const newDocRef = await addDoc(collection(db, 'monthly_reports'), {
+            title: finalTitle,
+            fileName: cleanFileName,
+            monthNumber: selectedMonth,
+            monthName: enrichedReportData.monthName,
+            year: selectedYear,
+            quarter: enrichedReportData.quarter || 'Q3',
+            contractNumber: enrichedReportData.contractNumber || enrichedReportData.generalInfo?.contractReference || 'K.TDE.0105/LEG.PRJ/VI/2026',
+            selectedEquipments: eqNames,
+            totalCINames: totalCI,
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+            createdBy: user?.email || '',
+            createdByName: user?.displayName || user?.email?.split('@')[0] || 'User',
+            reportData: enrichedReportData
+          });
+          setActiveArchiveId(newDocRef.id);
+        }
         toast.success(`Dokumen "${finalTitle}" otomatis tersimpan di Arsip Dokumen Monthly Report!`);
       } catch (saveErr: any) {
         console.warn('Gagal menyimpan arsip ke Firestore:', saveErr);

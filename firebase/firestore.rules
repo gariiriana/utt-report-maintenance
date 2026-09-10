@@ -646,10 +646,11 @@ service cloud.firestore {
     // ============================================================================
     match /monthly_reports/{docId} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth != null 
-                            && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isEngineer() || isStandbyEngineer() || isPrivilegedRole());
+      allow create: if request.auth != null;
+      allow update: if request.auth != null 
+                    && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || resource.data.createdBy == getEmail() || request.resource.data.createdBy == getEmail());
       allow delete: if request.auth != null 
-                    && (isAdminOrQcDme() || isSiteManagerDME() || isPrivilegedRole() || resource.data.createdBy == getEmail());
+                    && (isAdminOrQcDme() || isSiteManagerDME() || isDME() || isPrivilegedRole() || resource.data.createdBy == getEmail());
     }
 
     // ============================================================================
