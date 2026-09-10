@@ -8,34 +8,16 @@ service cloud.firestore {
 
     function isAdminSafe() {
       return request.auth != null 
-             && (
-               (
-                 request.auth.uid != null
-                 && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-                 && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-               )
-               ||
-               (
-                 request.auth.token != null
-                 && getEmail().matches('.*admin.*')
-               )
-             );
+             && request.auth.uid != null
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     function isQcDmeSafe() {
       return request.auth != null 
-             && (
-               (
-                 request.auth.uid != null
-                 && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-                 && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'qc_dme'
-               )
-               ||
-               (
-                 request.auth.token != null
-                 && (getEmail().matches('.*qc_dme.*') || getEmail().matches('.*qcdme.*') || getEmail().matches('.*qc-dme.*') || getEmail() == 'qc@gmail.com' || getEmail().matches('.*qc@.*'))
-               )
-             );
+             && request.auth.uid != null
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'qc_dme';
     }
 
     function isAdminOrQcDme() {
@@ -44,34 +26,16 @@ service cloud.firestore {
 
     function isStandbyEngineer() {
       return request.auth != null  
-             && (
-               (
-                 request.auth.uid != null
-                 && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-                 && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'standby_engineer'
-               )
-               ||
-               (
-                 request.auth.token != null
-                 && (getEmail().matches('.*standby.*') || getEmail().matches('.*dwimitra.*') || getEmail().matches('.*utt.*') || getEmail().matches('.*gari.*') || getEmail().matches('.*agil.*'))
-               )
-             );
+             && request.auth.uid != null
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'standby_engineer';
     }
 
     function isHSE() {
       return request.auth != null 
-             && (
-               (
-                 request.auth.uid != null
-                 && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-                 && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hse'
-               )
-               ||
-               (
-                 request.auth.token != null
-                 && getEmail().matches('.*hse.*')
-               )
-             );
+             && request.auth.uid != null
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'hse';
     }
 
     function isDirector() {
@@ -85,105 +49,30 @@ service cloud.firestore {
 
     function isEngineer() {
       return request.auth != null 
-             && (
-               (
-                 request.auth.uid != null
-                 && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-                 && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['engineer', 'standby_engineer', 'tde', 'cbre'])
-               )
-               ||
-               (
-                 request.auth.token != null
-                 && (
-                   getEmail().matches('.*standby.*') || 
-                   getEmail().matches('.*engineer.*') || 
-                   getEmail().matches('.*dwimitra.*') || 
-                   getEmail().matches('.*fss.*') || 
-                   getEmail().matches('.*utt.*') || 
-                   getEmail().matches('.*ats.*') || 
-                   getEmail().matches('.*pju.*') || 
-                   getEmail().matches('.*fcu.*') || 
-                   getEmail().matches('.*pdu.*') || 
-                   getEmail().matches('.*vrv.*') || 
-                   getEmail().matches('.*ac.*') || 
-                   getEmail().matches('.*generator.*') || 
-                   getEmail().matches('.*trafo.*') || 
-                   getEmail().matches('.*ahu.*') ||
-                   getEmail().matches('.*ahhu.*') ||
-                   getEmail().matches('.*dock.*') ||
-                   getEmail().matches('.*door.*') ||
-                   getEmail().matches('.*ldb.*') ||
-                   getEmail().matches('.*rdb.*') ||
-                   getEmail().matches('.*busduct.*') ||
-                   getEmail().matches('.*ct.*') ||
-                   getEmail().matches('.*capacitor.*') ||
-                   getEmail().matches('.*wld.*') ||
-                   getEmail().matches('.*fld.*') ||
-                   getEmail().matches('.*lv.*') ||
-                   getEmail().matches('.*gari.*') || 
-                   getEmail().matches('.*agil.*')
-                 )
-               )
-             );
+             && request.auth.uid != null
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['engineer', 'standby_engineer', 'tde', 'cbre', 'Engineer_K2', 'engineer_k2']);
     }
 
     function isPrivilegedRole() {
        return request.auth != null 
-             && (
-               (
-                 request.auth.uid != null
-                 && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-                 && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'qc_dme', 'manager', 'site_manager', 'hse', 'dirut', 'direksiSDM', 'DireksiKeuangan']
-               )
-               ||
-               (
-                 request.auth.token != null
-                 && (
-                   getEmail().matches('.*admin.*')
-                   || getEmail().matches('.*qc_dme.*')
-                   || getEmail().matches('.*qcdme.*')
-                   || getEmail().matches('.*manager.*')
-                   || getEmail().matches('.*sitemanager.*')
-                   || getEmail().matches('.*site_manager.*')
-                   || getEmail().matches('.*hse.*')
-                   || getEmail().matches('.*dirut.*')
-                   || getEmail().matches('.*direksisdm.*')
-                   || getEmail().matches('.*direksikeuangan.*')
-                 )
-               )
-             );
+              && request.auth.uid != null
+              && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+              && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'qc_dme', 'manager', 'site_manager', 'hse', 'dirut', 'direksiSDM', 'DireksiKeuangan'];
     }
 
     function isDME() {
       return request.auth != null 
-             && (
-               (
-                 request.auth.uid != null
-                 && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-                 && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['DME', 'dme', 'site_manager_dme']
-               )
-               ||
-               (
-                 request.auth.token != null
-                 && (getEmail().matches('.*dme.*') || getEmail().matches('.*sitemanagerdme.*') || getEmail().matches('.*site_manager_dme.*'))
-               )
-             );
+             && request.auth.uid != null
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['DME', 'dme', 'site_manager_dme'];
     }
 
     function isSiteManagerDME() {
       return request.auth != null 
-             && (
-               (
-                 request.auth.uid != null
-                 && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-                 && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['site_manager_dme', 'DME', 'dme']
-               )
-               ||
-               (
-                 request.auth.token != null
-                 && (getEmail().matches('.*sitemanagerdme.*') || getEmail().matches('.*site_manager_dme.*') || getEmail().matches('.*dme.*'))
-               )
-             );
+             && request.auth.uid != null
+             && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+             && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['site_manager_dme', 'DME', 'dme'];
     }
 
     function isDivision(div) {
@@ -207,7 +96,9 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow create: if request.auth != null 
-                    && request.auth.uid == userId;
+                    && request.auth.uid == userId
+                    && (!request.resource.data.keys().hasAny(['role']) 
+                        || request.resource.data.role in ['engineer', 'standby_engineer', 'Engineer_K2']);
       
       allow read: if request.auth != null;
       
@@ -661,9 +552,9 @@ service cloud.firestore {
     match /registered_faces/{faceId} {
       allow read: if true;
       allow create, update: if request.auth != null 
-                            && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole() || getEmail() == 'qc@gmail.com');
+                            && (isAdminOrQcDme() || isEngineer() || isStandbyEngineer() || isPrivilegedRole());
       allow delete: if request.auth != null 
-                    && (isAdminOrQcDme() || isPrivilegedRole() || getEmail() == 'qc@gmail.com');
+                    && (isAdminOrQcDme() || isPrivilegedRole());
     }
 
     match /{document=**} {

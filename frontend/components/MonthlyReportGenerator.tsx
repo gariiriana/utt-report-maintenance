@@ -4976,10 +4976,13 @@ export function MonthlyReportGenerator() {
                               <button
                                 onClick={() => {
                                   if (window.confirm(`Hapus seluruh lingkup "${sec.scope}" dari Table 23?`)) {
-                                    setReportData(prev => ({
-                                      ...prev,
-                                      observationTable23: prev.observationTable23.filter((_, i) => i !== sIdx)
-                                    }));
+                                    setReportData(prev => {
+                                      if (!prev) return prev;
+                                      return {
+                                        ...prev,
+                                        observationTable23: prev.observationTable23.filter((_, i) => i !== sIdx)
+                                      };
+                                    });
                                     toast.info(`Lingkup "${sec.scope}" dihapus.`);
                                   }
                                 }}

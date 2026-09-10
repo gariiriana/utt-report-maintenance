@@ -30,30 +30,20 @@ interface UserData {
 }
 
 /**
- * Helper otomatis: Menentukan peranan (role) awal user berdasarkan format alamat email
+ * Helper otomatis: Menentukan peranan (role) awal user.
+ * Akun baru default-nya adalah 'engineer'.
+ * Role istimewa (qc_dme, admin, dsb.) wajib terdaftar resmi di dokumen Firestore users/{uid}.
  * @param email Alamat email user
- * @returns Kode role resmi (admin, qc_dme, standby_engineer, engineer, Engineer_K2, dsb.)
+ * @returns Kode role resmi (engineer, standby_engineer, Engineer_K2, dsb.)
  */
 const getRoleFromEmail = (email: string | null): 'admin' | 'qc_dme' | 'engineer' | 'Engineer_K2' | 'engineer_k2' | 'standby_engineer' | 'tde' | 'cbre' | 'hse' | 'pmo' | 'sales' | 'presales' | 'purchasing' | 'dirut' | 'direksiSDM' | 'DireksiKeuangan' | 'site_manager' | 'manager' | 'DME' | 'site_manager_dme' => {
   if (!email) return 'engineer';
   const lowerEmail = email.toLowerCase();
-  if (lowerEmail.includes('qc_dme') || lowerEmail.includes('qcdme') || lowerEmail.includes('qc-dme') || lowerEmail === 'qc@gmail.com' || lowerEmail.startsWith('qc@')) return 'qc_dme';
-  if (lowerEmail.includes('admin')) return 'admin';
-  if (lowerEmail.includes('hse')) return 'hse';
-  if (lowerEmail.includes('tde')) return 'tde';
-  if (lowerEmail.includes('cbre')) return 'cbre';
-  if (lowerEmail.includes('site_manager') || lowerEmail.includes('sitemanager')) return 'site_manager';
-  if (lowerEmail.includes('manager')) return 'manager';
-  if (lowerEmail.includes('pmo')) return 'pmo';
-  if (lowerEmail.includes('sales')) return 'sales';
-  if (lowerEmail.includes('presales')) return 'presales';
-  if (lowerEmail.includes('purchasing')) return 'purchasing';
-  if (lowerEmail.includes('dirut')) return 'dirut';
-  if (lowerEmail.includes('site_manager_dme') || lowerEmail.includes('sitemanagerdme')) return 'site_manager_dme';
-  if (lowerEmail.includes('dme') || lowerEmail.includes('dwimitra')) return 'DME';
+  // Fallback khusus untuk akun QC DME resmi bila belum tersinkron
+  if (lowerEmail === 'qcdme@dme.com') return 'qc_dme';
   if (lowerEmail.includes('k2') || lowerEmail.includes('engineer_k2')) return 'Engineer_K2';
-  // Email spesifik teknisi Standby Engineer UTT
-  if (lowerEmail === 'agil@utt.com' || lowerEmail === 'krishna@utt.com' || lowerEmail === 'asep@utt.com' || lowerEmail === 'salman@utt.com' || lowerEmail === 'gilang@utt.com' || lowerEmail === 'dison@utt.com' || lowerEmail === 'riyan@utt.com' || lowerEmail.includes('standby')) return 'standby_engineer';
+  // Email spesifik teknisi Standby Engineer UTT eksisting
+  if (lowerEmail === 'agil@utt.com' || lowerEmail === 'krishna@utt.com' || lowerEmail === 'asep@utt.com' || lowerEmail === 'salman@utt.com' || lowerEmail === 'gilang@utt.com' || lowerEmail === 'dison@utt.com' || lowerEmail === 'riyan@utt.com') return 'standby_engineer';
   return 'engineer';
 };
 
