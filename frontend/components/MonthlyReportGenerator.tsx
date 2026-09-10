@@ -1566,6 +1566,27 @@ export function MonthlyReportGenerator() {
 
           {/* Export & Output Actions */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            {/* Save Draft Button in Toolbar */}
+            <button
+              onClick={handleManualSave}
+              disabled={isSavingManual || !reportData}
+              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-white shadow-sm transition-all cursor-pointer disabled:opacity-50 active:scale-95 ${
+                justSaved
+                  ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20'
+                  : 'bg-slate-800 hover:bg-slate-700 shadow-slate-700/20'
+              }`}
+              title="Simpan perubahan laporan ini ke database lokal"
+            >
+              {isSavingManual ? (
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+              ) : justSaved ? (
+                <Check className="w-4 h-4 text-emerald-200" />
+              ) : (
+                <Save className="w-4 h-4 text-slate-200" />
+              )}
+              <span>{isSavingManual ? 'Menyimpan...' : justSaved ? 'Tersimpan!' : 'Simpan Draft'}</span>
+            </button>
+
             {/* Print Button */}
             <button
               onClick={handlePrint}
@@ -7289,14 +7310,14 @@ export function MonthlyReportGenerator() {
         )}
       </AnimatePresence>
 
-      {/* ─── Floating Persistent Save Button (Bottom Right) ─── */}
+      {/* ─── Floating Persistent Save Button (Di sebelah kiri AI Chat Widget agar tidak bertabrakan) ─── */}
       {reportData && (
-        <div className="fixed bottom-6 right-6 z-50 print:hidden flex items-center gap-2 pointer-events-auto">
+        <div className="fixed bottom-6 right-28 sm:right-32 z-40 print:hidden flex items-center gap-2 pointer-events-auto">
           <button
             type="button"
             onClick={handleManualSave}
             disabled={isSavingManual}
-            className={`group flex items-center gap-2.5 px-5 py-3.5 rounded-2xl font-bold text-sm shadow-2xl transition-all duration-200 transform active:scale-95 cursor-pointer backdrop-blur-md ${
+            className={`group flex items-center gap-2.5 px-4 sm:px-5 py-3.5 rounded-2xl font-bold text-xs sm:text-sm shadow-2xl transition-all duration-200 transform active:scale-95 cursor-pointer backdrop-blur-md ${
               justSaved
                 ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/40 ring-2 ring-emerald-300'
                 : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/40 hover:shadow-blue-600/60 ring-2 ring-blue-400/40 hover:scale-105'
@@ -7305,17 +7326,17 @@ export function MonthlyReportGenerator() {
           >
             {isSavingManual ? (
               <>
-                <Loader2 className="w-5 h-5 animate-spin text-white" />
+                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin text-white" />
                 <span>Menyimpan...</span>
               </>
             ) : justSaved ? (
               <>
-                <Check className="w-5 h-5 text-emerald-200 animate-in zoom-in-50 duration-200" />
+                <Check className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-200 animate-in zoom-in-50 duration-200" />
                 <span>Tersimpan!</span>
               </>
             ) : (
               <>
-                <Save className="w-5 h-5 text-blue-200 group-hover:scale-110 transition-transform" />
+                <Save className="w-4 h-4 sm:w-5 sm:h-5 text-blue-200 group-hover:scale-110 transition-transform" />
                 <span>Simpan Perubahan</span>
               </>
             )}
