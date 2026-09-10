@@ -46,7 +46,8 @@ import {
   FolderArchive,
   Edit3,
   Save,
-  Check
+  Check,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { draftStorage } from '@/utils/draftStorage';
@@ -1266,6 +1267,82 @@ export function MonthlyReportGenerator() {
       setIsSavingArchiveTitle(false);
     }
   };
+
+  // Synchronize Not Good items from Task Performance (Chapter 4) to Table 23 Observation & Finding (Chapter 7)
+  const handleSyncNotGoodToObservationTable = () => {
+    if (!reportData) return;
+    const currentObs = [...(reportData.observationTable23 || [])];
+    let addedCount = 0;
+
+    (reportData.taskPerformanceTables || []).forEach(tTable => {
+      const eqScope = tTable.scope || 'EQUIPMENT';
+      (tTable.items || []).forEach(item => {
+        const opLower = (item.operationalStatus || '').toLowerCase();
+        const isNotGood = (item as any).statusMode === 'not_good' ||
+          opLower.includes('not good') ||
+          opLower.includes('tidak baik') ||
+          opLower.includes('abnormal') ||
+          opLower.includes('rusak') ||
+          opLower.includes('trouble') ||
+          opLower.includes('alarm') ||
+          opLower.includes('faulty');
+
+        const compName = (item.className || '').trim();
+        if (isNotGood && compName) {
+          let secIndex = currentObs.findIndex(s => s.scope.trim().toLowerCase() === eqScope.trim().toLowerCase());
+          if (secIndex === -1) {
+            currentObs.push({
+              scope: eqScope,
+              items: [{
+                no: 1,
+                component: compName,
+                conditionBefore: '',
+                inspectionNotes: ''
+              }]
+            });
+            addedCount++;
+          } else {
+            const sec = { ...currentObs[secIndex], items: [...currentObs[secIndex].items] };
+            const exists = sec.items.some(it => it.component.trim().toLowerCase() === compName.toLowerCase());
+            if (!exists) {
+              sec.items.push({
+                no: sec.items.length + 1,
+                component: compName,
+                conditionBefore: '',
+                inspectionNotes: ''
+              });
+              currentObs[secIndex] = sec;
+              addedCount++;
+            }
+          }
+        }
+      });
+    });
+
+    if (addedCount > 0) {
+      setReportData({
+        ...reportData,
+        observationTable23: currentObs
+      });
+      toast.success(`Berhasil menarik ${addedCount} item Not Good ke Tabel 23 Observation & Finding!`);
+    } else {
+      toast.info('Semua item Not Good dari Task Performance sudah tercatat di Tabel 23.');
+    }
+  };
+
+  const totalNotGoodCount = (reportData?.taskPerformanceTables || []).reduce((acc, t) => {
+    return acc + (t.items || []).filter(it => {
+      const opLower = (it.operationalStatus || '').toLowerCase();
+      return (it as any).statusMode === 'not_good' ||
+        opLower.includes('not good') ||
+        opLower.includes('tidak baik') ||
+        opLower.includes('abnormal') ||
+        opLower.includes('rusak') ||
+        opLower.includes('trouble') ||
+        opLower.includes('alarm') ||
+        opLower.includes('faulty');
+    }).length;
+  }, 0);
 
   // Quick Action AI Triggers
   const handleAIRecs = () => {
@@ -3033,8 +3110,61 @@ export function MonthlyReportGenerator() {
                                           value={selectValue}
                                           onChange={(e) => {
                                             const val = e.target.value as 'good' | 'not_good' | 'custom';
+                                            const eqScope = tTable.scope || 'EQUIPMENT';
+                                            const compName = (item.className || '').trim();
+
+                                            let updatedObs = [...(reportData.observationTable23 || [])];
+                                            if (val === 'not_good' && compName) {
+                                              const secIndex = updatedObs.findIndex(s => s.scope.trim().toLowerCase() === eqScope.trim().toLowerCase());
+                                              if (secIndex === -1) {
+                                                updatedObs.push({
+                                                  scope: eqScope,
+                                                  items: [{
+                                                    no: 1,
+                                                    component: compName,
+                                                    conditionBefore: '',
+                                                    inspectionNotes: ''
+                                                  }]
+                                                });
+                                                toast.info(`"${compName}" (${eqScope}) otomatis masuk ke Tabel 23 Observation & Finding.`);
+                                              } else {
+                                                const sec = { ...updatedObs[secIndex], items: [...updatedObs[secIndex].items] };
+                                                const exists = sec.items.some(it => it.component.trim().toLowerCase() === compName.toLowerCase());
+                                                if (!exists) {
+                                                  sec.items.push({
+                                                    no: sec.items.length + 1,
+                                                    component: compName,
+                                                    conditionBefore: '',
+                                                    inspectionNotes: ''
+                                                  });
+                                                  updatedObs[secIndex] = sec;
+                                                  toast.info(`"${compName}" (${eqScope}) otomatis masuk ke Tabel 23 Observation & Finding.`);
+                                                }
+                                              }
+                                            } else if (val === 'good' && compName) {
+                                              const secIndex = updatedObs.findIndex(s => s.scope.trim().toLowerCase() === eqScope.trim().toLowerCase());
+                                              if (secIndex !== -1) {
+                                                const sec = { ...updatedObs[secIndex], items: [...updatedObs[secIndex].items] };
+                                                const itemIdx = sec.items.findIndex(it =>
+                                                  it.component.trim().toLowerCase() === compName.toLowerCase() &&
+                                                  !it.conditionBefore.trim() &&
+                                                  !it.inspectionNotes.trim()
+                                                );
+                                                if (itemIdx !== -1) {
+                                                  sec.items.splice(itemIdx, 1);
+                                                  sec.items.forEach((it, idx) => { it.no = idx + 1; });
+                                                  if (sec.items.length === 0) {
+                                                    updatedObs.splice(secIndex, 1);
+                                                  } else {
+                                                    updatedObs[secIndex] = sec;
+                                                  }
+                                                }
+                                              }
+                                            }
+
                                             const updated = {
                                               ...reportData,
+                                              observationTable23: updatedObs,
                                               taskPerformanceTables: (reportData.taskPerformanceTables || []).map((tbl, ti) => {
                                                 if (ti !== tIdx) return tbl;
                                                 return {
@@ -4756,28 +4886,39 @@ export function MonthlyReportGenerator() {
 
               <div className="flex items-center justify-between">
                 <h2 className="text-[11pt] font-bold text-slate-900">7. Observation and Finding</h2>
-                <button
-                  onClick={() => {
-                    const updated = { ...reportData };
-                    updated.observationTable23.push({
-                      scope: 'LINGKUP PERALATAN BARU',
-                      items: [
-                        {
-                          no: 1,
-                          component: 'Komponen Baru',
-                          conditionBefore: 'Normal / Bersih',
-                          inspectionNotes: 'Tidak ada anomali atau deviasi operasional.'
-                        }
-                      ]
-                    });
-                    setReportData(updated);
-                    toast.success('Lingkup temuan baru ditambahkan!');
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold font-sans transition-all cursor-pointer print:hidden"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Tambah Lingkup Temuan</span>
-                </button>
+                <div className="flex items-center gap-2 print:hidden">
+                  <button
+                    type="button"
+                    onClick={handleSyncNotGoodToObservationTable}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold font-sans transition-all cursor-pointer shadow-2xs"
+                    title="Tarik semua item dengan status Not Good dari Bab 4 ke tabel ini"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Sinkronkan Status Not Good {totalNotGoodCount > 0 ? `(${totalNotGoodCount})` : ''}</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const updated = { ...reportData };
+                      updated.observationTable23.push({
+                        scope: 'LINGKUP PERALATAN BARU',
+                        items: [
+                          {
+                            no: 1,
+                            component: 'Komponen Baru',
+                            conditionBefore: '',
+                            inspectionNotes: ''
+                          }
+                        ]
+                      });
+                      setReportData(updated);
+                      toast.success('Lingkup temuan baru ditambahkan!');
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold font-sans transition-all cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Tambah Lingkup Temuan</span>
+                  </button>
+                </div>
               </div>
 
               <p className="font-bold text-center text-slate-900 text-sm my-3">
@@ -4788,18 +4929,18 @@ export function MonthlyReportGenerator() {
                 <table className="w-full text-left text-xs border-collapse font-serif">
                   <thead>
                     <tr className="bg-[#0066B3] text-white font-bold border-b border-black">
-                      <th className="py-2.5 px-3 text-center w-10 border-r border-black">No</th>
-                      <th className="py-2.5 px-3 border-r border-black w-48">Component</th>
-                      <th className="py-2.5 px-3 border-r border-black">Condition Before</th>
-                      <th className="py-2.5 px-3 border-r border-black">Inspection Notes</th>
-                      <th className="py-2.5 px-2 text-center w-8 print:hidden">Aksi</th>
+                      <th className="py-2.5 px-3 text-center w-12 border-r border-black">No</th>
+                      <th className="py-2.5 px-3 border-r border-black w-[32%]">Component</th>
+                      <th className="py-2.5 px-3 border-r border-black w-[31%]">Condition Before</th>
+                      <th className="py-2.5 px-3 border-r border-black w-[31%]">Inspection Notes</th>
+                      <th className="py-2.5 px-2 text-center w-14 print:hidden">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-black text-slate-800">
                     {reportData.observationTable23.map((sec, sIdx) => (
                       <React.Fragment key={`sec-${sIdx}`}>
-                        <tr className="bg-[#92B8DE] text-slate-900 font-bold">
-                          <td colSpan={4} className="py-1.5 px-2">
+                        <tr className="bg-[#92B8DE] text-slate-900 font-bold border-b border-black">
+                          <td colSpan={4} className="py-1.5 px-2 border-r border-black">
                             <input
                               type="text"
                               value={sec.scope}
@@ -4808,45 +4949,65 @@ export function MonthlyReportGenerator() {
                                 updated.observationTable23[sIdx].scope = e.target.value;
                                 setReportData(updated);
                               }}
+                              placeholder="Nama Equipment / Lingkup..."
                               className="w-full font-bold text-slate-900 bg-transparent hover:bg-white/40 focus:bg-white/60 rounded px-1 outline-none text-xs"
                             />
                           </td>
-                          <td className="py-1.5 px-2 text-center print:hidden">
-                            <button
-                              onClick={() => {
-                                const updated = { ...reportData };
-                                const newNo = updated.observationTable23[sIdx].items.length + 1;
-                                updated.observationTable23[sIdx].items.push({
-                                  no: newNo,
-                                  component: 'Komponen Baru',
-                                  conditionBefore: 'Normal',
-                                  inspectionNotes: 'Tidak ada anomali.'
-                                });
-                                setReportData(updated);
-                                toast.success('Baris temuan ditambahkan!');
-                              }}
-                              className="px-2 py-0.5 bg-blue-700 hover:bg-blue-800 text-white rounded text-[10px] font-sans cursor-pointer whitespace-nowrap"
-                            >
-                              + Baris
-                            </button>
+                          <td className="py-1.5 px-2 text-center print:hidden border-b border-black">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => {
+                                  const updated = { ...reportData };
+                                  const newNo = updated.observationTable23[sIdx].items.length + 1;
+                                  updated.observationTable23[sIdx].items.push({
+                                    no: newNo,
+                                    component: '',
+                                    conditionBefore: '',
+                                    inspectionNotes: ''
+                                  });
+                                  setReportData(updated);
+                                  toast.success('Baris temuan ditambahkan!');
+                                }}
+                                className="px-2 py-0.5 bg-blue-700 hover:bg-blue-800 text-white rounded text-[10px] font-sans cursor-pointer whitespace-nowrap"
+                                title="Tambah baris komponen"
+                              >
+                                + Baris
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm(`Hapus seluruh lingkup "${sec.scope}" dari Table 23?`)) {
+                                    setReportData(prev => ({
+                                      ...prev,
+                                      observationTable23: prev.observationTable23.filter((_, i) => i !== sIdx)
+                                    }));
+                                    toast.info(`Lingkup "${sec.scope}" dihapus.`);
+                                  }
+                                }}
+                                className="p-0.5 hover:text-red-700 text-slate-700 transition-colors cursor-pointer"
+                                title="Hapus seluruh lingkup ini"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                         {sec.items.map((item, iIdx) => (
-                          <tr key={`item-${sIdx}-${iIdx}`} className="hover:bg-blue-50/20">
-                            <td className="py-2 px-3 text-center font-bold border-r border-black">{item.no}</td>
-                            <td className="py-1 px-2 border-r border-black font-bold">
-                              <input
-                                type="text"
+                          <tr key={`item-${sIdx}-${iIdx}`} className="hover:bg-blue-50/20 border-b border-black">
+                            <td className="py-2 px-3 text-center font-bold border-r border-black align-top">{item.no}</td>
+                            <td className="py-1 px-2 border-r border-black font-bold align-top">
+                              <textarea
                                 value={item.component}
+                                rows={item.component && item.component.includes('\n') ? Math.max(2, item.component.split('\n').length) : 2}
                                 onChange={(e) => {
                                   const updated = { ...reportData };
                                   updated.observationTable23[sIdx].items[iIdx].component = e.target.value;
                                   setReportData(updated);
                                 }}
-                                className="w-full text-xs font-bold py-1 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none"
+                                placeholder="Nama komponen..."
+                                className="w-full text-xs font-bold py-1 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none resize-none font-serif leading-snug"
                               />
                             </td>
-                            <td className="py-1 px-2 border-r border-black">
+                            <td className="py-1 px-2 border-r border-black align-top">
                               <BilingualTextarea
                                 value={item.conditionBefore}
                                 onChange={(val) => {
@@ -4854,14 +5015,14 @@ export function MonthlyReportGenerator() {
                                   updated.observationTable23[sIdx].items[iIdx].conditionBefore = val;
                                   setReportData(updated);
                                 }}
-                                placeholderEn="Condition before (EN)..."
-                                placeholderId="Kondisi awal (ID - garis miring)..."
+                                placeholderEn="Condition before (leave blank if none)..."
+                                placeholderId="Kondisi awal (kosongkan jika belum ada)..."
                                 classNameEn="w-full text-xs py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none font-sans"
                                 classNameId="w-full text-[11px] italic text-slate-600 py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none font-sans"
                                 indentId={true}
                               />
                             </td>
-                            <td className="py-1 px-2 border-r border-black">
+                            <td className="py-1 px-2 border-r border-black align-top">
                               <BilingualTextarea
                                 value={item.inspectionNotes}
                                 onChange={(val) => {
@@ -4869,8 +5030,8 @@ export function MonthlyReportGenerator() {
                                   updated.observationTable23[sIdx].items[iIdx].inspectionNotes = val;
                                   setReportData(updated);
                                 }}
-                                placeholderEn="Inspection notes (EN)..."
-                                placeholderId="Catatan inspeksi (ID - garis miring)..."
+                                placeholderEn="Inspection notes (leave blank if none)..."
+                                placeholderId="Catatan inspeksi (kosongkan jika belum ada)..."
                                 classNameEn="w-full text-xs py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none font-sans"
                                 classNameId="w-full text-[11px] italic text-slate-600 py-0.5 px-1 bg-transparent hover:bg-white focus:bg-white focus:ring-1 focus:ring-blue-500 rounded outline-none font-sans"
                                 indentId={true}

@@ -4165,6 +4165,46 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
   // ══════════════════════════════════════════════════════════════════════════
   const observationTable23: FullMonthlyReportData['observationTable23'] = [];
 
+  // Extract Not Good items from taskPerformanceTables
+  const notGoodByScope = new Map<string, string[]>();
+  (taskPerformanceTables || []).forEach(tTable => {
+    const scope = tTable.scope || 'EQUIPMENT';
+    (tTable.items || []).forEach(item => {
+      const opLower = (item.operationalStatus || '').toLowerCase();
+      const isNotGood = (item as any).statusMode === 'not_good' ||
+        opLower.includes('not good') ||
+        opLower.includes('tidak baik') ||
+        opLower.includes('abnormal') ||
+        opLower.includes('rusak') ||
+        opLower.includes('trouble') ||
+        opLower.includes('alarm') ||
+        opLower.includes('faulty');
+
+      if (isNotGood && item.className && item.className.trim()) {
+        if (!notGoodByScope.has(scope)) {
+          notGoodByScope.set(scope, []);
+        }
+        if (!notGoodByScope.get(scope)!.includes(item.className.trim())) {
+          notGoodByScope.get(scope)!.push(item.className.trim());
+        }
+      }
+    });
+  });
+
+  if (notGoodByScope.size > 0) {
+    notGoodByScope.forEach((compNames, scope) => {
+      observationTable23.push({
+        scope: scope,
+        items: compNames.map((comp, idx) => ({
+          no: idx + 1,
+          component: comp,
+          conditionBefore: '',
+          inspectionNotes: ''
+        }))
+      });
+    });
+  }
+
   if (monthFindings.length > 0) {
     // Group findings by system
     const findingsBySys = new Map<string, any[]>();
@@ -4175,17 +4215,29 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
     });
 
     findingsBySys.forEach((items, sysName) => {
-      observationTable23.push({
-        scope: sysName.toUpperCase(),
-        items: items.map((f, idx) => ({
-          no: idx + 1,
-          component: f.equipment || f.equipmentName || 'Facility Component',
-          conditionBefore: f.finding || f.description || 'Anomali terdeteksi saat inspeksi berkala.',
-          inspectionNotes: f.actionTaken || f.correctiveAction || 'Pemeriksaan lanjutan dan rekomendasi perbaikan.'
-        }))
-      });
+      const existingSec = observationTable23.find(s => s.scope.toLowerCase() === sysName.toLowerCase());
+      if (existingSec) {
+        items.forEach(f => {
+          existingSec.items.push({
+            no: existingSec.items.length + 1,
+            component: f.equipment || f.equipmentName || 'Facility Component',
+            conditionBefore: f.finding || f.description || 'Anomali terdeteksi saat inspeksi berkala.',
+            inspectionNotes: f.actionTaken || f.correctiveAction || 'Pemeriksaan lanjutan dan rekomendasi perbaikan.'
+          });
+        });
+      } else {
+        observationTable23.push({
+          scope: sysName.toUpperCase(),
+          items: items.map((f, idx) => ({
+            no: idx + 1,
+            component: f.equipment || f.equipmentName || 'Facility Component',
+            conditionBefore: f.finding || f.description || 'Anomali terdeteksi saat inspeksi berkala.',
+            inspectionNotes: f.actionTaken || f.correctiveAction || 'Pemeriksaan lanjutan dan rekomendasi perbaikan.'
+          }))
+        });
+      }
     });
-  } else {
+  } else if (observationTable23.length === 0) {
     // Check abnormal items from submitted monthly PDF docs
     const abnormalDocs = monthPdfDocs.filter(d => d.hasAbnormal);
     if (abnormalDocs.length > 0) {
@@ -4200,10 +4252,35 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
       });
     } else {
       observationTable23.push({
-        scope: 'CHILLER & COOLING TOWER',
+        scope: 'Cooling Tower',
         items: [
-          { no: 1, component: 'Expansion Joint Flange DN 350 (Chiller 1 & 2)', conditionBefore: 'Karat minor pada baut flange', inspectionNotes: 'Telah dilakukan re-tightening dan pembersihan permukaan isolator.' },
-          { no: 2, component: 'Cooling Tower Fan Belt', conditionBefore: 'Tension belt sedikit kendur', inspectionNotes: 'Telah disesuaikan tension belt sesuai spesifikasi standar pabrikan.' }
+          { no: 1, component: 'V belt fan cooling tower (CT 1, 2 and 3)', conditionBefore: 'there is noise at the rotation of the CT fan', inspectionNotes: 'Belt in the fan slip occurs between motor fan operational' }
+        ]
+      });
+      observationTable23.push({
+        scope: 'Fire suppression (FSS)',
+        items: [
+          { no: 1, component: 'Modul Card 9', conditionBefore: '', inspectionNotes: '' },
+          { no: 2, component: 'Battery', conditionBefore: 'Tests showed that some VESDA batteries had voltages below 24 VDC, which could compromise system stability.', inspectionNotes: 'Low voltages like this can disrupt system stability, especially in emergency situations where the system must work optimally to detect smoke early.' },
+          { no: 3, component: 'Power Supply', conditionBefore: "The power supply's charging output was not producing the expected 24 VDC.", inspectionNotes: 'This can cause the battery to not fully charge and worsen the system condition, making VESDA function unreliably when needed.' }
+        ]
+      });
+      observationTable23.push({
+        scope: 'FCU',
+        items: [
+          { no: 1, component: 'V-Belt 1F-FCU-CR-2', conditionBefore: 'Unit no operational', inspectionNotes: 'The belt damage, unit Off need replace' }
+        ]
+      });
+      observationTable23.push({
+        scope: 'VRV',
+        items: [
+          { no: 1, component: 'Flow switch IU.2.CC.1-A', conditionBefore: 'Motor drain pump not respond, unit notify alarm A3', inspectionNotes: 'The flow switch not respon, need Replace control drainage, type FXMQ-P' }
+        ]
+      });
+      observationTable23.push({
+        scope: 'AC Split',
+        items: [
+          { no: 1, component: 'The compressor faulty\na. IU.AC.FCC-2\nb. AC Split Lift 01\nc. AC Split Lift 01\nd. AC Split Lift Service', conditionBefore: 'Existing at 2024 the cable power to compressor no installed', inspectionNotes: 'Check unit compressor, the line winding any loss connected (compressor faulty)' }
         ]
       });
     }
@@ -4911,7 +4988,7 @@ export function convertReportToBilingual(data: FullMonthlyReportData): FullMonth
     updated.observationTable23.forEach(sec => {
       sec.items = sec.items.map(item => {
         let cond = item.conditionBefore || '';
-        if (!cond.includes('\n')) {
+        if (cond.trim() !== '' && !cond.includes('\n')) {
           const cLower = cond.toLowerCase();
           if (cLower.includes('karat') || cLower.includes('rust')) {
             cond = 'Minor surface corrosion observed on mounting bolts.\nKarat minor teramati pada baut dan permukaan dudukan komponen.';
@@ -4927,7 +5004,7 @@ export function convertReportToBilingual(data: FullMonthlyReportData): FullMonth
         }
 
         let notes = item.inspectionNotes || '';
-        if (!notes.includes('\n')) {
+        if (notes.trim() !== '' && !notes.includes('\n')) {
           const nLower = notes.toLowerCase();
           if (nLower.includes('re-tighten') || nLower.includes('kencang')) {
             notes = 'Re-tightening and cleaning performed in accordance with standards.\nTelah dilakukan pengencangan ulang dan pembersihan sesuai standar teknis.';

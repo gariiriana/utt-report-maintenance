@@ -1510,9 +1510,9 @@ export async function generateMonthlyReportDOCX(
     new TableRow({
       children: [
         new TableCell({ width: { size: 6, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, color: "FFFFFF", size: 18 })] })] }),
-        new TableCell({ width: { size: 30, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Component", bold: true, color: "FFFFFF", size: 18 })] })] }),
-        new TableCell({ width: { size: 32, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Condition Before", bold: true, color: "FFFFFF", size: 18 })] })] }),
-        new TableCell({ width: { size: 32, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Inspection Notes", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 32, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Component", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 31, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Condition Before", bold: true, color: "FFFFFF", size: 18 })] })] }),
+        new TableCell({ width: { size: 31, type: WidthType.PERCENTAGE }, shading: { fill: COLOR_HEADER_BLUE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Inspection Notes", bold: true, color: "FFFFFF", size: 18 })] })] }),
       ]
     })
   ];
@@ -1526,13 +1526,19 @@ export async function generateMonthlyReportDOCX(
       })
     );
     sec.items.forEach(item => {
+      const compLines = (item.component || "").split('\n');
+      const compParas = compLines.map((line, lIdx) => new Paragraph({
+        spacing: { after: lIdx === compLines.length - 1 ? 30 : 10 },
+        children: [new TextRun({ text: line, bold: lIdx === 0, size: 18 })]
+      }));
+
       obsRows.push(
         new TableRow({
           children: [
-            new TableCell({ borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(item.no), size: 18 })] })] }),
-            new TableCell({ borders: borderThin, children: [new Paragraph({ children: [new TextRun({ text: item.component, bold: true, size: 18 })] })] }),
-            new TableCell({ borders: borderThin, children: formatBilingualCell(item.conditionBefore) }),
-            new TableCell({ borders: borderThin, children: formatBilingualCell(item.inspectionNotes) }),
+            new TableCell({ width: { size: 6, type: WidthType.PERCENTAGE }, borders: borderThin, children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: String(item.no), size: 18 })] })] }),
+            new TableCell({ width: { size: 32, type: WidthType.PERCENTAGE }, borders: borderThin, children: compParas }),
+            new TableCell({ width: { size: 31, type: WidthType.PERCENTAGE }, borders: borderThin, children: formatBilingualCell(item.conditionBefore, "") }),
+            new TableCell({ width: { size: 31, type: WidthType.PERCENTAGE }, borders: borderThin, children: formatBilingualCell(item.inspectionNotes, "") }),
           ]
         })
       );
