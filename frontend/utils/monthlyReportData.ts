@@ -107,6 +107,8 @@ export interface FullMonthlyReportData {
   monthNumber: number;
   quarter: string;
   year: number;
+  reportTitle?: string;
+  fileName?: string;
   contractNumber: string;
   docCode: string;
   projectName: string;

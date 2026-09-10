@@ -210,7 +210,10 @@ function createTelkomCircuitFooterBytes(): Uint8Array {
 /**
  * Generate full Monthly Report DOCX file
  */
-export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData): Promise<void> {
+export async function generateMonthlyReportDOCX(
+  inputData: FullMonthlyReportData,
+  customFileName?: string
+): Promise<void> {
   const data: FullMonthlyReportData = JSON.parse(JSON.stringify(inputData));
 
   // Safety Reconciliation: Ensure all downstream tables match the exact equipment selected in scheduleTable1
@@ -2181,6 +2184,14 @@ export async function generateMonthlyReportDOCX(inputData: FullMonthlyReportData
 
   // Pack & Download file
   const blob = await Packer.toBlob(doc);
-  const fileName = `Monthly_Report_${data.monthNameEn}_${data.year}_NeutraDC.docx`;
+  let baseName = customFileName?.trim() || (data as any).fileName?.trim() || (data as any).reportTitle?.trim();
+  let fileName: string;
+  if (baseName) {
+    baseName = baseName.replace(/\.docx$/i, '');
+    const clean = baseName.replace(/[/\\?%*:|"<>]/g, '_').trim();
+    fileName = `${clean}.docx`;
+  } else {
+    fileName = `Monthly_Report_${data.monthNameEn}_${data.year}_NeutraDC.docx`;
+  }
   saveAs(blob, fileName);
 }

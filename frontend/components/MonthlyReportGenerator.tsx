@@ -52,7 +52,7 @@ import { toast } from 'sonner';
 import { draftStorage } from '@/utils/draftStorage';
 import { useAuth } from '@/components/AuthContext';
 import { db } from '@/api/firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, updateDoc, doc, Timestamp } from 'firebase/firestore';
 import { BOQ_CATEGORIES_DATA } from '@/data/boqAssetData';
 
 import {
@@ -274,7 +274,7 @@ export const BilingualBulletsEditor: React.FC<{
 };
 
 export function MonthlyReportGenerator() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
 
   // ─── Main Navigation Tab: 'editor' | 'archives' ───────────────────
   const [activeMainTab, setActiveMainTab] = useState<'editor' | 'archives'>('editor');
@@ -374,6 +374,78 @@ export function MonthlyReportGenerator() {
   const [selectedMonth, setSelectedMonth] = useState<number>(7);
   const [selectedYear, setSelectedYear] = useState<number>(2026);
 
+  // ─── Nama File / Judul Laporan Monthly ─────────────────────────────
+  const [reportTitle, setReportTitle] = useState<string>('Laporan Bulanan Maintenance Juli 2026');
+
+  // ─── Modal Inisialisasi / Setup Sebelum Input ──────────────────────
+  const [isSetupModalOpen, setIsSetupModalOpen] = useState<boolean>(false);
+  const [modalMonth, setModalMonth] = useState<number>(7);
+  const [modalYear, setModalYear] = useState<number>(2026);
+  const [modalTitle, setModalTitle] = useState<string>('Laporan Bulanan Maintenance Juli 2026');
+  const [isModalTitleCustomized, setIsModalTitleCustomized] = useState<boolean>(false);
+
+  // ─── Modal Ubah Nama File di Arsip Dokumen ─────────────────────────
+  const [editingArchiveItem, setEditingArchiveItem] = useState<any | null>(null);
+  const [editingArchiveTitle, setEditingArchiveTitle] = useState<string>('');
+  const [isSavingArchiveTitle, setIsSavingArchiveTitle] = useState<boolean>(false);
+
+  // Helper judul default & sanitasi file
+  const getDefaultReportTitle = useCallback((monthNum: number, yr: number) => {
+    const monthLabel = MONTH_OPTIONS.find(m => m.value === monthNum)?.label || `Bulan ${monthNum}`;
+    return `Laporan Bulanan Maintenance ${monthLabel} ${yr}`;
+  }, []);
+
+  const sanitizeFileName = useCallback((name: string) => {
+    return (name || 'Laporan_Bulanan').replace(/[/\\?%*:|"<>]/g, '_').trim();
+  }, []);
+
+  // Izin edit nama file: Pembuat laporan atau admin / manajemen DME
+  const canEditArchive = useCallback((archive: any) => {
+    if (!user) return false;
+    const userEmail = (user.email || '').toLowerCase().trim();
+    const createdBy = (archive.createdBy || '').toLowerCase().trim();
+    if (createdBy && userEmail === createdBy) return true;
+    if (userRole === 'admin' || userRole === 'DME' || userRole === 'site_manager_dme' || userRole === 'qc_dme') return true;
+    if (userEmail.includes('dwimitra') || userEmail.includes('admin')) return true;
+    return false;
+  }, [user, userRole]);
+
+  // Modal Setup Actions
+  const openSetupModal = useCallback(() => {
+    setModalMonth(selectedMonth);
+    setModalYear(selectedYear);
+    const curTitle = reportTitle || getDefaultReportTitle(selectedMonth, selectedYear);
+    setModalTitle(curTitle);
+    setIsModalTitleCustomized(false);
+    setIsSetupModalOpen(true);
+  }, [selectedMonth, selectedYear, reportTitle, getDefaultReportTitle]);
+
+  const handleModalMonthChange = useCallback((newM: number) => {
+    setModalMonth(newM);
+    if (!isModalTitleCustomized) {
+      setModalTitle(getDefaultReportTitle(newM, modalYear));
+    }
+  }, [modalYear, isModalTitleCustomized, getDefaultReportTitle]);
+
+  const handleModalYearChange = useCallback((newY: number) => {
+    setModalYear(newY);
+    if (!isModalTitleCustomized) {
+      setModalTitle(getDefaultReportTitle(modalMonth, newY));
+    }
+  }, [modalMonth, isModalTitleCustomized, getDefaultReportTitle]);
+
+  // Inisialisasi awal: Cek apakah user sudah memilih periode & nama laporan di sesi ini
+  useEffect(() => {
+    const initDone = sessionStorage.getItem('dwimitra_monthly_init_done');
+    if (!initDone) {
+      setModalMonth(selectedMonth);
+      setModalYear(selectedYear);
+      setModalTitle(getDefaultReportTitle(selectedMonth, selectedYear));
+      setIsModalTitleCustomized(false);
+      setIsSetupModalOpen(true);
+    }
+  }, [selectedMonth, selectedYear, getDefaultReportTitle]);
+
   // State Laporan & Status
   const [reportData, setReportData] = useState<FullMonthlyReportData | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -424,12 +496,16 @@ export function MonthlyReportGenerator() {
     if (newMonth === selectedMonth) return;
     setReportData(null);
     setSelectedMonth(newMonth);
+    const newTitle = getDefaultReportTitle(newMonth, selectedYear);
+    setReportTitle(newTitle);
   };
 
   const handleYearChange = (newYear: number) => {
     if (newYear === selectedYear) return;
     setReportData(null);
     setSelectedYear(newYear);
+    const newTitle = getDefaultReportTitle(selectedMonth, newYear);
+    setReportTitle(newTitle);
   };
 
   // Bersihkan legacy localStorage yang menghabiskan kuota 5MB browser
@@ -447,9 +523,13 @@ export function MonthlyReportGenerator() {
   const handleGenerateReport = async (
     forceFresh = false,
     targetMonth = selectedMonth,
-    targetYear = selectedYear
+    targetYear = selectedYear,
+    customTitle?: string
   ) => {
     setGenerating(true);
+    const titleToUse = customTitle || reportTitle || getDefaultReportTitle(targetMonth, targetYear);
+    setReportTitle(titleToUse);
+    const cleanFileName = sanitizeFileName(titleToUse) + '.docx';
     const storageKey = `dwimitra_monthly_report_${targetYear}_${targetMonth}`;
 
     // Cek cache draft (IndexedDB) kecuali jika di-force fresh
@@ -597,6 +677,8 @@ export function MonthlyReportGenerator() {
               }).map((eq: any, i: number) => ({ ...eq, no: i + 1 }));
             }
 
+            parsed.reportTitle = titleToUse;
+            parsed.fileName = cleanFileName;
             setReportData(parsed);
             setIsSavedLocally(true);
             setGenerating(false);
@@ -623,6 +705,8 @@ export function MonthlyReportGenerator() {
         preparedBy: 'Arif Budiman',
         contractNumber: 'K.TDE.0105/LEG.PRJ/VI/2026'
       });
+      data.reportTitle = titleToUse;
+      data.fileName = cleanFileName;
       setReportData(data);
       setIsSavedLocally(true);
       // Simpan ke IndexedDB (kapasitas ratusan MB, aman dari QuotaExceededError)
@@ -641,8 +725,21 @@ export function MonthlyReportGenerator() {
     }
   };
 
+  // Konfirmasi Inisialisasi Modal Setup (sebelum input laporan)
+  const handleConfirmSetupModal = () => {
+    const finalTitle = modalTitle.trim() || getDefaultReportTitle(modalMonth, modalYear);
+    sessionStorage.setItem('dwimitra_monthly_init_done', 'true');
+    setIsSetupModalOpen(false);
+    setSelectedMonth(modalMonth);
+    setSelectedYear(modalYear);
+    setReportTitle(finalTitle);
+    handleGenerateReport(false, modalMonth, modalYear, finalTitle);
+  };
+
   // Generate on initial mount or when month/year changes
   useEffect(() => {
+    const initDone = sessionStorage.getItem('dwimitra_monthly_init_done');
+    if (!initDone) return;
     handleGenerateReport(false, selectedMonth, selectedYear);
   }, [selectedMonth, selectedYear]);
 
@@ -1015,12 +1112,20 @@ export function MonthlyReportGenerator() {
       toast.error('Data laporan arsip tidak ditemukan.');
       return;
     }
-    setReportData(archive.reportData);
+    const title = archive.title || archive.reportData.reportTitle || `Laporan Bulanan ${archive.monthName} ${archive.year}`;
+    const cleanFileName = archive.fileName || `${sanitizeFileName(title)}.docx`;
+    setReportTitle(title);
+    setReportData({
+      ...archive.reportData,
+      reportTitle: title,
+      fileName: cleanFileName
+    });
     if (archive.monthNumber) setSelectedMonth(archive.monthNumber);
     if (archive.year) setSelectedYear(archive.year);
+    sessionStorage.setItem('dwimitra_monthly_init_done', 'true');
     setActiveMainTab('editor');
-    toast.success(`Data "${archive.title}" berhasil dimuat kembali ke Editor! Silakan lakukan revisi.`);
-  }, []);
+    toast.success(`Data "${title}" berhasil dimuat kembali ke Editor! Silakan lakukan revisi.`);
+  }, [sanitizeFileName]);
 
   const handleDownloadArchive = useCallback(async (archive: any) => {
     if (!archive.reportData) {
@@ -1028,14 +1133,19 @@ export function MonthlyReportGenerator() {
       return;
     }
     try {
-      toast.info(`Menyusun file DOCX untuk ${archive.title}...`);
-      await generateMonthlyReportDOCX(archive.reportData);
-      toast.success('File Microsoft Word (.docx) berhasil diunduh!');
+      const fileName = archive.fileName || `${sanitizeFileName(archive.title || 'Laporan_Bulanan')}.docx`;
+      toast.info(`Menyusun file DOCX "${fileName}"...`);
+      await generateMonthlyReportDOCX({
+        ...archive.reportData,
+        reportTitle: archive.title,
+        fileName: fileName
+      }, fileName);
+      toast.success(`File Microsoft Word (.docx) "${fileName}" berhasil diunduh!`);
     } catch (err: any) {
       console.error('Error downloading from archive:', err);
       toast.error('Gagal mengunduh file DOCX: ' + err.message);
     }
-  }, []);
+  }, [sanitizeFileName]);
 
   const handleDeleteArchive = useCallback(async () => {
     if (!archiveToDelete) return;
@@ -1051,6 +1161,38 @@ export function MonthlyReportGenerator() {
       setIsDeletingArchive(false);
     }
   }, [archiveToDelete]);
+
+  // Handler Simpan Perubahan Nama File Arsip Dokumen
+  const handleSaveArchiveTitle = async () => {
+    if (!editingArchiveItem) return;
+    const newTitle = editingArchiveTitle.trim();
+    if (!newTitle) {
+      toast.error('Nama file / judul laporan tidak boleh kosong.');
+      return;
+    }
+    const newFileName = sanitizeFileName(newTitle) + '.docx';
+    setIsSavingArchiveTitle(true);
+    try {
+      const archiveRef = doc(db, 'monthly_reports', editingArchiveItem.id);
+      await updateDoc(archiveRef, {
+        title: newTitle,
+        fileName: newFileName,
+        updatedAt: Timestamp.now(),
+        'reportData.reportTitle': newTitle,
+        'reportData.fileName': newFileName
+      });
+      toast.success(`Nama file laporan berhasil diperbarui menjadi "${newTitle}"!`);
+      if (reportTitle === editingArchiveItem.title) {
+        setReportTitle(newTitle);
+      }
+      setEditingArchiveItem(null);
+    } catch (err: any) {
+      console.error('Gagal memperbarui nama file arsip:', err);
+      toast.error('Gagal memperbarui nama file: ' + (err?.message || 'Terjadi kesalahan'));
+    } finally {
+      setIsSavingArchiveTitle(false);
+    }
+  };
 
   // Quick Action AI Triggers
   const handleAIRecs = () => {
@@ -1095,28 +1237,39 @@ export function MonthlyReportGenerator() {
     if (!reportData) return;
     setExportingDocx(true);
     try {
-      await generateMonthlyReportDOCX(reportData);
-      toast.success('File Microsoft Word (.docx) berhasil dibuat dan diunduh!');
+      const finalTitle = reportTitle.trim() || reportData.reportTitle || getDefaultReportTitle(selectedMonth, selectedYear);
+      const cleanFileName = sanitizeFileName(finalTitle) + '.docx';
+
+      const enrichedReportData: FullMonthlyReportData = {
+        ...reportData,
+        reportTitle: finalTitle,
+        fileName: cleanFileName
+      };
+
+      await generateMonthlyReportDOCX(enrichedReportData, cleanFileName);
+      toast.success(`File Microsoft Word (.docx) "${cleanFileName}" berhasil dibuat dan diunduh!`);
 
       // Auto-save arsip ke Firestore: monthly_reports
       try {
-        const eqNames = (reportData.scheduleTable1 || []).map(s => s.device);
-        const totalCI = (reportData.taskPerformanceTables || []).reduce((acc, t) => acc + (t.items?.length || 0), 0);
+        const eqNames = (enrichedReportData.scheduleTable1 || []).map(s => s.device);
+        const totalCI = (enrichedReportData.taskPerformanceTables || []).reduce((acc, t) => acc + (t.items?.length || 0), 0);
         await addDoc(collection(db, 'monthly_reports'), {
-          title: `Laporan Bulanan Maintenance ${reportData.monthName} ${reportData.year}`,
+          title: finalTitle,
+          fileName: cleanFileName,
           monthNumber: selectedMonth,
-          monthName: reportData.monthName,
+          monthName: enrichedReportData.monthName,
           year: selectedYear,
-          quarter: reportData.quarter || 'Q3',
-          contractNumber: reportData.contractNumber || reportData.generalInfo?.contractReference || 'K.TDE.0105/LEG.PRJ/VI/2026',
+          quarter: enrichedReportData.quarter || 'Q3',
+          contractNumber: enrichedReportData.contractNumber || enrichedReportData.generalInfo?.contractReference || 'K.TDE.0105/LEG.PRJ/VI/2026',
           selectedEquipments: eqNames,
           totalCINames: totalCI,
           createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now(),
           createdBy: user?.email || '',
           createdByName: user?.displayName || user?.email?.split('@')[0] || 'User',
-          reportData: reportData
+          reportData: enrichedReportData
         });
-        toast.success('Dokumen otomatis tersimpan di Arsip Dokumen Monthly Report (Cloud Firestore)!');
+        toast.success(`Dokumen "${finalTitle}" otomatis tersimpan di Arsip Dokumen Monthly Report!`);
       } catch (saveErr: any) {
         console.warn('Gagal menyimpan arsip ke Firestore:', saveErr);
         toast.warning('DOCX terunduh, namun arsip ke cloud gagal: ' + (saveErr?.message || 'Permission issue'));
@@ -1321,6 +1474,62 @@ export function MonthlyReportGenerator() {
             >
               {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-600" /> : <RotateCcw className="w-3.5 h-3.5 text-slate-500" />}
               <span>Reset</span>
+            </button>
+
+            {/* Tombol Buat Laporan Baru / Pilih Periode */}
+            <button
+              onClick={openSetupModal}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
+              title="Pilih Bulan & Tentukan Nama File Laporan Baru"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Buat Baru</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Tier 1.5: Interactive Nama File / Judul Laporan */}
+        <div className="mt-4 p-3.5 bg-gradient-to-r from-blue-50/90 via-slate-50 to-indigo-50/70 rounded-2xl border border-blue-200/80 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="p-2.5 bg-blue-600 text-white rounded-xl shrink-0 shadow-sm shadow-blue-500/20">
+              <FileText className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-900 block">
+                  Nama File & Judul Laporan Monthly (Dapat Diedit):
+                </span>
+                <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.2 rounded">
+                  {reportData?.monthName || 'Bulan'} {selectedYear}
+                </span>
+              </div>
+              <input
+                type="text"
+                value={reportTitle}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setReportTitle(val);
+                  if (reportData) {
+                    reportData.reportTitle = val;
+                    reportData.fileName = sanitizeFileName(val) + '.docx';
+                  }
+                }}
+                placeholder="Masukkan nama file laporan..."
+                className="w-full text-xs sm:text-sm font-bold text-slate-900 bg-white hover:bg-white focus:bg-white px-3 py-1.5 rounded-lg border border-blue-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+            <span className="text-[11px] text-slate-600 font-medium px-2.5 py-1.5 bg-white rounded-xl border border-slate-200 shadow-xs hidden sm:inline-block">
+              File Ekspor: <strong className="text-blue-700">{sanitizeFileName(reportTitle)}.docx</strong>
+            </span>
+            <button
+              onClick={openSetupModal}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-blue-50 text-blue-700 rounded-xl text-xs font-bold border border-blue-200 transition-all cursor-pointer shadow-xs"
+              title="Ganti Bulan / Tahun / Judul Laporan melalui dialog"
+            >
+              <Edit3 className="w-3 h-3 text-blue-600" />
+              <span>Ganti Periode & Nama</span>
             </button>
           </div>
         </div>
@@ -6040,13 +6249,33 @@ export function MonthlyReportGenerator() {
                       <h3 className="text-lg font-black text-slate-900 tracking-tight">
                         {archive.title}
                       </h3>
+                      <div className="flex items-center gap-2 flex-wrap text-xs">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-800 rounded-lg border border-blue-200 font-mono text-[11px] font-bold">
+                          <FileText className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Nama File: {archive.fileName || `${sanitizeFileName(archive.title || 'Laporan')}.docx`}</span>
+                        </span>
+                      </div>
                       <p className="text-xs text-slate-500 font-sans">
                         Kontrak: <span className="font-semibold text-slate-700">{archive.contractNumber || 'K.TDE.0105/LEG.PRJ/VI/2026'}</span> · Dibuat oleh: <span className="font-semibold text-slate-700">{archive.createdByName || archive.createdBy || 'Teknisi'}</span>
                       </p>
                     </div>
 
                     {/* Tombol Aksi */}
-                    <div className="flex items-center gap-2 self-start shrink-0 font-sans">
+                    <div className="flex items-center gap-2 self-start shrink-0 font-sans flex-wrap">
+                      {canEditArchive(archive) && (
+                        <button
+                          onClick={() => {
+                            setEditingArchiveItem(archive);
+                            setEditingArchiveTitle(archive.title || '');
+                          }}
+                          className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                          title="Ubah nama file / judul laporan ini"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Ubah Nama File</span>
+                        </button>
+                      )}
+
                       <button
                         onClick={() => handleLoadArchiveToEditor(archive)}
                         className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
@@ -6807,6 +7036,258 @@ export function MonthlyReportGenerator() {
           </div>
         </div>
       )}
+      {/* ─── Modal Inisialisasi Laporan Sebelum Input (Setup Modal) ────────────────────── */}
+      <AnimatePresence>
+        {isSetupModalOpen && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-sans">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200"
+            >
+              {/* Modal Header */}
+              <div className="p-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white relative">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-white/15 backdrop-blur-sm rounded-2xl shadow-inner">
+                      <FileText className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200 block">
+                        Inisialisasi Laporan
+                      </span>
+                      <h3 className="text-xl font-black text-white">
+                        Pilih Periode & Nama File
+                      </h3>
+                    </div>
+                  </div>
+                  {reportData && (
+                    <button
+                      type="button"
+                      onClick={() => setIsSetupModalOpen(false)}
+                      className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                      title="Tutup"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-blue-100 mt-2.5 leading-relaxed">
+                  Pilih bulan pelaksanaan dan tentukan nama file laporan sebelum mulai mengisi atau menyunting data. Nama ini akan otomatis tersimpan di arsip dan menjadi nama file Word (.docx).
+                </p>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-4">
+                {/* Periode Bulan & Tahun */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Pilih Bulan:</span>
+                    </label>
+                    <select
+                      value={modalMonth}
+                      onChange={(e) => handleModalMonthChange(Number(e.target.value))}
+                      className="w-full bg-slate-50 hover:bg-white focus:bg-white text-slate-800 text-xs font-bold px-3 py-2.5 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none cursor-pointer transition-all shadow-xs"
+                    >
+                      {MONTH_OPTIONS.map(m => (
+                        <option key={m.value} value={m.value}>
+                          {m.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Pilih Tahun:</span>
+                    </label>
+                    <select
+                      value={modalYear}
+                      onChange={(e) => handleModalYearChange(Number(e.target.value))}
+                      className="w-full bg-slate-50 hover:bg-white focus:bg-white text-slate-800 text-xs font-bold px-3 py-2.5 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none cursor-pointer transition-all shadow-xs"
+                    >
+                      {[2025, 2026, 2027, 2028].map(y => (
+                        <option key={y} value={y}>
+                          {y}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Nama File / Judul Laporan */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <Edit3 className="w-3.5 h-3.5 text-blue-600" />
+                      <span>Nama File / Judul Laporan Monthly:</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsModalTitleCustomized(false);
+                        setModalTitle(getDefaultReportTitle(modalMonth, modalYear));
+                      }}
+                      className="text-[11px] text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
+                    >
+                      Reset Nama Default
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={modalTitle}
+                    onChange={(e) => {
+                      setModalTitle(e.target.value);
+                      setIsModalTitleCustomized(true);
+                    }}
+                    placeholder="Contoh: Laporan Bulanan Maintenance Juli 2026"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 text-xs font-bold text-slate-900 outline-none transition-all"
+                  />
+                </div>
+
+                {/* Preview File Ekspor DOCX */}
+                <div className="p-3.5 bg-blue-50/70 rounded-2xl border border-blue-200/80 text-xs space-y-1">
+                  <div className="flex items-center gap-2 text-blue-800 font-bold">
+                    <FileText className="w-4 h-4 text-blue-600 shrink-0" />
+                    <span>File yang akan diarsip & diekspor:</span>
+                  </div>
+                  <p className="font-mono font-bold text-slate-900 truncate text-[11px] pl-6">
+                    {sanitizeFileName(modalTitle || getDefaultReportTitle(modalMonth, modalYear))}.docx
+                  </p>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2.5">
+                {reportData && (
+                  <button
+                    type="button"
+                    onClick={() => setIsSetupModalOpen(false)}
+                    className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-all cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleConfirmSetupModal}
+                  disabled={generating || !modalTitle.trim()}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/25 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                >
+                  {generating ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Menyiapkan Laporan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Mulai Buat Laporan</span>
+                      <Check className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── Modal Ubah Nama File di Arsip Dokumen ─────────────────────────── */}
+      <AnimatePresence>
+        {editingArchiveItem && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-sans">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200"
+            >
+              {/* Modal Header */}
+              <div className="p-6 bg-gradient-to-r from-amber-600 to-orange-600 text-white flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-white/15 backdrop-blur-sm rounded-2xl">
+                    <Edit3 className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-white">Ubah Nama File Laporan</h3>
+                    <p className="text-xs text-amber-100">Edit nama file arsip dan judul laporan bulanan</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingArchiveItem(null)}
+                  className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700 block">
+                    Nama File / Judul Laporan Baru:
+                  </label>
+                  <input
+                    type="text"
+                    value={editingArchiveTitle}
+                    onChange={(e) => setEditingArchiveTitle(e.target.value)}
+                    placeholder="Contoh: Laporan Bulanan Maintenance Juli 2026 Revisi 1"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-100 text-xs font-bold text-slate-900 outline-none transition-all"
+                    autoFocus
+                  />
+                </div>
+
+                {/* Preview Nama File DOCX */}
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
+                  <span className="text-slate-500 font-medium block">Preview Nama File Download:</span>
+                  <span className="font-mono font-bold text-amber-800 block truncate">
+                    {sanitizeFileName(editingArchiveTitle || 'Laporan')}.docx
+                  </span>
+                </div>
+
+                <div className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 p-2.5 rounded-xl">
+                  💡 Mengubah nama file ini akan memperbarui judul pada arsip dan nama file saat diunduh kembali.
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-5 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setEditingArchiveItem(null)}
+                  disabled={isSavingArchiveTitle}
+                  className="px-4 py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveArchiveTitle}
+                  disabled={isSavingArchiveTitle || !editingArchiveTitle.trim()}
+                  className="flex items-center gap-2 px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold shadow-sm shadow-amber-500/20 transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingArchiveTitle ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Menyimpan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-3.5 h-3.5" />
+                      <span>Simpan Perubahan</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ─── Floating Persistent Save Button (Bottom Right) ─── */}
       {reportData && (
