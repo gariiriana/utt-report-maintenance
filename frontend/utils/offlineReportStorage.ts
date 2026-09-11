@@ -31,6 +31,7 @@ export interface OfflineReportItem {
   totalPhotos?: number;
   photosWithImage?: number;
   hasAbnormal?: boolean;
+  abnormalFinding?: any;
   serviceReportPayload?: any;
   hasServiceReport?: boolean;
   attachedSrFile?: any;
@@ -246,6 +247,38 @@ export const offlineReportStorage = {
       });
     } catch (err) {
       console.error('[offlineReportStorage] markSynced error:', err);
+    }
+  },
+
+  /**
+   * Update status abnormal dan data temuan abnormal pada laporan offline.
+   */
+  async updateReportAbnormal(id: string, hasAbnormal: boolean, abnormalFinding?: any): Promise<void> {
+    try {
+      const db = await openOfflineDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_REPORTS, 'readwrite');
+        const store = tx.objectStore(STORE_REPORTS);
+        const getReq = store.get(id);
+
+        getReq.onsuccess = () => {
+          if (getReq.result) {
+            const updated: OfflineReportItem = {
+              ...getReq.result,
+              hasAbnormal,
+              abnormalFinding: hasAbnormal ? abnormalFinding : null,
+              updatedAt: Date.now(),
+            };
+            store.put(updated);
+          }
+          resolve();
+        };
+        getReq.onerror = () => reject(getReq.error);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch (err) {
+      console.warn('[offlineReportStorage] updateReportAbnormal error:', err);
     }
   },
 

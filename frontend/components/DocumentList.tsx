@@ -36,6 +36,7 @@ import { exportHSEInspectionRecapPDF } from '@/utils/HSEInspectionRecapPdfExport
 import { generateUniversalServiceReportPDF } from '@/service_reports/universalServiceReportPDF';
 import { downloadPDFBlob } from '@/utils/pdfDownload';
 import { UploadSRModal } from './UploadSRModal';
+import { AbnormalReportModal } from './AbnormalReportModal';
 import { isServiceReportSupported } from '@/config/serviceReportRegistry';
 import { getDoc } from 'firebase/firestore';
 import { safeStorage } from '@/utils/safeStorage';
@@ -45,6 +46,15 @@ interface PhotoData {
   description: string;
   photoBase64: string;
   hasPhoto: boolean;
+}
+
+export interface AbnormalFinding {
+  unitName?: string;
+  description: string;
+  actionRecommendation?: string;
+  photoBase64?: string;
+  reportedBy?: string;
+  reportedAt?: string | Date;
 }
 
 export interface ExcelDocument {
@@ -63,6 +73,7 @@ export interface ExcelDocument {
   documentType: 'excel' | 'pdf' | 'hse';
   companyType?: 'neutra' | 'bri' | 'k2';
   hasAbnormal?: boolean;
+  abnormalFinding?: AbnormalFinding | null;
   hseType?: 'inspection' | 'sio' | 'silo';
   maintenanceType?: string;
   atsCustomerInfo?: any;
@@ -276,6 +287,8 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
 
   const [documents, setDocuments] = useState<ExcelDocument[]>([]);
   const [uploadSrModalDoc, setUploadSrModalDoc] = useState<ExcelDocument | null>(null);
+  const [abnormalModalDoc, setAbnormalModalDoc] = useState<ExcelDocument | null>(null);
+  const [previewPhoto, setPreviewPhoto] = useState<{ src: string; title: string } | null>(null);
   const [downloadChoiceDoc, setDownloadChoiceDoc] = useState<ExcelDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -290,7 +303,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
   }, [initialSearchQuery]);
   const [sortBy, setSortBy] = useState<SortOption>('newest_upload');
   const [filterType, setFilterType] = useState<'all' | 'excel' | 'pdf' | 'hse'>('all');
-  const [srStatusFilter, setSrStatusFilter] = useState<'all' | 'photos_only' | 'with_sr'>('all');
+  const [srStatusFilter, setSrStatusFilter] = useState<'all' | 'photos_only' | 'with_sr' | 'abnormal_only'>('all');
   const [adminDeleteFilter, setAdminDeleteFilter] = useState<'all' | 'pending_delete'>('all');
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -496,6 +509,8 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               photosWithImage: data.photosWithImage || 0,
               photosData: [], // Optimized: photosData is lazily loaded on edit
               documentType: 'excel',
+              hasAbnormal: data.hasAbnormal || false,
+              abnormalFinding: data.abnormalFinding || null,
               atsCustomerInfo: data.atsCustomerInfo,
               atsReportData: data.atsReportData,
               atsTimeSpent: data.atsTimeSpent,
@@ -529,6 +544,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               photosData: [], // Optimized: photosData is lazily loaded on edit
               documentType: 'pdf',
               hasAbnormal: data.hasAbnormal || false,
+              abnormalFinding: data.abnormalFinding || null,
               atsCustomerInfo: data.atsCustomerInfo,
               atsReportData: data.atsReportData,
               atsTimeSpent: data.atsTimeSpent,
@@ -569,6 +585,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                 photosData: [],
                 documentType: offDoc.documentType || 'pdf',
                 hasAbnormal: offDoc.hasAbnormal || false,
+                abnormalFinding: offDoc.abnormalFinding || null,
                 serviceReportPayload: offDoc.serviceReportPayload || null,
                 hasServiceReport: Boolean(offDoc.attachedSrFile || offDoc.attachedSrBase64),
                 attachedSrFile: offDoc.attachedSrFile || null,
@@ -602,6 +619,8 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               photosWithImage: data.photos?.length || 0,
               photosData: [],
               documentType: 'hse',
+              hasAbnormal: data.hasAbnormal || false,
+              abnormalFinding: data.abnormalFinding || null,
               hseType: data.hseType || 'inspection',
               maintenanceType: data.maintenanceType || 'OTHER',
               deleteRequested: data.deleteRequested || false,
@@ -1010,6 +1029,19 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       companyType: effectiveCompanyType as 'neutra' | 'bri' | 'k2',
       userEmail: docData.createdBy,
       logos: { left: logoLeftB64, right: logoRightB64 },
+      abnormalFinding: docData.hasAbnormal && docData.abnormalFinding ? {
+        partName: docData.abnormalFinding.unitName || docData.specificDetail || docData.maintenanceName,
+        partNumber: '-',
+        brandName: '-',
+        quantity: '1 Unit',
+        findingDate: docData.abnormalFinding.reportedAt
+          ? (typeof docData.abnormalFinding.reportedAt === 'string'
+              ? docData.abnormalFinding.reportedAt.split('T')[0]
+              : new Date(docData.abnormalFinding.reportedAt).toLocaleDateString('id-ID'))
+          : docData.maintenanceTime,
+        remark: docData.abnormalFinding.description + (docData.abnormalFinding.actionRecommendation ? `\n\nRekomendasi / Tindakan: ${docData.abnormalFinding.actionRecommendation}` : ''),
+        photos: docData.abnormalFinding.photoBase64 ? [{ base64: docData.abnormalFinding.photoBase64, description: 'Bukti Temuan Abnormal' }] : []
+      } : null,
     });
 
     if (!docResult) {
@@ -1443,6 +1475,9 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
       return false;
     }
     if (srStatusFilter === 'with_sr' && !hasSR) {
+      return false;
+    }
+    if (srStatusFilter === 'abnormal_only' && !doc.hasAbnormal) {
       return false;
     }
 
@@ -2667,11 +2702,79 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                   </div>
                 )}
               </div>
+
+              {/* Panel Rincian Temuan Abnormal */}
+              {document.hasAbnormal && (
+                <div className="mt-2.5 p-3 rounded-xl bg-rose-50/90 border border-rose-200 text-xs space-y-1.5 shadow-2xs">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 font-black text-rose-800 tracking-tight">
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                      <span>Kondisi Abnormal: {document.abnormalFinding?.unitName || document.specificDetail || document.maintenanceName}</span>
+                    </div>
+                    {document.abnormalFinding?.reportedAt && (
+                      <span className="text-[10px] font-semibold text-rose-600 shrink-0">
+                        {new Date(document.abnormalFinding.reportedAt).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-slate-700 leading-relaxed font-medium whitespace-pre-line">
+                    {document.abnormalFinding?.description || 'Ditemukan kondisi kelainan / abnormal pada unit ini.'}
+                  </p>
+
+                  {document.abnormalFinding?.actionRecommendation && (
+                    <div className="text-[11px] text-amber-900 bg-amber-50/90 p-2 rounded-lg border border-amber-200">
+                      <strong className="text-amber-950 font-bold">Rekomendasi: </strong>
+                      {document.abnormalFinding.actionRecommendation}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between pt-1 text-[11px] text-slate-500 border-t border-rose-100/80">
+                    <span>Pelapor: <strong className="text-slate-700">{document.abnormalFinding?.reportedBy || 'Engineer'}</strong></span>
+                    {document.abnormalFinding?.photoBase64 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewPhoto({
+                            src: document.abnormalFinding!.photoBase64!,
+                            title: `Foto Bukti Abnormal: ${document.abnormalFinding?.unitName || document.maintenanceName}`
+                          });
+                        }}
+                        className="flex items-center gap-1 font-bold text-rose-700 hover:text-rose-900 underline cursor-pointer"
+                      >
+                        <Camera className="w-3.5 h-3.5 text-rose-600" />
+                        <span>Lihat Foto Bukti</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Action Buttons: Responsive 2-column grid on mobile, inline flex row on desktop */}
           <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2 w-full sm:w-auto mt-3 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0">
+            {/* Tombol Catat / Kelola Abnormal (Khusus Role Engineer & Admin) */}
+            {(isEngineer || isAdmin) && (
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setAbnormalModalDoc(document)}
+                className={`w-full sm:w-auto py-2 sm:py-2.5 px-3 rounded-xl transition border font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs whitespace-nowrap ${
+                  document.hasAbnormal
+                    ? 'bg-rose-100 hover:bg-rose-200 text-rose-800 border-rose-300 ring-1 ring-rose-400'
+                    : 'bg-slate-50 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border-slate-200 hover:border-rose-200'
+                }`}
+                title={document.hasAbnormal ? "Kelola / Perbarui Temuan Abnormal" : "Catat Temuan Abnormal pada Unit Ini"}
+              >
+                <AlertTriangle className={`w-3.5 h-3.5 ${document.hasAbnormal ? 'text-rose-600' : 'text-slate-500'}`} />
+                <span className="font-bold">
+                  {document.hasAbnormal ? 'Kelola Abnormal' : '+ Abnormal'}
+                </span>
+              </motion.button>
+            )}
+
             {onEdit && (
               <motion.button
                 whileHover={{ scale: 1.02 }}
@@ -2940,10 +3043,10 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           )}
         </div>
 
-        {/* Status Filter Tabs (Foto Saja vs Foto + Service Report) - Hidden in HSE Role & DME Role */}
+        {/* Status Filter Tabs (Foto Saja vs Foto + Service Report vs Dokumen Abnormal) - Hidden in HSE Role & DME Role */}
         {filterOverride !== 'hse_utt' && !isDME && (
           <div className="mt-3 pt-3 border-t border-slate-200/80 w-full">
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 w-full">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 w-full">
               <button
                 type="button"
                 onClick={() => setSrStatusFilter('all')}
@@ -2997,6 +3100,25 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                   srStatusFilter === 'with_sr' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
                 }`}>
                   {documents.filter(d => Boolean(d.attachedSrFile || d.attachedSrBase64)).length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSrStatusFilter('abnormal_only')}
+                className={`w-full py-1.5 sm:py-2 px-1 sm:px-3 rounded-xl transition-all flex items-center justify-center gap-1 sm:gap-1.5 text-xs cursor-pointer min-w-0 ${
+                  srStatusFilter === 'abnormal_only'
+                    ? 'bg-rose-700 text-white shadow-sm font-bold ring-2 ring-rose-500/50'
+                    : 'bg-rose-50/90 text-rose-700 hover:text-rose-900 hover:bg-rose-100/90 border border-rose-200/80 font-semibold'
+                }`}
+              >
+                <AlertTriangle className={`w-3.5 h-3.5 shrink-0 ${srStatusFilter === 'abnormal_only' ? 'text-amber-300' : 'text-rose-600'}`} />
+                <span className="hidden sm:inline">Dokumen Abnormal</span>
+                <span className="sm:hidden truncate">Abnormal</span>
+                <span className={`px-1 sm:px-1.5 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
+                  srStatusFilter === 'abnormal_only' ? 'bg-white/20 text-white' : 'bg-rose-200 text-rose-800'
+                }`}>
+                  {documents.filter(d => Boolean(d.hasAbnormal)).length}
                 </span>
               </button>
             </div>
@@ -3320,6 +3442,57 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           setUploadSrModalDoc(null);
         }}
       />
+
+      <AbnormalReportModal
+        isOpen={!!abnormalModalDoc}
+        onClose={() => setAbnormalModalDoc(null)}
+        document={abnormalModalDoc}
+        onSuccess={(updatedFields) => {
+          if (!abnormalModalDoc) return;
+          setDocuments(prev =>
+            prev.map(d =>
+              d.id === abnormalModalDoc.id ? { ...d, ...updatedFields, updatedAt: new Date() } : d
+            )
+          );
+          setAbnormalModalDoc(null);
+        }}
+      />
+
+      {/* Lightbox Modal Preview Foto Bukti Abnormal */}
+      <AnimatePresence>
+        {previewPhoto && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative max-w-4xl w-full max-h-[92vh] bg-slate-900 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-700"
+            >
+              <div className="p-3.5 bg-slate-800 text-white flex items-center justify-between border-b border-slate-700">
+                <div className="flex items-center gap-2 min-w-0 pr-4">
+                  <Camera className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span className="text-xs sm:text-sm font-bold truncate text-slate-200">{previewPhoto.title}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewPhoto(null)}
+                  className="p-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white transition cursor-pointer shrink-0"
+                  title="Tutup Preview"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-3 overflow-auto flex items-center justify-center bg-black/90 flex-1 min-h-[300px]">
+                <img
+                  src={previewPhoto.src}
+                  alt={previewPhoto.title}
+                  className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-lg"
+                />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
