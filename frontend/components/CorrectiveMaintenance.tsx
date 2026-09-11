@@ -273,7 +273,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
 
     // Filters State
     const [archiveFolder, setArchiveFolder] = useState<'cm_pdf' | 'sla' | 'pir'>('cm_pdf');
-    const [selectedCMType, setSelectedCMType] = useState<'all' | 'non_sparepart' | 'sparepart_dme' | 'consumable'>('all');
+    const [selectedCMType, setSelectedCMType] = useState<'all' | 'non_sparepart' | 'sparepart_dme' | 'consumable' | 'pending_sparepart_type'>('all');
     const [searchQuery, setSearchQuery] = useState<string>(initialSearchQuery || '');
     const [adminDeleteFilter, setAdminDeleteFilter] = useState<'all' | 'pending_delete'>('all');
 
@@ -346,6 +346,21 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     const handleDeleteClick = (report: CorrectiveReport) => {
         setSelectedReportForDelete(report);
         setDeleteModalOpen(true);
+    };
+
+    const handleQuickUpdateSparepartType = async (reportId: string, type: 'sparepart_dme' | 'consumable') => {
+        try {
+            const reportRef = doc(db, 'corrective_reports', reportId);
+            await updateDoc(reportRef, {
+                sparepartType: type,
+                updatedAt: serverTimestamp()
+            });
+            const typeLabel = type === 'consumable' ? 'Consumable Part (Wajib SLA)' : 'Sparepart DME / Baut (Tanpa SLA)';
+            toast.success(`Jenis sparepart berhasil diupdate: ${typeLabel}`);
+        } catch (err: any) {
+            console.error('Error updating sparepart type:', err);
+            toast.error('Gagal memperbarui jenis sparepart: ' + (err.message || 'Error'));
+        }
     };
 
     const confirmDelete = async (reason?: string) => {
@@ -582,9 +597,11 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             if (selectedCMType === 'non_sparepart') {
                 if (isSp) return false;
             } else if (selectedCMType === 'sparepart_dme') {
-                if (!isSp || report.sparepartType === 'consumable') return false;
+                if (!isSp || report.sparepartType !== 'sparepart_dme') return false;
             } else if (selectedCMType === 'consumable') {
                 if (!isSp || report.sparepartType !== 'consumable') return false;
+            } else if (selectedCMType === 'pending_sparepart_type') {
+                if (!isSp || Boolean(report.sparepartType)) return false;
             }
         }
 
@@ -1591,6 +1608,9 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                 <option value="non_sparepart">⚡ Troubleshoot Gangguan</option>
                                                 <option value="sparepart_dme">🔧 Sparepart DME / Baut</option>
                                                 <option value="consumable">📦 Consumable Part</option>
+                                                <option value="pending_sparepart_type">
+                                                    ⚠️ Belum Diupdate {reports.filter(r => !r.deleteRequested && (r.troubleshootType === 'sparepart_replacement' || r.isSparepartReplacement === true) && !r.sparepartType).length > 0 ? `(${reports.filter(r => !r.deleteRequested && (r.troubleshootType === 'sparepart_replacement' || r.isSparepartReplacement === true) && !r.sparepartType).length})` : ''}
+                                                </option>
                                             </select>
                                         </div>
                                     )}
@@ -2079,6 +2099,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                             {(() => {
                                                                 const isSparepart = report.troubleshootType === 'sparepart_replacement' || report.isSparepartReplacement === true;
                                                                 const isConsumable = isSparepart && report.sparepartType === 'consumable';
+                                                                const isDME = isSparepart && report.sparepartType === 'sparepart_dme';
                                                                 const requiresSLA = isCMRequiringSLA(report);
 
                                                                 const linkedSLA = report.id ? cmToSLAMap.get(report.id) : null;
@@ -2096,7 +2117,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                                     <Package className="w-3 h-3 text-purple-600" />
                                                                                     Consumable Part (Wajib SLA)
                                                                                 </span>
-                                                                            ) : (
+                                                                            ) : isDME ? (
                                                                                 <span
                                                                                     className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs"
                                                                                     title="Jenis penanganan: Pergantian Sparepart (Sparepart DME / Baut - Tidak dibuatkan form SLA/SLG)"
@@ -2104,6 +2125,45 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                                     <Wrench className="w-3 h-3 text-blue-600" />
                                                                                     Sparepart DME (Tanpa SLA)
                                                                                 </span>
+                                                                            ) : (
+                                                                                <div className="inline-flex items-center gap-1.5 flex-wrap">
+                                                                                    <span
+                                                                                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-50 text-amber-900 border-2 border-amber-400 shadow-xs"
+                                                                                        title="Data Belum Diupdate: Tentukan apakah pergantian sparepart ini termasuk Sparepart DME / Baut atau Consumable Part"
+                                                                                    >
+                                                                                        <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" />
+                                                                                        Belum Diupdate: DME atau Consumable
+                                                                                    </span>
+                                                                                    {isAuthorizedRole && (
+                                                                                        <div className="inline-flex items-center gap-1 bg-amber-100/70 p-0.5 rounded-lg border border-amber-300">
+                                                                                            <span className="text-[10px] font-bold text-amber-900 px-1">Set:</span>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={(e) => {
+                                                                                                    e.stopPropagation();
+                                                                                                    handleQuickUpdateSparepartType(report.id, 'sparepart_dme');
+                                                                                                }}
+                                                                                                className="px-1.5 py-0.5 bg-white hover:bg-blue-50 text-blue-700 hover:text-blue-800 text-[10px] font-extrabold rounded border border-blue-200 hover:border-blue-400 transition flex items-center gap-0.5 shadow-2xs cursor-pointer"
+                                                                                                title="Tandai laporan ini sebagai Sparepart DME / Baut (Tanpa SLA)"
+                                                                                            >
+                                                                                                <Wrench className="w-2.5 h-2.5 text-blue-600" />
+                                                                                                <span>DME/Baut</span>
+                                                                                            </button>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={(e) => {
+                                                                                                    e.stopPropagation();
+                                                                                                    handleQuickUpdateSparepartType(report.id, 'consumable');
+                                                                                                }}
+                                                                                                className="px-1.5 py-0.5 bg-white hover:bg-purple-50 text-purple-700 hover:text-purple-800 text-[10px] font-extrabold rounded border border-purple-200 hover:border-purple-400 transition flex items-center gap-0.5 shadow-2xs cursor-pointer"
+                                                                                                title="Tandai laporan ini sebagai Consumable Part (Wajib SLA)"
+                                                                                            >
+                                                                                                <Package className="w-2.5 h-2.5 text-purple-600" />
+                                                                                                <span>Consumable</span>
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
                                                                             )
                                                                         ) : (
                                                                             <span
