@@ -305,6 +305,7 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
   const [filterType, setFilterType] = useState<'all' | 'excel' | 'pdf' | 'hse'>('all');
   const [srStatusFilter, setSrStatusFilter] = useState<'all' | 'photos_only' | 'with_sr' | 'abnormal_only'>('all');
   const [adminDeleteFilter, setAdminDeleteFilter] = useState<'all' | 'pending_delete'>('all');
+  const [dmeAbnormalOnlyFilter, setDmeAbnormalOnlyFilter] = useState(false);
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState<ExcelDocument | null>(null);
@@ -447,7 +448,8 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
         if (filterOverride !== 'hse_utt') {
           const isPrivilegedOrDME = isPrivileged || isDME;
 
-          if (!isDME) {
+          const shouldFetchExcel = !isDME || isQcDme;
+          if (shouldFetchExcel) {
             const excelQuery = isPrivilegedOrDME
               ? query(collection(db, 'excel_documents'))
               : (isAHUUser
@@ -1553,6 +1555,10 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     }
 
     const uniqueAccounts = Array.from(new Set(filteredDocuments.map(d => d.createdBy))).sort();
+    const pmTotalAbnormal = filteredDocuments.filter(d => d.hasAbnormal).length;
+    const accountsWithAbnormal = uniqueAccounts.filter(acc =>
+      filteredDocuments.some(d => d.createdBy === acc && d.hasAbnormal)
+    );
 
     const managementFolders = [
       { name: 'D-DAY', desc: 'Dokumen D-DAY & Prosedur Operational' },
@@ -1641,18 +1647,30 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                 whileHover={{ y: -2, scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
                 onClick={() => setDmeLevel('account')}
-                className="flex items-center gap-3.5 p-3.5 bg-white hover:bg-amber-50/60 border border-slate-200 hover:border-amber-400 rounded-xl transition-all text-left group shadow-xs hover:shadow-md cursor-pointer"
+                className={`flex items-center gap-3.5 p-3.5 bg-white hover:bg-amber-50/60 border ${
+                  pmTotalAbnormal > 0 ? 'border-rose-300 hover:border-rose-500 shadow-rose-100/40' : 'border-slate-200 hover:border-amber-400'
+                } rounded-xl transition-all text-left group shadow-xs hover:shadow-md cursor-pointer`}
               >
-                <div className="p-2.5 bg-amber-50 rounded-xl group-hover:bg-amber-100 transition-colors shrink-0">
-                  <Folder className="w-5 h-5 text-amber-600" />
+                <div className={`p-2.5 ${
+                  pmTotalAbnormal > 0 ? 'bg-rose-50 group-hover:bg-rose-100 text-rose-600 border border-rose-200' : 'bg-amber-50 group-hover:bg-amber-100 text-amber-600'
+                } rounded-xl transition-colors shrink-0`}>
+                  <Folder className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <span className="text-sm font-bold text-slate-900 group-hover:text-amber-900 transition-colors truncate block">
                     Folder PM (Preventive Maintenance)
                   </span>
-                  <span className="text-xs font-medium text-slate-500 block mt-0.5">
-                    {query ? `${uniqueAccounts.length} Akun Cocok` : `${uniqueAccounts.length} Akun Maintenance`}
-                  </span>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span className="text-xs font-medium text-slate-500">
+                      {query ? `${uniqueAccounts.length} Akun Cocok` : `${uniqueAccounts.length} Akun Maintenance`}
+                    </span>
+                    {pmTotalAbnormal > 0 && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs">
+                        <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0 animate-pulse" />
+                        {pmTotalAbnormal} Abnormal ({accountsWithAbnormal.length} Akun)
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-amber-600 transition-colors shrink-0" />
               </motion.button>
@@ -1763,9 +1781,15 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
     }
 
     if (dmeLevel === 'account') {
+      const accountsWithAbnormal = uniqueAccounts.filter(acc =>
+        filteredDocuments.some(d => d.createdBy === acc && d.hasAbnormal)
+      );
+      const displayedAccounts = dmeAbnormalOnlyFilter ? accountsWithAbnormal : uniqueAccounts;
+      const totalAbnormalInPm = filteredDocuments.filter(d => d.hasAbnormal).length;
+
       return (
         <div className="bg-white/90 backdrop-blur-xl p-6 rounded-2xl border border-slate-200 shadow-xl w-full max-w-6xl">
-          <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-100 flex-wrap gap-3">
+          <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 flex-wrap gap-3">
             <button
               onClick={() => setDmeLevel('root')}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 rounded-lg transition-colors text-xs font-bold cursor-pointer border border-slate-200"
@@ -1780,11 +1804,50 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
             </div>
           </div>
 
+          {/* Filter Bar: Semua Akun vs Hanya Akun yang Memiliki Temuan Abnormal */}
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap bg-slate-50/80 p-2.5 rounded-xl border border-slate-200/80">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setDmeAbnormalOnlyFilter(false)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  !dmeAbnormalOnlyFilter
+                    ? 'bg-amber-500 text-white shadow-xs'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                }`}
+              >
+                <Folder className="w-3.5 h-3.5" />
+                <span>Semua Akun ({uniqueAccounts.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDmeAbnormalOnlyFilter(true)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  dmeAbnormalOnlyFilter
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'bg-white text-rose-700 hover:bg-rose-50 border border-rose-200'
+                }`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                <span>Ada Temuan Abnormal ({accountsWithAbnormal.length})</span>
+                {accountsWithAbnormal.length > 0 && !dmeAbnormalOnlyFilter && (
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping ml-0.5" />
+                )}
+              </button>
+            </div>
+            {totalAbnormalInPm > 0 && (
+              <div className="text-[11px] font-bold text-rose-700 flex items-center gap-1 bg-rose-50/90 px-2.5 py-1 rounded-lg border border-rose-200">
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0 animate-pulse" />
+                <span>{totalAbnormalInPm} temuan abnormal tercatat pada {accountsWithAbnormal.length} akun</span>
+              </div>
+            )}
+          </div>
+
           {searchQuery.trim() !== '' && (
             <div className="flex items-center justify-between bg-amber-50/80 border border-amber-200 rounded-xl p-3 mb-4 flex-wrap gap-2">
               <div className="flex items-center gap-2 text-xs font-semibold text-amber-900">
                 <Search className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Menyaring folder akun untuk: <strong>"{searchQuery}"</strong> ({uniqueAccounts.length} akun, {filteredDocuments.length} laporan)</span>
+                <span>Menyaring folder akun untuk: <strong>"{searchQuery}"</strong> ({displayedAccounts.length} akun cocok, {filteredDocuments.length} laporan)</span>
               </div>
               <div className="flex items-center gap-2">
                 {filteredDocuments.length > 0 && (
@@ -1808,31 +1871,42 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
             </div>
           )}
 
-          {uniqueAccounts.length === 0 ? (
+          {displayedAccounts.length === 0 ? (
             <div className="text-center py-12 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
               <Folder className="w-10 h-10 text-slate-300 mx-auto mb-2" />
               <p className="text-sm font-semibold text-slate-600">
-                {searchQuery.trim() ? `Tidak ada folder akun yang sesuai dengan "${searchQuery}"` : 'Tidak ada dokumen ditemukan'}
+                {dmeAbnormalOnlyFilter
+                  ? 'Tidak ada akun maintenance dengan temuan abnormal saat ini.'
+                  : (searchQuery.trim() ? `Tidak ada folder akun yang sesuai dengan "${searchQuery}"` : 'Tidak ada dokumen ditemukan')}
               </p>
-              {searchQuery.trim() && (
+              {(searchQuery.trim() || dmeAbnormalOnlyFilter) && (
                 <button
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => {
+                    setSearchQuery('');
+                    setDmeAbnormalOnlyFilter(false);
+                  }}
                   className="mt-3 px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-colors shadow-2xs cursor-pointer inline-flex items-center gap-1.5"
                 >
-                  Reset Pencarian
+                  Reset Filter
                 </button>
               )}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {uniqueAccounts.map((account) => {
-                const count = filteredDocuments.filter(d => d.createdBy === account).length;
+              {displayedAccounts.map((account) => {
                 const accountItemDocs = filteredDocuments.filter(d => d.createdBy === account);
+                const count = accountItemDocs.length;
+                const accountAbnormalDocs = accountItemDocs.filter(d => d.hasAbnormal);
+                const abnormalCount = accountAbnormalDocs.length;
                 return (
                   <motion.div
                     key={account}
                     whileHover={{ y: -2 }}
-                    className="flex flex-col justify-between bg-white border border-slate-200/90 hover:border-amber-400/90 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all group"
+                    className={`flex flex-col justify-between bg-white border ${
+                      abnormalCount > 0
+                        ? 'border-rose-300 hover:border-rose-500 shadow-rose-100/40 bg-gradient-to-b from-white to-rose-50/15'
+                        : 'border-slate-200/90 hover:border-amber-400/90'
+                    } rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all group`}
                   >
                     {/* Top Info Area - Clickable to open folder */}
                     <div
@@ -1842,17 +1916,34 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                       }}
                       className="flex items-start gap-3.5 cursor-pointer pb-3"
                     >
-                      <div className="p-2.5 bg-gradient-to-br from-amber-50 to-amber-100/80 rounded-xl text-amber-600 border border-amber-200/60 shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                      <div className={`p-2.5 ${
+                        abnormalCount > 0
+                          ? 'bg-gradient-to-br from-rose-50 to-rose-100/80 text-rose-600 border-rose-200/80'
+                          : 'bg-gradient-to-br from-amber-50 to-amber-100/80 text-amber-600 border-amber-200/60'
+                      } rounded-xl border shrink-0 group-hover:scale-105 transition-transform shadow-2xs`}>
                         <Folder className="w-5 h-5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-bold text-slate-900 group-hover:text-amber-900 transition-colors truncate">
+                        <h3 className={`text-sm font-bold ${
+                          abnormalCount > 0 ? 'text-slate-900 group-hover:text-rose-900' : 'text-slate-900 group-hover:text-amber-900'
+                        } transition-colors truncate`}>
                           {account}
                         </h3>
-                        <div className="flex items-center gap-1.5 mt-1">
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
                             {count} Laporan
                           </span>
+                          {abnormalCount > 0 ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs">
+                              <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0 animate-pulse" />
+                              {abnormalCount} Abnormal
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                              Normal
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1865,7 +1956,9 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                           setDmeSelectedAccount(account);
                           setDmeLevel('month');
                         }}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 ${
+                          abnormalCount > 0 ? 'bg-rose-600 hover:bg-rose-700' : 'bg-amber-500 hover:bg-amber-600'
+                        } text-white rounded-xl text-xs font-bold transition-all shadow-2xs hover:shadow-xs cursor-pointer`}
                         title={`Buka Folder ${account}`}
                       >
                         <FolderOpen className="w-3.5 h-3.5" />
@@ -1992,11 +2085,17 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               {sortedMonths.map((month) => {
                 const monthItemDocs = accountDocs.filter(d => getMonthYearString(getDocumentDate(d)) === month);
                 const count = monthItemDocs.length;
+                const monthAbnormalDocs = monthItemDocs.filter(d => d.hasAbnormal);
+                const monthAbnormalCount = monthAbnormalDocs.length;
                 return (
                   <motion.div
                     key={month}
                     whileHover={{ y: -2 }}
-                    className="flex flex-col justify-between bg-white border border-slate-200/90 hover:border-amber-400/90 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all group"
+                    className={`flex flex-col justify-between bg-white border ${
+                      monthAbnormalCount > 0
+                        ? 'border-rose-300 hover:border-rose-500 shadow-rose-100/40 bg-gradient-to-b from-white to-rose-50/15'
+                        : 'border-slate-200/90 hover:border-amber-400/90'
+                    } rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all group`}
                   >
                     {/* Top Info Area - Clickable to open folder */}
                     <div
@@ -2006,17 +2105,34 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                       }}
                       className="flex items-start gap-3.5 cursor-pointer pb-3"
                     >
-                      <div className="p-2.5 bg-gradient-to-br from-amber-50 to-amber-100/80 rounded-xl text-amber-600 border border-amber-200/60 shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                      <div className={`p-2.5 ${
+                        monthAbnormalCount > 0
+                          ? 'bg-gradient-to-br from-rose-50 to-rose-100/80 text-rose-600 border-rose-200/80'
+                          : 'bg-gradient-to-br from-amber-50 to-amber-100/80 text-amber-600 border-amber-200/60'
+                      } rounded-xl border shrink-0 group-hover:scale-105 transition-transform shadow-2xs`}>
                         <Folder className="w-5 h-5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-bold text-slate-900 group-hover:text-amber-900 transition-colors truncate">
+                        <h3 className={`text-sm font-bold ${
+                          monthAbnormalCount > 0 ? 'text-slate-900 group-hover:text-rose-900' : 'text-slate-900 group-hover:text-amber-900'
+                        } transition-colors truncate`}>
                           {month}
                         </h3>
-                        <div className="flex items-center gap-1.5 mt-1">
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
                             {count} Laporan
                           </span>
+                          {monthAbnormalCount > 0 ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs">
+                              <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0 animate-pulse" />
+                              {monthAbnormalCount} Abnormal
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                              Normal
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2029,7 +2145,9 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                           setDmeSelectedMonth(month);
                           setDmeLevel('date');
                         }}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 ${
+                          monthAbnormalCount > 0 ? 'bg-rose-600 hover:bg-rose-700' : 'bg-amber-500 hover:bg-amber-600'
+                        } text-white rounded-xl text-xs font-bold transition-all shadow-2xs hover:shadow-xs cursor-pointer`}
                         title={`Buka Folder ${month}`}
                       >
                         <FolderOpen className="w-3.5 h-3.5" />
@@ -2162,11 +2280,17 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               {sortedDates.map((dateStr) => {
                 const dateItemDocs = monthDocs.filter(d => getFullDateString(getDocumentDate(d)) === dateStr);
                 const count = dateItemDocs.length;
+                const dateAbnormalDocs = dateItemDocs.filter(d => d.hasAbnormal);
+                const dateAbnormalCount = dateAbnormalDocs.length;
                 return (
                   <motion.div
                     key={dateStr}
                     whileHover={{ y: -2 }}
-                    className="flex flex-col justify-between bg-white border border-slate-200/90 hover:border-amber-400/90 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all group"
+                    className={`flex flex-col justify-between bg-white border ${
+                      dateAbnormalCount > 0
+                        ? 'border-rose-300 hover:border-rose-500 shadow-rose-100/40 bg-gradient-to-b from-white to-rose-50/15'
+                        : 'border-slate-200/90 hover:border-amber-400/90'
+                    } rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all group`}
                   >
                     {/* Top Info Area - Clickable to open folder */}
                     <div
@@ -2176,17 +2300,34 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                       }}
                       className="flex items-start gap-3.5 cursor-pointer pb-3"
                     >
-                      <div className="p-2.5 bg-gradient-to-br from-amber-50 to-amber-100/80 rounded-xl text-amber-600 border border-amber-200/60 shrink-0 group-hover:scale-105 transition-transform shadow-2xs">
+                      <div className={`p-2.5 ${
+                        dateAbnormalCount > 0
+                          ? 'bg-gradient-to-br from-rose-50 to-rose-100/80 text-rose-600 border-rose-200/80'
+                          : 'bg-gradient-to-br from-amber-50 to-amber-100/80 text-amber-600 border-amber-200/60'
+                      } rounded-xl border shrink-0 group-hover:scale-105 transition-transform shadow-2xs`}>
                         <Folder className="w-5 h-5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-bold text-slate-900 group-hover:text-amber-900 transition-colors truncate">
+                        <h3 className={`text-sm font-bold ${
+                          dateAbnormalCount > 0 ? 'text-slate-900 group-hover:text-rose-900' : 'text-slate-900 group-hover:text-amber-900'
+                        } transition-colors truncate`}>
                           {dateStr}
                         </h3>
-                        <div className="flex items-center gap-1.5 mt-1">
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
                             {count} Laporan
                           </span>
+                          {dateAbnormalCount > 0 ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs">
+                              <AlertTriangle className="w-3 h-3 text-rose-600 shrink-0 animate-pulse" />
+                              {dateAbnormalCount} Abnormal
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                              Normal
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2199,7 +2340,9 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                           setDmeSelectedDate(dateStr);
                           setDmeLevel('documents');
                         }}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all shadow-2xs hover:shadow-xs cursor-pointer"
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 ${
+                          dateAbnormalCount > 0 ? 'bg-rose-600 hover:bg-rose-700' : 'bg-amber-500 hover:bg-amber-600'
+                        } text-white rounded-xl text-xs font-bold transition-all shadow-2xs hover:shadow-xs cursor-pointer`}
                         title={`Buka Folder ${dateStr}`}
                       >
                         <FolderOpen className="w-3.5 h-3.5" />
@@ -2276,8 +2419,37 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
               <span className="xs:hidden">Download (.ZIP)</span>
               <span className="px-1.5 py-0.2 bg-white/20 rounded-full text-[10px]">{dateDocs.length}</span>
             </button>
+            {dateDocs.some(d => d.hasAbnormal) && (
+              <div className="flex items-center gap-1.5 bg-rose-50 border border-rose-200 px-2.5 py-1.5 rounded-xl text-rose-700 text-xs font-bold shrink-0">
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0 animate-pulse" />
+                <span>{dateDocs.filter(d => d.hasAbnormal).length} Abnormal</span>
+              </div>
+            )}
           </div>
         </div>
+
+        {dateDocs.some(d => d.hasAbnormal) && (
+          <div className="flex items-center justify-between bg-rose-50/80 border border-rose-200 rounded-xl p-3 flex-wrap gap-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-rose-900">
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>Ditemukan {dateDocs.filter(d => d.hasAbnormal).length} dokumen dengan catatan abnormal pada tanggal ini</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSrStatusFilter(srStatusFilter === 'abnormal_only' ? 'all' : 'abnormal_only')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  srStatusFilter === 'abnormal_only'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'bg-white text-rose-700 hover:bg-rose-100 border border-rose-300 shadow-2xs'
+                }`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>{srStatusFilter === 'abnormal_only' ? 'Tampilkan Semua File' : 'Hanya File Abnormal'}</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {searchQuery.trim() !== '' && (
           <div className="flex items-center justify-between bg-amber-50/80 border border-amber-200 rounded-xl p-3 flex-wrap gap-2">
@@ -3043,8 +3215,8 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
           )}
         </div>
 
-        {/* Status Filter Tabs (Foto Saja vs Foto + Service Report vs Dokumen Abnormal) - Hidden in HSE Role & DME Role */}
-        {filterOverride !== 'hse_utt' && !isDME && (
+        {/* Status Filter Tabs (Foto Saja vs Foto + Service Report vs Dokumen Abnormal) */}
+        {filterOverride !== 'hse_utt' && (
           <div className="mt-3 pt-3 border-t border-slate-200/80 w-full">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 w-full">
               <button
