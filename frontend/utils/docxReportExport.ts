@@ -927,7 +927,7 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               ]
             : []),
 
-          // Halaman 2: Khusus Supporting Documentation (Foto)
+          // Supporting Documentation (Foto) jika ada
           ...(photoGridTable
             ? [
                 new Paragraph({ pageBreakBefore: true, children: [] }),
@@ -936,10 +936,10 @@ export async function exportCMReportToDocx(data: CMReportData): Promise<void> {
               ]
             : []),
 
-          // Halaman 3: Khusus Tanda Tangan
+          // Bagian Otorisasi & Tanda Tangan (Halaman baru HANYA jika ada foto)
           new Paragraph({
-            pageBreakBefore: true,
-            spacing: { before: 120, after: 80 },
+            pageBreakBefore: Boolean(photoGridTable),
+            spacing: { before: photoGridTable ? 100 : 40, after: 50 },
             children: [
               new TextRun({
                 text: `AUTHOR BY, ${data.authorName || 'Rizki Novri Yanda - Data Center Operation'}`,

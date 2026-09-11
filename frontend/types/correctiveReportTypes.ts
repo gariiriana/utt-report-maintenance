@@ -20,13 +20,16 @@ export interface CMPhotoItem {
   description?: string;                     // Keterangan foto (misal "Penggantian modul kipas")
 }
 
+export type CMSparepartCategory = 'sparepart_dme' | 'consumable';
+
 /** Struktur Data Utama Laporan Corrective Maintenance (CM Report) */
 export interface CMReportData {
   id?: string;                              // ID unik dokumen di Firestore
   reportType?: 'CM_STANDARD' | 'SLA' | 'CM_PDF'; // Tipe laporan
   
   // Klasifikasi Troubleshoot (Apakah Pergantian Sparepart atau Bukan)
-  troubleshootType?: 'non_sparepart' | 'sparepart_replacement'; // 'non_sparepart' = Wajib SLA, 'sparepart_replacement' = Tanpa SLA
+  troubleshootType?: 'non_sparepart' | 'sparepart_replacement'; // 'non_sparepart' = Wajib SLA, 'sparepart_replacement' = Pergantian Sparepart
+  sparepartType?: CMSparepartCategory;                          // 'sparepart_dme' = Tanpa SLA, 'consumable' = Wajib Dibuatkan SLA/SLG
   isSparepartReplacement?: boolean;                             // Flag pembantu cepat
   isTroubleshootSelected?: boolean;                             // Flag eksplisit user telah memilih salah satu opsi
 

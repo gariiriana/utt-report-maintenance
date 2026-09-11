@@ -30,7 +30,8 @@ import {
   AlertCircle,
   Zap,
   ClipboardList,
-  Lightbulb
+  Lightbulb,
+  Package
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
@@ -130,6 +131,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
   const [formData, setFormData] = useState<CMReportData>({
     reportType: 'CM_PDF',
     troubleshootType: undefined,
+    sparepartType: undefined,
     isSparepartReplacement: undefined,
     incidentName: '',
     location: '',
@@ -186,6 +188,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
 
             const isSparepart = data.troubleshootType === 'sparepart_replacement' || data.isSparepartReplacement === true;
             const tType = data.troubleshootType || (isSparepart ? 'sparepart_replacement' : (data.isSparepartReplacement === false ? 'non_sparepart' : undefined));
+            const spType = data.sparepartType || (isSparepart ? 'sparepart_dme' : undefined);
 
             const rawSpareparts = data.spareparts || data.replacedSpareparts || data.replaced_spareparts || data.spareParts || data.spare_parts;
             const initialSpareparts = Array.isArray(rawSpareparts)
@@ -210,6 +213,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               ...formData,
               ...data,
               troubleshootType: tType,
+              sparepartType: spType,
               isSparepartReplacement: isSparepart,
               preparedByName: normalizedPrepName,
               preparedBySign: prepSign,
@@ -261,6 +265,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               reviewedBySign: rSign,
               acknowledgedBy1Name: ack1Name,
               troubleshootType: tType,
+              sparepartType: tType === 'sparepart_replacement' ? parsed.formData.sparepartType : undefined,
               isSparepartReplacement: tType === 'sparepart_replacement',
               spareparts: parsed.formData.spareparts || [],
               requestSpareparts: parsed.formData.requestSpareparts || [],
@@ -281,6 +286,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     setFormData({
       reportType: 'CM_PDF',
       troubleshootType: undefined,
+      sparepartType: undefined,
       isSparepartReplacement: undefined,
       incidentName: '',
       location: '',
@@ -483,6 +489,11 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
         setCurrentStep(1);
         return false;
       }
+      if (formData.troubleshootType === 'sparepart_replacement' && !formData.sparepartType) {
+        toast.error('Mohon pilih Jenis Pergantian Sparepart (Sparepart DME atau Consumable Part) di Step 1!');
+        setCurrentStep(1);
+        return false;
+      }
       if (!formData.incidentName?.trim()) {
         toast.error('Mohon isi Incident Name di Step 1');
         setCurrentStep(1);
@@ -544,6 +555,11 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     try {
       if (!formData.troubleshootType) {
         toast.error('Mohon pilih Jenis Troubleshoot / Penanganan CM terlebih dahulu di Step 1!');
+        setCurrentStep(1);
+        return;
+      }
+      if (formData.troubleshootType === 'sparepart_replacement' && !formData.sparepartType) {
+        toast.error('Mohon pilih Jenis Pergantian Sparepart (Sparepart DME atau Consumable Part) di Step 1!');
         setCurrentStep(1);
         return;
       }
@@ -627,6 +643,11 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
     e.preventDefault();
     if (!formData.troubleshootType) {
       toast.error('Mohon pilih Jenis Troubleshoot / Penanganan CM terlebih dahulu di Step 1!');
+      setCurrentStep(1);
+      return;
+    }
+    if (formData.troubleshootType === 'sparepart_replacement' && !formData.sparepartType) {
+      toast.error('Mohon pilih Jenis Pergantian Sparepart (Sparepart DME atau Consumable Part) di Step 1!');
       setCurrentStep(1);
       return;
     }
@@ -782,13 +803,21 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                   </div>
                   <span className={`inline-flex items-center self-start sm:self-auto px-2.5 py-1 rounded-full text-xs font-bold border transition-all ${
                     formData.troubleshootType === 'sparepart_replacement'
-                      ? 'bg-blue-50 text-blue-700 border-blue-200'
+                      ? formData.sparepartType === 'consumable'
+                        ? 'bg-purple-50 text-purple-700 border-purple-300'
+                        : formData.sparepartType === 'sparepart_dme'
+                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                        : 'bg-amber-50 text-amber-800 border-amber-300 animate-pulse'
                       : formData.troubleshootType === 'non_sparepart'
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                       : 'bg-amber-50 text-amber-800 border-amber-300 animate-pulse'
                   }`}>
                     {formData.troubleshootType === 'sparepart_replacement'
-                      ? 'ℹ Tidak Dibuatkan SLA/SLG'
+                      ? formData.sparepartType === 'consumable'
+                        ? '⚡ Wajib Dibuatkan SLA/SLG (Consumable Part)'
+                        : formData.sparepartType === 'sparepart_dme'
+                        ? 'ℹ Tidak Dibuatkan SLA/SLG (Sparepart DME / Baut)'
+                        : '⚠️ Wajib Pilih Jenis Sparepart'
                       : formData.troubleshootType === 'non_sparepart'
                       ? '⚡ Wajib Dibuatkan SLA/SLG'
                       : '⚠️ Wajib Pilih Salah Satu'}
@@ -798,7 +827,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                   {/* Opsi 1: Bukan Pergantian Sparepart */}
                   <div
-                    onClick={() => setFormData({ ...formData, troubleshootType: 'non_sparepart', isSparepartReplacement: false, isTroubleshootSelected: true })}
+                    onClick={() => setFormData({ ...formData, troubleshootType: 'non_sparepart', isSparepartReplacement: false, sparepartType: undefined, isTroubleshootSelected: true })}
                     className={`p-3 sm:p-4 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-2.5 sm:gap-3.5 relative overflow-hidden ${
                       formData.troubleshootType === 'non_sparepart'
                         ? 'bg-gradient-to-br from-red-50/70 to-white border-red-500 shadow-sm ring-2 ring-red-500/10'
@@ -836,7 +865,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
 
                   {/* Opsi 2: Pergantian Sparepart */}
                   <div
-                    onClick={() => setFormData({ ...formData, troubleshootType: 'sparepart_replacement', isSparepartReplacement: true, isTroubleshootSelected: true })}
+                    onClick={() => setFormData({ ...formData, troubleshootType: 'sparepart_replacement', isSparepartReplacement: true, sparepartType: formData.sparepartType, isTroubleshootSelected: true })}
                     className={`p-3 sm:p-4 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-2.5 sm:gap-3.5 relative overflow-hidden ${
                       formData.troubleshootType === 'sparepart_replacement'
                         ? 'bg-gradient-to-br from-blue-50/70 to-white border-blue-500 shadow-sm ring-2 ring-blue-500/10'
@@ -854,8 +883,14 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                       <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
                         <span className="text-xs sm:text-sm font-bold text-slate-900 leading-snug">Pergantian Sparepart</span>
                         <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-                          <span className="text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-800 border border-blue-300 uppercase">
-                            Tanpa SLA
+                          <span className={`text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border uppercase ${
+                            formData.sparepartType === 'consumable'
+                              ? 'bg-purple-100 text-purple-800 border-purple-300'
+                              : formData.sparepartType === 'sparepart_dme'
+                                ? 'bg-blue-100 text-blue-800 border-blue-300'
+                                : 'bg-amber-100 text-amber-800 border-amber-300'
+                          }`}>
+                            {formData.sparepartType === 'consumable' ? 'Wajib SLA' : formData.sparepartType === 'sparepart_dme' ? 'Tanpa SLA' : 'Pilih Jenis'}
                           </span>
                           <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
                             formData.troubleshootType === 'sparepart_replacement'
@@ -867,11 +902,128 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                         </div>
                       </div>
                       <p className="text-[11px] sm:text-xs text-slate-600 leading-relaxed">
-                        Penggantian komponen / modul / material (tidak dibuatkan form SLA/SLG).
+                        Penggantian suku cadang DME / baut atau consumable part.
                       </p>
                     </div>
                   </div>
                 </div>
+
+                {/* DROPDOWN & PILIHAN INTERAKTIF JENIS PERGANTIAN SPAREPART */}
+                {formData.troubleshootType === 'sparepart_replacement' && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-4 pt-4 border-t border-blue-200/90"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-2.5">
+                      <label className="text-xs font-extrabold text-slate-900 flex items-center gap-2 uppercase tracking-wide">
+                        <Package className="w-4 h-4 text-blue-600" />
+                        JENIS PERGANTIAN SPAREPART *
+                      </label>
+                      <span className="text-[11px] font-semibold">
+                        {formData.sparepartType === 'consumable' ? (
+                          <span className="text-purple-700 font-bold flex items-center gap-1">
+                            <Zap className="w-3 h-3 text-purple-600 fill-current" />
+                            Consumable Part: Wajib diterbitkan Form SLA & SLG
+                          </span>
+                        ) : formData.sparepartType === 'sparepart_dme' ? (
+                          <span className="text-blue-700 font-bold flex items-center gap-1">
+                            <Wrench className="w-3 h-3 text-blue-600" />
+                            Sparepart DME / Baut: Tidak dibuatkan SLA / SLG
+                          </span>
+                        ) : (
+                          <span className="text-amber-600 font-bold">⚠️ Wajib pilih jenis pergantian sparepart</span>
+                        )}
+                      </span>
+                    </div>
+
+                    {/* Dropdown Select (Sesuai Permintaan: ada dropdown jenis pergantian sparepart) */}
+                    <div className="mb-3">
+                      <select
+                        value={formData.sparepartType || ''}
+                        onChange={(e) => {
+                          const val = e.target.value as 'sparepart_dme' | 'consumable';
+                          setFormData({ ...formData, sparepartType: val || undefined });
+                        }}
+                        className={`w-full text-xs sm:text-sm font-bold border-2 rounded-xl px-3.5 py-2.5 bg-white text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition shadow-2xs cursor-pointer ${
+                          !formData.sparepartType ? 'border-amber-300 ring-2 ring-amber-300/30' : 'border-blue-300'
+                        }`}
+                      >
+                        <option value="">-- Pilih Dropdown Jenis Sparepart --</option>
+                        <option value="sparepart_dme">Sparepart DME / Baut (Tanpa SLA/SLG)</option>
+                        <option value="consumable">Consumable Part (Wajib Dibuatkan SLA/SLG)</option>
+                      </select>
+                    </div>
+
+                    {/* Kartu Seleksi Interaktif Cepat */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {/* Option A: Sparepart DME / Baut */}
+                      <div
+                        onClick={() => setFormData({ ...formData, sparepartType: 'sparepart_dme' })}
+                        className={`p-3 sm:p-3.5 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                          formData.sparepartType === 'sparepart_dme'
+                            ? 'bg-gradient-to-r from-blue-50 to-blue-100/60 border-blue-500 text-blue-950 shadow-sm ring-2 ring-blue-400/20'
+                            : 'bg-white border-slate-200 hover:border-blue-200 hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`p-2 rounded-xl shrink-0 transition-colors ${
+                            formData.sparepartType === 'sparepart_dme' ? 'bg-blue-600 text-white shadow-xs' : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            <Wrench className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold leading-tight truncate text-slate-900">Sparepart DME / Baut</div>
+                            <div className="text-[10px] text-slate-500 mt-0.5">Suku cadang / hardware DME bawaan</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-800 border border-blue-300 uppercase">
+                            Tanpa SLA
+                          </span>
+                          <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                            formData.sparepartType === 'sparepart_dme' ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 bg-white'
+                          }`}>
+                            {formData.sparepartType === 'sparepart_dme' && <CheckCircle2 className="w-3 h-3 fill-current" />}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Option B: Consumable Part */}
+                      <div
+                        onClick={() => setFormData({ ...formData, sparepartType: 'consumable' })}
+                        className={`p-3 sm:p-3.5 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                          formData.sparepartType === 'consumable'
+                            ? 'bg-gradient-to-r from-purple-50 to-purple-100/60 border-purple-500 text-purple-950 shadow-sm ring-2 ring-purple-400/20'
+                            : 'bg-white border-slate-200 hover:border-purple-200 hover:bg-slate-50 text-slate-700'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`p-2 rounded-lg shrink-0 transition-colors ${
+                            formData.sparepartType === 'consumable' ? 'bg-purple-600 text-white shadow-xs' : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            <Package className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold leading-tight truncate text-slate-900">Consumable Part</div>
+                            <div className="text-[10px] text-slate-500 mt-0.5">Material habis pakai / consumable</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-800 border border-purple-300 uppercase">
+                            Wajib SLA
+                          </span>
+                          <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                            formData.sparepartType === 'consumable' ? 'border-purple-600 bg-purple-600 text-white' : 'border-slate-300 bg-white'
+                          }`}>
+                            {formData.sparepartType === 'consumable' && <CheckCircle2 className="w-3 h-3 fill-current" />}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
               </div>
 
               <div className="bg-red-50/50 border border-red-100 rounded-xl p-4 mb-2">
