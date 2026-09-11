@@ -348,17 +348,28 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         setDeleteModalOpen(true);
     };
 
-    const handleQuickUpdateSparepartType = async (reportId: string, type: 'sparepart_dme' | 'consumable') => {
+    const handleQuickUpdateSparepartType = async (reportId: string, type: 'sparepart_dme' | 'consumable' | 'non_sparepart') => {
         try {
             const reportRef = doc(db, 'corrective_reports', reportId);
-            await updateDoc(reportRef, {
-                troubleshootType: 'sparepart_replacement',
-                isSparepartReplacement: true,
-                sparepartType: type,
-                updatedAt: serverTimestamp()
-            });
-            const typeLabel = type === 'consumable' ? 'Consumable Part (Wajib SLA)' : 'Sparepart DME / Baut (Tanpa SLA)';
-            toast.success(`Jenis sparepart berhasil diupdate: ${typeLabel}`);
+            if (type === 'non_sparepart') {
+                await updateDoc(reportRef, {
+                    troubleshootType: 'non_sparepart',
+                    isSparepartReplacement: false,
+                    sparepartType: deleteField(),
+                    spareparts: [],
+                    updatedAt: serverTimestamp()
+                });
+                toast.success('Kategori berhasil diupdate: Troubleshoot Gangguan (Wajib SLA)');
+            } else {
+                await updateDoc(reportRef, {
+                    troubleshootType: 'sparepart_replacement',
+                    isSparepartReplacement: true,
+                    sparepartType: type,
+                    updatedAt: serverTimestamp()
+                });
+                const typeLabel = type === 'consumable' ? 'Consumable Part (Wajib SLA)' : 'Sparepart DME / Baut (Tanpa SLA)';
+                toast.success(`Jenis sparepart berhasil diupdate: ${typeLabel}`);
+            }
         } catch (err: any) {
             console.error('Error updating sparepart type:', err);
             toast.error('Gagal memperbarui jenis sparepart: ' + (err.message || 'Error'));
@@ -576,17 +587,24 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     // Helper: Mendeteksi secara akurat apakah sebuah Laporan CM adalah Pergantian Sparepart
     // Memeriksa: sparepartType, troubleshootType, isSparepartReplacement, daftar spareparts, serta kata kunci/regex penanganan
     const isCMSparepart = (report: CorrectiveReport): boolean => {
-        // 0. Prioritas utama: jika sudah diset sparepartType eksplisit
-        if (report.sparepartType === 'sparepart_dme' || report.sparepartType === 'consumable') {
-            return true;
+        // 1. Prioritas ABSOLUT: Pilihan eksplisit user non_sparepart (Troubleshoot Gangguan / Wajib SLA)
+        // User telah secara sadar memilih 'Bukan Pergantian Sparepart', jangan pernah di-override oleh keyword atau sparepart lama
+        if (report.troubleshootType === 'non_sparepart' || report.isSparepartReplacement === false) {
+            return false;
         }
 
-        // 1. Prioritas form input baru: troubleshootType / isSparepartReplacement eksplisit
+        // 2. Prioritas eksplisit sparepart_replacement
         if (report.troubleshootType === 'sparepart_replacement' || report.isSparepartReplacement === true) {
             return true;
         }
 
-        // 2. Cek apakah ada daftar spareparts yang diisi di laporan (array dan ada item valid)
+        // 3. Jika sudah diset sparepartType eksplisit (sparepart_dme atau consumable)
+        if (report.sparepartType === 'sparepart_dme' || report.sparepartType === 'consumable') {
+            return true;
+        }
+
+        // 4. Fallback Heuristik untuk data lama tanpa status eksplisit:
+        // Cek apakah ada daftar spareparts yang diisi di laporan (array dan ada item valid)
         const rawParts = report.spareparts || (report as any).replacedSpareparts || (report as any).replaced_spareparts || (report as any).spareParts;
         if (rawParts && Array.isArray(rawParts)) {
             const hasRealParts = rawParts.some((s: any) => {
@@ -599,7 +617,7 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             }
         }
 
-        // 3. Cek kata kunci sparepart pada judul insiden, nama alat, deskripsi masalah, corrective action, dan action taken
+        // 5. Fallback Heuristik kata kunci sparepart pada judul insiden, nama alat, deskripsi masalah, corrective action, dan action taken
         const combinedText = [
             report.incidentName || '',
             report.equipmentName || '',
@@ -654,11 +672,6 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         // Cek juga pola regex "ganti <kata>" atau "penggantian <kata>" atau "pergantian <kata>"
         if (/(?:penggantian|pergantian|mengganti|ganti)\s+[a-z0-9]+/i.test(combinedText)) {
             return true;
-        }
-
-        // 4. Jika form lama diset non_sparepart dan memang tidak terdeteksi sparepart apapun
-        if (report.troubleshootType === 'non_sparepart' || report.isSparepartReplacement === false) {
-            return false;
         }
 
         return false;
@@ -2204,6 +2217,18 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                                                     <Package className="w-2.5 h-2.5 text-purple-600" />
                                                                                                     <span>Consumable</span>
                                                                                                 </button>
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    onClick={(e) => {
+                                                                                                        e.stopPropagation();
+                                                                                                        handleQuickUpdateSparepartType(report.id, 'non_sparepart');
+                                                                                                    }}
+                                                                                                    className="px-1.5 py-0.5 bg-white hover:bg-emerald-50 text-emerald-700 hover:text-emerald-800 text-[10px] font-extrabold rounded border border-emerald-200 hover:border-emerald-400 transition flex items-center gap-0.5 shadow-2xs cursor-pointer"
+                                                                                                    title="Tandai laporan ini sebagai Troubleshoot Gangguan / Bukan Sparepart (Wajib SLA)"
+                                                                                                >
+                                                                                                    <Zap className="w-2.5 h-2.5 text-emerald-600" />
+                                                                                                    <span>Wajib SLA</span>
+                                                                                                </button>
                                                                                             </div>
                                                                                         )}
                                                                                     </div>
@@ -2217,6 +2242,27 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                                                                                 <Zap className="w-3 h-3 text-amber-600" />
                                                                                 Troubleshoot Gangguan
                                                                             </span>
+                                                                        )}
+
+                                                                        {/* Quick Category Switcher untuk Role Terotorisasi */}
+                                                                        {isAuthorizedRole && (isConsumable || isDME || !isSparepart) && (
+                                                                            <select
+                                                                                value={!isSparepart ? 'non_sparepart' : (isConsumable ? 'consumable' : (isDME ? 'sparepart_dme' : ''))}
+                                                                                onChange={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    const val = e.target.value as 'sparepart_dme' | 'consumable' | 'non_sparepart';
+                                                                                    if (val) handleQuickUpdateSparepartType(report.id, val);
+                                                                                }}
+                                                                                onClick={(e) => e.stopPropagation()}
+                                                                                title="Ubah Kategori / Status Penanganan CM Secara Cepat"
+                                                                                aria-label="Ubah Kategori / Status Penanganan CM"
+                                                                                className="px-1.5 py-0.5 text-[10px] font-bold rounded-lg border border-slate-300 bg-white hover:border-blue-400 text-slate-700 shadow-2xs cursor-pointer outline-none transition"
+                                                                            >
+                                                                                <option value="" disabled>-- Ubah Kategori --</option>
+                                                                                <option value="non_sparepart">⚡ Troubleshoot (Wajib SLA)</option>
+                                                                                <option value="consumable">📦 Consumable (Wajib SLA)</option>
+                                                                                <option value="sparepart_dme">🔩 DME/Baut (Tanpa SLA)</option>
+                                                                            </select>
                                                                         )}
 
                                                                         {/* 2. BADGE STATUS SLA (Hanya jika wajib SLA) */}

@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { db } from '@/api/firebase';
-import { collection, addDoc, serverTimestamp, getDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, getDoc, doc, updateDoc, deleteField } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { CMReportData, CMSparepartItem, CMPhotoItem } from '@/types/correctiveReportTypes';
 import { exportCMReportToDocx } from '@/utils/docxReportExport';
@@ -198,14 +198,21 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               ['replacement', 'replace', 'install modul', 'instalasi modul', 'door shoe', 'chain lock', 'chain connector', 'pengunci rantai', 'perbaikan dan pergantian', 'penggantian part', 'penggantian lampu', 'pergantian lampu'].some(kw => textCheck.includes(kw));
             const hasSparepartsArray = initialSpareparts.some((s: any) => s && (typeof s === 'string' ? s.trim() !== '' && s.trim() !== '-' : s.name && s.name.trim() !== '' && s.name.trim() !== '-'));
 
-            const isSparepart = data.troubleshootType === 'sparepart_replacement' ||
+            const isExplicitNonSparepart = data.troubleshootType === 'non_sparepart' || data.isSparepartReplacement === false;
+            const isSparepart = !isExplicitNonSparepart && (
+              data.troubleshootType === 'sparepart_replacement' ||
               data.isSparepartReplacement === true ||
               data.sparepartType === 'sparepart_dme' ||
               data.sparepartType === 'consumable' ||
-              (data.troubleshootType !== 'non_sparepart' && data.isSparepartReplacement !== false && (hasSparepartsArray || hasSparepartKeyword));
+              hasSparepartsArray ||
+              hasSparepartKeyword
+            );
 
-            const tType = data.troubleshootType || (isSparepart ? 'sparepart_replacement' : (data.isSparepartReplacement === false ? 'non_sparepart' : undefined));
-            const spType = data.sparepartType || undefined;
+            const tType = isExplicitNonSparepart
+              ? 'non_sparepart'
+              : (data.troubleshootType || (isSparepart ? 'sparepart_replacement' : undefined));
+            const spType = isExplicitNonSparepart ? undefined : (data.sparepartType || undefined);
+            const loadedSpareparts = isExplicitNonSparepart ? [] : initialSpareparts;
 
             const rawRequestSpareparts = data.requestSpareparts || data.request_spareparts || data.requestedSpareparts || data.sparepartsRequest || data.sparepartRequest;
             const initialRequestSpareparts = Array.isArray(rawRequestSpareparts)
@@ -229,7 +236,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               preparedBySign: prepSign,
               reviewedByName: normalizedRevName,
               reviewedBySign: revSign,
-              spareparts: initialSpareparts,
+              spareparts: loadedSpareparts,
               requestSpareparts: initialRequestSpareparts,
               photos: data.photos || (data.photoBase64 ? [{ photoBase64: data.photoBase64 }] : [])
             });
@@ -614,11 +621,13 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
 
       // Auto-save to Firestore so it is immediately visible in Arsip Standby
       if (user) {
+        const isNonSparepart = formData.troubleshootType === 'non_sparepart';
         const reportPayload = {
           ...formattedData,
           troubleshootType: formData.troubleshootType,
-          isSparepartReplacement: formData.troubleshootType === 'sparepart_replacement',
-          sparepartType: formData.troubleshootType === 'sparepart_replacement' ? (formData.sparepartType || null) : null,
+          isSparepartReplacement: !isNonSparepart,
+          sparepartType: isNonSparepart ? (editId ? deleteField() : null) : (formData.sparepartType || null),
+          spareparts: isNonSparepart ? [] : (formData.spareparts || []),
           issue: formattedData.incidentName || formattedData.summaryProblemAnalysis || 'Laporan Issue CM',
           actionTaken: formattedData.correctiveAction || '-',
           category: 'CM',
@@ -664,11 +673,13 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
       const revName = formData.reviewedByName || 'Arif Budiman';
       const revSign = cleanSignature(formData.reviewedBySign) || (revName.toLowerCase().includes('arif') || revName.toLowerCase().includes('budiman') ? ARIF_BUDIMAN_SIGNATURE_BASE64 : '');
 
+      const isNonSparepart = formData.troubleshootType === 'non_sparepart';
       const reportPayload = {
         ...formData,
         troubleshootType: formData.troubleshootType,
-        isSparepartReplacement: formData.troubleshootType === 'sparepart_replacement',
-        sparepartType: formData.troubleshootType === 'sparepart_replacement' ? (formData.sparepartType || null) : null,
+        isSparepartReplacement: !isNonSparepart,
+        sparepartType: isNonSparepart ? (editId ? deleteField() : null) : (formData.sparepartType || null),
+        spareparts: isNonSparepart ? [] : (formData.spareparts || []),
         preparedByName: prepName,
         preparedBySign: prepSign,
         reviewedByName: revName,
