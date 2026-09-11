@@ -585,9 +585,6 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         if (report.troubleshootType === 'sparepart_replacement' || report.isSparepartReplacement === true) {
             return true;
         }
-        if (report.troubleshootType === 'non_sparepart' || report.isSparepartReplacement === false) {
-            return false;
-        }
 
         // 2. Cek apakah ada daftar spareparts yang diisi di laporan (array dan ada item valid)
         const rawParts = report.spareparts || (report as any).replacedSpareparts || (report as any).replaced_spareparts || (report as any).spareParts;
@@ -657,6 +654,11 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         // Cek juga pola regex "ganti <kata>" atau "penggantian <kata>" atau "pergantian <kata>"
         if (/(?:penggantian|pergantian|mengganti|ganti)\s+[a-z0-9]+/i.test(combinedText)) {
             return true;
+        }
+
+        // 4. Jika form lama diset non_sparepart dan memang tidak terdeteksi sparepart apapun
+        if (report.troubleshootType === 'non_sparepart' || report.isSparepartReplacement === false) {
+            return false;
         }
 
         return false;
@@ -769,34 +771,6 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         const createdA = parseDateToTimestamp((a as any).createdAt || a.reportedAt);
         return createdB - createdA;
     });
-
-    // Helper: Ekstrak kata-kata penting (tokens >= 3 chars) untuk fuzzy token matching
-    const extractSignificantTokens = (s?: string): string[] => {
-        if (!s) return [];
-        const clean = s.toLowerCase()
-            .replace(/\[sla\s*\/?\s*slg\]/gi, ' ')
-            .replace(/laporan\s+corrective\s+maintenance/gi, ' ')
-            .replace(/laporan\s+cm/gi, ' ')
-            .replace(/corrective\s+maintenance/gi, ' ')
-            .replace(/pemeliharaan\s+corrective/gi, ' ')
-            .replace(/neutra\s+dc\s+cikarang/gi, ' ')
-            .replace(/[^a-z0-9]/g, ' ');
-
-        // STOP WORDS LENGKAP: Filter kata umum insiden / status agar tidak terjadi salah jodoh
-        const stopWords = new Set([
-            'laporan', 'report', 'pada', 'unit', 'dan', 'atau', 'yang', 'room', 'area',
-            'gedung', 'office', 'lantai', 'kondisi', 'terdapat', 'mengalami', 'sudah', 'telah',
-            'alarm', 'indikasi', 'masalah', 'issue', 'problem', 'troubleshoot', 'gangguan',
-            'pengecekan', 'perbaikan', 'temuan', 'maintenance', 'corrective', 'rusak', 'error',
-            'failure', 'normal', 'status', 'hasil', 'pekerjaan', 'tindakan', 'action', 'taken',
-            'summary', 'analisis', 'analysis', 'sistem', 'system', 'device', 'perangkat', 'alat',
-            'order', 'tiket', 'ticket', 'work', 'form', 'data', 'center', 'cikarang', 'neutra'
-        ]);
-
-        return clean.split(/\s+/)
-            .filter(w => w.length >= 3 && !stopWords.has(w));
-    };
-
     interface CMSLAMappingResult {
         matchedCMIds: Set<string>;
         cmToSLAMap: Map<string, CorrectiveReport>;
@@ -805,6 +779,9 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     }
 
     // ===== Global 1-to-1 CM↔SLA Matching (each SLA can only be claimed once) =====
+    // HANYA menggunakan relasi eksplisit (cmReportId / slaReportId atau incidentId yang identik).
+    // Fuzzy matching / tebakan kata sengaja DIHAPUS 100% agar CM baru (termasuk Consumable Part) tidak
+    // salah mencaplok SLA yang terpisah, sehingga tetap muncul di notifikasi "Perlu Tindakan".
     const buildCMSLAMapping = (cmList: CorrectiveReport[], slaList: CorrectiveReport[]): CMSLAMappingResult => {
         const claimedSLAIds = new Set<string>();  // SLA IDs yang sudah dipasangkan
         const matchedCMIds = new Set<string>();    // CM IDs yang sudah punya SLA
@@ -844,44 +821,6 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             });
             if (match) tryClaim(cm, match);
         }
-
-        // Pass 3: Strict Specific Equipment & Token Overlap (Window waktu KETAT: maksimal 3 hari!)
-        for (const cm of cmList) {
-            if (!cm.id || matchedCMIds.has(cm.id)) continue;
-            const cmTokens = extractSignificantTokens(`${cm.incidentName || ''} ${cm.equipmentName || ''} ${cm.issue || ''}`);
-            if (cmTokens.length === 0) continue;
-            const cmTime = getReportIncidentTime(cm);
-
-            const match = slaList.find(s => {
-                if (!s.id || claimedSLAIds.has(s.id)) return false;
-
-                const slaTime = getReportIncidentTime(s);
-                // Toleransi waktu ketat: maksimal 3 hari (259200000 ms)
-                // Jika kedua timestamp valid, selisih hari tidak boleh lebih dari 3 hari
-                if (cmTime > 0 && slaTime > 0) {
-                    const diffDays = Math.abs(cmTime - slaTime) / (1000 * 60 * 60 * 24);
-                    if (diffDays > 3) return false;
-                }
-
-                const slaTokens = extractSignificantTokens(`${s.ticketName || ''} ${s.issue || ''} ${s.remark || ''} ${(s as any).equipmentName || ''}`);
-                if (slaTokens.length === 0) return false;
-
-                // Hitung berapa token non-stopword spesifik yang cocok
-                const sharedTokens = cmTokens.filter(t => slaTokens.some(st => st === t || (st.length >= 6 && st.includes(t)) || (t.length >= 6 && t.includes(st))));
-
-                // Minimal 2 token spesifik cocok (misal: 'genset' & '1f-dg-c', atau 'water' & 'softener')
-                // Atau jika ada 1 token khusus yang sangat spesifik (panjang >= 6 atau mengandung angka unik)
-                const hasStrongSpecificToken = sharedTokens.some(t => t.length >= 6 || /^[0-9]+[a-z0-9\-_]+$/i.test(t));
-                if (sharedTokens.length >= 2 || (sharedTokens.length >= 1 && hasStrongSpecificToken)) {
-                    return true;
-                }
-                return false;
-            });
-            if (match) tryClaim(cm, match);
-        }
-
-        // Catatan: Pass 5 (Date-only matching tanpa cek nama alat) sengaja DIHAPUS 100%
-        // karena menyebabkan CM baru mencaplok SLA dari perangkat lain yang berbeda.
 
         return { matchedCMIds, cmToSLAMap, slaToCMMap, claimedSLAIds };
     };
@@ -1441,108 +1380,121 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
             {!showForm && (
                 <>
                     {/* Banner Interaktif: CM yang Belum Memiliki SLA / SLG */}
-                    {archiveFolder === 'sla' && unlinkedCMReports.length > 0 && (
-                        <div className="mb-6 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-white border border-amber-300 rounded-2xl p-4 sm:p-5 shadow-sm transition">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div className="flex items-start sm:items-center gap-3">
-                                    <div className="p-2.5 bg-amber-500 text-white rounded-xl shadow-md shadow-amber-500/20 shrink-0">
-                                        <Zap className="w-5 h-5 fill-current" />
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <h3 className="text-sm sm:text-base font-bold text-slate-900">
-                                                {selectedDay !== 'all' || selectedMonth !== 'all' || selectedYear !== 'all' ? (
-                                                    <span>{periodFilteredUnlinkedCMReports.length} CM Belum Dibuatkan SLA pada Periode Ini <span className="text-xs font-normal text-slate-500">(Total: {unlinkedCMReports.length})</span></span>
-                                                ) : (
-                                                    <span>{unlinkedCMReports.length} Laporan CM Belum Dibuatkan SLA / SLG</span>
-                                                )}
-                                            </h3>
-                                            <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-extrabold uppercase border border-amber-300 shadow-2xs">
-                                                Perlu Tindakan
-                                            </span>
+                    {(() => {
+                        const isPeriodFiltered = selectedDay !== 'all' || selectedMonth !== 'all' || selectedYear !== 'all';
+                        const displayPendingCMs = isPeriodFiltered ? periodFilteredUnlinkedCMReports : unlinkedCMReports;
+
+                        if (archiveFolder !== 'sla' || unlinkedCMReports.length === 0) return null;
+
+                        return (
+                            <div className="mb-6 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-white border border-amber-300 rounded-2xl p-4 sm:p-5 shadow-sm transition">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div className="flex items-start sm:items-center gap-3">
+                                        <div className="p-2.5 bg-amber-500 text-white rounded-xl shadow-md shadow-amber-500/20 shrink-0">
+                                            <Zap className="w-5 h-5 fill-current" />
                                         </div>
-                                        <p className="text-xs text-slate-600 mt-0.5">
-                                            Daftar insiden corrective yang belum dilengkapi audit waktu respon & pemulihan target SLA.
-                                        </p>
+                                        <div>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <h3 className="text-sm sm:text-base font-bold text-slate-900">
+                                                    {isPeriodFiltered ? (
+                                                        <span>{periodFilteredUnlinkedCMReports.length} CM Belum Dibuatkan SLA pada Periode Ini <span className="text-xs font-normal text-slate-500">(Total: {unlinkedCMReports.length})</span></span>
+                                                    ) : (
+                                                        <span>{unlinkedCMReports.length} Laporan CM Belum Dibuatkan SLA / SLG</span>
+                                                    )}
+                                                </h3>
+                                                <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-extrabold uppercase border border-amber-300 shadow-2xs">
+                                                    Perlu Tindakan
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-slate-600 mt-0.5">
+                                                Daftar insiden corrective yang belum dilengkapi audit waktu respon & pemulihan target SLA.
+                                            </p>
+                                        </div>
                                     </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsPendingSlaExpanded(prev => !prev)}
+                                        className="self-start sm:self-auto px-3.5 py-2 bg-white hover:bg-amber-50 border border-amber-300 text-amber-900 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                    >
+                                        <span>{isPendingSlaExpanded ? 'Sembunyikan Daftar' : `Tinjau ${displayPendingCMs.length} CM`}</span>
+                                        {isPendingSlaExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                    </button>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsPendingSlaExpanded(prev => !prev)}
-                                    className="self-start sm:self-auto px-3.5 py-2 bg-white hover:bg-amber-50 border border-amber-300 text-amber-900 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
-                                >
-                                    <span>{isPendingSlaExpanded ? 'Sembunyikan Daftar' : `Tinjau ${periodFilteredUnlinkedCMReports.length || unlinkedCMReports.length} CM`}</span>
-                                    {isPendingSlaExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                </button>
-                            </div>
 
-                            {isPendingSlaExpanded && (
-                                <div className="mt-4 pt-4 border-t border-amber-200/80">
-                                    {(periodFilteredUnlinkedCMReports.length > 0 ? periodFilteredUnlinkedCMReports : unlinkedCMReports).length === 0 ? (
-                                        <p className="text-xs text-slate-500 italic py-2">Semua CM pada filter periode ini sudah memiliki SLA.</p>
-                                    ) : (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                            {(periodFilteredUnlinkedCMReports.length > 0 ? periodFilteredUnlinkedCMReports : unlinkedCMReports).map((cm, idx) => (
-                                                <div
-                                                    key={cm.id}
-                                                    className="bg-white rounded-xl border border-amber-200/90 p-4 shadow-xs hover:border-amber-400 hover:shadow-md transition flex flex-col justify-between"
-                                                >
-                                                    <div>
-                                                        <div className="flex items-center justify-between gap-2 mb-2">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className="px-2 py-0.5 bg-slate-900 text-white rounded-md text-[10px] font-black shadow-2xs">
-                                                                    #{(periodFilteredUnlinkedCMReports.length > 0 ? periodFilteredUnlinkedCMReports : unlinkedCMReports).length - idx}
-                                                                </span>
-                                                                <span className="text-[10px] font-extrabold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 uppercase tracking-wider">
-                                                                    Belum Ada SLA
-                                                                </span>
-                                                                {cm.troubleshootType === 'sparepart_replacement' && cm.sparepartType === 'consumable' && (
-                                                                    <span className="text-[9px] font-extrabold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-md border border-purple-200 uppercase tracking-wider">
-                                                                        Consumable Part
+                                {isPendingSlaExpanded && (
+                                    <div className="mt-4 pt-4 border-t border-amber-200/80">
+                                        {displayPendingCMs.length === 0 ? (
+                                            <p className="text-xs text-slate-500 italic py-2">Semua CM pada filter periode ini sudah memiliki SLA.</p>
+                                        ) : (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                {displayPendingCMs.map((cm, idx) => (
+                                                    <div
+                                                        key={cm.id}
+                                                        className="bg-white rounded-xl border border-amber-200/90 p-4 shadow-xs hover:border-amber-400 hover:shadow-md transition flex flex-col justify-between"
+                                                    >
+                                                        <div>
+                                                            <div className="flex items-center justify-between gap-2 mb-2">
+                                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                                    <span className="px-2 py-0.5 bg-slate-900 text-white rounded-md text-[10px] font-black shadow-2xs">
+                                                                        #{displayPendingCMs.length - idx}
                                                                     </span>
-                                                                )}
+                                                                    <span className="text-[10px] font-extrabold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 uppercase tracking-wider">
+                                                                        Belum Ada SLA
+                                                                    </span>
+                                                                    {cm.sparepartType === 'consumable' ? (
+                                                                        <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded-md border border-purple-200 uppercase tracking-wider">
+                                                                            <Package className="w-2.5 h-2.5 text-purple-600" />
+                                                                            Consumable Part (Wajib SLA)
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-200 uppercase tracking-wider">
+                                                                            <Zap className="w-2.5 h-2.5 text-amber-600" />
+                                                                            Troubleshoot Gangguan
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
+                                                                    <Calendar className="w-3 h-3 text-slate-400" />
+                                                                    {cm.incidentDate || (cm.reportedAt?.toDate ? cm.reportedAt.toDate().toLocaleDateString('id-ID') : '-')}
+                                                                </span>
                                                             </div>
-                                                            <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
-                                                                <Calendar className="w-3 h-3 text-slate-400" />
-                                                                {cm.incidentDate || (cm.reportedAt?.toDate ? cm.reportedAt.toDate().toLocaleDateString('id-ID') : '-')}
-                                                            </span>
+
+                                                            <h4 className="text-xs sm:text-sm font-bold text-slate-900 line-clamp-1 mb-1" title={cm.incidentName || cm.equipmentName || cm.issue}>
+                                                                {cm.incidentName || cm.equipmentName || cm.issue || 'Corrective Maintenance'}
+                                                            </h4>
+
+                                                            <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-2">
+                                                                <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                                                <span className="truncate">{cm.location || 'Neutra DC Cikarang'}</span>
+                                                            </div>
+
+                                                            {cm.actionTaken && (
+                                                                <p className="text-[11px] text-slate-600 line-clamp-2 italic bg-slate-50 p-2 rounded-lg border border-slate-100 mb-3 leading-relaxed">
+                                                                    "{cm.actionTaken}"
+                                                                </p>
+                                                            )}
                                                         </div>
 
-                                                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 line-clamp-1 mb-1" title={cm.incidentName || cm.equipmentName || cm.issue}>
-                                                            {cm.incidentName || cm.equipmentName || cm.issue || 'Corrective Maintenance'}
-                                                        </h4>
-
-                                                        <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-2">
-                                                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                                            <span className="truncate">{cm.location || 'Neutra DC Cikarang'}</span>
-                                                        </div>
-
-                                                        {cm.actionTaken && (
-                                                            <p className="text-[11px] text-slate-600 line-clamp-2 italic bg-slate-50 p-2 rounded-lg border border-slate-100 mb-3 leading-relaxed">
-                                                                "{cm.actionTaken}"
-                                                            </p>
+                                                        {isAuthorizedRole && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleCreateSLAFromCM(cm)}
+                                                                className="w-full mt-2 py-2 px-3 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer"
+                                                            >
+                                                                <Zap className="w-3.5 h-3.5 fill-current" />
+                                                                <span>+ Buat Form SLA</span>
+                                                                <ArrowRight className="w-3 h-3 ml-0.5" />
+                                                            </button>
                                                         )}
                                                     </div>
-
-                                                    {isAuthorizedRole && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleCreateSLAFromCM(cm)}
-                                                            className="w-full mt-2 py-2 px-3 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer"
-                                                        >
-                                                            <Zap className="w-3.5 h-3.5 fill-current" />
-                                                            <span>+ Buat Form SLA</span>
-                                                            <ArrowRight className="w-3 h-3 ml-0.5" />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
 
                     {!loading && (
                         <div className="mb-6 bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl p-3.5 sm:p-4 shadow-sm flex flex-col gap-3">

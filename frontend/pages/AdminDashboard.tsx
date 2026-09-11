@@ -22,6 +22,7 @@ import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoK2 from '@/assets/logo_k2.png';
 import logoBRI from '@/assets/bri_logo.png';
 import logoBRILeft from '@/assets/bri_left_logo.png';
+import { safeStorage } from '@/utils/safeStorage';
 
 interface DocumentData {
   id: string;
@@ -141,6 +142,7 @@ export function AdminDashboard({ onEdit }: AdminDashboardProps) {
       const excelDoc: ExcelDocument = {
         ...doc,
         createdAt: getDocumentDate(doc),
+        updatedAt: doc.updatedAt ? (doc.updatedAt.toDate ? doc.updatedAt.toDate() : new Date((doc.updatedAt as any).seconds * 1000)) : undefined,
         photosData: photosData,
         documentType: doc.type,
         fileSize: 0
