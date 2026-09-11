@@ -42,12 +42,13 @@ import { StandbyKPIInput } from '@/components/StandbyKPIInput';
 import { NotificationPage } from '@/components/NotificationPage';
 import { FaceRegistrationManagement } from '@/components/FaceRegistrationManagement';
 import { DeleteRequestsManager } from '@/components/DeleteRequestsManager';
+import { AbnormalFindingsCenter } from '@/components/AbnormalFindingsCenter';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 
 // Tipe Tab Navigasi yang Tersedia dalam Aplikasi
-type Tab = 'notifications' | 'report' | 'documents' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'spareparts' | 'monthly_report' | 'standby_kpi' | 'berita_acara' | 'face_registration' | 'delete_requests';
+type Tab = 'notifications' | 'report' | 'documents' | 'pir' | 'admin' | 'files' | 'corrective' | 'findings' | 'finding_archive' | 'ptw' | 'corrective_archive' | 'absen_tbm' | 'absen_induction' | 'pm_schedule' | 'boq' | 'spareparts' | 'monthly_report' | 'standby_kpi' | 'berita_acara' | 'face_registration' | 'delete_requests' | 'abnormal_findings';
 
 export function MainApp() {
   // State autentikasi & peranan user dari AuthContext
@@ -61,8 +62,9 @@ export function MainApp() {
   const isStandby = userRole === 'standby_engineer';
   const isK2Engineer = userRole === 'Engineer_K2' || userRole === 'engineer_k2';
 
-  // Badge jumlah pengajuan delete yang menunggu persetujuan (khusus akun QC DME)
+  // Badge jumlah pengajuan delete & temuan abnormal (khusus akun QC DME)
   const [pendingDeleteCount, setPendingDeleteCount] = useState(0);
+  const [totalAbnormalCount, setTotalAbnormalCount] = useState(0);
 
   useEffect(() => {
     if (!isQcDme) return;
@@ -88,9 +90,43 @@ export function MainApp() {
       () => {}
     );
 
+    let cPdf = 0;
+    let cExcel = 0;
+    let cHse = 0;
+
+    const unsubPdf = onSnapshot(
+      query(collection(db, 'pdf_documents'), where('hasAbnormal', '==', true)),
+      (snap) => {
+        cPdf = snap.size;
+        setTotalAbnormalCount(cPdf + cExcel + cHse);
+      },
+      () => {}
+    );
+
+    const unsubExcel = onSnapshot(
+      query(collection(db, 'excel_documents'), where('hasAbnormal', '==', true)),
+      (snap) => {
+        cExcel = snap.size;
+        setTotalAbnormalCount(cPdf + cExcel + cHse);
+      },
+      () => {}
+    );
+
+    const unsubHse = onSnapshot(
+      query(collection(db, 'hse'), where('hasAbnormal', '==', true)),
+      (snap) => {
+        cHse = snap.size;
+        setTotalAbnormalCount(cPdf + cExcel + cHse);
+      },
+      () => {}
+    );
+
     return () => {
       unsubFiles();
       unsubCM();
+      unsubPdf();
+      unsubExcel();
+      unsubHse();
     };
   }, [isQcDme]);
 
@@ -101,6 +137,7 @@ export function MainApp() {
   const navItems = [
     { id: 'admin', label: 'Dashboard', icon: Shield, color: 'from-purple-600 to-pink-600', show: isAdmin },
     { id: 'delete_requests', label: 'Pengajuan Hapus', icon: Trash2, color: 'from-rose-600 to-red-600', show: isQcDme },
+    { id: 'abnormal_findings', label: 'Temuan Abnormal', icon: AlertTriangle, color: 'from-red-600 to-amber-600', show: isQcDme },
     { id: 'face_registration', label: 'Registrasi Wajah', icon: ScanFace, color: 'from-blue-600 to-indigo-600', show: false },
     { id: 'absen_tbm', label: 'Absen TBM', icon: Calendar, color: 'from-pink-500 to-rose-600', show: isAdmin },
     { id: 'absen_induction', label: 'Absen Induction', icon: Calendar, color: 'from-blue-500 to-blue-600', show: isAdmin },
@@ -268,6 +305,11 @@ export function MainApp() {
                       {pendingDeleteCount}
                     </span>
                   )}
+                  {item.id === 'abnormal_findings' && totalAbnormalCount > 0 && (
+                    <span className="ml-1 px-1.5 py-0.2 bg-amber-400 text-rose-950 rounded-full text-[10px] font-black animate-pulse shadow-xs">
+                      {totalAbnormalCount}
+                    </span>
+                  )}
                 </motion.button>
               ))}
             </div>
@@ -327,6 +369,11 @@ export function MainApp() {
                         {pendingDeleteCount}
                       </span>
                     )}
+                    {item.id === 'abnormal_findings' && totalAbnormalCount > 0 && (
+                      <span className="px-2 py-0.5 bg-amber-400 text-rose-950 rounded-full text-xs font-black shadow-xs">
+                        {totalAbnormalCount}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -365,6 +412,11 @@ export function MainApp() {
               <AdminDashboard onEdit={handleEditReport} />
             ) : activeTab === 'delete_requests' ? (
               <DeleteRequestsManager />
+            ) : activeTab === 'abnormal_findings' ? (
+              <AbnormalFindingsCenter onNavigateToDocument={(query) => {
+                setNavSearchQuery(query);
+                setActiveTab('documents');
+              }} />
             ) : activeTab === 'absen_tbm' ? (
               <AbsenTBM />
             ) : activeTab === 'absen_induction' ? (
