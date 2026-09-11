@@ -198,7 +198,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
               ['replacement', 'replace', 'install modul', 'instalasi modul', 'door shoe', 'chain lock', 'chain connector', 'pengunci rantai', 'perbaikan dan pergantian', 'penggantian part', 'penggantian lampu', 'pergantian lampu'].some(kw => textCheck.includes(kw));
             const hasSparepartsArray = initialSpareparts.some((s: any) => s && (typeof s === 'string' ? s.trim() !== '' && s.trim() !== '-' : s.name && s.name.trim() !== '' && s.name.trim() !== '-'));
 
-            const isExplicitNonSparepart = data.troubleshootType === 'non_sparepart' || data.isSparepartReplacement === false;
+            const isExplicitNonSparepart = data.troubleshootType === 'non_sparepart';
             const isSparepart = !isExplicitNonSparepart && (
               data.troubleshootType === 'sparepart_replacement' ||
               data.isSparepartReplacement === true ||

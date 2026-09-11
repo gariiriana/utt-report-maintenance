@@ -3591,9 +3591,7 @@ export async function aggregateMonthlyReportData(options: MonthlyReportOptions):
           data.isSparepartReplacement === true ||
           (Array.isArray(data.spareparts) && data.spareparts.some((sp: any) => sp && sp.name && sp.name.trim() !== '' && sp.name !== '-'));
 
-        const isNonSparepart = 
-          data.troubleshootType === 'non_sparepart' || 
-          data.isSparepartReplacement === false;
+        const isNonSparepart = data.troubleshootType === 'non_sparepart';
 
         // Jika CM adalah pergantian sparepart (dan bukan non-sparepart troubleshoot biasa)
         if (isSparepartReplacement && !isNonSparepart) {

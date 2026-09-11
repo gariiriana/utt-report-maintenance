@@ -585,11 +585,13 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     };
 
     // Helper: Mendeteksi secara akurat apakah sebuah Laporan CM adalah Pergantian Sparepart
-    // Memeriksa: sparepartType, troubleshootType, isSparepartReplacement, daftar spareparts, serta kata kunci/regex penanganan
+    // Memeriksa: troubleshootType eksplisit, sparepartType, daftar spareparts, serta kata kunci penanganan
     const isCMSparepart = (report: CorrectiveReport): boolean => {
-        // 1. Prioritas ABSOLUT: Pilihan eksplisit user non_sparepart (Troubleshoot Gangguan / Wajib SLA)
-        // User telah secara sadar memilih 'Bukan Pergantian Sparepart', jangan pernah di-override oleh keyword atau sparepart lama
-        if (report.troubleshootType === 'non_sparepart' || report.isSparepartReplacement === false) {
+        // 1. Prioritas ABSOLUT: Pilihan EKSPLISIT user non_sparepart (Troubleshoot Gangguan / Wajib SLA)
+        // User telah secara sadar memilih 'Bukan Pergantian Sparepart'.
+        // PENTING: HANYA cek troubleshootType === 'non_sparepart'. JANGAN pernah cek report.isSparepartReplacement === false di sini
+        // karena dokumen legacy di Firestore memiliki isSparepartReplacement: false secara default meskipun merupakan pergantian sparepart!
+        if (report.troubleshootType === 'non_sparepart') {
             return false;
         }
 
