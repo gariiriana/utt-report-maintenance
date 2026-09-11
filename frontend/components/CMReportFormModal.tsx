@@ -808,7 +808,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                         ? 'bg-purple-50 text-purple-700 border-purple-300'
                         : formData.sparepartType === 'sparepart_dme'
                         ? 'bg-blue-50 text-blue-700 border-blue-200'
-                        : 'bg-amber-50 text-amber-800 border-amber-300 animate-pulse'
+                        : 'bg-blue-50 text-blue-700 border-blue-200'
                       : formData.troubleshootType === 'non_sparepart'
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                       : 'bg-amber-50 text-amber-800 border-amber-300 animate-pulse'
@@ -818,7 +818,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                         ? '⚡ Wajib Dibuatkan SLA/SLG (Consumable Part)'
                         : formData.sparepartType === 'sparepart_dme'
                         ? 'ℹ Tidak Dibuatkan SLA/SLG (Sparepart DME / Baut)'
-                        : 'ℹ️ Pergantian Sparepart (Bisa Diisi Nanti)'
+                        : '🔧 Pergantian Sparepart'
                       : formData.troubleshootType === 'non_sparepart'
                       ? '⚡ Wajib Dibuatkan SLA/SLG'
                       : '⚠️ Wajib Pilih Salah Satu'}
@@ -884,15 +884,15 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                       <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
                         <span className="text-xs sm:text-sm font-bold text-slate-900 leading-snug">Pergantian Sparepart</span>
                         <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-                          <span className={`text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border uppercase ${
-                            formData.sparepartType === 'consumable'
-                              ? 'bg-purple-100 text-purple-800 border-purple-300'
-                              : formData.sparepartType === 'sparepart_dme'
-                                ? 'bg-blue-100 text-blue-800 border-blue-300'
-                                : 'bg-slate-100 text-slate-700 border-slate-300'
-                          }`}>
-                            {formData.sparepartType === 'consumable' ? 'Wajib SLA' : formData.sparepartType === 'sparepart_dme' ? 'Tanpa SLA' : 'Bisa Diisi Nanti'}
-                          </span>
+                          {formData.sparepartType ? (
+                            <span className={`text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded-md border uppercase ${
+                              formData.sparepartType === 'consumable'
+                                ? 'bg-purple-100 text-purple-800 border-purple-300'
+                                : 'bg-blue-100 text-blue-800 border-blue-300'
+                            }`}>
+                              {formData.sparepartType === 'consumable' ? 'Wajib SLA' : 'Tanpa SLA'}
+                            </span>
+                          ) : null}
                           <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
                             formData.troubleshootType === 'sparepart_replacement'
                               ? 'border-blue-600 bg-blue-600 text-white'
@@ -921,7 +921,7 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
                       <label className="text-xs font-extrabold text-slate-900 flex items-center gap-2 uppercase tracking-wide">
                         <Package className="w-4 h-4 text-blue-600" />
                         JENIS PERGANTIAN SPAREPART
-                        <span className="text-[10px] font-normal text-slate-500 lowercase bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">(bisa diisi nanti di arsip)</span>
+                        <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 uppercase tracking-tight">Opsional (Bisa Diisi Nanti)</span>
                       </label>
                       <span className="text-[11px] font-semibold">
                         {formData.sparepartType === 'consumable' ? (
