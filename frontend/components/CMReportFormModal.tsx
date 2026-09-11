@@ -186,16 +186,26 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
             const prepSign = cleanSignature(data.preparedBySign) || getEngineerSignature(normalizedPrepName) || cleanSignature(PREPARED_BY_SIGNATURES[normalizedPrepName]) || '';
             const revSign = cleanSignature(data.reviewedBySign) || (normalizedRevName.toLowerCase().includes('arif') || normalizedRevName.toLowerCase().includes('budiman') ? ARIF_BUDIMAN_SIGNATURE_BASE64 : '');
 
-            const isSparepart = data.troubleshootType === 'sparepart_replacement' || data.isSparepartReplacement === true;
-            const tType = data.troubleshootType || (isSparepart ? 'sparepart_replacement' : (data.isSparepartReplacement === false ? 'non_sparepart' : undefined));
-            const spType = data.sparepartType || undefined;
-
             const rawSpareparts = data.spareparts || data.replacedSpareparts || data.replaced_spareparts || data.spareParts || data.spare_parts;
             const initialSpareparts = Array.isArray(rawSpareparts)
               ? rawSpareparts
               : (typeof rawSpareparts === 'string' && rawSpareparts.trim() !== '' && rawSpareparts.trim() !== '-'
                 ? [{ name: rawSpareparts.trim(), brand: '-', qty: '1 Pcs' }]
                 : []);
+
+            const textCheck = `${data.incidentName || ''} ${data.equipmentName || ''} ${data.issue || ''} ${data.correctiveAction || ''} ${data.actionTaken || ''}`.toLowerCase();
+            const hasSparepartKeyword = /(?:penggantian|pergantian|mengganti|ganti)\s+[a-z0-9]+/i.test(textCheck) ||
+              ['replacement', 'replace', 'install modul', 'instalasi modul', 'door shoe', 'chain lock', 'chain connector', 'pengunci rantai', 'perbaikan dan pergantian', 'penggantian part', 'penggantian lampu', 'pergantian lampu'].some(kw => textCheck.includes(kw));
+            const hasSparepartsArray = initialSpareparts.some((s: any) => s && (typeof s === 'string' ? s.trim() !== '' && s.trim() !== '-' : s.name && s.name.trim() !== '' && s.name.trim() !== '-'));
+
+            const isSparepart = data.troubleshootType === 'sparepart_replacement' ||
+              data.isSparepartReplacement === true ||
+              data.sparepartType === 'sparepart_dme' ||
+              data.sparepartType === 'consumable' ||
+              (data.troubleshootType !== 'non_sparepart' && data.isSparepartReplacement !== false && (hasSparepartsArray || hasSparepartKeyword));
+
+            const tType = data.troubleshootType || (isSparepart ? 'sparepart_replacement' : (data.isSparepartReplacement === false ? 'non_sparepart' : undefined));
+            const spType = data.sparepartType || undefined;
 
             const rawRequestSpareparts = data.requestSpareparts || data.request_spareparts || data.requestedSpareparts || data.sparepartsRequest || data.sparepartRequest;
             const initialRequestSpareparts = Array.isArray(rawRequestSpareparts)
@@ -606,6 +616,9 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
       if (user) {
         const reportPayload = {
           ...formattedData,
+          troubleshootType: formData.troubleshootType,
+          isSparepartReplacement: formData.troubleshootType === 'sparepart_replacement',
+          sparepartType: formData.troubleshootType === 'sparepart_replacement' ? (formData.sparepartType || null) : null,
           issue: formattedData.incidentName || formattedData.summaryProblemAnalysis || 'Laporan Issue CM',
           actionTaken: formattedData.correctiveAction || '-',
           category: 'CM',
@@ -653,6 +666,9 @@ export function CMReportFormModal({ onSuccess, onCancel, editId }: CMReportFormM
 
       const reportPayload = {
         ...formData,
+        troubleshootType: formData.troubleshootType,
+        isSparepartReplacement: formData.troubleshootType === 'sparepart_replacement',
+        sparepartType: formData.troubleshootType === 'sparepart_replacement' ? (formData.sparepartType || null) : null,
         preparedByName: prepName,
         preparedBySign: prepSign,
         reviewedByName: revName,
