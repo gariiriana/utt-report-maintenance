@@ -786,6 +786,33 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
         const createdA = parseDateToTimestamp((a as any).createdAt || a.reportedAt);
         return createdB - createdA;
     });
+    // Helper: Ekstrak kata-kata penting (tokens >= 3 chars) untuk fuzzy token matching
+    const extractSignificantTokens = (s?: string): string[] => {
+        if (!s) return [];
+        const clean = s.toLowerCase()
+            .replace(/\[sla\s*\/?\s*slg\]/gi, ' ')
+            .replace(/laporan\s+corrective\s+maintenance/gi, ' ')
+            .replace(/laporan\s+cm/gi, ' ')
+            .replace(/corrective\s+maintenance/gi, ' ')
+            .replace(/pemeliharaan\s+corrective/gi, ' ')
+            .replace(/neutra\s+dc\s+cikarang/gi, ' ')
+            .replace(/[^a-z0-9]/g, ' ');
+
+        // STOP WORDS LENGKAP: Filter kata umum insiden / status agar tidak terjadi salah jodoh
+        const stopWords = new Set([
+            'laporan', 'report', 'pada', 'unit', 'dan', 'atau', 'yang', 'room', 'area',
+            'gedung', 'office', 'lantai', 'kondisi', 'terdapat', 'mengalami', 'sudah', 'telah',
+            'alarm', 'indikasi', 'masalah', 'issue', 'problem', 'troubleshoot', 'gangguan',
+            'pengecekan', 'perbaikan', 'temuan', 'maintenance', 'corrective', 'rusak', 'error',
+            'failure', 'normal', 'status', 'hasil', 'pekerjaan', 'tindakan', 'action', 'taken',
+            'summary', 'analisis', 'analysis', 'sistem', 'system', 'device', 'perangkat', 'alat',
+            'order', 'tiket', 'ticket', 'work', 'form', 'data', 'center', 'cikarang', 'neutra'
+        ]);
+
+        return clean.split(/\s+/)
+            .filter(w => w.length >= 3 && !stopWords.has(w));
+    };
+
     interface CMSLAMappingResult {
         matchedCMIds: Set<string>;
         cmToSLAMap: Map<string, CorrectiveReport>;
@@ -794,9 +821,6 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
     }
 
     // ===== Global 1-to-1 CM↔SLA Matching (each SLA can only be claimed once) =====
-    // HANYA menggunakan relasi eksplisit (cmReportId / slaReportId atau incidentId yang identik).
-    // Fuzzy matching / tebakan kata sengaja DIHAPUS 100% agar CM baru (termasuk Consumable Part) tidak
-    // salah mencaplok SLA yang terpisah, sehingga tetap muncul di notifikasi "Perlu Tindakan".
     const buildCMSLAMapping = (cmList: CorrectiveReport[], slaList: CorrectiveReport[]): CMSLAMappingResult => {
         const claimedSLAIds = new Set<string>();  // SLA IDs yang sudah dipasangkan
         const matchedCMIds = new Set<string>();    // CM IDs yang sudah punya SLA
@@ -833,6 +857,42 @@ export function CorrectiveMaintenance({ readOnly = false, initialSearchQuery }: 
                 const sTick = ((s as any).ticketId || '').trim().toLowerCase();
                 return (sInc !== '' && sInc !== 'n/a' && sInc === cleanIncId) ||
                        (sTick !== '' && sTick !== 'n/a' && sTick === cleanIncId);
+            });
+            if (match) tryClaim(cm, match);
+        }
+
+        // Pass 3: Strict Specific Equipment & Token Overlap (Window waktu KETAT: maksimal 3 hari!)
+        // Diperlukan karena dokumen SLA lama di Firestore dibuat mandiri tanpa field cmReportId
+        for (const cm of cmList) {
+            if (!cm.id || matchedCMIds.has(cm.id)) continue;
+            const cmTokens = extractSignificantTokens(`${cm.incidentName || ''} ${cm.equipmentName || ''} ${cm.issue || ''}`);
+            if (cmTokens.length === 0) continue;
+            const cmTime = getReportIncidentTime(cm);
+
+            const match = slaList.find(s => {
+                if (!s.id || claimedSLAIds.has(s.id)) return false;
+
+                const slaTime = getReportIncidentTime(s);
+                // Toleransi waktu ketat: maksimal 3 hari (259200000 ms)
+                // Jika kedua timestamp valid, selisih hari tidak boleh lebih dari 3 hari
+                if (cmTime > 0 && slaTime > 0) {
+                    const diffDays = Math.abs(cmTime - slaTime) / (1000 * 60 * 60 * 24);
+                    if (diffDays > 3) return false;
+                }
+
+                const slaTokens = extractSignificantTokens(`${s.ticketName || ''} ${s.issue || ''} ${s.remark || ''} ${(s as any).equipmentName || ''}`);
+                if (slaTokens.length === 0) return false;
+
+                // Hitung berapa token non-stopword spesifik yang cocok
+                const sharedTokens = cmTokens.filter(t => slaTokens.some(st => st === t || (st.length >= 6 && st.includes(t)) || (t.length >= 6 && t.includes(st))));
+
+                // Minimal 2 token spesifik cocok (misal: 'genset' & '1f-dg-c', atau 'water' & 'softener')
+                // Atau jika ada 1 token khusus yang sangat spesifik (panjang >= 6 atau mengandung angka unik)
+                const hasStrongSpecificToken = sharedTokens.some(t => t.length >= 6 || /^[0-9]+[a-z0-9\-_]+$/i.test(t));
+                if (sharedTokens.length >= 2 || (sharedTokens.length >= 1 && hasStrongSpecificToken)) {
+                    return true;
+                }
+                return false;
             });
             if (match) tryClaim(cm, match);
         }
