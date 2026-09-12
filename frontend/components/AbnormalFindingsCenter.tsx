@@ -17,6 +17,7 @@ import {
   Calendar,
   X,
   FileSpreadsheet,
+  FileText,
   Download,
   FolderOpen,
   User,
@@ -49,6 +50,7 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { offlineReportStorage } from '@/utils/offlineReportStorage';
 import { generateReportPDF, loadLogoBase64 } from '@/utils/ReportPdfExport';
+import { exportAbnormalRecapToWord } from '@/utils/AbnormalRecapWordExport';
 import logoDwimitra from '@/assets/logo_dwimitra_v2.png';
 import logoNeutraDC from '@/assets/logo_neutradc.png';
 import logoK2 from '@/assets/logo_k2.png';
@@ -87,6 +89,48 @@ interface AbnormalFindingsCenterProps {
   onNavigateToDocument?: (searchQuery: string) => void;
 }
 
+// Helper ekstraksi data bulan & tahun dari laporan temuan abnormal
+export function getItemMonthData(item: AbnormalItem): { key: string; label: string; date: Date } {
+  let targetDate: Date = item.createdAt || new Date();
+
+  // 1. Prioritas dari findingDate
+  if (item.abnormalFinding?.findingDate) {
+    const raw = String(item.abnormalFinding.findingDate).trim();
+    const d = new Date(raw);
+    if (!isNaN(d.getTime())) {
+      targetDate = d;
+    } else {
+      const match = raw.match(/(\d{1,2})[.-/](\d{1,2})[.-/](\d{4})/);
+      if (match) {
+        const parsed = new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
+        if (!isNaN(parsed.getTime())) targetDate = parsed;
+      }
+    }
+  } else if (item.abnormalFinding?.reportedAt) {
+    const raw = item.abnormalFinding.reportedAt;
+    const d = new Date(raw as any);
+    if (!isNaN(d.getTime())) {
+      targetDate = d;
+    }
+  } else if (item.maintenanceTime) {
+    const raw = String(item.maintenanceTime).trim();
+    const d = new Date(raw);
+    if (!isNaN(d.getTime())) {
+      targetDate = d;
+    } else {
+      const match = raw.match(/(\d{1,2})[.-/](\d{1,2})[.-/](\d{4})/);
+      if (match) {
+        const parsed = new Date(Number(match[3]), Number(match[2]) - 1, Number(match[1]));
+        if (!isNaN(parsed.getTime())) targetDate = parsed;
+      }
+    }
+  }
+
+  const key = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+  const label = targetDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  return { key, label, date: targetDate };
+}
+
 export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFindingsCenterProps) {
   const { user, userRole, companyType } = useAuth();
   const canDelete = Boolean(
@@ -98,6 +142,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
   const [items, setItems] = useState<AbnormalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedMonthFilter, setSelectedMonthFilter] = useState<string>('all');
   const [selectedAccountFilter, setSelectedAccountFilter] = useState<string>('all');
   const [selectedDocTypeFilter, setSelectedDocTypeFilter] = useState<'all' | 'pdf' | 'excel' | 'hse'>('all');
   const [selectedPhotoFilter, setSelectedPhotoFilter] = useState<'all' | 'with_photo' | 'without_photo'>('all');
@@ -780,9 +825,29 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
     return Array.from(setAcc).sort();
   }, [items]);
 
+  // Daftar bulan unik yang tersedia dari data temuan abnormal
+  const availableMonths = useMemo(() => {
+    const map = new Map<string, { key: string; label: string; date: Date; count: number }>();
+    items.forEach((it) => {
+      const m = getItemMonthData(it);
+      if (!map.has(m.key)) {
+        map.set(m.key, { ...m, count: 1 });
+      } else {
+        map.get(m.key)!.count++;
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => b.key.localeCompare(a.key));
+  }, [items]);
+
   // Penyaringan & Pengurutan data temuan abnormal
   const filteredItems = useMemo(() => {
     let result = items.filter((item) => {
+      // Filter Periode Bulan
+      if (selectedMonthFilter !== 'all') {
+        const m = getItemMonthData(item);
+        if (m.key !== selectedMonthFilter) return false;
+      }
+
       // Filter Akun
       if (selectedAccountFilter !== 'all' && item.createdBy !== selectedAccountFilter) {
         return false;
@@ -840,7 +905,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       const timeB = b.updatedAt?.getTime() || b.createdAt.getTime();
       return timeB - timeA;
     });
-  }, [items, selectedAccountFilter, selectedDocTypeFilter, selectedPhotoFilter, searchQuery, sortBy]);
+  }, [items, selectedMonthFilter, selectedAccountFilter, selectedDocTypeFilter, selectedPhotoFilter, searchQuery, sortBy]);
 
   // Statistik KPI
   const stats = useMemo(() => {
@@ -957,12 +1022,40 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
     }
   };
 
+  // Handler: Ekspor Rekap Lengkap Temuan Abnormal ke format Microsoft Word (.DOCX)
+  const handleExportWordRecap = async () => {
+    if (filteredItems.length === 0) {
+      toast.error('Tidak ada data temuan abnormal yang sesuai untuk diekspor.');
+      return;
+    }
+
+    const toastId = toast.loading('Menyusun dokumen Word (.docx) rekap temuan abnormal...');
+    try {
+      const activeMonthObj = availableMonths.find((m) => m.key === selectedMonthFilter);
+      const periodLabel = activeMonthObj ? activeMonthObj.label : 'Semua Periode';
+      const printedBy = `${user?.email || 'Quality Control DME'} (QC DME)`;
+
+      await exportAbnormalRecapToWord(filteredItems, {
+        periodLabel,
+        printedBy,
+      });
+
+      toast.success('Dokumen Word rekap temuan abnormal berhasil diunduh!', { id: toastId });
+    } catch (err: any) {
+      console.error('Error exporting Word recap:', err);
+      toast.error(`Gagal membuat rekap Word: ${err.message || 'Kesalahan sistem'}`, { id: toastId });
+    }
+  };
+
   // Handler: Ekspor Rekap Excel Temuan Abnormal ke format .XLSX
   const handleExportExcelRecap = async () => {
     if (filteredItems.length === 0) {
       toast.error('Tidak ada data temuan abnormal yang sesuai untuk diekspor.');
       return;
     }
+
+    const activeMonthObj = availableMonths.find((m) => m.key === selectedMonthFilter);
+    const periodLabel = activeMonthObj ? activeMonthObj.label : 'Semua Periode';
 
     const toastId = toast.loading('Menyusun spreadsheet rekap temuan abnormal...');
     try {
@@ -974,13 +1067,13 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
 
       // Title & Header Information
       worksheet.mergeCells('A1:I1');
-      worksheet.getCell('A1').value = 'REKAPITULASI TEMUAN KONDISI ABNORMAL MAINTENANCE DATA CENTER';
+      worksheet.getCell('A1').value = `REKAPITULASI TEMUAN KONDISI ABNORMAL MAINTENANCE DATA CENTER (${periodLabel.toUpperCase()})`;
       worksheet.getCell('A1').font = { size: 14, bold: true, color: { argb: 'FF991B1B' } };
       worksheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' };
       worksheet.getRow(1).height = 28;
 
       worksheet.mergeCells('A2:I2');
-      worksheet.getCell('A2').value = `Dicetak oleh: QC DME (qcdme@dme.com) | Tanggal Rekap: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} WIB`;
+      worksheet.getCell('A2').value = `Dicetak oleh: ${user?.email || 'QC DME'} | Periode: ${periodLabel} | Tanggal Rekap: ${new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })} WIB`;
       worksheet.getCell('A2').font = { size: 10, italic: true, color: { argb: 'FF475569' } };
       worksheet.getCell('A2').alignment = { horizontal: 'center', vertical: 'middle' };
       worksheet.getRow(2).height = 18;
@@ -1063,7 +1156,8 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
       const blob = new Blob([buffer], {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
-      saveAs(blob, `Rekap_Temuan_Abnormal_QC_DME_${new Date().toISOString().split('T')[0]}.xlsx`);
+      const cleanPeriod = periodLabel.replace(/[/\\?%*:|"<>]/g, '_').replace(/\s+/g, '_');
+      saveAs(blob, `Rekap_Temuan_Abnormal_QC_DME_${cleanPeriod}_${new Date().toISOString().split('T')[0]}.xlsx`);
 
       toast.success('Spreadsheet rekap temuan abnormal berhasil diunduh!', { id: toastId });
     } catch (err: any) {
@@ -1097,12 +1191,22 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
             </div>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <button
+              type="button"
+              onClick={handleExportWordRecap}
+              disabled={filteredItems.length === 0}
+              className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer border border-blue-400/40"
+              title="Unduh Rekap Lengkap Word (.docx) dengan Logo Dwimitra & NeutraDC, Detail & Foto Bukti"
+            >
+              <FileText className="w-4 h-4 text-blue-200" />
+              <span>Ekspor Rekap Word (DOCX)</span>
+            </button>
             <button
               type="button"
               onClick={handleExportExcelRecap}
               disabled={filteredItems.length === 0}
-              className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer"
+              className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer border border-emerald-400/40"
               title="Unduh Rekap Spreadsheet (.xlsx)"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-200" />
@@ -1134,9 +1238,9 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
 
       {/* Toolbar Filter & Pencarian */}
       <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-sm space-y-3.5">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
           {/* Search Box */}
-          <div className="relative md:col-span-3">
+          <div className="relative sm:col-span-2 lg:col-span-2">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
@@ -1147,24 +1251,40 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
             />
           </div>
 
+          {/* Filter Periode Bulan */}
+          <div className="relative lg:col-span-1">
+            <select
+              value={selectedMonthFilter}
+              onChange={(e) => setSelectedMonthFilter(e.target.value)}
+              className="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold text-slate-800 transition cursor-pointer appearance-none truncate"
+            >
+              <option value="all">Semua Bulan ({items.length})</option>
+              {availableMonths.map((m) => (
+                <option key={m.key} value={m.key}>
+                  {m.label} ({m.count})
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Filter Akun Maintenance */}
-          <div className="relative md:col-span-3">
+          <div className="relative lg:col-span-1">
             <select
               value={selectedAccountFilter}
               onChange={(e) => setSelectedAccountFilter(e.target.value)}
               className="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 font-semibold text-slate-800 transition cursor-pointer appearance-none truncate"
             >
-              <option value="all">Semua Akun Maintenance ({uniqueAccounts.length})</option>
+              <option value="all">Semua Akun ({uniqueAccounts.length})</option>
               {uniqueAccounts.map((acc) => (
                 <option key={acc} value={acc}>
-                  Akun: {acc}
+                  {acc}
                 </option>
               ))}
             </select>
           </div>
 
           {/* Filter Tipe Dokumen */}
-          <div className="relative md:col-span-2">
+          <div className="relative lg:col-span-1">
             <select
               value={selectedDocTypeFilter}
               onChange={(e) => setSelectedDocTypeFilter(e.target.value as any)}
@@ -1178,7 +1298,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
           </div>
 
           {/* Filter Keberadaan Foto */}
-          <div className="relative md:col-span-2">
+          <div className="relative lg:col-span-1">
             <select
               value={selectedPhotoFilter}
               onChange={(e) => setSelectedPhotoFilter(e.target.value as any)}
@@ -1189,20 +1309,41 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
               <option value="without_photo">Tanpa Foto</option>
             </select>
           </div>
-
-          {/* Sort By */}
-          <div className="relative md:col-span-2">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 font-medium text-slate-800 transition cursor-pointer appearance-none"
-            >
-              <option value="newest">Waktu Terkini (Default)</option>
-              <option value="oldest">Waktu Terlama</option>
-              <option value="unit_asc">Nama Unit (A - Z)</option>
-            </select>
-          </div>
         </div>
+
+        {/* Quick Filter Pill Buttons (Bulan Rekap Cepat) */}
+        {availableMonths.length > 0 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 pt-0.5 text-xs no-scrollbar">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
+              <Calendar className="w-3 h-3 text-slate-400" /> Periode Bulan:
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedMonthFilter('all')}
+              className={`px-2.5 py-1 rounded-lg font-bold text-xs shrink-0 transition cursor-pointer ${
+                selectedMonthFilter === 'all'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              Semua Bulan ({items.length})
+            </button>
+            {availableMonths.map((m) => (
+              <button
+                key={m.key}
+                type="button"
+                onClick={() => setSelectedMonthFilter(m.key)}
+                className={`px-2.5 py-1 rounded-lg font-bold text-xs shrink-0 transition cursor-pointer ${
+                  selectedMonthFilter === m.key
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {m.label} ({m.count})
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Quick Filter Pill Buttons (Akun Maintenance Cepat) */}
         {uniqueAccounts.length > 0 && (
