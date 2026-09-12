@@ -22,7 +22,7 @@ import {
   Scissors,
   Crop
 } from 'lucide-react';
-import { doc, updateDoc, deleteDoc, deleteField, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { toast } from 'sonner';
 import { ExcelDocument, AbnormalFinding } from './DocumentList';
@@ -59,17 +59,56 @@ export function AbnormalReportModal({
   const [dragActive, setDragActive] = useState(false);
   const [isManualCropping, setIsManualCropping] = useState(false);
 
-  // Inisialisasi state dari data dokumen saat modal terbuka
+// Inisialisasi state dari data dokumen saat modal terbuka + Sinkronisasi cerdas lokal (0 Cloud Reads)
   useEffect(() => {
+    let isMounted = true;
     if (docItem) {
-      const existing = docItem.abnormalFinding;
-      setUnitName(existing?.unitName || docItem.specificDetail || docItem.maintenanceName || '');
-      setDescription(existing?.description || '');
-      setActionRecommendation(existing?.actionRecommendation || '');
-      setPhotoBase64(existing?.photoBase64 || '');
-      setPhotoFileName(existing?.photoBase64 ? 'Foto Bukti Terlampir' : '');
+      const existing = (docItem.abnormalFinding as any) || {};
+      const targetUnit = existing.unitName || existing.partName || docItem.specificDetail || docItem.maintenanceName || '';
+      setUnitName(targetUnit);
+
+      // Support multi-format field (description / remark / notes)
+      let initialDesc = existing.description || existing.remark || existing.notes || '';
+      // Support multi-format field (actionRecommendation / recommendation / tindakLanjut)
+      let initialReco = existing.actionRecommendation || existing.recommendation || existing.tindakLanjut || '';
+      // Support multi-format photo (photoBase64 atau array photos)
+      let initialPhoto = existing.photoBase64 || (existing.photos && existing.photos[0]?.base64) || '';
+
+      setDescription(initialDesc);
+      setActionRecommendation(initialReco);
+      setPhotoBase64(initialPhoto);
+      setPhotoFileName(initialPhoto ? 'Foto Bukti Terlampir' : '');
       setShowConfirmClear(false);
+
+      // Fallback lokal dari IndexedDB (0 Cloud Reads ke server!)
+      const fetchFromLocalCache = async () => {
+        try {
+          if (!docItem.id) return;
+          // Cek IndexedDB offline report storage (0 server reads)
+          const offDoc = await offlineReportStorage.getReportById(docItem.id);
+          if (offDoc?.abnormalFinding && isMounted) {
+            const af = offDoc.abnormalFinding as any;
+            const lDesc = af.description || af.remark || '';
+            const lReco = af.actionRecommendation || af.recommendation || '';
+            const lPhoto = af.photoBase64 || (af.photos && af.photos[0]?.base64) || '';
+            if (!initialDesc && lDesc) setDescription(lDesc);
+            if (!initialReco && lReco) setActionRecommendation(lReco);
+            if (!initialPhoto && lPhoto) {
+              setPhotoBase64(lPhoto);
+              setPhotoFileName('Foto Bukti Terlampir');
+            }
+          }
+        } catch (lErr) {
+          console.warn('Local cache finding lookup error:', lErr);
+        }
+      };
+
+      fetchFromLocalCache();
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [docItem, isOpen]);
 
   if (!isOpen || !docItem) return null;
@@ -176,7 +215,7 @@ export function AbnormalReportModal({
     }
   };
 
-  // Simpan temuan abnormal ke Firestore & Offline Storage
+  // Simpan temuan abnormal ke Firestore: 100% PURE WRITES (0 Reads)
   const handleSaveAbnormal = async () => {
     if (!description.trim()) {
       toast.error('Mohon isi deskripsi kelainan/temuan abnormal terlebih dahulu.');
@@ -187,14 +226,24 @@ export function AbnormalReportModal({
     const toastId = toast.loading('Menyimpan temuan abnormal ke arsip...');
 
     try {
-      const targetUnitName = unitName.trim() || docItem.specificDetail || docItem.maintenanceName;
+      const targetUnitName = unitName.trim() || docItem.specificDetail || docItem.maintenanceName || 'Unit';
+      const existingAf = (docItem.abnormalFinding as any) || {};
+
       const abnormalPayload: AbnormalFinding = {
         unitName: targetUnitName,
+        partName: targetUnitName,
         description: description.trim(),
+        remark: description.trim(),
         actionRecommendation: actionRecommendation.trim() || undefined,
+        recommendation: actionRecommendation.trim() || undefined,
         photoBase64: photoBase64 || undefined,
-        reportedBy: user?.displayName || user?.email || 'Engineer',
-        reportedAt: new Date().toISOString(),
+        photos: photoBase64 ? [{ base64: photoBase64, description: 'Bukti Temuan Abnormal' }] : (existingAf.photos || []),
+        reportedBy: user?.displayName || user?.email || existingAf.reportedBy || 'Engineer',
+        reportedAt: existingAf.reportedAt || new Date().toISOString(),
+        findingDate: existingAf.findingDate || (docItem.maintenanceTime ? docItem.maintenanceTime.split('T')[0] : new Date().toISOString().split('T')[0]),
+        partNumber: existingAf.partNumber || '-',
+        brandName: existingAf.brandName || '-',
+        quantity: existingAf.quantity || '1 Unit',
       };
 
       // Sanitize data agar tidak ada undefined values yang ditolak Firestore
@@ -205,26 +254,69 @@ export function AbnormalReportModal({
           ? 'excel_documents'
           : (docItem.documentType === 'hse' ? 'hse' : 'pdf_documents'));
 
-      if (colName === 'findings') {
-        await updateDoc(doc(db, 'findings', docItem.id), {
-          partName: targetUnitName,
-          remark: description.trim(),
-          actionRecommendation: actionRecommendation.trim() || '',
-          photoBase64: photoBase64 || '',
-          updatedAt: serverTimestamp(),
-        });
-      } else {
-        await updateDoc(doc(db, colName, docItem.id), {
-          hasAbnormal: true,
-          abnormalFinding: cleanAbnormal,
-          updatedAt: serverTimestamp(),
-        });
+      let cloudSaved = false;
+
+      // 1. Simpan ke Firestore: MURNI OPERASI WRITE (0 Cloud Reads!)
+      // Menggunakan setDoc dengan merge: true sehingga tidak perlu melakukan query getDocs/getDoc sebelumnya
+      try {
+        if (colName === 'findings') {
+          await setDoc(doc(db, 'findings', docItem.id), {
+            partName: targetUnitName,
+            remark: description.trim(),
+            description: description.trim(),
+            actionRecommendation: actionRecommendation.trim() || '',
+            recommendation: actionRecommendation.trim() || '',
+            photoBase64: photoBase64 || '',
+            photos: photoBase64 ? [{ base64: photoBase64, description: 'Bukti Temuan Abnormal' }] : [],
+            updatedAt: serverTimestamp(),
+          }, { merge: true });
+        } else {
+          // Write ke dokumen induk (0 Reads, Pure Write)
+          await setDoc(doc(db, colName, docItem.id), {
+            hasAbnormal: true,
+            abnormalFinding: cleanAbnormal,
+            updatedAt: serverTimestamp(),
+          }, { merge: true });
+
+          // SINKRONISASI KE KOLEKSI 'findings' (0 Reads, Pure Write via setDoc merge)
+          const targetFindingId = (docItem as any).findingId || docItem.id;
+          const findingDataToSave = {
+            docId: docItem.id,
+            reportId: docItem.id,
+            maintenanceName: docItem.maintenanceName || 'Maintenance',
+            specificDetail: docItem.specificDetail || targetUnitName,
+            partName: targetUnitName,
+            partNumber: cleanAbnormal.partNumber || '-',
+            brandName: cleanAbnormal.brandName || '-',
+            quantity: cleanAbnormal.quantity || '1 Unit',
+            findingDate: cleanAbnormal.findingDate || new Date().toISOString().split('T')[0],
+            remark: description.trim(),
+            description: description.trim(),
+            actionRecommendation: actionRecommendation.trim() || '',
+            recommendation: actionRecommendation.trim() || '',
+            photoBase64: photoBase64 || '',
+            photos: photoBase64 ? [{ base64: photoBase64, description: 'Bukti Temuan Abnormal' }] : [],
+            createdBy: user?.uid || 'engineer',
+            createdByEmail: (user?.email || docItem.createdBy || 'engineer').toLowerCase().trim(),
+            updatedAt: serverTimestamp(),
+          };
+
+          await setDoc(doc(db, 'findings', targetFindingId), findingDataToSave, { merge: true });
+        }
+        cloudSaved = true;
+      } catch (cloudErr: any) {
+        console.error('Firestore cloud write error:', cloudErr);
       }
 
-      // Update offline IndexedDB agar sinkron
+      // 2. Update offline IndexedDB agar sinkron di browser
       await offlineReportStorage.updateReportAbnormal(docItem.id, true, cleanAbnormal);
 
-      toast.success(`Temuan abnormal berhasil disimpan pada unit "${targetUnitName}"!`, { id: toastId });
+      if (cloudSaved) {
+        toast.success(`Temuan abnormal berhasil disimpan pada unit "${targetUnitName}"!`, { id: toastId });
+      } else {
+        toast.warning(`Tersimpan di offline browser (Cloud terbatas/offline). Data Anda tetap aman.`, { id: toastId });
+      }
+
       onSuccess({
         hasAbnormal: true,
         abnormalFinding: cleanAbnormal,
@@ -232,13 +324,13 @@ export function AbnormalReportModal({
       onClose();
     } catch (err: any) {
       console.error('Error saving abnormal finding:', err);
-      toast.error(`Gagal menyimpan temuan abnormal: ${err.message || 'Kesalahan jaringan'}`, { id: toastId });
+      toast.error(`Gagal menyimpan temuan abnormal: ${err.message || 'Kesalahan sistem'}`, { id: toastId });
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Hapus status abnormal dan kembalikan unit ke status Normal
+  // Hapus status abnormal dan kembalikan unit ke status Normal: 100% PURE WRITES / DELETES (0 Reads)
   const handleClearAbnormal = async () => {
     setIsClearing(true);
     const toastId = toast.loading('Mengembalikan status unit ke Normal...');
@@ -253,11 +345,15 @@ export function AbnormalReportModal({
       if (colName === 'findings') {
         await deleteDoc(doc(db, 'findings', docItem.id));
       } else {
-        await updateDoc(doc(db, colName, docItem.id), {
+        await setDoc(doc(db, colName, docItem.id), {
           hasAbnormal: false,
           abnormalFinding: deleteField(),
           updatedAt: serverTimestamp(),
-        });
+        }, { merge: true });
+
+        // Hapus temuan terkait di koleksi findings (0 Reads, langsung delete via deterministic ID)
+        const targetFindingId = (docItem as any).findingId || docItem.id;
+        deleteDoc(doc(db, 'findings', targetFindingId)).catch(() => {});
       }
 
       // Update offline IndexedDB

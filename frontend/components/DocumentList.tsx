@@ -52,6 +52,7 @@ export interface AbnormalFinding {
   unitName?: string;
   description: string;
   actionRecommendation?: string;
+  recommendation?: string;
   photoBase64?: string;
   reportedBy?: string;
   reportedAt?: string | Date;
@@ -2902,25 +2903,26 @@ export function DocumentList({ onEdit, filterOverride, initialSearchQuery }: Doc
                   </div>
 
                   <p className="text-slate-700 leading-relaxed font-medium whitespace-pre-line">
-                    {document.abnormalFinding?.description || 'Ditemukan kondisi kelainan / abnormal pada unit ini.'}
+                    {document.abnormalFinding?.description || (document.abnormalFinding as any)?.remark || 'Ditemukan kondisi kelainan / abnormal pada unit ini.'}
                   </p>
 
-                  {document.abnormalFinding?.actionRecommendation && (
+                  {Boolean(document.abnormalFinding?.actionRecommendation || (document.abnormalFinding as any)?.recommendation) && (
                     <div className="text-[11px] text-amber-900 bg-amber-50/90 p-2 rounded-lg border border-amber-200">
                       <strong className="text-amber-950 font-bold">Rekomendasi: </strong>
-                      {document.abnormalFinding.actionRecommendation}
+                      {document.abnormalFinding?.actionRecommendation || (document.abnormalFinding as any)?.recommendation}
                     </div>
                   )}
 
                   <div className="flex items-center justify-between pt-1 text-[11px] text-slate-500 border-t border-rose-100/80">
                     <span>Pelapor: <strong className="text-slate-700">{document.abnormalFinding?.reportedBy || 'Engineer'}</strong></span>
-                    {document.abnormalFinding?.photoBase64 && (
+                    {Boolean(document.abnormalFinding?.photoBase64 || ((document.abnormalFinding as any)?.photos && (document.abnormalFinding as any)?.photos[0]?.base64)) && (
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
+                          const photoSrc = document.abnormalFinding?.photoBase64 || ((document.abnormalFinding as any)?.photos && (document.abnormalFinding as any)?.photos[0]?.base64);
                           setPreviewPhoto({
-                            src: document.abnormalFinding!.photoBase64!,
+                            src: photoSrc,
                             title: `Foto Bukti Abnormal: ${document.abnormalFinding?.unitName || document.maintenanceName}`
                           });
                         }}
