@@ -22,7 +22,7 @@ import {
   Scissors,
   Crop
 } from 'lucide-react';
-import { doc, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/api/firebase';
 import { toast } from 'sonner';
 import { ExcelDocument, AbnormalFinding } from './DocumentList';
@@ -85,7 +85,7 @@ export function AbnormalReportModal({
         try {
           if (!docItem.id) return;
           // Cek IndexedDB offline report storage (0 server reads)
-          const offDoc = await offlineReportStorage.getReportById(docItem.id);
+          const offDoc = await offlineReportStorage.getReport(docItem.id);
           if (offDoc?.abnormalFinding && isMounted) {
             const af = offDoc.abnormalFinding as any;
             const lDesc = af.description || af.remark || '';
