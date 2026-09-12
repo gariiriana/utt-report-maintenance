@@ -1634,7 +1634,18 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
               exit={{ opacity: 0, scale: 0.95 }}
               className="relative max-w-4xl w-full max-h-[92vh] bg-slate-900 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-700"
             >
-              <div className="p-3.5 bg-slate-800 text-white flex items-center justify-between border-b border-slate-700 flex-wrap gap-2">
+              {/* Tombol Tutup X Merah di Pojok Kanan Atas */}
+              <button
+                type="button"
+                onClick={() => setPreviewPhoto(null)}
+                className="absolute top-3 right-3 sm:top-3.5 sm:right-3.5 z-20 w-8 h-8 rounded-full bg-red-600 hover:bg-red-700 active:scale-95 text-white flex items-center justify-center transition-all shadow-lg cursor-pointer hover:rotate-90 duration-200 border border-red-500"
+                title="Tutup Preview"
+                aria-label="Tutup Preview"
+              >
+                <X className="w-5 h-5 stroke-[2.5]" />
+              </button>
+
+              <div className="p-3.5 pr-14 sm:pr-16 bg-slate-800 text-white flex items-center justify-between border-b border-slate-700 flex-wrap gap-2">
                 <div className="flex items-center gap-2 min-w-0 pr-2">
                   <Camera className="w-4 h-4 text-amber-400 shrink-0" />
                   <span className="text-xs sm:text-sm font-bold truncate text-slate-200">
@@ -1663,14 +1674,6 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                   >
                     <Crop className="w-3.5 h-3.5" />
                     <span>Crop Manual</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPreviewPhoto(null)}
-                    className="p-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white transition cursor-pointer shrink-0 ml-1"
-                    title="Tutup Preview"
-                  >
-                    <X className="w-5 h-5" />
                   </button>
                 </div>
               </div>
