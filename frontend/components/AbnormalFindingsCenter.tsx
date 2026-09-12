@@ -104,7 +104,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'unit_asc'>('newest');
 
   // Preview lightbox photo state
-  const [previewPhoto, setPreviewPhoto] = useState<{ src: string; title: string; unit: string; account: string } | null>(null);
+  const [previewPhoto, setPreviewPhoto] = useState<{ src: string; title: string; unit: string; account: string; item?: AbnormalItem } | null>(null);
 
   // Modal konfirmasi tandai normal oleh QC
   const [confirmNormalItem, setConfirmNormalItem] = useState<AbnormalItem | null>(null);
@@ -315,10 +315,100 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
         });
       }
 
+      if (previewPhoto) {
+        setPreviewPhoto((prev) => (prev ? { ...prev, src: newBase64 } : null));
+      }
+
       toast.success('Foto bukti temuan abnormal berhasil diperbarui!', { id: toastId });
     } catch (err: any) {
       console.error('Error saving cropped photo:', err);
       toast.error(`Gagal menyimpan foto: ${err.message || 'Kesalahan sistem'}`, { id: toastId });
+    }
+  };
+
+  // Handler: Potong otomatis gambar yang sedang dibuka di modal Lightbox (previewPhoto)
+  const handleCropPreviewPhoto = async () => {
+    if (!previewPhoto?.src) return;
+    const toastId = toast.loading('Memotong bagian teks dan menyisakan foto saja...');
+    try {
+      const croppedBase64 = await autoCropTextFromImage(previewPhoto.src, 0.46);
+
+      // Langsung perbarui tampilan modal lightbox secara instan
+      setPreviewPhoto((prev) => (prev ? { ...prev, src: croppedBase64 } : null));
+
+      // Cari item yang terkait
+      const targetItem =
+        previewPhoto.item ||
+        items.find(
+          (it) =>
+            it.abnormalFinding?.photoBase64 === previewPhoto.src ||
+            (it.abnormalFinding?.unitName === previewPhoto.unit && it.createdBy === previewPhoto.account)
+        );
+
+      if (targetItem) {
+        if (targetItem.collectionName === 'findings') {
+          await updateDoc(doc(db, 'findings', targetItem.findingId || targetItem.docId), {
+            photoBase64: croppedBase64,
+            photos: [{ base64: croppedBase64, description: 'Bukti Temuan Abnormal' }],
+            updatedAt: serverTimestamp(),
+          });
+        } else {
+          await updateDoc(doc(db, targetItem.collectionName, targetItem.docId), {
+            'abnormalFinding.photoBase64': croppedBase64,
+            'abnormalFinding.photos': [{ base64: croppedBase64, description: 'Bukti Temuan Abnormal' }],
+            updatedAt: serverTimestamp(),
+          });
+        }
+
+        if (targetItem.findingId) {
+          await updateDoc(doc(db, 'findings', targetItem.findingId), {
+            photoBase64: croppedBase64,
+            photos: [{ base64: croppedBase64, description: 'Bukti Temuan Abnormal' }],
+            updatedAt: serverTimestamp(),
+          }).catch(() => {});
+        }
+
+        await offlineReportStorage.updateReportAbnormal(targetItem.docId, true, {
+          ...(targetItem.abnormalFinding || {}),
+          photoBase64: croppedBase64,
+          photos: [{ base64: croppedBase64, description: 'Bukti Temuan Abnormal' }],
+        });
+
+        setItems((prev) =>
+          prev.map((it) => {
+            if (it.id === targetItem.id) {
+              return {
+                ...it,
+                abnormalFinding: {
+                  ...it.abnormalFinding,
+                  photoBase64: croppedBase64,
+                  photos: [{ base64: croppedBase64, description: 'Bukti Temuan Abnormal' }],
+                },
+              };
+            }
+            return it;
+          })
+        );
+
+        if (viewingDetailItem && viewingDetailItem.id === targetItem.id) {
+          setViewingDetailItem((prev) => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              abnormalFinding: {
+                ...prev.abnormalFinding,
+                photoBase64: croppedBase64,
+                photos: [{ base64: croppedBase64, description: 'Bukti Temuan Abnormal' }],
+              },
+            };
+          });
+        }
+      }
+
+      toast.success('Berhasil! Bagian teks telah dibuang, kini hanya menyisakan foto dokumentasi.', { id: toastId });
+    } catch (err: any) {
+      console.error('Error auto cropping preview photo:', err);
+      toast.error(`Gagal memotong foto: ${err.message || 'Kesalahan sistem'}`, { id: toastId });
     }
   };
 
@@ -344,35 +434,53 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
 
         const matched = findingsList.find(f => {
           if (!f || matchedFindingIds.has(f.id)) return false;
+          // 1. Strict ID matching (prioritas utama)
           if (it.docId && f.docId && it.docId === f.docId) return true;
+          if (it.docId && f.reportId && it.docId === f.reportId) return true;
           if (it.findingId && f.id && it.findingId === f.id) return true;
 
+          // 2. Strict exact match: unitName AND creator AND date harus sama persis
           const sSpec = normalize(it.specificDetail);
           const fSpec = normalize(f.specificDetail);
           const fPart = normalize(f.partName);
-          const sFile = normalize(it.fileName);
-          const sMaint = normalize(it.maintenanceName);
-          const fMaint = normalize(f.maintenanceName);
           const sCreated = normalize(it.createdBy);
           const fCreated = normalize(f.createdByEmail);
 
-          if (sSpec && fSpec && sSpec === fSpec) return true;
-          if (sSpec && fPart && sSpec === fPart) return true;
-          if (fPart && sFile && sFile.includes(fPart)) return true;
-          if (sSpec && fPart && (sSpec.includes(fPart) || fPart.includes(sSpec))) return true;
-          if (sSpec && fSpec && (sSpec.includes(fSpec) || fSpec.includes(sSpec))) return true;
-          if (sMaint && fMaint && sMaint === fMaint) {
-            if (sCreated && fCreated && sCreated === fCreated) return true;
-            if (it.maintenanceTime && f.findingDate && it.maintenanceTime === f.findingDate) return true;
-          }
-          const cleanFile = normalize(it.fileName.replace(/\.[^/.]+$/, ''));
-          if (fPart && cleanFile.includes(fPart)) return true;
+          if (sSpec && fPart && sSpec === fPart && sCreated === fCreated && it.maintenanceTime && f.findingDate && it.maintenanceTime === f.findingDate) return true;
+          if (sSpec && fSpec && sSpec === fSpec && sCreated === fCreated && it.maintenanceTime && f.findingDate && it.maintenanceTime === f.findingDate) return true;
           return false;
         });
 
         if (matched) {
           matchedFindingIds.add(matched.id);
-          const realPhoto = (matched.photos && matched.photos[0]?.base64) || matched.photoBase64 || it.abnormalFinding?.photoBase64 || '';
+
+          // PENTING: Jangan memaksakan memasukkan data foto/gambar jika dokumen abnormal asli tidak memiliki lampiran foto!
+          const isStrictIdMatch = Boolean(
+            (it.docId && matched.docId && it.docId === matched.docId) ||
+            (it.docId && matched.reportId && it.docId === matched.reportId) ||
+            (it.findingId && matched.id && it.findingId === matched.id)
+          );
+
+          const hasOwnPhoto = Boolean(
+            it.abnormalFinding?.photoBase64 || 
+            (it.abnormalFinding?.photos && it.abnormalFinding.photos.length > 0)
+          );
+
+          // Jika dokumen asli tidak ada fotonya, JANGAN PERNAH dipaksakan memasukkan foto dari temuan lain
+          const realPhoto = hasOwnPhoto
+            ? (it.abnormalFinding?.photoBase64 || (it.abnormalFinding?.photos && it.abnormalFinding.photos[0]?.base64) || '')
+            : (isStrictIdMatch ? ((matched.photos && matched.photos[0]?.base64) || matched.photoBase64 || '') : '');
+
+          const realPhotos = hasOwnPhoto
+            ? (it.abnormalFinding?.photos && it.abnormalFinding.photos.length > 0 
+                ? it.abnormalFinding.photos 
+                : (it.abnormalFinding?.photoBase64 ? [{ base64: it.abnormalFinding.photoBase64, description: 'Bukti Temuan Abnormal' }] : []))
+            : (isStrictIdMatch 
+                ? (matched.photos && matched.photos.length > 0 
+                    ? matched.photos 
+                    : (matched.photoBase64 ? [{ base64: matched.photoBase64, description: 'Bukti Temuan Abnormal' }] : []))
+                : []);
+
           const realDesc = (isGenericFallback ? (matched.remark || matched.description || (matched.partName ? `Temuan abnormal pada: ${matched.partName}` : '')) : currentDesc) 
             || matched.remark 
             || matched.description 
@@ -394,7 +502,7 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
               description: realDesc || 'Temuan abnormal tercatat pada dokumen ini.',
               actionRecommendation: realReco || undefined,
               photoBase64: realPhoto || undefined,
-              photos: (matched.photos && matched.photos.length > 0) ? matched.photos : (it.abnormalFinding?.photos || []),
+              photos: realPhotos,
               reportedBy: it.abnormalFinding?.reportedBy || matched.createdByEmail || it.createdBy,
               reportedAt: it.abnormalFinding?.reportedAt || matched.findingDate || it.maintenanceTime,
             }
@@ -1203,7 +1311,8 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                             src: abnormal.photoBase64!,
                             title: targetUnit,
                             unit: targetUnit,
-                            account: item.createdBy
+                            account: item.createdBy,
+                            item
                           })}
                         />
                         <div
@@ -1211,7 +1320,8 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                             src: abnormal.photoBase64!,
                             title: targetUnit,
                             unit: targetUnit,
-                            account: item.createdBy
+                            account: item.createdBy,
+                            item
                           })}
                           className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/photo:opacity-100 transition-opacity flex items-center justify-center cursor-pointer gap-1.5 text-white text-xs font-bold"
                         >
@@ -1245,7 +1355,8 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                                 src: abnormal.photoBase64!,
                                 title: targetUnit,
                                 unit: targetUnit,
-                                account: item.createdBy
+                                account: item.createdBy,
+                                item
                               })}
                               className="text-rose-700 hover:text-rose-900 font-bold underline cursor-pointer"
                             >
@@ -1439,28 +1550,65 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
               exit={{ opacity: 0, scale: 0.95 }}
               className="relative max-w-4xl w-full max-h-[92vh] bg-slate-900 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-slate-700"
             >
-              <div className="p-3.5 bg-slate-800 text-white flex items-center justify-between border-b border-slate-700">
-                <div className="flex items-center gap-2 min-w-0 pr-4">
+              <div className="p-3.5 bg-slate-800 text-white flex items-center justify-between border-b border-slate-700 flex-wrap gap-2">
+                <div className="flex items-center gap-2 min-w-0 pr-2">
                   <Camera className="w-4 h-4 text-amber-400 shrink-0" />
                   <span className="text-xs sm:text-sm font-bold truncate text-slate-200">
                     Bukti Temuan Abnormal: {previewPhoto.unit} ({previewPhoto.account})
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setPreviewPhoto(null)}
-                  className="p-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white transition cursor-pointer shrink-0"
-                  title="Tutup Preview"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCropPreviewPhoto}
+                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                    title="Potong otomatis bagian atas teks dan hanya tampilkan foto peralatan"
+                  >
+                    <Scissors className="w-3.5 h-3.5" />
+                    <span>Ambil Foto Saja (Buang Teks)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (previewPhoto.item) {
+                        setEditingCropItem(previewPhoto.item);
+                      }
+                    }}
+                    className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                    title="Crop manual framing foto ini"
+                  >
+                    <Crop className="w-3.5 h-3.5" />
+                    <span>Crop Manual</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewPhoto(null)}
+                    className="p-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white transition cursor-pointer shrink-0 ml-1"
+                    title="Tutup Preview"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
+
               <div className="p-3 overflow-auto flex items-center justify-center bg-black/90 flex-1 min-h-[300px]">
                 <img
                   src={previewPhoto.src}
                   alt={previewPhoto.title}
                   className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-lg"
                 />
+              </div>
+
+              {/* Bilah Aksi Bawah Lightbox */}
+              <div className="px-4 py-2.5 bg-slate-800/90 border-t border-slate-700 flex items-center justify-between gap-2 text-xs text-slate-400">
+                <span>Foto bukti dokumentasi unit peralatan temuan abnormal.</span>
+                <button
+                  type="button"
+                  onClick={handleCropPreviewPhoto}
+                  className="text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 cursor-pointer underline"
+                >
+                  <Scissors className="w-3.5 h-3.5" /> Ambil Foto Saja (Buang Teks)
+                </button>
               </div>
             </motion.div>
           </div>
@@ -1588,7 +1736,8 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                           src: viewingDetailItem.abnormalFinding.photoBase64!,
                           title: viewingDetailItem.abnormalFinding.unitName || 'Temuan Abnormal',
                           unit: viewingDetailItem.abnormalFinding.unitName || viewingDetailItem.maintenanceName,
-                          account: viewingDetailItem.createdBy
+                          account: viewingDetailItem.createdBy,
+                          item: viewingDetailItem
                         })}
                       />
                       <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-xs text-white text-[11px] px-2.5 py-1 rounded-xl font-semibold flex items-center gap-1.5">
