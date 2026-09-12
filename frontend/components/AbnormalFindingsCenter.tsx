@@ -24,7 +24,8 @@ import {
   Wrench,
   ShieldCheck,
   Loader2,
-  PenTool
+  PenTool,
+  Eye
 } from 'lucide-react';
 import {
   collection,
@@ -92,6 +93,9 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
   // Modal konfirmasi tandai normal oleh QC
   const [confirmNormalItem, setConfirmNormalItem] = useState<AbnormalItem | null>(null);
   const [isProcessingNormal, setIsProcessingNormal] = useState(false);
+
+  // Modal pop-up lihat detail lengkap temuan abnormal
+  const [viewingDetailItem, setViewingDetailItem] = useState<AbnormalItem | null>(null);
 
   // Modal edit / lengkapi temuan abnormal
   const [editingModalDoc, setEditingModalDoc] = useState<ExcelDocument | null>(null);
@@ -810,9 +814,18 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                 <div className="p-4 sm:p-5 space-y-3 flex-1 flex flex-col justify-between">
                   <div className="space-y-2.5">
                     {/* Deskripsi Kerusakan / Temuan */}
-                    <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-xl space-y-1">
-                      <span className="text-[10px] font-black uppercase text-rose-800 tracking-wider flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3 text-rose-600" /> Deskripsi Kelainan / Kerusakan:
+                    <div
+                      onClick={() => setViewingDetailItem(item)}
+                      className="p-3 bg-rose-50/70 hover:bg-rose-50 border border-rose-200 rounded-xl space-y-1 cursor-pointer transition"
+                      title="Klik untuk melihat detail lengkap di pop-up"
+                    >
+                      <span className="text-[10px] font-black uppercase text-rose-800 tracking-wider flex items-center justify-between">
+                        <span className="flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 text-rose-600" /> Deskripsi Kelainan / Kerusakan:
+                        </span>
+                        <span className="text-[10px] text-sky-700 font-bold flex items-center gap-0.5 hover:underline">
+                          <Eye className="w-2.5 h-2.5" /> Lihat Detail
+                        </span>
                       </span>
                       <p className="text-xs sm:text-sm text-slate-800 font-medium leading-relaxed whitespace-pre-line">
                         {abnormal.description || 'Tidak ada deskripsi rinci.'}
@@ -913,17 +926,16 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                 {/* Footer Action Buttons */}
                 <div className="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    {onNavigateToDocument && (
-                      <button
-                        type="button"
-                        onClick={() => onNavigateToDocument(item.fileName || item.maintenanceName)}
-                        className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                        title="Buka laporan ini di halaman Arsip Dokumen"
-                      >
-                        <FolderOpen className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Lihat Dokumen</span>
-                      </button>
-                    )}
+                    {/* Tombol Utama: Lihat Temuan (Pop-up Modal) */}
+                    <button
+                      type="button"
+                      onClick={() => setViewingDetailItem(item)}
+                      className="px-3.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      title="Buka pop-up detail lengkap temuan abnormal ini"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-sky-600" />
+                      <span>Lihat Temuan</span>
+                    </button>
 
                     <button
                       type="button"
@@ -944,6 +956,18 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                       <PenTool className="w-3.5 h-3.5 text-amber-600" />
                       <span>Edit Temuan</span>
                     </button>
+
+                    {onNavigateToDocument && (
+                      <button
+                        type="button"
+                        onClick={() => onNavigateToDocument(item.fileName || item.maintenanceName)}
+                        className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-xl text-xs font-semibold transition flex items-center gap-1 cursor-pointer shadow-2xs"
+                        title="Buka laporan ini di halaman Arsip Dokumen"
+                      >
+                        <FolderOpen className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Arsip</span>
+                      </button>
+                    )}
                   </div>
 
                   {/* Tombol QC DME: Tandai Normal */}
@@ -1070,6 +1094,257 @@ export function AbnormalFindingsCenter({ onNavigateToDocument }: AbnormalFinding
                   alt={previewPhoto.title}
                   className="max-w-full max-h-[75vh] object-contain rounded-xl shadow-lg"
                 />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ========================================================================= */}
+      {/* POP-UP MODAL: LIHAT DETAIL TEMUAN ABNORMAL                             */}
+      {/* ========================================================================= */}
+      <AnimatePresence>
+        {viewingDetailItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              transition={{ duration: 0.2 }}
+              className="relative w-full max-w-2xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto flex flex-col max-h-[90vh]"
+            >
+              {/* Header Modal */}
+              <div className="bg-gradient-to-r from-rose-700 via-red-600 to-amber-600 px-5 py-4 sm:px-6 sm:py-5 text-white shrink-0">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-white/15 rounded-2xl backdrop-blur-xs shrink-0 border border-white/20">
+                      <AlertTriangle className="w-6 h-6 text-amber-300 animate-pulse" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="text-base sm:text-lg font-black tracking-tight text-white">
+                          Detail Temuan Abnormal
+                        </h2>
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-500/80 text-white border border-rose-300/40 uppercase tracking-wider">
+                          Kondisi Abnormal
+                        </span>
+                      </div>
+                      <p className="text-xs text-rose-100/90 mt-0.5 font-medium line-clamp-1">
+                        {viewingDetailItem.abnormalFinding?.unitName || viewingDetailItem.specificDetail || viewingDetailItem.maintenanceName}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setViewingDetailItem(null)}
+                    className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition cursor-pointer shrink-0"
+                    title="Tutup Modal"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body Modal (Scrollable) */}
+              <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
+                {/* Meta Bar: Akun, Pelapor, Waktu */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 p-3 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-slate-400 block">Akun / Sistem</span>
+                    <span className="font-bold text-slate-700 uppercase truncate block">
+                      {viewingDetailItem.createdBy}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-bold uppercase text-slate-400 block">Pelapor</span>
+                    <span className="font-bold text-slate-700 truncate block">
+                      {viewingDetailItem.abnormalFinding?.reportedBy || viewingDetailItem.createdBy}
+                    </span>
+                  </div>
+                  <div className="col-span-2 sm:col-span-1">
+                    <span className="text-[10px] font-bold uppercase text-slate-400 block">Waktu Maintenance</span>
+                    <span className="font-semibold text-slate-700">
+                      {viewingDetailItem.maintenanceTime || '-'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Nama Unit Peralatan */}
+                <div className="p-3 bg-slate-900 text-white rounded-2xl flex items-center justify-between gap-2">
+                  <div className="space-y-0.5 min-w-0">
+                    <span className="text-[10px] font-black uppercase text-rose-400 tracking-wider block">
+                      Nama Unit / Peralatan:
+                    </span>
+                    <h3 className="text-sm sm:text-base font-black truncate text-white">
+                      {viewingDetailItem.abnormalFinding?.unitName || viewingDetailItem.specificDetail || viewingDetailItem.maintenanceName}
+                    </h3>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[11px] font-bold shrink-0 uppercase">
+                    {viewingDetailItem.documentType}
+                  </span>
+                </div>
+
+                {/* Foto Bukti Temuan (Jika Ada) */}
+                {viewingDetailItem.abnormalFinding?.photoBase64 ? (
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] font-black uppercase text-slate-600 tracking-wider flex items-center gap-1.5">
+                      <Camera className="w-3.5 h-3.5 text-rose-600" /> Foto Bukti Temuan Abnormal:
+                    </span>
+                    <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-950 group">
+                      <img
+                        src={viewingDetailItem.abnormalFinding.photoBase64}
+                        alt="Bukti Temuan"
+                        className="w-full max-h-72 object-contain mx-auto bg-black/40 cursor-pointer transition group-hover:scale-101"
+                        onClick={() => setPreviewPhoto({
+                          src: viewingDetailItem.abnormalFinding.photoBase64!,
+                          title: viewingDetailItem.abnormalFinding.unitName || 'Temuan Abnormal',
+                          unit: viewingDetailItem.abnormalFinding.unitName || viewingDetailItem.maintenanceName,
+                          account: viewingDetailItem.createdBy
+                        })}
+                      />
+                      <div className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-xs text-white text-[11px] px-2.5 py-1 rounded-xl font-semibold flex items-center gap-1.5">
+                        <Camera className="w-3.5 h-3.5 text-amber-300" /> Klik gambar untuk perbesar
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3.5 bg-slate-50 border border-dashed border-slate-200 rounded-2xl flex items-center justify-between text-xs text-slate-500">
+                    <span className="flex items-center gap-2 text-slate-400 font-medium">
+                      <Camera className="w-4 h-4 text-slate-300 shrink-0" />
+                      <span>Belum ada foto bukti temuan terlampir.</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = viewingDetailItem;
+                        setViewingDetailItem(null);
+                        setEditingModalDoc(itemToExcelDoc(target));
+                      }}
+                      className="text-xs font-bold text-rose-600 hover:text-rose-800 hover:underline cursor-pointer"
+                    >
+                      + Tambah Foto
+                    </button>
+                  </div>
+                )}
+
+                {/* Deskripsi Kelainan / Kerusakan */}
+                <div className="p-4 bg-rose-50/80 border border-rose-200 rounded-2xl space-y-1.5">
+                  <span className="text-[11px] font-black uppercase text-rose-800 tracking-wider flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> Deskripsi Temuan / Kerusakan Abnormal:
+                  </span>
+                  <p className="text-xs sm:text-sm text-slate-800 font-medium leading-relaxed whitespace-pre-line">
+                    {viewingDetailItem.abnormalFinding?.description || 'Tidak ada catatan deskripsi kerusakan.'}
+                  </p>
+                </div>
+
+                {/* Rekomendasi / Tindakan Lanjutan */}
+                <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-2xl space-y-1.5">
+                  <span className="text-[11px] font-black uppercase text-amber-900 tracking-wider flex items-center gap-1.5">
+                    <Wrench className="w-3.5 h-3.5 text-amber-600" /> Rekomendasi / Tindakan Lanjutan:
+                  </span>
+                  {viewingDetailItem.abnormalFinding?.actionRecommendation ? (
+                    <p className="text-xs sm:text-sm text-amber-950 font-medium leading-relaxed whitespace-pre-line">
+                      {viewingDetailItem.abnormalFinding.actionRecommendation}
+                    </p>
+                  ) : (
+                    <div className="flex items-center justify-between text-xs text-amber-800/80 pt-1">
+                      <span className="italic">Rekomendasi tindakan belum diisi oleh engineer.</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const target = viewingDetailItem;
+                          setViewingDetailItem(null);
+                          setEditingModalDoc(itemToExcelDoc(target));
+                        }}
+                        className="text-xs font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer"
+                      >
+                        + Isi Rekomendasi
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Info File Laporan Induk */}
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FolderOpen className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span className="truncate font-semibold text-slate-700">
+                      {viewingDetailItem.fileName || `${viewingDetailItem.maintenanceName}.pdf`}
+                    </span>
+                  </div>
+                  {viewingDetailItem.attachedSrBase64 && (
+                    <span className="px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200 text-[10px] font-bold shrink-0">
+                      + SR Terlampir
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer Actions Modal */}
+              <div className="p-4 bg-slate-100 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = viewingDetailItem;
+                      setViewingDetailItem(null);
+                      setEditingModalDoc(itemToExcelDoc(target));
+                    }}
+                    className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    <PenTool className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Edit / Lengkapi Temuan</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadReportPDF(viewingDetailItem)}
+                    className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Download PDF</span>
+                  </button>
+
+                  {onNavigateToDocument && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const q = viewingDetailItem.fileName || viewingDetailItem.maintenanceName;
+                        setViewingDetailItem(null);
+                        onNavigateToDocument(q);
+                      }}
+                      className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                      title="Buka laporan ini di halaman Arsip Dokumen"
+                    >
+                      <FolderOpen className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Buka di Arsip</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = viewingDetailItem;
+                      setViewingDetailItem(null);
+                      setConfirmNormalItem(target);
+                    }}
+                    className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-900 border border-rose-200 hover:border-rose-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    title="Tandai unit telah diperbaiki dan kembalikan ke status Normal"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 text-rose-600" />
+                    <span>Tandai Normal (QC)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setViewingDetailItem(null)}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs"
+                  >
+                    Tutup
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
